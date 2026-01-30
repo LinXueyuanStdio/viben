@@ -435,10 +435,11 @@ def run(
         help="Transport method. One of: stdio, sse, streamable-http, http. Default is stdio; if host/port are set, defaults to sse.",
     ),
 ) -> None:
-    """运行 Browse MCP 服务器。
+    """Run the Browse MCP server.
 
-    默认使用 stdio（适配 MCP 客户端）。如需网络服务（SSE/HTTP），设置环境变量：
-    - `BROWSE_MCP_TRANSPORT=sse` 或 `BROWSE_MCP_TRANSPORT=streamable-http`
+    Defaults to stdio transport (for MCP clients). For network services (SSE/HTTP),
+    set environment variables:
+    - `BROWSE_MCP_TRANSPORT=sse` or `BROWSE_MCP_TRANSPORT=streamable-http`
     """
     log_level = "debug" if debug else "info"
 
