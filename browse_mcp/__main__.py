@@ -31,12 +31,12 @@ from .sources.scopus import ScopusSearcher
 from .sources.jstor import JSTORSearcher
 from .sources.researchgate import ResearchGateSearcher
 from .sources.core import CORESearcher
-# from .academic_platforms.hub import SciHubSearcher
+# from .sources.hub import SciHubSearcher
 
 # Initialize MCP server
-mcp = FastMCP("academic_mcp")
+mcp = FastMCP("browse_mcp")
 
-SAVE_PATH = os.getenv("ACADEMIC_MCP_DOWNLOAD_PATH", "./downloads")
+SAVE_PATH = os.getenv("BROWSE_MCP_DOWNLOAD_PATH", "./downloads")
 os.makedirs(SAVE_PATH, exist_ok=True)
 
 # All available searchers
@@ -66,16 +66,16 @@ def get_enabled_searchers() -> Dict[str, PaperSource]:
     """Get enabled searchers based on environment variables.
 
     Environment variables:
-    - ACADEMIC_MCP_ENABLED_SOURCES: Comma-separated list of enabled sources (e.g., "arxiv,pubmed,pmc")
-    - ACADEMIC_MCP_DISABLED_SOURCES: Comma-separated list of disabled sources (e.g., "ieee,scopus")
+    - BROWSE_MCP_ENABLED_SOURCES: Comma-separated list of enabled sources (e.g., "arxiv,pubmed,pmc")
+    - BROWSE_MCP_DISABLED_SOURCES: Comma-separated list of disabled sources (e.g., "ieee,scopus")
 
     If ENABLED_SOURCES is set, only those sources will be enabled.
     If DISABLED_SOURCES is set, all sources except those will be enabled.
     If both are set, ENABLED_SOURCES takes precedence.
     If neither is set, all sources are enabled.
     """
-    enabled_str = os.getenv("ACADEMIC_MCP_ENABLED_SOURCES", "").strip()
-    disabled_str = os.getenv("ACADEMIC_MCP_DISABLED_SOURCES", "").strip()
+    enabled_str = os.getenv("BROWSE_MCP_ENABLED_SOURCES", "").strip()
+    disabled_str = os.getenv("BROWSE_MCP_DISABLED_SOURCES", "").strip()
 
     if enabled_str:
         # Only enable specified sources
@@ -435,19 +435,19 @@ def run(
         help="Transport method. One of: stdio, sse, streamable-http, http. Default is stdio; if host/port are set, defaults to sse.",
     ),
 ) -> None:
-    """运行 Academic MCP 服务器。
+    """运行 Browse MCP 服务器。
 
     默认使用 stdio（适配 MCP 客户端）。如需网络服务（SSE/HTTP），设置环境变量：
-    - `ACADEMIC_MCP_TRANSPORT=sse` 或 `ACADEMIC_MCP_TRANSPORT=streamable-http`
+    - `BROWSE_MCP_TRANSPORT=sse` 或 `BROWSE_MCP_TRANSPORT=streamable-http`
     """
     log_level = "debug" if debug else "info"
 
     if not transport or transport == "stdio":
-        logger.info("Starting Academic MCP server with stdio transport")
+        logger.info("Starting Browse MCP server with stdio transport")
         mcp.run(transport="stdio", log_level=log_level)
         return
 
-    logger.info(f"Starting Academic MCP server on {host}:{port} with transport '{transport}'")
+    logger.info(f"Starting Browse MCP server on {host}:{port} with transport '{transport}'")
     mcp.run(transport=transport, host=host, port=port, log_level=log_level)
 
 

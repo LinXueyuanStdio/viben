@@ -1,7 +1,7 @@
 # tests/test_scopus.py
 import unittest
 import os
-from academic_mcp.sources.scopus import ScopusSearcher
+from browse_mcp.sources.scopus import ScopusSearcher
 
 
 class TestScopusSearcher(unittest.TestCase):

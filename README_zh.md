@@ -1,13 +1,13 @@
-# 📚 Academic MCP
+# 📚 Browse MCP
 
 [English](README.md) | [中文](README_zh.md)
 
-🔬 `academic-mcp` 是一个基于 Python 的 MCP 服务器，使用户能够从各种平台搜索、下载和阅读学术论文。它提供三个主要工具：
+🔬 `browse-mcp` 是一个基于 Python 的 MCP 服务器，使用户能够从各种平台搜索、下载和阅读学术论文。它提供三个主要工具：
 - 🔎 **`paper_search`**：跨多个学术数据库搜索论文
 - 📥 **`paper_download`**：下载论文 PDF，返回下载文件的路径
 - 📖 **`paper_read`**：提取和阅读论文的文本内容
 
-![PyPI](https://img.shields.io/pypi/v/academic-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![PyPI](https://img.shields.io/pypi/v/browse-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 
 ---
 
@@ -75,20 +75,20 @@
 
 ## 📦 安装
 
-`academic-mcp` 可以使用 `uv` 或 `pip` 安装。以下是针对不同场景的详细安装指南。
+`browse-mcp` 可以使用 `uv` 或 `pip` 安装。以下是针对不同场景的详细安装指南。
 
 ### ⚡ 快速安装
 
 安装软件包：
 
 ```bash
-pip install academic-mcp
+pip install browse-mcp
 ```
 
 启动 MCP 服务器：
 
 ```bash
-academic-mcp
+browse-mcp
 ```
 
 ### 🔧 MCP 客户端配置
@@ -106,9 +106,9 @@ academic-mcp
 ```json
 {
   "mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -116,9 +116,9 @@ academic-mcp
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -136,9 +136,9 @@ academic-mcp
 ```json
 {
   "mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -146,9 +146,9 @@ academic-mcp
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -157,11 +157,11 @@ academic-mcp
 
 **验证安装：**
 ```bash
-# 检查 academic-mcp 是否已加载
+# 检查 browse-mcp 是否已加载
 claude mcp list
 
 # 测试服务器
-claude mcp test academic-mcp
+claude mcp test browse-mcp
 ```
 
 </details>
@@ -180,9 +180,9 @@ claude mcp test academic-mcp
 ```json
 {
   "cline.mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -190,9 +190,9 @@ claude mcp test academic-mcp
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -206,9 +206,9 @@ claude mcp test academic-mcp
 ```json
 {
   "cline.mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -216,9 +216,9 @@ claude mcp test academic-mcp
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -236,10 +236,10 @@ claude mcp test academic-mcp
 ```json
 {
   "context_servers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": {
         "path": "python",
-        "args": ["-m", "academic_mcp"]
+        "args": ["-m", "browse_mcp"]
       },
       "settings": {
         "env": {
@@ -249,9 +249,9 @@ claude mcp test academic-mcp
           "IEEE_API_KEY": "",
           "SCOPUS_API_KEY": "",
           "CORE_API_KEY": "",
-          "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-          "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-          "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+          "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+          "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+          "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
         }
       }
     }
@@ -268,7 +268,7 @@ claude mcp test academic-mcp
 
 **服务器命令：**
 ```bash
-python -m academic_mcp
+python -m browse_mcp
 ```
 
 **环境变量：**
@@ -278,7 +278,7 @@ python -m academic_mcp
 - `IEEE_API_KEY`: IEEE Xplore 的可选 API 密钥
 - `SCOPUS_API_KEY`: Scopus 的可选 API 密钥
 - `CORE_API_KEY`: CORE 的可选 API 密钥
-- `ACADEMIC_MCP_DOWNLOAD_PATH`: 下载目录（默认：`./downloads`）
+- `BROWSE_MCP_DOWNLOAD_PATH`: 下载目录（默认：`./downloads`）
 
 **服务器功能：**
 - 工具：`paper_search`、`paper_download`、`paper_read`
@@ -299,12 +299,12 @@ python -m academic_mcp
 - `WOS_API_KEY`: Web of Science（需要机构订阅）
 
 **通用设置：**
-- `ACADEMIC_MCP_DOWNLOAD_PATH`: 下载 PDF 的目录（默认：`./downloads`）
+- `BROWSE_MCP_DOWNLOAD_PATH`: 下载 PDF 的目录（默认：`./downloads`）
 
 **数据源控制：**
-- `ACADEMIC_MCP_ENABLED_SOURCES`: 要启用的数据源的逗号分隔列表（白名单）
-- `ACADEMIC_MCP_DISABLED_SOURCES`: 要禁用的数据源的逗号分隔列表（黑名单）
-- 如果两者都设置，`ACADEMIC_MCP_ENABLED_SOURCES` 优先
+- `BROWSE_MCP_ENABLED_SOURCES`: 要启用的数据源的逗号分隔列表（白名单）
+- `BROWSE_MCP_DISABLED_SOURCES`: 要禁用的数据源的逗号分隔列表（黑名单）
+- 如果两者都设置，`BROWSE_MCP_ENABLED_SOURCES` 优先
 - 如果两者都未设置，则默认启用所有 18 个数据源
 
 **可用数据源名称（共 18 个）：**
@@ -333,7 +333,7 @@ python -m academic_mcp
 
 ## 🚀 使用
 
-配置完成后，`academic-mcp` 通过 Claude Desktop 或任何兼容 MCP 的客户端提供三个主要工具。
+配置完成后，`browse-mcp` 通过 Claude Desktop 或任何兼容 MCP 的客户端提供三个主要工具。
 
 ### 1. 搜索论文 (`paper_search`)
 
@@ -443,8 +443,8 @@ paper_read(searcher="core", paper_id="123456789")
    curl -LsSf https://astral.sh/uv/install.sh | sh
 
    # 克隆仓库
-   git clone https://github.com/LinXueyuanStdio/academic-mcp.git
-   cd academic-mcp
+   git clone https://github.com/LinXueyuanStdio/browse-mcp.git
+   cd browse-mcp
 
    # 创建并激活虚拟环境
    uv venv
@@ -473,14 +473,14 @@ paper_read(searcher="core", paper_id="123456789")
 2. **克隆并设置**：
 
    ```bash
-   git clone https://github.com/yourusername/academic-mcp.git
-   cd academic-mcp
+   git clone https://github.com/yourusername/browse-mcp.git
+   cd browse-mcp
    uv pip install -e .  # 以开发模式安装
    ```
 
 3. **进行更改**：
 
-   - 在 `academic_mcp/sources/` 中添加新平台。
+   - 在 `browse_mcp/sources/` 中添加新平台。
    - 在 `tests/` 中更新测试。
 
 4. **提交 Pull Request**：
@@ -492,4 +492,4 @@ paper_read(searcher="core", paper_id="123456789")
 
 ---
 
-祝您使用 `academic-mcp` 研究愉快！如果遇到问题，请在 GitHub 上提交 issue。
+祝您使用 `browse-mcp` 研究愉快！如果遇到问题，请在 GitHub 上提交 issue。

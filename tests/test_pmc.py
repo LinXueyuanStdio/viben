@@ -1,6 +1,6 @@
 # tests/test_pmc.py
 import unittest
-from academic_mcp.sources.pmc import PMCSearcher
+from browse_mcp.sources.pmc import PMCSearcher
 
 
 class TestPMCSearcher(unittest.TestCase):
