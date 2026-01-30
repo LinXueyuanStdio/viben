@@ -1,7 +1,7 @@
 # tests/test_ieee.py
 import unittest
 import os
-from academic_mcp.sources.ieee import IEEESearcher
+from browse_mcp.sources.ieee import IEEESearcher
 
 
 class TestIEEESearcher(unittest.TestCase):

@@ -1,7 +1,7 @@
 import unittest
 import asyncio
 import os
-from academic_mcp.__main__ import PaperQuery, PaperDownloadQuery, async_search_per_query, async_download_per_query
+from browse_mcp.__main__ import PaperQuery, PaperDownloadQuery, async_search_per_query, async_download_per_query
 
 class TestPaperSearchServer(unittest.TestCase):
     def test_search_arxiv(self):

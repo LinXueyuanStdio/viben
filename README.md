@@ -1,13 +1,13 @@
-# 📚 Academic MCP
+# 📚 Browse MCP
 
 [English](README.md) | [中文](README_zh.md)
 
-🔬 `academic-mcp` is a Python-based MCP server that enables users to search, download, and read academic papers from various platforms. It provides three main tools:
+🔬 `browse-mcp` is a Python-based MCP server that enables users to search, download, and read academic papers from various platforms. It provides three main tools:
 - 🔎 **`paper_search`**: Search papers across multiple academic databases
 - 📥 **`paper_download`**: Download paper PDFs, return paths of downloaded files
 - 📖 **`paper_read`**: Extract and read text content from papers
 
-![PyPI](https://img.shields.io/pypi/v/academic-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
+![PyPI](https://img.shields.io/pypi/v/browse-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 
 ---
 
@@ -75,20 +75,20 @@
 
 ## 📦 Installation
 
-`academic-mcp` can be installed using `uv` or `pip`. Below are detailed installation guides for different scenarios.
+`browse-mcp` can be installed using `uv` or `pip`. Below are detailed installation guides for different scenarios.
 
 ### ⚡ Quick Install
 
 Install the package:
 
 ```bash
-pip install academic-mcp
+pip install browse-mcp
 ```
 
 Start the MCP server:
 
 ```bash
-academic-mcp
+browse-mcp
 ```
 
 ### 🔧 MCP Client Configuration
@@ -106,9 +106,9 @@ Choose your MCP client and follow the configuration steps:
 ```json
 {
   "mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -116,9 +116,9 @@ Choose your MCP client and follow the configuration steps:
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -136,9 +136,9 @@ Choose your MCP client and follow the configuration steps:
 ```json
 {
   "mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -146,9 +146,9 @@ Choose your MCP client and follow the configuration steps:
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -157,11 +157,11 @@ Choose your MCP client and follow the configuration steps:
 
 **Verify Installation:**
 ```bash
-# Check if academic-mcp is loaded
+# Check if browse-mcp is loaded
 claude mcp list
 
 # Test the server
-claude mcp test academic-mcp
+claude mcp test browse-mcp
 ```
 
 </details>
@@ -180,9 +180,9 @@ claude mcp test academic-mcp
 ```json
 {
   "cline.mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -190,9 +190,9 @@ claude mcp test academic-mcp
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -206,9 +206,9 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
 ```json
 {
   "cline.mcpServers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": "python",
-      "args": ["-m", "academic_mcp"],
+      "args": ["-m", "browse_mcp"],
       "env": {
         "SEMANTIC_SCHOLAR_API_KEY": "",
         "SCIENCEDIRECT_API_KEY": "",
@@ -216,9 +216,9 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
         "IEEE_API_KEY": "",
         "SCOPUS_API_KEY": "",
         "CORE_API_KEY": "",
-        "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-        "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-        "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+        "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
   }
@@ -236,10 +236,10 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
 ```json
 {
   "context_servers": {
-    "academic-mcp": {
+    "browse-mcp": {
       "command": {
         "path": "python",
-        "args": ["-m", "academic_mcp"]
+        "args": ["-m", "browse_mcp"]
       },
       "settings": {
         "env": {
@@ -249,9 +249,9 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
           "IEEE_API_KEY": "",
           "SCOPUS_API_KEY": "",
           "CORE_API_KEY": "",
-          "ACADEMIC_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
-          "ACADEMIC_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
-          "ACADEMIC_MCP_DOWNLOAD_PATH": "./downloads"
+          "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,pmc,biorxiv,medrxiv,semantic,core,crossref,google_scholar,iacr",
+          "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,wos,acm,jstor",
+          "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
         }
       }
     }
@@ -268,7 +268,7 @@ For other MCP clients, use the standard MCP server configuration:
 
 **Server Command:**
 ```bash
-python -m academic_mcp
+python -m browse_mcp
 ```
 
 **Environment Variables:**
@@ -278,7 +278,7 @@ python -m academic_mcp
 - `IEEE_API_KEY`: Optional API key for IEEE Xplore
 - `SCOPUS_API_KEY`: Optional API key for Scopus
 - `CORE_API_KEY`: Optional API key for CORE
-- `ACADEMIC_MCP_DOWNLOAD_PATH`: Download directory (default: `./downloads`)
+- `BROWSE_MCP_DOWNLOAD_PATH`: Download directory (default: `./downloads`)
 
 **Server Capabilities:**
 - Tools: `paper_search`, `paper_download`, `paper_read`
@@ -299,12 +299,12 @@ python -m academic_mcp
 - `WOS_API_KEY`: Web of Science (requires institutional subscription)
 
 **General Settings:**
-- `ACADEMIC_MCP_DOWNLOAD_PATH`: Directory for downloaded PDFs (default: `./downloads`)
+- `BROWSE_MCP_DOWNLOAD_PATH`: Directory for downloaded PDFs (default: `./downloads`)
 
 **Source Control:**
-- `ACADEMIC_MCP_ENABLED_SOURCES`: Comma-separated list to enable specific sources (whitelist)
-- `ACADEMIC_MCP_DISABLED_SOURCES`: Comma-separated list to disable specific sources (blacklist)
-- If both are set, `ACADEMIC_MCP_ENABLED_SOURCES` takes precedence
+- `BROWSE_MCP_ENABLED_SOURCES`: Comma-separated list to enable specific sources (whitelist)
+- `BROWSE_MCP_DISABLED_SOURCES`: Comma-separated list to disable specific sources (blacklist)
+- If both are set, `BROWSE_MCP_ENABLED_SOURCES` takes precedence
 - If neither is set, all 18 sources are enabled by default
 
 **Available Source Names (18 total):**
@@ -333,7 +333,7 @@ python -m academic_mcp
 
 ## 🚀 Usage
 
-Once configured, `academic-mcp` provides three main tools accessible through Claude Desktop or any MCP-compatible client.
+Once configured, `browse-mcp` provides three main tools accessible through Claude Desktop or any MCP-compatible client.
 
 ### 1. Search Papers (`paper_search`)
 
@@ -443,8 +443,8 @@ For developers who want to modify the code or contribute:
    curl -LsSf https://astral.sh/uv/install.sh | sh
 
    # Clone repository
-   git clone https://github.com/LinXueyuanStdio/academic-mcp.git
-   cd academic-mcp
+   git clone https://github.com/LinXueyuanStdio/browse-mcp.git
+   cd browse-mcp
 
    # Create and activate virtual environment
    uv venv
@@ -473,14 +473,14 @@ We welcome contributions! Here's how to get started:
 2. **Clone and Set Up**:
 
    ```bash
-   git clone https://github.com/yourusername/academic-mcp.git
-   cd academic-mcp
+   git clone https://github.com/yourusername/browse-mcp.git
+   cd browse-mcp
    uv pip install -e .  # Install in development mode
    ```
 
 3. **Make Changes**:
 
-   - Add new platforms in `academic_mcp/sources/`.
+   - Add new platforms in `browse_mcp/sources/`.
    - Update tests in `tests/`.
 
 4. **Submit a Pull Request**:
@@ -492,4 +492,4 @@ This project is licensed under the MIT License. See the LICENSE file for details
 
 ---
 
-Happy researching with `academic-mcp`! If you encounter issues, open a GitHub issue.
+Happy researching with `browse-mcp`! If you encounter issues, open a GitHub issue.

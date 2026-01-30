@@ -1,6 +1,6 @@
 # tests/test_acm.py
 import unittest
-from academic_mcp.sources.acm import ACMSearcher
+from browse_mcp.sources.acm import ACMSearcher
 
 
 class TestACMSearcher(unittest.TestCase):

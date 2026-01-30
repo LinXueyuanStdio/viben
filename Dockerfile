@@ -16,4 +16,4 @@ RUN pip install --upgrade pip \
 # Expose port if necessary (MCP servers use stdio; no port to expose)
 
 # Command to run the MCP server
-CMD ["python", "-m", "academic_mcp.__main__:main"]
+CMD ["python", "-m", "browse_mcp.__main__:main"]

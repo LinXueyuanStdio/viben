@@ -1,7 +1,7 @@
 # tests/test_springer.py
 import unittest
 import os
-from academic_mcp.sources.springer import SpringerSearcher
+from browse_mcp.sources.springer import SpringerSearcher
 
 
 class TestSpringerSearcher(unittest.TestCase):
