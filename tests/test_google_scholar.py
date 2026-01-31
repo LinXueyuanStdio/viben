@@ -1,7 +1,7 @@
 import unittest
 import os
 import requests
-from academic_mcp.sources.google_scholar import GoogleScholarSearcher
+from browse_mcp.sources.google_scholar import GoogleScholarSearcher
 
 def check_scholar_accessible():
     """检查 Google Scholar 是否可访问"""

@@ -1,7 +1,7 @@
 # tests/test_wos.py
 import unittest
 import os
-from academic_mcp.sources.wos import WOSSearcher
+from browse_mcp.sources.wos import WOSSearcher
 
 
 class TestWOSSearcher(unittest.TestCase):

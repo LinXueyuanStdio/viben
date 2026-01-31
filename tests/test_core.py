@@ -1,7 +1,7 @@
 # tests/test_core.py
 import unittest
 import os
-from academic_mcp.sources.core import CORESearcher
+from browse_mcp.sources.core import CORESearcher
 
 
 class TestCORESearcher(unittest.TestCase):
