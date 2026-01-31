@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "browse-mcp"
-version = "0.1.7"
+version = "0.1.8"
 description = "A MCP server for searching and downloading academic papers from multiple sources."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,7 +12,6 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [
   { name = "Xueyuan Lin", email = "linxy59@mail2.sysu.edu.cn" },
-  { name = "P.S Zhang", email = "pengsongzhang96@gmail.com" },
 ]
 dependencies = [
   "requests",
