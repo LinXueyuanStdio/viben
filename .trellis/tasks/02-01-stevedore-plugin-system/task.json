@@ -1,0 +1,41 @@
+{
+  "id": "stevedore-plugin-system",
+  "name": "stevedore-plugin-system",
+  "title": "Implement stevedore-based plugin system for browse-mcp searchers",
+  "description": "Refactor backend/browse-mcp to use stevedore for plugin-based searcher management with auto-discovery via entry points",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "plugin",
+  "priority": "P2",
+  "creator": "browse-mcp",
+  "assignee": "browse-mcp",
+  "createdAt": "2026-02-01",
+  "completedAt": null,
+  "branch": "feature/stevedore-plugin-system",
+  "base_branch": "main",
+  "worktree_path": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/trellis-worktrees/feature/stevedore-plugin-system",
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}
