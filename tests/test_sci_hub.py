@@ -4,7 +4,7 @@ import tempfile
 import shutil
 import os
 import requests
-from academic_mcp.sources.sci_hub import SciHubFetcher
+from browse_mcp.sources.sci_hub import SciHubFetcher
 
 
 def check_sci_hub_accessible():

@@ -1,6 +1,6 @@
 # tests/test_jstor.py
 import unittest
-from academic_mcp.sources.jstor import JSTORSearcher
+from browse_mcp.sources.jstor import JSTORSearcher
 
 
 class TestJSTORSearcher(unittest.TestCase):

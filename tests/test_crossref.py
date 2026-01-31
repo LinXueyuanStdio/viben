@@ -2,7 +2,7 @@
 import unittest
 import os
 import requests
-from academic_mcp.sources.crossref import CrossRefSearcher
+from browse_mcp.sources.crossref import CrossRefSearcher
 
 def check_api_accessible():
     """检查 CrossRef API 是否可访问

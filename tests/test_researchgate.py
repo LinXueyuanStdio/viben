@@ -1,6 +1,6 @@
 # tests/test_researchgate.py
 import unittest
-from academic_mcp.sources.researchgate import ResearchGateSearcher
+from browse_mcp.sources.researchgate import ResearchGateSearcher
 
 
 class TestResearchGateSearcher(unittest.TestCase):

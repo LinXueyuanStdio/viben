@@ -1,7 +1,7 @@
 # tests/test_sciencedirect.py
 import unittest
 import os
-from academic_mcp.sources.sciencedirect import ScienceDirectSearcher
+from browse_mcp.sources.sciencedirect import ScienceDirectSearcher
 
 
 class TestScienceDirectSearcher(unittest.TestCase):

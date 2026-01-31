@@ -3,7 +3,7 @@ requires = ["poetry-core>=1.9.0"]
 build-backend = "poetry.core.masonry.api"
 
 [project]
-name = "academic-mcp"
+name = "browse-mcp"
 version = "0.1.7"
 description = "A MCP server for searching and downloading academic papers from multiple sources."
 readme = "README.md"
@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [project.scripts]
-academic-mcp = "academic_mcp.__main__:main"
+browse-mcp = "browse_mcp.__main__:main"
 
 [tool.poetry]
-packages = [{ include = "academic_mcp" }]
+packages = [{ include = "browse_mcp" }]
