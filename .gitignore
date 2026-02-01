@@ -1,5 +1,55 @@
+# ===========================================
+# OS & Editor
+# ===========================================
 .DS_Store
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ===========================================
+# Node.js / Frontend
+# ===========================================
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.npm/
+.yarn/
+*.tsbuildinfo
+
+# ===========================================
+# Rust / Tauri
+# ===========================================
+target/
+# Note: Cargo.lock should be committed for binary projects (like desktop app)
+# but ignored for library projects
+*.rs.bk
+
+# ===========================================
+# Trellis Development System
+# ===========================================
+.session-id
+.current-task
+.trellis/.developer
+.trellis/workspace/*/
+
+# ===========================================
+# Project Specific
+# ===========================================
 scratch/
+downloads/
+test_downloads/
+
+# ===========================================
+# Python
+# ===========================================
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -164,9 +214,5 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# vscode
-.vscode/
+# Claude Code local files
 **/CLAUDE.local.md
-
-./downloads
-./test_downloads

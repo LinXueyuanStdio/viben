@@ -46,36 +46,65 @@
      - 部署到 gh-pages 分支
    - 需要配置 GitHub Pages 设置指向 gh-pages 分支
 
-### Phase 2: Documentation Content (后续细化)
+### Phase 2: Documentation Content
 
-等 Phase 1 完成后，用户会进一步细化文档编写需求。
+**User Requirements** (from deep research):
+- **Audience**: End users, developers, contributors
+- **Languages**: English + Chinese (Docusaurus i18n)
+- **Detail Level**: Concise (1-2 paragraphs + basic code examples per feature)
+- **Interactive Elements**: Code examples, Mermaid diagrams, video tutorials, feature screenshots
+- **Plugin Docs**: Very important (detailed guide with complete examples)
+- **Client Guides**: Combined guide (tabs for Claude Desktop, Cursor, VS Code)
+- **Best Practices**: Embedded in each section
 
-预期文档结构：
+**Documentation Structure** (Based on deep research):
 
 ```
-docs/docs/
-├── intro.md                      # 项目概述
+apps/docs/docs/
+├── intro.md                              # Landing page (from README)
 ├── getting-started/
-│   ├── installation.md           # pip install browse-mcp
-│   ├── quick-start.md            # 基本使用
-│   └── configuration.md          # 环境变量配置
+│   ├── _category_.json
+│   ├── installation.md                   # pip install + prerequisites
+│   ├── quick-start.md                    # First paper search in 2 minutes
+│   └── client-configuration.md           # Claude Desktop/Cursor/VS Code tabs
 ├── mcp-server/
-│   ├── overview.md               # MCP 服务器架构
-│   ├── tools.md                  # paper_search, paper_download, paper_read
-│   ├── sources.md                # 19 个学术来源
-│   └── client-config.md          # Claude Desktop, Claude Code 等客户端配置
+│   ├── _category_.json
+│   ├── architecture.md                   # System design + Mermaid diagram
+│   ├── tools/
+│   │   ├── paper-search.md               # paper_search tool reference
+│   │   ├── paper-download.md             # paper_download tool reference
+│   │   └── paper-read.md                 # paper_read tool reference
+│   ├── sources/
+│   │   ├── overview.md                   # 19 sources overview table
+│   │   ├── free-sources.md               # arXiv, PubMed, etc.
+│   │   └── premium-sources.md            # IEEE, Springer, etc.
+│   └── configuration.md                  # Environment variables
 ├── desktop-app/
-│   ├── overview.md               # 桌面应用功能
-│   ├── installation.md           # 安装指南
-│   └── usage.md                  # 使用指南
+│   ├── _category_.json
+│   ├── overview.md                       # Features + screenshots
+│   ├── installation.md                   # macOS/Windows/Linux
+│   └── usage.md                          # Page-by-page guide
 ├── plugins/
-│   ├── overview.md               # 插件系统 (stevedore)
-│   ├── creating-plugins.md       # 创建插件指南
-│   └── content-types.md          # ContentSource[T] 泛型
+│   ├── _category_.json
+│   ├── overview.md                       # Plugin system intro
+│   ├── creating-plugins.md               # Step-by-step guide (PRIORITY)
+│   ├── content-source-generic.md         # ContentSource[T] explained
+│   └── example-social-media.md           # Reference implementation
 ├── api/
-│   └── reference.md              # API 文档
-└── contributing.md               # 贡献指南
+│   ├── _category_.json
+│   └── paper-type.md                     # Paper dataclass reference
+└── contributing.md                       # Development setup + guidelines
+
+apps/docs/i18n/zh-Hans/docusaurus-plugin-content-docs/current/
+├── (mirror structure of docs/ for Chinese translations)
 ```
+
+**Content Sources**:
+- `backend/browse-mcp/README.md` (496 lines, English) - MCP server docs
+- `backend/browse-mcp/README_zh.md` (496 lines, Chinese) - Chinese version
+- `apps/desktop/README.md` - Desktop app template
+- Source code files for API reference
+- Existing plugin example (social-media)
 
 ## Acceptance Criteria
 
@@ -93,7 +122,51 @@ docs/docs/
 
 ### Phase 2
 
-- (待用户细化后补充)
+#### Phase 2a: Core Documentation (Essential) - ~4000 words
+- [ ] `intro.md` - Landing page updated from README
+- [ ] `getting-started/installation.md` - Complete installation guide
+- [ ] `getting-started/quick-start.md` - 2-minute quick start
+- [ ] `getting-started/client-configuration.md` - Combined client guide with tabs
+- [ ] `mcp-server/tools/paper-search.md` - paper_search tool reference
+- [ ] `mcp-server/tools/paper-download.md` - paper_download tool reference
+- [ ] `mcp-server/tools/paper-read.md` - paper_read tool reference
+- [ ] `mcp-server/configuration.md` - Environment variables
+
+#### Phase 2b: Extended Documentation - ~3500 words + screenshots
+- [ ] `mcp-server/architecture.md` - System design + Mermaid diagrams
+- [ ] `mcp-server/sources/overview.md` - 19 sources overview table
+- [ ] `mcp-server/sources/free-sources.md` - Free source details
+- [ ] `mcp-server/sources/premium-sources.md` - Premium source setup
+- [ ] `desktop-app/overview.md` - Features + screenshots
+- [ ] `desktop-app/installation.md` - Platform-specific install
+- [ ] `desktop-app/usage.md` - Page-by-page guide
+
+#### Phase 2c: Developer Documentation (Very Important) - ~4000 words + diagrams
+- [ ] `plugins/overview.md` - Plugin system intro + diagram
+- [ ] `plugins/creating-plugins.md` - Detailed plugin tutorial (PRIORITY)
+- [ ] `plugins/content-source-generic.md` - ContentSource[T] deep dive
+- [ ] `plugins/example-social-media.md` - Reference implementation
+- [ ] `api/paper-type.md` - Paper dataclass reference
+- [ ] `contributing.md` - Contribution guide
+
+#### Phase 2d: i18n (Chinese) - ~8000 words translation
+- [ ] Translate Phase 2a pages using README_zh.md
+- [ ] Translate Phase 2c plugin docs (important for Chinese developers)
+
+#### Mermaid Diagrams Needed
+- [ ] Architecture overview flowchart (architecture.md)
+- [ ] Plugin discovery sequence diagram (plugins/overview.md)
+- [ ] ContentSource type hierarchy class diagram (plugins/content-source-generic.md)
+- [ ] Request flow sequence diagram (tools/paper-search.md)
+
+#### Screenshots & Media Needed
+- [ ] MCP Server in Claude Desktop
+- [ ] Desktop App Dashboard (with activity heatmap)
+- [ ] Desktop App Providers Page (API key config)
+- [ ] Desktop App Agents Page (agent detection)
+- [ ] Search Results Example (formatted output)
+- [ ] Quick Start GIF (optional, ~15 seconds)
+- [ ] Plugin Creation GIF (optional)
 
 ## Technical Notes
 
