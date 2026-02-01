@@ -67,27 +67,12 @@ export function DashboardPage() {
   }, [selectedPython, browseMcpInfo, setSetupStatus]);
 
   // Determine if we should show the setup banner
-  // Default to NOT showing unless we have confirmed evidence that setup is incomplete
-  const showSetupBanner = useMemo(() => {
-    // If user dismissed it, never show
-    if (setupBannerDismissed) return false;
-
-    // If we have cached status, trust it completely
-    if (setupStatus !== null) {
-      return !setupStatus.isComplete; // Only show if cache says incomplete
-    }
-
-    // No cache - only show if data is loaded AND setup is actually incomplete
-    // If data is still loading (null/undefined), default to NOT showing the banner
-    const dataIsLoaded = selectedPython !== null && browseMcpInfo !== undefined;
-    if (!dataIsLoaded) {
-      return false; // Don't show during loading
-    }
-
-    // Data is loaded - check actual status
-    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
-    return !isSetupComplete; // Show only if definitely incomplete
-  }, [setupStatus, setupBannerDismissed, selectedPython, browseMcpInfo]);
+  // ONLY show when cache explicitly confirms setup is incomplete
+  // Never show in any other case (hydrating, loading, no cache, etc.)
+  const showSetupBanner =
+    !setupBannerDismissed &&
+    setupStatus !== null &&
+    setupStatus.isComplete === false;
 
   // State to track if component has mounted (for animations)
   const [mounted, setMounted] = useState(false);
