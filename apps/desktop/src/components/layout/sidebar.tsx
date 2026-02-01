@@ -56,15 +56,13 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
     if (selectedPython !== null && browseMcpInfo !== undefined) {
       const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
 
-      // Always update cache when data changes to keep it fresh
-      if (setupStatus === null || setupStatus.isComplete !== isSetupComplete) {
-        setSetupStatus(isSetupComplete);
-      }
+      // Update cache immediately when data loads
+      setSetupStatus(isSetupComplete);
     }
-  }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
+  }, [selectedPython, browseMcpInfo, setSetupStatus]);
 
-  // Trust cached status completely - only compute if no cache exists
-  const isSetupComplete = setupStatus?.isComplete ?? false;
+  // Use cached status if available, otherwise compute from loaded data
+  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
 
   return (
     <TooltipProvider delayDuration={0}>

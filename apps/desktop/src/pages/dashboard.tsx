@@ -61,13 +61,10 @@ export function DashboardPage() {
     if (selectedPython !== null && browseMcpInfo !== undefined) {
       const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
 
-      // Always update cache when data changes, not just when shouldCheckSetup() allows
-      // This ensures cache is always fresh and prevents showing card when setup is complete
-      if (setupStatus === null || setupStatus.isComplete !== isSetupComplete) {
-        setSetupStatus(isSetupComplete);
-      }
+      // Update cache immediately when data loads
+      setSetupStatus(isSetupComplete);
     }
-  }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
+  }, [selectedPython, browseMcpInfo, setSetupStatus]);
 
   // Determine if we should show the setup banner
   // Default to NOT showing unless we have confirmed evidence that setup is incomplete
@@ -162,8 +159,8 @@ export function DashboardPage() {
       >
         <BentoGrid gap="lg">
         {/* Stats Row - 4 small cards */}
-        <motion.div variants={cardVariants}>
-          <BentoCard size="small">
+        <motion.div variants={cardVariants} className="bento-card-small">
+          <BentoCard size="small" className="h-full">
             {usageLoading ? (
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
@@ -176,8 +173,8 @@ export function DashboardPage() {
             )}
           </BentoCard>
         </motion.div>
-        <motion.div variants={cardVariants}>
-          <BentoCard size="small">
+        <motion.div variants={cardVariants} className="bento-card-small">
+          <BentoCard size="small" className="h-full">
             {usageLoading ? (
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
@@ -190,8 +187,8 @@ export function DashboardPage() {
             )}
           </BentoCard>
         </motion.div>
-        <motion.div variants={cardVariants}>
-          <BentoCard size="small">
+        <motion.div variants={cardVariants} className="bento-card-small">
+          <BentoCard size="small" className="h-full">
             <Link to="/providers" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
@@ -206,8 +203,8 @@ export function DashboardPage() {
             </Link>
           </BentoCard>
         </motion.div>
-        <motion.div variants={cardVariants}>
-          <BentoCard size="small">
+        <motion.div variants={cardVariants} className="bento-card-small">
+          <BentoCard size="small" className="h-full">
             <Link to="/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
@@ -232,8 +229,8 @@ export function DashboardPage() {
 
         {/* Row 2: Quick Actions (left, small, stacked vertically) + Daily Usage Chart (right, large) */}
         {/* Left side: 2 Quick Actions stacked vertically in one grid cell */}
-        <motion.div variants={cardVariants}>
-          <BentoCard size="small" asCard={false} className="flex flex-col gap-6">
+        <motion.div variants={cardVariants} className="bento-card-small">
+          <BentoCard size="small" asCard={false} className="flex flex-col gap-6 h-full">
             <QuickActionCard
               title="Configure AI Agents"
               description="Set up browse-mcp for your AI assistants"
@@ -249,8 +246,8 @@ export function DashboardPage() {
           </BentoCard>
         </motion.div>
 
-        <motion.div variants={cardVariants}>
-          <BentoCard size="large">
+        <motion.div variants={cardVariants} className="bento-card-large">
+          <BentoCard size="large" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
               Daily Usage (Last 30 Days)
@@ -264,8 +261,8 @@ export function DashboardPage() {
         </motion.div>
 
         {/* Row 3: Usage by Server + Usage by Data Source */}
-        <motion.div variants={cardVariants}>
-          <BentoCard size="medium">
+        <motion.div variants={cardVariants} className="bento-card-medium">
+          <BentoCard size="medium" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Activity className="h-5 w-5" />
               Usage by Server
@@ -292,8 +289,8 @@ export function DashboardPage() {
           </BentoCard>
         </motion.div>
 
-        <motion.div variants={cardVariants}>
-          <BentoCard size="medium">
+        <motion.div variants={cardVariants} className="bento-card-medium">
+          <BentoCard size="medium" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Database className="h-5 w-5" />
               Usage by Data Source
@@ -321,64 +318,64 @@ export function DashboardPage() {
         </motion.div>
 
         {/* Row 4: Activity Heatmap - Full width */}
-        <motion.div variants={cardVariants}>
-          <BentoCard size="full">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Activity
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              {stats?.this_month_requests ?? 0} requests this month
-            </span>
-          </div>
-          {usageLoading ? (
-            <SkeletonHeatmap />
-          ) : (
-            <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
-          )}
-        </BentoCard>
+        <motion.div variants={cardVariants} className="bento-card-full">
+          <BentoCard size="full" className="h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Activity
+              </h2>
+              <span className="text-sm text-muted-foreground">
+                {stats?.this_month_requests ?? 0} requests this month
+              </span>
+            </div>
+            {usageLoading ? (
+              <SkeletonHeatmap />
+            ) : (
+              <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
+            )}
+          </BentoCard>
         </motion.div>
 
         {/* Environment Status - Full width */}
-        <motion.div variants={cardVariants}>
-          <BentoCard size="full">
-          <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
-          <div className="space-y-3">
-            <StatusRow
-              label="Python"
-              value={
-                selectedPython
-                  ? `${selectedPython.version} (${selectedPython.path})`
-                  : "Not configured"
-              }
-              ok={selectedPython?.is_valid ?? false}
-            />
-            <StatusRow
-              label="browse-mcp"
-              value={
-                browseMcpInfo?.installed
-                  ? `v${browseMcpInfo.version}`
-                  : "Not installed"
-              }
-              ok={browseMcpInfo?.installed ?? false}
-            />
-            <StatusRow
-              label="MCP Servers"
-              value={
-                mcpServers.length === 0
-                  ? "No servers configured"
-                  : `${runningServers.length}/${mcpServers.length} running`
-              }
-              ok={runningServers.length > 0}
-            />
-            <StatusRow
-              label="Configured Agents"
-              value={agentsLoading ? "Detecting..." : `${configuredAgents.length} agents`}
-              ok={configuredAgents.length > 0}
-            />
-          </div>
-        </BentoCard>
+        <motion.div variants={cardVariants} className="bento-card-full">
+          <BentoCard size="full" className="h-full">
+            <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
+            <div className="space-y-3">
+              <StatusRow
+                label="Python"
+                value={
+                  selectedPython
+                    ? `${selectedPython.version} (${selectedPython.path})`
+                    : "Not configured"
+                }
+                ok={selectedPython?.is_valid ?? false}
+              />
+              <StatusRow
+                label="browse-mcp"
+                value={
+                  browseMcpInfo?.installed
+                    ? `v${browseMcpInfo.version}`
+                    : "Not installed"
+                }
+                ok={browseMcpInfo?.installed ?? false}
+              />
+              <StatusRow
+                label="MCP Servers"
+                value={
+                  mcpServers.length === 0
+                    ? "No servers configured"
+                    : `${runningServers.length}/${mcpServers.length} running`
+                }
+                ok={runningServers.length > 0}
+              />
+              <StatusRow
+                label="Configured Agents"
+                value={agentsLoading ? "Detecting..." : `${configuredAgents.length} agents`}
+                ok={configuredAgents.length > 0}
+              />
+            </div>
+          </BentoCard>
         </motion.div>
       </BentoGrid>
       </motion.div>
