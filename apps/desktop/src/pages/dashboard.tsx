@@ -52,18 +52,28 @@ export function DashboardPage() {
     }
   }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
 
-  // Determine if setup is complete - prioritize cached status
-  const isSetupComplete = useMemo(() => {
-    // If we have cached status, use it (avoids flickering during navigation)
-    if (setupStatus !== null) {
-      return setupStatus.isComplete;
-    }
-    // Otherwise compute from current data
-    return selectedPython?.is_valid && browseMcpInfo?.installed;
-  }, [setupStatus, selectedPython, browseMcpInfo]);
+  // Determine if we should show the setup banner
+  // Default to NOT showing unless we have confirmed evidence that setup is incomplete
+  const showSetupBanner = useMemo(() => {
+    // If user dismissed it, never show
+    if (setupBannerDismissed) return false;
 
-  // Only show setup banner if not complete AND not dismissed
-  const showSetupBanner = !isSetupComplete && !setupBannerDismissed;
+    // If we have cached status, trust it completely
+    if (setupStatus !== null) {
+      return !setupStatus.isComplete; // Only show if cache says incomplete
+    }
+
+    // No cache - only show if data is loaded AND setup is actually incomplete
+    // If data is still loading (null/undefined), default to NOT showing the banner
+    const dataIsLoaded = selectedPython !== null && browseMcpInfo !== undefined;
+    if (!dataIsLoaded) {
+      return false; // Don't show during loading
+    }
+
+    // Data is loaded - check actual status
+    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+    return !isSetupComplete; // Show only if definitely incomplete
+  }, [setupStatus, setupBannerDismissed, selectedPython, browseMcpInfo]);
 
   return (
     <div className="p-6">
