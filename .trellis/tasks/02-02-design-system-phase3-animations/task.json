@@ -3,7 +3,7 @@
   "name": "design-system-phase3-animations",
   "title": "Design System Phase 3: Animations & Polish",
   "description": "",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "frontend",
   "scope": "frontend",
   "priority": "P2",
@@ -12,8 +12,8 @@
   "createdAt": "2026-02-02",
   "completedAt": null,
   "branch": "feature/design-system-phase3",
-  "base_branch": null,
-  "worktree_path": null,
+  "base_branch": "main",
+  "worktree_path": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/trellis-worktrees/feature/design-system-phase3",
   "current_phase": 0,
   "next_action": [
     {

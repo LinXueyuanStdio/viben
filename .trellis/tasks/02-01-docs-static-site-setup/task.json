@@ -14,7 +14,7 @@
   "branch": "feature/docs-static-site",
   "base_branch": "main",
   "worktree_path": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/trellis-worktrees/feature/docs-static-site",
-  "current_phase": 0,
+  "current_phase": 1,
   "next_action": [
     {
       "phase": 1,
