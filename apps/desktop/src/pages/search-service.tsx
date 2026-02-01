@@ -39,12 +39,19 @@ export function SearchServicePage() {
     addServerApiKey,
     deleteServerApiKey,
     getAvailableProviders,
+    setupStatus,
   } = useAppStore();
 
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
   const hasInitialized = useRef(false);
 
-  const canStart = selectedPython?.is_valid && browseMcpInfo?.installed;
+  // Use global setup status (calculated in AppLayout)
+  // Only show requirements card when cache explicitly says setup is incomplete
+  const isSetupComplete = setupStatus?.isComplete === true;
+  const canStart = isSetupComplete;
+
+  // Only show requirements warning when we're certain setup is incomplete
+  const showRequirementsWarning = setupStatus !== null && setupStatus.isComplete === false;
 
   // Auto-expand first server only on initial mount
   useEffect(() => {
@@ -89,8 +96,8 @@ export function SearchServicePage() {
         </Button>
       </div>
 
-      {/* Requirements Check */}
-      {!canStart && (
+      {/* Requirements Check - only show when cache confirms incomplete */}
+      {showRequirementsWarning && (
         <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
