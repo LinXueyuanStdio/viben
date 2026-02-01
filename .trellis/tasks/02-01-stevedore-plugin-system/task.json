@@ -14,7 +14,7 @@
   "branch": "feature/stevedore-plugin-system",
   "base_branch": "main",
   "worktree_path": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/trellis-worktrees/feature/stevedore-plugin-system",
-  "current_phase": 3,
+  "current_phase": 4,
   "next_action": [
     {
       "phase": 1,
@@ -34,7 +34,7 @@
     }
   ],
   "commit": null,
-  "pr_url": null,
+  "pr_url": "Warning: 2 uncommitted changes\nhttps://github.com/LinXueyuanStdio/browse-mcp/pull/2",
   "subtasks": [],
   "relatedFiles": [],
   "notes": ""

@@ -4,9 +4,69 @@ This module provides a plugin system for dynamically discovering and loading
 searcher implementations. Third-party packages can define their own searchers
 by registering entry points in the 'browse_mcp.searchers' namespace.
 
-Example third-party setup in pyproject.toml:
-    [project.entry-points."browse_mcp.searchers"]
-    my_searcher = "my_package.searchers:MyCustomSearcher"
+Plugin Configuration (Poetry format - Recommended):
+    Create a plugin package with pyproject.toml:
+
+    ```toml
+    [tool.poetry]
+    name = "browse-mcp-custom-searcher"
+    version = "0.1.0"
+    description = "Custom searcher plugin for browse-mcp"
+    packages = [{ include = "my_searcher" }]
+
+    [tool.poetry.dependencies]
+    python = ">=3.10"
+    browse-mcp = "*"
+    stevedore = ">=5.0.0"
+
+    # Register your searchers as plugins
+    [tool.poetry.plugins."browse_mcp.searchers"]
+    my_searcher = "my_searcher:MySearcher"
+    another_searcher = "my_searcher:AnotherSearcher"
+
+    [build-system]
+    requires = ["poetry-core>=1.9.0"]
+    build-backend = "poetry.core.masonry.api"
+    ```
+
+Plugin Implementation:
+    Your searcher must inherit from ContentSource[T] or PaperSource:
+
+    ```python
+    from dataclasses import dataclass
+    from typing import List
+    from browse_mcp.types import ContentSource
+
+    @dataclass
+    class MyContent:
+        content_id: str
+        title: str
+        body: str
+
+        def to_text(self) -> str:
+            return f"Title: {self.title}\\nBody: {self.body}"
+
+    class MySearcher(ContentSource[MyContent]):
+        def search(self, query: str, **kwargs) -> List[MyContent]:
+            # Your implementation
+            pass
+
+        def download(self, content_id: str, save_path: str) -> str:
+            # Your implementation
+            pass
+
+        def read(self, content_id: str, save_path: str) -> str:
+            # Your implementation
+            pass
+    ```
+
+Installation:
+    After installing your plugin package:
+    ```bash
+    pip install browse-mcp-custom-searcher
+    ```
+
+    Your searchers will be automatically discovered and loaded by browse-mcp.
 
 Environment Variables:
     BROWSE_MCP_ENABLED_SOURCES: Comma-separated list of enabled sources
@@ -19,7 +79,7 @@ from loguru import logger
 from stevedore import ExtensionManager
 from stevedore.exception import NoMatches
 
-from .types import PaperSource
+from .types import PaperSource, ContentSource
 
 
 # Namespace for searcher plugins
