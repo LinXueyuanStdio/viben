@@ -9,6 +9,7 @@ import { usePython } from "@/hooks/use-python";
 import { useUsage } from "@/hooks/use-usage";
 import { useAppStore } from "@/stores";
 import { useMemo, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -36,6 +37,7 @@ const cardVariants = {
 };
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { agents, loading: agentsLoading } = useAgents();
   const { selectedPython, browseMcpInfo } = usePython();
   const { stats, loading: usageLoading } = useUsage();
@@ -69,7 +71,7 @@ export function DashboardPage() {
   return (
     <div className="p-6">
       {/* Page title - no individual animation, AppLayout handles page transitions */}
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold mb-6">{t("dashboard.title")}</h1>
 
       {/* Setup Banner - only shown if not complete AND not dismissed */}
       <AnimatePresence mode="wait">
@@ -85,7 +87,7 @@ export function DashboardPage() {
             <button
               onClick={() => setSetupBannerDismissed(true)}
               className="absolute top-2 right-2 p-1 hover:bg-yellow-200 dark:hover:bg-yellow-800 rounded transition-colors"
-              aria-label="Dismiss setup banner"
+              aria-label={t("dashboard.dismissBanner")}
             >
               <svg className="w-4 h-4 text-yellow-800 dark:text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -94,18 +96,18 @@ export function DashboardPage() {
             <div className="flex items-start justify-between pr-8">
               <div>
                 <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                  Setup Required
+                  {t("dashboard.setupRequired")}
                 </h3>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                   {!selectedPython?.is_valid
-                    ? "Python 3.10+ is required to run browse-mcp."
-                    : "Install the browse-mcp package to get started."}
+                    ? t("dashboard.pythonRequired")
+                    : t("dashboard.installRequired")}
                 </p>
               </div>
               <Button asChild size="sm">
                 <Link to="/settings">
                   <Settings className="h-4 w-4 mr-2" />
-                  Configure
+                  {t("common.configure")}
                 </Link>
               </Button>
             </div>
@@ -136,9 +138,9 @@ export function DashboardPage() {
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
               <StatCardContent
-                title="Total Requests"
+                title={t("dashboard.totalRequests")}
                 value={(stats?.total_requests ?? 0).toLocaleString()}
-                description="All time"
+                description={t("common.allTime")}
                 icon={Search}
               />
             )}
@@ -150,9 +152,9 @@ export function DashboardPage() {
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
               <StatCardContent
-                title="Today"
+                title={t("dashboard.todayRequests")}
                 value={(stats?.today_requests ?? 0).toLocaleString()}
-                description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
+                description={t("dashboard.thisWeekCount", { count: stats?.this_week_requests ?? 0 })}
                 icon={TrendingUp}
               />
             )}
@@ -165,9 +167,9 @@ export function DashboardPage() {
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
                 <StatCardContent
-                  title="Data Sources"
+                  title={t("dashboard.dataSources")}
                   value={`${availableProviders.length}`}
-                  description={`Out of ${providers.length} configured`}
+                  description={t("dashboard.outOfConfigured", { total: providers.length })}
                   icon={Database}
                 />
               )}
@@ -181,14 +183,14 @@ export function DashboardPage() {
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
                 <StatCardContent
-                  title="MCP Servers"
-                  value={`${runningServers.length}/${mcpServers.length}`}
+                  title={t("dashboard.mcpServers")}
+                  value={t("dashboard.serverCount", { running: runningServers.length, total: mcpServers.length })}
                   description={
                     runningServers.length > 0
-                      ? `${runningServers.length} running`
+                      ? t("dashboard.runningCount", { count: runningServers.length })
                       : mcpServers.length > 0
-                      ? "All stopped"
-                      : "No servers"
+                      ? t("dashboard.allStopped")
+                      : t("dashboard.noServers")
                   }
                   icon={Activity}
                   valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
@@ -203,16 +205,16 @@ export function DashboardPage() {
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" asCard={false} className="flex flex-col gap-6 h-full">
             <QuickActionCard
-              title="Configure AI Agents"
-              description="Set up browse-mcp for your AI assistants"
+              title={t("dashboard.configureAgents")}
+              description={t("dashboard.configureAgentsDesc")}
               linkTo="/agents"
-              count={`${configuredAgents.length}/${installedAgents.length} configured`}
+              count={t("dashboard.configuredCount", { configured: configuredAgents.length, installed: installedAgents.length })}
             />
             <QuickActionCard
-              title="Manage Data Sources"
-              description="Configure API keys for search sources"
+              title={t("dashboard.manageDataSources")}
+              description={t("dashboard.manageDataSourcesDesc")}
               linkTo="/providers"
-              count={`${availableProviders.length} available`}
+              count={t("dashboard.availableCount", { count: availableProviders.length })}
             />
           </BentoCard>
         </motion.div>
@@ -221,7 +223,7 @@ export function DashboardPage() {
           <BentoCard size="large" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <TrendingUp className="h-5 w-5" />
-              Daily Usage (Last 30 Days)
+              {t("dashboard.dailyUsage")}
             </h2>
             {usageLoading ? (
               <SkeletonChart className="border-0 p-0" />
@@ -236,7 +238,7 @@ export function DashboardPage() {
           <BentoCard size="medium" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Usage by Server
+              {t("dashboard.usageByServer")}
             </h2>
             {usageLoading ? (
               <div className="space-y-3">
@@ -254,7 +256,7 @@ export function DashboardPage() {
               <UsageByCategory
                 data={stats?.by_server ?? {}}
                 labelMap={Object.fromEntries(mcpServers.map((s) => [s.id, s.name]))}
-                emptyMessage="No server usage data yet"
+                emptyMessage={t("dashboard.noServerUsage")}
               />
             )}
           </BentoCard>
@@ -264,7 +266,7 @@ export function DashboardPage() {
           <BentoCard size="medium" className="h-full">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
               <Database className="h-5 w-5" />
-              Usage by Data Source
+              {t("dashboard.usageByDataSource")}
             </h2>
             {usageLoading ? (
               <div className="space-y-3">
@@ -282,7 +284,7 @@ export function DashboardPage() {
               <UsageByCategory
                 data={stats?.by_source ?? {}}
                 labelMap={Object.fromEntries(providers.map((p) => [p.id, p.name]))}
-                emptyMessage="No source usage data yet"
+                emptyMessage={t("dashboard.noSourceUsage")}
               />
             )}
           </BentoCard>
@@ -294,10 +296,10 @@ export function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
-                Activity
+                {t("dashboard.activity")}
               </h2>
               <span className="text-sm text-muted-foreground">
-                {stats?.this_month_requests ?? 0} requests this month
+                {t("dashboard.requestsThisMonth", { count: stats?.this_month_requests ?? 0 })}
               </span>
             </div>
             {usageLoading ? (
@@ -311,38 +313,38 @@ export function DashboardPage() {
         {/* Environment Status - Full width */}
         <motion.div variants={cardVariants} className="bento-card-full">
           <BentoCard size="full" className="h-full">
-            <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
+            <h2 className="text-lg font-semibold mb-4">{t("dashboard.environmentStatus")}</h2>
             <div className="space-y-3">
               <StatusRow
-                label="Python"
+                label={t("dashboard.python")}
                 value={
                   selectedPython
                     ? `${selectedPython.version} (${selectedPython.path})`
-                    : "Not configured"
+                    : t("common.notConfigured")
                 }
                 ok={selectedPython?.is_valid ?? false}
               />
               <StatusRow
-                label="browse-mcp"
+                label={t("dashboard.browseMcp")}
                 value={
                   browseMcpInfo?.installed
                     ? `v${browseMcpInfo.version}`
-                    : "Not installed"
+                    : t("common.notInstalled")
                 }
                 ok={browseMcpInfo?.installed ?? false}
               />
               <StatusRow
-                label="MCP Servers"
+                label={t("dashboard.mcpServers")}
                 value={
                   mcpServers.length === 0
-                    ? "No servers configured"
-                    : `${runningServers.length}/${mcpServers.length} running`
+                    ? t("dashboard.noServers")
+                    : `${runningServers.length}/${mcpServers.length} ${t("common.running")}`
                 }
                 ok={runningServers.length > 0}
               />
               <StatusRow
-                label="Configured Agents"
-                value={agentsLoading ? "Detecting..." : `${configuredAgents.length} agents`}
+                label={t("dashboard.configuredAgents")}
+                value={agentsLoading ? t("dashboard.detecting") : t("dashboard.agentsCount", { count: configuredAgents.length })}
                 ok={configuredAgents.length > 0}
               />
             </div>
@@ -360,6 +362,7 @@ interface ActivityHeatmapProps {
 }
 
 function ActivityHeatmap({ data }: ActivityHeatmapProps) {
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -428,7 +431,7 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   if (data.length === 0) {
     return (
       <div className="h-32 flex items-center justify-center text-muted-foreground">
-        No activity data yet. Start using MCP servers to see activity.
+        {t("dashboard.noActivityData")}
       </div>
     );
   }
@@ -453,11 +456,11 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
         {/* Day labels */}
         <div className="flex flex-col gap-0.5 text-xs text-muted-foreground pr-1">
           <span className="h-3"></span>
-          <span className="h-3">Mon</span>
+          <span className="h-3">{t("dashboard.mon")}</span>
           <span className="h-3"></span>
-          <span className="h-3">Wed</span>
+          <span className="h-3">{t("dashboard.wed")}</span>
           <span className="h-3"></span>
-          <span className="h-3">Fri</span>
+          <span className="h-3">{t("dashboard.fri")}</span>
           <span className="h-3"></span>
         </div>
 
@@ -477,7 +480,7 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                       animationDelay: `${delay}ms`,
                       opacity: mounted ? undefined : 0,
                     }}
-                    title={day.date ? `${day.date}: ${day.count} requests` : ""}
+                    title={day.date ? t("dashboard.dateRequests", { date: day.date, count: day.count }) : ""}
                   />
                 );
               })}
@@ -488,11 +491,11 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
 
       {/* Legend */}
       <div className="flex items-center justify-end gap-1 mt-2 text-xs text-muted-foreground">
-        <span>Less</span>
+        <span>{t("common.less")}</span>
         {levelColors.map((color, i) => (
           <div key={i} className={`w-3 h-3 rounded-sm ${color} theme-transition`} />
         ))}
-        <span>More</span>
+        <span>{t("common.more")}</span>
       </div>
     </div>
   );
@@ -504,6 +507,7 @@ interface UsageLineChartProps {
 }
 
 function UsageLineChart({ data }: UsageLineChartProps) {
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -527,7 +531,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
   if (!chartData || data.length === 0) {
     return (
       <div className="h-48 flex items-center justify-center text-muted-foreground">
-        No usage data yet. Start using MCP servers to see trends.
+        {t("dashboard.noUsageData")}
       </div>
     );
   }
@@ -608,7 +612,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
                 ease: easeOutBack,
               }}
             >
-              <title>{`${p.date}: ${p.value} requests`}</title>
+              <title>{t("dashboard.dateRequests", { date: p.date, count: p.value })}</title>
             </motion.circle>
           ))}
 

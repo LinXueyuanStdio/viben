@@ -20,24 +20,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAppStore } from "@/stores";
+import { useTranslation } from "react-i18next";
 
 interface NavItem {
-  title: string;
+  titleKey: string;
   href: string;
   icon: React.ElementType;
 }
 
 const mainNav: NavItem[] = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard },
-  { title: "Data Sources", href: "/providers", icon: Database },
-  { title: "Search Service", href: "/search-service", icon: Search },
-  { title: "Agents", href: "/agents", icon: Bot },
-  { title: "Logs", href: "/logs", icon: FileText },
+  { titleKey: "nav.dashboard", href: "/", icon: LayoutDashboard },
+  { titleKey: "nav.dataSources", href: "/providers", icon: Database },
+  { titleKey: "nav.searchService", href: "/search-service", icon: Search },
+  { titleKey: "nav.agents", href: "/agents", icon: Bot },
+  { titleKey: "nav.logs", href: "/logs", icon: FileText },
 ];
 
 const bottomNav: NavItem[] = [
-  { title: "Settings", href: "/settings", icon: Settings },
-  { title: "About", href: "/about", icon: Info },
+  { titleKey: "nav.settings", href: "/settings", icon: Settings },
+  { titleKey: "nav.about", href: "/about", icon: Info },
 ];
 
 interface SidebarProps {
@@ -45,6 +46,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
+  const { t } = useTranslation();
   // Read global setup status from store (calculated in AppLayout)
   const { setupStatus } = useAppStore();
 
@@ -77,7 +79,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
         <ScrollArea className="flex-1 px-2 py-4">
           <nav className="flex flex-col gap-1">
             {mainNav.map((item) => (
-              <NavItem key={item.href} item={item} collapsed={collapsed} />
+              <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
             ))}
           </nav>
         </ScrollArea>
@@ -87,7 +89,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           <Separator className="mb-4 bg-sidebar-border" />
           <nav className="flex flex-col gap-1">
             {bottomNav.map((item) => (
-              <NavItem key={item.href} item={item} collapsed={collapsed} />
+              <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
             ))}
           </nav>
 
@@ -105,7 +107,7 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="font-medium">
-                  {isSetupComplete ? "Setup Complete" : "Setup Required"}
+                  {isSetupComplete ? t("sidebar.setupComplete") : t("sidebar.setupRequired")}
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -113,12 +115,12 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                 {isSetupComplete ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                    <span className="text-sidebar-foreground/70">Setup Complete</span>
+                    <span className="text-sidebar-foreground/70">{t("sidebar.setupComplete")}</span>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
-                    <span className="text-sidebar-foreground/70">Setup Required</span>
+                    <span className="text-sidebar-foreground/70">{t("sidebar.setupRequired")}</span>
                   </>
                 )}
               </div>
@@ -130,12 +132,15 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
   );
 }
 
-interface NavItemProps {
+interface NavItemComponentProps {
   item: NavItem;
   collapsed: boolean;
 }
 
-function NavItem({ item, collapsed }: NavItemProps) {
+function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
+  const { t } = useTranslation();
+  const title = t(item.titleKey);
+
   const link = (
     <NavLink
       to={item.href}
@@ -163,7 +168,7 @@ function NavItem({ item, collapsed }: NavItemProps) {
           "group-hover:text-primary"
         )}
       />
-      {!collapsed && <span>{item.title}</span>}
+      {!collapsed && <span>{title}</span>}
     </NavLink>
   );
 
@@ -172,7 +177,7 @@ function NavItem({ item, collapsed }: NavItemProps) {
       <Tooltip>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
         <TooltipContent side="right" className="font-medium">
-          {item.title}
+          {title}
         </TooltipContent>
       </Tooltip>
     );
