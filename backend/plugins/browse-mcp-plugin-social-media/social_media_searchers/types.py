@@ -22,12 +22,12 @@ class SocialPost:
     published_date: datetime  # Publication/creation time
 
     # Optional fields
-    tags: List[str] = None  # Tags or topics
+    tags: List[str] = field(default_factory=list)  # Tags or topics
     likes: int = 0  # Like/upvote count
     comments: int = 0  # Comment count
     shares: int = 0  # Share/repost count
-    media_urls: List[str] = None  # URLs to attached media (images, videos)
-    extra: Optional[Dict] = None  # Platform-specific metadata
+    media_urls: List[str] = field(default_factory=list)  # URLs to attached media (images, videos)
+    extra: Dict = field(default_factory=dict)  # Platform-specific metadata
 
     def __post_init__(self):
         """Initialize default values for list fields."""
