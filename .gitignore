@@ -254,4 +254,4 @@ cython_debug/
 #.idea/
 
 # Claude Code local files
-**/CLAUDE.local.md
+**/CLAUDE.local.md.turbo/

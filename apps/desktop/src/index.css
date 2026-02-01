@@ -124,6 +124,12 @@
   --duration-slower: 700ms;
   --duration-slowest: 1000ms;
 
+  /* Page transition specific timing (Apple-style) */
+  --animation-duration-page: 0.5s;
+  --animation-easing-page: cubic-bezier(0.16, 1, 0.3, 1); /* ease-out-expo */
+  --animation-spring-stiffness: 300;
+  --animation-spring-damping: 30;
+
   /* ===== Border Radius System ===== */
   --radius-sm: 0.5rem;    /* 8px */
   --radius-md: 0.75rem;   /* 12px */
@@ -314,11 +320,11 @@
   }
 }
 
-/* Fade in animation */
+/* Fade in animation - Apple-style subtle vertical movement */
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(8px); /* Subtle 8px movement */
   }
   to {
     opacity: 1;
@@ -326,11 +332,11 @@
   }
 }
 
-/* Card entrance animation */
+/* Card entrance animation - Apple-style subtle movement */
 @keyframes card-pop-in {
   from {
     opacity: 0;
-    transform: scale(0.95) translateY(10px);
+    transform: scale(0.98) translateY(8px); /* More subtle scale and 8px movement */
   }
   to {
     opacity: 1;
@@ -390,9 +396,15 @@
     animation-fill-mode: both;
   }
 
-  /* Fade in animation */
+  /* Fade in animation - uses page animation timing */
   .animate-fade-in {
-    animation: fade-in var(--duration-slow) var(--ease-out-expo);
+    animation: fade-in var(--animation-duration-page) var(--animation-easing-page);
+    animation-fill-mode: both;
+  }
+
+  /* Page entrance animation - for manual use when needed */
+  .animate-page-enter {
+    animation: fade-in var(--animation-duration-page) var(--animation-easing-page);
     animation-fill-mode: both;
   }
 
@@ -431,19 +443,19 @@
 
   /* Size variants - Desktop (default) */
   .bento-card-small {
-    grid-column: span 4;
+    grid-column: span 3; /* 4 cards per row */
   }
 
   .bento-card-medium {
-    grid-column: span 6;
+    grid-column: span 6; /* 2 cards per row */
   }
 
   .bento-card-large {
-    grid-column: span 8;
+    grid-column: span 9; /* 3/4 width, pairs with small (span 3) */
   }
 
   .bento-card-full {
-    grid-column: span 12;
+    grid-column: span 12; /* full width */
   }
 
   /* Height variants */
@@ -462,7 +474,7 @@
   /* Tablet breakpoint (641px - 1024px) */
   @media (min-width: 641px) and (max-width: 1024px) {
     .bento-card-small {
-      grid-column: span 6;
+      grid-column: span 3; /* 4 cards per row on tablet */
     }
 
     .bento-card-medium {
@@ -470,7 +482,7 @@
     }
 
     .bento-card-large {
-      grid-column: span 12;
+      grid-column: span 9; /* 3/4 width on tablet */
     }
 
     .bento-card-full {
