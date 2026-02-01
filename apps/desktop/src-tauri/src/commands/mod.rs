@@ -1,6 +1,8 @@
 pub mod agents;
 pub mod api_keys;
+pub mod api_logs;
 pub mod logs;
+pub mod marketplace;
 pub mod mcp;
 pub mod python;
 pub mod service_keys;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Check,
   X,
@@ -11,150 +11,296 @@ import {
   Globe,
   Lock,
   Building2,
+  Search,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  BookOpen,
+  Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppStore } from "@/stores";
 import { useApiKeys } from "@/hooks/use-api-keys";
-import type { Provider } from "@/types";
+import { useMarketplace, type FlatSource, type ProviderInfo } from "@/hooks/use-marketplace";
 
-// Provider documentation URLs
-const PROVIDER_DOCS: Record<string, string> = {
-  sciencedirect: "https://dev.elsevier.com/",
-  springer: "https://dev.springernature.com/",
-  ieee: "https://developer.ieee.org/",
-  scopus: "https://dev.elsevier.com/",
-  semantic: "https://www.semanticscholar.org/product/api",
-  core: "https://core.ac.uk/services/api",
+// Provider category icons
+const CATEGORY_ICONS: Record<string, React.ReactNode> = {
+  academic: <BookOpen className="h-5 w-5 text-blue-600" />,
+  publisher: <Key className="h-5 w-5 text-amber-600" />,
+  institutional: <Building2 className="h-5 w-5 text-purple-600" />,
+  web: <Globe className="h-5 w-5 text-green-600" />,
+  other: <Package className="h-5 w-5 text-gray-600" />,
+};
+
+// Category display names
+const CATEGORY_NAMES: Record<string, string> = {
+  academic: "Academic Sources",
+  publisher: "Publisher Sources",
+  institutional: "Institutional Sources",
+  web: "Web Sources",
+  other: "Other Sources",
+};
+
+// Category descriptions
+const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  academic: "Open access academic databases and pre-print servers",
+  publisher: "Commercial publishers - API key required",
+  institutional: "Requires institutional subscription",
+  web: "Web-based search engines",
+  other: "Other data sources",
 };
 
 export function ProvidersPage() {
-  const { providers, setProviderApiKey } = useAppStore();
-
-  const freeProviders = providers.filter((p) => p.category === "free");
-  const apiKeyProviders = providers.filter((p) => p.category === "api_key");
-  const institutionalProviders = providers.filter(
-    (p) => p.category === "institutional"
+  const { setProviderApiKey } = useAppStore();
+  const {
+    sourcesByProvider,
+    loading,
+    error,
+    refresh,
+    index,
+  } = useMarketplace();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(
+    new Set(["academic", "publisher"])
   );
 
-  const configuredCount = providers.filter(
-    (p) => !p.requiresApiKey || p.hasApiKey
-  ).length;
+  // Filter sources based on search query
+  const filteredSourcesByProvider = useMemo(() => {
+    if (!searchQuery.trim()) return sourcesByProvider;
+
+    const query = searchQuery.toLowerCase();
+    const filtered: Record<string, FlatSource[]> = {};
+
+    for (const [providerId, sources] of Object.entries(sourcesByProvider)) {
+      const matchingSources = sources.filter(
+        (s) =>
+          s.name.toLowerCase().includes(query) ||
+          s.description.toLowerCase().includes(query) ||
+          s.source_name.toLowerCase().includes(query)
+      );
+      if (matchingSources.length > 0) {
+        filtered[providerId] = matchingSources;
+      }
+    }
+
+    return filtered;
+  }, [sourcesByProvider, searchQuery]);
+
+  // Count total sources
+  const totalSources = Object.values(sourcesByProvider).reduce(
+    (acc, sources) => acc + sources.length,
+    0
+  );
+
+  const toggleProvider = (providerId: string) => {
+    setExpandedProviders((prev) => {
+      const next = new Set(prev);
+      if (next.has(providerId)) {
+        next.delete(providerId);
+      } else {
+        next.add(providerId);
+      }
+      return next;
+    });
+  };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Data Sources</h1>
           <p className="text-sm text-muted-foreground">
-            {configuredCount} of {providers.length} sources available
+            {totalSources} sources available across{" "}
+            {Object.keys(sourcesByProvider).length} providers
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refresh(true)}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4 mr-2" />
+          )}
+          Refresh
+        </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground mb-6">
-        Configure API keys for providers that require them. Source selection is
-        done per-server in the Search Service page.
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+          {error}
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search sources..."
+          className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm"
+        />
+      </div>
+
+      {/* Info banner */}
+      <p className="text-sm text-muted-foreground mb-4 p-3 rounded-lg bg-muted/50">
+        Configure API keys for sources that require them. Sources use hierarchical
+        naming ({" "}
+        <code className="bg-muted px-1 rounded text-xs">provider/source</code>)
+        for organization.
       </p>
 
-      {/* Free & Open Access */}
-      <ProviderSection
-        title="Free & Open Access"
-        description="No registration required - available immediately"
-        icon={<Globe className="h-5 w-5 text-green-600" />}
-        providers={freeProviders}
-      />
+      {/* Provider list */}
+      <ScrollArea className="flex-1">
+        <div className="space-y-4">
+          {Object.entries(filteredSourcesByProvider).map(
+            ([providerId, sources]) => {
+              const providerInfo = index?.providers[providerId];
+              const isExpanded = expandedProviders.has(providerId);
 
-      {/* API Key Required */}
-      <ProviderSection
-        title="API Key Required"
-        description="Register for a free API key to enable these sources"
-        icon={<Key className="h-5 w-5 text-yellow-600" />}
-        providers={apiKeyProviders}
-        onApiKeyChange={setProviderApiKey}
-        showApiKeyConfig
-      />
+              return (
+                <ProviderSection
+                  key={providerId}
+                  providerId={providerId}
+                  providerInfo={providerInfo}
+                  sources={sources}
+                  isExpanded={isExpanded}
+                  onToggle={() => toggleProvider(providerId)}
+                  onApiKeyChange={setProviderApiKey}
+                />
+              );
+            }
+          )}
 
-      {/* Institutional Access */}
-      <ProviderSection
-        title="Institutional Access"
-        description="Requires institutional subscription"
-        icon={<Building2 className="h-5 w-5 text-blue-600" />}
-        providers={institutionalProviders}
-      />
+          {Object.keys(filteredSourcesByProvider).length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              {searchQuery
+                ? "No sources match your search"
+                : "No sources available"}
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
 
 interface ProviderSectionProps {
-  title: string;
-  description?: string;
-  icon?: React.ReactNode;
-  providers: Provider[];
-  onApiKeyChange?: (id: string, hasKey: boolean) => void;
-  showApiKeyConfig?: boolean;
+  providerId: string;
+  providerInfo?: ProviderInfo;
+  sources: FlatSource[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onApiKeyChange: (id: string, hasKey: boolean) => void;
 }
 
 function ProviderSection({
-  title,
-  description,
-  icon,
-  providers,
+  providerId,
+  providerInfo,
+  sources,
+  isExpanded,
+  onToggle,
   onApiKeyChange,
-  showApiKeyConfig,
 }: ProviderSectionProps) {
+  const icon = CATEGORY_ICONS[providerId] || CATEGORY_ICONS.other;
+  const name = providerInfo?.name || CATEGORY_NAMES[providerId] || providerId;
+  const description =
+    providerInfo?.description || CATEGORY_DESCRIPTIONS[providerId] || "";
+
+  // Count sources by API key type
+  const freeCount = sources.filter((s) => s.api_key_type === "none").length;
+  const optionalCount = sources.filter(
+    (s) => s.api_key_type === "optional"
+  ).length;
+  const requiredCount = sources.filter(
+    (s) => s.api_key_type === "required"
+  ).length;
+
   return (
-    <div className="mb-8">
-      <div className="mb-4 flex items-center gap-2">
-        {icon}
-        <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          {description && (
-            <p className="text-sm text-muted-foreground">{description}</p>
+    <div className="rounded-lg border bg-card overflow-hidden">
+      {/* Provider header */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex-shrink-0">{icon}</div>
+        <div className="flex-1 text-left">
+          <h3 className="font-semibold">{name}</h3>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {freeCount > 0 && (
+            <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
+              {freeCount} free
+            </span>
+          )}
+          {optionalCount > 0 && (
+            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">
+              {optionalCount} optional
+            </span>
+          )}
+          {requiredCount > 0 && (
+            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">
+              {requiredCount} required
+            </span>
+          )}
+          {isExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
           )}
         </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {providers.map((provider) => (
-          <ProviderCard
-            key={provider.id}
-            provider={provider}
-            onApiKeyChange={onApiKeyChange}
-            showApiKeyConfig={showApiKeyConfig}
-          />
-        ))}
-      </div>
+      </button>
+
+      {/* Sources */}
+      {isExpanded && (
+        <div className="border-t">
+          <div className="grid gap-3 p-4 sm:grid-cols-2">
+            {sources.map((source) => (
+              <SourceCard
+                key={source.id}
+                source={source}
+                onApiKeyChange={onApiKeyChange}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-interface ProviderCardProps {
-  provider: Provider;
-  onApiKeyChange?: (id: string, hasKey: boolean) => void;
-  showApiKeyConfig?: boolean;
+interface SourceCardProps {
+  source: FlatSource;
+  onApiKeyChange: (id: string, hasKey: boolean) => void;
 }
 
-function ProviderCard({
-  provider,
-  onApiKeyChange,
-  showApiKeyConfig,
-}: ProviderCardProps) {
+function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
   const { setApiKey, deleteApiKey, providers } = useApiKeys();
   const [editing, setEditing] = useState(false);
   const [keyValue, setKeyValue] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Find provider info from useApiKeys
-  const apiKeyInfo = providers.find((p) => p.provider_id === provider.id);
+  // Find provider info from useApiKeys (using flat name)
+  const apiKeyInfo = providers.find(
+    (p) => p.provider_id === source.source_name
+  );
   const hasApiKey = apiKeyInfo?.has_key ?? false;
 
   const handleSaveKey = async () => {
     if (!keyValue.trim()) return;
 
     setSaving(true);
-    const success = await setApiKey(provider.id, keyValue);
+    const success = await setApiKey(source.source_name, keyValue);
     if (success) {
-      onApiKeyChange?.(provider.id, true);
+      onApiKeyChange(source.source_name, true);
       setEditing(false);
       setKeyValue("");
     }
@@ -162,10 +308,10 @@ function ProviderCard({
   };
 
   const handleDeleteKey = async () => {
-    if (!confirm(`Remove API key for ${provider.name}?`)) return;
+    if (!confirm(`Remove API key for ${source.name}?`)) return;
 
-    await deleteApiKey(provider.id);
-    onApiKeyChange?.(provider.id, false);
+    await deleteApiKey(source.source_name);
+    onApiKeyChange(source.source_name, false);
   };
 
   const handleCancel = () => {
@@ -173,34 +319,37 @@ function ProviderCard({
     setKeyValue("");
   };
 
-  const docUrl = PROVIDER_DOCS[provider.id];
-  const isAvailable = !provider.requiresApiKey || hasApiKey;
+  const requiresKey = source.api_key_type === "required";
+  const optionalKey = source.api_key_type === "optional";
+  const isAvailable = !requiresKey || hasApiKey;
+  const showApiKeyConfig = requiresKey || optionalKey;
 
   return (
-    <div className="rounded-lg border bg-card p-4">
+    <div className="rounded-lg border bg-background p-3">
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2">
           <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+            className={`flex h-7 w-7 items-center justify-center rounded-lg ${
               isAvailable
                 ? "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
-                : "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+                : "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
             }`}
           >
             {isAvailable ? (
-              <Check className="h-4 w-4" />
+              <Check className="h-3.5 w-3.5" />
             ) : (
-              <Lock className="h-4 w-4" />
+              <Lock className="h-3.5 w-3.5" />
             )}
           </div>
-          <div className="flex-1">
-            <p className="font-medium">{provider.name}</p>
-            {provider.description && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {provider.description}
-              </p>
-            )}
-            {provider.requiresApiKey && (
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm">{source.name}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {source.description}
+            </p>
+            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+              {source.id}
+            </p>
+            {showApiKeyConfig && (
               <p className="text-xs mt-1">
                 {hasApiKey ? (
                   <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
@@ -212,9 +361,13 @@ function ProviderCard({
                       </code>
                     )}
                   </span>
-                ) : (
-                  <span className="text-yellow-600 dark:text-yellow-400">
+                ) : requiresKey ? (
+                  <span className="text-amber-600 dark:text-amber-400">
                     API key required
+                  </span>
+                ) : (
+                  <span className="text-blue-600 dark:text-blue-400">
+                    API key optional
                   </span>
                 )}
               </p>
@@ -223,25 +376,27 @@ function ProviderCard({
         </div>
 
         <div className="flex items-center gap-1">
-          {docUrl && (
+          {source.documentation && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => window.open(docUrl, "_blank")}
-              title="Get API key"
+              onClick={() => window.open(source.documentation, "_blank")}
+              title="Documentation"
+              className="h-7 w-7 p-0"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3.5 w-3.5" />
             </Button>
           )}
-          {showApiKeyConfig && provider.requiresApiKey && (
+          {showApiKeyConfig && (
             <>
               {!editing && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setEditing(true)}
+                  className="h-7 text-xs"
                 >
-                  <Key className="h-4 w-4 mr-1" />
+                  <Key className="h-3 w-3 mr-1" />
                   {hasApiKey ? "Update" : "Add"}
                 </Button>
               )}
@@ -250,9 +405,9 @@ function ProviderCard({
                   variant="ghost"
                   size="sm"
                   onClick={handleDeleteKey}
-                  className="text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive h-7 w-7 p-0"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               )}
             </>
@@ -262,15 +417,15 @@ function ProviderCard({
 
       {/* API Key Input */}
       {editing && (
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-3 pt-3 border-t">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <input
                 type={showKey ? "text" : "password"}
                 value={keyValue}
                 onChange={(e) => setKeyValue(e.target.value)}
-                placeholder={`Enter ${provider.name} API key...`}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono pr-10"
+                placeholder={`Enter ${source.name} API key...`}
+                className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono pr-8"
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSaveKey();
@@ -283,9 +438,9 @@ function ProviderCard({
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? (
-                  <EyeOff className="h-4 w-4" />
+                  <EyeOff className="h-3.5 w-3.5" />
                 ) : (
-                  <Eye className="h-4 w-4" />
+                  <Eye className="h-3.5 w-3.5" />
                 )}
               </button>
             </div>
@@ -293,27 +448,33 @@ function ProviderCard({
               size="sm"
               onClick={handleSaveKey}
               disabled={saving || !keyValue.trim()}
+              className="h-7"
             >
               {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Check className="h-4 w-4" />
+                <Check className="h-3.5 w-3.5" />
               )}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleCancel}>
-              <X className="h-4 w-4" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              className="h-7"
+            >
+              <X className="h-3.5 w-3.5" />
             </Button>
           </div>
-          {docUrl && (
-            <p className="text-xs text-muted-foreground mt-2">
+          {source.documentation && (
+            <p className="text-[10px] text-muted-foreground mt-2">
               Get your API key from{" "}
               <a
-                href={docUrl}
+                href={source.documentation}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                {provider.name} Developer Portal
+                {source.name} Developer Portal
               </a>
             </p>
           )}
