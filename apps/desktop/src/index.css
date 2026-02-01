@@ -416,3 +416,75 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* -----------------------------------------------------------------------------
+ * Bento Grid Layout System
+ * A flexible 12-column grid for creating card-based "Bento box" layouts
+ * -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Grid Container */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+  }
+
+  /* Size variants - Desktop (default) */
+  .bento-card-small {
+    grid-column: span 4;
+  }
+
+  .bento-card-medium {
+    grid-column: span 6;
+  }
+
+  .bento-card-large {
+    grid-column: span 8;
+  }
+
+  .bento-card-full {
+    grid-column: span 12;
+  }
+
+  /* Height variants */
+  .bento-card-short {
+    min-height: 200px;
+  }
+
+  .bento-card-tall {
+    min-height: 400px;
+  }
+
+  .bento-card-hero {
+    min-height: 600px;
+  }
+
+  /* Tablet breakpoint (641px - 1024px) */
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .bento-card-small {
+      grid-column: span 6;
+    }
+
+    .bento-card-medium {
+      grid-column: span 6;
+    }
+
+    .bento-card-large {
+      grid-column: span 12;
+    }
+
+    .bento-card-full {
+      grid-column: span 12;
+    }
+  }
+
+  /* Mobile breakpoint (<640px) */
+  @media (max-width: 640px) {
+    .bento-card-small,
+    .bento-card-medium,
+    .bento-card-large,
+    .bento-card-full {
+      grid-column: span 12;
+    }
+  }
+}
