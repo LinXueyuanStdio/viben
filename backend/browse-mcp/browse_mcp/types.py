@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 class Paper:
     """Standardized paper format with core fields for academic sources"""
 
-    # 核心字段（必填，但允许空值或默认值）
+    # Core fields (required, but allow empty values or defaults)
     paper_id: str  # Unique identifier (e.g., arXiv ID, PMID, DOI)
     title: str  # Paper title
     authors: List[str]  # List of author names
@@ -19,7 +19,7 @@ class Paper:
     url: str  # URL to paper page
     source: str  # Source platform (e.g., 'arxiv', 'pubmed')
 
-    # 可选字段
+    # Optional fields
     updated_date: Optional[datetime] = None  # Last updated date
     categories: List[str] = None  # Subject categories
     keywords: List[str] = None  # Keywords
@@ -162,12 +162,29 @@ class ContentSource(ABC, Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def read(self, content_id: str, save_path: str) -> str:
-        """Read and extract text content.
+    def read(
+        self,
+        content_id: str,
+        save_path: str,
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
+        """Read and extract text content with optional pagination.
 
         Args:
             content_id: Unique identifier for the content
             save_path: Directory containing the content file
+            page: Specific page number to read (1-indexed). If provided, only this page is returned.
+            start_page: Start page for range extraction (1-indexed, inclusive).
+            end_page: End page for range extraction (1-indexed, inclusive).
+
+        Pagination behavior:
+            - page=None, start_page=None, end_page=None: Return all content
+            - page=3: Return only page 3
+            - start_page=1, end_page=5: Return pages 1-5
+            - start_page=10: Return from page 10 to end
+            - end_page=5: Return pages 1-5
 
         Returns:
             Extracted text content
@@ -193,17 +210,126 @@ class PaperSource(ContentSource[Paper]):
         """
         return self.download_pdf(content_id, save_path)
 
-    def read(self, content_id: str, save_path: str) -> str:
-        """Read and extract text from paper.
+    def read(
+        self,
+        content_id: str,
+        save_path: str,
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
+        """Read and extract text from paper with optional pagination.
 
         This method is an alias for read_paper for backward compatibility.
         """
-        return self.read_paper(content_id, save_path)
+        return self.read_paper(content_id, save_path, page=page, start_page=start_page, end_page=end_page)
 
     def download_pdf(self, paper_id: str, save_path: str) -> str:
         """Download paper PDF (legacy method name)."""
         raise NotImplementedError
 
-    def read_paper(self, paper_id: str, save_path: str) -> str:
-        """Extract and read text content from paper (legacy method name)."""
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str,
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
+        """Extract and read text content from paper with optional pagination.
+
+        Args:
+            paper_id: Unique identifier for the paper
+            save_path: Directory containing/to save the PDF file
+            page: Specific page number to read (1-indexed). If provided, only this page is returned.
+            start_page: Start page for range extraction (1-indexed, inclusive).
+            end_page: End page for range extraction (1-indexed, inclusive).
+
+        Pagination behavior:
+            - page=None, start_page=None, end_page=None: Return all content
+            - page=3: Return only page 3
+            - start_page=1, end_page=5: Return pages 1-5
+            - start_page=10: Return from page 10 to end
+            - end_page=5: Return pages 1-5
+
+        Returns:
+            Extracted text content from the paper
+        """
         raise NotImplementedError
+
+
+def extract_pdf_pages(
+    pdf_path: str,
+    page: Optional[int] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
+) -> str:
+    """Extract text from PDF with pagination support.
+
+    This is a helper function that can be used by PaperSource implementations
+    to support pagination in their read_paper methods.
+
+    Args:
+        pdf_path: Path to the PDF file
+        page: Specific page number to read (1-indexed). If provided, only this page is returned.
+        start_page: Start page for range extraction (1-indexed, inclusive).
+        end_page: End page for range extraction (1-indexed, inclusive).
+
+    Returns:
+        Extracted text from the specified pages
+
+    Pagination behavior:
+        - page=None, start_page=None, end_page=None: Return all content
+        - page=3: Return only page 3
+        - start_page=1, end_page=5: Return pages 1-5
+        - start_page=10: Return from page 10 to end
+        - end_page=5: Return pages 1-5
+
+    Example:
+        ```python
+        from browse_mcp.types import extract_pdf_pages
+
+        # Read all pages
+        text = extract_pdf_pages("paper.pdf")
+
+        # Read only page 3
+        text = extract_pdf_pages("paper.pdf", page=3)
+
+        # Read pages 1-5
+        text = extract_pdf_pages("paper.pdf", start_page=1, end_page=5)
+
+        # Read from page 10 to end
+        text = extract_pdf_pages("paper.pdf", start_page=10)
+        ```
+    """
+    from PyPDF2 import PdfReader
+
+    reader = PdfReader(pdf_path)
+    total_pages = len(reader.pages)
+
+    # Determine page range (convert to 0-indexed internally)
+    if page is not None:
+        # Single page requested
+        page_indices = [page - 1]  # Convert to 0-indexed
+    elif start_page is not None or end_page is not None:
+        # Range requested
+        start = (start_page or 1) - 1  # Convert to 0-indexed, default to 0
+        end = end_page if end_page is not None else total_pages  # Default to total pages
+        page_indices = list(range(start, min(end, total_pages)))
+    else:
+        # All pages
+        page_indices = list(range(total_pages))
+
+    # Extract text from specified pages
+    text_parts = []
+    for i in page_indices:
+        if 0 <= i < total_pages:
+            try:
+                page_text = reader.pages[i].extract_text()
+                if page_text:
+                    text_parts.append(f"--- Page {i + 1} ---\n{page_text}")
+            except Exception:
+                # Skip pages that fail to extract
+                continue
+
+    return "\n\n".join(text_parts)

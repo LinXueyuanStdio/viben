@@ -5,7 +5,7 @@ import os
 from PyPDF2 import PdfReader
 from loguru import logger
 
-from ..types import Paper, PaperSource
+from ..types import Paper, PaperSource, extract_pdf_pages
 
 
 class CORESearcher(PaperSource):
@@ -146,22 +146,35 @@ class CORESearcher(PaperSource):
             logger.error(f"Error downloading PDF for {paper_id}: {e}")
             raise
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
-        """Read a paper and convert it to text format"""
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
+        """Read a paper and convert it to text format with optional pagination.
+
+        Args:
+            paper_id: CORE paper ID
+            save_path: Directory where the PDF is/will be saved
+            page: Specific page number to read (1-indexed)
+            start_page: Start page for range extraction (1-indexed)
+            end_page: End page for range extraction (1-indexed)
+
+        Returns:
+            str: The extracted text content of the paper
+        """
         pdf_path = os.path.join(save_path, f"{paper_id}.pdf")
 
         if not os.path.exists(pdf_path):
             pdf_path = self.download_pdf(paper_id, save_path)
 
-        # Read the PDF
+        # Read the PDF with pagination support
         try:
-            reader = PdfReader(pdf_path)
-            text = ""
-
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
-
-            return text.strip()
+            text = extract_pdf_pages(pdf_path, page=page, start_page=start_page, end_page=end_page)
+            return text.strip() if text else ""
         except Exception as e:
             logger.error(f"Error reading PDF for {paper_id}: {e}")
             return ""
