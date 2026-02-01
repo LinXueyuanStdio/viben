@@ -19,6 +19,22 @@ const prefersReducedMotion =
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 const easeOutBack = [0.34, 1.56, 0.64, 1] as const;
 
+// Card entrance animation variants
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    y: prefersReducedMotion ? 0 : 20,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: prefersReducedMotion ? 0 : 0.4,
+      ease: easeOutExpo,
+    },
+  },
+};
+
 export function DashboardPage() {
   const { agents, loading: agentsLoading } = useAgents();
   const { selectedPython, browseMcpInfo } = usePython();
@@ -45,12 +61,13 @@ export function DashboardPage() {
     if (selectedPython !== null && browseMcpInfo !== undefined) {
       const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
 
-      // Only update if we should check (first time or after 5 minutes)
-      if (shouldCheckSetup()) {
+      // Always update cache when data changes, not just when shouldCheckSetup() allows
+      // This ensures cache is always fresh and prevents showing card when setup is complete
+      if (setupStatus === null || setupStatus.isComplete !== isSetupComplete) {
         setSetupStatus(isSetupComplete);
       }
     }
-  }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
+  }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
   // Determine if we should show the setup banner
   // Default to NOT showing unless we have confirmed evidence that setup is incomplete
@@ -74,6 +91,12 @@ export function DashboardPage() {
     const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
     return !isSetupComplete; // Show only if definitely incomplete
   }, [setupStatus, setupBannerDismissed, selectedPython, browseMcpInfo]);
+
+  // State to track if component has mounted (for animations)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="p-6">
@@ -122,153 +145,184 @@ export function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Main Dashboard Grid - Using Bento Grid with animations */}
-      <BentoGrid gap="lg">
+      {/* Main Dashboard Grid - Using Bento Grid with stagger animations */}
+      <motion.div
+        initial="hidden"
+        animate={mounted ? "visible" : "hidden"}
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: prefersReducedMotion ? 0 : 0.08,
+              delayChildren: prefersReducedMotion ? 0 : 0.1,
+            },
+          },
+        }}
+      >
+        <BentoGrid gap="lg">
         {/* Stats Row - 4 small cards */}
-        <BentoCard size="small">
-          {usageLoading ? (
-            <SkeletonCard className="border-0 p-0 bg-transparent" />
-          ) : (
-            <StatCardContent
-              title="Total Requests"
-              value={(stats?.total_requests ?? 0).toLocaleString()}
-              description="All time"
-              icon={Search}
-            />
-          )}
-        </BentoCard>
-        <BentoCard size="small">
-          {usageLoading ? (
-            <SkeletonCard className="border-0 p-0 bg-transparent" />
-          ) : (
-            <StatCardContent
-              title="Today"
-              value={(stats?.today_requests ?? 0).toLocaleString()}
-              description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
-              icon={TrendingUp}
-            />
-          )}
-        </BentoCard>
-        <BentoCard size="small">
-          <Link to="/providers" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+        <motion.div variants={cardVariants}>
+          <BentoCard size="small">
             {usageLoading ? (
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
               <StatCardContent
-                title="Data Sources"
-                value={`${availableProviders.length}`}
-                description={`Out of ${providers.length} configured`}
-                icon={Database}
+                title="Total Requests"
+                value={(stats?.total_requests ?? 0).toLocaleString()}
+                description="All time"
+                icon={Search}
               />
             )}
-          </Link>
-        </BentoCard>
-        <BentoCard size="small">
-          <Link to="/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+          </BentoCard>
+        </motion.div>
+        <motion.div variants={cardVariants}>
+          <BentoCard size="small">
             {usageLoading ? (
               <SkeletonCard className="border-0 p-0 bg-transparent" />
             ) : (
               <StatCardContent
-                title="MCP Servers"
-                value={`${runningServers.length}/${mcpServers.length}`}
-                description={
-                  runningServers.length > 0
-                    ? `${runningServers.length} running`
-                    : mcpServers.length > 0
-                    ? "All stopped"
-                    : "No servers"
-                }
-                icon={Activity}
-                valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
+                title="Today"
+                value={(stats?.today_requests ?? 0).toLocaleString()}
+                description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
+                icon={TrendingUp}
               />
             )}
-          </Link>
-        </BentoCard>
+          </BentoCard>
+        </motion.div>
+        <motion.div variants={cardVariants}>
+          <BentoCard size="small">
+            <Link to="/providers" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+              {usageLoading ? (
+                <SkeletonCard className="border-0 p-0 bg-transparent" />
+              ) : (
+                <StatCardContent
+                  title="Data Sources"
+                  value={`${availableProviders.length}`}
+                  description={`Out of ${providers.length} configured`}
+                  icon={Database}
+                />
+              )}
+            </Link>
+          </BentoCard>
+        </motion.div>
+        <motion.div variants={cardVariants}>
+          <BentoCard size="small">
+            <Link to="/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+              {usageLoading ? (
+                <SkeletonCard className="border-0 p-0 bg-transparent" />
+              ) : (
+                <StatCardContent
+                  title="MCP Servers"
+                  value={`${runningServers.length}/${mcpServers.length}`}
+                  description={
+                    runningServers.length > 0
+                      ? `${runningServers.length} running`
+                      : mcpServers.length > 0
+                      ? "All stopped"
+                      : "No servers"
+                  }
+                  icon={Activity}
+                  valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
+                />
+              )}
+            </Link>
+          </BentoCard>
+        </motion.div>
 
-        {/* Row 2: Daily Usage Chart (large) + Quick Actions (small, stacked vertically) */}
-        <BentoCard size="large">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Daily Usage (Last 30 Days)
-          </h2>
-          {usageLoading ? (
-            <SkeletonChart className="border-0 p-0" />
-          ) : (
-            <UsageLineChart data={stats?.daily_usage ?? []} />
-          )}
-        </BentoCard>
+        {/* Row 2: Quick Actions (left, small, stacked vertically) + Daily Usage Chart (right, large) */}
+        {/* Left side: 2 Quick Actions stacked vertically in one grid cell */}
+        <motion.div variants={cardVariants}>
+          <BentoCard size="small" asCard={false} className="flex flex-col gap-6">
+            <QuickActionCard
+              title="Configure AI Agents"
+              description="Set up browse-mcp for your AI assistants"
+              linkTo="/agents"
+              count={`${configuredAgents.length}/${installedAgents.length} configured`}
+            />
+            <QuickActionCard
+              title="Manage Data Sources"
+              description="Configure API keys for search sources"
+              linkTo="/providers"
+              count={`${availableProviders.length} available`}
+            />
+          </BentoCard>
+        </motion.div>
 
-        {/* Right side: 2 Quick Actions stacked vertically in one grid cell */}
-        <BentoCard size="small" asCard={false} className="flex flex-col gap-6">
-          <QuickActionCard
-            title="Configure AI Agents"
-            description="Set up browse-mcp for your AI assistants"
-            linkTo="/agents"
-            count={`${configuredAgents.length}/${installedAgents.length} configured`}
-          />
-          <QuickActionCard
-            title="Manage Data Sources"
-            description="Configure API keys for search sources"
-            linkTo="/providers"
-            count={`${availableProviders.length} available`}
-          />
-        </BentoCard>
+        <motion.div variants={cardVariants}>
+          <BentoCard size="large">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Daily Usage (Last 30 Days)
+            </h2>
+            {usageLoading ? (
+              <SkeletonChart className="border-0 p-0" />
+            ) : (
+              <UsageLineChart data={stats?.daily_usage ?? []} />
+            )}
+          </BentoCard>
+        </motion.div>
 
         {/* Row 3: Usage by Server + Usage by Data Source */}
-        <BentoCard size="medium">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Usage by Server
-          </h2>
-          {usageLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-1">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-12" />
+        <motion.div variants={cardVariants}>
+          <BentoCard size="medium">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Usage by Server
+            </h2>
+            {usageLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                    <Skeleton className="h-2 w-full" />
                   </div>
-                  <Skeleton className="h-2 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <UsageByCategory
-              data={stats?.by_server ?? {}}
-              labelMap={Object.fromEntries(mcpServers.map((s) => [s.id, s.name]))}
-              emptyMessage="No server usage data yet"
-            />
-          )}
-        </BentoCard>
+                ))}
+              </div>
+            ) : (
+              <UsageByCategory
+                data={stats?.by_server ?? {}}
+                labelMap={Object.fromEntries(mcpServers.map((s) => [s.id, s.name]))}
+                emptyMessage="No server usage data yet"
+              />
+            )}
+          </BentoCard>
+        </motion.div>
 
-        <BentoCard size="medium">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Usage by Data Source
-          </h2>
-          {usageLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="space-y-1">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-12" />
+        <motion.div variants={cardVariants}>
+          <BentoCard size="medium">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Database className="h-5 w-5" />
+              Usage by Data Source
+            </h2>
+            {usageLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="space-y-1">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-12" />
+                    </div>
+                    <Skeleton className="h-2 w-full" />
                   </div>
-                  <Skeleton className="h-2 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <UsageByCategory
-              data={stats?.by_source ?? {}}
-              labelMap={Object.fromEntries(providers.map((p) => [p.id, p.name]))}
-              emptyMessage="No source usage data yet"
-            />
-          )}
-        </BentoCard>
+                ))}
+              </div>
+            ) : (
+              <UsageByCategory
+                data={stats?.by_source ?? {}}
+                labelMap={Object.fromEntries(providers.map((p) => [p.id, p.name]))}
+                emptyMessage="No source usage data yet"
+              />
+            )}
+          </BentoCard>
+        </motion.div>
 
         {/* Row 4: Activity Heatmap - Full width */}
-        <BentoCard size="full">
+        <motion.div variants={cardVariants}>
+          <BentoCard size="full">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -284,9 +338,11 @@ export function DashboardPage() {
             <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
           )}
         </BentoCard>
+        </motion.div>
 
         {/* Environment Status - Full width */}
-        <BentoCard size="full">
+        <motion.div variants={cardVariants}>
+          <BentoCard size="full">
           <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
           <div className="space-y-3">
             <StatusRow
@@ -323,7 +379,9 @@ export function DashboardPage() {
             />
           </div>
         </BentoCard>
+        </motion.div>
       </BentoGrid>
+      </motion.div>
     </div>
   );
 }
