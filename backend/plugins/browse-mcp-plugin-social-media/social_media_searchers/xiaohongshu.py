@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 from typing import List
 from browse_mcp.types import ContentSource
-from .types import SocialPost
+from .types import SocialPost, sanitize_filename
 
 
 class XiaohongshuSearcher(ContentSource[SocialPost]):
@@ -85,7 +85,9 @@ class XiaohongshuSearcher(ContentSource[SocialPost]):
             Path to downloaded file
         """
         # TODO: Implement Xiaohongshu content download
-        output_path = os.path.join(save_path, f"xiaohongshu_{content_id}.json")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        output_path = os.path.join(save_path, f"xiaohongshu_{safe_filename}.json")
 
         # Placeholder implementation
         import json
@@ -112,7 +114,9 @@ class XiaohongshuSearcher(ContentSource[SocialPost]):
             Extracted text content
         """
         # TODO: Implement text extraction from downloaded content
-        file_path = os.path.join(save_path, f"xiaohongshu_{content_id}.json")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        file_path = os.path.join(save_path, f"xiaohongshu_{safe_filename}.json")
 
         try:
             import json

@@ -1,5 +1,6 @@
 """Data types for social media content."""
-from dataclasses import dataclass
+import re
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Dict, Optional
 
@@ -109,3 +110,66 @@ class SocialPost:
             "media_urls": self.media_urls,
             "extra": self.extra,
         }
+
+
+def sanitize_filename(filename: str, max_length: int = 200) -> str:
+    """Sanitize a string to be safe for use as a filename.
+
+    This function removes or replaces characters that are invalid or potentially
+    dangerous in filenames across different operating systems (Windows, macOS, Linux).
+
+    Security considerations:
+    - Prevents path traversal attacks by removing path separators
+    - Removes characters that are invalid in Windows filenames
+    - Removes control characters and other potentially dangerous characters
+    - Limits filename length to prevent filesystem issues
+
+    Args:
+        filename: The original filename or content ID
+        max_length: Maximum length for the sanitized filename (default: 200)
+
+    Returns:
+        A sanitized filename safe for use across operating systems
+
+    Examples:
+        >>> sanitize_filename("owner/repo")
+        'owner_repo'
+        >>> sanitize_filename("../../etc/passwd")
+        '.._.._etc_passwd'
+        >>> sanitize_filename("file:name*?.txt")
+        'file_name__.txt'
+    """
+    if not filename:
+        return "unnamed"
+
+    # Remove or replace path separators (both / and \\) to prevent path traversal
+    sanitized = filename.replace("/", "_").replace("\\", "_")
+
+    # Remove or replace characters that are invalid on Windows:
+    # < > : " | ? *
+    invalid_chars = '<>:"|?*'
+    for char in invalid_chars:
+        sanitized = sanitized.replace(char, "_")
+
+    # Remove control characters (ASCII 0-31)
+    sanitized = "".join(char if ord(char) >= 32 else "_" for char in sanitized)
+
+    # Remove leading/trailing dots and spaces (problematic on Windows)
+    sanitized = sanitized.strip(". ")
+
+    # If the result is empty or only underscores, use a default name
+    if not sanitized or sanitized.replace("_", "") == "":
+        return "unnamed"
+
+    # Truncate to max_length while preserving file extension if present
+    if len(sanitized) > max_length:
+        # Try to preserve extension
+        parts = sanitized.rsplit(".", 1)
+        if len(parts) == 2 and len(parts[1]) <= 10:  # Reasonable extension length
+            ext = parts[1]
+            name = parts[0][: max_length - len(ext) - 1]
+            sanitized = f"{name}.{ext}"
+        else:
+            sanitized = sanitized[:max_length]
+
+    return sanitized

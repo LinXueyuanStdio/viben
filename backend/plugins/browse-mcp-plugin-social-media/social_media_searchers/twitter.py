@@ -18,7 +18,7 @@ import os
 from datetime import datetime
 from typing import List
 from browse_mcp.types import ContentSource
-from .types import SocialPost
+from .types import SocialPost, sanitize_filename
 
 
 class TwitterSearcher(ContentSource[SocialPost]):
@@ -115,7 +115,9 @@ class TwitterSearcher(ContentSource[SocialPost]):
             Path to downloaded file
         """
         # TODO: Implement Twitter content download
-        output_path = os.path.join(save_path, f"twitter_{content_id}.json")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        output_path = os.path.join(save_path, f"twitter_{safe_filename}.json")
 
         # Placeholder implementation
         import json
@@ -143,7 +145,9 @@ class TwitterSearcher(ContentSource[SocialPost]):
             Extracted tweet text and metadata
         """
         # TODO: Implement text extraction
-        file_path = os.path.join(save_path, f"twitter_{content_id}.json")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        file_path = os.path.join(save_path, f"twitter_{safe_filename}.json")
 
         try:
             import json

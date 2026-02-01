@@ -7,7 +7,7 @@ This plugin provides searchers for popular social media and code hosting platfor
 - Twitter/X: Social media platform
 """
 
-from .types import SocialPost
+from .types import SocialPost, sanitize_filename
 from .zhihu import ZhihuSearcher
 from .xiaohongshu import XiaohongshuSearcher
 from .github import GithubSearcher
@@ -15,6 +15,7 @@ from .twitter import TwitterSearcher
 
 __all__ = [
     "SocialPost",
+    "sanitize_filename",
     "ZhihuSearcher",
     "XiaohongshuSearcher",
     "GithubSearcher",

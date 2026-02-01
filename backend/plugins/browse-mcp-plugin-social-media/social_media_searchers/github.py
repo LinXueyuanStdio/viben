@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 from typing import List
 from browse_mcp.types import ContentSource
-from .types import SocialPost
+from .types import SocialPost, sanitize_filename
 
 
 class GithubSearcher(ContentSource[SocialPost]):
@@ -126,7 +126,9 @@ class GithubSearcher(ContentSource[SocialPost]):
             Path to downloaded file or directory
         """
         # TODO: Implement GitHub content download
-        output_path = os.path.join(save_path, f"github_{content_id.replace('/', '_')}.md")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        output_path = os.path.join(save_path, f"github_{safe_filename}.md")
 
         # Placeholder implementation
         with open(output_path, "w", encoding="utf-8") as f:
@@ -145,7 +147,9 @@ class GithubSearcher(ContentSource[SocialPost]):
             Extracted text content
         """
         # TODO: Implement text extraction
-        file_path = os.path.join(save_path, f"github_{content_id.replace('/', '_')}.md")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        file_path = os.path.join(save_path, f"github_{safe_filename}.md")
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
