@@ -21,10 +21,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLogs, type LogEntry, type LogSession } from "@/hooks/use-logs";
 import { save } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 
 type TabType = "server" | "api";
 
 export function LogsPage() {
+  const { t } = useTranslation();
   const {
     sessions,
     selectedSessionId,
@@ -97,7 +99,7 @@ export function LogsPage() {
   const handleClearSession = async () => {
     if (!selectedSessionId) return;
     const session = sessions.find(s => s.id === selectedSessionId);
-    if (!confirm(`Delete logs for "${session?.server_name}" session?`)) return;
+    if (!confirm(t("logs.deleteSession", { name: session?.server_name }))) return;
     setCleaning(true);
     try {
       await clearSession(selectedSessionId);
@@ -107,12 +109,12 @@ export function LogsPage() {
   };
 
   const handleCleanup = async () => {
-    if (!confirm("Delete old log sessions (keep last 10 per server)?")) return;
+    if (!confirm(t("logs.cleanupConfirm"))) return;
     setCleaning(true);
     try {
       const deleted = await cleanupSessions(10);
       if (deleted > 0) {
-        alert(`Deleted ${deleted} old session(s)`);
+        alert(t("logs.deletedSessions", { count: deleted }));
       }
     } finally {
       setCleaning(false);
@@ -123,7 +125,7 @@ export function LogsPage() {
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">Logs</h1>
+          <h1 className="text-2xl font-bold">{t("logs.title")}</h1>
           {logsDirPath && (
             <p className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-md flex items-center gap-1">
               <FolderOpen className="h-3 w-3" />
@@ -143,7 +145,7 @@ export function LogsPage() {
             ) : (
               <ToggleLeft className="h-4 w-4 mr-2" />
             )}
-            Auto
+            {t("common.auto")}
           </Button>
           <Button
             variant="outline"
@@ -156,7 +158,7 @@ export function LogsPage() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh
+            {t("common.refresh")}
           </Button>
           <Button
             variant="outline"
@@ -169,7 +171,7 @@ export function LogsPage() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Export
+            {t("common.export")}
           </Button>
           <Button
             variant="outline"
@@ -178,7 +180,7 @@ export function LogsPage() {
             disabled={cleaning || sessions.length === 0}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Cleanup
+            {t("common.cleanup")}
           </Button>
         </div>
       </div>
@@ -201,7 +203,7 @@ export function LogsPage() {
           }`}
         >
           <Terminal className="h-4 w-4 inline mr-2" />
-          Server Logs
+          {t("logs.serverLogs")}
         </button>
         <button
           onClick={() => setActiveTab("api")}
@@ -212,7 +214,7 @@ export function LogsPage() {
           }`}
         >
           <Activity className="h-4 w-4 inline mr-2" />
-          API Logs
+          {t("logs.apiLogs")}
         </button>
       </div>
 
@@ -221,15 +223,15 @@ export function LogsPage() {
           {/* Sessions sidebar */}
           <div className="w-64 flex flex-col rounded-lg border bg-card">
             <div className="p-3 border-b">
-              <h2 className="font-semibold text-sm">Sessions</h2>
+              <h2 className="font-semibold text-sm">{t("logs.sessions")}</h2>
               <p className="text-xs text-muted-foreground">
-                {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+                {t("logs.sessionCount", { count: sessions.length })}
               </p>
             </div>
             <ScrollArea className="flex-1">
               {sessions.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No log sessions yet
+                  {t("logs.noSessions")}
                 </div>
               ) : (
                 <div className="divide-y">
@@ -261,8 +263,8 @@ export function LogsPage() {
                       {selectedSession.ended_at
                         ? ` - ${selectedSession.ended_at}`
                         : selectedSession.pid
-                        ? ` (PID: ${selectedSession.pid})`
-                        : " (running)"}
+                        ? ` (${t("logs.pid", { pid: selectedSession.pid })})`
+                        : ` (${t("common.running")})`}
                     </p>
                   </div>
                 </div>
@@ -283,17 +285,17 @@ export function LogsPage() {
               {!selectedSessionId ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <FileText className="h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Select a session</p>
-                  <p className="text-sm">Choose a log session from the sidebar</p>
+                  <p className="text-lg font-medium">{t("logs.selectSession")}</p>
+                  <p className="text-sm">{t("logs.selectSessionDesc")}</p>
                 </div>
               ) : logs.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <Terminal className="h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No logs yet</p>
+                  <p className="text-lg font-medium">{t("logs.noLogs")}</p>
                   <p className="text-sm">
                     {selectedSession?.ended_at
-                      ? "This session has no log entries"
-                      : "Logs will appear as the server runs"}
+                      ? t("logs.noLogsEnded")
+                      : t("logs.logsWillAppear")}
                   </p>
                 </div>
               ) : (
@@ -312,7 +314,7 @@ export function LogsPage() {
               {autoRefresh && (
                 <span className="flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  Auto-refreshing every 3s
+                  {t("logs.autoRefreshing")}
                 </span>
               )}
             </div>
@@ -333,6 +335,7 @@ interface SessionItemProps {
 }
 
 function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) {
+  const { t } = useTranslation();
   const hasEnded = !!session.ended_at;
   const isRunning = !hasEnded && isAlive === true;
   const isDead = !hasEnded && isAlive === false;
@@ -346,19 +349,19 @@ function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) 
     >
       <div className="flex items-center gap-2">
         {isRunning ? (
-          <span title="Running">
+          <span title={t("logs.processRunning")}>
             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           </span>
         ) : isDead ? (
-          <span title="Process died">
+          <span title={t("logs.processDied")}>
             <XCircle className="h-3 w-3 text-red-500" />
           </span>
         ) : hasEnded ? (
-          <span title="Ended normally">
+          <span title={t("logs.endedNormally")}>
             <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
           </span>
         ) : (
-          <span title="Unknown status">
+          <span title={t("logs.unknownStatus")}>
             <div className="h-2 w-2 rounded-full bg-yellow-500" />
           </span>
         )}
@@ -366,7 +369,7 @@ function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) 
           {session.server_name}
         </span>
         {session.pid && !hasEnded && (
-          <span className="text-xs text-muted-foreground">PID: {session.pid}</span>
+          <span className="text-xs text-muted-foreground">{t("logs.pid", { pid: session.pid })}</span>
         )}
         {selected && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </div>
@@ -412,16 +415,18 @@ function TerminalLogLine({ log }: TerminalLogLineProps) {
 
 // API Logs Tab - placeholder for now, will be implemented with JSONL logging
 function ApiLogsTab() {
+  const { t } = useTranslation();
+
   return (
     <div className="flex-1 flex items-center justify-center text-muted-foreground">
       <div className="text-center">
         <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
-        <h2 className="text-xl font-semibold mb-2">API Logs</h2>
+        <h2 className="text-xl font-semibold mb-2">{t("logs.apiLogsTitle")}</h2>
         <p className="text-sm max-w-md">
-          API request logs will appear here when the MCP server handles requests.
+          {t("logs.apiLogsDesc")}
           <br />
           <span className="text-xs mt-2 block">
-            Logs are stored in JSONL format for analysis.
+            {t("logs.jsonlFormat")}
           </span>
         </p>
       </div>

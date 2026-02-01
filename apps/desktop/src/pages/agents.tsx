@@ -14,8 +14,10 @@ import { useAgents } from "@/hooks/use-agents";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import type { AgentInfo, McpServerInstance } from "@/types";
+import { useTranslation } from "react-i18next";
 
 export function AgentsPage() {
+  const { t } = useTranslation();
   const { agents, loading, error, detectAgents, configureBrowseMcp } =
     useAgents();
   const { selectedPython } = usePython();
@@ -52,9 +54,9 @@ export function AgentsPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">AI Agents</h1>
+          <h1 className="text-2xl font-bold">{t("agents.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Configure MCP server for your AI assistants
+            {t("agents.subtitle")}
           </p>
         </div>
         <Button
@@ -68,7 +70,7 @@ export function AgentsPage() {
           ) : (
             <RefreshCw className="h-4 w-4 mr-2" />
           )}
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -81,8 +83,7 @@ export function AgentsPage() {
       {mcpServers.length === 0 && (
         <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
           <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            No MCP servers configured. Create a server in the Search Service
-            page first.
+            {t("agents.noServersWarning")}
           </p>
         </div>
       )}
@@ -124,6 +125,7 @@ function AgentCard({
   onConfigure,
   onRemoveAssignment,
 }: AgentCardProps) {
+  const { t } = useTranslation();
   const [showConfig, setShowConfig] = useState(false);
   const [selectedServerId, setSelectedServerId] = useState(
     assignment?.serverId || servers[0]?.id || ""
@@ -172,12 +174,12 @@ function AgentCard({
             <h3 className="font-semibold">{agent.name}</h3>
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge
-                label={agent.installed ? "Installed" : "Not Found"}
+                label={agent.installed ? t("common.installed") : t("agents.notFound")}
                 active={agent.installed}
               />
               {agent.installed && (
                 <StatusBadge
-                  label={agent.configured ? "Configured" : "Not Configured"}
+                  label={agent.configured ? t("common.configured") : t("common.notConfigured")}
                   active={agent.configured}
                 />
               )}
@@ -229,7 +231,7 @@ function AgentCard({
                 onClick={() => setShowConfig(!showConfig)}
               >
                 <Settings2 className="h-4 w-4 mr-1" />
-                {assignment ? "Change Server" : "Configure"}
+                {assignment ? t("agents.changeServer") : t("common.configure")}
                 <ChevronDown
                   className={`h-3 w-3 ml-1 transition-transform ${
                     showConfig ? "rotate-180" : ""
@@ -243,18 +245,18 @@ function AgentCard({
                   onClick={onRemoveAssignment}
                   className="text-destructive hover:text-destructive"
                 >
-                  Remove
+                  {t("common.remove")}
                 </Button>
               )}
             </>
           ) : (
             <Button variant="secondary" size="sm" disabled>
-              No Servers Available
+              {t("agents.noServersAvailable")}
             </Button>
           )
         ) : (
           <Button variant="secondary" size="sm" disabled>
-            Not Available
+            {t("agents.notAvailable")}
           </Button>
         )}
       </div>
@@ -264,7 +266,7 @@ function AgentCard({
         <div className="mt-4 pt-4 border-t space-y-3">
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Select MCP Server
+              {t("agents.selectMcpServer")}
             </label>
             <select
               value={selectedServerId}
@@ -277,7 +279,7 @@ function AgentCard({
               {servers.map((server) => (
                 <option key={server.id} value={server.id}>
                   {server.name} ({server.transport.toUpperCase()})
-                  {server.status === "running" ? " - Running" : ""}
+                  {server.status === "running" ? ` - ${t("agents.serverRunning")}` : ""}
                 </option>
               ))}
             </select>
@@ -287,7 +289,7 @@ function AgentCard({
           {selectedServer && (
             <div>
               <label className="text-sm font-medium mb-2 block">
-                API Key (Required)
+                {t("agents.apiKeyRequired")}
               </label>
               {selectedServer.apiKeys.length > 0 ? (
                 <select
@@ -295,7 +297,7 @@ function AgentCard({
                   onChange={(e) => setSelectedKeyId(e.target.value)}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                 >
-                  <option value="">-- Select API Key --</option>
+                  <option value="">{t("agents.selectApiKey")}</option>
                   {selectedServer.apiKeys.map((key) => (
                     <option key={key.id} value={key.id}>
                       {key.name} ({key.keyPrefix})
@@ -304,7 +306,7 @@ function AgentCard({
                 </select>
               ) : (
                 <p className="text-sm text-yellow-600 dark:text-yellow-400 p-2 bg-yellow-50 dark:bg-yellow-950 rounded border border-yellow-200 dark:border-yellow-900">
-                  No API keys for this server. Create one in Search Service first.
+                  {t("agents.noApiKeysWarning")}
                 </p>
               )}
             </div>
@@ -316,20 +318,20 @@ function AgentCard({
               onClick={handleApply}
               disabled={!selectedKeyId || !selectedServer?.apiKeys?.length}
             >
-              Apply Configuration
+              {t("agents.applyConfiguration")}
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowConfig(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
           </div>
 
           {!selectedKeyId && (selectedServer?.apiKeys?.length ?? 0) > 0 && (
             <p className="text-xs text-yellow-600 dark:text-yellow-400">
-              Select an API key to apply configuration.
+              {t("agents.selectKeyToApply")}
             </p>
           )}
         </div>
