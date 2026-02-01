@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Search, Database, Activity, Settings, ArrowRight, TrendingUp, Calendar } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton, SkeletonCard, SkeletonChart, SkeletonHeatmap } from "@/components/ui/skeleton";
 import { BentoGrid, BentoCard } from "@/components/layout";
@@ -41,16 +41,26 @@ export function DashboardPage() {
 
   // Check setup status with caching
   useEffect(() => {
-    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+    // Only check if data is actually loaded
+    if (selectedPython !== null && browseMcpInfo !== undefined) {
+      const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
 
-    // Only update if we should check (first time or after 5 minutes)
-    if (shouldCheckSetup()) {
-      setSetupStatus(isSetupComplete);
+      // Only update if we should check (first time or after 5 minutes)
+      if (shouldCheckSetup()) {
+        setSetupStatus(isSetupComplete);
+      }
     }
   }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
 
-  // Use cached status if available, otherwise compute
-  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
+  // Determine if setup is complete - prioritize cached status
+  const isSetupComplete = useMemo(() => {
+    // If we have cached status, use it (avoids flickering during navigation)
+    if (setupStatus !== null) {
+      return setupStatus.isComplete;
+    }
+    // Otherwise compute from current data
+    return selectedPython?.is_valid && browseMcpInfo?.installed;
+  }, [setupStatus, selectedPython, browseMcpInfo]);
 
   // Only show setup banner if not complete AND not dismissed
   const showSetupBanner = !isSetupComplete && !setupBannerDismissed;
@@ -61,42 +71,46 @@ export function DashboardPage() {
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
       {/* Setup Banner - only shown if not complete AND not dismissed */}
-      {showSetupBanner && (
-        <motion.div
-          initial={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-          className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 theme-transition relative overflow-hidden"
-        >
-          <button
-            onClick={() => setSetupBannerDismissed(true)}
-            className="absolute top-2 right-2 p-1 hover:bg-yellow-200 dark:hover:bg-yellow-800 rounded transition-colors"
-            aria-label="Dismiss setup banner"
+      <AnimatePresence mode="wait">
+        {showSetupBanner && (
+          <motion.div
+            key="setup-banner"
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 theme-transition relative overflow-hidden"
           >
-            <svg className="w-4 h-4 text-yellow-800 dark:text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-          <div className="flex items-start justify-between pr-8">
-            <div>
-              <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                Setup Required
-              </h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                {!selectedPython?.is_valid
-                  ? "Python 3.10+ is required to run browse-mcp."
-                  : "Install the browse-mcp package to get started."}
-              </p>
+            <button
+              onClick={() => setSetupBannerDismissed(true)}
+              className="absolute top-2 right-2 p-1 hover:bg-yellow-200 dark:hover:bg-yellow-800 rounded transition-colors"
+              aria-label="Dismiss setup banner"
+            >
+              <svg className="w-4 h-4 text-yellow-800 dark:text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="flex items-start justify-between pr-8">
+              <div>
+                <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
+                  Setup Required
+                </h3>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  {!selectedPython?.is_valid
+                    ? "Python 3.10+ is required to run browse-mcp."
+                    : "Install the browse-mcp package to get started."}
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <Link to="/settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configure
+                </Link>
+              </Button>
             </div>
-            <Button asChild size="sm">
-              <Link to="/settings">
-                <Settings className="h-4 w-4 mr-2" />
-                Configure
-              </Link>
-            </Button>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Dashboard Grid - Using Bento Grid with animations */}
       <BentoGrid gap="lg">
@@ -161,7 +175,7 @@ export function DashboardPage() {
           </Link>
         </BentoCard>
 
-        {/* Row 2: Daily Usage Chart (large) + Quick Actions (small, stacked) */}
+        {/* Row 2: Daily Usage Chart (large) + Quick Actions (small, stacked vertically) */}
         <BentoCard size="large">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -174,16 +188,14 @@ export function DashboardPage() {
           )}
         </BentoCard>
 
-        <BentoCard size="small" asCard={false}>
+        {/* Right side: 2 Quick Actions stacked vertically in one grid cell */}
+        <BentoCard size="small" asCard={false} className="flex flex-col gap-6">
           <QuickActionCard
             title="Configure AI Agents"
             description="Set up browse-mcp for your AI assistants"
             linkTo="/agents"
             count={`${configuredAgents.length}/${installedAgents.length} configured`}
           />
-        </BentoCard>
-
-        <BentoCard size="small" asCard={false}>
           <QuickActionCard
             title="Manage Data Sources"
             description="Configure API keys for search sources"
