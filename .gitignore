@@ -24,6 +24,36 @@ yarn.lock
 .yarn/
 *.tsbuildinfo
 
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Next.js / Nuxt.js
+.next/
+out/
+.nuxt/
+dist/
+
+# Docusaurus
+.docusaurus/
+
 # ===========================================
 # Rust / Tauri
 # ===========================================
@@ -35,10 +65,15 @@ target/
 # ===========================================
 # Trellis Development System
 # ===========================================
-.session-id
-.current-task
+.trellis/.ralph-state.json
+.trellis/.current-task
 .trellis/.developer
 .trellis/workspace/*/
+
+# Multi-agent temp files
+.session-id
+.agent-log
+.agent-runner.sh
 
 # ===========================================
 # Project Specific
@@ -50,9 +85,6 @@ test_downloads/
 # ===========================================
 # Python
 # ===========================================
-
-# Node.js
-node_modules/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -180,6 +212,8 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
