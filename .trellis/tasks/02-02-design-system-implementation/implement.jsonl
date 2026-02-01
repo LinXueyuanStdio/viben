@@ -1,7 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/frontend/design-system.md", "reason": "Complete design system specification"}
-{"file": "apps/desktop/src/index.css", "reason": "Current CSS configuration to update"}
-{"file": "apps/desktop/src/components/ui/button.tsx", "reason": "Button component to enhance"}
-{"file": "apps/desktop/src/components/layout/sidebar.tsx", "reason": "Sidebar component to update"}
-{"file": "apps/desktop/src/pages/dashboard.tsx", "reason": "Dashboard to enhance with animations"}

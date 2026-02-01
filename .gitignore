@@ -69,6 +69,7 @@ target/
 .trellis/.current-task
 .trellis/.developer
 .trellis/workspace/*/
+.trellis/tasks
 
 # Multi-agent temp files
 .session-id

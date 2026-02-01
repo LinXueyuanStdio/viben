@@ -1,5 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/frontend/design-system.md", "reason": "Complete design system spec with all color, typography, and animation definitions"}
-{"file": "apps/desktop/src/index.css", "reason": "Current CSS file to be updated with new design system variables"}
-{"file": "apps/desktop/index.html", "reason": "HTML file where Google Fonts should be imported"}
