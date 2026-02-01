@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[5945],{5945(c,e,s){s.d(e,{createArchitectureServices:()=>r.S});var r=s(5709);s(9377)}}]);

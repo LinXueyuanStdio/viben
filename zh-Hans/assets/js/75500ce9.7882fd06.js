@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[8753],{7174(o){o.exports=JSON.parse('{"metadata":{"permalink":"/browse-mcp/zh-Hans/blog","page":1,"postsPerPage":10,"totalPages":1,"totalCount":1,"blogDescription":"Blog","blogTitle":"Blog"}}')}}]);
