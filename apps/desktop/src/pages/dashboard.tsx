@@ -1,11 +1,65 @@
 import { Link } from "react-router-dom";
 import { Search, Database, Activity, Settings, ArrowRight, TrendingUp, Calendar } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Skeleton, SkeletonCard, SkeletonChart, SkeletonHeatmap } from "@/components/ui/skeleton";
 import { useAgents } from "@/hooks/use-agents";
 import { usePython } from "@/hooks/use-python";
 import { useUsage } from "@/hooks/use-usage";
 import { useAppStore } from "@/stores";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
+
+// Check if user prefers reduced motion
+const prefersReducedMotion =
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// Easing curves as const tuples for Framer Motion type compatibility
+const easeOutExpo = [0.16, 1, 0.3, 1] as const;
+const easeOutBack = [0.34, 1.56, 0.64, 1] as const;
+
+// Stagger container variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: prefersReducedMotion ? 0 : 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: {
+    opacity: 0,
+    y: prefersReducedMotion ? 0 : 20,
+  },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: prefersReducedMotion ? 0 : 0.3,
+      ease: easeOutExpo,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: {
+    opacity: 0,
+    scale: prefersReducedMotion ? 1 : 0.95,
+    y: prefersReducedMotion ? 0 : 10,
+  },
+  show: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: prefersReducedMotion ? 0 : 0.3,
+      ease: easeOutBack,
+    },
+  },
+};
 
 export function DashboardPage() {
   const { agents, loading: agentsLoading } = useAgents();
@@ -23,11 +77,23 @@ export function DashboardPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <motion.h1
+        className="text-2xl font-bold mb-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: easeOutExpo }}
+      >
+        Dashboard
+      </motion.h1>
 
       {/* Setup Banner */}
       {!isSetupComplete && (
-        <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
+        <motion.div
+          className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 theme-transition"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: easeOutExpo }}
+        >
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
@@ -46,48 +112,75 @@ export function DashboardPage() {
               </Link>
             </Button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard
-          title="Total Requests"
-          value={usageLoading ? "..." : (stats?.total_requests ?? 0).toLocaleString()}
-          description="All time"
-          icon={Search}
-        />
-        <StatCard
-          title="Today"
-          value={usageLoading ? "..." : (stats?.today_requests ?? 0).toLocaleString()}
-          description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
-          icon={TrendingUp}
-        />
-        <StatCard
-          title="Data Sources"
-          value={`${availableProviders.length}`}
-          description={`Out of ${providers.length} configured`}
-          icon={Database}
-          linkTo="/providers"
-        />
-        <StatCard
-          title="MCP Servers"
-          value={`${runningServers.length}/${mcpServers.length}`}
-          description={
-            runningServers.length > 0
-              ? `${runningServers.length} running`
-              : mcpServers.length > 0
-              ? "All stopped"
-              : "No servers"
-          }
-          icon={Activity}
-          valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
-          linkTo="/search-service"
-        />
-      </div>
+      {/* Stats Grid with Staggered Animation */}
+      {usageLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
+      ) : (
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+        >
+          <motion.div variants={itemVariants}>
+            <StatCard
+              title="Total Requests"
+              value={(stats?.total_requests ?? 0).toLocaleString()}
+              description="All time"
+              icon={Search}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard
+              title="Today"
+              value={(stats?.today_requests ?? 0).toLocaleString()}
+              description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
+              icon={TrendingUp}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard
+              title="Data Sources"
+              value={`${availableProviders.length}`}
+              description={`Out of ${providers.length} configured`}
+              icon={Database}
+              linkTo="/providers"
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <StatCard
+              title="MCP Servers"
+              value={`${runningServers.length}/${mcpServers.length}`}
+              description={
+                runningServers.length > 0
+                  ? `${runningServers.length} running`
+                  : mcpServers.length > 0
+                  ? "All stopped"
+                  : "No servers"
+              }
+              icon={Activity}
+              valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
+              linkTo="/search-service"
+            />
+          </motion.div>
+        </motion.div>
+      )}
 
-      {/* Activity Heatmap */}
-      <div className="rounded-lg border bg-card p-6 mb-8">
+      {/* Activity Heatmap with Animation */}
+      <motion.div
+        className="rounded-lg border bg-card p-6 mb-8 theme-transition"
+        variants={cardVariants}
+        initial="hidden"
+        animate="show"
+        transition={{ delay: 0.4 }}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Calendar className="h-5 w-5" />
@@ -98,40 +191,56 @@ export function DashboardPage() {
           </span>
         </div>
         {usageLoading ? (
-          <div className="h-32 flex items-center justify-center text-muted-foreground">
-            Loading activity data...
-          </div>
+          <SkeletonHeatmap />
         ) : (
           <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
         )}
-      </div>
+      </motion.div>
 
       {/* Usage Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        transition={{ delayChildren: 0.5 }}
+      >
         {/* Daily Usage Line Chart */}
-        <div className="rounded-lg border bg-card p-6">
+        <motion.div
+          className="rounded-lg border bg-card p-6 theme-transition"
+          variants={cardVariants}
+        >
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
             Daily Usage (Last 30 Days)
           </h2>
           {usageLoading ? (
-            <div className="h-48 flex items-center justify-center text-muted-foreground">
-              Loading chart...
-            </div>
+            <SkeletonChart className="border-0 p-0" />
           ) : (
             <UsageLineChart data={stats?.daily_usage ?? []} />
           )}
-        </div>
+        </motion.div>
 
         {/* Usage by Server */}
-        <div className="rounded-lg border bg-card p-6">
+        <motion.div
+          className="rounded-lg border bg-card p-6 theme-transition"
+          variants={cardVariants}
+        >
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Usage by Server
           </h2>
           {usageLoading ? (
-            <div className="h-48 flex items-center justify-center text-muted-foreground">
-              Loading...
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))}
             </div>
           ) : (
             <UsageByCategory
@@ -140,19 +249,36 @@ export function DashboardPage() {
               emptyMessage="No server usage data yet"
             />
           )}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Usage by Source */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <div className="rounded-lg border bg-card p-6">
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        transition={{ delayChildren: 0.6 }}
+      >
+        <motion.div
+          className="rounded-lg border bg-card p-6 theme-transition"
+          variants={cardVariants}
+        >
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Database className="h-5 w-5" />
             Usage by Data Source
           </h2>
           {usageLoading ? (
-            <div className="h-48 flex items-center justify-center text-muted-foreground">
-              Loading...
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))}
             </div>
           ) : (
             <UsageByCategory
@@ -161,27 +287,40 @@ export function DashboardPage() {
               emptyMessage="No source usage data yet"
             />
           )}
-        </div>
+        </motion.div>
 
         {/* Quick Actions */}
-        <div className="space-y-4">
-          <QuickActionCard
-            title="Configure AI Agents"
-            description="Set up browse-mcp for your AI assistants"
-            linkTo="/agents"
-            count={`${configuredAgents.length}/${installedAgents.length} configured`}
-          />
-          <QuickActionCard
-            title="Manage Data Sources"
-            description="Configure API keys for search sources"
-            linkTo="/providers"
-            count={`${availableProviders.length} available`}
-          />
-        </div>
-      </div>
+        <motion.div
+          className="space-y-4"
+          variants={containerVariants}
+        >
+          <motion.div variants={itemVariants}>
+            <QuickActionCard
+              title="Configure AI Agents"
+              description="Set up browse-mcp for your AI assistants"
+              linkTo="/agents"
+              count={`${configuredAgents.length}/${installedAgents.length} configured`}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <QuickActionCard
+              title="Manage Data Sources"
+              description="Configure API keys for search sources"
+              linkTo="/providers"
+              count={`${availableProviders.length} available`}
+            />
+          </motion.div>
+        </motion.div>
+      </motion.div>
 
       {/* Environment Status */}
-      <div className="rounded-lg border bg-card p-6">
+      <motion.div
+        className="rounded-lg border bg-card p-6 theme-transition"
+        variants={cardVariants}
+        initial="hidden"
+        animate="show"
+        transition={{ delay: 0.7 }}
+      >
         <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
         <div className="space-y-3">
           <StatusRow
@@ -217,17 +356,23 @@ export function DashboardPage() {
             ok={configuredAgents.length > 0}
           />
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
 
-// Activity Heatmap Component (GitHub-style)
+// Activity Heatmap Component (GitHub-style) with Cascade Animation
 interface ActivityHeatmapProps {
   data: { date: string; count: number; level: number }[];
 }
 
 function ActivityHeatmap({ data }: ActivityHeatmapProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Organize data into weeks
   const weeks = useMemo(() => {
     const result: { date: string; count: number; level: number }[][] = [];
@@ -323,19 +468,26 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
           <span className="h-3"></span>
         </div>
 
-        {/* Heatmap grid */}
+        {/* Heatmap grid with cascade animation */}
         <div className="flex gap-0.5">
           {weeks.map((week, weekIndex) => (
             <div key={weekIndex} className="flex flex-col gap-0.5">
-              {week.map((day, dayIndex) => (
-                <div
-                  key={dayIndex}
-                  className={`w-3 h-3 rounded-sm ${
-                    day.level === -1 ? "bg-transparent" : levelColors[day.level]
-                  }`}
-                  title={day.date ? `${day.date}: ${day.count} requests` : ""}
-                />
-              ))}
+              {week.map((day, dayIndex) => {
+                const delay = prefersReducedMotion ? 0 : (weekIndex + dayIndex) * 20;
+                return (
+                  <div
+                    key={dayIndex}
+                    className={`w-3 h-3 rounded-sm transition-colors theme-transition ${
+                      day.level === -1 ? "bg-transparent" : levelColors[day.level]
+                    } ${mounted && day.level !== -1 ? "heatmap-cell" : ""}`}
+                    style={{
+                      animationDelay: `${delay}ms`,
+                      opacity: mounted ? undefined : 0,
+                    }}
+                    title={day.date ? `${day.date}: ${day.count} requests` : ""}
+                  />
+                );
+              })}
             </div>
           ))}
         </div>
@@ -345,7 +497,7 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       <div className="flex items-center justify-end gap-1 mt-2 text-xs text-muted-foreground">
         <span>Less</span>
         {levelColors.map((color, i) => (
-          <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
+          <div key={i} className={`w-3 h-3 rounded-sm ${color} theme-transition`} />
         ))}
         <span>More</span>
       </div>
@@ -353,12 +505,18 @@ function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   );
 }
 
-// Line Chart Component
+// Line Chart Component with Draw Animation
 interface UsageLineChartProps {
   data: { date: string; total_requests: number }[];
 }
 
 function UsageLineChart({ data }: UsageLineChartProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const chartData = useMemo(() => {
     if (data.length === 0) return null;
 
@@ -404,24 +562,60 @@ function UsageLineChart({ data }: UsageLineChartProps) {
           <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeOpacity="0.1" />
           <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" strokeOpacity="0.1" />
 
-          {/* Area fill */}
-          <path d={areaD} fill="url(#gradient)" opacity="0.3" />
+          {/* Area fill with fade animation */}
+          <motion.path
+            d={areaD}
+            fill="url(#gradient)"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: mounted ? 0.3 : 0 }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+          />
 
-          {/* Line */}
-          <path d={pathD} fill="none" stroke="rgb(34, 197, 94)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          {/* Line with draw animation */}
+          {mounted ? (
+            <motion.path
+              d={pathD}
+              fill="none"
+              stroke="rgb(34, 197, 94)"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.7,
+                ease: "easeOut",
+              }}
+            />
+          ) : (
+            <path
+              d={pathD}
+              fill="none"
+              stroke="rgb(34, 197, 94)"
+              strokeWidth="2"
+              vectorEffect="non-scaling-stroke"
+              style={{ opacity: 0 }}
+            />
+          )}
 
-          {/* Points */}
+          {/* Points with stagger animation */}
           {chartData.points.map((p, i) => (
-            <circle
+            <motion.circle
               key={i}
               cx={p.x}
               cy={p.y}
               r="3"
               fill="rgb(34, 197, 94)"
               vectorEffect="non-scaling-stroke"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: mounted ? 1 : 0, scale: mounted ? 1 : 0 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.2,
+                delay: prefersReducedMotion ? 0 : 0.7 + i * 0.02,
+                ease: easeOutBack,
+              }}
             >
               <title>{`${p.date}: ${p.value} requests`}</title>
-            </circle>
+            </motion.circle>
           ))}
 
           {/* Gradient definition */}
@@ -448,7 +642,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
   );
 }
 
-// Usage by Category Component (bar chart style)
+// Usage by Category Component (bar chart style) with Grow Animation
 interface UsageByCategoryProps {
   data: Record<string, number>;
   labelMap: Record<string, string>;
@@ -456,6 +650,12 @@ interface UsageByCategoryProps {
 }
 
 function UsageByCategory({ data, labelMap, emptyMessage }: UsageByCategoryProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const sortedData = useMemo(() => {
     return Object.entries(data)
       .sort(([, a], [, b]) => b - a)
@@ -475,22 +675,56 @@ function UsageByCategory({ data, labelMap, emptyMessage }: UsageByCategoryProps)
   }
 
   return (
-    <div className="space-y-3">
-      {sortedData.map(([id, count]) => (
-        <div key={id} className="space-y-1">
+    <motion.div
+      className="space-y-3"
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: { opacity: 0 },
+        show: {
+          opacity: 1,
+          transition: {
+            staggerChildren: prefersReducedMotion ? 0 : 0.1,
+          },
+        },
+      }}
+    >
+      {sortedData.map(([id, count], index) => (
+        <motion.div
+          key={id}
+          className="space-y-1"
+          variants={{
+            hidden: { opacity: 0, x: -10 },
+            show: {
+              opacity: 1,
+              x: 0,
+              transition: {
+                duration: 0.3,
+                ease: easeOutExpo,
+              },
+            },
+          }}
+        >
           <div className="flex justify-between text-sm">
             <span className="truncate">{labelMap[id] || id}</span>
             <span className="text-muted-foreground">{count.toLocaleString()}</span>
           </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-green-500 rounded-full transition-all"
+          <div className="h-2 bg-muted rounded-full overflow-hidden theme-transition">
+            <motion.div
+              className="h-full bg-green-500 rounded-full origin-left"
               style={{ width: `${(count / maxValue) * 100}%` }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: mounted ? 1 : 0 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.5,
+                delay: prefersReducedMotion ? 0 : index * 0.1,
+                ease: easeOutExpo,
+              }}
             />
           </div>
-        </div>
+        </motion.div>
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -512,7 +746,7 @@ function StatCard({
   linkTo,
 }: StatCardProps) {
   const content = (
-    <div className="rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors">
+    <div className="rounded-lg border bg-card p-4 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md theme-transition">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-muted-foreground">{title}</span>
         <Icon className="h-4 w-4 text-muted-foreground" />
@@ -540,7 +774,7 @@ function QuickActionCard({ title, description, linkTo, count }: QuickActionCardP
   return (
     <Link
       to={linkTo}
-      className="flex items-center justify-between rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors"
+      className="flex items-center justify-between rounded-lg border bg-card p-4 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md theme-transition"
     >
       <div>
         <h3 className="font-semibold">{title}</h3>
@@ -567,7 +801,7 @@ function StatusRow({ label, value, ok }: StatusRowProps) {
           {value}
         </span>
         <div
-          className={`h-2 w-2 rounded-full ${
+          className={`h-2 w-2 rounded-full transition-colors duration-300 ${
             ok ? "bg-green-500" : "bg-muted"
           }`}
         />
