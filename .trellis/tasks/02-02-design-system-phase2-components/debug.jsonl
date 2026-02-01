@@ -1,4 +1,0 @@
-{"file": ".claude/commands/trellis/check-frontend.md", "reason": "Frontend check spec"}
-{"file": "apps/desktop/src/components/ui/button.tsx", "reason": "Button component for debugging hover effects"}
-{"file": "apps/desktop/src/components/layout/sidebar.tsx", "reason": "Sidebar component for debugging navigation styling"}
-{"file": "apps/desktop/src/index.css", "reason": "CSS variables for debugging theme issues"}

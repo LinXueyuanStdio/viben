@@ -1,6 +1,0 @@
-{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
-{"file": ".claude/commands/trellis/check-backend.md", "reason": "Backend check spec"}
-{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Code quality standards"}
-{"file": "backend/browse-mcp/tests/test_server.py", "reason": "Update tests to use plugin-loaded searchers"}
-{"file": ".trellis/spec/backend/error-handling.md", "reason": "Plugin loading error handling patterns"}
-{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "Plugin discovery logging conventions"}

@@ -1,6 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/frontend/design-system.md", "reason": "Bento Grid spec including column system, card sizes, and responsive breakpoints"}
-{"file": "apps/desktop/src/pages/dashboard.tsx", "reason": "Current dashboard implementation to refactor with Bento Grid"}
-{"file": "apps/desktop/src/index.css", "reason": "CSS variables and base styles for grid system"}
-{"file": "apps/desktop/src/components/layout/app-layout.tsx", "reason": "Main app layout structure for responsive behavior"}

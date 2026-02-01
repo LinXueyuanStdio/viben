@@ -1,6 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/shared/index.md", "reason": "Shared coding standards"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/frontend/components.md", "reason": "Component conventions"}
-{"file": ".trellis/spec/frontend/design-system.md", "reason": "Ensure i18n doesn't break typography system (Crimson Pro serif + Inter sans-serif)"}
-{"file": "apps/desktop/src/stores/app-store.ts", "reason": "Reference for state management pattern - already has language preference"}

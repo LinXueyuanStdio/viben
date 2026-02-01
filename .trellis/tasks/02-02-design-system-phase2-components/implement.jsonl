@@ -1,6 +1,0 @@
-{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
-{"file": ".trellis/spec/frontend/design-system.md", "reason": "Complete design system spec with component patterns"}
-{"file": "apps/desktop/src/components/ui/button.tsx", "reason": "Button component to be enhanced with hover lift effect"}
-{"file": "apps/desktop/src/components/layout/sidebar.tsx", "reason": "Sidebar component to be updated with new styling"}
-{"file": "apps/desktop/src/index.css", "reason": "CSS variables from Phase 1 - dependency for component updates"}
