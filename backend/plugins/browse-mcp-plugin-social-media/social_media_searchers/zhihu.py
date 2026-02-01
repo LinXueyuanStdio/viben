@@ -109,5 +109,5 @@ class ZhihuSearcher(ContentSource[SocialPost]):
             # In production, parse HTML and extract text
             return content
         except FileNotFoundError:
-            # If not downloaded, fetch directly
+            # If not downloaded, return a placeholder message
             return f"Zhihu content {content_id} (not downloaded yet)"
