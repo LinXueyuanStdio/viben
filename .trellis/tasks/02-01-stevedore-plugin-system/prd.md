@@ -86,11 +86,97 @@
    - iacr, semantic, crossref, sciencedirect, springer, ieee
    - scopus, acm, wos, jstor, researchgate, core
 
+## Extended Features (Implemented)
+
+### 泛型内容类型支持
+
+8. **ContentSource[T] 泛型基类**
+   - 新增 `ContentSource[T]` 泛型基类支持任意内容类型
+   - `PaperSource` 继承 `ContentSource[Paper]` 保持向后兼容
+   - 允许插件定义自己的内容类型 (如 SocialPost)
+   - 统一的 `to_text()` 方法接口用于内容展示
+
+9. **Poetry 插件配置格式**
+   - 文档更新为使用 Poetry 插件格式 (`tool.poetry.plugins`)
+   - 提供完整的第三方插件示例
+   - 支持一个插件包注册多个 searcher
+
+### 社交媒体插件示例
+
+10. **browse-mcp-plugin-social-media**
+   - 创建完整的参考实现插件项目
+   - 位置: `backend/plugins/browse-mcp-plugin-social-media/`
+   - 定义 `SocialPost` 数据类型
+   - 实现 4 个社交媒体 searcher:
+     - ZhihuSearcher (知乎)
+     - XiaohongshuSearcher (小红书)
+     - GithubSearcher (GitHub)
+     - TwitterSearcher (Twitter/X)
+   - 完整的 pyproject.toml (Poetry 格式)
+   - 详细的 README 文档
+
+## Plugin Development Guide
+
+### Creating a Plugin with Poetry
+
+```toml
+[tool.poetry]
+name = "browse-mcp-custom-plugin"
+version = "0.1.0"
+description = "Custom searcher plugin"
+packages = [{ include = "my_searchers" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+browse-mcp = "*"
+stevedore = ">=5.0.0"
+
+# Register multiple searchers
+[tool.poetry.plugins."browse_mcp.searchers"]
+searcher1 = "my_searchers:Searcher1"
+searcher2 = "my_searchers:Searcher2"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+```
+
+### Implementing Custom Content Types
+
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List
+from browse_mcp.types import ContentSource
+
+@dataclass
+class MyContent:
+    content_id: str
+    title: str
+    body: str
+
+    def to_text(self) -> str:
+        return f"Title: {self.title}\nBody: {self.body}"
+
+class MySearcher(ContentSource[MyContent]):
+    def search(self, query: str, **kwargs) -> List[MyContent]:
+        # Your implementation
+        pass
+
+    def download(self, content_id: str, save_path: str) -> str:
+        # Your implementation
+        pass
+
+    def read(self, content_id: str, save_path: str) -> str:
+        # Your implementation
+        pass
+```
+
 ## Out of Scope
 
-- 修改 PaperSource 基类接口
+- ~~修改 PaperSource 基类接口~~ (已实现: 新增泛型基类)
 - 修改任何现有 searcher 的业务逻辑
-- 添加新的 searcher
-- 修改 Paper 数据结构
-- 修改 MCP 工具的对外接口
+- ~~添加新的 searcher~~ (已实现: 社交媒体插件示例)
+- ~~修改 Paper 数据结构~~ (已扩展: 支持自定义内容类型)
+- 修改 MCP 工具的对外接口 (保持向后兼容)
 - 实现插件配置文件系统（仅使用环境变量）

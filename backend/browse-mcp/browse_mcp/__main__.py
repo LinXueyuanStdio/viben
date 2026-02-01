@@ -182,7 +182,12 @@ async def paper_search(query_list: List[PaperQuery]) -> Dict[str, List[TextConte
             if isinstance(paper, dict) and "error" in paper:
                 pass
             else:
-                texts.append(paper2text(cast(Paper, paper)))
+                # Support both Paper and custom content types with to_text() method
+                if hasattr(paper, 'to_text'):
+                    texts.append(paper.to_text())
+                else:
+                    # Fallback for backward compatibility
+                    texts.append(paper2text(cast(Paper, paper)))
         content = "\n\n".join(texts) if texts else "No papers found."
         return content
     content = "No papers found."
