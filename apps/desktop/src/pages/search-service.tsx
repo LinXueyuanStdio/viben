@@ -489,11 +489,12 @@ function ServerCard({
             size="sm"
             onClick={isRunning ? handleStop : handleStart}
             disabled={loading || (!canStart && !isRunning)}
+            className={isRunning ? "text-white hover:text-white" : ""}
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
             ) : isRunning ? (
-              <Square className="h-4 w-4 mr-2" />
+              <Square className="h-4 w-4 mr-2 text-white" />
             ) : (
               <Play className="h-4 w-4 mr-2" />
             )}
