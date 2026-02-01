@@ -1,0 +1,5 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "Avoid duplicate documentation content"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "Documentation spans multiple components (MCP server, desktop app, plugins)"}
+{"file": "backend/browse-mcp/README.md", "reason": "Source material for MCP server documentation"}

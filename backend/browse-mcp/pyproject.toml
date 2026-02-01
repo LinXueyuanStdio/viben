@@ -1,39 +1,26 @@
-[build-system]
-requires = ["poetry-core>=1.9.0"]
-build-backend = "poetry.core.masonry.api"
-
-[project]
+[tool.poetry]
 name = "browse-mcp"
-version = "0.1.8"
+version = "0.1.9"
 description = "A MCP server for searching and downloading academic papers from multiple sources."
-readme = "README.md"
-requires-python = ">=3.10"
+authors = ["Xueyuan Lin <linxy59@mail2.sysu.edu.cn>"]
 license = "MIT"
-license-files = ["LICENSE"]
-authors = [
-  { name = "Xueyuan Lin", email = "linxy59@mail2.sysu.edu.cn" },
+readme = "README.md"
+homepage = "https://github.com/LinXueyuanStdio/browse-mcp"
+repository = "https://github.com/LinXueyuanStdio/browse-mcp"
+keywords = ["mcp", "academic", "papers", "search", "arxiv", "pubmed", "research"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
 ]
-dependencies = [
-  "requests",
-  "feedparser",
-  "fastmcp",
-  "mcp[cli]>=1.6.0",
-  "PyPDF2>=3.0.0",
-  "beautifulsoup4>=4.12.0",
-  "lxml>=4.9.0", # Better HTML parser for BeautifulSoup
-  "httpx[socks]>=0.28.1",
-  "typer>=0.12.0",
-  "uvicorn>=0.30.0",
-  "loguru>=0.7.0",
-  "pydantic>=2.0.0",
-  "xlin>=0.0.4",
-  "stevedore>=5.0.0",
-]
+packages = [{ include = "browse_mcp" }]
 
-[project.scripts]
+[tool.poetry.scripts]
 browse-mcp = "browse_mcp.__main__:main"
 
-[project.entry-points."browse_mcp.searchers"]
+[tool.poetry.plugins."browse_mcp.searchers"]
 arxiv = "browse_mcp.sources.arxiv:ArxivSearcher"
 pubmed = "browse_mcp.sources.pubmed:PubMedSearcher"
 pmc = "browse_mcp.sources.pmc:PMCSearcher"
@@ -53,5 +40,23 @@ jstor = "browse_mcp.sources.jstor:JSTORSearcher"
 researchgate = "browse_mcp.sources.researchgate:ResearchGateSearcher"
 core = "browse_mcp.sources.core:CORESearcher"
 
-[tool.poetry]
-packages = [{ include = "browse_mcp" }]
+[tool.poetry.dependencies]
+python = ">=3.10"
+requests = "*"
+feedparser = "*"
+fastmcp = "*"
+mcp = {extras = ["cli"], version = ">=1.6.0"}
+PyPDF2 = ">=3.0.0"
+beautifulsoup4 = ">=4.12.0"
+lxml = ">=4.9.0"
+httpx = {extras = ["socks"], version = ">=0.28.1"}
+typer = ">=0.12.0"
+uvicorn = ">=0.30.0"
+loguru = ">=0.7.0"
+pydantic = ">=2.0.0"
+xlin = ">=0.0.4"
+stevedore = ">=5.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

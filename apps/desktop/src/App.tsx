@@ -5,7 +5,6 @@ import {
   ProvidersPage,
   SearchServicePage,
   AgentsPage,
-  ApiKeysPage,
   LogsPage,
   SettingsPage,
   AboutPage,
@@ -20,7 +19,6 @@ function App() {
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="search-service" element={<SearchServicePage />} />
           <Route path="agents" element={<AgentsPage />} />
-          <Route path="api-keys" element={<ApiKeysPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />

@@ -1,64 +1,75 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpStatus } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, ServiceApiKey, AgentMcpAssignment } from "@/types";
 
 // Provider definitions with all 18 sources
+// Note: enabled is removed - providers only track installation/API key status
+// Source selection is now per-server in McpServerInstance.enabledSources
 const DEFAULT_PROVIDERS: Provider[] = [
   // Free & Open Access
-  { id: "arxiv", name: "arXiv", category: "free", enabled: true, requiresApiKey: false },
-  { id: "pubmed", name: "PubMed", category: "free", enabled: true, requiresApiKey: false },
-  { id: "pmc", name: "PMC", category: "free", enabled: true, requiresApiKey: false },
-  { id: "biorxiv", name: "bioRxiv", category: "free", enabled: true, requiresApiKey: false },
-  { id: "medrxiv", name: "medRxiv", category: "free", enabled: true, requiresApiKey: false },
-  { id: "semantic", name: "Semantic Scholar", category: "free", enabled: true, requiresApiKey: false },
-  { id: "core", name: "CORE", category: "free", enabled: false, requiresApiKey: false },
-  { id: "crossref", name: "Crossref", category: "free", enabled: true, requiresApiKey: false },
-  { id: "google_scholar", name: "Google Scholar", category: "free", enabled: true, requiresApiKey: false },
-  { id: "iacr", name: "IACR", category: "free", enabled: true, requiresApiKey: false },
+  { id: "arxiv", name: "arXiv", category: "free", requiresApiKey: false, description: "Pre-prints in physics, mathematics, computer science" },
+  { id: "pubmed", name: "PubMed", category: "free", requiresApiKey: false, description: "Biomedical literature from MEDLINE" },
+  { id: "pmc", name: "PMC", category: "free", requiresApiKey: false, description: "Full-text archive of biomedical articles" },
+  { id: "biorxiv", name: "bioRxiv", category: "free", requiresApiKey: false, description: "Pre-prints in biology" },
+  { id: "medrxiv", name: "medRxiv", category: "free", requiresApiKey: false, description: "Pre-prints in health sciences" },
+  { id: "semantic", name: "Semantic Scholar", category: "free", requiresApiKey: false, description: "AI-powered research tool" },
+  { id: "core", name: "CORE", category: "free", requiresApiKey: false, description: "World's largest collection of open access papers" },
+  { id: "crossref", name: "Crossref", category: "free", requiresApiKey: false, description: "DOI registration agency metadata" },
+  { id: "google_scholar", name: "Google Scholar", category: "free", requiresApiKey: false, description: "Google's academic search" },
+  { id: "iacr", name: "IACR", category: "free", requiresApiKey: false, description: "Cryptology ePrint Archive" },
   // API Key Required
-  { id: "sciencedirect", name: "ScienceDirect", category: "api_key", enabled: false, requiresApiKey: true, hasApiKey: false },
-  { id: "springer", name: "Springer", category: "api_key", enabled: false, requiresApiKey: true, hasApiKey: false },
-  { id: "ieee", name: "IEEE Xplore", category: "api_key", enabled: false, requiresApiKey: true, hasApiKey: false },
-  { id: "scopus", name: "Scopus", category: "api_key", enabled: false, requiresApiKey: true, hasApiKey: false },
+  { id: "sciencedirect", name: "ScienceDirect", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Elsevier's platform for peer-reviewed literature" },
+  { id: "springer", name: "Springer", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Scientific, technical and medical publications" },
+  { id: "ieee", name: "IEEE Xplore", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "IEEE and IET technical literature" },
+  { id: "scopus", name: "Scopus", category: "api_key", requiresApiKey: true, hasApiKey: false, description: "Elsevier's abstract and citation database" },
   // Institutional Access
-  { id: "acm", name: "ACM Digital Library", category: "institutional", enabled: false, requiresApiKey: false },
-  { id: "wos", name: "Web of Science", category: "institutional", enabled: false, requiresApiKey: false },
-  { id: "jstor", name: "JSTOR", category: "institutional", enabled: false, requiresApiKey: false },
-  { id: "researchgate", name: "ResearchGate", category: "institutional", enabled: false, requiresApiKey: false },
+  { id: "acm", name: "ACM Digital Library", category: "institutional", requiresApiKey: false, description: "Computing and IT research" },
+  { id: "wos", name: "Web of Science", category: "institutional", requiresApiKey: false, description: "Clarivate's citation database" },
+  { id: "jstor", name: "JSTOR", category: "institutional", requiresApiKey: false, description: "Digital library of academic journals" },
+  { id: "researchgate", name: "ResearchGate", category: "institutional", requiresApiKey: false, description: "Social network for researchers" },
 ];
 
-interface ApiKeys {
-  semantic_scholar?: string;
-  sciencedirect?: string;
-  springer?: string;
-  ieee?: string;
-  scopus?: string;
-  core?: string;
-}
+type ApiKeys = Record<string, string | undefined>;
 
 interface AppState {
   // Python
   selectedPython: PythonInfo | null;
   setSelectedPython: (python: PythonInfo | null) => void;
 
-  // Providers
+  // Providers (only track installation/API key status, not enabled state)
   providers: Provider[];
-  setProviderEnabled: (id: string, enabled: boolean) => void;
   setProviderApiKey: (id: string, hasKey: boolean) => void;
-  getEnabledProviders: () => Provider[];
-  getEnabledSourceIds: () => string[];
+  getAvailableProviders: () => Provider[]; // All providers that can be used (free or has API key)
 
-  // API Keys stored separately (stored separately for security)
+  // API Keys stored separately (for security)
   apiKeys: ApiKeys;
   setApiKey: (provider: string, key: string | undefined) => void;
 
-  // MCP Config
+  // MCP Servers (multiple instances)
+  mcpServers: McpServerInstance[];
+  addMcpServer: (server: Omit<McpServerInstance, "id" | "status" | "apiKeys">) => string;
+  updateMcpServer: (id: string, updates: Partial<McpServerInstance>) => void;
+  deleteMcpServer: (id: string) => void;
+  getMcpServer: (id: string) => McpServerInstance | undefined;
+  setMcpServerStatus: (id: string, status: "stopped" | "running", pid?: number) => void;
+  addServerApiKey: (serverId: string, apiKey: ServiceApiKey) => void;
+  deleteServerApiKey: (serverId: string, keyId: string) => void;
+
+  // Agent Assignments (which server+key each agent uses)
+  agentAssignments: AgentMcpAssignment[];
+  setAgentAssignment: (agentId: string, serverId: string, apiKeyId?: string) => void;
+  removeAgentAssignment: (agentId: string) => void;
+  getAgentAssignment: (agentId: string) => AgentMcpAssignment | undefined;
+
+  // Legacy MCP Config (for backward compatibility with single-server mode)
+  // These are used when no servers are configured
   mcpTransport: "stdio" | "sse" | "http";
   mcpPort: number;
   downloadPath: string;
   setMcpTransport: (transport: "stdio" | "sse" | "http") => void;
   setMcpPort: (port: number) => void;
   setDownloadPath: (path: string) => void;
+  getEnabledSourceIds: () => string[]; // For legacy compatibility
 
   // Statistics
   totalSearches: number;
@@ -73,6 +84,9 @@ interface AppState {
   setLanguage: (lang: "en" | "zh") => void;
 }
 
+// Generate unique ID
+const generateId = () => `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -82,23 +96,14 @@ export const useAppStore = create<AppState>()(
 
       // Providers
       providers: DEFAULT_PROVIDERS,
-      setProviderEnabled: (id, enabled) =>
-        set((state) => ({
-          providers: state.providers.map((p) =>
-            p.id === id ? { ...p, enabled } : p
-          ),
-        })),
       setProviderApiKey: (id, hasKey) =>
         set((state) => ({
           providers: state.providers.map((p) =>
-            p.id === id ? { ...p, hasApiKey: hasKey, enabled: hasKey ? p.enabled : false } : p
+            p.id === id ? { ...p, hasApiKey: hasKey } : p
           ),
         })),
-      getEnabledProviders: () => get().providers.filter((p) => p.enabled),
-      getEnabledSourceIds: () =>
-        get()
-          .providers.filter((p) => p.enabled)
-          .map((p) => p.id),
+      getAvailableProviders: () =>
+        get().providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
 
       // API Keys
       apiKeys: {},
@@ -107,13 +112,95 @@ export const useAppStore = create<AppState>()(
           apiKeys: { ...state.apiKeys, [provider]: key },
         })),
 
-      // MCP Config
-      mcpTransport: "stdio",
+      // MCP Servers
+      mcpServers: [],
+      addMcpServer: (server) => {
+        const id = generateId();
+        // Ensure port has a default value for non-stdio transports
+        const port = server.port ?? (server.transport === "stdio" ? undefined : 3000);
+        const newServer: McpServerInstance = {
+          ...server,
+          id,
+          port,
+          status: "stopped",
+          apiKeys: [],
+        };
+        set((state) => ({
+          mcpServers: [...state.mcpServers, newServer],
+        }));
+        return id;
+      },
+      updateMcpServer: (id, updates) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.map((s) =>
+            s.id === id ? { ...s, ...updates } : s
+          ),
+        })),
+      deleteMcpServer: (id) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.filter((s) => s.id !== id),
+          // Also remove any agent assignments to this server
+          agentAssignments: state.agentAssignments.filter((a) => a.serverId !== id),
+        })),
+      getMcpServer: (id) => get().mcpServers.find((s) => s.id === id),
+      setMcpServerStatus: (id, status, pid) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.map((s) =>
+            s.id === id ? { ...s, status, pid } : s
+          ),
+        })),
+      addServerApiKey: (serverId, apiKey) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.map((s) =>
+            s.id === serverId
+              ? { ...s, apiKeys: [...s.apiKeys, apiKey] }
+              : s
+          ),
+        })),
+      deleteServerApiKey: (serverId, keyId) =>
+        set((state) => ({
+          mcpServers: state.mcpServers.map((s) =>
+            s.id === serverId
+              ? { ...s, apiKeys: s.apiKeys.filter((k) => k.id !== keyId) }
+              : s
+          ),
+        })),
+
+      // Agent Assignments
+      agentAssignments: [],
+      setAgentAssignment: (agentId, serverId, apiKeyId) =>
+        set((state) => {
+          const existing = state.agentAssignments.find((a) => a.agentId === agentId);
+          if (existing) {
+            return {
+              agentAssignments: state.agentAssignments.map((a) =>
+                a.agentId === agentId ? { agentId, serverId, apiKeyId } : a
+              ),
+            };
+          }
+          return {
+            agentAssignments: [...state.agentAssignments, { agentId, serverId, apiKeyId }],
+          };
+        }),
+      removeAgentAssignment: (agentId) =>
+        set((state) => ({
+          agentAssignments: state.agentAssignments.filter((a) => a.agentId !== agentId),
+        })),
+      getAgentAssignment: (agentId) =>
+        get().agentAssignments.find((a) => a.agentId === agentId),
+
+      // Legacy MCP Config (single server mode)
+      mcpTransport: "sse",
       mcpPort: 3000,
       downloadPath: "~/Downloads/browse-mcp",
       setMcpTransport: (transport) => set({ mcpTransport: transport }),
       setMcpPort: (port) => set({ mcpPort: port }),
       setDownloadPath: (path) => set({ downloadPath: path }),
+      // Legacy: returns all available providers (free + has API key)
+      getEnabledSourceIds: () =>
+        get()
+          .providers.filter((p) => !p.requiresApiKey || p.hasApiKey)
+          .map((p) => p.id),
 
       // Statistics
       totalSearches: 0,
@@ -134,6 +221,8 @@ export const useAppStore = create<AppState>()(
         selectedPython: state.selectedPython,
         providers: state.providers,
         apiKeys: state.apiKeys,
+        mcpServers: state.mcpServers,
+        agentAssignments: state.agentAssignments,
         mcpTransport: state.mcpTransport,
         mcpPort: state.mcpPort,
         downloadPath: state.downloadPath,

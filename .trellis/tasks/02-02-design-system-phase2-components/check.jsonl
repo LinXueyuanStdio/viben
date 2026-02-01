@@ -1,0 +1,5 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check-frontend.md", "reason": "Frontend check spec"}
+{"file": ".trellis/spec/frontend/design-system.md", "reason": "Design system spec for visual verification"}
+{"file": "apps/desktop/src/components/ui/button.tsx", "reason": "Verify button hover lift and shadow effects"}
+{"file": "apps/desktop/src/components/layout/sidebar.tsx", "reason": "Verify sidebar styling updates"}

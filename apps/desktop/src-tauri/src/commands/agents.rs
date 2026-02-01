@@ -14,10 +14,19 @@ pub struct AgentInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpServerConfig {
-    pub command: String,
-    pub args: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<std::collections::HashMap<String, String>>,
+    // For SSE/HTTP transports
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transport: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<std::collections::HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -101,7 +110,13 @@ pub async fn write_agent_config(agent_id: String, config: AgentMcpConfig) -> Res
 
 /// Add browse-mcp to an agent's MCP configuration
 #[tauri::command]
-pub async fn configure_browse_mcp(agent_id: String, python_path: Option<String>) -> Result<(), String> {
+pub async fn configure_browse_mcp(
+    agent_id: String,
+    python_path: Option<String>,
+    transport: Option<String>,
+    port: Option<u16>,
+    api_key_id: Option<String>,
+) -> Result<(), String> {
     let config_path = get_agent_config_path(&agent_id)?;
 
     // Read existing config or create new
@@ -117,18 +132,67 @@ pub async fn configure_browse_mcp(agent_id: String, python_path: Option<String>)
         }
     };
 
-    // Create browse-mcp server config
-    let server_config = if let Some(python) = python_path {
-        McpServerConfig {
-            command: python,
-            args: vec!["-m".to_string(), "browse_mcp".to_string()],
-            env: None,
-        }
+    // Create browse-mcp server config based on transport type
+    let transport_type = transport.unwrap_or_else(|| "sse".to_string());
+
+    // Fetch the actual API key if provided
+    let api_key = if let Some(ref key_id) = api_key_id {
+        crate::commands::service_keys::get_service_key_by_id(key_id.clone())
+            .await
+            .ok()
+            .flatten()
+            .map(|k| k.key)
     } else {
-        McpServerConfig {
-            command: "browse-mcp".to_string(),
-            args: vec![],
-            env: None,
+        None
+    };
+
+    let server_config = match transport_type.as_str() {
+        "sse" | "http" => {
+            let port_num = port.unwrap_or(3000);
+            let base_url = format!("http://localhost:{}", port_num);
+            let url = if transport_type == "sse" {
+                format!("{}/sse", base_url)
+            } else {
+                base_url
+            };
+
+            // Add API key to headers if provided
+            let headers = api_key.map(|key| {
+                let mut headers_map = std::collections::HashMap::new();
+                headers_map.insert("Authorization".to_string(), format!("Bearer {}", key));
+                headers_map
+            });
+
+            McpServerConfig {
+                command: None,
+                args: None,
+                env: None,
+                url: Some(url),
+                transport: Some(transport_type),
+                headers,
+            }
+        }
+        _ => {
+            // stdio transport (deprecated but kept for compatibility)
+            if let Some(python) = python_path {
+                McpServerConfig {
+                    command: Some(python),
+                    args: Some(vec!["-m".to_string(), "browse_mcp".to_string()]),
+                    env: None,
+                    url: None,
+                    transport: None,
+                    headers: None,
+                }
+            } else {
+                McpServerConfig {
+                    command: Some("browse-mcp".to_string()),
+                    args: Some(vec![]),
+                    env: None,
+                    url: None,
+                    transport: None,
+                    headers: None,
+                }
+            }
         }
     };
 

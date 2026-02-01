@@ -1,0 +1,41 @@
+{
+  "id": "design-system-phase4-layout",
+  "name": "design-system-phase4-layout",
+  "title": "Design System Phase 4: Bento Grid Layout",
+  "description": "Implement 12-column Bento Grid layout system and refactor Dashboard to use modern card-based layout",
+  "status": "planning",
+  "dev_type": "frontend",
+  "scope": "frontend",
+  "priority": "P2",
+  "creator": "browse-mcp",
+  "assignee": "browse-mcp",
+  "createdAt": "2026-02-02",
+  "completedAt": null,
+  "branch": "feature/design-system-phase4",
+  "base_branch": null,
+  "worktree_path": null,
+  "current_phase": 0,
+  "next_action": [
+    {
+      "phase": 1,
+      "action": "implement"
+    },
+    {
+      "phase": 2,
+      "action": "check"
+    },
+    {
+      "phase": 3,
+      "action": "finish"
+    },
+    {
+      "phase": 4,
+      "action": "create-pr"
+    }
+  ],
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "relatedFiles": [],
+  "notes": ""
+}

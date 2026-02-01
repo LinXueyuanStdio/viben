@@ -1,0 +1,4 @@
+{"file": ".claude/commands/trellis/finish-work.md", "reason": "Finish work checklist"}
+{"file": ".claude/commands/trellis/check-frontend.md", "reason": "Frontend check spec"}
+{"file": ".trellis/spec/frontend/design-system.md", "reason": "Verify animations match design system spec"}
+{"file": ".trellis/tasks/02-02-design-system-implementation/prd.md", "reason": "Verify Phase 3 acceptance criteria are met"}
