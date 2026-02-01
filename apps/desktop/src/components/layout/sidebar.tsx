@@ -52,14 +52,19 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
 
   // Background check for setup status
   useEffect(() => {
-    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+    // Only update when data is actually loaded
+    if (selectedPython !== null && browseMcpInfo !== undefined) {
+      const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
 
-    if (shouldCheckSetup()) {
-      setSetupStatus(isSetupComplete);
+      // Always update cache when data changes to keep it fresh
+      if (setupStatus === null || setupStatus.isComplete !== isSetupComplete) {
+        setSetupStatus(isSetupComplete);
+      }
     }
-  }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
+  }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
-  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
+  // Trust cached status completely - only compute if no cache exists
+  const isSetupComplete = setupStatus?.isComplete ?? false;
 
   return (
     <TooltipProvider delayDuration={0}>
