@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
     "desktop": "pnpm --filter @browse-mcp/desktop",
-    "mcp-server": "pnpm --filter @browse-mcp/mcp-server"
+    "mcp-server": "pnpm --filter @browse-mcp/mcp-server",
+    "docs": "pnpm --filter @browse-mcp/docs"
   },
   "devDependencies": {
     "turbo": "^2.3.0",
