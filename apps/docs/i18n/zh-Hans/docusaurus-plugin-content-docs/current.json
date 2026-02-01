@@ -1,0 +1,18 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.Getting Started": {
+    "message": "快速开始",
+    "description": "The label for category 'Getting Started' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.MCP Server": {
+    "message": "MCP 服务器",
+    "description": "The label for category 'MCP Server' in sidebar 'tutorialSidebar'"
+  },
+  "sidebar.tutorialSidebar.category.Tools": {
+    "message": "工具",
+    "description": "The label for category 'Tools' in sidebar 'tutorialSidebar'"
+  }
+}
