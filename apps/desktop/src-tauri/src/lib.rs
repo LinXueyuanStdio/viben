@@ -72,6 +72,17 @@ pub fn run() {
             commands::usage::get_api_key_usage,
             commands::usage::get_server_usage,
             commands::usage::get_source_usage,
+            // Marketplace commands
+            commands::marketplace::get_provider_index,
+            commands::marketplace::get_flat_sources,
+            commands::marketplace::get_sources_by_provider,
+            commands::marketplace::clear_provider_cache,
+            // API Logs commands
+            commands::api_logs::get_api_log_sessions,
+            commands::api_logs::get_api_logs,
+            commands::api_logs::get_api_log_summary,
+            commands::api_logs::clear_api_logs,
+            commands::api_logs::get_api_logs_dir_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

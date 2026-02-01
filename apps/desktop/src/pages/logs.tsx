@@ -11,15 +11,22 @@ import {
   Server,
   Clock,
   ChevronRight,
+  ChevronDown,
   FolderOpen,
   CheckCircle2,
   XCircle,
   Terminal,
   Activity,
+  Filter,
+  Search,
+  Zap,
+  Database,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLogs, type LogEntry, type LogSession } from "@/hooks/use-logs";
+import { useApiLogs, type ApiLogEntry, type ApiLogSession } from "@/hooks/use-api-logs";
 import { save } from "@tauri-apps/plugin-dialog";
 
 type TabType = "server" | "api";
@@ -410,21 +417,398 @@ function TerminalLogLine({ log }: TerminalLogLineProps) {
   );
 }
 
-// API Logs Tab - placeholder for now, will be implemented with JSONL logging
+// API Logs Tab - Full implementation with JSONL logging
 function ApiLogsTab() {
+  const {
+    sessions,
+    selectedRunId,
+    setSelectedRunId,
+    logs,
+    summary,
+    loading,
+    error,
+    logsDirPath,
+    autoRefresh,
+    setAutoRefresh,
+    filter,
+    setFilter,
+    clearFilter,
+    clearLogs,
+    refresh,
+    uniqueProviders,
+    uniqueSources,
+    uniqueMethods,
+  } = useApiLogs();
+
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filter logs by search query
+  const filteredLogs = searchQuery
+    ? logs.filter(
+        (log) =>
+          log.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.provider.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          log.method.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (log.error && log.error.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : logs;
+
+  const handleClearSession = async () => {
+    if (!selectedRunId) return;
+    if (!confirm(`Delete API logs for this session?`)) return;
+    await clearLogs(selectedRunId);
+  };
+
   return (
-    <div className="flex-1 flex items-center justify-center text-muted-foreground">
-      <div className="text-center">
-        <Activity className="h-16 w-16 mx-auto mb-4 opacity-50" />
-        <h2 className="text-xl font-semibold mb-2">API Logs</h2>
-        <p className="text-sm max-w-md">
-          API request logs will appear here when the MCP server handles requests.
-          <br />
-          <span className="text-xs mt-2 block">
-            Logs are stored in JSONL format for analysis.
-          </span>
-        </p>
+    <div className="flex-1 flex gap-4 min-h-0">
+      {/* Sessions sidebar */}
+      <div className="w-64 flex flex-col rounded-lg border bg-card">
+        <div className="p-3 border-b">
+          <h2 className="font-semibold text-sm">API Sessions</h2>
+          <p className="text-xs text-muted-foreground">
+            {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+          </p>
+          {logsDirPath && (
+            <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate flex items-center gap-1">
+              <FolderOpen className="h-3 w-3 flex-shrink-0" />
+              <span className="truncate">{logsDirPath}</span>
+            </p>
+          )}
+        </div>
+        <ScrollArea className="flex-1">
+          {sessions.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p>No API logs yet</p>
+              <p className="text-xs mt-1">Logs will appear when the MCP server handles requests</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {sessions.map((session) => (
+                <ApiSessionItem
+                  key={session.run_id}
+                  session={session}
+                  selected={session.run_id === selectedRunId}
+                  onClick={() => setSelectedRunId(session.run_id)}
+                />
+              ))}
+            </div>
+          )}
+        </ScrollArea>
       </div>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Controls */}
+        <div className="mb-3 flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            className={autoRefresh ? "bg-green-50 dark:bg-green-950" : ""}
+          >
+            {autoRefresh ? (
+              <ToggleRight className="h-4 w-4 mr-1 text-green-600" />
+            ) : (
+              <ToggleLeft className="h-4 w-4 mr-1" />
+            )}
+            Auto
+          </Button>
+          <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
+            {loading ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1" />
+            )}
+            Refresh
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className={showFilters ? "bg-muted" : ""}
+          >
+            <Filter className="h-4 w-4 mr-1" />
+            Filters
+          </Button>
+          <div className="flex-1" />
+          {selectedRunId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearSession}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Filters */}
+        {showFilters && (
+          <div className="mb-3 p-3 rounded-lg border bg-card">
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search logs..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-md border bg-background text-sm"
+                />
+              </div>
+              <select
+                value={filter.provider || ""}
+                onChange={(e) => setFilter({ ...filter, provider: e.target.value || undefined })}
+                className="px-3 py-1.5 rounded-md border bg-background text-sm"
+              >
+                <option value="">All Providers</option>
+                {uniqueProviders.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+              <select
+                value={filter.source || ""}
+                onChange={(e) => setFilter({ ...filter, source: e.target.value || undefined })}
+                className="px-3 py-1.5 rounded-md border bg-background text-sm"
+              >
+                <option value="">All Sources</option>
+                {uniqueSources.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+              <select
+                value={filter.method || ""}
+                onChange={(e) => setFilter({ ...filter, method: e.target.value as "search" | "download" | "read" | undefined })}
+                className="px-3 py-1.5 rounded-md border bg-background text-sm"
+              >
+                <option value="">All Methods</option>
+                {uniqueMethods.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={filter.status || ""}
+                onChange={(e) => setFilter({ ...filter, status: e.target.value as "success" | "error" | undefined })}
+                className="px-3 py-1.5 rounded-md border bg-background text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="success">Success</option>
+                <option value="error">Error</option>
+              </select>
+              {(filter.provider || filter.source || filter.method || filter.status || searchQuery) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    clearFilter();
+                    setSearchQuery("");
+                  }}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Summary */}
+        {summary && summary.total_requests > 0 && (
+          <div className="mb-3 grid grid-cols-4 gap-3">
+            <div className="p-3 rounded-lg border bg-card">
+              <p className="text-2xl font-bold">{summary.total_requests}</p>
+              <p className="text-xs text-muted-foreground">Total Requests</p>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <p className="text-2xl font-bold text-green-600">{summary.successful_requests}</p>
+              <p className="text-xs text-muted-foreground">Successful</p>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <p className="text-2xl font-bold text-red-600">{summary.failed_requests}</p>
+              <p className="text-xs text-muted-foreground">Failed</p>
+            </div>
+            <div className="p-3 rounded-lg border bg-card">
+              <p className="text-2xl font-bold">{summary.avg_latency_ms.toFixed(0)}ms</p>
+              <p className="text-xs text-muted-foreground">Avg Latency</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="mb-3 p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        {/* Log viewer */}
+        <div className="flex-1 rounded-lg overflow-hidden bg-[#1e1e1e] border border-[#333]">
+          {!selectedRunId ? (
+            <div className="h-full flex flex-col items-center justify-center text-gray-500">
+              <Activity className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">Select a session</p>
+              <p className="text-sm">Choose an API log session from the sidebar</p>
+            </div>
+          ) : filteredLogs.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-gray-500">
+              <Database className="h-12 w-12 mb-4 opacity-50" />
+              <p className="text-lg font-medium">No logs</p>
+              <p className="text-sm">
+                {searchQuery || Object.keys(filter).length > 0
+                  ? "No logs match your filters"
+                  : "API logs will appear here when requests are made"}
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="h-full">
+              <div className="p-3 font-mono text-xs space-y-1">
+                {filteredLogs.map((log, idx) => (
+                  <ApiLogLine
+                    key={`${log.timestamp}-${idx}`}
+                    log={log}
+                    expanded={expandedLogId === `${log.timestamp}-${idx}`}
+                    onToggle={() =>
+                      setExpandedLogId(
+                        expandedLogId === `${log.timestamp}-${idx}` ? null : `${log.timestamp}-${idx}`
+                      )
+                    }
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </div>
+
+        {/* Status bar */}
+        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {filteredLogs.length} log{filteredLogs.length !== 1 ? "s" : ""}
+            {(searchQuery || Object.keys(filter).length > 0) && ` (filtered)`}
+          </span>
+          {autoRefresh && (
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              Auto-refreshing every 5s
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface ApiSessionItemProps {
+  session: ApiLogSession;
+  selected: boolean;
+  onClick: () => void;
+}
+
+function ApiSessionItem({ session, selected, onClick }: ApiSessionItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left p-3 hover:bg-muted/50 transition-colors ${
+        selected ? "bg-muted" : ""
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <Activity className="h-3 w-3 text-muted-foreground" />
+        <span className="font-medium text-sm truncate flex-1 font-mono">
+          {session.run_id}
+        </span>
+        <span className="text-xs text-muted-foreground">{session.entry_count}</span>
+        {selected && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+      </div>
+      {session.created_at && (
+        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>{session.created_at}</span>
+        </div>
+      )}
+    </button>
+  );
+}
+
+interface ApiLogLineProps {
+  log: ApiLogEntry;
+  expanded: boolean;
+  onToggle: () => void;
+}
+
+function ApiLogLine({ log, expanded, onToggle }: ApiLogLineProps) {
+  const isError = log.status === "error";
+  const textColor = isError ? "text-red-400" : "text-gray-300";
+
+  // Format timestamp for display
+  const time = log.timestamp.split("T")[1]?.replace("Z", "") || log.timestamp;
+
+  // Method icons
+  const methodIcon = {
+    search: <Search className="h-3 w-3" />,
+    download: <Download className="h-3 w-3" />,
+    read: <BookOpen className="h-3 w-3" />,
+  }[log.method] || <Zap className="h-3 w-3" />;
+
+  return (
+    <div className={`${textColor}`}>
+      <button
+        onClick={onToggle}
+        className="w-full text-left flex items-center gap-2 hover:bg-white/5 px-1 py-0.5 rounded"
+      >
+        {expanded ? (
+          <ChevronDown className="h-3 w-3 text-gray-500 flex-shrink-0" />
+        ) : (
+          <ChevronRight className="h-3 w-3 text-gray-500 flex-shrink-0" />
+        )}
+        <span className="text-gray-500 w-20 flex-shrink-0">{time}</span>
+        <span className="text-cyan-400 flex items-center gap-1 w-20 flex-shrink-0">
+          {methodIcon}
+          {log.method}
+        </span>
+        <span className="text-purple-400 w-32 flex-shrink-0 truncate">
+          {log.provider}/{log.source}
+        </span>
+        <span
+          className={`w-14 flex-shrink-0 ${
+            isError ? "text-red-400" : "text-green-400"
+          }`}
+        >
+          {log.status}
+        </span>
+        <span className="text-yellow-400 w-16 flex-shrink-0">
+          {log.latency_ms.toFixed(0)}ms
+        </span>
+        {log.error && (
+          <span className="text-red-400 truncate flex-1">{log.error}</span>
+        )}
+      </button>
+
+      {expanded && (
+        <div className="ml-6 mt-1 mb-2 p-2 bg-black/30 rounded text-xs space-y-2">
+          <div>
+            <span className="text-gray-500">Request:</span>
+            <pre className="mt-1 text-gray-400 whitespace-pre-wrap break-all">
+              {JSON.stringify(log.request, null, 2)}
+            </pre>
+          </div>
+          <div>
+            <span className="text-gray-500">Response:</span>
+            <pre className="mt-1 text-gray-400 whitespace-pre-wrap break-all">
+              {JSON.stringify(log.response, null, 2)}
+            </pre>
+          </div>
+          {log.api_key_hash && (
+            <div>
+              <span className="text-gray-500">API Key Hash:</span>
+              <span className="ml-2 text-gray-400 font-mono">{log.api_key_hash}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

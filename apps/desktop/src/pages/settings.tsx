@@ -21,7 +21,7 @@ export function SettingsPage() {
 
   // Update global setup status when Python or browse-mcp status changes
   const updateSetupStatus = useCallback(() => {
-    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+    const isSetupComplete = Boolean(selectedPython?.is_valid && browseMcpInfo?.installed);
     setSetupStatus(isSetupComplete);
   }, [selectedPython, browseMcpInfo, setSetupStatus]);
 
