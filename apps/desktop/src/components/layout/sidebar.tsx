@@ -20,8 +20,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useAppStore } from "@/stores";
-import { usePython } from "@/hooks/use-python";
-import { useEffect } from "react";
 
 interface NavItem {
   title: string;
@@ -47,22 +45,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
-  const { selectedPython, browseMcpInfo } = usePython();
-  const { setupStatus, setSetupStatus, shouldCheckSetup } = useAppStore();
+  // Read global setup status from store (calculated in AppLayout)
+  const { setupStatus } = useAppStore();
 
-  // Background check for setup status
-  useEffect(() => {
-    // Only update when data is actually loaded
-    if (selectedPython !== null && browseMcpInfo !== undefined) {
-      const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
-
-      // Update cache immediately when data loads
-      setSetupStatus(isSetupComplete);
-    }
-  }, [selectedPython, browseMcpInfo, setSetupStatus]);
-
-  // Use cached status if available, otherwise compute from loaded data
-  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
+  // Only show as complete if cache explicitly says so
+  const isSetupComplete = setupStatus?.isComplete === true;
 
   return (
     <TooltipProvider delayDuration={0}>

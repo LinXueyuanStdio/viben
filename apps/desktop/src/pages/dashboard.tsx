@@ -46,8 +46,6 @@ export function DashboardPage() {
     setupBannerDismissed,
     setSetupBannerDismissed,
     setupStatus,
-    setSetupStatus,
-    shouldCheckSetup,
   } = useAppStore();
 
   const installedAgents = agents.filter((a) => a.installed);
@@ -55,20 +53,8 @@ export function DashboardPage() {
   const availableProviders = getAvailableProviders();
   const runningServers = mcpServers.filter((s) => s.status === "running");
 
-  // Check setup status with caching
-  useEffect(() => {
-    // Only check if data is actually loaded
-    if (selectedPython !== null && browseMcpInfo !== undefined) {
-      const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
-
-      // Update cache immediately when data loads
-      setSetupStatus(isSetupComplete);
-    }
-  }, [selectedPython, browseMcpInfo, setSetupStatus]);
-
-  // Determine if we should show the setup banner
-  // ONLY show when cache explicitly confirms setup is incomplete
-  // Never show in any other case (hydrating, loading, no cache, etc.)
+  // Read global setup status (calculated in AppLayout)
+  // ONLY show banner when cache explicitly confirms setup is incomplete
   const showSetupBanner =
     !setupBannerDismissed &&
     setupStatus !== null &&
