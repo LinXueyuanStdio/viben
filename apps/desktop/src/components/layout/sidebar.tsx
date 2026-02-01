@@ -7,6 +7,8 @@ import {
   FileText,
   Info,
   Search,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -17,6 +19,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useAppStore } from "@/stores";
+import { usePython } from "@/hooks/use-python";
+import { useEffect } from "react";
 
 interface NavItem {
   title: string;
@@ -42,6 +47,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
+  const { selectedPython, browseMcpInfo } = usePython();
+  const { setupStatus, setSetupStatus, shouldCheckSetup } = useAppStore();
+
+  // Background check for setup status
+  useEffect(() => {
+    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+
+    if (shouldCheckSetup()) {
+      setSetupStatus(isSetupComplete);
+    }
+  }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
+
+  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -81,6 +100,40 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
               <NavItem key={item.href} item={item} collapsed={collapsed} />
             ))}
           </nav>
+
+          {/* Setup Status Indicator */}
+          <div className="mt-3 px-3 py-2">
+            {collapsed ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex justify-center">
+                    {isSetupComplete ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    )}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  {isSetupComplete ? "Setup Complete" : "Setup Required"}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <div className="flex items-center gap-2 text-xs">
+                {isSetupComplete ? (
+                  <>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                    <span className="text-sidebar-foreground/70">Setup Complete</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                    <span className="text-sidebar-foreground/70">Setup Required</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </TooltipProvider>

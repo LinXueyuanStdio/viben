@@ -82,6 +82,18 @@ interface AppState {
   // Language
   language: "en" | "zh";
   setLanguage: (lang: "en" | "zh") => void;
+
+  // Setup Banner
+  setupBannerDismissed: boolean;
+  setSetupBannerDismissed: (dismissed: boolean) => void;
+
+  // Setup Status (cached to avoid repeated checks)
+  setupStatus: {
+    isComplete: boolean;
+    lastChecked: number; // timestamp
+  } | null;
+  setSetupStatus: (isComplete: boolean) => void;
+  shouldCheckSetup: () => boolean; // Returns true if check is needed
 }
 
 // Generate unique ID
@@ -214,6 +226,26 @@ export const useAppStore = create<AppState>()(
       // Language
       language: "en",
       setLanguage: (lang) => set({ language: lang }),
+
+      // Setup Banner
+      setupBannerDismissed: false,
+      setSetupBannerDismissed: (dismissed) => set({ setupBannerDismissed: dismissed }),
+
+      // Setup Status
+      setupStatus: null,
+      setSetupStatus: (isComplete) =>
+        set({
+          setupStatus: {
+            isComplete,
+            lastChecked: Date.now(),
+          },
+        }),
+      shouldCheckSetup: () => {
+        const status = get().setupStatus;
+        if (!status) return true; // Never checked before
+        const fiveMinutes = 5 * 60 * 1000;
+        return Date.now() - status.lastChecked > fiveMinutes; // Re-check every 5 minutes
+      },
     }),
     {
       name: "browse-mcp-storage",
@@ -229,6 +261,8 @@ export const useAppStore = create<AppState>()(
         totalSearches: state.totalSearches,
         theme: state.theme,
         language: state.language,
+        setupBannerDismissed: state.setupBannerDismissed,
+        setupStatus: state.setupStatus,
       }),
     }
   )

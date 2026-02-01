@@ -19,83 +19,65 @@ const prefersReducedMotion =
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 const easeOutBack = [0.34, 1.56, 0.64, 1] as const;
 
-// Stagger container variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 20,
-  },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: easeOutExpo,
-    },
-  },
-};
-
-const cardVariants = {
-  hidden: {
-    opacity: 0,
-    scale: prefersReducedMotion ? 1 : 0.95,
-    y: prefersReducedMotion ? 0 : 10,
-  },
-  show: {
-    opacity: 1,
-    scale: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: easeOutBack,
-    },
-  },
-};
-
 export function DashboardPage() {
   const { agents, loading: agentsLoading } = useAgents();
   const { selectedPython, browseMcpInfo } = usePython();
   const { stats, loading: usageLoading } = useUsage();
-  const { providers, mcpServers, getAvailableProviders } = useAppStore();
+  const {
+    providers,
+    mcpServers,
+    getAvailableProviders,
+    setupBannerDismissed,
+    setSetupBannerDismissed,
+    setupStatus,
+    setSetupStatus,
+    shouldCheckSetup,
+  } = useAppStore();
 
   const installedAgents = agents.filter((a) => a.installed);
   const configuredAgents = agents.filter((a) => a.configured);
   const availableProviders = getAvailableProviders();
   const runningServers = mcpServers.filter((s) => s.status === "running");
 
-  // Check if setup is complete
-  const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+  // Check setup status with caching
+  useEffect(() => {
+    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+
+    // Only update if we should check (first time or after 5 minutes)
+    if (shouldCheckSetup()) {
+      setSetupStatus(isSetupComplete);
+    }
+  }, [selectedPython, browseMcpInfo, shouldCheckSetup, setSetupStatus]);
+
+  // Use cached status if available, otherwise compute
+  const isSetupComplete = setupStatus?.isComplete ?? (selectedPython?.is_valid && browseMcpInfo?.installed);
+
+  // Only show setup banner if not complete AND not dismissed
+  const showSetupBanner = !isSetupComplete && !setupBannerDismissed;
 
   return (
     <div className="p-6">
-      <motion.h1
-        className="text-2xl font-bold mb-6"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: easeOutExpo }}
-      >
-        Dashboard
-      </motion.h1>
+      {/* Page title - no individual animation, AppLayout handles page transitions */}
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
-      {/* Setup Banner */}
-      {!isSetupComplete && (
+      {/* Setup Banner - only shown if not complete AND not dismissed */}
+      {showSetupBanner && (
         <motion.div
-          className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 theme-transition"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: easeOutExpo }}
+          initial={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950 theme-transition relative overflow-hidden"
         >
-          <div className="flex items-start justify-between">
+          <button
+            onClick={() => setSetupBannerDismissed(true)}
+            className="absolute top-2 right-2 p-1 hover:bg-yellow-200 dark:hover:bg-yellow-800 rounded transition-colors"
+            aria-label="Dismiss setup banner"
+          >
+            <svg className="w-4 h-4 text-yellow-800 dark:text-yellow-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div className="flex items-start justify-between pr-8">
             <div>
               <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
                 Setup Required
@@ -179,7 +161,7 @@ export function DashboardPage() {
           </Link>
         </BentoCard>
 
-        {/* Usage Charts Row - Large + Medium */}
+        {/* Row 2: Daily Usage Chart (large) + Quick Actions (small, stacked) */}
         <BentoCard size="large">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -192,7 +174,26 @@ export function DashboardPage() {
           )}
         </BentoCard>
 
-        <BentoCard size="small">
+        <BentoCard size="small" asCard={false}>
+          <QuickActionCard
+            title="Configure AI Agents"
+            description="Set up browse-mcp for your AI assistants"
+            linkTo="/agents"
+            count={`${configuredAgents.length}/${installedAgents.length} configured`}
+          />
+        </BentoCard>
+
+        <BentoCard size="small" asCard={false}>
+          <QuickActionCard
+            title="Manage Data Sources"
+            description="Configure API keys for search sources"
+            linkTo="/providers"
+            count={`${availableProviders.length} available`}
+          />
+        </BentoCard>
+
+        {/* Row 3: Usage by Server + Usage by Data Source */}
+        <BentoCard size="medium">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Usage by Server
@@ -218,25 +219,6 @@ export function DashboardPage() {
           )}
         </BentoCard>
 
-        {/* Activity Heatmap - Full width */}
-        <BentoCard size="full">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Activity
-            </h2>
-            <span className="text-sm text-muted-foreground">
-              {stats?.this_month_requests ?? 0} requests this month
-            </span>
-          </div>
-          {usageLoading ? (
-            <SkeletonHeatmap />
-          ) : (
-            <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
-          )}
-        </BentoCard>
-
-        {/* Usage by Source + Quick Actions Row */}
         <BentoCard size="medium">
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Database className="h-5 w-5" />
@@ -263,21 +245,22 @@ export function DashboardPage() {
           )}
         </BentoCard>
 
-        <BentoCard size="medium" asCard={false}>
-          <div className="space-y-4 h-full flex flex-col">
-            <QuickActionCard
-              title="Configure AI Agents"
-              description="Set up browse-mcp for your AI assistants"
-              linkTo="/agents"
-              count={`${configuredAgents.length}/${installedAgents.length} configured`}
-            />
-            <QuickActionCard
-              title="Manage Data Sources"
-              description="Configure API keys for search sources"
-              linkTo="/providers"
-              count={`${availableProviders.length} available`}
-            />
+        {/* Row 4: Activity Heatmap - Full width */}
+        <BentoCard size="full">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Activity
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              {stats?.this_month_requests ?? 0} requests this month
+            </span>
           </div>
+          {usageLoading ? (
+            <SkeletonHeatmap />
+          ) : (
+            <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
+          )}
         </BentoCard>
 
         {/* Environment Status - Full width */}
@@ -524,16 +507,16 @@ function UsageLineChart({ data }: UsageLineChartProps) {
           <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeOpacity="0.1" />
           <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" strokeOpacity="0.1" />
 
-          {/* Area fill with fade animation */}
+          {/* Area fill with fade animation - delayed to avoid page transition overlap */}
           <motion.path
             d={areaD}
             fill="url(#gradient)"
             initial={{ opacity: 0 }}
             animate={{ opacity: mounted ? 0.3 : 0 }}
-            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
+            transition={{ duration: 0.7, delay: 0.8, ease: "easeOut" }}
           />
 
-          {/* Line with draw animation */}
+          {/* Line with draw animation - delayed to avoid page transition overlap */}
           {mounted ? (
             <motion.path
               d={pathD}
@@ -545,6 +528,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
               animate={{ pathLength: 1 }}
               transition={{
                 duration: prefersReducedMotion ? 0 : 0.7,
+                delay: 0.6,
                 ease: "easeOut",
               }}
             />
@@ -559,7 +543,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
             />
           )}
 
-          {/* Points with stagger animation */}
+          {/* Points with stagger animation - delayed to avoid page transition overlap */}
           {chartData.points.map((p, i) => (
             <motion.circle
               key={i}
@@ -572,7 +556,7 @@ function UsageLineChart({ data }: UsageLineChartProps) {
               animate={{ opacity: mounted ? 1 : 0, scale: mounted ? 1 : 0 }}
               transition={{
                 duration: prefersReducedMotion ? 0 : 0.2,
-                delay: prefersReducedMotion ? 0 : 0.7 + i * 0.02,
+                delay: prefersReducedMotion ? 0 : 1.3 + i * 0.02,
                 ease: easeOutBack,
               }}
             >
@@ -646,6 +630,8 @@ function UsageByCategory({ data, labelMap, emptyMessage }: UsageByCategoryProps)
         show: {
           opacity: 1,
           transition: {
+            // Delay stagger to avoid page transition overlap
+            delayChildren: 0.6,
             staggerChildren: prefersReducedMotion ? 0 : 0.1,
           },
         },
