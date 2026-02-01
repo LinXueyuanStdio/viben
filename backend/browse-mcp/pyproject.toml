@@ -28,10 +28,31 @@ dependencies = [
   "loguru>=0.7.0",
   "pydantic>=2.0.0",
   "xlin>=0.0.4",
+  "stevedore>=5.0.0",
 ]
 
 [project.scripts]
 browse-mcp = "browse_mcp.__main__:main"
+
+[project.entry-points."browse_mcp.searchers"]
+arxiv = "browse_mcp.sources.arxiv:ArxivSearcher"
+pubmed = "browse_mcp.sources.pubmed:PubMedSearcher"
+pmc = "browse_mcp.sources.pmc:PMCSearcher"
+biorxiv = "browse_mcp.sources.biorxiv:BioRxivSearcher"
+medrxiv = "browse_mcp.sources.medrxiv:MedRxivSearcher"
+google_scholar = "browse_mcp.sources.google_scholar:GoogleScholarSearcher"
+iacr = "browse_mcp.sources.iacr:IACRSearcher"
+semantic = "browse_mcp.sources.semantic:SemanticSearcher"
+crossref = "browse_mcp.sources.crossref:CrossRefSearcher"
+sciencedirect = "browse_mcp.sources.sciencedirect:ScienceDirectSearcher"
+springer = "browse_mcp.sources.springer:SpringerSearcher"
+ieee = "browse_mcp.sources.ieee:IEEESearcher"
+scopus = "browse_mcp.sources.scopus:ScopusSearcher"
+acm = "browse_mcp.sources.acm:ACMSearcher"
+wos = "browse_mcp.sources.wos:WOSSearcher"
+jstor = "browse_mcp.sources.jstor:JSTORSearcher"
+researchgate = "browse_mcp.sources.researchgate:ResearchGateSearcher"
+core = "browse_mcp.sources.core:CORESearcher"
 
 [tool.poetry]
 packages = [{ include = "browse_mcp" }]

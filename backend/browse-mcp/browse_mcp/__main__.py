@@ -13,25 +13,7 @@ import typer
 from xlin import xmap_async
 
 from .types import Paper, PaperSource, paper2text
-from .sources.arxiv import ArxivSearcher
-from .sources.pubmed import PubMedSearcher
-from .sources.biorxiv import BioRxivSearcher
-from .sources.medrxiv import MedRxivSearcher
-from .sources.google_scholar import GoogleScholarSearcher
-from .sources.iacr import IACRSearcher
-from .sources.semantic import SemanticSearcher
-from .sources.crossref import CrossRefSearcher
-from .sources.pmc import PMCSearcher
-from .sources.sciencedirect import ScienceDirectSearcher
-from .sources.springer import SpringerSearcher
-from .sources.ieee import IEEESearcher
-from .sources.acm import ACMSearcher
-from .sources.wos import WOSSearcher
-from .sources.scopus import ScopusSearcher
-from .sources.jstor import JSTORSearcher
-from .sources.researchgate import ResearchGateSearcher
-from .sources.core import CORESearcher
-# from .sources.hub import SciHubSearcher
+from .plugin import get_enabled_searchers, get_available_sources
 
 # Initialize MCP server
 mcp = FastMCP("browse_mcp")
@@ -39,71 +21,20 @@ mcp = FastMCP("browse_mcp")
 SAVE_PATH = os.getenv("BROWSE_MCP_DOWNLOAD_PATH", "./downloads")
 os.makedirs(SAVE_PATH, exist_ok=True)
 
-# All available searchers
-ALL_SEARCHERS: Dict[str, PaperSource] = {
-    "arxiv": ArxivSearcher(),
-    "pubmed": PubMedSearcher(),
-    "pmc": PMCSearcher(),
-    "biorxiv": BioRxivSearcher(),
-    "medrxiv": MedRxivSearcher(),
-    "google_scholar": GoogleScholarSearcher(),
-    "iacr": IACRSearcher(),
-    "semantic": SemanticSearcher(),
-    "crossref": CrossRefSearcher(),
-    "sciencedirect": ScienceDirectSearcher(),
-    "springer": SpringerSearcher(),
-    "ieee": IEEESearcher(),
-    "scopus": ScopusSearcher(),
-    "acm": ACMSearcher(),
-    "wos": WOSSearcher(),
-    "jstor": JSTORSearcher(),
-    "researchgate": ResearchGateSearcher(),
-    "core": CORESearcher(),
-    # "scihub": SciHubSearcher(),
-}
-
-def get_enabled_searchers() -> Dict[str, PaperSource]:
-    """Get enabled searchers based on environment variables.
-
-    Environment variables:
-    - BROWSE_MCP_ENABLED_SOURCES: Comma-separated list of enabled sources (e.g., "arxiv,pubmed,pmc")
-    - BROWSE_MCP_DISABLED_SOURCES: Comma-separated list of disabled sources (e.g., "ieee,scopus")
-
-    If ENABLED_SOURCES is set, only those sources will be enabled.
-    If DISABLED_SOURCES is set, all sources except those will be enabled.
-    If both are set, ENABLED_SOURCES takes precedence.
-    If neither is set, all sources are enabled.
-    """
-    enabled_str = os.getenv("BROWSE_MCP_ENABLED_SOURCES", "").strip()
-    disabled_str = os.getenv("BROWSE_MCP_DISABLED_SOURCES", "").strip()
-
-    if enabled_str:
-        # Only enable specified sources
-        enabled_list = [s.strip().lower() for s in enabled_str.split(",") if s.strip()]
-        enabled_searchers = {k: v for k, v in ALL_SEARCHERS.items() if k in enabled_list}
-        logger.info(f"Enabled sources: {', '.join(enabled_searchers.keys())}")
-        return enabled_searchers
-    elif disabled_str:
-        # Disable specified sources
-        disabled_list = [s.strip().lower() for s in disabled_str.split(",") if s.strip()]
-        enabled_searchers = {k: v for k, v in ALL_SEARCHERS.items() if k not in disabled_list}
-        logger.info(f"Disabled sources: {', '.join(disabled_list)}")
-        logger.info(f"Enabled sources: {', '.join(enabled_searchers.keys())}")
-        return enabled_searchers
-    else:
-        # All sources enabled
-        logger.info(f"All sources enabled: {', '.join(ALL_SEARCHERS.keys())}")
-        return ALL_SEARCHERS.copy()
-
-# Get enabled searchers
+# Get enabled searchers from the plugin system
 engine2searcher: Dict[str, PaperSource] = get_enabled_searchers()
+
+
+def _get_available_sources_str() -> str:
+    """Get comma-separated list of available sources for descriptions."""
+    return ', '.join(get_available_sources())
 
 
 # region paper_search
 class PaperQuery(BaseModel):
     searcher: Optional[str] = Field(
         default=None,
-        description=f"The academic platform to search from. Available sources: {', '.join(engine2searcher.keys())}. None means searching from all enabled platforms.",
+        description="The academic platform to search from. None means searching from all enabled platforms.",
     )
     query: str = Field(
         ...,
@@ -212,11 +143,12 @@ async def async_search_per_query_list(query_list: List[PaperQuery]) -> List[Pape
     return papers
 
 
-@mcp.tool(
-    name="paper_search",
-    description=f"""Search academic papers from multiple sources.
+def _build_paper_search_description() -> str:
+    """Build the paper_search tool description dynamically."""
+    sources = _get_available_sources_str()
+    return f"""Search academic papers from multiple sources.
 
-## Available sources: {', '.join(engine2searcher.keys())}
+## Available sources: {sources}
 
 ## Input Constraints:
 - query: 1-500 characters, required, cannot be empty
@@ -224,17 +156,22 @@ async def async_search_per_query_list(query_list: List[PaperQuery]) -> List[Pape
 - year: Valid formats: '2019', '2016-2020', '2010-', '-2015' (only for semantic)
 - fetch_details: boolean (only for iacr)
 - kwargs: dict (only for crossref)
-""" + """
+
 ## Example:
 paper_search([
-    {"searcher": "arxiv", "query": "machine learning", "max_results": 5},
-    {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
-    {"searcher": "iacr", "query": "cryptography", "max_results": 3, "fetch_details": true},
-    {"searcher": "semantic", "query": "climate change", "max_results": 4, "year": "2015-2020"},
-    {"searcher": "crossref", "query": "deep learning", "max_results": 2, "kwargs": {"filter": "from-pub-date:2020,has-full-text:true"}},
-    {"query": "deep learning", "max_results": 2}
+    {{"searcher": "arxiv", "query": "machine learning", "max_results": 5}},
+    {{"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3}},
+    {{"searcher": "iacr", "query": "cryptography", "max_results": 3, "fetch_details": true}},
+    {{"searcher": "semantic", "query": "climate change", "max_results": 4, "year": "2015-2020"}},
+    {{"searcher": "crossref", "query": "deep learning", "max_results": 2, "kwargs": {{"filter": "from-pub-date:2020,has-full-text:true"}}}},
+    {{"query": "deep learning", "max_results": 2}}
 ])
-""",
+"""
+
+
+@mcp.tool(
+    name="paper_search",
+    description=_build_paper_search_description(),
 )
 async def paper_search(query_list: List[PaperQuery]) -> Dict[str, List[TextContent]]:
     async with httpx.AsyncClient() as client:
@@ -258,7 +195,7 @@ async def paper_search(query_list: List[PaperQuery]) -> Dict[str, List[TextConte
 
 class PaperDownloadQuery(BaseModel):
     searcher: str = Field(
-        description=f"The academic platform to download from. Available sources: {', '.join(engine2searcher.keys())}"
+        description="The academic platform to download from."
     )
     paper_id: str = Field(
         ...,
@@ -304,9 +241,13 @@ async def async_download_per_query(query: PaperDownloadQuery) -> str:
         logger.error(f"Error downloading paper {query.paper_id} from {query.searcher}: {e}\n{traceback.format_exc()}")
         return f"Error downloading paper {query.paper_id} from {query.searcher}: {e}"
 
-@mcp.tool(
-    name="paper_download",
-    description="""Download academic paper PDFs from multiple sources.
+
+def _build_paper_download_description() -> str:
+    """Build the paper_download tool description dynamically."""
+    sources = _get_available_sources_str()
+    return f"""Download academic paper PDFs from multiple sources.
+
+## Available sources: {sources}
 
 ## Input Constraints:
 - searcher: Required, must be one of the supported platforms
@@ -331,15 +272,20 @@ async def async_download_per_query(query: PaperDownloadQuery) -> str:
 
 ## Returns:
 List of paths to the downloaded PDF files.
-""" + """
+
 ## Example:
 paper_download([
-    {"searcher": "arxiv", "paper_id": "2106.12345"},
-    {"searcher": "pubmed", "paper_id": "32790614"},
-    {"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"},
-    {"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}
+    {{"searcher": "arxiv", "paper_id": "2106.12345"}},
+    {{"searcher": "pubmed", "paper_id": "32790614"}},
+    {{"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"}},
+    {{"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}}
 ])
-""",
+"""
+
+
+@mcp.tool(
+    name="paper_download",
+    description=_build_paper_download_description(),
 )
 async def paper_download(query_list: List[PaperDownloadQuery]) -> List[str]:
     async with httpx.AsyncClient() as client:
@@ -350,28 +296,31 @@ async def paper_download(query_list: List[PaperDownloadQuery]) -> List[str]:
 
 
 # region paper_read
-@mcp.tool(
-    name="paper_read",
-    description=f"""Read and extract text content from academic paper PDFs from multiple sources.
+def _build_paper_read_description() -> str:
+    """Build the paper_read tool description dynamically."""
+    sources = _get_available_sources_str()
+    return f"""Read and extract text content from academic paper PDFs from multiple sources.
+
+## Available sources: {sources}
 
 ## Input Constraints:
-- searcher: Required, must be one of: {', '.join(engine2searcher.keys())}
+- searcher: Required, must be one of the available sources
 - paper_id: Required, 1-200 characters, cannot be empty
-""" + """
+
 ## Example:
 
 ### arXiv
-paper_read({"searcher": "arxiv", "paper_id": "2106.12345", "save_path": "./downloads"})  # paper_id is arXiv ID.
+paper_read({{"searcher": "arxiv", "paper_id": "2106.12345", "save_path": "./downloads"}})  # paper_id is arXiv ID.
 ### PubMed
-paper_read({"searcher": "pubmed", "paper_id": "32790614", "save_path": "./downloads"})  # paper_id is PubMed ID (PMID).
+paper_read({{"searcher": "pubmed", "paper_id": "32790614", "save_path": "./downloads"}})  # paper_id is PubMed ID (PMID).
 ### bioRxiv
-paper_read({"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"})  # paper_id is bioRxiv DOI.
+paper_read({{"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"}})  # paper_id is bioRxiv DOI.
 ### medRxiv
-paper_read({"searcher": "medrxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"})  # paper_id is medRxiv DOI.
+paper_read({{"searcher": "medrxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"}})  # paper_id is medRxiv DOI.
 ### IACR
-paper_read({"searcher": "iacr", "paper_id": "2009/101", "save_path": "./downloads"})  # paper_id is IACR paper ID.
+paper_read({{"searcher": "iacr", "paper_id": "2009/101", "save_path": "./downloads"}})  # paper_id is IACR paper ID.
 ### Semantic Scholar
-paper_read({"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011", "save_path": "./downloads"})
+paper_read({{"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011", "save_path": "./downloads"}})
 where paper_id: Semantic Scholar paper ID, Paper identifier in one of the following formats:
     - Semantic Scholar ID (e.g., "649def34f8be52c8b66281af98ae884c09aef38b")
     - DOI:<doi> (e.g., "DOI:10.18653/v1/N18-3011")
@@ -382,12 +331,18 @@ where paper_id: Semantic Scholar paper ID, Paper identifier in one of the follow
     - PMCID:<id> (e.g., "PMCID:2323736")
     - URL:<url> (e.g., "URL:https://arxiv.org/abs/2106.15928v1")
 ### CrossRef
-paper_read({"searcher": "crossref", "paper_id": "10.1038/s41586-020-2649-2", "save_path": "./downloads"})  # paper_id is DOI.
-""")
+paper_read({{"searcher": "crossref", "paper_id": "10.1038/s41586-020-2649-2", "save_path": "./downloads"}})  # paper_id is DOI.
+"""
+
+
+@mcp.tool(
+    name="paper_read",
+    description=_build_paper_read_description(),
+)
 async def paper_read(
     searcher: str = Field(
         ...,
-        description=f"The academic platform to read from. Available sources: {', '.join(engine2searcher.keys())}"
+        description="The academic platform to read from."
     ),
     paper_id: str = Field(
         ...,
