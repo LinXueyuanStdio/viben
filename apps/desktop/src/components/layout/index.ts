@@ -10,3 +10,11 @@ export {
   staggerItemVariants,
   cardVariants,
 } from "./page-wrapper";
+export { BentoGrid, BentoCard } from "./bento-grid";
+export type {
+  BentoGridProps,
+  BentoCardProps,
+  BentoCardSize,
+  BentoCardHeight,
+  BentoGridGap,
+} from "./bento-grid";
