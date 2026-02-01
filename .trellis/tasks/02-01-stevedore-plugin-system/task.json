@@ -3,7 +3,7 @@
   "name": "stevedore-plugin-system",
   "title": "Implement stevedore-based plugin system for browse-mcp searchers",
   "description": "Refactor backend/browse-mcp to use stevedore for plugin-based searcher management with auto-discovery via entry points",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": "backend",
   "scope": "plugin",
   "priority": "P2",

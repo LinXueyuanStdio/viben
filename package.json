@@ -1,0 +1,23 @@
+{
+  "name": "browse-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cross-platform desktop app for academic paper search with MCP integration",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "desktop": "pnpm --filter @browse-mcp/desktop",
+    "mcp-server": "pnpm --filter @browse-mcp/mcp-server"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
