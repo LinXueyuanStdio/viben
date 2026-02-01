@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "browse-mcp-plugin-social-media"
+version = "0.1.0"
+description = "Social media searchers plugin for browse-mcp"
+readme = "README.md"
+authors = ["Browse-MCP Contributors"]
+license = "MIT"
+packages = [
+    { include = "social_media_searchers" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+browse-mcp = "*"
+stevedore = ">=5.0.0"
+httpx = ">=0.28.0"  # For HTTP requests
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-asyncio = ">=0.21.0"
+
+# Register each searcher as a separate plugin entry point
+# This allows users to enable/disable individual searchers via environment variables
+[tool.poetry.plugins."browse_mcp.searchers"]
+zhihu = "social_media_searchers.zhihu:ZhihuSearcher"
+xiaohongshu = "social_media_searchers.xiaohongshu:XiaohongshuSearcher"
+github = "social_media_searchers.github:GithubSearcher"
+twitter = "social_media_searchers.twitter:TwitterSearcher"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
