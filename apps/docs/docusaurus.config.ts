@@ -15,10 +15,10 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://linxueyuanstudio.github.io',
+  url: 'https://linxueyuan.online',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/browse-mcp/',
+  // Landing page is at /browse-mcp/, docs are at /browse-mcp/docs/
+  baseUrl: '/browse-mcp/docs/',
 
   // GitHub pages deployment config.
   organizationName: 'LinXueyuanStdio', // GitHub org/user name

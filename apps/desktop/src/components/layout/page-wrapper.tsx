@@ -6,25 +6,34 @@ const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Page transition variants following design system
+// Apple-style page transition variants
+// - Subtle vertical movement (8px downward)
+// - Spring physics with damping for natural feel
+// - 0.5s duration for smooth, deliberate transitions
+// Note: This is typically not needed as AppLayout handles page transitions.
+// Use this only for sub-page content that needs independent animation.
 const pageVariants = {
   initial: {
     opacity: 0,
-    x: prefersReducedMotion ? 0 : 20,
+    y: prefersReducedMotion ? 0 : 8, // Subtle downward start
   },
   enter: {
     opacity: 1,
-    x: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: [0.16, 1, 0.3, 1] as const, // ease-out-expo
-    },
+    y: 0,
+    transition: prefersReducedMotion
+      ? { duration: 0 }
+      : {
+          type: "spring" as const,
+          stiffness: 300,
+          damping: 30,
+          mass: 1,
+        },
   },
   exit: {
     opacity: 0,
-    x: prefersReducedMotion ? 0 : -20,
     transition: {
-      duration: prefersReducedMotion ? 0 : 0.2,
+      duration: prefersReducedMotion ? 0 : 0.3,
+      ease: [0.16, 1, 0.3, 1] as const, // ease-out-expo
     },
   },
 };
@@ -49,12 +58,14 @@ export function PageWrapper({ children, className }: PageWrapperProps) {
 }
 
 // Stagger container for animating children sequentially
+// Use for content within pages (not for page-level transitions)
 const staggerContainerVariants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.1,
+      staggerChildren: prefersReducedMotion ? 0 : 0.08, // Slightly faster stagger
+      delayChildren: prefersReducedMotion ? 0 : 0.1, // Wait for page transition
     },
   },
 };
@@ -62,15 +73,18 @@ const staggerContainerVariants = {
 const staggerItemVariants = {
   hidden: {
     opacity: 0,
-    y: prefersReducedMotion ? 0 : 20,
+    y: prefersReducedMotion ? 0 : 8, // Subtle vertical movement
   },
   show: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: [0.16, 1, 0.3, 1] as const, // ease-out-expo
-    },
+    transition: prefersReducedMotion
+      ? { duration: 0 }
+      : {
+          type: "spring" as const,
+          stiffness: 300,
+          damping: 30,
+        },
   },
 };
 
@@ -108,20 +122,24 @@ export function StaggerItem({ children, className }: StaggerItemProps) {
 }
 
 // Card entrance animation with scale and fade
+// Uses spring physics for natural feel
 const cardVariants = {
   hidden: {
     opacity: 0,
-    scale: prefersReducedMotion ? 1 : 0.95,
-    y: prefersReducedMotion ? 0 : 10,
+    scale: prefersReducedMotion ? 1 : 0.98, // More subtle scale
+    y: prefersReducedMotion ? 0 : 8,
   },
   show: {
     opacity: 1,
     scale: 1,
     y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: [0.34, 1.56, 0.64, 1] as const, // ease-out-back
-    },
+    transition: prefersReducedMotion
+      ? { duration: 0 }
+      : {
+          type: "spring" as const,
+          stiffness: 300,
+          damping: 30,
+        },
   },
 };
 
