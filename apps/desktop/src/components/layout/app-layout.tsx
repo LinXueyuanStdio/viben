@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { usePython } from "@/hooks/use-python";
@@ -6,16 +6,28 @@ import { useAppStore } from "@/stores";
 
 export function AppLayout() {
   const { selectedPython, browseMcpInfo } = usePython();
-  const { setSetupStatus } = useAppStore();
+  const { setupStatus, setSetupStatus } = useAppStore();
+  const hasInitialized = useRef(false);
 
-  // Centralized setup status calculation - runs once at app level
-  // All child components should read from setupStatus in the store
+  // Setup status detection - runs ONLY ONCE at app startup
+  // After that, only Settings page "Detect" button can trigger update
   useEffect(() => {
-    if (selectedPython !== null && browseMcpInfo !== undefined) {
+    // Skip if already initialized
+    if (hasInitialized.current) return;
+
+    // Skip if no cached status exists but data hasn't loaded yet
+    // This prevents setting status before data is ready
+    if (selectedPython === null || browseMcpInfo === undefined) return;
+
+    // Only initialize if no cached status exists
+    // If user already has cached status from previous session, respect it
+    if (setupStatus === null) {
       const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
       setSetupStatus(isSetupComplete);
     }
-  }, [selectedPython, browseMcpInfo, setSetupStatus]);
+
+    hasInitialized.current = true;
+  }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
   return (
     <div className="flex h-screen overflow-hidden">
