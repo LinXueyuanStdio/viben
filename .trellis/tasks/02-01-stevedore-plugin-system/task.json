@@ -14,7 +14,7 @@
   "branch": "feature/stevedore-plugin-system",
   "base_branch": "main",
   "worktree_path": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/trellis-worktrees/feature/stevedore-plugin-system",
-  "current_phase": 0,
+  "current_phase": 3,
   "next_action": [
     {
       "phase": 1,
