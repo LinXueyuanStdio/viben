@@ -1,21 +1,22 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Database, Bot, Activity, Settings, ArrowRight, Loader2 } from "lucide-react";
+import { Search, Database, Activity, Settings, ArrowRight, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
-import { useMcp } from "@/hooks/use-mcp";
 import { usePython } from "@/hooks/use-python";
+import { useUsage } from "@/hooks/use-usage";
 import { useAppStore } from "@/stores";
+import { useMemo } from "react";
 
 export function DashboardPage() {
   const { agents, loading: agentsLoading } = useAgents();
-  const { status: mcpStatus } = useMcp();
   const { selectedPython, browseMcpInfo } = usePython();
-  const { providers, totalSearches } = useAppStore();
+  const { stats, loading: usageLoading } = useUsage();
+  const { providers, mcpServers, getAvailableProviders } = useAppStore();
 
   const installedAgents = agents.filter((a) => a.installed);
   const configuredAgents = agents.filter((a) => a.configured);
-  const enabledProviders = providers.filter((p) => p.enabled);
+  const availableProviders = getAvailableProviders();
+  const runningServers = mcpServers.filter((s) => s.status === "running");
 
   // Check if setup is complete
   const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
@@ -51,60 +52,135 @@ export function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard
-          title="Total Searches"
-          value={totalSearches.toLocaleString()}
+          title="Total Requests"
+          value={usageLoading ? "..." : (stats?.total_requests ?? 0).toLocaleString()}
           description="All time"
           icon={Search}
         />
         <StatCard
-          title="Active Providers"
-          value={`${enabledProviders.length}`}
-          description={`Out of ${providers.length} available`}
+          title="Today"
+          value={usageLoading ? "..." : (stats?.today_requests ?? 0).toLocaleString()}
+          description={`This week: ${(stats?.this_week_requests ?? 0).toLocaleString()}`}
+          icon={TrendingUp}
+        />
+        <StatCard
+          title="Data Sources"
+          value={`${availableProviders.length}`}
+          description={`Out of ${providers.length} configured`}
           icon={Database}
           linkTo="/providers"
         />
         <StatCard
-          title="Configured Agents"
-          value={agentsLoading ? "..." : `${configuredAgents.length}`}
+          title="MCP Servers"
+          value={`${runningServers.length}/${mcpServers.length}`}
           description={
-            agentsLoading
-              ? "Detecting..."
-              : `${installedAgents.length} installed`
-          }
-          icon={Bot}
-          linkTo="/agents"
-        />
-        <StatCard
-          title="Server Status"
-          value={mcpStatus.running ? "Running" : "Stopped"}
-          description={
-            mcpStatus.running
-              ? `PID ${mcpStatus.pid} · ${mcpStatus.transport}`
-              : "Not started"
+            runningServers.length > 0
+              ? `${runningServers.length} running`
+              : mcpServers.length > 0
+              ? "All stopped"
+              : "No servers"
           }
           icon={Activity}
-          valueClassName={mcpStatus.running ? "text-green-600" : "text-muted-foreground"}
+          valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
           linkTo="/search-service"
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <QuickActionCard
-          title="Configure AI Agents"
-          description="Set up browse-mcp for your AI assistants"
-          linkTo="/agents"
-          count={`${configuredAgents.length}/${installedAgents.length} configured`}
-        />
-        <QuickActionCard
-          title="Manage Providers"
-          description="Enable or disable academic search sources"
-          linkTo="/providers"
-          count={`${enabledProviders.length} enabled`}
-        />
+      {/* Activity Heatmap */}
+      <div className="rounded-lg border bg-card p-6 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Activity
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            {stats?.this_month_requests ?? 0} requests this month
+          </span>
+        </div>
+        {usageLoading ? (
+          <div className="h-32 flex items-center justify-center text-muted-foreground">
+            Loading activity data...
+          </div>
+        ) : (
+          <ActivityHeatmap data={stats?.activity_heatmap ?? []} />
+        )}
       </div>
 
-      {/* Python Status */}
+      {/* Usage Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Daily Usage Line Chart */}
+        <div className="rounded-lg border bg-card p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5" />
+            Daily Usage (Last 30 Days)
+          </h2>
+          {usageLoading ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground">
+              Loading chart...
+            </div>
+          ) : (
+            <UsageLineChart data={stats?.daily_usage ?? []} />
+          )}
+        </div>
+
+        {/* Usage by Server */}
+        <div className="rounded-lg border bg-card p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Usage by Server
+          </h2>
+          {usageLoading ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground">
+              Loading...
+            </div>
+          ) : (
+            <UsageByCategory
+              data={stats?.by_server ?? {}}
+              labelMap={Object.fromEntries(mcpServers.map((s) => [s.id, s.name]))}
+              emptyMessage="No server usage data yet"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Usage by Source */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="rounded-lg border bg-card p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Usage by Data Source
+          </h2>
+          {usageLoading ? (
+            <div className="h-48 flex items-center justify-center text-muted-foreground">
+              Loading...
+            </div>
+          ) : (
+            <UsageByCategory
+              data={stats?.by_source ?? {}}
+              labelMap={Object.fromEntries(providers.map((p) => [p.id, p.name]))}
+              emptyMessage="No source usage data yet"
+            />
+          )}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="space-y-4">
+          <QuickActionCard
+            title="Configure AI Agents"
+            description="Set up browse-mcp for your AI assistants"
+            linkTo="/agents"
+            count={`${configuredAgents.length}/${installedAgents.length} configured`}
+          />
+          <QuickActionCard
+            title="Manage Data Sources"
+            description="Configure API keys for search sources"
+            linkTo="/providers"
+            count={`${availableProviders.length} available`}
+          />
+        </div>
+      </div>
+
+      {/* Environment Status */}
       <div className="rounded-lg border bg-card p-6">
         <h2 className="text-lg font-semibold mb-4">Environment Status</h2>
         <div className="space-y-3">
@@ -127,12 +203,293 @@ export function DashboardPage() {
             ok={browseMcpInfo?.installed ?? false}
           />
           <StatusRow
-            label="MCP Server"
-            value={mcpStatus.running ? `Running (${mcpStatus.transport})` : "Stopped"}
-            ok={mcpStatus.running}
+            label="MCP Servers"
+            value={
+              mcpServers.length === 0
+                ? "No servers configured"
+                : `${runningServers.length}/${mcpServers.length} running`
+            }
+            ok={runningServers.length > 0}
+          />
+          <StatusRow
+            label="Configured Agents"
+            value={agentsLoading ? "Detecting..." : `${configuredAgents.length} agents`}
+            ok={configuredAgents.length > 0}
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+// Activity Heatmap Component (GitHub-style)
+interface ActivityHeatmapProps {
+  data: { date: string; count: number; level: number }[];
+}
+
+function ActivityHeatmap({ data }: ActivityHeatmapProps) {
+  // Organize data into weeks
+  const weeks = useMemo(() => {
+    const result: { date: string; count: number; level: number }[][] = [];
+    let currentWeek: { date: string; count: number; level: number }[] = [];
+
+    // Fill in the first week with empty days if needed
+    if (data.length > 0) {
+      const firstDate = new Date(data[0].date);
+      const dayOfWeek = firstDate.getDay();
+      for (let i = 0; i < dayOfWeek; i++) {
+        currentWeek.push({ date: "", count: 0, level: -1 });
+      }
+    }
+
+    for (const day of data) {
+      currentWeek.push(day);
+      if (currentWeek.length === 7) {
+        result.push(currentWeek);
+        currentWeek = [];
+      }
+    }
+
+    // Push remaining days
+    if (currentWeek.length > 0) {
+      result.push(currentWeek);
+    }
+
+    return result;
+  }, [data]);
+
+  const levelColors = [
+    "bg-muted",
+    "bg-green-200 dark:bg-green-900",
+    "bg-green-300 dark:bg-green-700",
+    "bg-green-500 dark:bg-green-500",
+    "bg-green-700 dark:bg-green-400",
+  ];
+
+  const months = useMemo(() => {
+    const result: { name: string; startWeek: number }[] = [];
+    let lastMonth = "";
+
+    weeks.forEach((week, weekIndex) => {
+      for (const day of week) {
+        if (day.date) {
+          const date = new Date(day.date);
+          const month = date.toLocaleString("default", { month: "short" });
+          if (month !== lastMonth) {
+            result.push({ name: month, startWeek: weekIndex });
+            lastMonth = month;
+          }
+          break;
+        }
+      }
+    });
+
+    return result;
+  }, [weeks]);
+
+  if (data.length === 0) {
+    return (
+      <div className="h-32 flex items-center justify-center text-muted-foreground">
+        No activity data yet. Start using MCP servers to see activity.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      {/* Month labels */}
+      <div className="flex mb-1 text-xs text-muted-foreground" style={{ paddingLeft: "20px" }}>
+        {months.map((month, i) => (
+          <span
+            key={i}
+            style={{
+              marginLeft: i === 0 ? `${month.startWeek * 14}px` : `${(month.startWeek - (months[i - 1]?.startWeek ?? 0) - 1) * 14}px`,
+            }}
+          >
+            {month.name}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex gap-0.5">
+        {/* Day labels */}
+        <div className="flex flex-col gap-0.5 text-xs text-muted-foreground pr-1">
+          <span className="h-3"></span>
+          <span className="h-3">Mon</span>
+          <span className="h-3"></span>
+          <span className="h-3">Wed</span>
+          <span className="h-3"></span>
+          <span className="h-3">Fri</span>
+          <span className="h-3"></span>
+        </div>
+
+        {/* Heatmap grid */}
+        <div className="flex gap-0.5">
+          {weeks.map((week, weekIndex) => (
+            <div key={weekIndex} className="flex flex-col gap-0.5">
+              {week.map((day, dayIndex) => (
+                <div
+                  key={dayIndex}
+                  className={`w-3 h-3 rounded-sm ${
+                    day.level === -1 ? "bg-transparent" : levelColors[day.level]
+                  }`}
+                  title={day.date ? `${day.date}: ${day.count} requests` : ""}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center justify-end gap-1 mt-2 text-xs text-muted-foreground">
+        <span>Less</span>
+        {levelColors.map((color, i) => (
+          <div key={i} className={`w-3 h-3 rounded-sm ${color}`} />
+        ))}
+        <span>More</span>
+      </div>
+    </div>
+  );
+}
+
+// Line Chart Component
+interface UsageLineChartProps {
+  data: { date: string; total_requests: number }[];
+}
+
+function UsageLineChart({ data }: UsageLineChartProps) {
+  const chartData = useMemo(() => {
+    if (data.length === 0) return null;
+
+    const maxValue = Math.max(...data.map((d) => d.total_requests), 1);
+    const points = data.map((d, i) => ({
+      x: (i / (data.length - 1 || 1)) * 100,
+      y: 100 - (d.total_requests / maxValue) * 100,
+      date: d.date,
+      value: d.total_requests,
+    }));
+
+    return { points, maxValue };
+  }, [data]);
+
+  if (!chartData || data.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-muted-foreground">
+        No usage data yet. Start using MCP servers to see trends.
+      </div>
+    );
+  }
+
+  const pathD = chartData.points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
+    .join(" ");
+
+  const areaD = `${pathD} L 100 100 L 0 100 Z`;
+
+  return (
+    <div className="h-48 relative">
+      {/* Y-axis labels */}
+      <div className="absolute left-0 top-0 bottom-6 w-10 flex flex-col justify-between text-xs text-muted-foreground">
+        <span>{chartData.maxValue}</span>
+        <span>{Math.round(chartData.maxValue / 2)}</span>
+        <span>0</span>
+      </div>
+
+      {/* Chart area */}
+      <div className="ml-12 h-full pb-6">
+        <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+          {/* Grid lines */}
+          <line x1="0" y1="0" x2="100" y2="0" stroke="currentColor" strokeOpacity="0.1" />
+          <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" strokeOpacity="0.1" />
+          <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" strokeOpacity="0.1" />
+
+          {/* Area fill */}
+          <path d={areaD} fill="url(#gradient)" opacity="0.3" />
+
+          {/* Line */}
+          <path d={pathD} fill="none" stroke="rgb(34, 197, 94)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+
+          {/* Points */}
+          {chartData.points.map((p, i) => (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r="3"
+              fill="rgb(34, 197, 94)"
+              vectorEffect="non-scaling-stroke"
+            >
+              <title>{`${p.date}: ${p.value} requests`}</title>
+            </circle>
+          ))}
+
+          {/* Gradient definition */}
+          <defs>
+            <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="rgb(34, 197, 94)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="rgb(34, 197, 94)" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      {/* X-axis labels */}
+      <div className="absolute bottom-0 left-12 right-0 flex justify-between text-xs text-muted-foreground">
+        {data.length > 0 && (
+          <>
+            <span>{data[0]?.date.slice(5)}</span>
+            <span>{data[Math.floor(data.length / 2)]?.date.slice(5)}</span>
+            <span>{data[data.length - 1]?.date.slice(5)}</span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Usage by Category Component (bar chart style)
+interface UsageByCategoryProps {
+  data: Record<string, number>;
+  labelMap: Record<string, string>;
+  emptyMessage: string;
+}
+
+function UsageByCategory({ data, labelMap, emptyMessage }: UsageByCategoryProps) {
+  const sortedData = useMemo(() => {
+    return Object.entries(data)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8);
+  }, [data]);
+
+  const maxValue = useMemo(() => {
+    return Math.max(...sortedData.map(([, v]) => v), 1);
+  }, [sortedData]);
+
+  if (sortedData.length === 0) {
+    return (
+      <div className="h-48 flex items-center justify-center text-muted-foreground">
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {sortedData.map(([id, count]) => (
+        <div key={id} className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="truncate">{labelMap[id] || id}</span>
+            <span className="text-muted-foreground">{count.toLocaleString()}</span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-green-500 rounded-full transition-all"
+              style={{ width: `${(count / maxValue) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

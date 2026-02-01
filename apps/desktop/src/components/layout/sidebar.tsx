@@ -4,7 +4,6 @@ import {
   Database,
   Settings,
   Bot,
-  Key,
   FileText,
   Info,
   Search,
@@ -27,10 +26,9 @@ interface NavItem {
 
 const mainNav: NavItem[] = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
-  { title: "Providers", href: "/providers", icon: Database },
+  { title: "Data Sources", href: "/providers", icon: Database },
   { title: "Search Service", href: "/search-service", icon: Search },
   { title: "Agents", href: "/agents", icon: Bot },
-  { title: "API Keys", href: "/api-keys", icon: Key },
   { title: "Logs", href: "/logs", icon: FileText },
 ];
 

@@ -1,0 +1,7 @@
+{"file": ".trellis/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".trellis/spec/frontend/index.md", "reason": "Frontend development guide"}
+{"file": ".trellis/spec/frontend/design-system.md", "reason": "Animation patterns, timing, and easing definitions"}
+{"file": "apps/desktop/src/App.tsx", "reason": "Entry point where AnimatePresence will be added for page transitions"}
+{"file": "apps/desktop/src/pages/dashboard.tsx", "reason": "Dashboard page with StatCard, charts, and heatmap to animate"}
+{"file": "apps/desktop/src/index.css", "reason": "CSS variables for animation timing, easing, and skeleton/shimmer effects"}
+{"file": "apps/desktop/package.json", "reason": "Framer Motion needs to be added as dependency"}

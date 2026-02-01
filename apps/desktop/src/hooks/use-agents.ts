@@ -44,11 +44,22 @@ export function useAgents() {
   );
 
   const configureBrowseMcp = useCallback(
-    async (agentId: string, pythonPath?: string) => {
+    async (
+      agentId: string,
+      pythonPath?: string,
+      serverConfig?: {
+        transport: "stdio" | "sse" | "http";
+        port?: number;
+        apiKeyId?: string;
+      }
+    ) => {
       try {
         await invoke("configure_browse_mcp", {
           agentId,
           pythonPath: pythonPath || null,
+          transport: serverConfig?.transport || "stdio",
+          port: serverConfig?.port || null,
+          apiKeyId: serverConfig?.apiKeyId || null,
         });
         // Refresh agents after configuring
         await detectAgents();

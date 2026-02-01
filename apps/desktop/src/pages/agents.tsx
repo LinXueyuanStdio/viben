@@ -1,16 +1,48 @@
-import { Check, X, RefreshCw, Settings2, Loader2 } from "lucide-react";
+import { useState } from "react";
+import {
+  Check,
+  X,
+  RefreshCw,
+  Settings2,
+  Loader2,
+  Server,
+  Key,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAgents } from "@/hooks/use-agents";
 import { usePython } from "@/hooks/use-python";
-import type { AgentInfo } from "@/types";
+import { useAppStore } from "@/stores";
+import type { AgentInfo, McpServerInstance } from "@/types";
 
 export function AgentsPage() {
-  const { agents, loading, error, detectAgents, configureBrowseMcp } = useAgents();
+  const { agents, loading, error, detectAgents, configureBrowseMcp } =
+    useAgents();
   const { selectedPython } = usePython();
+  const {
+    mcpServers,
+    setAgentAssignment,
+    removeAgentAssignment,
+    getAgentAssignment,
+  } = useAppStore();
 
-  const handleConfigure = async (agentId: string) => {
+  const handleConfigure = async (
+    agentId: string,
+    serverId: string,
+    apiKeyId?: string
+  ) => {
+    const server = mcpServers.find((s) => s.id === serverId);
+    if (!server) return;
+
     try {
-      await configureBrowseMcp(agentId, selectedPython?.path);
+      // Pass server config to the configure function
+      await configureBrowseMcp(agentId, selectedPython?.path, {
+        transport: server.transport,
+        port: server.port,
+        apiKeyId,
+      });
+      // Save the assignment
+      setAgentAssignment(agentId, serverId, apiKeyId);
     } catch (err) {
       console.error("Failed to configure:", err);
     }
@@ -25,7 +57,12 @@ export function AgentsPage() {
             Configure MCP server for your AI assistants
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={detectAgents} disabled={loading}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={detectAgents}
+          disabled={loading}
+        >
           {loading ? (
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
           ) : (
@@ -41,6 +78,15 @@ export function AgentsPage() {
         </div>
       )}
 
+      {mcpServers.length === 0 && (
+        <div className="mb-6 p-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            No MCP servers configured. Create a server in the Search Service
+            page first.
+          </p>
+        </div>
+      )}
+
       {loading && agents.length === 0 ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -51,7 +97,10 @@ export function AgentsPage() {
             <AgentCard
               key={agent.id}
               agent={agent}
-              onConfigure={() => handleConfigure(agent.id)}
+              servers={mcpServers}
+              assignment={getAgentAssignment(agent.id)}
+              onConfigure={handleConfigure}
+              onRemoveAssignment={() => removeAgentAssignment(agent.id)}
             />
           ))}
         </div>
@@ -62,20 +111,54 @@ export function AgentsPage() {
 
 interface AgentCardProps {
   agent: AgentInfo;
-  onConfigure: () => void;
+  servers: McpServerInstance[];
+  assignment?: { serverId: string; apiKeyId?: string };
+  onConfigure: (agentId: string, serverId: string, apiKeyId?: string) => void;
+  onRemoveAssignment: () => void;
 }
 
-function AgentCard({ agent, onConfigure }: AgentCardProps) {
+function AgentCard({
+  agent,
+  servers,
+  assignment,
+  onConfigure,
+  onRemoveAssignment,
+}: AgentCardProps) {
+  const [showConfig, setShowConfig] = useState(false);
+  const [selectedServerId, setSelectedServerId] = useState(
+    assignment?.serverId || servers[0]?.id || ""
+  );
+  const [selectedKeyId, setSelectedKeyId] = useState(
+    assignment?.apiKeyId || ""
+  );
+
+  const selectedServer = servers.find((s) => s.id === selectedServerId);
+  const assignedServer = servers.find((s) => s.id === assignment?.serverId);
+  const assignedApiKey = assignedServer?.apiKeys.find(
+    (k) => k.id === assignment?.apiKeyId
+  );
+
   const iconMap: Record<string, string> = {
-    "claude": "C",
+    claude: "C",
     "claude-code": "CC",
-    "cursor": "Cu",
-    "windsurf": "W",
-    "vscode": "VS",
-    "continue": "Co",
-    "codex": "Cx",
-    "opencode": "OC",
-    "zed": "Z",
+    cursor: "Cu",
+    windsurf: "W",
+    vscode: "VS",
+    continue: "Co",
+    codex: "Cx",
+    opencode: "OC",
+    zed: "Z",
+  };
+
+  const handleApply = () => {
+    if (selectedServerId) {
+      onConfigure(
+        agent.id,
+        selectedServerId,
+        selectedKeyId || undefined
+      );
+      setShowConfig(false);
+    }
   };
 
   return (
@@ -103,31 +186,154 @@ function AgentCard({ agent, onConfigure }: AgentCardProps) {
         </div>
       </div>
 
+      {/* Current Assignment */}
+      {assignment && assignedServer && (
+        <div className="mb-4 p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <Server className="h-4 w-4 text-muted-foreground" />
+              <span className="font-medium">{assignedServer.name}</span>
+              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                {assignedServer.transport.toUpperCase()}
+              </span>
+            </div>
+            {assignedApiKey && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Key className="h-3 w-3" />
+                <span>{assignedApiKey.name}</span>
+                <code className="bg-muted px-1 rounded text-[10px]">
+                  {assignedApiKey.keyPrefix}
+                </code>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {agent.config_path && (
-        <p className="text-xs text-muted-foreground mb-4 font-mono truncate" title={agent.config_path}>
+        <p
+          className="text-xs text-muted-foreground mb-4 font-mono truncate"
+          title={agent.config_path}
+        >
           {agent.config_path}
         </p>
       )}
 
       <div className="flex gap-2">
         {agent.installed ? (
-          <>
-            <Button size="sm" onClick={onConfigure}>
-              {agent.configured ? "Update Config" : "Configure"}
-            </Button>
-            {agent.configured && (
-              <Button variant="outline" size="sm">
+          servers.length > 0 ? (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowConfig(!showConfig)}
+              >
                 <Settings2 className="h-4 w-4 mr-1" />
-                View
+                {assignment ? "Change Server" : "Configure"}
+                <ChevronDown
+                  className={`h-3 w-3 ml-1 transition-transform ${
+                    showConfig ? "rotate-180" : ""
+                  }`}
+                />
               </Button>
-            )}
-          </>
+              {assignment && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRemoveAssignment}
+                  className="text-destructive hover:text-destructive"
+                >
+                  Remove
+                </Button>
+              )}
+            </>
+          ) : (
+            <Button variant="secondary" size="sm" disabled>
+              No Servers Available
+            </Button>
+          )
         ) : (
           <Button variant="secondary" size="sm" disabled>
             Not Available
           </Button>
         )}
       </div>
+
+      {/* Server Selection Panel */}
+      {showConfig && agent.installed && servers.length > 0 && (
+        <div className="mt-4 pt-4 border-t space-y-3">
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Select MCP Server
+            </label>
+            <select
+              value={selectedServerId}
+              onChange={(e) => {
+                setSelectedServerId(e.target.value);
+                setSelectedKeyId(""); // Reset key when server changes
+              }}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              {servers.map((server) => (
+                <option key={server.id} value={server.id}>
+                  {server.name} ({server.transport.toUpperCase()})
+                  {server.status === "running" ? " - Running" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* API Key Selection - Required */}
+          {selectedServer && (
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                API Key (Required)
+              </label>
+              {selectedServer.apiKeys.length > 0 ? (
+                <select
+                  value={selectedKeyId}
+                  onChange={(e) => setSelectedKeyId(e.target.value)}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">-- Select API Key --</option>
+                  {selectedServer.apiKeys.map((key) => (
+                    <option key={key.id} value={key.id}>
+                      {key.name} ({key.keyPrefix})
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-yellow-600 dark:text-yellow-400 p-2 bg-yellow-50 dark:bg-yellow-950 rounded border border-yellow-200 dark:border-yellow-900">
+                  No API keys for this server. Create one in Search Service first.
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              size="sm"
+              onClick={handleApply}
+              disabled={!selectedKeyId || !selectedServer?.apiKeys?.length}
+            >
+              Apply Configuration
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowConfig(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+
+          {!selectedKeyId && (selectedServer?.apiKeys?.length ?? 0) > 0 && (
+            <p className="text-xs text-yellow-600 dark:text-yellow-400">
+              Select an API key to apply configuration.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -146,11 +352,7 @@ function StatusBadge({ label, active }: StatusBadgeProps) {
           : "bg-muted text-muted-foreground"
       }`}
     >
-      {active ? (
-        <Check className="h-3 w-3" />
-      ) : (
-        <X className="h-3 w-3" />
-      )}
+      {active ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
       {label}
     </span>
   );
