@@ -12,7 +12,7 @@ import os
 from datetime import datetime
 from typing import List
 from browse_mcp.types import ContentSource
-from .types import SocialPost
+from .types import SocialPost, sanitize_filename
 
 
 class ZhihuSearcher(ContentSource[SocialPost]):
@@ -82,7 +82,9 @@ class ZhihuSearcher(ContentSource[SocialPost]):
             Path to downloaded file
         """
         # TODO: Implement Zhihu content download
-        output_path = os.path.join(save_path, f"zhihu_{content_id}.html")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        output_path = os.path.join(save_path, f"zhihu_{safe_filename}.html")
 
         # Placeholder implementation
         with open(output_path, "w", encoding="utf-8") as f:
@@ -101,7 +103,9 @@ class ZhihuSearcher(ContentSource[SocialPost]):
             Extracted text content
         """
         # TODO: Implement text extraction from downloaded Zhihu content
-        file_path = os.path.join(save_path, f"zhihu_{content_id}.html")
+        # Sanitize content_id to prevent path traversal and invalid filename characters
+        safe_filename = sanitize_filename(content_id)
+        file_path = os.path.join(save_path, f"zhihu_{safe_filename}.html")
 
         try:
             with open(file_path, "r", encoding="utf-8") as f:
