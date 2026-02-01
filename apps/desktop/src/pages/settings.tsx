@@ -1,7 +1,8 @@
 import { Check, AlertCircle, FolderOpen, RefreshCw, Loader2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { usePython } from "@/hooks/use-python";
-import { useState } from "react";
+import { useAppStore } from "@/stores";
+import { useState, useCallback } from "react";
 
 export function SettingsPage() {
   const {
@@ -16,6 +17,29 @@ export function SettingsPage() {
     getInstallCommand,
   } = usePython();
 
+  const { setSetupStatus } = useAppStore();
+
+  // Update global setup status when Python or browse-mcp status changes
+  const updateSetupStatus = useCallback(() => {
+    const isSetupComplete = selectedPython?.is_valid && browseMcpInfo?.installed;
+    setSetupStatus(isSetupComplete);
+  }, [selectedPython, browseMcpInfo, setSetupStatus]);
+
+  // Handle detect button click
+  const handleDetect = async () => {
+    await detectPython();
+    // Update setup status after detection completes
+    // Note: browseMcpInfo will be updated by usePython hook after detection
+    setTimeout(updateSetupStatus, 500); // Small delay to ensure state is updated
+  };
+
+  // Handle Python selection
+  const handleSelectPython = (python: typeof selectedPython) => {
+    setSelectedPython(python);
+    // Update setup status after selection
+    setTimeout(updateSetupStatus, 100);
+  };
+
   const [customPath, setCustomPath] = useState("");
   const [checkingCustom, setCheckingCustom] = useState(false);
   const [installCommand, setInstallCommand] = useState<string | null>(null);
@@ -27,6 +51,8 @@ export function SettingsPage() {
       const info = await checkPythonPath(customPath);
       if (info.is_valid) {
         setSelectedPython(info);
+        // Update setup status after custom path check
+        setTimeout(updateSetupStatus, 100);
       }
     } catch (err) {
       console.error(err);
@@ -60,7 +86,7 @@ export function SettingsPage() {
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Python Environment</h2>
-          <Button variant="outline" size="sm" onClick={detectPython} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={handleDetect} disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
@@ -81,7 +107,7 @@ export function SettingsPage() {
                 {pythons.map((python) => (
                   <button
                     key={python.path}
-                    onClick={() => setSelectedPython(python)}
+                    onClick={() => handleSelectPython(python)}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
                       selectedPython?.path === python.path
                         ? "border-primary bg-primary/5"
