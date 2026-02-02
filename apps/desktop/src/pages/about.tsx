@@ -1,7 +1,9 @@
 import { ExternalLink, Github, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 
 export function AboutPage() {
+  const { t } = useTranslation();
   const appVersion = "0.1.0";
   const updateAvailable = false;
 
@@ -13,8 +15,8 @@ export function AboutPage() {
             B
           </div>
         </div>
-        <h1 className="text-2xl font-bold">Browse MCP</h1>
-        <p className="text-muted-foreground">Version {appVersion}</p>
+        <h1 className="text-2xl font-bold">{t("about.title")}</h1>
+        <p className="text-muted-foreground">{t("about.version", { version: appVersion })}</p>
       </div>
 
       {/* Update */}
@@ -23,21 +25,21 @@ export function AboutPage() {
           {updateAvailable ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-medium">Update Available</p>
+                <p className="font-medium">{t("about.updateAvailable")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Version 0.2.0 is ready to install
+                  {t("about.versionReady", { version: "0.2.0" })}
                 </p>
               </div>
-              <Button size="sm">Update Now</Button>
+              <Button size="sm">{t("about.updateNow")}</Button>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                You're up to date!
+                {t("about.upToDate")}
               </p>
               <Button variant="outline" size="sm">
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Check for Updates
+                {t("about.checkForUpdates")}
               </Button>
             </div>
           )}
@@ -47,22 +49,22 @@ export function AboutPage() {
       {/* Links */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-          LINKS
+          {t("about.links")}
         </h2>
         <div className="space-y-2">
           <LinkButton
             icon={Github}
-            label="GitHub Repository"
+            label={t("about.githubRepo")}
             href="https://github.com/LinXueyuanStdio/browse-mcp"
           />
           <LinkButton
             icon={ExternalLink}
-            label="Documentation"
+            label={t("about.documentation")}
             href="https://github.com/LinXueyuanStdio/browse-mcp#readme"
           />
           <LinkButton
             icon={ExternalLink}
-            label="Report an Issue"
+            label={t("about.reportIssue")}
             href="https://github.com/LinXueyuanStdio/browse-mcp/issues"
           />
         </div>
@@ -71,15 +73,14 @@ export function AboutPage() {
       {/* Credits */}
       <section>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-          CREDITS
+          {t("about.credits")}
         </h2>
         <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
           <p className="mb-2">
-            Built with Tauri, React, and the Model Context Protocol.
+            {t("about.builtWith")}
           </p>
           <p>
-            Academic paper search powered by arXiv, PubMed, Semantic Scholar,
-            and other open access databases.
+            {t("about.poweredBy")}
           </p>
         </div>
       </section>
