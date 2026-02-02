@@ -3,8 +3,12 @@ import { Button } from "@/components/ui/button";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
+import { LANGUAGES } from "@/i18n/languages";
+import { changeLanguage, getCurrentLanguage } from "@/i18n";
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const {
     pythons,
     selectedPython,
@@ -17,11 +21,11 @@ export function SettingsPage() {
     getInstallCommand,
   } = usePython();
 
-  const { setSetupStatus } = useAppStore();
+  const { setSetupStatus, language, setLanguage } = useAppStore();
 
   // Update global setup status when Python or browse-mcp status changes
   const updateSetupStatus = useCallback(() => {
-    const isSetupComplete = Boolean(selectedPython?.is_valid && browseMcpInfo?.installed);
+    const isSetupComplete = (selectedPython?.is_valid === true) && (browseMcpInfo?.installed === true);
     setSetupStatus(isSetupComplete);
   }, [selectedPython, browseMcpInfo, setSetupStatus]);
 
@@ -38,6 +42,12 @@ export function SettingsPage() {
     setSelectedPython(python);
     // Update setup status after selection
     setTimeout(updateSetupStatus, 100);
+  };
+
+  // Handle language change
+  const handleLanguageChange = async (langCode: string) => {
+    await changeLanguage(langCode);
+    setLanguage(langCode);
   };
 
   const [customPath, setCustomPath] = useState("");
@@ -72,9 +82,12 @@ export function SettingsPage() {
     navigator.clipboard.writeText(text);
   };
 
+  // Get current language, falling back to store value or detected value
+  const currentLanguage = getCurrentLanguage() || language || "en";
+
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <h1 className="text-2xl font-bold mb-6">{t("settings.title")}</h1>
 
       {error && (
         <div className="mb-4 p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
@@ -85,14 +98,14 @@ export function SettingsPage() {
       {/* Python Environment */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Python Environment</h2>
+          <h2 className="text-lg font-semibold">{t("settings.pythonEnvironment")}</h2>
           <Button variant="outline" size="sm" onClick={handleDetect} disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Detect
+            {t("settings.detect")}
           </Button>
         </div>
 
@@ -101,7 +114,7 @@ export function SettingsPage() {
           {pythons.length > 0 && (
             <div>
               <label className="text-sm font-medium mb-2 block">
-                Detected Python Installations
+                {t("settings.detectedInstallations")}
               </label>
               <div className="space-y-2">
                 {pythons.map((python) => (
@@ -122,12 +135,14 @@ export function SettingsPage() {
                           <AlertCircle className="h-4 w-4 text-yellow-600" />
                         )}
                         <span className="font-medium">
-                          Python {python.version || "Unknown"}
+                          {python.version
+                            ? t("settings.pythonVersion", { version: python.version })
+                            : t("settings.pythonUnknown")}
                         </span>
                       </div>
                       {!python.is_valid && (
                         <span className="text-xs text-yellow-600">
-                          Requires 3.10+
+                          {t("settings.requires310")}
                         </span>
                       )}
                     </div>
@@ -143,7 +158,7 @@ export function SettingsPage() {
           {/* Custom Python Path */}
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Custom Python Path
+              {t("settings.customPythonPath")}
             </label>
             <div className="flex gap-2">
               <input
@@ -151,7 +166,7 @@ export function SettingsPage() {
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
-                placeholder="/path/to/python3"
+                placeholder={t("settings.customPathPlaceholder")}
               />
               <Button
                 variant="outline"
@@ -174,7 +189,7 @@ export function SettingsPage() {
               <div className="flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4 text-green-600" />
                 <span>
-                  Using Python {selectedPython.version} at{" "}
+                  {t("settings.usingPython", { version: selectedPython.version })}{" "}
                   <code className="bg-muted px-1 py-0.5 rounded text-xs">
                     {selectedPython.path}
                   </code>
@@ -186,34 +201,34 @@ export function SettingsPage() {
           {/* browse-mcp Package */}
           <div className="pt-4 border-t">
             <label className="text-sm font-medium mb-2 block">
-              browse-mcp Package
+              {t("settings.browseMcpPackage")}
             </label>
             {browseMcpInfo?.installed ? (
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm">
                   <Check className="h-4 w-4 text-green-600" />
-                  <span>Installed (v{browseMcpInfo.version})</span>
+                  <span>{t("settings.installedVersion", { version: browseMcpInfo.version })}</span>
                 </div>
                 <Button variant="outline" size="sm">
-                  Update
+                  {t("common.update")}
                 </Button>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <span>Not installed</span>
+                  <span>{t("common.notInstalled")}</span>
                 </div>
 
                 {!installCommand ? (
                   <Button size="sm" onClick={handleShowInstallCommand}>
-                    Show Install Command
+                    {t("settings.showInstallCommand")}
                   </Button>
                 ) : (
                   <div className="bg-muted rounded-md p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">
-                        Run this command to install:
+                        {t("settings.runToInstall")}
                       </p>
                       <Button
                         variant="ghost"
@@ -227,7 +242,7 @@ export function SettingsPage() {
                       {installCommand}
                     </code>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Or using uv: <code>uv tool install browse-mcp</code>
+                      {t("settings.orUsingUv")}<code>{t("settings.uvCommand")}</code>
                     </p>
                   </div>
                 )}
@@ -239,28 +254,35 @@ export function SettingsPage() {
 
       {/* Appearance */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Appearance</h2>
+        <h2 className="text-lg font-semibold mb-4">{t("settings.appearance")}</h2>
         <div className="rounded-lg border bg-card p-4 space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">Theme</label>
+            <label className="text-sm font-medium mb-2 block">{t("settings.theme")}</label>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" className="flex-1">
-                Light
+                {t("settings.light")}
               </Button>
               <Button variant="outline" size="sm" className="flex-1">
-                Dark
+                {t("settings.dark")}
               </Button>
               <Button variant="secondary" size="sm" className="flex-1">
-                System
+                {t("settings.system")}
               </Button>
             </div>
           </div>
 
           <div>
-            <label className="text-sm font-medium mb-2 block">Language</label>
-            <select className="w-full rounded-md border bg-background px-3 py-2 text-sm">
-              <option value="en">English</option>
-              <option value="zh">中文</option>
+            <label className="text-sm font-medium mb-2 block">{t("settings.language")}</label>
+            <select
+              value={currentLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              {LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.nativeName} ({lang.name})
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -268,11 +290,11 @@ export function SettingsPage() {
 
       {/* Storage */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-4">Storage</h2>
+        <h2 className="text-lg font-semibold mb-4">{t("settings.storage")}</h2>
         <div className="rounded-lg border bg-card p-4 space-y-4">
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Download Path
+              {t("settings.downloadPath")}
             </label>
             <div className="flex gap-2">
               <input

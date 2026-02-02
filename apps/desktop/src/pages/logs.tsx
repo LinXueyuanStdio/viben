@@ -28,10 +28,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLogs, type LogEntry, type LogSession } from "@/hooks/use-logs";
 import { useApiLogs, type ApiLogEntry, type ApiLogSession } from "@/hooks/use-api-logs";
 import { save } from "@tauri-apps/plugin-dialog";
+import { useTranslation } from "react-i18next";
 
 type TabType = "server" | "api";
 
 export function LogsPage() {
+  const { t } = useTranslation();
   const {
     sessions,
     selectedSessionId,
@@ -104,7 +106,7 @@ export function LogsPage() {
   const handleClearSession = async () => {
     if (!selectedSessionId) return;
     const session = sessions.find(s => s.id === selectedSessionId);
-    if (!confirm(`Delete logs for "${session?.server_name}" session?`)) return;
+    if (!confirm(t("logs.deleteSession", { name: session?.server_name }))) return;
     setCleaning(true);
     try {
       await clearSession(selectedSessionId);
@@ -114,12 +116,12 @@ export function LogsPage() {
   };
 
   const handleCleanup = async () => {
-    if (!confirm("Delete old log sessions (keep last 10 per server)?")) return;
+    if (!confirm(t("logs.cleanupConfirm"))) return;
     setCleaning(true);
     try {
       const deleted = await cleanupSessions(10);
       if (deleted > 0) {
-        alert(`Deleted ${deleted} old session(s)`);
+        alert(t("logs.deletedSessions", { count: deleted }));
       }
     } finally {
       setCleaning(false);
@@ -130,7 +132,7 @@ export function LogsPage() {
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">Logs</h1>
+          <h1 className="text-2xl font-bold">{t("logs.title")}</h1>
           {logsDirPath && (
             <p className="text-xs text-muted-foreground mt-1 font-mono truncate max-w-md flex items-center gap-1">
               <FolderOpen className="h-3 w-3" />
@@ -150,7 +152,7 @@ export function LogsPage() {
             ) : (
               <ToggleLeft className="h-4 w-4 mr-2" />
             )}
-            Auto
+            {t("common.auto")}
           </Button>
           <Button
             variant="outline"
@@ -163,7 +165,7 @@ export function LogsPage() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            Refresh
+            {t("common.refresh")}
           </Button>
           <Button
             variant="outline"
@@ -176,7 +178,7 @@ export function LogsPage() {
             ) : (
               <Download className="h-4 w-4 mr-2" />
             )}
-            Export
+            {t("common.export")}
           </Button>
           <Button
             variant="outline"
@@ -185,7 +187,7 @@ export function LogsPage() {
             disabled={cleaning || sessions.length === 0}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Cleanup
+            {t("common.cleanup")}
           </Button>
         </div>
       </div>
@@ -208,7 +210,7 @@ export function LogsPage() {
           }`}
         >
           <Terminal className="h-4 w-4 inline mr-2" />
-          Server Logs
+          {t("logs.serverLogs")}
         </button>
         <button
           onClick={() => setActiveTab("api")}
@@ -219,7 +221,7 @@ export function LogsPage() {
           }`}
         >
           <Activity className="h-4 w-4 inline mr-2" />
-          API Logs
+          {t("logs.apiLogs")}
         </button>
       </div>
 
@@ -228,15 +230,15 @@ export function LogsPage() {
           {/* Sessions sidebar */}
           <div className="w-64 flex flex-col rounded-lg border bg-card">
             <div className="p-3 border-b">
-              <h2 className="font-semibold text-sm">Sessions</h2>
+              <h2 className="font-semibold text-sm">{t("logs.sessions")}</h2>
               <p className="text-xs text-muted-foreground">
-                {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+                {t("logs.sessionCount", { count: sessions.length })}
               </p>
             </div>
             <ScrollArea className="flex-1">
               {sessions.length === 0 ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">
-                  No log sessions yet
+                  {t("logs.noSessions")}
                 </div>
               ) : (
                 <div className="divide-y">
@@ -268,8 +270,8 @@ export function LogsPage() {
                       {selectedSession.ended_at
                         ? ` - ${selectedSession.ended_at}`
                         : selectedSession.pid
-                        ? ` (PID: ${selectedSession.pid})`
-                        : " (running)"}
+                        ? ` (${t("logs.pid", { pid: selectedSession.pid })})`
+                        : ` (${t("common.running")})`}
                     </p>
                   </div>
                 </div>
@@ -290,17 +292,17 @@ export function LogsPage() {
               {!selectedSessionId ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <FileText className="h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Select a session</p>
-                  <p className="text-sm">Choose a log session from the sidebar</p>
+                  <p className="text-lg font-medium">{t("logs.selectSession")}</p>
+                  <p className="text-sm">{t("logs.selectSessionDesc")}</p>
                 </div>
               ) : logs.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-gray-500">
                   <Terminal className="h-12 w-12 mb-4 opacity-50" />
-                  <p className="text-lg font-medium">No logs yet</p>
+                  <p className="text-lg font-medium">{t("logs.noLogs")}</p>
                   <p className="text-sm">
                     {selectedSession?.ended_at
-                      ? "This session has no log entries"
-                      : "Logs will appear as the server runs"}
+                      ? t("logs.noLogsEnded")
+                      : t("logs.logsWillAppear")}
                   </p>
                 </div>
               ) : (
@@ -319,7 +321,7 @@ export function LogsPage() {
               {autoRefresh && (
                 <span className="flex items-center gap-1">
                   <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                  Auto-refreshing every 3s
+                  {t("logs.autoRefreshing")}
                 </span>
               )}
             </div>
@@ -340,6 +342,7 @@ interface SessionItemProps {
 }
 
 function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) {
+  const { t } = useTranslation();
   const hasEnded = !!session.ended_at;
   const isRunning = !hasEnded && isAlive === true;
   const isDead = !hasEnded && isAlive === false;
@@ -353,19 +356,19 @@ function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) 
     >
       <div className="flex items-center gap-2">
         {isRunning ? (
-          <span title="Running">
+          <span title={t("logs.processRunning")}>
             <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           </span>
         ) : isDead ? (
-          <span title="Process died">
+          <span title={t("logs.processDied")}>
             <XCircle className="h-3 w-3 text-red-500" />
           </span>
         ) : hasEnded ? (
-          <span title="Ended normally">
+          <span title={t("logs.endedNormally")}>
             <CheckCircle2 className="h-3 w-3 text-muted-foreground" />
           </span>
         ) : (
-          <span title="Unknown status">
+          <span title={t("logs.unknownStatus")}>
             <div className="h-2 w-2 rounded-full bg-yellow-500" />
           </span>
         )}
@@ -373,7 +376,7 @@ function SessionItem({ session, selected, onClick, isAlive }: SessionItemProps) 
           {session.server_name}
         </span>
         {session.pid && !hasEnded && (
-          <span className="text-xs text-muted-foreground">PID: {session.pid}</span>
+          <span className="text-xs text-muted-foreground">{t("logs.pid", { pid: session.pid })}</span>
         )}
         {selected && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
       </div>
@@ -419,6 +422,7 @@ function TerminalLogLine({ log }: TerminalLogLineProps) {
 
 // API Logs Tab - Full implementation with JSONL logging
 function ApiLogsTab() {
+  const { t } = useTranslation();
   const {
     sessions,
     selectedRunId,
@@ -457,7 +461,7 @@ function ApiLogsTab() {
 
   const handleClearSession = async () => {
     if (!selectedRunId) return;
-    if (!confirm(`Delete API logs for this session?`)) return;
+    if (!confirm(t("logs.deleteApiSession"))) return;
     await clearLogs(selectedRunId);
   };
 
@@ -466,9 +470,9 @@ function ApiLogsTab() {
       {/* Sessions sidebar */}
       <div className="w-64 flex flex-col rounded-lg border bg-card">
         <div className="p-3 border-b">
-          <h2 className="font-semibold text-sm">API Sessions</h2>
+          <h2 className="font-semibold text-sm">{t("logs.apiSessions")}</h2>
           <p className="text-xs text-muted-foreground">
-            {sessions.length} session{sessions.length !== 1 ? "s" : ""}
+            {t("logs.sessionCount", { count: sessions.length })}
           </p>
           {logsDirPath && (
             <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate flex items-center gap-1">
@@ -481,8 +485,8 @@ function ApiLogsTab() {
           {sessions.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
               <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No API logs yet</p>
-              <p className="text-xs mt-1">Logs will appear when the MCP server handles requests</p>
+              <p>{t("logs.noApiLogs")}</p>
+              <p className="text-xs mt-1">{t("logs.apiLogsWillAppear")}</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -514,7 +518,7 @@ function ApiLogsTab() {
             ) : (
               <ToggleLeft className="h-4 w-4 mr-1" />
             )}
-            Auto
+            {t("common.auto")}
           </Button>
           <Button variant="outline" size="sm" onClick={refresh} disabled={loading}>
             {loading ? (
@@ -522,7 +526,7 @@ function ApiLogsTab() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-1" />
             )}
-            Refresh
+            {t("common.refresh")}
           </Button>
           <Button
             variant="outline"
@@ -531,7 +535,7 @@ function ApiLogsTab() {
             className={showFilters ? "bg-muted" : ""}
           >
             <Filter className="h-4 w-4 mr-1" />
-            Filters
+            {t("logs.filters")}
           </Button>
           <div className="flex-1" />
           {selectedRunId && (
@@ -542,7 +546,7 @@ function ApiLogsTab() {
               className="text-destructive hover:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Clear
+              {t("common.clear")}
             </Button>
           )}
         </div>
@@ -557,7 +561,7 @@ function ApiLogsTab() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search logs..."
+                  placeholder={t("logs.searchLogs")}
                   className="w-full pl-8 pr-3 py-1.5 rounded-md border bg-background text-sm"
                 />
               </div>
@@ -566,7 +570,7 @@ function ApiLogsTab() {
                 onChange={(e) => setFilter({ ...filter, provider: e.target.value || undefined })}
                 className="px-3 py-1.5 rounded-md border bg-background text-sm"
               >
-                <option value="">All Providers</option>
+                <option value="">{t("logs.allProviders")}</option>
                 {uniqueProviders.map((p) => (
                   <option key={p} value={p}>{p}</option>
                 ))}
@@ -576,7 +580,7 @@ function ApiLogsTab() {
                 onChange={(e) => setFilter({ ...filter, source: e.target.value || undefined })}
                 className="px-3 py-1.5 rounded-md border bg-background text-sm"
               >
-                <option value="">All Sources</option>
+                <option value="">{t("logs.allSources")}</option>
                 {uniqueSources.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -586,7 +590,7 @@ function ApiLogsTab() {
                 onChange={(e) => setFilter({ ...filter, method: e.target.value as "search" | "download" | "read" | undefined })}
                 className="px-3 py-1.5 rounded-md border bg-background text-sm"
               >
-                <option value="">All Methods</option>
+                <option value="">{t("logs.allMethods")}</option>
                 {uniqueMethods.map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
@@ -596,9 +600,9 @@ function ApiLogsTab() {
                 onChange={(e) => setFilter({ ...filter, status: e.target.value as "success" | "error" | undefined })}
                 className="px-3 py-1.5 rounded-md border bg-background text-sm"
               >
-                <option value="">All Status</option>
-                <option value="success">Success</option>
-                <option value="error">Error</option>
+                <option value="">{t("logs.allStatus")}</option>
+                <option value="success">{t("logs.success")}</option>
+                <option value="error">{t("logs.error")}</option>
               </select>
               {(filter.provider || filter.source || filter.method || filter.status || searchQuery) && (
                 <Button
@@ -609,7 +613,7 @@ function ApiLogsTab() {
                     setSearchQuery("");
                   }}
                 >
-                  Clear
+                  {t("common.clear")}
                 </Button>
               )}
             </div>
@@ -621,19 +625,19 @@ function ApiLogsTab() {
           <div className="mb-3 grid grid-cols-4 gap-3">
             <div className="p-3 rounded-lg border bg-card">
               <p className="text-2xl font-bold">{summary.total_requests}</p>
-              <p className="text-xs text-muted-foreground">Total Requests</p>
+              <p className="text-xs text-muted-foreground">{t("logs.totalRequests")}</p>
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <p className="text-2xl font-bold text-green-600">{summary.successful_requests}</p>
-              <p className="text-xs text-muted-foreground">Successful</p>
+              <p className="text-xs text-muted-foreground">{t("logs.successful")}</p>
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <p className="text-2xl font-bold text-red-600">{summary.failed_requests}</p>
-              <p className="text-xs text-muted-foreground">Failed</p>
+              <p className="text-xs text-muted-foreground">{t("logs.failed")}</p>
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <p className="text-2xl font-bold">{summary.avg_latency_ms.toFixed(0)}ms</p>
-              <p className="text-xs text-muted-foreground">Avg Latency</p>
+              <p className="text-xs text-muted-foreground">{t("logs.avgLatency")}</p>
             </div>
           </div>
         )}
@@ -650,17 +654,17 @@ function ApiLogsTab() {
           {!selectedRunId ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-500">
               <Activity className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">Select a session</p>
-              <p className="text-sm">Choose an API log session from the sidebar</p>
+              <p className="text-lg font-medium">{t("logs.selectApiSession")}</p>
+              <p className="text-sm">{t("logs.selectApiSessionDesc")}</p>
             </div>
           ) : filteredLogs.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-gray-500">
               <Database className="h-12 w-12 mb-4 opacity-50" />
-              <p className="text-lg font-medium">No logs</p>
+              <p className="text-lg font-medium">{t("logs.noLogs")}</p>
               <p className="text-sm">
                 {searchQuery || Object.keys(filter).length > 0
-                  ? "No logs match your filters"
-                  : "API logs will appear here when requests are made"}
+                  ? t("logs.noLogsMatchFilter")
+                  : t("logs.apiLogsWillAppear")}
               </p>
             </div>
           ) : (
@@ -686,13 +690,13 @@ function ApiLogsTab() {
         {/* Status bar */}
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span>
-            {filteredLogs.length} log{filteredLogs.length !== 1 ? "s" : ""}
-            {(searchQuery || Object.keys(filter).length > 0) && ` (filtered)`}
+            {filteredLogs.length} {t("logs.logEntries")}
+            {(searchQuery || Object.keys(filter).length > 0) && ` (${t("logs.filtered")})`}
           </span>
           {autoRefresh && (
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              Auto-refreshing every 5s
+              {t("logs.autoRefreshing5s")}
             </span>
           )}
         </div>
@@ -740,6 +744,7 @@ interface ApiLogLineProps {
 }
 
 function ApiLogLine({ log, expanded, onToggle }: ApiLogLineProps) {
+  const { t } = useTranslation();
   const isError = log.status === "error";
   const textColor = isError ? "text-red-400" : "text-gray-300";
 
@@ -790,20 +795,20 @@ function ApiLogLine({ log, expanded, onToggle }: ApiLogLineProps) {
       {expanded && (
         <div className="ml-6 mt-1 mb-2 p-2 bg-black/30 rounded text-xs space-y-2">
           <div>
-            <span className="text-gray-500">Request:</span>
+            <span className="text-gray-500">{t("logs.request")}:</span>
             <pre className="mt-1 text-gray-400 whitespace-pre-wrap break-all">
               {JSON.stringify(log.request, null, 2)}
             </pre>
           </div>
           <div>
-            <span className="text-gray-500">Response:</span>
+            <span className="text-gray-500">{t("logs.response")}:</span>
             <pre className="mt-1 text-gray-400 whitespace-pre-wrap break-all">
               {JSON.stringify(log.response, null, 2)}
             </pre>
           </div>
           {log.api_key_hash && (
             <div>
-              <span className="text-gray-500">API Key Hash:</span>
+              <span className="text-gray-500">{t("logs.apiKeyHash")}:</span>
               <span className="ml-2 text-gray-400 font-mono">{log.api_key_hash}</span>
             </div>
           )}

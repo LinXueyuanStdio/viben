@@ -22,7 +22,7 @@ export function AppLayout() {
     // Only initialize if no cached status exists
     // If user already has cached status from previous session, respect it
     if (setupStatus === null) {
-      const isSetupComplete = Boolean(selectedPython?.is_valid && browseMcpInfo?.installed);
+      const isSetupComplete = (selectedPython?.is_valid === true) && (browseMcpInfo?.installed === true);
       setSetupStatus(isSetupComplete);
     }
 

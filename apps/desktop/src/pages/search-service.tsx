@@ -27,8 +27,10 @@ import { useServiceKeys } from "@/hooks/use-service-keys";
 import { useUsage, type ApiKeyUsage } from "@/hooks/use-usage";
 import { useAppStore } from "@/stores";
 import type { McpServerInstance, ServiceApiKey } from "@/types";
+import { useTranslation } from "react-i18next";
 
 export function SearchServicePage() {
+  const { t } = useTranslation();
   const { selectedPython, browseMcpInfo } = usePython();
   const {
     mcpServers,
@@ -74,7 +76,7 @@ export function SearchServicePage() {
   };
 
   const handleDeleteServer = (id: string, name: string) => {
-    if (!confirm(`Delete server "${name}"? This cannot be undone.`)) return;
+    if (!confirm(t("searchService.deleteServerConfirm", { name }))) return;
     deleteMcpServer(id);
     if (expandedServer === id) {
       setExpandedServer(mcpServers.find((s) => s.id !== id)?.id ?? null);
@@ -85,14 +87,14 @@ export function SearchServicePage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Search Service</h1>
+          <h1 className="text-2xl font-bold">{t("searchService.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            Configure MCP servers with different data sources
+            {t("searchService.subtitle")}
           </p>
         </div>
         <Button onClick={handleCreateServer} disabled={!canStart}>
           <Plus className="h-4 w-4 mr-2" />
-          New Server
+          {t("searchService.newServer")}
         </Button>
       </div>
 
@@ -103,14 +105,14 @@ export function SearchServicePage() {
             <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
             <div>
               <h3 className="font-semibold text-yellow-800 dark:text-yellow-200">
-                Requirements Not Met
+                {t("searchService.requirementsNotMet")}
               </h3>
               <ul className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 space-y-1">
                 {!selectedPython?.is_valid && (
-                  <li>- Python 3.10+ is required</li>
+                  <li>- {t("searchService.python310Required")}</li>
                 )}
                 {selectedPython?.is_valid && !browseMcpInfo?.installed && (
-                  <li>- browse-mcp package is not installed</li>
+                  <li>- {t("searchService.browseMcpNotInstalled")}</li>
                 )}
               </ul>
             </div>
@@ -122,13 +124,13 @@ export function SearchServicePage() {
       {mcpServers.length === 0 ? (
         <div className="rounded-lg border bg-card p-12 text-center">
           <Server className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-medium mb-2">No Servers Configured</h3>
+          <h3 className="text-lg font-medium mb-2">{t("searchService.noServersTitle")}</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Create your first MCP server to start searching academic papers.
+            {t("searchService.noServersDesc")}
           </p>
           <Button onClick={handleCreateServer} disabled={!canStart}>
             <Plus className="h-4 w-4 mr-2" />
-            Create Server
+            {t("searchService.createServer")}
           </Button>
         </div>
       ) : (
@@ -188,6 +190,7 @@ function ServerCard({
   canStart,
   pythonPath,
 }: ServerCardProps) {
+  const { t } = useTranslation();
   const { startServer, stopServer, loading, error, checkPortStatus, killProcess, isProcessAlive } = useMcp();
   const { getAllApiKeys } = useApiKeys();
   const { getKeyById } = useServiceKeys();
@@ -281,7 +284,7 @@ function ServerCard({
       await new Promise((resolve) => setTimeout(resolve, 500));
       await doStartServer(portConflict.port);
     } else {
-      setNotification("Failed to kill process. Please close it manually.");
+      setNotification(t("searchService.failedToKill"));
     }
     setPortConflict(null);
   };
@@ -291,7 +294,7 @@ function ServerCard({
     const newPort = portConflict.port + 1;
     onUpdate({ port: newPort });
     setPortConflict(null);
-    setNotification(`Port changed to ${newPort}. Click Start again.`);
+    setNotification(t("searchService.portChanged", { port: newPort }));
   };
 
   const handleStop = async () => {
@@ -300,7 +303,7 @@ function ServerCard({
       if (server.pid) {
         const alive = await isProcessAlive(server.pid);
         if (!alive) {
-          setNotification("Process already terminated.");
+          setNotification(t("searchService.processTerminated"));
           onStatusChange("stopped");
           return;
         }
@@ -310,7 +313,7 @@ function ServerCard({
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("No such process") || message.includes("not found")) {
-        setNotification("Process already terminated.");
+        setNotification(t("searchService.processTerminated"));
         onStatusChange("stopped");
       } else {
         console.error("Failed to stop server:", err);
@@ -379,17 +382,16 @@ function ServerCard({
           <div className="bg-card rounded-lg border shadow-lg p-6 max-w-md mx-4">
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-500" />
-              Port {portConflict.port} is in use
+              {t("searchService.portInUse", { port: portConflict.port })}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
               {portConflict.processName ? (
-                <>
-                  Process <strong>{portConflict.processName}</strong> (PID: {portConflict.pid}) is using this port.
-                </>
+                t("searchService.processUsingPort", {
+                  name: portConflict.processName,
+                  pid: portConflict.pid,
+                })
               ) : (
-                <>
-                  A process (PID: {portConflict.pid}) is using this port.
-                </>
+                t("searchService.pidUsingPort", { pid: portConflict.pid })
               )}
             </p>
             <div className="flex gap-2 justify-end">
@@ -398,14 +400,14 @@ function ServerCard({
                 size="sm"
                 onClick={() => setPortConflict(null)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleUseAnotherPort}
               >
-                Use Port {portConflict.port + 1}
+                {t("searchService.useAnotherPort", { port: portConflict.port + 1 })}
               </Button>
               <Button
                 variant="destructive"
@@ -413,7 +415,7 @@ function ServerCard({
                 onClick={handleKillAndStart}
                 disabled={!portConflict.pid}
               >
-                Kill & Start
+                {t("searchService.killAndStart")}
               </Button>
             </div>
           </div>
@@ -487,7 +489,7 @@ function ServerCard({
             :{server.port || 3000}
           </span>
           <span className="text-xs text-muted-foreground">
-            {server.enabledSources.length} sources
+            {server.enabledSources.length} {t("searchService.sources")}
           </span>
         </div>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -505,7 +507,7 @@ function ServerCard({
             ) : (
               <Play className="h-4 w-4 mr-2" />
             )}
-            {isRunning ? "Stop" : "Start"}
+            {isRunning ? t("common.stop") : t("common.start")}
           </Button>
           <Button
             variant="ghost"
@@ -532,12 +534,12 @@ function ServerCard({
           <div>
             <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
               <Settings2 className="h-4 w-4" />
-              Configuration
+              {t("searchService.configuration")}
             </h4>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Transport Protocol
+                  {t("searchService.transportProtocol")}
                 </label>
                 <div className="flex gap-2">
                   {(["sse", "http"] as const).map((transport) => (
@@ -557,13 +559,13 @@ function ServerCard({
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {server.transport === "sse"
-                    ? "Server-Sent Events - recommended for MCP clients"
-                    : "HTTP - for REST API access"}
+                    ? t("searchService.sseDescription")
+                    : t("searchService.httpDescription")}
                 </p>
               </div>
 
               <div>
-                <label className="text-sm font-medium mb-2 block">Port</label>
+                <label className="text-sm font-medium mb-2 block">{t("common.port")}</label>
                 <input
                   type="number"
                   value={server.port || 3000}
@@ -575,7 +577,7 @@ function ServerCard({
 
               <div className="sm:col-span-2">
                 <label className="text-sm font-medium mb-2 block">
-                  Download Path
+                  {t("settings.downloadPath")}
                 </label>
                 <input
                   type="text"
@@ -590,7 +592,7 @@ function ServerCard({
 
           {/* Data Sources */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Data Sources</h4>
+            <h4 className="text-sm font-medium mb-3">{t("providers.title")}</h4>
             <div className="grid gap-2 sm:grid-cols-3">
               {availableProviders.map((provider) => (
                 <label
@@ -614,8 +616,7 @@ function ServerCard({
             </div>
             {availableProviders.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No data sources available. Configure API keys in the Data
-                Sources page.
+                {t("searchService.noDataSources")}
               </p>
             )}
           </div>
@@ -631,27 +632,27 @@ function ServerCard({
           {/* MCP Configuration */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium">MCP Configuration</h4>
+              <h4 className="text-sm font-medium">{t("searchService.mcpConfiguration")}</h4>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={copyConfig}
                 disabled={!canCopyConfig}
-                title={!canCopyConfig ? "Select an API key to copy configuration" : ""}
+                title={!canCopyConfig ? t("searchService.selectKeyToCopy") : ""}
               >
                 {copied ? (
                   <Check className="h-4 w-4 mr-2 text-green-600" />
                 ) : (
                   <Copy className="h-4 w-4 mr-2" />
                 )}
-                {copied ? "Copied!" : "Copy"}
+                {copied ? t("common.copied") : t("common.copy")}
               </Button>
             </div>
 
             {/* API Key selector for config */}
             <div className="mb-2">
               <label className="text-xs text-muted-foreground mb-1 block">
-                Select API Key for config (required):
+                {t("searchService.selectApiKeyForConfig")}
               </label>
               {server.apiKeys.length > 0 ? (
                 <select
@@ -659,7 +660,7 @@ function ServerCard({
                   onChange={(e) => setSelectedKeyForConfig(e.target.value)}
                   className="w-full rounded-md border bg-background px-3 py-1.5 text-sm"
                 >
-                  <option value="">-- Select API Key --</option>
+                  <option value="">{t("searchService.selectApiKeyOption")}</option>
                   {server.apiKeys.map((key) => (
                     <option key={key.id} value={key.id}>
                       {key.name} ({key.keyPrefix})
@@ -668,7 +669,7 @@ function ServerCard({
                 </select>
               ) : (
                 <p className="text-sm text-yellow-600 dark:text-yellow-400 p-2 bg-yellow-50 dark:bg-yellow-950 rounded border border-yellow-200 dark:border-yellow-900">
-                  Create an API key above to enable configuration copy.
+                  {t("searchService.createApiKeyToEnable")}
                 </p>
               )}
             </div>
@@ -679,13 +680,13 @@ function ServerCard({
 
             {!selectedKeyForConfig && server.apiKeys.length > 0 && (
               <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                Select an API key to copy the configuration with the real key.
+                {t("searchService.selectKeyToCopy")}
               </p>
             )}
 
             {selectedApiKey && (
               <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                Click "Copy" to copy the configuration with the real API key.
+                {t("searchService.clickToCopy")}
               </p>
             )}
           </div>
@@ -708,6 +709,7 @@ function ServerApiKeysSection({
   onDeleteKey,
   disabled = false,
 }: ServerApiKeysSectionProps) {
+  const { t } = useTranslation();
   const { createKey } = useServiceKeys();
   const { getApiKeyUsage } = useUsage();
   const [creating, setCreating] = useState(false);
@@ -762,7 +764,7 @@ function ServerApiKeysSection({
 
   const handleDelete = (keyId: string, keyName: string) => {
     if (disabled) return;
-    if (!confirm(`Delete API key "${keyName}"?`)) return;
+    if (!confirm(t("searchService.deleteKeyConfirm", { name: keyName }))) return;
     onDeleteKey(keyId);
   };
 
@@ -774,15 +776,15 @@ function ServerApiKeysSection({
     <div>
       <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
         <Key className="h-4 w-4" />
-        Service API Keys
+        {t("searchService.serviceApiKeys")}
         {disabled && (
           <span className="text-xs text-yellow-600 dark:text-yellow-400 font-normal">
-            (Stop server to modify)
+            ({t("searchService.stopServerToModify")})
           </span>
         )}
       </h4>
       <p className="text-xs text-muted-foreground mb-3">
-        Create API keys for external clients to authenticate with this server.
+        {t("searchService.apiKeysInfo")}
       </p>
 
       {/* Newly Created Key */}
@@ -791,10 +793,10 @@ function ServerApiKeysSection({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                API Key Created: {newlyCreatedKey.name}
+                {t("searchService.apiKeyCreated", { name: newlyCreatedKey.name })}
               </p>
               <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
-                Copy now - you won't see this again.
+                {t("searchService.copyNow")}
               </p>
             </div>
             <Button
@@ -807,7 +809,7 @@ function ServerApiKeysSection({
           </div>
           <div className="mt-2 flex items-center gap-2">
             <code className="flex-1 bg-white dark:bg-green-900 px-2 py-1 rounded text-xs font-mono text-green-900 dark:text-green-100">
-              {showNewKey ? newlyCreatedKey.key : "•".repeat(32)}
+              {showNewKey ? newlyCreatedKey.key : "...".repeat(10)}
             </code>
             <Button
               variant="outline"
@@ -837,7 +839,7 @@ function ServerApiKeysSection({
           type="text"
           value={newKeyName}
           onChange={(e) => setNewKeyName(e.target.value)}
-          placeholder="Key name (e.g., Claude Desktop)"
+          placeholder={t("searchService.keyNamePlaceholder")}
           className="flex-1 rounded-md border bg-background px-3 py-2 text-sm disabled:opacity-50"
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
           disabled={disabled}
@@ -852,14 +854,14 @@ function ServerApiKeysSection({
           ) : (
             <Plus className="h-4 w-4 mr-2" />
           )}
-          Create
+          {t("common.create")}
         </Button>
       </div>
 
       {/* Existing Keys */}
       {server.apiKeys.length === 0 ? (
         <p className="text-xs text-muted-foreground text-center py-4">
-          No API keys created for this server
+          {t("searchService.noApiKeysCreated")}
         </p>
       ) : (
         <div className="space-y-2">
@@ -876,13 +878,13 @@ function ServerApiKeysSection({
                   </code>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                  <span>Created {key.createdAt}</span>
+                  <span>{t("searchService.created", { date: key.createdAt })}</span>
                   {keyUsages[key.id]?.last_used && (
-                    <span>Last used {keyUsages[key.id].last_used}</span>
+                    <span>{t("searchService.lastUsed", { date: keyUsages[key.id].last_used })}</span>
                   )}
                   <span className="flex items-center gap-1">
                     <Activity className="h-3 w-3" />
-                    {keyUsages[key.id]?.usage_count ?? 0} requests
+                    {t("searchService.requestsCount", { count: keyUsages[key.id]?.usage_count ?? 0 })}
                   </span>
                 </div>
               </div>
