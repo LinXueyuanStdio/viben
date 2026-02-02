@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Literal, Optional, cast
 import httpx
 from loguru import logger
 from fastmcp import FastMCP
-from mcp.types import TextContent
 from pydantic import BaseModel, Field, field_validator, model_validator
 import typer
 
@@ -30,11 +29,14 @@ def _get_available_sources_str() -> str:
     return ', '.join(get_available_sources())
 
 
-# region paper_search
-class PaperQuery(BaseModel):
+# region browse_search (formerly paper_search)
+
+# Keep PaperQuery as an alias for backward compatibility
+class SearchQuery(BaseModel):
+    """Query model for browse_search tool."""
     searcher: Optional[str] = Field(
         default=None,
-        description="The academic platform to search from. None means searching from all enabled platforms.",
+        description="The content platform to search from. None means searching from all enabled platforms.",
     )
     query: str = Field(
         ...,
@@ -82,7 +84,7 @@ Additional search parameters:
         return v
 
     @model_validator(mode='after')
-    def validate_searcher_specific_params(self) -> 'PaperQuery':
+    def validate_searcher_specific_params(self) -> 'SearchQuery':
         """Validate that searcher-specific parameters are only used with appropriate searchers."""
         # Validate searcher is in enabled list
         if self.searcher is not None and self.searcher not in engine2searcher:
@@ -93,9 +95,13 @@ Additional search parameters:
             raise ValueError("'year' parameter is only applicable when searcher is 'semantic' or None")
         if self.kwargs is not None and self.searcher not in [None, 'crossref']:
             raise ValueError("'kwargs' parameter is only applicable when searcher is 'crossref' or None")
-        if self.fetch_details is not None and self.fetch_details != True and self.searcher not in [None, 'iacr']:
+        if self.fetch_details is not None and self.fetch_details is not True and self.searcher not in [None, 'iacr']:
             raise ValueError("'fetch_details' parameter is only applicable when searcher is 'iacr' or None")
         return self
+
+
+# Backward compatibility alias
+PaperQuery = SearchQuery
 
 
 # Asynchronous helper to adapt synchronous searchers
@@ -108,7 +114,7 @@ async def async_search(searcher: PaperSource, query: str, max_results: int, **kw
             papers = searcher.search(query, max_results=max_results)
         return papers
 
-def expand_query(query_list: list[PaperQuery]) -> list[PaperQuery]:
+def expand_query(query_list: list[SearchQuery]) -> list[SearchQuery]:
     expanded_queries = []
     for query in query_list:
         if query.searcher:
@@ -120,7 +126,7 @@ def expand_query(query_list: list[PaperQuery]) -> list[PaperQuery]:
                 expanded_queries.append(expanded_query)
     return expanded_queries
 
-async def async_search_per_query(query: PaperQuery) -> List[Paper]:
+async def async_search_per_query(query: SearchQuery) -> List[Paper]:
     searcher = engine2searcher.get(query.searcher)
     if not searcher:
         return []
@@ -137,16 +143,16 @@ async def async_search_per_query(query: PaperQuery) -> List[Paper]:
     return papers
 
 
-async def async_search_per_query_list(query_list: List[PaperQuery]) -> List[Paper]:
+async def async_search_per_query_list(query_list: List[SearchQuery]) -> List[Paper]:
     all_papers = await asyncio.gather(*[async_search_per_query(query) for query in query_list])
     papers = sum(all_papers, [])
     return papers
 
 
-def _build_paper_search_description() -> str:
-    """Build the paper_search tool description dynamically."""
+def _build_browse_search_description() -> str:
+    """Build the browse_search tool description dynamically."""
     sources = _get_available_sources_str()
-    return f"""Search academic papers from multiple sources.
+    return f"""Search content from multiple sources.
 
 ## Available sources: {sources}
 
@@ -158,7 +164,7 @@ def _build_paper_search_description() -> str:
 - kwargs: dict (only for crossref)
 
 ## Example:
-paper_search([
+browse_search([
     {{"searcher": "arxiv", "query": "machine learning", "max_results": 5}},
     {{"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3}},
     {{"searcher": "iacr", "query": "cryptography", "max_results": 3, "fetch_details": true}},
@@ -169,14 +175,11 @@ paper_search([
 """
 
 
-@mcp.tool(
-    name="paper_search",
-    description=_build_paper_search_description(),
-)
-async def paper_search(query_list: List[PaperQuery]) -> Dict[str, List[TextContent]]:
+async def _browse_search_impl(query_list: List[SearchQuery]) -> str:
+    """Implementation for browse_search."""
     async with httpx.AsyncClient() as client:
         expanded_queries = expand_query(query_list)
-        papers = await xmap_async(expanded_queries, async_search_per_query_list, is_async_work_func=True, desc="Searching papers", is_batch_work_func=True, batch_size=1)
+        papers = await xmap_async(expanded_queries, async_search_per_query_list, is_async_work_func=True, desc="Searching content", is_batch_work_func=True, batch_size=1)
         texts = []
         for paper in papers:
             if isinstance(paper, dict) and "error" in paper:
@@ -188,25 +191,51 @@ async def paper_search(query_list: List[PaperQuery]) -> Dict[str, List[TextConte
                 else:
                     # Fallback for backward compatibility
                     texts.append(paper2text(cast(Paper, paper)))
-        content = "\n\n".join(texts) if texts else "No papers found."
+        content = "\n\n".join(texts) if texts else "No content found."
         return content
-    content = "No papers found."
+    content = "No content found."
     return content
 
-# endregion paper_search
+
+@mcp.tool(
+    name="browse_search",
+    description=_build_browse_search_description(),
+)
+async def browse_search(query_list: List[SearchQuery]) -> str:
+    """Search content from multiple sources."""
+    return await _browse_search_impl(query_list)
 
 
-# region paper_download
+# Deprecated alias for backward compatibility
+@mcp.tool(
+    name="paper_search",
+    description=f"""[DEPRECATED: Use browse_search instead]
 
-class PaperDownloadQuery(BaseModel):
+{_build_browse_search_description()}""",
+)
+async def paper_search(query_list: List[SearchQuery]) -> str:
+    """Search academic papers from multiple sources.
+
+    DEPRECATED: This tool is deprecated. Please use browse_search instead.
+    """
+    logger.warning("paper_search is deprecated. Please use browse_search instead.")
+    return await _browse_search_impl(query_list)
+
+# endregion browse_search
+
+
+# region browse_download (formerly paper_download)
+
+class DownloadQuery(BaseModel):
+    """Query model for browse_download tool."""
     searcher: str = Field(
-        description="The academic platform to download from."
+        description="The content platform to download from."
     )
-    paper_id: str = Field(
-        ...,
+    content_id: Optional[str] = Field(
+        default=None,
         min_length=1,
         max_length=200,
-        description="""The unique identifier of the paper to download. Format depends on the searcher:
+        description="""The unique identifier of the content to download. Format depends on the searcher:
 - arxiv: arXiv ID (e.g., '2106.12345')
 - pubmed: PubMed ID/PMID (e.g., '32790614')
 - biorxiv: bioRxiv DOI (e.g., '10.1101/2020.01.01.123456')
@@ -214,6 +243,13 @@ class PaperDownloadQuery(BaseModel):
 - iacr: IACR paper ID (e.g., '2009/101')
 - semantic: Semantic Scholar ID or prefixed ID (e.g., 'DOI:10.18653/v1/N18-3011', 'ARXIV:2106.15928')
 - crossref: DOI (e.g., '10.1038/s41586-020-2649-2')"""
+    )
+    # Keep paper_id for backward compatibility
+    paper_id: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="[DEPRECATED: Use content_id instead] The unique identifier of the paper to download."
     )
 
     @field_validator('searcher')
@@ -225,40 +261,53 @@ class PaperDownloadQuery(BaseModel):
             raise ValueError(f"Searcher '{v}' is not available. Available sources: {available}")
         return v
 
-    @field_validator('paper_id')
-    @classmethod
-    def validate_paper_id(cls, v: str) -> str:
-        """Validate and clean the paper ID."""
-        v = v.strip()
-        if not v:
-            raise ValueError("Paper ID cannot be empty or whitespace only")
-        return v
+    @model_validator(mode='after')
+    def validate_content_id(self) -> 'DownloadQuery':
+        """Validate that either content_id or paper_id is provided."""
+        # Support both content_id and paper_id for backward compatibility
+        if self.content_id is None and self.paper_id is None:
+            raise ValueError("Either 'content_id' or 'paper_id' must be provided")
+        # If paper_id is used, log deprecation warning
+        if self.paper_id is not None and self.content_id is None:
+            logger.warning("'paper_id' is deprecated. Please use 'content_id' instead.")
+            self.content_id = self.paper_id
+        return self
+
+    def get_content_id(self) -> str:
+        """Get the content ID, handling backward compatibility."""
+        return (self.content_id or self.paper_id or "").strip()
 
 
-async def async_download_per_query(query: PaperDownloadQuery) -> str:
+# Backward compatibility alias
+PaperDownloadQuery = DownloadQuery
+
+
+async def async_download_per_query(query: DownloadQuery) -> str:
     searcher = engine2searcher.get(query.searcher)
     if not searcher:
         return f"Searcher '{query.searcher}' not found."
     try:
-        pdf_path = searcher.download_pdf(query.paper_id, SAVE_PATH)
+        content_id = query.get_content_id()
+        pdf_path = searcher.download_pdf(content_id, SAVE_PATH)
         return pdf_path
     except Exception as e:
-        logger.error(f"Error downloading paper {query.paper_id} from {query.searcher}: {e}\n{traceback.format_exc()}")
-        return f"Error downloading paper {query.paper_id} from {query.searcher}: {e}"
+        content_id = query.get_content_id()
+        logger.error(f"Error downloading content {content_id} from {query.searcher}: {e}\n{traceback.format_exc()}")
+        return f"Error downloading content {content_id} from {query.searcher}: {e}"
 
 
-def _build_paper_download_description() -> str:
-    """Build the paper_download tool description dynamically."""
+def _build_browse_download_description() -> str:
+    """Build the browse_download tool description dynamically."""
     sources = _get_available_sources_str()
-    return f"""Download academic paper PDFs from multiple sources.
+    return f"""Download content (e.g., PDFs) from multiple sources.
 
 ## Available sources: {sources}
 
 ## Input Constraints:
 - searcher: Required, must be one of the supported platforms
-- paper_id: Required, 1-200 characters, cannot be empty
+- content_id: Required, 1-200 characters, cannot be empty
 
-## Paper ID formats:
+## Content ID formats:
 - arXiv: Use the arXiv ID (e.g., "2106.12345").
 - PubMed: Use the PubMed ID (PMID) (e.g., "32790614").
 - bioRxiv: Use the bioRxiv DOI (e.g., "10.1101/2020.01.01.123456").
@@ -276,57 +325,105 @@ def _build_paper_download_description() -> str:
     - URL:<url> (e.g., "URL:https://arxiv.org/abs/2106.15928v1")
 
 ## Returns:
-List of paths to the downloaded PDF files.
+List of paths to the downloaded files.
 
 ## Example:
-paper_download([
-    {{"searcher": "arxiv", "paper_id": "2106.12345"}},
-    {{"searcher": "pubmed", "paper_id": "32790614"}},
-    {{"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"}},
-    {{"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}}
+browse_download([
+    {{"searcher": "arxiv", "content_id": "2106.12345"}},
+    {{"searcher": "pubmed", "content_id": "32790614"}},
+    {{"searcher": "biorxiv", "content_id": "10.1101/2020.01.01.123456"}},
+    {{"searcher": "semantic", "content_id": "DOI:10.18653/v1/N18-3011"}}
 ])
 """
 
 
-@mcp.tool(
-    name="paper_download",
-    description=_build_paper_download_description(),
-)
-async def paper_download(query_list: List[PaperDownloadQuery]) -> List[str]:
+async def _browse_download_impl(query_list: List[DownloadQuery]) -> List[str]:
+    """Implementation for browse_download."""
     async with httpx.AsyncClient() as client:
-        pdf_paths = await xmap_async(query_list, async_download_per_query, is_async_work_func=True, desc="Downloading papers")
+        pdf_paths = await xmap_async(query_list, async_download_per_query, is_async_work_func=True, desc="Downloading content")
         return pdf_paths
     return []
-# endregion paper_download
 
 
-# region paper_read
-def _build_paper_read_description() -> str:
-    """Build the paper_read tool description dynamically."""
+@mcp.tool(
+    name="browse_download",
+    description=_build_browse_download_description(),
+)
+async def browse_download(query_list: List[DownloadQuery]) -> List[str]:
+    """Download content from multiple sources."""
+    return await _browse_download_impl(query_list)
+
+
+# Deprecated alias for backward compatibility
+@mcp.tool(
+    name="paper_download",
+    description=f"""[DEPRECATED: Use browse_download instead]
+
+{_build_browse_download_description()}""",
+)
+async def paper_download(query_list: List[DownloadQuery]) -> List[str]:
+    """Download academic paper PDFs from multiple sources.
+
+    DEPRECATED: This tool is deprecated. Please use browse_download instead.
+    """
+    logger.warning("paper_download is deprecated. Please use browse_download instead.")
+    return await _browse_download_impl(query_list)
+
+# endregion browse_download
+
+
+# region browse_read (formerly paper_read)
+
+def _build_browse_read_description() -> str:
+    """Build the browse_read tool description dynamically."""
     sources = _get_available_sources_str()
-    return f"""Read and extract text content from academic paper PDFs from multiple sources.
+    return f"""Read and extract text content from sources with optional pagination support.
 
 ## Available sources: {sources}
 
 ## Input Constraints:
 - searcher: Required, must be one of the available sources
-- paper_id: Required, 1-200 characters, cannot be empty
+- content_id: Required, 1-200 characters, cannot be empty
+- page: Optional, specific page number to read (1-indexed)
+- start_page: Optional, start page for range extraction (1-indexed)
+- end_page: Optional, end page for range extraction (1-indexed)
+
+## Pagination behavior:
+- No pagination params: Return all content
+- page=3: Return only page 3
+- start_page=1, end_page=5: Return pages 1-5
+- start_page=10: Return from page 10 to end
+- end_page=5: Return pages 1-5
 
 ## Example:
 
+### Read all content
+browse_read(searcher="arxiv", content_id="2106.12345")
+
+### Read specific page
+browse_read(searcher="arxiv", content_id="2106.12345", page=3)
+
+### Read page range
+browse_read(searcher="arxiv", content_id="2106.12345", start_page=1, end_page=5)
+
 ### arXiv
-paper_read({{"searcher": "arxiv", "paper_id": "2106.12345", "save_path": "./downloads"}})  # paper_id is arXiv ID.
+browse_read(searcher="arxiv", content_id="2106.12345")  # content_id is arXiv ID.
+
 ### PubMed
-paper_read({{"searcher": "pubmed", "paper_id": "32790614", "save_path": "./downloads"}})  # paper_id is PubMed ID (PMID).
+browse_read(searcher="pubmed", content_id="32790614")  # content_id is PubMed ID (PMID).
+
 ### bioRxiv
-paper_read({{"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"}})  # paper_id is bioRxiv DOI.
+browse_read(searcher="biorxiv", content_id="10.1101/2020.01.01.123456")  # content_id is bioRxiv DOI.
+
 ### medRxiv
-paper_read({{"searcher": "medrxiv", "paper_id": "10.1101/2020.01.01.123456", "save_path": "./downloads"}})  # paper_id is medRxiv DOI.
+browse_read(searcher="medrxiv", content_id="10.1101/2020.01.01.123456")  # content_id is medRxiv DOI.
+
 ### IACR
-paper_read({{"searcher": "iacr", "paper_id": "2009/101", "save_path": "./downloads"}})  # paper_id is IACR paper ID.
+browse_read(searcher="iacr", content_id="2009/101")  # content_id is IACR paper ID.
+
 ### Semantic Scholar
-paper_read({{"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011", "save_path": "./downloads"}})
-where paper_id: Semantic Scholar paper ID, Paper identifier in one of the following formats:
+browse_read(searcher="semantic", content_id="DOI:10.18653/v1/N18-3011")
+where content_id: Semantic Scholar paper ID, Paper identifier in one of the following formats:
     - Semantic Scholar ID (e.g., "649def34f8be52c8b66281af98ae884c09aef38b")
     - DOI:<doi> (e.g., "DOI:10.18653/v1/N18-3011")
     - ARXIV:<id> (e.g., "ARXIV:2106.15928")
@@ -335,14 +432,90 @@ where paper_id: Semantic Scholar paper ID, Paper identifier in one of the follow
     - PMID:<id> (e.g., "PMID:19872477")
     - PMCID:<id> (e.g., "PMCID:2323736")
     - URL:<url> (e.g., "URL:https://arxiv.org/abs/2106.15928v1")
+
 ### CrossRef
-paper_read({{"searcher": "crossref", "paper_id": "10.1038/s41586-020-2649-2", "save_path": "./downloads"}})  # paper_id is DOI.
+browse_read(searcher="crossref", content_id="10.1038/s41586-020-2649-2")  # content_id is DOI.
 """
 
 
+async def _browse_read_impl(
+    searcher: str,
+    content_id: str,
+    page: Optional[int] = None,
+    start_page: Optional[int] = None,
+    end_page: Optional[int] = None,
+) -> str:
+    """Implementation for browse_read."""
+    try:
+        # Validate searcher
+        if searcher not in engine2searcher:
+            available = ', '.join(engine2searcher.keys())
+            return f"Error: Searcher '{searcher}' is not available. Available sources: {available}"
+
+        # Validate content_id
+        content_id = content_id.strip()
+        if not content_id:
+            return "Error: content_id cannot be empty or whitespace only"
+
+        searcher_instance = engine2searcher.get(searcher)
+        if not searcher_instance:
+            return f"Searcher '{searcher}' not found or not supported."
+
+        # Call read_paper with pagination parameters
+        text = searcher_instance.read_paper(
+            content_id,
+            SAVE_PATH,
+            page=page,
+            start_page=start_page,
+            end_page=end_page,
+        )
+        return text
+    except Exception as e:
+        logger.error(f"Error reading content: {e}\n{traceback.format_exc()}")
+        return f"Error reading content: {e}"
+
+
+@mcp.tool(
+    name="browse_read",
+    description=_build_browse_read_description(),
+)
+async def browse_read(
+    searcher: str = Field(
+        ...,
+        description="The content platform to read from."
+    ),
+    content_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="The unique identifier of the content to read (format depends on searcher)"
+    ),
+    page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Specific page number to read (1-indexed). Returns only this page."
+    ),
+    start_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Start page for range extraction (1-indexed, inclusive)."
+    ),
+    end_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="End page for range extraction (1-indexed, inclusive)."
+    ),
+) -> str:
+    """Read and extract text content with optional pagination."""
+    return await _browse_read_impl(searcher, content_id, page=page, start_page=start_page, end_page=end_page)
+
+
+# Deprecated alias for backward compatibility
 @mcp.tool(
     name="paper_read",
-    description=_build_paper_read_description(),
+    description=f"""[DEPRECATED: Use browse_read instead]
+
+{_build_browse_read_description()}""",
 )
 async def paper_read(
     searcher: str = Field(
@@ -355,28 +528,30 @@ async def paper_read(
         max_length=200,
         description="The unique identifier of the paper to read (format depends on searcher)"
     ),
+    page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Specific page number to read (1-indexed). Returns only this page."
+    ),
+    start_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Start page for range extraction (1-indexed, inclusive)."
+    ),
+    end_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="End page for range extraction (1-indexed, inclusive)."
+    ),
 ) -> str:
-    try:
-        # Validate searcher
-        if searcher not in engine2searcher:
-            available = ', '.join(engine2searcher.keys())
-            return f"Error: Searcher '{searcher}' is not available. Available sources: {available}"
+    """Read and extract text content from academic paper PDFs from multiple sources.
 
-        # Validate paper_id
-        paper_id = paper_id.strip()
-        if not paper_id:
-            return "Error: paper_id cannot be empty or whitespace only"
+    DEPRECATED: This tool is deprecated. Please use browse_read instead.
+    """
+    logger.warning("paper_read is deprecated. Please use browse_read instead.")
+    return await _browse_read_impl(searcher, paper_id, page=page, start_page=start_page, end_page=end_page)
 
-        searcher_instance = engine2searcher.get(searcher)
-        if not searcher_instance:
-            return f"Searcher '{searcher}' not found or not supported."
-        text = searcher_instance.read_paper(paper_id, SAVE_PATH)
-        return text
-    except Exception as e:
-        logger.error(f"Error converting paper to text: {e}\n{traceback.format_exc()}")
-        return f"Error converting paper to text: {e}"
-
-# endregion paper_read
+# endregion browse_read
 
 
 

@@ -88,12 +88,22 @@ class PubMedSearcher(PaperSource):
                   "Please use the paper's DOI or URL to access the publisher's website.")
         raise NotImplementedError(message)
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """Attempt to read and extract text from a PubMed paper.
 
         Args:
             paper_id: PubMed ID (PMID)
             save_path: Directory for potential PDF storage (unused)
+            page: Specific page number to read (1-indexed) - not supported
+            start_page: Start page for range extraction (1-indexed) - not supported
+            end_page: End page for range extraction (1-indexed) - not supported
 
         Returns:
             str: Error message indicating PDF reading is not supported

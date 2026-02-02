@@ -244,16 +244,26 @@ class CrossRefSearcher(PaperSource):
                   "To access the full text, please use the paper's DOI or URL to visit the publisher's website.")
         raise NotImplementedError(message)
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """
         CrossRef doesn't provide direct paper content access.
 
         Args:
             paper_id: DOI of the paper
             save_path: Directory for potential PDF storage (unused)
+            page: Specific page number to read (1-indexed) - not supported
+            start_page: Start page for range extraction (1-indexed) - not supported
+            end_page: End page for range extraction (1-indexed) - not supported
 
         Returns:
-            str: Error message indicating PDF reading is not supported
+            str: Paper metadata or error message indicating PDF reading is not supported
         """
         paper = self.get_paper_by_doi(paper_id)
         if paper:

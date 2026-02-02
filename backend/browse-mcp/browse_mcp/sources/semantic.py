@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 from PyPDF2 import PdfReader
 from loguru import logger
 
-from ..types import Paper, PaperSource
+from ..types import Paper, PaperSource, extract_pdf_pages
 
 
 class SemanticSearcher(PaperSource):
@@ -52,11 +52,11 @@ class SemanticSearcher(PaperSource):
 
     def _extract_url_from_disclaimer(self, disclaimer: str) -> str:
         """Extract URL from disclaimer text"""
-        # 匹配常见的 URL 模式
+        # Match common URL patterns
         url_patterns = [
-            r'https?://[^\s,)]+',  # 基本的 HTTP/HTTPS URL
-            r'https?://arxiv\.org/abs/[^\s,)]+',  # arXiv 链接
-            r'https?://[^\s,)]*\.pdf',  # PDF 文件链接
+            r'https?://[^\s,)]+',  # Basic HTTP/HTTPS URL
+            r'https?://arxiv\.org/abs/[^\s,)]+',  # arXiv links
+            r'https?://[^\s,)]*\.pdf',  # PDF file links
         ]
 
         all_urls = []
@@ -96,14 +96,14 @@ class SemanticSearcher(PaperSource):
             # Parse the publication date
             published_date = self._parse_date(item.get('publicationDate', ''))
 
-            # Safely get PDF URL - 支持从 disclaimer 中提取
+            # Safely get PDF URL - support extracting from disclaimer
             pdf_url = ""
             if item.get('openAccessPdf'):
                 open_access_pdf = item['openAccessPdf']
-                # 首先尝试直接获取 URL
+                # First try to get URL directly
                 if open_access_pdf.get('url'):
                     pdf_url = open_access_pdf['url']
-                # 如果 URL 为空但有 disclaimer，尝试从 disclaimer 中提取
+                # If URL is empty but has disclaimer, try to extract from disclaimer
                 elif open_access_pdf.get('disclaimer'):
                     pdf_url = self._extract_url_from_disclaimer(open_access_pdf['disclaimer'])
 
@@ -161,10 +161,10 @@ class SemanticSearcher(PaperSource):
                 url = f"{self.SEMANTIC_BASE_URL}/{path}"
                 response = self.session.get(url, params=params, headers=headers)
 
-                # 检查是否是429错误（限流）
+                # Check for 429 error (rate limited)
                 if response.status_code == 429:
                     if attempt < max_retries - 1:
-                        wait_time = retry_delay * (2 ** attempt)  # 指数退避
+                        wait_time = retry_delay * (2 ** attempt)  # Exponential backoff
                         logger.warning(f"Rate limited (429). Waiting {wait_time} seconds before retry {attempt + 1}/{max_retries}")
                         time.sleep(wait_time)
                         continue
@@ -302,9 +302,16 @@ class SemanticSearcher(PaperSource):
             logger.error(f"PDF download error: {e}")
             return f"Error downloading PDF: {e}"
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """
-        Download and extract text from Semantic Scholar paper PDF
+        Download and extract text from Semantic Scholar paper PDF with optional pagination.
 
         Args:
             paper_id (str): Paper identifier in one of the following formats:
@@ -317,6 +324,9 @@ class SemanticSearcher(PaperSource):
             - PMCID:<id> (e.g., "PMCID:2323736")
             - URL:<url> (e.g., "URL:https://arxiv.org/abs/2106.15928v1")
             save_path: Directory to save downloaded PDF
+            page: Specific page number to read (1-indexed)
+            start_page: Start page for range extraction (1-indexed)
+            end_page: End page for range extraction (1-indexed)
 
         Returns:
             str: Extracted text from the PDF or error message
@@ -341,21 +351,8 @@ class SemanticSearcher(PaperSource):
             with open(pdf_path, "wb") as f:
                 f.write(pdf_response.content)
 
-            # Extract text using PyPDF2
-            reader = PdfReader(pdf_path)
-            text = ""
-
-            for page_num, page in enumerate(reader.pages):
-                try:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += f"\n--- Page {page_num + 1} ---\n"
-                        text += page_text + "\n"
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to extract text from page {page_num + 1}: {e}"
-                    )
-                    continue
+            # Extract text using the pagination helper
+            text = extract_pdf_pages(pdf_path, page=page, start_page=start_page, end_page=end_page)
 
             if not text.strip():
                 return (
