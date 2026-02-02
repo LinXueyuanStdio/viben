@@ -145,9 +145,23 @@ class GoogleScholarSearcher(PaperSource):
             "Please use the paper URL to access the publisher's website."
         )
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """
-        Google Scholar doesn't support direct paper reading
+        Google Scholar doesn't support direct paper reading.
+
+        Args:
+            paper_id: Google Scholar paper ID
+            save_path: Directory for potential PDF storage (unused)
+            page: Specific page number to read (1-indexed) - not supported
+            start_page: Start page for range extraction (1-indexed) - not supported
+            end_page: End page for range extraction (1-indexed) - not supported
 
         Returns:
             str: Message indicating the feature is not supported

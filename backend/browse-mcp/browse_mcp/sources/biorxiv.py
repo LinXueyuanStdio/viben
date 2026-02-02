@@ -8,7 +8,7 @@ import feedparser
 from PyPDF2 import PdfReader
 from loguru import logger
 
-from ..types import Paper, PaperSource
+from ..types import Paper, PaperSource, extract_pdf_pages
 
 
 class BioRxivSearcher(PaperSource):
@@ -123,13 +123,23 @@ class BioRxivSearcher(PaperSource):
                     raise Exception(f"Failed to download PDF after {self.max_retries} attempts: {e}")
                 print(f"Attempt {tries} failed, retrying...")
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """
-        Read a paper and convert it to text format.
+        Read a paper and convert it to text format with optional pagination.
 
         Args:
             paper_id: bioRxiv DOI
             save_path: Directory where the PDF is/will be saved
+            page: Specific page number to read (1-indexed)
+            start_page: Start page for range extraction (1-indexed)
+            end_page: End page for range extraction (1-indexed)
 
         Returns:
             str: The extracted text content of the paper
@@ -139,11 +149,8 @@ class BioRxivSearcher(PaperSource):
             pdf_path = self.download_pdf(paper_id, save_path)
 
         try:
-            reader = PdfReader(pdf_path)
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text() + "\n"
-            return text.strip()
+            text = extract_pdf_pages(pdf_path, page=page, start_page=start_page, end_page=end_page)
+            return text.strip() if text else ""
         except Exception as e:
             print(f"Error reading PDF for paper {paper_id}: {e}")
             return ""

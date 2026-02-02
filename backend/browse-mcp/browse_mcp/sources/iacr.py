@@ -10,7 +10,7 @@ import feedparser
 from PyPDF2 import PdfReader
 from loguru import logger
 
-from ..types import Paper, PaperSource
+from ..types import Paper, PaperSource, extract_pdf_pages
 
 
 class IACRSearcher(PaperSource):
@@ -218,13 +218,23 @@ class IACRSearcher(PaperSource):
             logger.error(f"PDF download error: {e}")
             return f"Error downloading PDF: {e}"
 
-    def read_paper(self, paper_id: str, save_path: str = "./downloads") -> str:
+    def read_paper(
+        self,
+        paper_id: str,
+        save_path: str = "./downloads",
+        page: Optional[int] = None,
+        start_page: Optional[int] = None,
+        end_page: Optional[int] = None,
+    ) -> str:
         """
-        Download and extract text from IACR paper PDF
+        Download and extract text from IACR paper PDF with optional pagination.
 
         Args:
             paper_id: IACR paper ID
             save_path: Directory to save downloaded PDF
+            page: Specific page number to read (1-indexed)
+            start_page: Start page for range extraction (1-indexed)
+            end_page: End page for range extraction (1-indexed)
 
         Returns:
             str: Extracted text from the PDF or error message
@@ -249,21 +259,8 @@ class IACRSearcher(PaperSource):
             with open(pdf_path, "wb") as f:
                 f.write(pdf_response.content)
 
-            # Extract text using PyPDF2
-            reader = PdfReader(pdf_path)
-            text = ""
-
-            for page_num, page in enumerate(reader.pages):
-                try:
-                    page_text = page.extract_text()
-                    if page_text:
-                        text += f"\n--- Page {page_num + 1} ---\n"
-                        text += page_text + "\n"
-                except Exception as e:
-                    logger.warning(
-                        f"Failed to extract text from page {page_num + 1}: {e}"
-                    )
-                    continue
+            # Extract text using the pagination helper
+            text = extract_pdf_pages(pdf_path, page=page, start_page=start_page, end_page=end_page)
 
             if not text.strip():
                 return (
