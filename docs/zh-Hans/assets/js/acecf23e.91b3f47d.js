@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[1903],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/browse-mcp/docs/zh-Hans/blog","blogTitle":"Blog","authorsListPath":"/browse-mcp/docs/zh-Hans/blog/authors"}')}}]);

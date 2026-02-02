@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[4611],{7110(e){e.exports=JSON.parse('{"authors":[{"name":"Browse MCP Team","title":"Maintainers","url":"https://github.com/LinXueyuanStdio/browse-mcp","imageURL":"https://github.com/LinXueyuanStdio.png","key":"browse-mcp-team","page":null,"count":1}]}')}}]);
