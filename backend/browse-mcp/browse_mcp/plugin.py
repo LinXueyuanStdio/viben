@@ -86,7 +86,7 @@ from loguru import logger
 from stevedore import ExtensionManager
 from stevedore.exception import NoMatches
 
-from .types import PaperSource, ContentSource
+from .types import PaperSource
 
 
 # Namespace for searcher plugins
@@ -117,6 +117,8 @@ SOURCE_TO_PROVIDER: Dict[str, str] = {
     "researchgate": "institutional",
     # Web sources
     "google_scholar": "web",
+    # Documentation sources
+    "context7": "docs",
 }
 
 
@@ -238,7 +240,9 @@ class SearcherPluginManager:
                 )
 
         except NoMatches:
-            logger.warning(f"No searcher plugins found in namespace: {SEARCHER_NAMESPACE}")
+            logger.warning(
+                f"No searcher plugins found in namespace: {SEARCHER_NAMESPACE}"
+            )
 
     def _apply_filters(self) -> None:
         """Apply environment variable filters to determine enabled searchers.
@@ -257,30 +261,44 @@ class SearcherPluginManager:
 
         if enabled_str:
             # Only enable specified sources
-            enabled_list = {s.strip().lower() for s in enabled_str.split(",") if s.strip()}
+            enabled_list = {
+                s.strip().lower() for s in enabled_str.split(",") if s.strip()
+            }
             self._enabled_searchers = {
                 k: v for k, v in self._all_searchers.items() if k in enabled_list
             }
-            logger.info(f"Enabled sources (via BROWSE_MCP_ENABLED_SOURCES): {', '.join(sorted(self._enabled_searchers.keys()))}")
+            logger.info(
+                f"Enabled sources (via BROWSE_MCP_ENABLED_SOURCES): {', '.join(sorted(self._enabled_searchers.keys()))}"
+            )
 
             # Warn about requested but unavailable sources
             unavailable = enabled_list - set(self._all_searchers.keys())
             if unavailable:
-                logger.warning(f"Requested sources not available: {', '.join(sorted(unavailable))}")
+                logger.warning(
+                    f"Requested sources not available: {', '.join(sorted(unavailable))}"
+                )
 
         elif disabled_str:
             # Disable specified sources
-            disabled_list = {s.strip().lower() for s in disabled_str.split(",") if s.strip()}
+            disabled_list = {
+                s.strip().lower() for s in disabled_str.split(",") if s.strip()
+            }
             self._enabled_searchers = {
                 k: v for k, v in self._all_searchers.items() if k not in disabled_list
             }
-            logger.info(f"Disabled sources (via BROWSE_MCP_DISABLED_SOURCES): {', '.join(sorted(disabled_list))}")
-            logger.info(f"Enabled sources: {', '.join(sorted(self._enabled_searchers.keys()))}")
+            logger.info(
+                f"Disabled sources (via BROWSE_MCP_DISABLED_SOURCES): {', '.join(sorted(disabled_list))}"
+            )
+            logger.info(
+                f"Enabled sources: {', '.join(sorted(self._enabled_searchers.keys()))}"
+            )
 
         else:
             # All sources enabled
             self._enabled_searchers = self._all_searchers.copy()
-            logger.info(f"All sources enabled: {', '.join(sorted(self._enabled_searchers.keys()))}")
+            logger.info(
+                f"All sources enabled: {', '.join(sorted(self._enabled_searchers.keys()))}"
+            )
 
     @property
     def all_searchers(self) -> Dict[str, PaperSource]:
