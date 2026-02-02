@@ -136,15 +136,19 @@ In VS Code settings:
 
 Disable all social media sources:
 
-```json
 {
-  "env": {
-    "BROWSE_MCP_DISABLED_SOURCES": "github,twitter,zhihu,xiaohongshu",
-    "SEMANTIC_SCHOLAR_API_KEY": "your-key",
-    "BROWSE_MCP_DOWNLOAD_PATH": "./papers"
+  "mcpServers": {
+    "browse-mcp": {
+      "command": "python",
+      "args": ["-m", "browse_mcp"],
+      "env": {
+        "BROWSE_MCP_DISABLED_SOURCES": "github,twitter,zhihu,xiaohongshu",
+        "SEMANTIC_SCHOLAR_API_KEY": "your-key",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./papers"
+      }
+    }
   }
 }
-```
 
 #### Social Media Focus
 
