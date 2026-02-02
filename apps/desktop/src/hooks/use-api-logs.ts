@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 /**
@@ -226,19 +226,28 @@ export function useApiLogs() {
   }, [autoRefresh, refresh]);
 
   /**
-   * Get unique providers from current logs
+   * Get unique providers from current logs (memoized)
    */
-  const uniqueProviders = [...new Set(logs.map((l) => l.provider))].sort();
+  const uniqueProviders = useMemo(
+    () => [...new Set(logs.map((l) => l.provider))].sort(),
+    [logs]
+  );
 
   /**
-   * Get unique sources from current logs
+   * Get unique sources from current logs (memoized)
    */
-  const uniqueSources = [...new Set(logs.map((l) => l.source))].sort();
+  const uniqueSources = useMemo(
+    () => [...new Set(logs.map((l) => l.source))].sort(),
+    [logs]
+  );
 
   /**
-   * Get unique methods from current logs
+   * Get unique methods from current logs (memoized)
    */
-  const uniqueMethods = [...new Set(logs.map((l) => l.method))].sort();
+  const uniqueMethods = useMemo(
+    () => [...new Set(logs.map((l) => l.method))].sort(),
+    [logs]
+  );
 
   return {
     // Data
