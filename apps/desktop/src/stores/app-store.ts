@@ -80,8 +80,8 @@ interface AppState {
   setTheme: (theme: "light" | "dark" | "system") => void;
 
   // Language
-  language: "en" | "zh";
-  setLanguage: (lang: "en" | "zh") => void;
+  language: string;
+  setLanguage: (lang: string) => void;
 
   // Setup Banner
   setupBannerDismissed: boolean;

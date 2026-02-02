@@ -23,6 +23,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAppStore } from "@/stores";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useMarketplace, type FlatSource, type ProviderInfo } from "@/hooks/use-marketplace";
+import { useTranslation } from "react-i18next";
 
 // Provider category icons
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -52,6 +53,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function ProvidersPage() {
+  const { t } = useTranslation();
   const { setProviderApiKey } = useAppStore();
   const {
     sourcesByProvider,
@@ -109,10 +111,12 @@ export function ProvidersPage() {
     <div className="p-6 h-full flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold">Data Sources</h1>
+          <h1 className="text-2xl font-bold">{t("providers.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {totalSources} sources available across{" "}
-            {Object.keys(sourcesByProvider).length} providers
+            {t("providers.sourcesAvailableAcross", {
+              sources: totalSources,
+              providers: Object.keys(sourcesByProvider).length,
+            })}
           </p>
         </div>
         <Button
@@ -126,7 +130,7 @@ export function ProvidersPage() {
           ) : (
             <RefreshCw className="h-4 w-4 mr-2" />
           )}
-          Refresh
+          {t("common.refresh")}
         </Button>
       </div>
 
@@ -143,17 +147,14 @@ export function ProvidersPage() {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search sources..."
+          placeholder={t("providers.searchSources")}
           className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm"
         />
       </div>
 
       {/* Info banner */}
       <p className="text-sm text-muted-foreground mb-4 p-3 rounded-lg bg-muted/50">
-        Configure API keys for sources that require them. Sources use hierarchical
-        naming ({" "}
-        <code className="bg-muted px-1 rounded text-xs">provider/source</code>)
-        for organization.
+        {t("providers.configureInfo")}
       </p>
 
       {/* Provider list */}
@@ -181,8 +182,8 @@ export function ProvidersPage() {
           {Object.keys(filteredSourcesByProvider).length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
               {searchQuery
-                ? "No sources match your search"
-                : "No sources available"}
+                ? t("providers.noSourcesMatch")
+                : t("providers.noSourcesAvailable")}
             </div>
           )}
         </div>
@@ -208,6 +209,7 @@ function ProviderSection({
   onToggle,
   onApiKeyChange,
 }: ProviderSectionProps) {
+  const { t } = useTranslation();
   const icon = CATEGORY_ICONS[providerId] || CATEGORY_ICONS.other;
   const name = providerInfo?.name || CATEGORY_NAMES[providerId] || providerId;
   const description =
@@ -237,17 +239,17 @@ function ProviderSection({
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {freeCount > 0 && (
             <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">
-              {freeCount} free
+              {freeCount} {t("providers.free")}
             </span>
           )}
           {optionalCount > 0 && (
             <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">
-              {optionalCount} optional
+              {optionalCount} {t("providers.optional")}
             </span>
           )}
           {requiredCount > 0 && (
             <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded">
-              {requiredCount} required
+              {requiredCount} {t("providers.required")}
             </span>
           )}
           {isExpanded ? (
@@ -282,6 +284,7 @@ interface SourceCardProps {
 }
 
 function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
+  const { t } = useTranslation();
   const { setApiKey, deleteApiKey, providers } = useApiKeys();
   const [editing, setEditing] = useState(false);
   const [keyValue, setKeyValue] = useState("");
@@ -308,7 +311,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
   };
 
   const handleDeleteKey = async () => {
-    if (!confirm(`Remove API key for ${source.name}?`)) return;
+    if (!confirm(t("providers.removeApiKey", { name: source.name }))) return;
 
     await deleteApiKey(source.source_name);
     onApiKeyChange(source.source_name, false);
@@ -354,7 +357,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
                 {hasApiKey ? (
                   <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                     <Key className="h-3 w-3" />
-                    API key configured
+                    {t("providers.apiKeyConfigured")}
                     {apiKeyInfo?.key_prefix && (
                       <code className="ml-1 bg-muted px-1 rounded text-[10px]">
                         {apiKeyInfo.key_prefix}
@@ -363,11 +366,11 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
                   </span>
                 ) : requiresKey ? (
                   <span className="text-amber-600 dark:text-amber-400">
-                    API key required
+                    {t("providers.apiKeyRequired")}
                   </span>
                 ) : (
                   <span className="text-blue-600 dark:text-blue-400">
-                    API key optional
+                    {t("providers.apiKeyOptional")}
                   </span>
                 )}
               </p>
@@ -381,7 +384,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
               variant="ghost"
               size="sm"
               onClick={() => window.open(source.documentation, "_blank")}
-              title="Documentation"
+              title={t("providers.documentation")}
               className="h-7 w-7 p-0"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -397,7 +400,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
                   className="h-7 text-xs"
                 >
                   <Key className="h-3 w-3 mr-1" />
-                  {hasApiKey ? "Update" : "Add"}
+                  {hasApiKey ? t("common.update") : t("common.add")}
                 </Button>
               )}
               {hasApiKey && !editing && (
@@ -424,7 +427,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
                 type={showKey ? "text" : "password"}
                 value={keyValue}
                 onChange={(e) => setKeyValue(e.target.value)}
-                placeholder={`Enter ${source.name} API key...`}
+                placeholder={t("providers.enterApiKey", { name: source.name })}
                 className="w-full rounded-md border bg-background px-3 py-1.5 text-xs font-mono pr-8"
                 autoFocus
                 onKeyDown={(e) => {
@@ -467,14 +470,14 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
           </div>
           {source.documentation && (
             <p className="text-[10px] text-muted-foreground mt-2">
-              Get your API key from{" "}
+              {t("providers.getApiKeyFrom")}{" "}
               <a
                 href={source.documentation}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                {source.name} Developer Portal
+                {t("providers.developerPortal", { name: source.name })}
               </a>
             </p>
           )}
