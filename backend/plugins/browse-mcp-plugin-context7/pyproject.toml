@@ -1,0 +1,49 @@
+[tool.poetry]
+name = "browse-mcp-plugin-context7"
+version = "0.1.0"
+description = "Context7 documentation searcher plugin for browse-mcp"
+readme = "README.md"
+authors = ["Browse-MCP Contributors"]
+license = "MIT"
+packages = [
+    { include = "context7_searcher" }
+]
+keywords = ["mcp", "browse-mcp", "context7", "documentation", "plugin"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+browse-mcp = "*"
+stevedore = ">=5.0.0"
+httpx = ">=0.28.0"
+loguru = ">=0.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0.0"
+pytest-asyncio = ">=0.21.0"
+respx = ">=0.20.0"
+
+# Register the searcher as a plugin entry point
+# This allows automatic discovery by browse-mcp via stevedore
+[tool.poetry.plugins."browse_mcp.searchers"]
+context7 = "context7_searcher:Context7Searcher"
+
+[build-system]
+requires = ["poetry-core>=1.9.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]  # Line length handled separately
