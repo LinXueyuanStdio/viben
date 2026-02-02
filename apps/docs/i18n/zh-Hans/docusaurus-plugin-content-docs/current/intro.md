@@ -1,26 +1,28 @@
 ---
 sidebar_position: 1
 title: "简介"
-description: "Browse MCP - 通过 MCP 从 19+ 个来源搜索、下载和阅读学术论文"
+description: "Browse MCP - 通过 MCP 插件从可扩展的来源搜索、下载和阅读任何内容"
 ---
 
 # Browse MCP
 
-**Browse MCP** 是一个基于 Python 的 MCP（模型上下文协议）服务器，它使 AI 助手能够从 19+ 个学术数据库中搜索、下载和阅读学术论文。它通过三个简单的工具提供了访问研究文献的统一接口。
+**Browse MCP** 是一个基于 Python 的 MCP（模型上下文协议）服务器，它使 AI 助手能够通过可扩展的插件系统从任何来源搜索、下载和阅读内容。开箱即用，它支持 19+ 个学术数据库，您还可以扩展它以支持社交媒体、文档站点、新闻源等。
 
 ## 主要特性
 
-- **多源支持** - 从 19+ 个学术数据库搜索和下载论文，包括 arXiv、PubMed、PubMed Central、bioRxiv、medRxiv、Google Scholar、Semantic Scholar、IEEE Xplore 等。
+- **多源支持** - 从 19+ 个内置学术来源搜索和下载内容，包括 arXiv、PubMed、Semantic Scholar 等。通过插件扩展支持任何内容类型。
 
-- **统一接口** - 所有平台都可以通过三个一致的工具访问：`paper_search`、`paper_download` 和 `paper_read`。
+- **可扩展插件系统** - 通过安装插件或创建自己的插件来添加新的内容来源。使用 `ContentSource[T]` API 支持学术论文之外的任何内容类型。
 
-- **标准化输出** - 无论来源如何，论文都以一致的格式返回，使 AI 助手易于处理结果。
+- **统一接口** - 所有来源都可以通过三个一致的工具访问：`paper_search`、`paper_download` 和 `paper_read`。
+
+- **标准化输出** - 无论来源如何，内容都以一致的格式返回，使 AI 助手易于处理结果。
 
 - **MCP 集成** - 与 MCP 客户端兼容，如 Claude Desktop、Claude Code、Cline（VS Code）和 Zed Editor。
 
 - **异步操作** - 高效处理并发搜索和下载，快速获取结果。
 
-- **可扩展插件系统** - 通过 stevedore 创建插件来添加新的学术平台。
+- **分页支持** - 使用 `page`、`start_page` 和 `end_page` 参数从文档中读取特定页面或页面范围。
 
 ## 快速安装
 
@@ -38,9 +40,50 @@ browse-mcp
 
 | 工具 | 描述 |
 |------|-------------|
-| `paper_search` | 在多个学术数据库中搜索论文 |
-| `paper_download` | 下载论文 PDF 并返回文件路径 |
-| `paper_read` | 从论文中提取和阅读文本内容 |
+| `paper_search` | 在多个来源中搜索内容 |
+| `paper_download` | 下载内容文件并返回文件路径 |
+| `paper_read` | 从文件中提取和阅读文本内容 |
+
+## 超越学术论文
+
+虽然 Browse MCP 最初是一个学术论文搜索工具，但现在它通过插件系统支持**任何内容类型**。以下是一些您可以做的事情：
+
+### 社交媒体插件
+
+安装社交媒体插件以从 GitHub、Twitter、知乎和小红书等平台搜索内容：
+
+```bash
+pip install browse-mcp-plugin-social-media
+```
+
+然后搜索社交媒体内容：
+
+```python
+# 搜索 GitHub 仓库
+paper_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
+
+# 搜索 Twitter 帖子
+paper_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
+
+# 搜索中文平台
+paper_search([{"searcher": "zhihu", "query": "人工智能", "max_results": 5}])
+```
+
+### 插件架构
+
+Browse MCP 使用 stevedore 进行自动插件发现。任何在 `browse_mcp.searchers` 命名空间中注册的已安装插件都会自动加载：
+
+```
+browse-mcp (核心)
+    |
+    +-- browse-mcp-plugin-social-media (GitHub, Twitter, 知乎...)
+    |
+    +-- browse-mcp-plugin-news (RSS 源, 新闻站点...)
+    |
+    +-- your-custom-plugin (您的内容来源...)
+```
+
+查看[插件](./plugins/overview)部分了解更多信息。
 
 ## 支持的学术平台
 
@@ -73,4 +116,5 @@ browse-mcp
 - [安装](./getting-started/installation) - 详细的安装说明
 - [快速开始](./getting-started/quick-start) - 2 分钟内快速上手
 - [客户端配置](./getting-started/client-configuration) - 配置 Claude Desktop、Cline 等
-- [paper_search 工具](./mcp-server/tools/paper-search) - 了解如何搜索论文
+- [插件概述](./plugins/overview) - 了解插件系统
+- [paper_search 工具](./mcp-server/tools/paper-search) - 了解如何搜索内容

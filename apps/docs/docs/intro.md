@@ -1,26 +1,28 @@
 ---
 sidebar_position: 1
 title: "Introduction"
-description: "Browse MCP - Search, download, and read academic papers from 19+ sources via MCP"
+description: "Browse MCP - Search, download, and read any content from extensible sources via MCP plugins"
 ---
 
 # Browse MCP
 
-**Browse MCP** is a Python-based MCP (Model Context Protocol) server that enables AI assistants to search, download, and read academic papers from 19+ academic databases. It provides a unified interface for accessing research literature through three simple tools.
+**Browse MCP** is a Python-based MCP (Model Context Protocol) server that enables AI assistants to search, download, and read content from any source through an extensible plugin system. Out of the box, it supports 19+ academic databases, and you can extend it to support social media, documentation sites, news feeds, and more.
 
 ## Key Features
 
-- **Multi-Source Support** - Search and download papers from 19+ academic databases including arXiv, PubMed, PubMed Central, bioRxiv, medRxiv, Google Scholar, Semantic Scholar, IEEE Xplore, and more.
+- **Multi-Source Support** - Search and download content from 19+ built-in academic sources including arXiv, PubMed, Semantic Scholar, and more. Extend with plugins for any content type.
 
-- **Unified Interface** - All platforms accessible through three consistent tools: `paper_search`, `paper_download`, and `paper_read`.
+- **Extensible Plugin System** - Add new content sources by installing plugins or creating your own. Use the `ContentSource[T]` API to support any content type beyond academic papers.
 
-- **Standardized Output** - Papers are returned in a consistent format regardless of source, making it easy for AI assistants to process results.
+- **Unified Interface** - All sources accessible through three consistent tools: `paper_search`, `paper_download`, and `paper_read`.
+
+- **Standardized Output** - Content is returned in a consistent format regardless of source, making it easy for AI assistants to process results.
 
 - **MCP Integration** - Compatible with MCP clients like Claude Desktop, Claude Code, Cline (VS Code), and Zed Editor.
 
 - **Asynchronous Operations** - Efficiently handles concurrent searches and downloads for fast results.
 
-- **Extensible Plugin System** - Add new academic platforms by creating plugins with stevedore.
+- **Pagination Support** - Read specific pages or page ranges from documents using the `page`, `start_page`, and `end_page` parameters.
 
 ## Quick Install
 
@@ -38,9 +40,50 @@ browse-mcp
 
 | Tool | Description |
 |------|-------------|
-| `paper_search` | Search papers across multiple academic databases |
-| `paper_download` | Download paper PDFs and return file paths |
-| `paper_read` | Extract and read text content from papers |
+| `paper_search` | Search content across multiple sources |
+| `paper_download` | Download content files and return file paths |
+| `paper_read` | Extract and read text content from files |
+
+## Beyond Academic Papers
+
+While Browse MCP started as an academic paper search tool, it now supports **any content type** through its plugin system. Here are some examples of what you can do:
+
+### Social Media Plugin
+
+Install the social media plugin to search content from platforms like GitHub, Twitter, Zhihu, and Xiaohongshu:
+
+```bash
+pip install browse-mcp-plugin-social-media
+```
+
+Then search social media content:
+
+```python
+# Search GitHub repositories
+paper_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
+
+# Search Twitter posts
+paper_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
+
+# Search Chinese platforms
+paper_search([{"searcher": "zhihu", "query": "artificial intelligence", "max_results": 5}])
+```
+
+### Plugin Architecture
+
+Browse MCP uses stevedore for automatic plugin discovery. Any installed plugin that registers in the `browse_mcp.searchers` namespace is automatically loaded:
+
+```
+browse-mcp (core)
+    |
+    +-- browse-mcp-plugin-social-media (GitHub, Twitter, Zhihu...)
+    |
+    +-- browse-mcp-plugin-news (RSS feeds, news sites...)
+    |
+    +-- your-custom-plugin (your content sources...)
+```
+
+See the [Plugins](./plugins/overview) section for more information.
 
 ## Supported Academic Platforms
 
@@ -73,4 +116,5 @@ browse-mcp
 - [Installation](./getting-started/installation) - Detailed installation instructions
 - [Quick Start](./getting-started/quick-start) - Get up and running in 2 minutes
 - [Client Configuration](./getting-started/client-configuration) - Configure Claude Desktop, Cline, and more
-- [paper_search Tool](./mcp-server/tools/paper-search) - Learn how to search papers
+- [Plugins Overview](./plugins/overview) - Learn about the plugin system
+- [paper_search Tool](./mcp-server/tools/paper-search) - Learn how to search content
