@@ -408,13 +408,13 @@
     animation-fill-mode: both;
   }
 
-  /* Theme transition for all colored elements */
+  /* Theme transition for all colored elements - uses duration-fast (200ms) per design spec */
   .theme-transition {
-    transition: background-color var(--duration-normal) var(--ease-out-expo),
-                color var(--duration-normal) var(--ease-out-expo),
-                border-color var(--duration-normal) var(--ease-out-expo),
-                fill var(--duration-normal) var(--ease-out-expo),
-                stroke var(--duration-normal) var(--ease-out-expo);
+    transition: background-color var(--duration-fast) var(--ease-out-expo),
+                color var(--duration-fast) var(--ease-out-expo),
+                border-color var(--duration-fast) var(--ease-out-expo),
+                fill var(--duration-fast) var(--ease-out-expo),
+                stroke var(--duration-fast) var(--ease-out-expo);
   }
 }
 
