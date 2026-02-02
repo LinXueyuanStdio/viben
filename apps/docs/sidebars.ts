@@ -43,6 +43,18 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
+    {
+      type: 'category',
+      label: 'Plugins',
+      collapsed: false,
+      items: [
+        'plugins/overview',
+        'plugins/installing-plugins',
+        'plugins/available-plugins',
+        'plugins/social-media-plugin',
+        'plugins/configuration',
+      ],
+    },
   ],
 };
 

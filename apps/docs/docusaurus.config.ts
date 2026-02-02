@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Browse MCP',
-  tagline: 'Search, Download, and Read Academic Papers with MCP',
+  tagline: 'Search, Download, and Read Any Content via MCP Plugins',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future

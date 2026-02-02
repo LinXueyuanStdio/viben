@@ -1,24 +1,24 @@
 ---
 sidebar_position: 2
 title: "Configuration"
-description: "Configure Browse MCP sources, API keys, and settings"
+description: "Configure Browse MCP sources, API keys, plugins, and settings"
 ---
 
 # Configuration
 
-Browse MCP can be configured using environment variables. This page covers all available configuration options.
+Browse MCP can be configured using environment variables. This page covers all available configuration options for both core functionality and plugins.
 
 ## Environment Variables Overview
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `BROWSE_MCP_DOWNLOAD_PATH` | Directory for downloaded PDFs | `./downloads` |
+| `BROWSE_MCP_DOWNLOAD_PATH` | Directory for downloaded content | `./downloads` |
 | `BROWSE_MCP_ENABLED_SOURCES` | Comma-separated list of enabled sources | All sources |
 | `BROWSE_MCP_DISABLED_SOURCES` | Comma-separated list of disabled sources | None |
 
 ## Download Path
 
-Set the directory where downloaded PDFs are saved:
+Set the directory where downloaded content is saved:
 
 ```json
 {
@@ -32,6 +32,8 @@ The directory is created automatically if it does not exist.
 
 ## Source Control
 
+Source control applies to all sources, including those from plugins.
+
 ### Enable Specific Sources Only
 
 Use `BROWSE_MCP_ENABLED_SOURCES` to enable only specific sources (whitelist):
@@ -39,12 +41,12 @@ Use `BROWSE_MCP_ENABLED_SOURCES` to enable only specific sources (whitelist):
 ```json
 {
   "env": {
-    "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,semantic"
+    "BROWSE_MCP_ENABLED_SOURCES": "arxiv,pubmed,semantic,github"
   }
 }
 ```
 
-Only `arxiv`, `pubmed`, and `semantic` will be available.
+Only the listed sources will be available. This works for both built-in and plugin sources.
 
 ### Disable Specific Sources
 
@@ -53,7 +55,7 @@ Use `BROWSE_MCP_DISABLED_SOURCES` to disable specific sources (blacklist):
 ```json
 {
   "env": {
-    "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect"
+    "BROWSE_MCP_DISABLED_SOURCES": "ieee,scopus,springer,sciencedirect,twitter"
   }
 }
 ```
@@ -80,7 +82,7 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 
 ## API Keys
 
-### API Key Variables
+### Academic Source API Keys
 
 | Variable | Service | How to Get |
 |----------|---------|------------|
@@ -92,15 +94,26 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 | `SCIENCEDIRECT_API_KEY` | Science Direct | [Get API Key](https://dev.elsevier.com/) |
 | `WOS_API_KEY` | Web of Science | Requires institutional subscription |
 
+### Plugin API Keys (Social Media)
+
+| Variable | Service | How to Get |
+|----------|---------|------------|
+| `GITHUB_TOKEN` | GitHub | [Personal Access Tokens](https://github.com/settings/tokens) |
+| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter Developer Portal](https://developer.twitter.com/) |
+| `ZHIHU_API_KEY` | Zhihu | Contact platform |
+| `XIAOHONGSHU_API_KEY` | Xiaohongshu | Contact platform |
+
 ### Free vs Premium Sources
 
 **Free sources** (no API key required):
 - arxiv, pubmed, pmc, biorxiv, medrxiv
 - google_scholar, iacr, crossref, researchgate
+- github (with rate limits)
 
 **Free with optional API key** (higher rate limits with key):
 - `semantic` - Works without key, higher limits with `SEMANTIC_SCHOLAR_API_KEY`
 - `core` - Requires `CORE_API_KEY`
+- `github` - Works without key, higher limits with `GITHUB_TOKEN`
 
 **Premium sources** (API key required):
 - `ieee` - Requires `IEEE_API_KEY`
@@ -108,8 +121,11 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 - `springer` - Requires `SPRINGER_API_KEY`
 - `sciencedirect` - Requires `SCIENCEDIRECT_API_KEY`
 - `wos` - Requires `WOS_API_KEY` and institutional subscription
+- `twitter` - Requires `TWITTER_BEARER_TOKEN`
 
 ## Available Source Names
+
+### Built-in Academic Sources
 
 | Source Name | Type | Description |
 |-------------|------|-------------|
@@ -131,6 +147,17 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 | `acm` | Premium | ACM Digital Library |
 | `jstor` | Premium | JSTOR archive |
 | `researchgate` | Free | ResearchGate social network |
+
+### Plugin Sources (Social Media)
+
+These sources require installing `browse-mcp-plugin-social-media`:
+
+| Source Name | Type | Description |
+|-------------|------|-------------|
+| `github` | Free | GitHub repositories and code |
+| `twitter` | Premium | Twitter/X posts (requires API key) |
+| `zhihu` | Free | Zhihu Q&A articles (Chinese) |
+| `xiaohongshu` | Free | Xiaohongshu posts (Chinese) |
 
 ## Configuration Examples
 
@@ -167,6 +194,24 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 }
 ```
 
+### Academic + Social Media
+
+```json
+{
+  "mcpServers": {
+    "browse-mcp": {
+      "command": "python",
+      "args": ["-m", "browse_mcp"],
+      "env": {
+        "SEMANTIC_SCHOLAR_API_KEY": "your-key",
+        "GITHUB_TOKEN": "ghp_your_github_token",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
+      }
+    }
+  }
+}
+```
+
 ### Full Configuration (All Sources)
 
 ```json
@@ -182,6 +227,8 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
         "SCOPUS_API_KEY": "your-key",
         "SPRINGER_API_KEY": "your-key",
         "SCIENCEDIRECT_API_KEY": "your-key",
+        "GITHUB_TOKEN": "ghp_your_token",
+        "TWITTER_BEARER_TOKEN": "your_bearer_token",
         "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
       }
     }
@@ -216,10 +263,30 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
       "command": "python",
       "args": ["-m", "browse_mcp"],
       "env": {
-        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,semantic,ieee,acm",
+        "BROWSE_MCP_ENABLED_SOURCES": "arxiv,semantic,ieee,acm,github",
         "SEMANTIC_SCHOLAR_API_KEY": "your-key",
         "IEEE_API_KEY": "your-key",
+        "GITHUB_TOKEN": "ghp_your_token",
         "BROWSE_MCP_DOWNLOAD_PATH": "./cs-papers"
+      }
+    }
+  }
+}
+```
+
+### Social Media Only
+
+```json
+{
+  "mcpServers": {
+    "browse-mcp": {
+      "command": "python",
+      "args": ["-m", "browse_mcp"],
+      "env": {
+        "BROWSE_MCP_ENABLED_SOURCES": "github,twitter,zhihu",
+        "GITHUB_TOKEN": "ghp_your_token",
+        "TWITTER_BEARER_TOKEN": "your_bearer_token",
+        "BROWSE_MCP_DOWNLOAD_PATH": "./social-content"
       }
     }
   }
@@ -235,6 +302,7 @@ If a source is not available:
 1. Check if it is in `BROWSE_MCP_DISABLED_SOURCES`
 2. Check if `BROWSE_MCP_ENABLED_SOURCES` is set and includes the source
 3. For premium sources, verify the API key is set
+4. For plugin sources, verify the plugin is installed: `pip show browse-mcp-plugin-social-media`
 
 ### API Rate Limits
 
@@ -243,6 +311,7 @@ If you hit rate limits:
 - **Semantic Scholar**: Add `SEMANTIC_SCHOLAR_API_KEY` for higher limits
 - **CORE**: Get a free API key from [core.ac.uk](https://core.ac.uk/services/api)
 - **Google Scholar**: May be rate-limited; use other sources as alternatives
+- **GitHub**: Add `GITHUB_TOKEN` for 5000 requests/hour instead of 60
 
 ### Missing Downloads
 
@@ -252,7 +321,16 @@ If downloaded files are missing:
 2. Verify the directory exists or can be created
 3. Check for error messages in the response
 
+### Plugin Not Loading
+
+If plugin sources are not available:
+
+1. Verify plugin is installed: `pip list | grep browse-mcp`
+2. Check for load errors: `browse-mcp --debug`
+3. Verify entry points: `python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"`
+
 ## Next Steps
 
 - [Client Configuration](../getting-started/client-configuration) - Configure your MCP client
 - [paper_search Tool](./tools/paper-search) - Learn search parameters
+- [Plugin Configuration](../plugins/configuration) - Advanced plugin settings
