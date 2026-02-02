@@ -255,3 +255,4 @@ cython_debug/
 
 # Claude Code local files
 **/CLAUDE.local.md.turbo/
+.turbo/

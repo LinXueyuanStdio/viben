@@ -1,50 +1,49 @@
-# 📚 Browse MCP
+# Browse MCP
 
 [English](README.md) | [中文](README_zh.md)
 
-🔬 `browse-mcp` 是一个基于 Python 的 MCP 服务器，使用户能够从各种平台搜索、下载和阅读学术论文。它提供三个主要工具：
-- 🔎 **`paper_search`**：跨多个学术数据库搜索论文
-- 📥 **`paper_download`**：下载论文 PDF，返回下载文件的路径
-- 📖 **`paper_read`**：提取和阅读论文的文本内容
+`browse-mcp` 是一个基于 Python 的 MCP 服务器，使用户能够从各种平台搜索、下载和阅读学术论文。它提供三个主要工具：
+- **`browse_search`**：跨多个学术数据库搜索论文
+- **`browse_download`**：下载论文 PDF，返回下载文件的路径
+- **`browse_read`**：提取和阅读论文的文本内容
 
 ![PyPI](https://img.shields.io/pypi/v/browse-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 
 ---
 
-## 📑 目录
+## 目录
 
-- [🎬 演示](#-演示)
-- [📝 待办事项](#-待办事项)
-- [✨ 特性](#-特性)
-- [📦 安装](#-安装)
-  - [⚡ 快速开始](#-快速开始)
-  - [🛠️ 开发环境](#️-开发环境)
-- [🚀 使用](#-使用)
-  - [🔎 搜索论文](#1-搜索论文-paper_search)
-  - [📥 下载论文](#2-下载论文-paper_download)
-  - [📖 阅读论文](#3-阅读论文-paper_read)
-  - [⚙️ 环境变量](#️-环境变量)
-- [🤝 贡献](#-贡献)
-- [📄 许可证](#-许可证)
+- [演示](#演示)
+- [特性](#特性)
+- [安装](#安装)
+  - [快速开始](#快速开始)
+  - [开发环境](#开发环境)
+- [使用](#使用)
+  - [搜索论文](#1-搜索论文-browse_search)
+  - [下载论文](#2-下载论文-browse_download)
+  - [阅读论文](#3-阅读论文-browse_read)
+  - [环境变量](#环境变量)
+- [贡献](#贡献)
+- [许可证](#许可证)
 
 ---
 
-## ✨ 特性
+## 特性
 
-- 🌐 **多源支持**：从 19+ 学术数据库搜索和下载论文，包括 arXiv、PubMed、PubMed Central、bioRxiv、medRxiv、Google Scholar、IACR ePrint Archive、Semantic Scholar、CrossRef、Science Direct、Springer、IEEE Xplore、Scopus、CORE 等。
-- 🎯 **统一接口**：通过一致的 `paper_search`、`paper_download` 和 `paper_read` 工具访问所有平台。
-- 📊 **标准化输出**：通过 `Paper` 类以一致的字典格式返回论文。
-- ⚡ **异步操作**：使用 `httpx` 和 async/await 高效处理并发搜索和下载。
-- 🔌 **MCP 集成**：与 MCP 客户端兼容，用于增强 LLM 上下文。
-- 🧩 **可扩展设计**：通过扩展 `sources` 模块轻松添加新的学术平台。
+- **多源支持**：从 19+ 学术数据库搜索和下载论文，包括 arXiv、PubMed、PubMed Central、bioRxiv、medRxiv、Google Scholar、IACR ePrint Archive、Semantic Scholar、CrossRef、Science Direct、Springer、IEEE Xplore、Scopus、CORE 等。
+- **统一接口**：通过一致的 `browse_search`、`browse_download` 和 `browse_read` 工具访问所有平台。
+- **标准化输出**：通过 `Paper` 类以一致的字典格式返回论文。
+- **异步操作**：使用 `httpx` 和 async/await 高效处理并发搜索和下载。
+- **MCP 集成**：与 MCP 客户端兼容，用于增强 LLM 上下文。
+- **可扩展设计**：通过扩展 `sources` 模块轻松添加新的学术平台。
 
-## 🎬 演示
+## 演示
 
 <img src="assets/screenshot_zh.png" alt="演示截图" width="800">
 
-## 📝 支持的学术平台
+## 支持的学术平台
 
-### ✅ 已完全实现（19个数据源）
+### 已完全实现（19个数据源）
 
 **免费开放访问：**
 - [x] **arXiv** - 物理、数学、计算机科学等领域的预印本库
@@ -73,11 +72,11 @@
 **已停止服务：**
 - [x] **Microsoft Academic** - 服务已于2021年12月31日停止（占位符实现）
 
-## 📦 安装
+## 安装
 
 `browse-mcp` 可以使用 `uv` 或 `pip` 安装。以下是针对不同场景的详细安装指南。
 
-### ⚡ 快速安装
+### 快速安装
 
 安装软件包：
 
@@ -91,12 +90,12 @@ pip install browse-mcp
 browse-mcp
 ```
 
-### 🔧 MCP 客户端配置
+### MCP 客户端配置
 
 选择您使用的 MCP 客户端并按照配置步骤操作：
 
 <details>
-<summary><b>1️⃣ Claude Desktop（桌面应用）</b></summary>
+<summary><b>1. Claude Desktop（桌面应用）</b></summary>
 
 **配置文件位置：**
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -128,7 +127,7 @@ browse-mcp
 </details>
 
 <details>
-<summary><b>2️⃣ Claude Code（命令行工具）</b></summary>
+<summary><b>2. Claude Code（命令行工具）</b></summary>
 
 **配置文件位置：** `~/.config/claude/config.json`
 
@@ -167,9 +166,9 @@ claude mcp test browse-mcp
 </details>
 
 <details>
-<summary><b>3️⃣ Cline（VS Code 扩展）</b></summary>
+<summary><b>3. Cline（VS Code 扩展）</b></summary>
 
-**配置位置：** VS Code 设置 → 扩展 → Cline → MCP 设置
+**配置位置：** VS Code 设置 -> 扩展 -> Cline -> MCP 设置
 
 **方法 1：通过 VS Code 设置界面**
 1. 打开 VS Code 设置（Cmd/Ctrl + ,）
@@ -228,7 +227,7 @@ claude mcp test browse-mcp
 </details>
 
 <details>
-<summary><b>4️⃣ Zed 编辑器</b></summary>
+<summary><b>4. Zed 编辑器</b></summary>
 
 **配置文件位置：** `~/.config/zed/settings.json`
 
@@ -262,7 +261,7 @@ claude mcp test browse-mcp
 </details>
 
 <details>
-<summary><b>5️⃣ 自定义 MCP 客户端</b></summary>
+<summary><b>5. 自定义 MCP 客户端</b></summary>
 
 对于其他 MCP 客户端，使用标准的 MCP 服务器配置：
 
@@ -281,13 +280,13 @@ python -m browse_mcp
 - `BROWSE_MCP_DOWNLOAD_PATH`: 下载目录（默认：`./downloads`）
 
 **服务器功能：**
-- 工具：`paper_search`、`paper_download`、`paper_read`
+- 工具：`browse_search`、`browse_download`、`browse_read`
 - 传输方式：stdio
 - 协议：MCP 1.0
 
 </details>
 
-### ⚙️ 环境变量
+### 环境变量
 
 **API 密钥**（可选 - 仅用于付费服务）：
 - `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar（[获取 API 密钥](https://www.semanticscholar.org/product/api)）
@@ -331,28 +330,28 @@ python -m browse_mcp
 | `researchgate` | 免费 | - | ResearchGate 社交网络 |
 
 
-## 🚀 使用
+## 使用
 
 配置完成后，`browse-mcp` 通过 Claude Desktop 或任何兼容 MCP 的客户端提供三个主要工具。
 
-### 1. 搜索论文 (`paper_search`)
+### 1. 搜索论文 (`browse_search`)
 
 跨多个来源搜索学术论文：
 
 **基础搜索示例：**
 ```python
 # 在 arXiv 上搜索机器学习论文
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "machine learning", "max_results": 5}
 ])
 
 # 在 PubMed Central 搜索生物医学论文
-paper_search([
+browse_search([
     {"searcher": "pmc", "query": "cancer treatment", "max_results": 5}
 ])
 
 # 在 CORE 搜索开放获取论文
-paper_search([
+browse_search([
     {"searcher": "core", "query": "climate change", "max_results": 5}
 ])
 ```
@@ -360,7 +359,7 @@ paper_search([
 **多平台搜索：**
 ```python
 # 同时搜索多个平台
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "deep learning", "max_results": 5},
     {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
     {"searcher": "pmc", "query": "diabetes treatment", "max_results": 3},
@@ -371,17 +370,17 @@ paper_search([
 **付费数据源（需要 API 密钥）：**
 ```python
 # 搜索 IEEE Xplore（需要 IEEE_API_KEY）
-paper_search([
+browse_search([
     {"searcher": "ieee", "query": "neural networks", "max_results": 5}
 ])
 
 # 搜索 Springer Link（需要 SPRINGER_API_KEY）
-paper_search([
+browse_search([
     {"searcher": "springer", "query": "quantum computing", "max_results": 5}
 ])
 
 # 搜索 Scopus（需要 SCOPUS_API_KEY）
-paper_search([
+browse_search([
     {"searcher": "scopus", "query": "artificial intelligence", "max_results": 5}
 ])
 ```
@@ -389,50 +388,50 @@ paper_search([
 **搜索所有平台：**
 ```python
 # 搜索所有平台（省略 "searcher" 参数）
-paper_search([
+browse_search([
     {"query": "quantum computing", "max_results": 10}
 ])
 ```
 
-### 2. 下载论文 (`paper_download`)
+### 2. 下载论文 (`browse_download`)
 
 使用标识符下载论文 PDF：
 
 ```python
 # 从免费数据源下载
-paper_download([
-    {"searcher": "arxiv", "paper_id": "2106.12345"},
-    {"searcher": "pubmed", "paper_id": "32790614"},
-    {"searcher": "pmc", "paper_id": "PMC7419405"},
-    {"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"},
-    {"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}
+browse_download([
+    {"searcher": "arxiv", "content_id": "2106.12345"},
+    {"searcher": "pubmed", "content_id": "32790614"},
+    {"searcher": "pmc", "content_id": "PMC7419405"},
+    {"searcher": "biorxiv", "content_id": "10.1101/2020.01.01.123456"},
+    {"searcher": "semantic", "content_id": "DOI:10.18653/v1/N18-3011"}
 ])
 
 # 从 CORE 下载（开放获取）
-paper_download([
-    {"searcher": "core", "paper_id": "123456789"}
+browse_download([
+    {"searcher": "core", "content_id": "123456789"}
 ])
 ```
 
 **注意：** 付费数据源（IEEE、Springer、Science Direct、Scopus）需要机构访问权限或订阅才能下载 PDF。
 
-### 3. 阅读论文 (`paper_read`)
+### 3. 阅读论文 (`browse_read`)
 
 提取和阅读论文的文本内容：
 
 ```python
 # 从免费数据源阅读论文
-paper_read(searcher="arxiv", paper_id="2106.12345")
-paper_read(searcher="pubmed", paper_id="32790614")
-paper_read(searcher="pmc", paper_id="PMC7419405")
-paper_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
-paper_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
-paper_read(searcher="core", paper_id="123456789")
+browse_read(searcher="arxiv", content_id="2106.12345")
+browse_read(searcher="pubmed", content_id="32790614")
+browse_read(searcher="pmc", content_id="PMC7419405")
+browse_read(searcher="biorxiv", content_id="10.1101/2020.01.01.123456")
+browse_read(searcher="semantic", content_id="DOI:10.18653/v1/N18-3011")
+browse_read(searcher="core", content_id="123456789")
 ```
 
 ---
 
-### 🛠️ 开发环境
+### 开发环境
 
 对于想要修改代码或贡献的开发者：
 
@@ -463,7 +462,7 @@ paper_read(searcher="core", paper_id="123456789")
 
 ---
 
-## 🤝 贡献
+## 贡献
 
 我们欢迎贡献！以下是入门指南：
 
@@ -486,7 +485,7 @@ paper_read(searcher="core", paper_id="123456789")
 4. **提交 Pull Request**：
    推送更改并在 GitHub 上创建 PR。
 
-## 📄 许可证
+## 许可证
 
 本项目采用 MIT 许可证。详情请参阅 LICENSE 文件。
 
