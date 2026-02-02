@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "Installation"
-description: "Install Browse MCP using pip, uv, or from source"
+description: "Install Browse MCP and plugins using pip, uv, or from source"
 ---
 
 # Installation
 
-Browse MCP can be installed using `pip`, `uv`, or from source for development. This guide covers all installation methods.
+Browse MCP can be installed using `pip`, `uv`, or from source for development. This guide covers all installation methods, including plugin installation.
 
 ## Prerequisites
 
@@ -82,6 +82,43 @@ pip install -e .
 pip install pytest flake8
 ```
 
+## Installing Plugins
+
+Plugins extend Browse MCP with additional content sources. Install them alongside the core package.
+
+### Social Media Plugin
+
+Add support for GitHub, Twitter, Zhihu, and Xiaohongshu:
+
+```bash
+pip install browse-mcp-plugin-social-media
+```
+
+### Multiple Plugins
+
+Install multiple plugins at once:
+
+```bash
+pip install browse-mcp browse-mcp-plugin-social-media
+```
+
+### Plugin Auto-Discovery
+
+Plugins are automatically discovered when the server starts. No configuration changes are needed - just install and restart.
+
+```bash
+# After installing a plugin, verify it loads
+browse-mcp --debug
+```
+
+You should see the plugin sources in the startup logs:
+
+```
+INFO     Successfully loaded 15 searcher plugins: arxiv, github, twitter...
+```
+
+See [Installing Plugins](../plugins/installing-plugins) for detailed plugin management.
+
 ## Verify Installation
 
 After installation, verify that Browse MCP is installed correctly:
@@ -121,3 +158,5 @@ The server runs in stdio mode by default, which is what MCP clients like Claude 
 
 - [Quick Start](./quick-start) - Search your first paper in 2 minutes
 - [Client Configuration](./client-configuration) - Configure your MCP client
+- [Plugins Overview](../plugins/overview) - Learn about the plugin system
+- [Available Plugins](../plugins/available-plugins) - Browse available plugins
