@@ -4,6 +4,13 @@ This module provides a plugin system for dynamically discovering and loading
 searcher implementations. Third-party packages can define their own searchers
 by registering entry points in the 'browse_mcp.searchers' namespace.
 
+Hierarchical Naming:
+    Sources use hierarchical names in the format '{provider}/{source_name}'.
+    For example: 'academic/arxiv', 'publisher/sciencedirect'.
+
+    For backward compatibility, flat names (e.g., 'arxiv') are also supported
+    and will be automatically mapped to their hierarchical equivalents.
+
 Plugin Configuration (Poetry format - Recommended):
     Create a plugin package with pyproject.toml:
 
@@ -73,7 +80,7 @@ Environment Variables:
     BROWSE_MCP_DISABLED_SOURCES: Comma-separated list of disabled sources
 """
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 from stevedore import ExtensionManager
@@ -85,12 +92,89 @@ from .types import PaperSource, ContentSource
 # Namespace for searcher plugins
 SEARCHER_NAMESPACE = "browse_mcp.searchers"
 
+# Provider mapping for hierarchical naming
+# Maps flat source names to their provider category
+SOURCE_TO_PROVIDER: Dict[str, str] = {
+    # Academic sources
+    "arxiv": "academic",
+    "pubmed": "academic",
+    "pmc": "academic",
+    "biorxiv": "academic",
+    "medrxiv": "academic",
+    "semantic": "academic",
+    "core": "academic",
+    "crossref": "academic",
+    "iacr": "academic",
+    "acm": "academic",
+    # Publisher sources
+    "sciencedirect": "publisher",
+    "springer": "publisher",
+    "ieee": "publisher",
+    "scopus": "publisher",
+    # Institutional sources
+    "wos": "institutional",
+    "jstor": "institutional",
+    "researchgate": "institutional",
+    # Web sources
+    "google_scholar": "web",
+}
+
+
+def get_hierarchical_name(flat_name: str) -> str:
+    """Convert a flat source name to hierarchical format.
+
+    Args:
+        flat_name: The flat source name (e.g., 'arxiv')
+
+    Returns:
+        The hierarchical name (e.g., 'academic/arxiv')
+    """
+    if "/" in flat_name:
+        # Already hierarchical
+        return flat_name
+    provider = SOURCE_TO_PROVIDER.get(flat_name, "other")
+    return f"{provider}/{flat_name}"
+
+
+def parse_hierarchical_name(name: str) -> Tuple[str, str]:
+    """Parse a hierarchical name into provider and source.
+
+    Args:
+        name: The name to parse (e.g., 'academic/arxiv' or 'arxiv')
+
+    Returns:
+        Tuple of (provider, source_name)
+    """
+    if "/" in name:
+        parts = name.split("/", 1)
+        return parts[0], parts[1]
+    else:
+        provider = SOURCE_TO_PROVIDER.get(name, "other")
+        return provider, name
+
+
+def normalize_source_name(name: str) -> str:
+    """Normalize a source name to flat format for internal use.
+
+    Args:
+        name: The source name (hierarchical or flat)
+
+    Returns:
+        The flat source name
+    """
+    if "/" in name:
+        return name.split("/", 1)[1]
+    return name
+
 
 class SearcherPluginManager:
     """Manager for searcher plugins using stevedore.
 
     This class handles the discovery, loading, and filtering of searcher plugins.
     It supports environment variable-based filtering for enabling/disabling sources.
+
+    The plugin manager supports both flat names (e.g., 'arxiv') and hierarchical
+    names (e.g., 'academic/arxiv') for backward compatibility.
     """
 
     def __init__(self) -> None:
@@ -98,6 +182,8 @@ class SearcherPluginManager:
         self._all_searchers: Dict[str, PaperSource] = {}
         self._enabled_searchers: Dict[str, PaperSource] = {}
         self._load_errors: Dict[str, str] = {}
+        # Maps hierarchical names to flat names
+        self._hierarchical_to_flat: Dict[str, str] = {}
         self._load_plugins()
         self._apply_filters()
 
@@ -129,7 +215,12 @@ class SearcherPluginManager:
                     # Instantiate the searcher class
                     searcher_instance = ext.plugin()
                     self._all_searchers[name] = searcher_instance
-                    logger.debug(f"Loaded searcher plugin: {name}")
+
+                    # Build hierarchical name mapping
+                    hierarchical = get_hierarchical_name(name)
+                    self._hierarchical_to_flat[hierarchical] = name
+
+                    logger.debug(f"Loaded searcher plugin: {name} ({hierarchical})")
                 except Exception as e:
                     error_msg = f"Failed to instantiate searcher '{name}': {e}"
                     logger.warning(error_msg)
@@ -230,35 +321,78 @@ class SearcherPluginManager:
     def get_searcher(self, name: str) -> Optional[PaperSource]:
         """Get a specific searcher by name.
 
+        Supports both flat names (e.g., 'arxiv') and hierarchical names
+        (e.g., 'academic/arxiv').
+
         Args:
-            name: The searcher name (e.g., 'arxiv', 'pubmed').
+            name: The searcher name (flat or hierarchical).
 
         Returns:
             The searcher instance if found and enabled, None otherwise.
         """
-        return self._enabled_searchers.get(name)
+        # Normalize the name to flat format
+        flat_name = normalize_source_name(name)
+        return self._enabled_searchers.get(flat_name)
 
     def is_enabled(self, name: str) -> bool:
         """Check if a searcher is enabled.
 
         Args:
-            name: The searcher name.
+            name: The searcher name (flat or hierarchical).
 
         Returns:
             True if the searcher is loaded and enabled.
         """
-        return name in self._enabled_searchers
+        flat_name = normalize_source_name(name)
+        return flat_name in self._enabled_searchers
 
     def is_loaded(self, name: str) -> bool:
         """Check if a searcher is loaded (may or may not be enabled).
 
         Args:
-            name: The searcher name.
+            name: The searcher name (flat or hierarchical).
 
         Returns:
             True if the searcher was successfully loaded.
         """
-        return name in self._all_searchers
+        flat_name = normalize_source_name(name)
+        return flat_name in self._all_searchers
+
+    def get_provider(self, name: str) -> str:
+        """Get the provider category for a source.
+
+        Args:
+            name: The source name (flat or hierarchical).
+
+        Returns:
+            The provider category (e.g., 'academic', 'publisher').
+        """
+        provider, _ = parse_hierarchical_name(name)
+        return provider
+
+    @property
+    def hierarchical_sources(self) -> Dict[str, str]:
+        """Get mapping of hierarchical names to flat names.
+
+        Returns:
+            Dict mapping hierarchical names to flat names.
+        """
+        return self._hierarchical_to_flat.copy()
+
+    @property
+    def sources_by_provider(self) -> Dict[str, List[str]]:
+        """Get sources grouped by provider.
+
+        Returns:
+            Dict mapping provider names to lists of source names.
+        """
+        result: Dict[str, List[str]] = {}
+        for flat_name in self._enabled_searchers.keys():
+            provider = SOURCE_TO_PROVIDER.get(flat_name, "other")
+            if provider not in result:
+                result[provider] = []
+            result[provider].append(flat_name)
+        return result
 
 
 # Global singleton instance
