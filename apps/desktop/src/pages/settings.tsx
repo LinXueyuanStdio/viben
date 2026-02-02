@@ -1,5 +1,6 @@
 import { Check, AlertCircle, FolderOpen, RefreshCw, Loader2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeSwitcher } from "@/components/settings/theme-switcher";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import { useState, useCallback } from "react";
@@ -258,17 +259,7 @@ export function SettingsPage() {
         <div className="rounded-lg border bg-card p-4 space-y-4">
           <div>
             <label className="text-sm font-medium mb-2 block">{t("settings.theme")}</label>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                {t("settings.light")}
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1">
-                {t("settings.dark")}
-              </Button>
-              <Button variant="secondary" size="sm" className="flex-1">
-                {t("settings.system")}
-              </Button>
-            </div>
+            <ThemeSwitcher />
           </div>
 
           <div>
