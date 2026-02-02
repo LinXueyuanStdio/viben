@@ -27,6 +27,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Desktop App',
+      collapsed: false,
+      items: [
+        'desktop-app/index',
+        'desktop-app/installation',
+        'desktop-app/features',
+      ],
+    },
+    {
+      type: 'category',
       label: 'MCP Server',
       collapsed: false,
       items: [
