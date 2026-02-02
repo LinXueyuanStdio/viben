@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/stores";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import type { Provider } from "@/types";
+import { useTranslation } from "react-i18next";
 
 // Provider documentation URLs
 const PROVIDER_DOCS: Record<string, string> = {
@@ -28,6 +29,7 @@ const PROVIDER_DOCS: Record<string, string> = {
 };
 
 export function ProvidersPage() {
+  const { t } = useTranslation();
   const { providers, setProviderApiKey } = useAppStore();
 
   const freeProviders = providers.filter((p) => p.category === "free");
@@ -44,30 +46,29 @@ export function ProvidersPage() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Data Sources</h1>
+          <h1 className="text-2xl font-bold">{t("providers.title")}</h1>
           <p className="text-sm text-muted-foreground">
-            {configuredCount} of {providers.length} sources available
+            {t("providers.sourcesAvailable", { count: configuredCount, total: providers.length })}
           </p>
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground mb-6">
-        Configure API keys for providers that require them. Source selection is
-        done per-server in the Search Service page.
+        {t("providers.configureInfo")}
       </p>
 
       {/* Free & Open Access */}
       <ProviderSection
-        title="Free & Open Access"
-        description="No registration required - available immediately"
+        title={t("providers.freeOpenAccess")}
+        description={t("providers.freeDescription")}
         icon={<Globe className="h-5 w-5 text-green-600" />}
         providers={freeProviders}
       />
 
       {/* API Key Required */}
       <ProviderSection
-        title="API Key Required"
-        description="Register for a free API key to enable these sources"
+        title={t("providers.apiKeyRequired")}
+        description={t("providers.apiKeyDescription")}
         icon={<Key className="h-5 w-5 text-yellow-600" />}
         providers={apiKeyProviders}
         onApiKeyChange={setProviderApiKey}
@@ -76,8 +77,8 @@ export function ProvidersPage() {
 
       {/* Institutional Access */}
       <ProviderSection
-        title="Institutional Access"
-        description="Requires institutional subscription"
+        title={t("providers.institutionalAccess")}
+        description={t("providers.institutionalDescription")}
         icon={<Building2 className="h-5 w-5 text-blue-600" />}
         providers={institutionalProviders}
       />
@@ -138,6 +139,7 @@ function ProviderCard({
   onApiKeyChange,
   showApiKeyConfig,
 }: ProviderCardProps) {
+  const { t } = useTranslation();
   const { setApiKey, deleteApiKey, providers } = useApiKeys();
   const [editing, setEditing] = useState(false);
   const [keyValue, setKeyValue] = useState("");
@@ -162,7 +164,7 @@ function ProviderCard({
   };
 
   const handleDeleteKey = async () => {
-    if (!confirm(`Remove API key for ${provider.name}?`)) return;
+    if (!confirm(t("providers.removeApiKey", { name: provider.name }))) return;
 
     await deleteApiKey(provider.id);
     onApiKeyChange?.(provider.id, false);
@@ -205,7 +207,7 @@ function ProviderCard({
                 {hasApiKey ? (
                   <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                     <Key className="h-3 w-3" />
-                    API key configured
+                    {t("providers.apiKeyConfigured")}
                     {apiKeyInfo?.key_prefix && (
                       <code className="ml-1 bg-muted px-1 rounded text-[10px]">
                         {apiKeyInfo.key_prefix}
@@ -214,7 +216,7 @@ function ProviderCard({
                   </span>
                 ) : (
                   <span className="text-yellow-600 dark:text-yellow-400">
-                    API key required
+                    {t("providers.apiKeyRequired")}
                   </span>
                 )}
               </p>
@@ -228,7 +230,7 @@ function ProviderCard({
               variant="ghost"
               size="sm"
               onClick={() => window.open(docUrl, "_blank")}
-              title="Get API key"
+              title={t("providers.getApiKey")}
             >
               <ExternalLink className="h-4 w-4" />
             </Button>
@@ -242,7 +244,7 @@ function ProviderCard({
                   onClick={() => setEditing(true)}
                 >
                   <Key className="h-4 w-4 mr-1" />
-                  {hasApiKey ? "Update" : "Add"}
+                  {hasApiKey ? t("common.update") : t("common.add")}
                 </Button>
               )}
               {hasApiKey && !editing && (
@@ -269,7 +271,7 @@ function ProviderCard({
                 type={showKey ? "text" : "password"}
                 value={keyValue}
                 onChange={(e) => setKeyValue(e.target.value)}
-                placeholder={`Enter ${provider.name} API key...`}
+                placeholder={t("providers.enterApiKey", { name: provider.name })}
                 className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono pr-10"
                 autoFocus
                 onKeyDown={(e) => {
@@ -306,14 +308,14 @@ function ProviderCard({
           </div>
           {docUrl && (
             <p className="text-xs text-muted-foreground mt-2">
-              Get your API key from{" "}
+              {t("providers.getApiKeyFrom")}{" "}
               <a
                 href={docUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                {provider.name} Developer Portal
+                {t("providers.developerPortal", { name: provider.name })}
               </a>
             </p>
           )}
