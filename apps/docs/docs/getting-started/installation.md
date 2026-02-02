@@ -1,14 +1,84 @@
 ---
 sidebar_position: 1
 title: "Installation"
-description: "Install Browse MCP and plugins using pip, uv, or from source"
+description: "Install Browse MCP using pip, uv, Desktop App, or from source"
 ---
 
 # Installation
 
-Browse MCP can be installed using `pip`, `uv`, or from source for development. This guide covers all installation methods, including plugin installation.
+Browse MCP can be installed as a **Desktop App** (recommended for most users), via `pip`/`uv` (for MCP server integration), or from source for development.
 
-## Prerequisites
+## Desktop App (Recommended)
+
+The easiest way to use Browse MCP is through our Desktop App, available for macOS, Windows, and Linux.
+
+### Download
+
+[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/browse-mcp?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop)
+
+Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop):
+
+| Platform | Download | Notes |
+|----------|----------|-------|
+| **macOS** | `.dmg` (Universal) | Supports both Intel and Apple Silicon |
+| **Windows** | `.msi` or `.exe` | 64-bit Windows 10/11 |
+| **Linux** | `.AppImage` or `.deb` | 64-bit Linux |
+
+### Platform-Specific Instructions
+
+#### macOS
+
+1. Download the `.dmg` file
+2. Open the downloaded file
+3. Drag **Browse MCP** to your Applications folder
+4. On first launch, right-click and select "Open" (required for unsigned apps)
+
+:::note
+If you see "Browse MCP is damaged and can't be opened", run this command in Terminal:
+```bash
+xattr -cr /Applications/Browse\ MCP.app
+```
+:::
+
+#### Windows
+
+1. Download the `.msi` or `.exe` installer
+2. Run the installer
+3. Follow the installation wizard
+4. Launch Browse MCP from the Start menu
+
+#### Linux
+
+**AppImage (Portable):**
+```bash
+chmod +x Browse-MCP_*.AppImage
+./Browse-MCP_*.AppImage
+```
+
+**Debian/Ubuntu (.deb):**
+```bash
+sudo dpkg -i Browse-MCP_*_amd64.deb
+```
+
+### Verify Download
+
+Each release includes a `checksums.txt` file with SHA256 checksums. Verify your download:
+
+```bash
+# macOS/Linux
+sha256sum -c checksums.txt
+
+# Windows (PowerShell)
+Get-FileHash Browse-MCP_*.exe | Format-List
+```
+
+---
+
+## MCP Server (Python Package)
+
+For integration with MCP clients like Claude Desktop, install the Python package.
+
+### Prerequisites
 
 - **Python 3.10 or higher** - Browse MCP requires Python 3.10+
 - **pip or uv** - Package manager for installation
@@ -18,8 +88,6 @@ To check your Python version:
 ```bash
 python --version
 ```
-
-## Installation Methods
 
 ### Using pip (Recommended)
 
@@ -43,7 +111,9 @@ Or add it to your project:
 uv add browse-mcp
 ```
 
-### From Source (Development)
+---
+
+## From Source (Development)
 
 For developers who want to modify the code or contribute:
 
@@ -82,44 +152,7 @@ pip install -e .
 pip install pytest flake8
 ```
 
-## Installing Plugins
-
-Plugins extend Browse MCP with additional content sources. Install them alongside the core package.
-
-### Social Media Plugin
-
-Add support for GitHub, Twitter, Zhihu, and Xiaohongshu:
-
-```bash
-pip install browse-mcp-plugin-social-media
-```
-
-### Multiple Plugins
-
-Install multiple plugins at once:
-
-```bash
-pip install browse-mcp browse-mcp-plugin-social-media
-```
-
-### Plugin Auto-Discovery
-
-Plugins are automatically discovered when the server starts. No configuration changes are needed - just install and restart.
-
-```bash
-# After installing a plugin, verify it loads
-browse-mcp --debug
-```
-
-You should see the plugin sources in the startup logs:
-
-```
-INFO     Successfully loaded 15 searcher plugins: arxiv, github, twitter...
-```
-
-See [Installing Plugins](../plugins/installing-plugins) for detailed plugin management.
-
-## Verify Installation
+### Verify Installation
 
 After installation, verify that Browse MCP is installed correctly:
 
@@ -142,7 +175,7 @@ Options:
   --help                Show this message and exit.
 ```
 
-## Start the Server
+### Start the Server
 
 Start the MCP server in stdio mode (for MCP clients):
 

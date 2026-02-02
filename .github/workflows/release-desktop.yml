@@ -1,0 +1,211 @@
+name: Release Desktop App
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.1). Leave empty to use version from tauri.conf.json'
+        required: false
+        type: string
+      draft:
+        description: 'Create as draft release'
+        type: boolean
+        default: true
+  push:
+    tags:
+      - 'desktop-v*'
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  # Determine the version to release
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag: ${{ steps.get-version.outputs.tag }}
+      is_draft: ${{ steps.get-version.outputs.is_draft }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+            else
+              VERSION=$(jq -r '.version' apps/desktop/src-tauri/tauri.conf.json)
+            fi
+            IS_DRAFT="${{ inputs.draft }}"
+          else
+            # Tag trigger - extract version from tag (desktop-v0.1.0 -> 0.1.0)
+            VERSION="${GITHUB_REF_NAME#desktop-v}"
+            IS_DRAFT="false"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=desktop-v${VERSION}" >> $GITHUB_OUTPUT
+          echo "is_draft=${IS_DRAFT}" >> $GITHUB_OUTPUT
+          echo "Building version: ${VERSION}"
+
+  # Build for all platforms
+  build:
+    needs: prepare
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: windows-latest
+            args: --target x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
+          - platform: ubuntu-22.04
+            args: ''
+            rust_targets: x86_64-unknown-linux-gnu
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+
+      - name: Setup Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './apps/desktop/src-tauri -> target'
+          shared-key: ${{ matrix.platform }}
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libxdo-dev
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Update version in tauri.conf.json
+        shell: bash
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          cd apps/desktop/src-tauri
+          # Use a temp file to avoid issues with in-place editing
+          jq --arg v "$VERSION" '.version = $v' tauri.conf.json > tauri.conf.tmp.json
+          mv tauri.conf.tmp.json tauri.conf.json
+          echo "Updated version to: $(jq -r '.version' tauri.conf.json)"
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS code signing (optional)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows code signing (optional)
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: 'Browse MCP Desktop v${{ needs.prepare.outputs.version }}'
+          releaseBody: |
+            ## Browse MCP Desktop v${{ needs.prepare.outputs.version }}
+
+            ### Installation
+
+            - **macOS**: Download the `.dmg` file and drag Browse MCP to Applications
+            - **Windows**: Download the `.msi` or `.exe` installer and run it
+            - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
+
+            ### Checksums
+
+            See `checksums.txt` attached to this release for SHA256 checksums.
+
+            ### Changes
+
+            See [CHANGELOG](https://github.com/LinXueyuanStdio/browse-mcp/blob/main/CHANGELOG.md) for details.
+          releaseDraft: ${{ needs.prepare.outputs.is_draft == 'true' }}
+          prerelease: false
+          args: ${{ matrix.args }}
+
+  # Generate checksums after all builds complete
+  checksums:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        uses: robinraju/release-downloader@v1
+        with:
+          tag: ${{ needs.prepare.outputs.tag }}
+          fileName: '*'
+          out-file-path: 'release-assets'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          # Generate SHA256 checksums for all files
+          sha256sum * > checksums.txt || true
+          echo "Generated checksums:"
+          cat checksums.txt
+
+      - name: Upload checksums to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          files: release-assets/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
