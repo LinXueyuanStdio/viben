@@ -93,3 +93,86 @@ export interface McpServerJsonConfig {
 export interface AgentMcpConfig {
   mcpServers: Record<string, McpServerJsonConfig>;
 }
+
+// Marketplace types - hierarchical provider/source structure
+
+/** Source info from a provider in the marketplace index */
+export interface MarketplaceSource {
+  name: string;
+  description: string;
+  apiKey: "none" | "optional" | "required";
+  documentation?: string;
+}
+
+/** Provider info in the marketplace index */
+export interface MarketplaceProvider {
+  name: string;
+  description: string;
+  author: string;
+  homepage?: string;
+  sources: Record<string, MarketplaceSource>;
+}
+
+/** Full provider index from provider.index.json */
+export interface ProviderIndex {
+  version: string;
+  updated_at?: string;
+  providers: Record<string, MarketplaceProvider>;
+}
+
+/** Flattened source for UI display */
+export interface FlatSource {
+  /** Hierarchical ID: provider/source */
+  id: string;
+  /** Flat source name */
+  source_name: string;
+  /** Provider ID */
+  provider_id: string;
+  /** Display name */
+  name: string;
+  /** Description */
+  description: string;
+  /** API key requirement */
+  api_key_type: "none" | "optional" | "required";
+  /** Documentation URL */
+  documentation?: string;
+  /** Provider display name */
+  provider_name: string;
+}
+
+// API Log types
+
+/** API log entry from JSONL files */
+export interface ApiLogEntry {
+  timestamp: string;
+  run_id: string;
+  api_key_hash: string | null;
+  provider: string;
+  source: string;
+  method: "search" | "download" | "read";
+  request: Record<string, unknown>;
+  response: Record<string, unknown>;
+  latency_ms: number;
+  status: "success" | "error";
+  error: string | null;
+}
+
+/** API log session info */
+export interface ApiLogSession {
+  run_id: string;
+  log_file: string;
+  entry_count: number;
+  created_at: string | null;
+  last_entry_at: string | null;
+}
+
+/** API log summary statistics */
+export interface ApiLogSummary {
+  run_id: string;
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  by_source: Record<string, number>;
+  by_method: Record<string, number>;
+  avg_latency_ms: number;
+}
