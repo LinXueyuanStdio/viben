@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 /**
@@ -153,23 +153,28 @@ export function useMarketplace() {
   }, [refresh]);
 
   /**
-   * Get sources that require API keys
+   * Get sources that require API keys (memoized)
    */
-  const apiKeyRequiredSources = sources.filter(
-    (s) => s.api_key_type === "required"
+  const apiKeyRequiredSources = useMemo(
+    () => sources.filter((s) => s.api_key_type === "required"),
+    [sources]
   );
 
   /**
-   * Get sources with optional API keys
+   * Get sources with optional API keys (memoized)
    */
-  const apiKeyOptionalSources = sources.filter(
-    (s) => s.api_key_type === "optional"
+  const apiKeyOptionalSources = useMemo(
+    () => sources.filter((s) => s.api_key_type === "optional"),
+    [sources]
   );
 
   /**
-   * Get free sources (no API key needed)
+   * Get free sources (no API key needed) (memoized)
    */
-  const freeSources = sources.filter((s) => s.api_key_type === "none");
+  const freeSources = useMemo(
+    () => sources.filter((s) => s.api_key_type === "none"),
+    [sources]
+  );
 
   /**
    * Get a specific source by ID (hierarchical or flat)
