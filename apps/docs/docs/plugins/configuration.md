@@ -136,6 +136,7 @@ In VS Code settings:
 
 Disable all social media sources:
 
+```json
 {
   "mcpServers": {
     "browse-mcp": {
@@ -149,6 +150,7 @@ Disable all social media sources:
     }
   }
 }
+```
 
 #### Social Media Focus
 
