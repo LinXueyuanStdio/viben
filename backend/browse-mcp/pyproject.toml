@@ -19,6 +19,7 @@ packages = [{ include = "browse_mcp" }]
 
 [tool.poetry.scripts]
 browse-mcp = "browse_mcp.__main__:main"
+browse-mcp-cli = "browse_mcp.cli:main"
 
 [tool.poetry.plugins."browse_mcp.searchers"]
 arxiv = "browse_mcp.sources.arxiv:ArxivSearcher"
