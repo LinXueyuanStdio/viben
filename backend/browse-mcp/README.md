@@ -1,50 +1,49 @@
-# 📚 Browse MCP
+# Browse MCP
 
 [English](README.md) | [中文](README_zh.md)
 
-🔬 `browse-mcp` is a Python-based MCP server that enables users to search, download, and read academic papers from various platforms. It provides three main tools:
-- 🔎 **`paper_search`**: Search papers across multiple academic databases
-- 📥 **`paper_download`**: Download paper PDFs, return paths of downloaded files
-- 📖 **`paper_read`**: Extract and read text content from papers
+`browse-mcp` is a Python-based MCP server that enables users to search, download, and read academic papers from various platforms. It provides three main tools:
+- **`browse_search`**: Search papers across multiple academic databases
+- **`browse_download`**: Download paper PDFs, return paths of downloaded files
+- **`browse_read`**: Extract and read text content from papers
 
 ![PyPI](https://img.shields.io/pypi/v/browse-mcp.svg) ![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
-- [🎬 Screenshot](#-screenshot)
-- [📝 TODO](#-todo)
-- [✨ Features](#-features)
-- [📦 Installation](#-installation)
-  - [⚡ Quick Start](#-quick-start)
-  - [🛠️ For Development](#️-for-development)
-- [🚀 Usage](#-usage)
-  - [🔎 Search Papers](#1-search-papers-paper_search)
-  - [📥 Download Papers](#2-download-papers-paper_download)
-  - [📖 Read Papers](#3-read-papers-paper_read)
-  - [⚙️ Environment Variables](#️-environment-variables)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
+- [Screenshot](#screenshot)
+- [Features](#features)
+- [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [For Development](#for-development)
+- [Usage](#usage)
+  - [Search Papers](#1-search-papers-browse_search)
+  - [Download Papers](#2-download-papers-browse_download)
+  - [Read Papers](#3-read-papers-browse_read)
+  - [Environment Variables](#environment-variables)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## ✨ Features
+## Features
 
-- 🌐 **Multi-Source Support**: Search and download papers from 19+ academic databases including arXiv, PubMed, PubMed Central, bioRxiv, medRxiv, Google Scholar, IACR ePrint Archive, Semantic Scholar, CrossRef, Science Direct, Springer, IEEE Xplore, Scopus, CORE, and more.
-- 🎯 **Unified Interface**: All platforms accessible through consistent `paper_search`, `paper_download`, and `paper_read` tools.
-- 📊 **Standardized Output**: Papers are returned in a consistent dictionary format via the `Paper` class.
-- ⚡ **Asynchronous Operations**: Efficiently handles concurrent searches and downloads using `httpx` and async/await.
-- 🔌 **MCP Integration**: Compatible with MCP clients for LLM context enhancement.
-- 🧩 **Extensible Design**: Easily add new academic platforms by extending the `sources` module.
+- **Multi-Source Support**: Search and download papers from 19+ academic databases including arXiv, PubMed, PubMed Central, bioRxiv, medRxiv, Google Scholar, IACR ePrint Archive, Semantic Scholar, CrossRef, Science Direct, Springer, IEEE Xplore, Scopus, CORE, and more.
+- **Unified Interface**: All platforms accessible through consistent `browse_search`, `browse_download`, and `browse_read` tools.
+- **Standardized Output**: Papers are returned in a consistent dictionary format via the `Paper` class.
+- **Asynchronous Operations**: Efficiently handles concurrent searches and downloads using `httpx` and async/await.
+- **MCP Integration**: Compatible with MCP clients for LLM context enhancement.
+- **Extensible Design**: Easily add new academic platforms by extending the `sources` module.
 
-## 🎬 Screenshot
+## Screenshot
 
 <img src="assets/screenshot.png" alt="Screenshot" width="800">
 
-## 📝 Supported Academic Platforms
+## Supported Academic Platforms
 
-### ✅ Fully Implemented (19 sources)
+### Fully Implemented (19 sources)
 
 **Free & Open Access:**
 - [x] **arXiv** - Pre-print repository for physics, mathematics, CS, and more
@@ -73,11 +72,11 @@
 **Retired Services:**
 - [x] **Microsoft Academic** - Service retired December 31, 2021 (placeholder implementation)
 
-## 📦 Installation
+## Installation
 
 `browse-mcp` can be installed using `uv` or `pip`. Below are detailed installation guides for different scenarios.
 
-### ⚡ Quick Install
+### Quick Install
 
 Install the package:
 
@@ -91,12 +90,12 @@ Start the MCP server:
 browse-mcp
 ```
 
-### 🔧 MCP Client Configuration
+### MCP Client Configuration
 
 Choose your MCP client and follow the configuration steps:
 
 <details>
-<summary><b>1️⃣ Claude Desktop</b></summary>
+<summary><b>1. Claude Desktop</b></summary>
 
 **Location:**
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -128,7 +127,7 @@ Choose your MCP client and follow the configuration steps:
 </details>
 
 <details>
-<summary><b>2️⃣ Claude Code (CLI)</b></summary>
+<summary><b>2. Claude Code (CLI)</b></summary>
 
 **Location:** `~/.config/claude/config.json`
 
@@ -167,9 +166,9 @@ claude mcp test browse-mcp
 </details>
 
 <details>
-<summary><b>3️⃣ Cline (VS Code Extension)</b></summary>
+<summary><b>3. Cline (VS Code Extension)</b></summary>
 
-**Location:** VS Code Settings → Extensions → Cline → MCP Settings
+**Location:** VS Code Settings -> Extensions -> Cline -> MCP Settings
 
 **Method 1: Through VS Code Settings UI**
 1. Open VS Code Settings (Cmd/Ctrl + ,)
@@ -228,7 +227,7 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
 </details>
 
 <details>
-<summary><b>4️⃣ Zed Editor</b></summary>
+<summary><b>4. Zed Editor</b></summary>
 
 **Location:** `~/.config/zed/settings.json`
 
@@ -262,7 +261,7 @@ Edit `~/.config/Code/User/settings.json` (Linux/macOS) or `%APPDATA%\Code\User\s
 </details>
 
 <details>
-<summary><b>5️⃣ Custom MCP Client</b></summary>
+<summary><b>5. Custom MCP Client</b></summary>
 
 For other MCP clients, use the standard MCP server configuration:
 
@@ -281,13 +280,13 @@ python -m browse_mcp
 - `BROWSE_MCP_DOWNLOAD_PATH`: Download directory (default: `./downloads`)
 
 **Server Capabilities:**
-- Tools: `paper_search`, `paper_download`, `paper_read`
+- Tools: `browse_search`, `browse_download`, `browse_read`
 - Transport: stdio
 - Protocol: MCP 1.0
 
 </details>
 
-### ⚙️ Environment Variables
+### Environment Variables
 
 **API Keys** (optional - only for premium services):
 - `SEMANTIC_SCHOLAR_API_KEY`: Semantic Scholar ([Get API Key](https://www.semanticscholar.org/product/api))
@@ -331,28 +330,28 @@ python -m browse_mcp
 | `researchgate` | Free | - | ResearchGate social network |
 
 
-## 🚀 Usage
+## Usage
 
 Once configured, `browse-mcp` provides three main tools accessible through Claude Desktop or any MCP-compatible client.
 
-### 1. Search Papers (`paper_search`)
+### 1. Search Papers (`browse_search`)
 
 Search for academic papers across multiple sources:
 
 **Basic Search Examples:**
 ```python
 # Search arXiv for machine learning papers
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "machine learning", "max_results": 5}
 ])
 
 # Search PubMed Central for biomedical papers
-paper_search([
+browse_search([
     {"searcher": "pmc", "query": "cancer treatment", "max_results": 5}
 ])
 
 # Search CORE for open access papers
-paper_search([
+browse_search([
     {"searcher": "core", "query": "climate change", "max_results": 5}
 ])
 ```
@@ -360,7 +359,7 @@ paper_search([
 **Multi-Platform Search:**
 ```python
 # Search multiple platforms simultaneously
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "deep learning", "max_results": 5},
     {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
     {"searcher": "pmc", "query": "diabetes treatment", "max_results": 3},
@@ -371,17 +370,17 @@ paper_search([
 **Premium Sources (require API keys):**
 ```python
 # Search IEEE Xplore (requires IEEE_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "ieee", "query": "neural networks", "max_results": 5}
 ])
 
 # Search Springer Link (requires SPRINGER_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "springer", "query": "quantum computing", "max_results": 5}
 ])
 
 # Search Scopus (requires SCOPUS_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "scopus", "query": "artificial intelligence", "max_results": 5}
 ])
 ```
@@ -389,50 +388,50 @@ paper_search([
 **Search All Platforms:**
 ```python
 # Search all platforms (omit "searcher" parameter)
-paper_search([
+browse_search([
     {"query": "quantum computing", "max_results": 10}
 ])
 ```
 
-### 2. Download Papers (`paper_download`)
+### 2. Download Papers (`browse_download`)
 
 Download paper PDFs using their identifiers:
 
 ```python
 # Download from free sources
-paper_download([
-    {"searcher": "arxiv", "paper_id": "2106.12345"},
-    {"searcher": "pubmed", "paper_id": "32790614"},
-    {"searcher": "pmc", "paper_id": "PMC7419405"},
-    {"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"},
-    {"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}
+browse_download([
+    {"searcher": "arxiv", "content_id": "2106.12345"},
+    {"searcher": "pubmed", "content_id": "32790614"},
+    {"searcher": "pmc", "content_id": "PMC7419405"},
+    {"searcher": "biorxiv", "content_id": "10.1101/2020.01.01.123456"},
+    {"searcher": "semantic", "content_id": "DOI:10.18653/v1/N18-3011"}
 ])
 
 # Download from CORE (open access)
-paper_download([
-    {"searcher": "core", "paper_id": "123456789"}
+browse_download([
+    {"searcher": "core", "content_id": "123456789"}
 ])
 ```
 
 **Note:** Premium sources (IEEE, Springer, Science Direct, Scopus) require institutional access or subscriptions for PDF downloads.
 
-### 3. Read Papers (`paper_read`)
+### 3. Read Papers (`browse_read`)
 
 Extract and read text content from papers:
 
 ```python
 # Read papers from free sources
-paper_read(searcher="arxiv", paper_id="2106.12345")
-paper_read(searcher="pubmed", paper_id="32790614")
-paper_read(searcher="pmc", paper_id="PMC7419405")
-paper_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
-paper_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
-paper_read(searcher="core", paper_id="123456789")
+browse_read(searcher="arxiv", content_id="2106.12345")
+browse_read(searcher="pubmed", content_id="32790614")
+browse_read(searcher="pmc", content_id="PMC7419405")
+browse_read(searcher="biorxiv", content_id="10.1101/2020.01.01.123456")
+browse_read(searcher="semantic", content_id="DOI:10.18653/v1/N18-3011")
+browse_read(searcher="core", content_id="123456789")
 ```
 
 ---
 
-### 🛠️ For Development
+### For Development
 
 For developers who want to modify the code or contribute:
 
@@ -463,7 +462,7 @@ For developers who want to modify the code or contribute:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Here's how to get started:
 
@@ -486,7 +485,7 @@ We welcome contributions! Here's how to get started:
 4. **Submit a Pull Request**:
    Push changes and create a PR on GitHub.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
 

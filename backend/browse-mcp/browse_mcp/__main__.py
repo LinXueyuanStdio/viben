@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 import traceback
 from typing import Any, Dict, List, Literal, Optional, cast
 
@@ -9,10 +10,9 @@ from fastmcp import FastMCP
 from pydantic import BaseModel, Field, field_validator, model_validator
 import typer
 
-from xlin import xmap_async
-
 from .types import Paper, PaperSource, paper2text
 from .plugin import get_enabled_searchers, get_available_sources
+from .api_logger import init_api_logger, get_api_logger
 
 # Initialize MCP server
 mcp = FastMCP("browse_mcp")
@@ -23,17 +23,21 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 # Get enabled searchers from the plugin system
 engine2searcher: Dict[str, PaperSource] = get_enabled_searchers()
 
+# Initialize API logger at module load
+init_api_logger()
+
 
 def _get_available_sources_str() -> str:
     """Get comma-separated list of available sources for descriptions."""
-    return ', '.join(get_available_sources())
+    return ", ".join(get_available_sources())
 
 
-# region browse_search (formerly paper_search)
+# region browse_search
 
-# Keep PaperQuery as an alias for backward compatibility
+
 class SearchQuery(BaseModel):
     """Query model for browse_search tool."""
+
     searcher: Optional[str] = Field(
         default=None,
         description="The content platform to search from. None means searching from all enabled platforms.",
@@ -74,7 +78,7 @@ Additional search parameters:
 - order: Sort order ('asc' or 'desc')""",
     )
 
-    @field_validator('query')
+    @field_validator("query")
     @classmethod
     def validate_query(cls, v: str) -> str:
         """Validate and clean the query string."""
@@ -83,36 +87,49 @@ Additional search parameters:
             raise ValueError("Query cannot be empty or whitespace only")
         return v
 
-    @model_validator(mode='after')
-    def validate_searcher_specific_params(self) -> 'SearchQuery':
+    @model_validator(mode="after")
+    def validate_searcher_specific_params(self) -> "SearchQuery":
         """Validate that searcher-specific parameters are only used with appropriate searchers."""
         # Validate searcher is in enabled list
         if self.searcher is not None and self.searcher not in engine2searcher:
-            available = ', '.join(engine2searcher.keys())
-            raise ValueError(f"Searcher '{self.searcher}' is not available. Available sources: {available}")
+            available = ", ".join(engine2searcher.keys())
+            raise ValueError(
+                f"Searcher '{self.searcher}' is not available. Available sources: {available}"
+            )
 
-        if self.year is not None and self.searcher not in [None, 'semantic']:
-            raise ValueError("'year' parameter is only applicable when searcher is 'semantic' or None")
-        if self.kwargs is not None and self.searcher not in [None, 'crossref']:
-            raise ValueError("'kwargs' parameter is only applicable when searcher is 'crossref' or None")
-        if self.fetch_details is not None and self.fetch_details is not True and self.searcher not in [None, 'iacr']:
-            raise ValueError("'fetch_details' parameter is only applicable when searcher is 'iacr' or None")
+        if self.year is not None and self.searcher not in [None, "semantic"]:
+            raise ValueError(
+                "'year' parameter is only applicable when searcher is 'semantic' or None"
+            )
+        if self.kwargs is not None and self.searcher not in [None, "crossref"]:
+            raise ValueError(
+                "'kwargs' parameter is only applicable when searcher is 'crossref' or None"
+            )
+        if (
+            self.fetch_details is not None
+            and self.fetch_details is not True
+            and self.searcher not in [None, "iacr"]
+        ):
+            raise ValueError(
+                "'fetch_details' parameter is only applicable when searcher is 'iacr' or None"
+            )
         return self
 
 
-# Backward compatibility alias
-PaperQuery = SearchQuery
-
-
 # Asynchronous helper to adapt synchronous searchers
-async def async_search(searcher: PaperSource, query: str, max_results: int, **kwargs) -> List[Paper]:
-    async with httpx.AsyncClient() as client:
+async def async_search(
+    searcher: PaperSource, query: str, max_results: int, **kwargs
+) -> List[Paper]:
+    async with httpx.AsyncClient():
         # Assuming searchers use requests internally; we'll call synchronously for now
-        if 'year' in kwargs:
-            papers = searcher.search(query, year=kwargs['year'], max_results=max_results)
+        if "year" in kwargs:
+            papers = searcher.search(
+                query, year=kwargs["year"], max_results=max_results
+            )
         else:
             papers = searcher.search(query, max_results=max_results)
         return papers
+
 
 def expand_query(query_list: list[SearchQuery]) -> list[SearchQuery]:
     expanded_queries = []
@@ -126,25 +143,36 @@ def expand_query(query_list: list[SearchQuery]) -> list[SearchQuery]:
                 expanded_queries.append(expanded_query)
     return expanded_queries
 
+
 async def async_search_per_query(query: SearchQuery) -> List[Paper]:
+    if query.searcher is None:
+        return []
     searcher = engine2searcher.get(query.searcher)
     if not searcher:
         return []
-    papers = []
+    papers: List[Paper] = []
     if query.searcher == "iacr" and "iacr" in engine2searcher:
-        papers = searcher.search(query.query, query.max_results, query.fetch_details)
+        papers = searcher.search(
+            query.query,
+            max_results=query.max_results,
+            fetch_details=query.fetch_details,
+        )
     elif query.searcher == "semantic" and "semantic" in engine2searcher:
-        papers = searcher.search(query.query, query.year, query.max_results)
+        papers = searcher.search(
+            query.query, year=query.year, max_results=query.max_results
+        )
     elif query.searcher == "crossref" and "crossref" in engine2searcher:
         kwargs = query.kwargs if query.kwargs else {}
-        papers = searcher.search(query.query, query.max_results, **kwargs)
+        papers = searcher.search(query.query, max_results=query.max_results, **kwargs)
     else:
         papers = await async_search(searcher, query.query, query.max_results)
     return papers
 
 
 async def async_search_per_query_list(query_list: List[SearchQuery]) -> List[Paper]:
-    all_papers = await asyncio.gather(*[async_search_per_query(query) for query in query_list])
+    all_papers = await asyncio.gather(
+        *[async_search_per_query(query) for query in query_list]
+    )
     papers = sum(all_papers, [])
     return papers
 
@@ -175,64 +203,67 @@ browse_search([
 """
 
 
-async def _browse_search_impl(query_list: List[SearchQuery]) -> str:
-    """Implementation for browse_search."""
-    async with httpx.AsyncClient() as client:
-        expanded_queries = expand_query(query_list)
-        papers = await xmap_async(expanded_queries, async_search_per_query_list, is_async_work_func=True, desc="Searching content", is_batch_work_func=True, batch_size=1)
-        texts = []
-        for paper in papers:
-            if isinstance(paper, dict) and "error" in paper:
-                pass
-            else:
-                # Support both Paper and custom content types with to_text() method
-                if hasattr(paper, 'to_text'):
-                    texts.append(paper.to_text())
-                else:
-                    # Fallback for backward compatibility
-                    texts.append(paper2text(cast(Paper, paper)))
-        content = "\n\n".join(texts) if texts else "No content found."
-        return content
-    content = "No content found."
-    return content
-
-
 @mcp.tool(
     name="browse_search",
     description=_build_browse_search_description(),
 )
 async def browse_search(query_list: List[SearchQuery]) -> str:
     """Search content from multiple sources."""
-    return await _browse_search_impl(query_list)
+    api_logger = get_api_logger()
+    start_time = time.perf_counter()
+    error_msg = None
+    status = "success"
+    result_count = 0
 
+    try:
+        async with httpx.AsyncClient():
+            expanded_queries = expand_query(query_list)
+            papers = await async_search_per_query_list(expanded_queries)
+            texts = []
+            for paper in papers:
+                if isinstance(paper, dict) and "error" in paper:
+                    pass
+                else:
+                    # Support both Paper and custom content types with to_text() method
+                    if hasattr(paper, "to_text"):
+                        texts.append(paper.to_text())
+                    else:
+                        # Fallback for backward compatibility
+                        texts.append(paper2text(cast(Paper, paper)))
+            result_count = len(texts)
+            content = "\n\n".join(texts) if texts else "No content found."
+            return content
+    except Exception as e:
+        status = "error"
+        error_msg = str(e)
+        logger.error(f"Error in browse_search: {e}\n{traceback.format_exc()}")
+        return f"Error searching content: {e}"
+    finally:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        # Log each query in the list
+        for query in query_list:
+            api_logger.log_request(
+                provider="browse",
+                source=query.searcher or "all",
+                method="search",
+                request={"query": query.query, "max_results": query.max_results},
+                response={"count": result_count},
+                latency_ms=latency_ms,
+                status=status,
+                error=error_msg,
+            )
 
-# Deprecated alias for backward compatibility
-@mcp.tool(
-    name="paper_search",
-    description=f"""[DEPRECATED: Use browse_search instead]
-
-{_build_browse_search_description()}""",
-)
-async def paper_search(query_list: List[SearchQuery]) -> str:
-    """Search academic papers from multiple sources.
-
-    DEPRECATED: This tool is deprecated. Please use browse_search instead.
-    """
-    logger.warning("paper_search is deprecated. Please use browse_search instead.")
-    return await _browse_search_impl(query_list)
 
 # endregion browse_search
 
 
-# region browse_download (formerly paper_download)
-
+# region browse_download
 class DownloadQuery(BaseModel):
     """Query model for browse_download tool."""
-    searcher: str = Field(
-        description="The content platform to download from."
-    )
-    content_id: Optional[str] = Field(
-        default=None,
+
+    searcher: str = Field(description="The content platform to download from.")
+    content_id: str = Field(
+        ...,
         min_length=1,
         max_length=200,
         description="""The unique identifier of the content to download. Format depends on the searcher:
@@ -242,44 +273,28 @@ class DownloadQuery(BaseModel):
 - medrxiv: medRxiv DOI (e.g., '10.1101/2020.01.01.123456')
 - iacr: IACR paper ID (e.g., '2009/101')
 - semantic: Semantic Scholar ID or prefixed ID (e.g., 'DOI:10.18653/v1/N18-3011', 'ARXIV:2106.15928')
-- crossref: DOI (e.g., '10.1038/s41586-020-2649-2')"""
-    )
-    # Keep paper_id for backward compatibility
-    paper_id: Optional[str] = Field(
-        default=None,
-        min_length=1,
-        max_length=200,
-        description="[DEPRECATED: Use content_id instead] The unique identifier of the paper to download."
+- crossref: DOI (e.g., '10.1038/s41586-020-2649-2')""",
     )
 
-    @field_validator('searcher')
+    @field_validator("searcher")
     @classmethod
     def validate_searcher(cls, v: str) -> str:
         """Validate searcher is enabled."""
         if v not in engine2searcher:
-            available = ', '.join(engine2searcher.keys())
-            raise ValueError(f"Searcher '{v}' is not available. Available sources: {available}")
+            available = ", ".join(engine2searcher.keys())
+            raise ValueError(
+                f"Searcher '{v}' is not available. Available sources: {available}"
+            )
         return v
 
-    @model_validator(mode='after')
-    def validate_content_id(self) -> 'DownloadQuery':
-        """Validate that either content_id or paper_id is provided."""
-        # Support both content_id and paper_id for backward compatibility
-        if self.content_id is None and self.paper_id is None:
-            raise ValueError("Either 'content_id' or 'paper_id' must be provided")
-        # If paper_id is used, log deprecation warning
-        if self.paper_id is not None and self.content_id is None:
-            logger.warning("'paper_id' is deprecated. Please use 'content_id' instead.")
-            self.content_id = self.paper_id
-        return self
-
-    def get_content_id(self) -> str:
-        """Get the content ID, handling backward compatibility."""
-        return (self.content_id or self.paper_id or "").strip()
-
-
-# Backward compatibility alias
-PaperDownloadQuery = DownloadQuery
+    @field_validator("content_id")
+    @classmethod
+    def validate_content_id(cls, v: str) -> str:
+        """Validate and clean the content_id string."""
+        v = v.strip()
+        if not v:
+            raise ValueError("content_id cannot be empty or whitespace only")
+        return v
 
 
 async def async_download_per_query(query: DownloadQuery) -> str:
@@ -287,12 +302,14 @@ async def async_download_per_query(query: DownloadQuery) -> str:
     if not searcher:
         return f"Searcher '{query.searcher}' not found."
     try:
-        content_id = query.get_content_id()
+        content_id = query.content_id.strip()
         pdf_path = searcher.download_pdf(content_id, SAVE_PATH)
         return pdf_path
     except Exception as e:
-        content_id = query.get_content_id()
-        logger.error(f"Error downloading content {content_id} from {query.searcher}: {e}\n{traceback.format_exc()}")
+        content_id = query.content_id.strip()
+        logger.error(
+            f"Error downloading content {content_id} from {query.searcher}: {e}\n{traceback.format_exc()}"
+        )
         return f"Error downloading content {content_id} from {query.searcher}: {e}"
 
 
@@ -337,43 +354,49 @@ browse_download([
 """
 
 
-async def _browse_download_impl(query_list: List[DownloadQuery]) -> List[str]:
-    """Implementation for browse_download."""
-    async with httpx.AsyncClient() as client:
-        pdf_paths = await xmap_async(query_list, async_download_per_query, is_async_work_func=True, desc="Downloading content")
-        return pdf_paths
-    return []
-
-
 @mcp.tool(
     name="browse_download",
     description=_build_browse_download_description(),
 )
 async def browse_download(query_list: List[DownloadQuery]) -> List[str]:
     """Download content from multiple sources."""
-    return await _browse_download_impl(query_list)
+    api_logger = get_api_logger()
+    start_time = time.perf_counter()
+    error_msg = None
+    status = "success"
+    pdf_paths: List[str] = []
 
+    try:
+        async with httpx.AsyncClient():
+            pdf_paths = list(
+                await asyncio.gather(*[async_download_per_query(q) for q in query_list])
+            )
+            return pdf_paths
+    except Exception as e:
+        status = "error"
+        error_msg = str(e)
+        logger.error(f"Error in browse_download: {e}\n{traceback.format_exc()}")
+        return []
+    finally:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        # Log each download query
+        for query in query_list:
+            api_logger.log_request(
+                provider="browse",
+                source=query.searcher,
+                method="download",
+                request={"content_id": query.content_id},
+                response={"paths": pdf_paths},
+                latency_ms=latency_ms,
+                status=status,
+                error=error_msg,
+            )
 
-# Deprecated alias for backward compatibility
-@mcp.tool(
-    name="paper_download",
-    description=f"""[DEPRECATED: Use browse_download instead]
-
-{_build_browse_download_description()}""",
-)
-async def paper_download(query_list: List[DownloadQuery]) -> List[str]:
-    """Download academic paper PDFs from multiple sources.
-
-    DEPRECATED: This tool is deprecated. Please use browse_download instead.
-    """
-    logger.warning("paper_download is deprecated. Please use browse_download instead.")
-    return await _browse_download_impl(query_list)
 
 # endregion browse_download
 
 
-# region browse_read (formerly paper_read)
-
+# region browse_read
 def _build_browse_read_description() -> str:
     """Build the browse_read tool description dynamically."""
     sources = _get_available_sources_str()
@@ -438,18 +461,45 @@ browse_read(searcher="crossref", content_id="10.1038/s41586-020-2649-2")  # cont
 """
 
 
-async def _browse_read_impl(
-    searcher: str,
-    content_id: str,
-    page: Optional[int] = None,
-    start_page: Optional[int] = None,
-    end_page: Optional[int] = None,
+@mcp.tool(
+    name="browse_read",
+    description=_build_browse_read_description(),
+)
+async def browse_read(
+    searcher: str = Field(..., description="The content platform to read from."),
+    content_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        description="The unique identifier of the content to read (format depends on searcher)",
+    ),
+    page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Specific page number to read (1-indexed). Returns only this page.",
+    ),
+    start_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="Start page for range extraction (1-indexed, inclusive).",
+    ),
+    end_page: Optional[int] = Field(
+        default=None,
+        ge=1,
+        description="End page for range extraction (1-indexed, inclusive).",
+    ),
 ) -> str:
-    """Implementation for browse_read."""
+    """Read and extract text content with optional pagination."""
+    api_logger = get_api_logger()
+    start_time = time.perf_counter()
+    error_msg = None
+    status = "success"
+    result_length = 0
+
     try:
         # Validate searcher
         if searcher not in engine2searcher:
-            available = ', '.join(engine2searcher.keys())
+            available = ", ".join(engine2searcher.keys())
             return f"Error: Searcher '{searcher}' is not available. Available sources: {available}"
 
         # Validate content_id
@@ -469,108 +519,56 @@ async def _browse_read_impl(
             start_page=start_page,
             end_page=end_page,
         )
+        result_length = len(text) if text else 0
         return text
     except Exception as e:
+        status = "error"
+        error_msg = str(e)
         logger.error(f"Error reading content: {e}\n{traceback.format_exc()}")
         return f"Error reading content: {e}"
+    finally:
+        latency_ms = (time.perf_counter() - start_time) * 1000
+        api_logger.log_request(
+            provider="browse",
+            source=searcher,
+            method="read",
+            request={
+                "content_id": content_id,
+                "page": page,
+                "start_page": start_page,
+                "end_page": end_page,
+            },
+            response={"length": result_length},
+            latency_ms=latency_ms,
+            status=status,
+            error=error_msg,
+        )
 
-
-@mcp.tool(
-    name="browse_read",
-    description=_build_browse_read_description(),
-)
-async def browse_read(
-    searcher: str = Field(
-        ...,
-        description="The content platform to read from."
-    ),
-    content_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=200,
-        description="The unique identifier of the content to read (format depends on searcher)"
-    ),
-    page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="Specific page number to read (1-indexed). Returns only this page."
-    ),
-    start_page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="Start page for range extraction (1-indexed, inclusive)."
-    ),
-    end_page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="End page for range extraction (1-indexed, inclusive)."
-    ),
-) -> str:
-    """Read and extract text content with optional pagination."""
-    return await _browse_read_impl(searcher, content_id, page=page, start_page=start_page, end_page=end_page)
-
-
-# Deprecated alias for backward compatibility
-@mcp.tool(
-    name="paper_read",
-    description=f"""[DEPRECATED: Use browse_read instead]
-
-{_build_browse_read_description()}""",
-)
-async def paper_read(
-    searcher: str = Field(
-        ...,
-        description="The academic platform to read from."
-    ),
-    paper_id: str = Field(
-        ...,
-        min_length=1,
-        max_length=200,
-        description="The unique identifier of the paper to read (format depends on searcher)"
-    ),
-    page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="Specific page number to read (1-indexed). Returns only this page."
-    ),
-    start_page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="Start page for range extraction (1-indexed, inclusive)."
-    ),
-    end_page: Optional[int] = Field(
-        default=None,
-        ge=1,
-        description="End page for range extraction (1-indexed, inclusive)."
-    ),
-) -> str:
-    """Read and extract text content from academic paper PDFs from multiple sources.
-
-    DEPRECATED: This tool is deprecated. Please use browse_read instead.
-    """
-    logger.warning("paper_read is deprecated. Please use browse_read instead.")
-    return await _browse_read_impl(searcher, paper_id, page=page, start_page=start_page, end_page=end_page)
 
 # endregion browse_read
 
 
+app = typer.Typer(
+    add_completion=False,
+    help="Browse MCP Server - Start the MCP server for content browsing.",
+)
 
-app = typer.Typer(add_completion=False)
 
-
-@app.callback(invoke_without_command=True)
-def run(
+@app.command(name="serve")
+def serve(
     host: str = typer.Option("127.0.0.1", help="Bind host (SSE/HTTP only)."),
     port: int = typer.Option(8000, min=1, max=65535, help="Bind port (SSE/HTTP only)."),
     debug: bool = typer.Option(False, help="Enable debug logging."),
-    transport: Optional[Literal["stdio", "sse", "streamable-http", "http"]] = typer.Option(
+    transport: Optional[
+        Literal["stdio", "sse", "streamable-http", "http"]
+    ] = typer.Option(
         None,
         "--transport",
         "-t",
         help="Transport method. One of: stdio, sse, streamable-http, http. Default is stdio; if host/port are set, defaults to sse.",
     ),
 ) -> None:
-    """Run the Browse MCP server.
+    """Start the Browse MCP server.
 
     Defaults to stdio transport (for MCP clients). For network services (SSE/HTTP),
     set environment variables:
@@ -583,8 +581,28 @@ def run(
         mcp.run(transport="stdio", log_level=log_level)
         return
 
-    logger.info(f"Starting Browse MCP server on {host}:{port} with transport '{transport}'")
+    logger.info(
+        f"Starting Browse MCP server on {host}:{port} with transport '{transport}'"
+    )
     mcp.run(transport=transport, host=host, port=port, log_level=log_level)
+
+
+@app.callback(invoke_without_command=True)
+def main_callback(
+    ctx: typer.Context,
+) -> None:
+    """Browse MCP - Search, download, and read content from multiple sources.
+
+    Commands:
+      serve    Start the MCP server (default)
+      list     List available sources
+      show     Show provider details
+      install  Install a provider plugin
+    """
+    # If no subcommand is given, default to 'serve' for backward compatibility
+    if ctx.invoked_subcommand is None:
+        # Default to serve with stdio transport
+        serve()
 
 
 def main() -> None:

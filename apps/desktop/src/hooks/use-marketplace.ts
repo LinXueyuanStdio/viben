@@ -53,6 +53,40 @@ export interface FlatSource {
   provider_name: string;
 }
 
+// ============================================================================
+// Installed Sources Types (from browse-mcp-cli)
+// ============================================================================
+
+/**
+ * Source info from the CLI output
+ */
+export interface InstalledSource {
+  name: string;
+  provider: string;
+  enabled: boolean;
+}
+
+/**
+ * Provider info from the CLI output
+ */
+export interface InstalledProviderInfo {
+  name: string;
+  description?: string;
+  package?: string;
+  sources: string[];
+  count: number;
+}
+
+/**
+ * Response from browse-mcp-cli list
+ */
+export interface InstalledSourcesResponse {
+  providers: Record<string, InstalledProviderInfo>;
+  sources: InstalledSource[];
+  total: number;
+  enabled: number;
+}
+
 /**
  * Hook for accessing the plugin marketplace
  */
