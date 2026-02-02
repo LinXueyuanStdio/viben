@@ -1,7 +1,22 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
+
+/// Default URL for provider index (deployed via GitHub Pages)
+const DEFAULT_PROVIDER_INDEX_URL: &str =
+    "https://linxueyuan.online/browse-mcp/assets/provider.index.json";
+
+/// Fallback URL (raw GitHub)
+const FALLBACK_PROVIDER_INDEX_URL: &str =
+    "https://raw.githubusercontent.com/LinXueyuanStdio/browse-mcp/main/provider.index.json";
+
+/// Get the provider index URL from environment or use default
+fn get_provider_index_url() -> String {
+    env::var("BROWSE_MCP_PROVIDER_INDEX_URL").unwrap_or_else(|_| DEFAULT_PROVIDER_INDEX_URL.to_string())
+}
 
 /// A data source within a provider
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +67,33 @@ pub struct FlatSource {
     pub provider_name: String,
 }
 
+/// Fetch provider index from a URL and cache the result
+async fn fetch_provider_index(url: &str, cache_path: &PathBuf) -> Result<ProviderIndex, String> {
+    match reqwest::get(url).await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.text().await {
+                    Ok(content) => {
+                        // Parse and validate
+                        let index: ProviderIndex = serde_json::from_str(&content)
+                            .map_err(|e| format!("Failed to parse provider index: {}", e))?;
+
+                        // Cache the result
+                        fs::write(cache_path, &content).ok();
+
+                        return Ok(index);
+                    }
+                    Err(e) => {
+                        return Err(format!("Failed to read response: {}", e));
+                    }
+                }
+            }
+            Err(format!("HTTP error: {}", response.status()))
+        }
+        Err(e) => Err(format!("Network error: {}", e)),
+    }
+}
+
 /// Get the cache directory for marketplace data
 fn get_cache_dir() -> PathBuf {
     let cache_dir = dirs::cache_dir()
@@ -94,38 +136,18 @@ pub async fn get_provider_index(force_refresh: Option<bool>) -> Result<ProviderI
         }
     }
 
-    // Try to fetch from remote
-    let remote_url =
-        "https://raw.githubusercontent.com/LinXueyuanStdio/browse-mcp/main/provider.index.json";
+    // Try to fetch from primary URL (configurable via env var)
+    let primary_url = get_provider_index_url();
 
-    match reqwest::get(remote_url).await {
-        Ok(response) => {
-            if response.status().is_success() {
-                match response.text().await {
-                    Ok(content) => {
-                        // Parse and validate
-                        let index: ProviderIndex = serde_json::from_str(&content)
-                            .map_err(|e| format!("Failed to parse provider index: {}", e))?;
+    // Try primary URL first
+    if let Ok(index) = fetch_provider_index(&primary_url, &cache_path).await {
+        return Ok(index);
+    }
 
-                        // Cache the result
-                        fs::write(&cache_path, &content).ok();
-
-                        return Ok(index);
-                    }
-                    Err(e) => {
-                        // Fall back to cache if available
-                        if let Ok(content) = fs::read_to_string(&cache_path) {
-                            if let Ok(index) = serde_json::from_str::<ProviderIndex>(&content) {
-                                return Ok(index);
-                            }
-                        }
-                        return Err(format!("Failed to read response: {}", e));
-                    }
-                }
-            }
-        }
-        Err(_) => {
-            // Network error - try cache
+    // Try fallback URL if primary fails
+    if primary_url != FALLBACK_PROVIDER_INDEX_URL {
+        if let Ok(index) = fetch_provider_index(FALLBACK_PROVIDER_INDEX_URL, &cache_path).await {
+            return Ok(index);
         }
     }
 
@@ -202,4 +224,112 @@ pub async fn clear_provider_cache() -> Result<(), String> {
         fs::remove_file(&cache_path).map_err(|e| format!("Failed to clear cache: {}", e))?;
     }
     Ok(())
+}
+
+// ============================================================================
+// Installed Sources (from browse-mcp-cli)
+// ============================================================================
+
+/// Source info from the CLI output
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledSource {
+    pub name: String,
+    pub provider: String,
+    pub enabled: bool,
+}
+
+/// Provider info from the CLI output
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledProviderInfo {
+    pub name: String,
+    pub description: Option<String>,
+    pub package: Option<String>,
+    pub sources: Vec<String>,
+    pub count: usize,
+}
+
+/// Response from browse-mcp-cli list
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledSourcesResponse {
+    pub providers: HashMap<String, InstalledProviderInfo>,
+    pub sources: Vec<InstalledSource>,
+    pub total: usize,
+    pub enabled: usize,
+}
+
+/// Get installed sources by calling browse-mcp-cli
+#[tauri::command]
+pub async fn get_installed_sources(python_path: String) -> Result<InstalledSourcesResponse, String> {
+    // Try running the CLI command
+    let output = Command::new(&python_path)
+        .args(["-m", "browse_mcp.cli", "list", "--json"])
+        .output()
+        .map_err(|e| format!("Failed to execute browse-mcp-cli: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("browse-mcp-cli failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse JSON output (skip any log lines before the JSON)
+    let json_start = stdout.find('{').ok_or("No JSON output found")?;
+    let json_str = &stdout[json_start..];
+
+    serde_json::from_str(json_str)
+        .map_err(|e| format!("Failed to parse CLI output: {}", e))
+}
+
+/// Show details of a specific provider
+#[tauri::command]
+pub async fn show_installed_provider(
+    python_path: String,
+    provider: String,
+) -> Result<serde_json::Value, String> {
+    let output = Command::new(&python_path)
+        .args(["-m", "browse_mcp.cli", "show", &provider, "--json"])
+        .output()
+        .map_err(|e| format!("Failed to execute browse-mcp-cli: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("browse-mcp-cli failed: {}", stderr));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse JSON output
+    let json_start = stdout.find('{').ok_or("No JSON output found")?;
+    let json_str = &stdout[json_start..];
+
+    serde_json::from_str(json_str)
+        .map_err(|e| format!("Failed to parse CLI output: {}", e))
+}
+
+/// Install a provider plugin
+#[tauri::command]
+pub async fn install_provider(
+    python_path: String,
+    provider: String,
+    upgrade: Option<bool>,
+) -> Result<String, String> {
+    let mut args = vec!["-m", "browse_mcp.cli", "install", &provider];
+    if upgrade.unwrap_or(false) {
+        args.push("--upgrade");
+    }
+
+    let output = Command::new(&python_path)
+        .args(&args)
+        .output()
+        .map_err(|e| format!("Failed to execute browse-mcp-cli: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !output.status.success() {
+        return Err(format!("Installation failed: {}\n{}", stdout, stderr));
+    }
+
+    Ok(stdout.to_string())
 }

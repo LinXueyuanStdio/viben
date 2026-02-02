@@ -191,3 +191,5 @@ The server runs in stdio mode by default, which is what MCP clients like Claude 
 
 - [Quick Start](./quick-start) - Search your first paper in 2 minutes
 - [Client Configuration](./client-configuration) - Configure your MCP client
+- [Plugins Overview](../plugins/overview) - Learn about the plugin system
+- [Available Plugins](../plugins/available-plugins) - Browse available plugins

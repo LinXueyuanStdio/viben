@@ -40,6 +40,7 @@ interface AppState {
   providers: Provider[];
   setProviderApiKey: (id: string, hasKey: boolean) => void;
   getAvailableProviders: () => Provider[]; // All providers that can be used (free or has API key)
+  updateProvidersFromCli: (installedSources: { name: string; provider: string; enabled: boolean }[]) => void;
 
   // API Keys stored separately (for security)
   apiKeys: ApiKeys;
@@ -116,6 +117,32 @@ export const useAppStore = create<AppState>()(
         })),
       getAvailableProviders: () =>
         get().providers.filter((p) => !p.requiresApiKey || p.hasApiKey),
+      updateProvidersFromCli: (installedSources) => {
+        // Update providers based on CLI output
+        // This merges installed sources with default providers
+        set((state) => {
+          const newProviders = [...state.providers];
+
+          // Mark sources as installed and update info
+          for (const source of installedSources) {
+            const existing = newProviders.find((p) => p.id === source.name);
+            if (existing) {
+              // Source already in defaults, keep it
+              continue;
+            }
+            // New source from plugin - add it
+            newProviders.push({
+              id: source.name,
+              name: source.name.charAt(0).toUpperCase() + source.name.slice(1).replace(/_/g, ' '),
+              category: source.provider as 'free' | 'api_key' | 'institutional',
+              requiresApiKey: false,
+              description: `${source.provider} source`,
+            });
+          }
+
+          return { providers: newProviders };
+        });
+      },
 
       // API Keys
       apiKeys: {},

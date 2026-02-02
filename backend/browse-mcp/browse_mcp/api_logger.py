@@ -32,12 +32,13 @@ from loguru import logger
 
 
 # Type variable for generic return types
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass
 class ApiLogEntry:
     """A single API log entry."""
+
     timestamp: str
     run_id: str
     api_key_hash: Optional[str]
@@ -74,7 +75,9 @@ class ApiLogger:
         self._api_logs_dir = Path(self._logs_dir) / "api"
         self._api_logs_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.debug(f"ApiLogger initialized: run_id={self._run_id}, logs_dir={self._api_logs_dir}")
+        logger.debug(
+            f"ApiLogger initialized: run_id={self._run_id}, logs_dir={self._api_logs_dir}"
+        )
 
     @staticmethod
     def _get_default_logs_dir() -> str:
@@ -84,12 +87,12 @@ class ApiLogger:
             return env_path
 
         # Use platform-specific data directory
-        if os.name == 'nt':  # Windows
-            base = os.getenv('LOCALAPPDATA', os.path.expanduser('~'))
-            return os.path.join(base, 'browse-mcp', 'logs')
+        if os.name == "nt":  # Windows
+            base = os.getenv("LOCALAPPDATA", os.path.expanduser("~"))
+            return os.path.join(base, "browse-mcp", "logs")
         else:  # Unix-like
-            xdg_data = os.getenv('XDG_DATA_HOME', os.path.expanduser('~/.local/share'))
-            return os.path.join(xdg_data, 'browse-mcp', 'logs')
+            xdg_data = os.getenv("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+            return os.path.join(xdg_data, "browse-mcp", "logs")
 
     @staticmethod
     def _generate_run_id() -> str:
@@ -135,14 +138,14 @@ class ApiLogger:
         Removes sensitive information like full API keys.
         """
         sanitized = {}
-        sensitive_keys = {'api_key', 'key', 'token', 'secret', 'password'}
+        sensitive_keys = {"api_key", "key", "token", "secret", "password"}
 
         for key, value in request.items():
             if key.lower() in sensitive_keys:
-                sanitized[key] = '***'
+                sanitized[key] = "***"
             elif isinstance(value, str) and len(value) > 500:
                 # Truncate very long strings
-                sanitized[key] = value[:500] + '...'
+                sanitized[key] = value[:500] + "..."
             else:
                 sanitized[key] = value
 
@@ -157,8 +160,8 @@ class ApiLogger:
             entry_dict = asdict(entry)
             line = json.dumps(entry_dict, ensure_ascii=False, default=str)
 
-            with open(self.log_file_path, 'a', encoding='utf-8') as f:
-                f.write(line + '\n')
+            with open(self.log_file_path, "a", encoding="utf-8") as f:
+                f.write(line + "\n")
         except Exception as e:
             logger.warning(f"Failed to write API log entry: {e}")
 
@@ -170,7 +173,7 @@ class ApiLogger:
         request: Dict[str, Any],
         response: Union[Dict[str, Any], List[Any], Any],
         latency_ms: float,
-        status: str = 'success',
+        status: str = "success",
         error: Optional[str] = None,
     ) -> None:
         """Log an API request and response.
@@ -187,16 +190,16 @@ class ApiLogger:
         """
         # Build response summary
         if isinstance(response, list):
-            response_summary = {'count': len(response), 'type': 'list'}
+            response_summary = {"count": len(response), "type": "list"}
         elif isinstance(response, dict):
-            response_summary = {'keys': list(response.keys()), 'type': 'dict'}
+            response_summary = {"keys": list(response.keys()), "type": "dict"}
         elif isinstance(response, str):
-            response_summary = {'length': len(response), 'type': 'str'}
+            response_summary = {"length": len(response), "type": "str"}
         else:
-            response_summary = {'type': type(response).__name__}
+            response_summary = {"type": type(response).__name__}
 
         entry = ApiLogEntry(
-            timestamp=datetime.utcnow().isoformat() + 'Z',
+            timestamp=datetime.utcnow().isoformat() + "Z",
             run_id=self._run_id,
             api_key_hash=self._api_key_hash,
             provider=provider,
@@ -227,7 +230,7 @@ class ApiLogger:
             return entries
 
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
+            with open(log_file, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if line:
@@ -252,13 +255,13 @@ class ApiLogger:
 
         if not entries:
             return {
-                'run_id': self._run_id,
-                'total_requests': 0,
-                'successful_requests': 0,
-                'failed_requests': 0,
-                'by_source': {},
-                'by_method': {},
-                'avg_latency_ms': 0,
+                "run_id": self._run_id,
+                "total_requests": 0,
+                "successful_requests": 0,
+                "failed_requests": 0,
+                "by_source": {},
+                "by_method": {},
+                "avg_latency_ms": 0,
             }
 
         by_source: Dict[str, int] = {}
@@ -268,28 +271,28 @@ class ApiLogger:
         error_count = 0
 
         for entry in entries:
-            source = entry.get('source', 'unknown')
-            method = entry.get('method', 'unknown')
-            status = entry.get('status', 'unknown')
-            latency = entry.get('latency_ms', 0)
+            source = entry.get("source", "unknown")
+            method = entry.get("method", "unknown")
+            status = entry.get("status", "unknown")
+            latency = entry.get("latency_ms", 0)
 
             by_source[source] = by_source.get(source, 0) + 1
             by_method[method] = by_method.get(method, 0) + 1
             total_latency += latency
 
-            if status == 'success':
+            if status == "success":
                 success_count += 1
             else:
                 error_count += 1
 
         return {
-            'run_id': self._run_id,
-            'total_requests': len(entries),
-            'successful_requests': success_count,
-            'failed_requests': error_count,
-            'by_source': by_source,
-            'by_method': by_method,
-            'avg_latency_ms': round(total_latency / len(entries), 2) if entries else 0,
+            "run_id": self._run_id,
+            "total_requests": len(entries),
+            "successful_requests": success_count,
+            "failed_requests": error_count,
+            "by_source": by_source,
+            "by_method": by_method,
+            "avg_latency_ms": round(total_latency / len(entries), 2) if entries else 0,
         }
 
 
@@ -313,6 +316,7 @@ def logged_api_call(
     Returns:
         Decorated function that logs its calls
     """
+
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         @wraps(func)
         def wrapper(*args, **kwargs) -> T:
@@ -321,20 +325,22 @@ def logged_api_call(
 
             # Build request info
             request_info = {
-                'args': [str(a)[:100] for a in args[1:]] if len(args) > 1 else [],  # Skip self
-                **kwargs
+                "args": [str(a)[:100] for a in args[1:]]
+                if len(args) > 1
+                else [],  # Skip self
+                **kwargs,
             }
 
             start_time = time.perf_counter()
             error_msg = None
-            status = 'success'
+            status = "success"
             result = None
 
             try:
                 result = func(*args, **kwargs)
                 return result
             except Exception as e:
-                status = 'error'
+                status = "error"
                 error_msg = str(e)
                 raise
             finally:
@@ -351,6 +357,7 @@ def logged_api_call(
                 )
 
         return wrapper
+
     return decorator
 
 

@@ -77,6 +77,10 @@ pub fn run() {
             commands::marketplace::get_flat_sources,
             commands::marketplace::get_sources_by_provider,
             commands::marketplace::clear_provider_cache,
+            // Installed sources commands (via browse-mcp-cli)
+            commands::marketplace::get_installed_sources,
+            commands::marketplace::show_installed_provider,
+            commands::marketplace::install_provider,
             // API Logs commands
             commands::api_logs::get_api_log_sessions,
             commands::api_logs::get_api_logs,
