@@ -8,10 +8,10 @@ This plugin provides searchers for popular social media and code hosting platfor
 """
 
 from .types import SocialPost, sanitize_filename
-from .zhihu import ZhihuSearcher
-from .xiaohongshu import XiaohongshuSearcher
 from .github import GithubSearcher
 from .twitter import TwitterSearcher
+from .xiaohongshu import XiaohongshuSearcher
+from .zhihu import ZhihuSearcher
 
 __all__ = [
     "SocialPost",

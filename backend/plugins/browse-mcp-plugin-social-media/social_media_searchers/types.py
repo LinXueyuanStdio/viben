@@ -1,8 +1,7 @@
 """Data types for social media content."""
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import Dict, List
 
 
 @dataclass
@@ -27,7 +26,9 @@ class SocialPost:
     likes: int = 0  # Like/upvote count
     comments: int = 0  # Comment count
     shares: int = 0  # Share/repost count
-    media_urls: List[str] = field(default_factory=list)  # URLs to attached media (images, videos)
+    media_urls: List[str] = field(
+        default_factory=list,
+    )  # URLs to attached media (images, videos)
     extra: Dict = field(default_factory=dict)  # Platform-specific metadata
 
     def __post_init__(self):
