@@ -45,7 +45,8 @@
     "cleanup": "साफ़ करें",
     "less": "कम",
     "more": "अधिक",
-    "requests": "अनुरोध"
+    "requests": "अनुरोध",
+    "clear": "साफ़ करें"
   },
   "nav": {
     "dashboard": "डैशबोर्ड",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP सर्वर",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} चल रहा है",
+    "errorCount": "{{count}} त्रुटि के साथ",
     "allStopped": "सभी रुके हुए",
     "noServers": "कोई सर्वर नहीं",
     "configureAgents": "AI एजेंट कॉन्फ़िगर करें",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- API कुंजी चुनें --",
     "createApiKeyToEnable": "कॉन्फ़िगरेशन कॉपी सक्षम करने के लिए ऊपर एक API कुंजी बनाएं।",
     "selectKeyToCopy": "वास्तविक कुंजी के साथ कॉन्फ़िगरेशन कॉपी करने के लिए एक API कुंजी चुनें।",
-    "clickToCopy": "वास्तविक API कुंजी के साथ कॉन्फ़िगरेशन कॉपी करने के लिए \"कॉपी करें\" पर क्लिक करें।"
+    "clickToCopy": "वास्तविक API कुंजी के साथ कॉन्फ़िगरेशन कॉपी करने के लिए \"कॉपी करें\" पर क्लिक करें।",
+    "serverRunning": "सर्वर चल रहा है",
+    "serverStopped": "सर्वर बंद है",
+    "serverError": "सर्वर त्रुटि"
   }
 }

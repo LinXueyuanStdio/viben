@@ -45,7 +45,8 @@
     "cleanup": "Pulisci",
     "less": "Meno",
     "more": "Più",
-    "requests": "richieste"
+    "requests": "richieste",
+    "clear": "Pulisci"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -74,6 +75,7 @@
     "mcpServers": "Server MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} in esecuzione",
+    "errorCount": "{{count}} con errore",
     "allStopped": "Tutti fermati",
     "noServers": "Nessun server",
     "configureAgents": "Configura agenti IA",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Seleziona chiave API --",
     "createApiKeyToEnable": "Crea una chiave API sopra per abilitare la copia della configurazione.",
     "selectKeyToCopy": "Seleziona una chiave API per copiare la configurazione con la chiave reale.",
-    "clickToCopy": "Clicca su \"Copia\" per copiare la configurazione con la chiave API reale."
+    "clickToCopy": "Clicca su \"Copia\" per copiare la configurazione con la chiave API reale.",
+    "serverRunning": "Il server è in esecuzione",
+    "serverStopped": "Il server è fermato",
+    "serverError": "Errore del server"
   }
 }

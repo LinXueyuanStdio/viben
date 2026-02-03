@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   RefreshCw,
   Download,
@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLogs, type LogEntry, type LogSession } from "@/hooks/use-logs";
 import { useApiLogs, type ApiLogEntry, type ApiLogSession } from "@/hooks/use-api-logs";
+import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
+import { useAppStore } from "@/stores";
 import { save } from "@tauri-apps/plugin-dialog";
 import { useTranslation } from "react-i18next";
 
@@ -48,37 +50,44 @@ export function LogsPage() {
     logsDirPath,
     refresh,
     exportLogs,
-    checkProcessAlive,
   } = useLogs();
+
+  // Use the MCP status monitor for server process status
+  const { mcpServers } = useAppStore();
+  const { statuses: mcpServerStatuses, checkAllServers } = useMcpStatusMonitor();
+
+  // Trigger status check on page enter
+  useOnPageEnter({ enabled: mcpServers.length > 0 });
 
   const [activeTab, setActiveTab] = useState<TabType>("server");
   const [exporting, setExporting] = useState(false);
   const [cleaning, setCleaning] = useState(false);
-  const [processStatus, setProcessStatus] = useState<Record<string, boolean>>({});
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
 
-  // Check process status for sessions with PIDs
-  const checkAllProcessStatus = useCallback(async () => {
-    const newStatus: Record<string, boolean> = {};
-    for (const session of sessions) {
-      if (session.pid && !session.ended_at) {
-        const alive = await checkProcessAlive(session.pid);
-        newStatus[session.id] = alive;
-      }
+  // Map server statuses from the monitor to session process status
+  // This uses the global status monitor instead of per-session checks
+  const processStatus = useCallback((_sessionId: string, serverId: string | undefined, pid: number | null, endedAt: string | null): boolean | undefined => {
+    // If session has ended, don't show as alive
+    if (endedAt) return undefined;
+    // If no PID, can't determine
+    if (!pid) return undefined;
+
+    // Try to find the server by matching session's server_id
+    // Sessions store server_id in their metadata
+    if (serverId && mcpServerStatuses[serverId]) {
+      return mcpServerStatuses[serverId].status === "running";
     }
-    setProcessStatus(newStatus);
-  }, [sessions, checkProcessAlive]);
 
-  useEffect(() => {
-    checkAllProcessStatus();
-  }, [checkAllProcessStatus]);
+    // Fallback: can't determine from monitor
+    return undefined;
+  }, [mcpServerStatuses]);
 
-  // Handle refresh - also check process status
+  // Handle refresh - also trigger status check
   const handleRefresh = useCallback(async () => {
     refresh();
-    await checkAllProcessStatus();
-  }, [refresh, checkAllProcessStatus]);
+    await checkAllServers(true);
+  }, [refresh, checkAllServers]);
 
   const handleExport = async () => {
     if (!selectedSessionId) return;
@@ -248,7 +257,7 @@ export function LogsPage() {
                       session={session}
                       selected={session.id === selectedSessionId}
                       onClick={() => setSelectedSessionId(session.id)}
-                      isAlive={processStatus[session.id]}
+                      isAlive={processStatus(session.id, session.server_id, session.pid, session.ended_at)}
                     />
                   ))}
                 </div>

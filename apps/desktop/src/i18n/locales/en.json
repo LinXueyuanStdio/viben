@@ -75,6 +75,7 @@
     "mcpServers": "MCP Servers",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} running",
+    "errorCount": "{{count}} with error",
     "allStopped": "All stopped",
     "noServers": "No servers",
     "configureAgents": "Configure AI Agents",
@@ -279,6 +280,9 @@
     "selectApiKeyOption": "-- Select API Key --",
     "createApiKeyToEnable": "Create an API key above to enable configuration copy.",
     "selectKeyToCopy": "Select an API key to copy the configuration with the real key.",
-    "clickToCopy": "Click \"Copy\" to copy the configuration with the real API key."
+    "clickToCopy": "Click \"Copy\" to copy the configuration with the real API key.",
+    "serverRunning": "Server is running",
+    "serverStopped": "Server is stopped",
+    "serverError": "Server error"
   }
 }

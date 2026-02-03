@@ -45,7 +45,8 @@
     "cleanup": "Temizle",
     "less": "Az",
     "more": "Çok",
-    "requests": "istek"
+    "requests": "istek",
+    "clear": "Temizle"
   },
   "nav": {
     "dashboard": "Panel",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP Sunucuları",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} çalışıyor",
+    "errorCount": "{{count}} hatalı",
     "allStopped": "Hepsi durduruldu",
     "noServers": "Sunucu yok",
     "configureAgents": "AI Ajanlarını Yapılandır",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- API Anahtarı Seçin --",
     "createApiKeyToEnable": "Yapılandırma kopyalamayı etkinleştirmek için yukarıda bir API anahtarı oluşturun.",
     "selectKeyToCopy": "Yapılandırmayı gerçek anahtarla kopyalamak için bir API anahtarı seçin.",
-    "clickToCopy": "Yapılandırmayı gerçek API anahtarıyla kopyalamak için \"Kopyala\"ya tıklayın."
+    "clickToCopy": "Yapılandırmayı gerçek API anahtarıyla kopyalamak için \"Kopyala\"ya tıklayın.",
+    "serverRunning": "Sunucu çalışıyor",
+    "serverStopped": "Sunucu durduruldu",
+    "serverError": "Sunucu hatası"
   }
 }

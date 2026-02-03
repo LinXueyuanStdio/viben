@@ -45,7 +45,8 @@
     "cleanup": "Bersihkan",
     "less": "Kurang",
     "more": "Lebih",
-    "requests": "permintaan"
+    "requests": "permintaan",
+    "clear": "Kosongkan"
   },
   "nav": {
     "dashboard": "Papan Pemuka",
@@ -74,6 +75,7 @@
     "mcpServers": "Pelayan MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} berjalan",
+    "errorCount": "{{count}} dengan ralat",
     "allStopped": "Semua dihentikan",
     "noServers": "Tiada pelayan",
     "configureAgents": "Konfigurasi Ejen AI",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Pilih Kunci API --",
     "createApiKeyToEnable": "Cipta kunci API di atas untuk mengaktifkan penyalinan konfigurasi.",
     "selectKeyToCopy": "Pilih kunci API untuk menyalin konfigurasi dengan kunci sebenar.",
-    "clickToCopy": "Klik \"Salin\" untuk menyalin konfigurasi dengan kunci API sebenar."
+    "clickToCopy": "Klik \"Salin\" untuk menyalin konfigurasi dengan kunci API sebenar.",
+    "serverRunning": "Pelayan sedang berjalan",
+    "serverStopped": "Pelayan dihentikan",
+    "serverError": "Ralat pelayan"
   }
 }
