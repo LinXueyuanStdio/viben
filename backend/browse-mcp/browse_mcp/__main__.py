@@ -592,23 +592,6 @@ def serve(
     mcp.run(transport=transport, host=host, port=port, log_level=log_level)
 
 
-@app.callback(invoke_without_command=True)
-def main_callback(
-    ctx: typer.Context,
-) -> None:
-    """Browse MCP - Search, download, and read content from multiple sources.
-
-    Commands:
-      serve    Start the MCP server (default)
-      list     List available sources
-      show     Show provider details
-      install  Install a provider plugin
-    """
-    # If no subcommand is given, default to 'serve' for backward compatibility
-    if ctx.invoked_subcommand is None:
-        # Default to serve with stdio transport
-        serve()
-
 
 def main() -> None:
     """Console script entrypoint."""
