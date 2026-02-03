@@ -67,21 +67,35 @@ export function LogsPage() {
 
   // Map server statuses from the monitor to session process status
   // This uses the global status monitor instead of per-session checks
+  // Uses a hybrid approach: server_id first, then PID matching for robustness
   const processStatus = useCallback((_sessionId: string, serverId: string | undefined, pid: number | null, endedAt: string | null): boolean | undefined => {
     // If session has ended, don't show as alive
     if (endedAt) return undefined;
     // If no PID, can't determine
     if (!pid) return undefined;
 
-    // Try to find the server by matching session's server_id
-    // Sessions store server_id in their metadata
+    // Option 1: Try to find the server by matching session's server_id
     if (serverId && mcpServerStatuses[serverId]) {
       return mcpServerStatuses[serverId].status === "running";
     }
 
+    // Option 2: Fallback - search by matching PID across all server statuses
+    const matchingStatusByPid = Object.values(mcpServerStatuses).find(
+      (status) => status.pid === pid
+    );
+    if (matchingStatusByPid) {
+      return matchingStatusByPid.status === "running";
+    }
+
+    // Option 3: Direct check against mcpServers if status not cached
+    const matchingServer = mcpServers.find((s) => s.pid === pid);
+    if (matchingServer) {
+      return matchingServer.status === "running";
+    }
+
     // Fallback: can't determine from monitor
     return undefined;
-  }, [mcpServerStatuses]);
+  }, [mcpServerStatuses, mcpServers]);
 
   // Handle refresh - also trigger status check
   const handleRefresh = useCallback(async () => {
