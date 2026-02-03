@@ -45,7 +45,8 @@
     "cleanup": "清理",
     "less": "较少",
     "more": "较多",
-    "requests": "请求"
+    "requests": "请求",
+    "clear": "清除"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP 服务器",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} 个运行中",
+    "errorCount": "{{count}} 个出错",
     "allStopped": "全部已停止",
     "noServers": "无服务器",
     "configureAgents": "配置 AI 代理",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- 选择 API 密钥 --",
     "createApiKeyToEnable": "在上方创建 API 密钥以启用配置复制。",
     "selectKeyToCopy": "选择 API 密钥以复制包含真实密钥的配置。",
-    "clickToCopy": "点击\"复制\"以复制包含真实 API 密钥的配置。"
+    "clickToCopy": "点击\"复制\"以复制包含真实 API 密钥的配置。",
+    "serverRunning": "服务器正在运行",
+    "serverStopped": "服务器已停止",
+    "serverError": "服务器错误"
   }
 }

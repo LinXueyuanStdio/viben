@@ -45,7 +45,8 @@
     "cleanup": "Очистить",
     "less": "Меньше",
     "more": "Больше",
-    "requests": "запросов"
+    "requests": "запросов",
+    "clear": "Очистить"
   },
   "nav": {
     "dashboard": "Панель",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP-серверы",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} работает",
+    "errorCount": "{{count}} с ошибкой",
     "allStopped": "Все остановлены",
     "noServers": "Нет серверов",
     "configureAgents": "Настроить AI-агентов",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Выберите API-ключ --",
     "createApiKeyToEnable": "Создайте API-ключ выше, чтобы включить копирование конфигурации.",
     "selectKeyToCopy": "Выберите API-ключ, чтобы скопировать конфигурацию с настоящим ключом.",
-    "clickToCopy": "Нажмите \"Копировать\", чтобы скопировать конфигурацию с настоящим API-ключом."
+    "clickToCopy": "Нажмите \"Копировать\", чтобы скопировать конфигурацию с настоящим API-ключом.",
+    "serverRunning": "Сервер запущен",
+    "serverStopped": "Сервер остановлен",
+    "serverError": "Ошибка сервера"
   }
 }

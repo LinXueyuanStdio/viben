@@ -45,7 +45,8 @@
     "cleanup": "Rensa",
     "less": "Mindre",
     "more": "Mer",
-    "requests": "förfrågningar"
+    "requests": "förfrågningar",
+    "clear": "Rensa"
   },
   "nav": {
     "dashboard": "Instrumentpanel",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP-servrar",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} körs",
+    "errorCount": "{{count}} med fel",
     "allStopped": "Alla stoppade",
     "noServers": "Inga servrar",
     "configureAgents": "Konfigurera AI-agenter",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Välj API-nyckel --",
     "createApiKeyToEnable": "Skapa en API-nyckel ovan för att aktivera konfigurationskopiering.",
     "selectKeyToCopy": "Välj en API-nyckel för att kopiera konfigurationen med den riktiga nyckeln.",
-    "clickToCopy": "Klicka på \"Kopiera\" för att kopiera konfigurationen med den riktiga API-nyckeln."
+    "clickToCopy": "Klicka på \"Kopiera\" för att kopiera konfigurationen med den riktiga API-nyckeln.",
+    "serverRunning": "Servern körs",
+    "serverStopped": "Servern är stoppad",
+    "serverError": "Serverfel"
   }
 }

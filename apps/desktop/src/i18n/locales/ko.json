@@ -45,7 +45,8 @@
     "cleanup": "정리",
     "less": "적음",
     "more": "많음",
-    "requests": "요청"
+    "requests": "요청",
+    "clear": "지우기"
   },
   "nav": {
     "dashboard": "대시보드",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP 서버",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}}개 실행 중",
+    "errorCount": "{{count}}개 오류",
     "allStopped": "모두 중지됨",
     "noServers": "서버 없음",
     "configureAgents": "AI 에이전트 구성",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- API 키 선택 --",
     "createApiKeyToEnable": "구성 복사를 활성화하려면 위에서 API 키를 생성하세요.",
     "selectKeyToCopy": "실제 키가 포함된 구성을 복사하려면 API 키를 선택하세요.",
-    "clickToCopy": "\"복사\"를 클릭하여 실제 API 키가 포함된 구성을 복사하세요."
+    "clickToCopy": "\"복사\"를 클릭하여 실제 API 키가 포함된 구성을 복사하세요.",
+    "serverRunning": "서버가 실행 중입니다",
+    "serverStopped": "서버가 중지되었습니다",
+    "serverError": "서버 오류"
   }
 }
