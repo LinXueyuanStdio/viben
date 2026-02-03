@@ -18,9 +18,9 @@
 <h2 class="anchor anchorTargetStickyNavbar_Jy_3" id="what-is-browse-mcp">What is Browse MCP?<a href="https://linxueyuan.online/browse-mcp/docs/blog/welcome#what-is-browse-mcp" class="hash-link" aria-label="Direct link to What is Browse MCP?" title="Direct link to What is Browse MCP?" translate="no">​</a></h2>
 <p>Browse MCP provides three main tools:</p>
 <ol>
-<li class=""><strong>paper_search</strong> - Search papers across 19+ academic databases</li>
-<li class=""><strong>paper_download</strong> - Download paper PDFs</li>
-<li class=""><strong>paper_read</strong> - Extract and read text content from papers</li>
+<li class=""><strong>browse_search</strong> - Search papers across 19+ academic databases</li>
+<li class=""><strong>browse_download</strong> - Download paper PDFs</li>
+<li class=""><strong>browse_read</strong> - Extract and read text content from papers</li>
 </ol>
 <h2 class="anchor anchorTargetStickyNavbar_Jy_3" id="getting-started">Getting Started<a href="https://linxueyuan.online/browse-mcp/docs/blog/welcome#getting-started" class="hash-link" aria-label="Direct link to Getting Started" title="Direct link to Getting Started" translate="no">​</a></h2>
 <p>Install Browse MCP with pip:</p>
