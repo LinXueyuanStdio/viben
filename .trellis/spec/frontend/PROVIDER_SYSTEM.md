@@ -8,40 +8,85 @@ This document explains the Browse MCP provider architecture and how `provider.in
 
 Browse MCP uses a **pluggable provider architecture** with two types of providers:
 
-1. **Built-in Providers** (`backend/browse-mcp`)
+1. **Built-in Plugins** (`backend/browse-mcp`)
    - Core academic/research data sources
    - Maintained by the Browse MCP team
    - Installed by default
+   - Marked with `builtin: true` in the registry
 
-2. **Plugin Providers** (`backend/plugins/*`)
-   - Third-party extensions
+2. **Third-party Plugins** (`backend/plugins/*`)
+   - Community extensions
    - Installable via Python packages
    - Discovered automatically via entry points
+   - Marked with `builtin: false` in the registry
 
 ---
 
 ## Provider Registry (`provider.index.json`)
 
-This file serves as a **centralized catalog** of all available data sources, regardless of whether they are built-in or plugins.
+This file serves as a **centralized catalog** of all available plugins and their data sources.
 
-### Structure
+### V2 Schema (Current)
+
+The v2 schema is **plugin-centric** rather than category-centric:
 
 ```json
 {
-  "version": "1.0.0",
-  "updated_at": "2025-02-02T00:00:00Z",
-  "providers": {
-    "category_name": {
-      "name": "Display Name",
-      "description": "Category description",
-      "author": "provider-package-name",
-      "homepage": "https://...",
+  "version": "2.0.0",
+  "updated_at": "2026-02-03T00:00:00Z",
+  "categories": {
+    "academic": {
+      "name": "Academic Sources",
+      "description": "Research databases and preprint servers",
+      "icon": "graduation-cap"
+    },
+    "publisher": {
+      "name": "Publisher Sources",
+      "description": "Commercial publisher APIs",
+      "icon": "book-open"
+    }
+  },
+  "plugins": {
+    "browse-mcp": {
+      "name": "Browse MCP Core",
+      "description": "Core academic and research data sources",
+      "version": "0.1.0",
+      "author": {
+        "name": "LinXueyuanStdio",
+        "email": "linxueyuanstdio@gmail.com",
+        "url": "https://github.com/LinXueyuanStdio"
+      },
+      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "repository": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "license": "MIT",
+      "categories": ["academic", "publisher", "institutional", "web"],
+      "builtin": true,
       "sources": {
-        "source_id": {
-          "name": "Display Name",
-          "description": "What this source provides",
-          "apiKey": "none" | "optional" | "required",
-          "documentation": "https://..."
+        "arxiv": {
+          "name": "arXiv",
+          "description": "Pre-prints in physics, mathematics, computer science",
+          "category": "academic",
+          "apiKey": "none",
+          "documentation": "https://arxiv.org/help/api"
+        }
+      }
+    },
+    "browse-mcp-plugin-social-media": {
+      "name": "Social Media Sources",
+      "description": "Search and retrieve content from social media platforms",
+      "version": "0.1.0",
+      "author": {
+        "name": "LinXueyuanStdio"
+      },
+      "categories": ["social"],
+      "builtin": false,
+      "package": "browse-mcp-plugin-social-media",
+      "sources": {
+        "zhihu": {
+          "name": "Zhihu",
+          "description": "Chinese Q&A platform",
+          "category": "social",
+          "apiKey": "none"
         }
       }
     }
@@ -49,16 +94,31 @@ This file serves as a **centralized catalog** of all available data sources, reg
 }
 ```
 
+### Key Differences from V1
+
+| V1 (Old) | V2 (Current) | Reason |
+|----------|--------------|--------|
+| `providers` (category-based) | `plugins` (package-based) | Plugins are the installable units |
+| Category = provider | Category = metadata | Categories are for grouping only |
+| Flat `author` string | Rich `author` object | More metadata for marketplace |
+| No `builtin` flag | `builtin: true/false` | Distinguish core vs third-party |
+| No `package` field | `package` for installable plugins | Enable pip install from marketplace |
+| No `category` on sources | `category` per source | Fine-grained categorization |
+
 ### Categories
 
-| Category | Description | Provider |
-|----------|-------------|----------|
-| `academic` | Research databases and preprint servers | browse-mcp |
-| `publisher` | Publisher-specific APIs (IEEE, Springer, etc.) | browse-mcp |
-| `institutional` | Institutional access sources (JSTOR, WoS) | browse-mcp |
-| `web` | General web search (Google Scholar) | browse-mcp |
+Categories are metadata for organizing sources in the UI:
 
-**Plugin categories should use custom names** to avoid conflicts with built-in categories.
+| Category ID | Name | Icon | Description |
+|-------------|------|------|-------------|
+| `academic` | Academic Sources | graduation-cap | Research databases and preprints |
+| `publisher` | Publisher Sources | book-open | Commercial publisher APIs |
+| `institutional` | Institutional Sources | building | University and library repos |
+| `web` | Web Sources | globe | Web-based search engines |
+| `social` | Social Media | users | Social media platforms |
+| `docs` | Documentation | file-text | Documentation and knowledge bases |
+
+**Third-party plugins can define custom categories** as needed.
 
 ---
 
@@ -67,23 +127,158 @@ This file serves as a **centralized catalog** of all available data sources, reg
 All data sources use a hierarchical naming format:
 
 ```
-{provider}/{source_id}
+{plugin_id}/{source_id}
 ```
 
 **Examples:**
 
-| Provider Package | Source ID | Full Name |
-|------------------|-----------|-----------|
+| Plugin Package | Source ID | Full Name |
+|----------------|-----------|-----------|
 | browse-mcp | arxiv | `browse-mcp/arxiv` |
 | browse-mcp | pubmed | `browse-mcp/pubmed` |
-| browse-mcp-plugin-context7 | web | `context7/web` |
-| browse-mcp-plugin-social-media | twitter | `social-media/twitter` |
+| browse-mcp-plugin-social-media | zhihu | `browse-mcp-plugin-social-media/zhihu` |
 
-### Mapping Rules
+---
 
-1. **Built-in sources**: Use `browse-mcp` as provider prefix
-2. **Plugin sources**: Use plugin package name (without `browse-mcp-plugin-` prefix)
-3. **Source ID**: Use the `source_id` from `provider.index.json`
+## Frontend Types
+
+The frontend uses the following TypeScript types:
+
+### MarketplaceCategory
+
+```typescript
+interface MarketplaceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  plugin_count: number;
+  source_count: number;
+}
+```
+
+### MarketplacePlugin
+
+```typescript
+interface MarketplacePlugin {
+  id: string;
+  name: string;
+  description: string;
+  version?: string;
+  author_name: string;
+  author_email?: string;
+  author_url?: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  builtin: boolean;
+  package?: string;
+  source_count: number;
+  sources: string[];
+}
+```
+
+### FlatSource
+
+```typescript
+interface FlatSource {
+  id: string;           // plugin/source (e.g., "browse-mcp/arxiv")
+  source_name: string;  // flat name (e.g., "arxiv")
+  plugin_id: string;    // plugin ID (e.g., "browse-mcp")
+  name: string;         // display name
+  description: string;
+  category?: string;    // category ID
+  api_key_type: "none" | "optional" | "required";
+  documentation?: string;
+  plugin_name: string;  // plugin display name
+}
+```
+
+---
+
+## Backend API
+
+The Tauri backend provides these commands:
+
+### get_provider_index
+
+Returns the full provider index with categories and plugins.
+
+```typescript
+const index = await invoke<ProviderIndex>("get_provider_index", {
+  forceRefresh: false
+});
+```
+
+### get_flat_sources
+
+Returns all sources as a flat list for the Built-in Sources tab.
+
+```typescript
+const sources = await invoke<FlatSource[]>("get_flat_sources");
+```
+
+### get_sources_by_category
+
+Returns sources grouped by category.
+
+```typescript
+const byCategory = await invoke<Record<string, FlatSource[]>>("get_sources_by_category");
+```
+
+### get_sources_by_plugin
+
+Returns sources grouped by plugin.
+
+```typescript
+const byPlugin = await invoke<Record<string, FlatSource[]>>("get_sources_by_plugin");
+```
+
+### clear_provider_cache
+
+Clears the local cache of the provider index.
+
+```typescript
+await invoke("clear_provider_cache");
+```
+
+---
+
+## useMarketplace Hook
+
+The `useMarketplace` hook provides convenient access to marketplace data:
+
+```typescript
+const {
+  // Data
+  index,           // Full provider index
+  sources,         // Flat source list
+  plugins,         // Plugin list
+  categories,      // Category list
+  loading,
+  error,
+
+  // Computed
+  builtinPlugins,
+  thirdPartyPlugins,
+  pluginsByCategory,
+  apiKeyRequiredSources,
+  apiKeyOptionalSources,
+  freeSources,
+
+  // Actions
+  refresh,
+  clearCache,
+
+  // Helpers
+  getSource,
+  getPlugin,
+  getCategory,
+  searchSources,
+  searchPlugins,
+} = useMarketplace();
+```
 
 ---
 
@@ -130,7 +325,7 @@ The entry point system provides **runtime code**:
 
 ---
 
-## Built-in Providers
+## Built-in Plugins
 
 ### Location
 
@@ -138,7 +333,7 @@ The entry point system provides **runtime code**:
 backend/browse-mcp/browse_mcp/sources/
 ```
 
-### Sources (20+)
+### Sources (18+)
 
 | Source File | Source ID | API Key | Category |
 |-------------|-----------|---------|----------|
@@ -160,8 +355,6 @@ backend/browse-mcp/browse_mcp/sources/
 | jstor.py | jstor | none | institutional |
 | researchgate.py | researchgate | none | institutional |
 | wos.py | wos | none | institutional |
-| sci_hub.py | sci_hub | none | web |
-| hub.py | hub | none | web |
 
 ### Entry Point Registration
 
@@ -171,167 +364,93 @@ Built-in sources are registered in `backend/browse-mcp/pyproject.toml`:
 [tool.poetry.plugins."browse_mcp.searchers"]
 arxiv = "browse_mcp.sources.arxiv:ArxivSearcher"
 pubmed = "browse_mcp.sources.pubmed:PubMedSearcher"
-# ... (20+ more)
+# ... (18+ more)
 ```
 
 ---
 
-## Plugin Providers
-
-### Available Plugins
-
-| Plugin Package | Sources | Category |
-|----------------|---------|----------|
-| browse-mcp-plugin-context7 | web | custom |
-| browse-mcp-plugin-social-media | twitter, linkedin | custom |
-
-### Plugin Structure
-
-```
-backend/plugins/browse-mcp-plugin-{name}/
-├── browse_mcp_plugin_{name}/
-│   ├── __init__.py
-│   └── searcher.py
-├── pyproject.toml
-├── README.md
-└── tests/
-```
-
-### Entry Point Pattern
-
-```toml
-[tool.poetry]
-name = "browse-mcp-plugin-{name}"
-
-[tool.poetry.plugins."browse_mcp.searchers"]
-{name}_{source} = "browse_mcp_plugin_{name}.searcher:SearcherClass"
-```
-
----
-
-## Adding New Providers
+## Adding New Plugins
 
 ### Adding a Built-in Source
 
-1. **Create implementation:**
-   ```python
-   # backend/browse-mcp/browse_mcp/sources/newsource.py
-   from browse_mcp.base import BaseSearcher
+1. **Create implementation** in `backend/browse-mcp/browse_mcp/sources/`
+2. **Register entry point** in `pyproject.toml`
+3. **Update provider.index.json**:
 
-   class NewSourceSearcher(BaseSearcher):
-       def __init__(self):
-           super().__init__(name="newsource")
+```json
+{
+  "plugins": {
+    "browse-mcp": {
+      "sources": {
+        "newsource": {
+          "name": "New Source",
+          "description": "Description here",
+          "category": "academic",
+          "apiKey": "none",
+          "documentation": "https://..."
+        }
+      }
+    }
+  }
+}
+```
 
-       def search(self, query: str, **kwargs):
-           # Implementation
-           pass
-   ```
+### Creating a Third-party Plugin
 
-2. **Register entry point:**
-   ```toml
-   # backend/browse-mcp/pyproject.toml
-   [tool.poetry.plugins."browse_mcp.searchers"]
-   newsource = "browse_mcp.sources.newsource:NewSourceSearcher"
-   ```
+1. **Create plugin package** in `backend/plugins/`
+2. **Implement searcher class**
+3. **Register entry points**
+4. **Add to provider.index.json**:
 
-3. **Update provider registry:**
-   ```json
-   {
-     "providers": {
-       "academic": {
-         "sources": {
-           "newsource": {
-             "name": "New Source",
-             "description": "Description here",
-             "apiKey": "none",
-             "documentation": "https://..."
-           }
-         }
-       }
-     }
-   }
-   ```
-
-### Creating a Plugin Provider
-
-1. **Create plugin package:**
-   ```bash
-   mkdir -p backend/plugins/browse-mcp-plugin-myplugin/browse_mcp_plugin_myplugin
-   cd backend/plugins/browse-mcp-plugin-myplugin
-   poetry init
-   ```
-
-2. **Implement searcher:**
-   ```python
-   # browse_mcp_plugin_myplugin/searcher.py
-   from browse_mcp.base import BaseSearcher
-
-   class MyPluginSearcher(BaseSearcher):
-       def __init__(self):
-           super().__init__(name="myplugin")
-
-       def search(self, query: str, **kwargs):
-           # Implementation
-           pass
-   ```
-
-3. **Register entry point:**
-   ```toml
-   # pyproject.toml
-   [tool.poetry.plugins."browse_mcp.searchers"]
-   myplugin_web = "browse_mcp_plugin_myplugin.searcher:MyPluginSearcher"
-   ```
-
-4. **Update provider registry:**
-   ```json
-   {
-     "providers": {
-       "custom": {
-         "name": "Custom Sources",
-         "description": "Third-party data sources",
-         "author": "browse-mcp-plugin-myplugin",
-         "homepage": "https://...",
-         "sources": {
-           "myplugin_web": {
-             "name": "My Plugin",
-             "description": "Custom data source",
-             "apiKey": "optional",
-             "documentation": "https://..."
-           }
-         }
-       }
-     }
-   }
-   ```
-
-5. **Install plugin:**
-   ```bash
-   poetry install
-   ```
+```json
+{
+  "plugins": {
+    "browse-mcp-plugin-myplugin": {
+      "name": "My Plugin",
+      "description": "Custom data sources",
+      "version": "0.1.0",
+      "author": {
+        "name": "Your Name"
+      },
+      "categories": ["custom"],
+      "builtin": false,
+      "package": "browse-mcp-plugin-myplugin",
+      "sources": {
+        "mysource": {
+          "name": "My Source",
+          "description": "Description",
+          "category": "custom",
+          "apiKey": "optional"
+        }
+      }
+    }
+  }
+}
+```
 
 ---
 
-## Provider vs Source vs Entry Point
+## Plugin vs Source vs Entry Point
 
 | Concept | Definition | Example |
 |---------|------------|---------|
-| **Provider** | Package providing one or more data sources | `browse-mcp`, `context7` |
-| **Source** | Individual data source within a provider | `arxiv`, `pubmed` |
+| **Plugin** | Package providing one or more data sources | `browse-mcp`, `browse-mcp-plugin-social-media` |
+| **Source** | Individual data source within a plugin | `arxiv`, `pubmed` |
 | **Entry Point** | Python registration name for runtime loading | `arxiv`, `context7_web` |
-| **Full Name** | Hierarchical identifier | `browse-mcp/arxiv`, `context7/web` |
+| **Full Name** | Hierarchical identifier | `browse-mcp/arxiv`, `browse-mcp-plugin-social-media/zhihu` |
 
 ### Relationship
 
 ```
-Provider Package (browse-mcp-plugin-social-media)
-├── Source: twitter
-│   ├── Entry Point: twitter
-│   ├── Full Name: social-media/twitter
-│   └── Class: TwitterSearcher
-└── Source: linkedin
-    ├── Entry Point: linkedin
-    ├── Full Name: social-media/linkedin
-    └── Class: LinkedInSearcher
+Plugin Package (browse-mcp-plugin-social-media)
+├── Source: zhihu
+│   ├── Entry Point: zhihu
+│   ├── Full Name: browse-mcp-plugin-social-media/zhihu
+│   └── Class: ZhihuSearcher
+└── Source: weibo
+    ├── Entry Point: weibo
+    ├── Full Name: browse-mcp-plugin-social-media/weibo
+    └── Class: WeiboSearcher
 ```
 
 ---
@@ -340,27 +459,7 @@ Provider Package (browse-mcp-plugin-social-media)
 
 ### Configuration
 
-API keys are managed via **environment variables**:
-
-```bash
-# .env
-SEMANTIC_SCHOLAR_API_KEY=your-key-here
-IEEE_API_KEY=your-key-here
-CONTEXT7_API_KEY=your-key-here
-```
-
-### Loading in Code
-
-```python
-import os
-
-class MySearcher(BaseSearcher):
-    def __init__(self):
-        super().__init__(name="mysource")
-        self.api_key = os.getenv("MY_SOURCE_API_KEY")
-        if not self.api_key:
-            raise ValueError("MY_SOURCE_API_KEY environment variable not set")
-```
+API keys are stored securely using the system keychain via the Tauri backend.
 
 ### Indicating in Registry
 
@@ -372,28 +471,56 @@ class MySearcher(BaseSearcher):
 }
 ```
 
+### UI Behavior
+
+- **none**: Source shown as "Free" with green badge
+- **optional**: Source shown as "Optional" with blue badge
+- **required**: Source shown as "Required" with amber badge
+
+---
+
+## Backward Compatibility
+
+The backend automatically handles v1 schema by converting it to v2 format:
+
+- V1 `providers` (categories) are converted to virtual plugins
+- Each v1 provider becomes a plugin with `builtin: true`
+- Sources retain their original structure
+
+This ensures existing deployments continue to work until updated.
+
 ---
 
 ## Best Practices
 
-### 1. Naming Consistency
+### Naming Consistency
 
 | Component | Format | Example |
 |-----------|--------|---------|
-| Package | `browse-mcp-plugin-{name}` | `browse-mcp-plugin-context7` |
-| Module | `browse_mcp_plugin_{name}` | `browse_mcp_plugin_context7` |
-| Entry Point | `{short_name}_{source}` | `context7_web` |
+| Plugin ID | `browse-mcp-plugin-{name}` | `browse-mcp-plugin-social-media` |
 | Source ID | Lowercase with underscores | `google_scholar` |
+| Category ID | Lowercase | `academic`, `publisher` |
 
-### 2. Provider Metadata
+### Plugin Metadata
 
-Always include in `provider.index.json`:
-- **name**: Human-readable display name
+Always include:
+- **name**: Human-readable plugin name
+- **description**: What the plugin provides
+- **version**: Semantic version
+- **author**: At minimum the name
+- **categories**: At least one category
+- **builtin**: `true` for core, `false` for third-party
+
+### Source Metadata
+
+Always include:
+- **name**: Human-readable source name
 - **description**: What the source provides
+- **category**: Category ID
 - **apiKey**: Key requirement level
-- **documentation**: Official API/source documentation
+- **documentation**: Official documentation URL (if available)
 
-### 3. Error Handling
+### Error Handling
 
 Searchers should fail gracefully:
 
@@ -407,7 +534,7 @@ def search(self, query: str, **kwargs):
         return []  # Return empty results, don't crash
 ```
 
-### 4. Testing
+### Testing
 
 Each provider should include tests:
 
@@ -446,9 +573,9 @@ print([ext.name for ext in mgr])
 
 ### API Key Issues
 
-1. Check environment variable is set: `echo $MY_SOURCE_API_KEY`
-2. Verify variable name matches code
-3. Restart application after setting environment variables
+1. Check the API key is configured in Settings > Data Sources
+2. Verify the source requires API key (`apiKey: "required"`)
+3. Restart application after configuring API keys
 
 ---
 
@@ -462,3 +589,4 @@ print([ext.name for ext in mgr])
 ---
 
 **Last Updated:** 2026-02-03
+**Schema Version:** 2.0.0

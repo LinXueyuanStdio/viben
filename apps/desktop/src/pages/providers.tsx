@@ -17,14 +17,26 @@ import {
   ChevronRight,
   Database,
   Layers,
+  GraduationCap,
+  BookOpen,
+  Building,
+  Users,
+  FileText,
+  CheckCircle,
+  User,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useAppStore } from "@/stores";
 import { useApiKeys } from "@/hooks/use-api-keys";
-import { useMarketplace, type FlatSource } from "@/hooks/use-marketplace";
-import { useInstalledSources, type InstalledProviderInfo } from "@/hooks/use-installed-sources";
+import {
+  useMarketplace,
+  type FlatSource,
+  type MarketplacePlugin,
+  type MarketplaceCategory,
+} from "@/hooks/use-marketplace";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
@@ -88,6 +100,30 @@ const tabContentVariants = {
 
 type TabValue = "builtin" | "marketplace";
 
+// Icon mapping for categories
+const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
+  academic: GraduationCap,
+  publisher: BookOpen,
+  institutional: Building,
+  web: Globe,
+  social: Users,
+  docs: FileText,
+};
+
+function getCategoryIcon(iconName?: string) {
+  if (!iconName) return Package;
+  // Map icon names to components
+  const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+    "graduation-cap": GraduationCap,
+    "book-open": BookOpen,
+    building: Building,
+    globe: Globe,
+    users: Users,
+    "file-text": FileText,
+  };
+  return iconMap[iconName] || categoryIcons[iconName] || Package;
+}
+
 export function ProvidersPage() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabValue>("builtin");
@@ -95,23 +131,15 @@ export function ProvidersPage() {
 
   const {
     sources,
+    plugins,
+    categories,
     loading: marketplaceLoading,
     error: marketplaceError,
     refresh: refreshMarketplace,
   } = useMarketplace();
 
-  const {
-    providers: installedProviders,
-    sources: installedSources,
-    total: installedTotal,
-    loading: installedLoading,
-    error: installedError,
-    refresh: refreshInstalled,
-    installProvider,
-  } = useInstalledSources();
-
-  const loading = marketplaceLoading || installedLoading;
-  const error = marketplaceError || installedError;
+  const loading = marketplaceLoading;
+  const error = marketplaceError;
 
   // Filter sources based on search query
   const filteredSources = useMemo(() => {
@@ -123,7 +151,7 @@ export function ProvidersPage() {
         s.name.toLowerCase().includes(query) ||
         s.description.toLowerCase().includes(query) ||
         s.source_name.toLowerCase().includes(query) ||
-        s.provider_name.toLowerCase().includes(query)
+        s.plugin_name.toLowerCase().includes(query)
     );
   }, [sources, searchQuery]);
 
@@ -137,7 +165,7 @@ export function ProvidersPage() {
   }, [sources]);
 
   const handleRefresh = async () => {
-    await Promise.all([refreshMarketplace(true), refreshInstalled()]);
+    await refreshMarketplace(true);
   };
 
   return (
@@ -217,11 +245,9 @@ export function ProvidersPage() {
               className="h-full flex flex-col"
             >
               <MarketplaceTab
-                providers={installedProviders}
-                installedSources={installedSources}
-                total={installedTotal}
-                loading={installedLoading}
-                onInstall={installProvider}
+                plugins={plugins}
+                categories={categories}
+                loading={loading}
               />
             </motion.div>
           </TabsContent>
@@ -432,7 +458,7 @@ function SourceCard({ source, onApiKeyChange }: SourceCardProps) {
         </div>
       </div>
 
-      {/* Provider info */}
+      {/* Plugin info */}
       <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
         <Layers className="h-3 w-3" />
         <span className="font-mono">{source.id}</span>
@@ -601,46 +627,73 @@ function SourceCardSkeleton() {
 }
 
 /* -----------------------------------------------------------------------------
- * Marketplace Tab
+ * Marketplace Tab (Plugin-centric)
  * -------------------------------------------------------------------------- */
 
 interface MarketplaceTabProps {
-  providers: Record<string, InstalledProviderInfo>;
-  installedSources: { name: string; provider: string; enabled: boolean }[];
-  total: number;
+  plugins: MarketplacePlugin[];
+  categories: MarketplaceCategory[];
   loading: boolean;
-  onInstall: (provider: string, upgrade?: boolean) => Promise<string>;
 }
 
 function MarketplaceTab({
-  providers,
-  installedSources,
-  total,
+  plugins,
+  categories,
   loading,
-  onInstall: _onInstall,
 }: MarketplaceTabProps) {
-  // Note: onInstall reserved for future use (install from marketplace)
   const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const [expandedPlugin, setExpandedPlugin] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const providerEntries = Object.entries(providers);
+  // Filter plugins based on search query
+  const filteredPlugins = useMemo(() => {
+    if (!searchQuery.trim()) return plugins;
+    const query = searchQuery.toLowerCase();
+    return plugins.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.id.toLowerCase().includes(query) ||
+        p.author_name.toLowerCase().includes(query)
+    );
+  }, [plugins, searchQuery]);
+
+  // Calculate total sources
+  const totalSources = useMemo(
+    () => plugins.reduce((acc, p) => acc + p.source_count, 0),
+    [plugins]
+  );
 
   return (
     <>
+      {/* Search */}
+      <div className="flex items-center gap-4 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("providers.searchPlugins", { defaultValue: "Search plugins..." })}
+            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background text-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="mb-4 p-3 rounded-lg bg-muted/50">
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
             <span>
-              {t("providers.installedPlugins", {
-                defaultValue: "{{count}} plugins installed",
-                count: providerEntries.length,
+              {t("providers.pluginsAvailable", {
+                defaultValue: "{{count}} plugins available",
+                count: plugins.length,
               })}
             </span>
           </div>
@@ -649,12 +702,42 @@ function MarketplaceTab({
             <span>
               {t("providers.totalSourcesAvailable", {
                 defaultValue: "{{count}} sources available",
-                count: total,
+                count: totalSources,
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            <span>
+              {t("providers.categoriesAvailable", {
+                defaultValue: "{{count}} categories",
+                count: categories.length,
               })}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Category Pills */}
+      {categories.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {categories.map((category) => {
+            const IconComponent = getCategoryIcon(category.icon);
+            return (
+              <div
+                key={category.id}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 text-xs"
+              >
+                <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>{category.name}</span>
+                <span className="text-muted-foreground">
+                  ({category.source_count})
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Plugins Grid */}
       <ScrollArea className="flex-1">
@@ -664,17 +747,21 @@ function MarketplaceTab({
               <PluginCardSkeleton key={i} />
             ))}
           </div>
-        ) : providerEntries.length === 0 ? (
+        ) : filteredPlugins.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <p className="text-lg font-medium">
-              {t("providers.noPluginsInstalled", {
-                defaultValue: "No plugins installed",
-              })}
+              {searchQuery
+                ? t("providers.noPluginsMatch", {
+                    defaultValue: "No plugins match your search",
+                  })
+                : t("providers.noPluginsAvailable", {
+                    defaultValue: "No plugins available",
+                  })}
             </p>
             <p className="text-sm mt-1">
-              {t("providers.installPluginsDesc", {
-                defaultValue: "Install plugins to add more data sources",
+              {t("providers.checkBackLater", {
+                defaultValue: "Check back later for new plugins",
               })}
             </p>
           </div>
@@ -685,18 +772,15 @@ function MarketplaceTab({
             animate={mounted ? "visible" : "hidden"}
             className="grid gap-4 sm:grid-cols-2 pb-4"
           >
-            {providerEntries.map(([providerId, info]) => (
-              <motion.div key={providerId} variants={itemVariants}>
+            {filteredPlugins.map((plugin) => (
+              <motion.div key={plugin.id} variants={itemVariants}>
                 <PluginCard
-                  providerId={providerId}
-                  info={info}
-                  sources={installedSources.filter(
-                    (s) => s.provider === providerId
-                  )}
-                  expanded={expandedPlugin === providerId}
+                  plugin={plugin}
+                  categories={categories}
+                  expanded={expandedPlugin === plugin.id}
                   onToggle={() =>
                     setExpandedPlugin(
-                      expandedPlugin === providerId ? null : providerId
+                      expandedPlugin === plugin.id ? null : plugin.id
                     )
                   }
                 />
@@ -710,26 +794,30 @@ function MarketplaceTab({
 }
 
 /* -----------------------------------------------------------------------------
- * Plugin Card Component
+ * Plugin Card Component (v2 Schema)
  * -------------------------------------------------------------------------- */
 
 interface PluginCardProps {
-  providerId: string;
-  info: InstalledProviderInfo;
-  sources: { name: string; provider: string; enabled: boolean }[];
+  plugin: MarketplacePlugin;
+  categories: MarketplaceCategory[];
   expanded: boolean;
   onToggle: () => void;
 }
 
 function PluginCard({
-  providerId: _providerId,
-  info,
-  sources,
+  plugin,
+  categories,
   expanded,
   onToggle,
 }: PluginCardProps) {
-  // Note: providerId reserved for future use (e.g., uninstall functionality)
   const { t } = useTranslation();
+
+  // Get category names for this plugin
+  const pluginCategories = useMemo(() => {
+    return plugin.categories
+      .map((catId) => categories.find((c) => c.id === catId))
+      .filter(Boolean) as MarketplaceCategory[];
+  }, [plugin.categories, categories]);
 
   return (
     <div className="rounded-xl border bg-card overflow-hidden transition-all duration-300 hover:border-primary/30 hover:shadow-lg theme-transition">
@@ -739,35 +827,74 @@ function PluginCard({
         className="w-full p-4 text-left hover:bg-muted/30 transition-colors"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-lg",
+              plugin.builtin
+                ? "bg-primary/10 text-primary"
+                : "bg-secondary/50 text-secondary-foreground"
+            )}
+          >
             <Package className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold">{info.name}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-semibold">{plugin.name}</h3>
+              {plugin.builtin && (
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                  {t("providers.builtin", { defaultValue: "Built-in" })}
+                </span>
+              )}
+              {plugin.version && (
+                <span className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
+                  v{plugin.version}
+                </span>
+              )}
               <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                {info.count} {t("searchService.sources")}
+                {plugin.source_count} {t("searchService.sources")}
               </span>
             </div>
-            {info.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                {info.description}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+              {plugin.description}
+            </p>
           </div>
           <ChevronRight
             className={cn(
-              "h-5 w-5 text-muted-foreground transition-transform duration-200",
+              "h-5 w-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
               expanded && "rotate-90"
             )}
           />
         </div>
 
-        {/* Package info */}
-        {info.package && (
-          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-            <Globe className="h-3 w-3" />
-            <code className="font-mono">{info.package}</code>
+        {/* Author and License */}
+        <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <User className="h-3 w-3" />
+            <span>{plugin.author_name}</span>
+          </div>
+          {plugin.license && (
+            <div className="flex items-center gap-1.5">
+              <Tag className="h-3 w-3" />
+              <span>{plugin.license}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Category badges */}
+        {pluginCategories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {pluginCategories.map((cat) => {
+              const IconComponent = getCategoryIcon(cat.icon);
+              return (
+                <span
+                  key={cat.id}
+                  className="flex items-center gap-1 text-xs bg-muted/50 px-2 py-0.5 rounded"
+                >
+                  <IconComponent className="h-3 w-3" />
+                  {cat.name}
+                </span>
+              );
+            })}
           </div>
         )}
       </button>
@@ -783,30 +910,47 @@ function PluginCard({
             className="overflow-hidden"
           >
             <div className="border-t p-4 bg-muted/20">
+              {/* Links */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {plugin.homepage && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(plugin.homepage, "_blank")}
+                    className="h-7 text-xs"
+                  >
+                    <Globe className="h-3 w-3 mr-1" />
+                    {t("providers.homepage", { defaultValue: "Homepage" })}
+                  </Button>
+                )}
+                {plugin.repository && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(plugin.repository, "_blank")}
+                    className="h-7 text-xs"
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    {t("providers.repository", { defaultValue: "Repository" })}
+                  </Button>
+                )}
+              </div>
+
+              {/* Sources List */}
               <h4 className="text-sm font-medium mb-3">
                 {t("providers.includedSources", {
                   defaultValue: "Included Sources",
                 })}
               </h4>
               <div className="space-y-2">
-                {sources.length > 0 ? (
-                  sources.map((source) => (
+                {plugin.sources.length > 0 ? (
+                  plugin.sources.map((sourceName) => (
                     <div
-                      key={source.name}
+                      key={sourceName}
                       className="flex items-center gap-2 text-sm"
                     >
-                      <div
-                        className={cn(
-                          "h-2 w-2 rounded-full",
-                          source.enabled ? "bg-green-500" : "bg-muted"
-                        )}
-                      />
-                      <span className="font-mono text-xs">{source.name}</span>
-                      {source.enabled && (
-                        <span className="text-xs text-green-600 dark:text-green-400">
-                          {t("providers.enabled", { defaultValue: "enabled" })}
-                        </span>
-                      )}
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      <span className="font-mono text-xs">{sourceName}</span>
                     </div>
                   ))
                 ) : (
@@ -818,18 +962,15 @@ function PluginCard({
                 )}
               </div>
 
-              {/* Source names from info if sources array is empty */}
-              {sources.length === 0 && info.sources.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {info.sources.map((sourceName) => (
-                    <div
-                      key={sourceName}
-                      className="flex items-center gap-2 text-sm"
-                    >
-                      <div className="h-2 w-2 rounded-full bg-muted" />
-                      <span className="font-mono text-xs">{sourceName}</span>
-                    </div>
-                  ))}
+              {/* Package info for non-builtin */}
+              {!plugin.builtin && plugin.package && (
+                <div className="mt-4 pt-3 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    {t("providers.installWith", { defaultValue: "Install with:" })}
+                  </p>
+                  <code className="block mt-1 text-xs bg-muted p-2 rounded font-mono">
+                    pip install {plugin.package}
+                  </code>
                 </div>
               )}
             </div>
@@ -857,7 +998,11 @@ function PluginCardSkeleton() {
       </div>
       <div className="flex items-center gap-2 mt-3">
         <div className="h-3 w-3 bg-muted rounded" />
-        <div className="h-3 w-40 bg-muted rounded" />
+        <div className="h-3 w-24 bg-muted rounded" />
+      </div>
+      <div className="flex gap-1.5 mt-3">
+        <div className="h-5 w-16 bg-muted rounded" />
+        <div className="h-5 w-20 bg-muted rounded" />
       </div>
     </div>
   );
