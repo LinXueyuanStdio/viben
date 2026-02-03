@@ -149,12 +149,14 @@
     "upToDate": "최신 버전입니다!",
     "checkForUpdates": "업데이트 확인",
     "links": "링크",
+    "homepage": "홈페이지",
     "githubRepo": "GitHub 저장소",
     "documentation": "문서",
     "reportIssue": "문제 보고",
-    "credits": "크레딧",
-    "builtWith": "Tauri, React, Model Context Protocol로 제작되었습니다.",
-    "poweredBy": "학술 논문 검색은 arXiv, PubMed, Semantic Scholar 및 기타 오픈 액세스 데이터베이스에서 제공됩니다."
+    "author": "저자",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "개인 홈페이지"
   },
   "providers": {
     "title": "데이터 소스",

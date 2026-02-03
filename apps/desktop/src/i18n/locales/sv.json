@@ -149,12 +149,14 @@
     "upToDate": "Du är uppdaterad!",
     "checkForUpdates": "Sök efter uppdateringar",
     "links": "LÄNKAR",
+    "homepage": "Hemsida",
     "githubRepo": "GitHub-arkiv",
     "documentation": "Dokumentation",
     "reportIssue": "Rapportera ett problem",
-    "credits": "TACK",
-    "builtWith": "Byggd med Tauri, React och Model Context Protocol.",
-    "poweredBy": "Akademisk artikelsökning drivs av arXiv, PubMed, Semantic Scholar och andra öppna databaser."
+    "author": "FÖRFATTARE",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Personlig hemsida"
   },
   "providers": {
     "title": "Datakällor",

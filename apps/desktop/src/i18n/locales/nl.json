@@ -149,12 +149,14 @@
     "upToDate": "U bent up-to-date!",
     "checkForUpdates": "Controleren op updates",
     "links": "LINKS",
+    "homepage": "Startpagina",
     "githubRepo": "GitHub Repository",
     "documentation": "Documentatie",
     "reportIssue": "Een probleem melden",
-    "credits": "CREDITS",
-    "builtWith": "Gebouwd met Tauri, React en Model Context Protocol.",
-    "poweredBy": "Academisch papier zoeken mogelijk gemaakt door arXiv, PubMed, Semantic Scholar en andere open access databases."
+    "author": "AUTEUR",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Persoonlijke Homepage"
   },
   "providers": {
     "title": "Gegevensbronnen",

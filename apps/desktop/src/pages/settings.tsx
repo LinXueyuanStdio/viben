@@ -7,6 +7,31 @@ import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n/languages";
 import { changeLanguage, getCurrentLanguage } from "@/i18n";
+import { motion } from "framer-motion";
+
+// Animation variants for staggered entrance
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ease-out-expo
+    },
+  },
+};
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -87,17 +112,27 @@ export function SettingsPage() {
   const currentLanguage = getCurrentLanguage() || language || "en";
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">{t("settings.title")}</h1>
+    <motion.div
+      className="p-6 max-w-2xl"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.h1 className="text-2xl font-bold mb-6" variants={itemVariants}>
+        {t("settings.title")}
+      </motion.h1>
 
       {error && (
-        <div className="mb-4 p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+        <motion.div
+          className="mb-4 p-4 rounded-xl bg-destructive/10 text-destructive text-sm"
+          variants={itemVariants}
+        >
           {error}
-        </div>
+        </motion.div>
       )}
 
       {/* Python Environment */}
-      <section className="mb-8">
+      <motion.section className="mb-8" variants={itemVariants}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">{t("settings.pythonEnvironment")}</h2>
           <Button variant="outline" size="sm" onClick={handleDetect} disabled={loading}>
@@ -110,7 +145,7 @@ export function SettingsPage() {
           </Button>
         </div>
 
-        <div className="rounded-lg border bg-card p-4 space-y-4">
+        <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           {/* Detected Python versions */}
           {pythons.length > 0 && (
             <div>
@@ -122,10 +157,10 @@ export function SettingsPage() {
                   <button
                     key={python.path}
                     onClick={() => handleSelectPython(python)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${
                       selectedPython?.path === python.path
                         ? "border-primary bg-primary/5"
-                        : "border-transparent bg-muted/50 hover:bg-muted"
+                        : "border-transparent bg-muted/50 hover:bg-muted hover:-translate-y-0.5"
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -166,7 +201,7 @@ export function SettingsPage() {
                 type="text"
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 placeholder={t("settings.customPathPlaceholder")}
               />
               <Button
@@ -174,6 +209,7 @@ export function SettingsPage() {
                 size="icon"
                 onClick={handleCustomPathCheck}
                 disabled={checkingCustom || !customPath}
+                className="rounded-xl"
               >
                 {checkingCustom ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -210,7 +246,7 @@ export function SettingsPage() {
                   <Check className="h-4 w-4 text-green-600" />
                   <span>{t("settings.installedVersion", { version: browseMcpInfo.version })}</span>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="rounded-xl">
                   {t("common.update")}
                 </Button>
               </div>
@@ -222,11 +258,11 @@ export function SettingsPage() {
                 </div>
 
                 {!installCommand ? (
-                  <Button size="sm" onClick={handleShowInstallCommand}>
+                  <Button size="sm" onClick={handleShowInstallCommand} className="rounded-xl">
                     {t("settings.showInstallCommand")}
                   </Button>
                 ) : (
-                  <div className="bg-muted rounded-md p-3">
+                  <div className="bg-muted rounded-xl p-3">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm text-muted-foreground">
                         {t("settings.runToInstall")}
@@ -235,11 +271,12 @@ export function SettingsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => copyToClipboard(installCommand)}
+                        className="rounded-xl"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <code className="text-sm bg-background rounded px-2 py-1 block">
+                    <code className="text-sm bg-background rounded-lg px-2 py-1 block">
                       {installCommand}
                     </code>
                     <p className="text-xs text-muted-foreground mt-2">
@@ -251,12 +288,12 @@ export function SettingsPage() {
             )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Appearance */}
-      <section className="mb-8">
+      <motion.section className="mb-8" variants={itemVariants}>
         <h2 className="text-lg font-semibold mb-4">{t("settings.appearance")}</h2>
-        <div className="rounded-lg border bg-card p-4 space-y-4">
+        <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           <div>
             <label className="text-sm font-medium mb-2 block">{t("settings.theme")}</label>
             <ThemeSwitcher />
@@ -267,7 +304,7 @@ export function SettingsPage() {
             <select
               value={currentLanguage}
               onChange={(e) => handleLanguageChange(e.target.value)}
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-xl border bg-background px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
             >
               {LANGUAGES.map((lang) => (
                 <option key={lang.code} value={lang.code}>
@@ -277,12 +314,12 @@ export function SettingsPage() {
             </select>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Storage */}
-      <section className="mb-8">
+      <motion.section className="mb-8" variants={itemVariants}>
         <h2 className="text-lg font-semibold mb-4">{t("settings.storage")}</h2>
-        <div className="rounded-lg border bg-card p-4 space-y-4">
+        <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           <div>
             <label className="text-sm font-medium mb-2 block">
               {t("settings.downloadPath")}
@@ -291,15 +328,15 @@ export function SettingsPage() {
               <input
                 type="text"
                 defaultValue="~/Downloads/browse-mcp"
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm"
+                className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="rounded-xl">
                 <FolderOpen className="h-4 w-4" />
               </Button>
             </div>
           </div>
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }
