@@ -95,5 +95,5 @@ When you ask Claude to search for papers:
 ## Next Steps
 
 - [Client Configuration](./client-configuration) - Configure for other clients (Cline, Zed)
-- [browse_search Tool](../mcp-server/tools/paper-search) - Learn advanced search options
+- [browse_search Tool](../mcp-server/tools/browse-search) - Learn advanced search options
 - [Configuration](../mcp-server/configuration) - Enable premium sources with API keys

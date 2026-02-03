@@ -86,7 +86,7 @@ capable of processing image and text inputs...
 
 ## 论文 ID 格式
 
-每个平台使用不同的标识符格式。查看 [browse_download](./paper-download#paper-id-formats) 参考了解完整格式详情。
+每个平台使用不同的标识符格式。查看 [browse_download](./browse-download#paper-id-formats) 参考了解完整格式详情。
 
 | 搜索器 | 示例 |
 |----------|---------|
@@ -267,7 +267,7 @@ outputs...
 
 ## 下一步
 
-- [browse_search](./paper-search) - 查找要阅读的论文
-- [browse_download](./paper-download) - 下载论文以供离线访问
+- [browse_search](./browse-search) - 查找要阅读的论文
+- [browse_download](./browse-download) - 下载论文以供离线访问
 - [配置](../configuration) - 配置下载路径
 - [插件](../../plugins/overview) - 使用更多内容来源扩展

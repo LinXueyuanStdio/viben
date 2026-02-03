@@ -86,7 +86,7 @@ capable of processing image and text inputs...
 
 ## Paper ID Formats
 
-Each platform uses a different identifier format. See the [browse_download](./paper-download#paper-id-formats) reference for complete format details.
+Each platform uses a different identifier format. See the [browse_download](./browse-download#paper-id-formats) reference for complete format details.
 
 | Searcher | Example |
 |----------|---------|
@@ -267,7 +267,7 @@ After searching:
 
 ## Next Steps
 
-- [browse_search](./paper-search) - Find papers to read
-- [browse_download](./paper-download) - Download papers for offline access
+- [browse_search](./browse-search) - Find papers to read
+- [browse_download](./browse-download) - Download papers for offline access
 - [Configuration](../configuration) - Configure download path
 - [Plugins](../../plugins/overview) - Extend with more content sources
