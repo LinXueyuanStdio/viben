@@ -261,4 +261,4 @@ tail -f ~/Library/Logs/Claude/mcp*.log
 ## Next Steps
 
 - [Configuration](../mcp-server/configuration) - Configure sources and API keys
-- [browse_search Tool](../mcp-server/tools/paper-search) - Learn search parameters
+- [browse_search Tool](../mcp-server/tools/browse-search) - Learn search parameters
