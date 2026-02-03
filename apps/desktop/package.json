@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri-dev": "pnpm run tauri dev"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.10",
