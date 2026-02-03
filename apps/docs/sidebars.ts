@@ -46,9 +46,9 @@ const sidebars: SidebarsConfig = {
           label: 'Tools',
           collapsed: false,
           items: [
-            'mcp-server/tools/paper-search',
-            'mcp-server/tools/paper-download',
-            'mcp-server/tools/paper-read',
+            'mcp-server/tools/browse-search',
+            'mcp-server/tools/browse-download',
+            'mcp-server/tools/browse-read',
           ],
         },
       ],

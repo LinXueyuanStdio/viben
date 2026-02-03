@@ -117,4 +117,4 @@ browse-mcp (核心)
 - [快速开始](./getting-started/quick-start) - 2 分钟内快速上手
 - [客户端配置](./getting-started/client-configuration) - 配置 Claude Desktop、Cline 等
 - [插件概述](./plugins/overview) - 了解插件系统
-- [browse_search 工具](./mcp-server/tools/paper-search) - 了解如何搜索内容
+- [browse_search 工具](./mcp-server/tools/browse-search) - 了解如何搜索内容

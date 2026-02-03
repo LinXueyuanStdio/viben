@@ -177,6 +177,6 @@ Common errors:
 
 ## Next Steps
 
-- [browse_read](./paper-read) - Extract text from downloaded papers
-- [browse_search](./paper-search) - Find papers to download
+- [browse_read](./browse-read) - Extract text from downloaded papers
+- [browse_search](./browse-search) - Find papers to download
 - [Configuration](../configuration) - Configure download path
