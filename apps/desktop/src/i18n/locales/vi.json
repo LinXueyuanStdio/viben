@@ -139,12 +139,14 @@
     "upToDate": "Bạn đang dùng bản mới nhất!",
     "checkForUpdates": "Kiểm tra cập nhật",
     "links": "LIÊN KẾT",
+    "homepage": "Trang chủ",
     "githubRepo": "Kho GitHub",
     "documentation": "Tài liệu",
     "reportIssue": "Báo cáo sự cố",
-    "credits": "TÍN DỤNG",
-    "builtWith": "Được xây dựng với Tauri, React và Model Context Protocol.",
-    "poweredBy": "Tìm kiếm bài báo học thuật được hỗ trợ bởi arXiv, PubMed, Semantic Scholar và các cơ sở dữ liệu truy cập mở khác."
+    "author": "TÁC GIẢ",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Trang cá nhân"
   },
   "providers": {
     "title": "Nguồn dữ liệu",

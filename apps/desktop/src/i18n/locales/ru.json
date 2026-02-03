@@ -139,12 +139,14 @@
     "upToDate": "У вас последняя версия!",
     "checkForUpdates": "Проверить обновления",
     "links": "ССЫЛКИ",
+    "homepage": "Домашняя страница",
     "githubRepo": "Репозиторий GitHub",
     "documentation": "Документация",
     "reportIssue": "Сообщить о проблеме",
-    "credits": "БЛАГОДАРНОСТИ",
-    "builtWith": "Создано с использованием Tauri, React и Model Context Protocol.",
-    "poweredBy": "Поиск научных статей работает на базе arXiv, PubMed, Semantic Scholar и других баз данных открытого доступа."
+    "author": "АВТОР",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Личная страница"
   },
   "providers": {
     "title": "Источники данных",
