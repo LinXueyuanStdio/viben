@@ -69,7 +69,17 @@
     "allStopped": "All servers stopped",
     "partialRunning": "{{running}} of {{total}} servers running",
     "hasErrors": "{{count}} server(s) with errors",
-    "ariaLabel": "MCP servers: {{running}} of {{total}} running. Click to manage servers."
+    "ariaLabel": "MCP servers: {{running}} of {{total}} running. Click to manage servers.",
+    "pythonChecking": "Detecting Python...",
+    "pythonCheckingTooltip": "Detecting Python installation",
+    "pythonMissing": "Python Required",
+    "pythonMissingTooltip": "Python 3.10+ is required. Click to configure.",
+    "packageChecking": "Checking package...",
+    "packageCheckingTooltip": "Checking browse-mcp installation",
+    "packageMissing": "Install browse-mcp",
+    "packageMissingTooltip": "browse-mcp package is not installed. Click to configure.",
+    "serverNone": "No Servers",
+    "serverNoneTooltip": "No MCP servers created. Click to create one."
   },
   "dashboard": {
     "title": "Dashboard",

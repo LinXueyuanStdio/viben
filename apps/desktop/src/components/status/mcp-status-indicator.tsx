@@ -1,9 +1,10 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, Server, Loader2 } from "lucide-react";
+import { AlertTriangle, Server, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores";
 import { useMcpStatusMonitor } from "@/hooks/use-mcp-status-monitor";
+import { usePython } from "@/hooks/use-python";
 import {
   Tooltip,
   TooltipContent,
@@ -15,72 +16,237 @@ import { useTranslation } from "react-i18next";
 type StatusVariant = "success" | "warning" | "error" | "neutral";
 
 /**
- * MCP Server Status Indicator
- *
- * A fixed pill-shaped badge in the bottom-left corner that shows:
- * - Running server count (X/Y format)
- * - Status color (green/amber/red)
- * - Error indicator when servers have errors
- *
- * Clicking navigates to the Search Service page.
+ * Status phases in progressive order:
+ * 1. python_checking - Detecting Python version
+ * 2. python_missing - Python not found or invalid
+ * 3. package_checking - Checking browse-mcp installation
+ * 4. package_missing - browse-mcp not installed
+ * 5. server_none - No MCP servers created
+ * 6. server_inactive - All servers stopped (0/N)
+ * 7. server_partial - Some servers running (M/N)
+ * 8. server_active - All servers running (N/N)
+ * 9. server_error - Some servers have errors
  */
-export function McpStatusIndicator() {
+type StatusPhase =
+  | "python_checking"
+  | "python_missing"
+  | "package_checking"
+  | "package_missing"
+  | "server_none"
+  | "server_inactive"
+  | "server_partial"
+  | "server_active"
+  | "server_error";
+
+/**
+ * Unified Status Indicator
+ *
+ * Shows progressive status in the sidebar:
+ * - Python detection status
+ * - browse-mcp installation status
+ * - MCP server status (X/Y format)
+ *
+ * Clicking navigates to the appropriate settings/service page.
+ */
+export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { mcpServers, mcpServerStatuses } = useAppStore();
   const { getStats } = useMcpStatusMonitor();
+  const { selectedPython, browseMcpInfo, loading: pythonLoading } = usePython();
 
-  // Calculate statistics
+  // Calculate MCP server statistics
   const stats = React.useMemo(() => getStats(), [getStats, mcpServers, mcpServerStatuses]);
 
-  // Don't render if no servers are configured
-  if (stats.total === 0) {
-    return null;
-  }
-
-  // Determine if still loading (no status data yet)
-  const hasStatusData = Object.keys(mcpServerStatuses).length > 0;
-  const isLoading = stats.total > 0 && !hasStatusData;
-
-  // Determine variant based on status
-  const variant: StatusVariant = React.useMemo(() => {
-    if (isLoading) return "neutral";
-    if (stats.error > 0) return "error";
-    if (stats.running === stats.total) return "success";
-    if (stats.running > 0) return "warning";
-    return "neutral";
-  }, [isLoading, stats.error, stats.running, stats.total]);
-
-  // Handle click to navigate
-  const handleClick = () => {
-    navigate("/search-service");
-  };
-
-  // Handle keyboard navigation
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      navigate("/search-service");
+  // Determine the current status phase
+  const phase: StatusPhase = React.useMemo(() => {
+    // Phase 1 & 2: Python check
+    if (pythonLoading) {
+      return "python_checking";
     }
-  };
-
-  // Tooltip content
-  const tooltipContent = React.useMemo(() => {
-    if (isLoading) {
-      return t("mcpStatus.checking");
+    if (!selectedPython?.is_valid) {
+      return "python_missing";
     }
+
+    // Phase 3 & 4: Package check
+    if (browseMcpInfo === null) {
+      return "package_checking";
+    }
+    if (!browseMcpInfo?.installed) {
+      return "package_missing";
+    }
+
+    // Phase 5-9: Server status
+    if (stats.total === 0) {
+      return "server_none";
+    }
+
+    // Check if we're still loading server status
+    const hasStatusData = Object.keys(mcpServerStatuses).length > 0;
+    if (!hasStatusData) {
+      return "server_inactive"; // Default to inactive while loading
+    }
+
     if (stats.error > 0) {
-      return t("mcpStatus.hasErrors", { count: stats.error });
+      return "server_error";
     }
     if (stats.running === stats.total) {
-      return t("mcpStatus.allRunning");
+      return "server_active";
     }
     if (stats.running > 0) {
-      return t("mcpStatus.partialRunning", { running: stats.running, total: stats.total });
+      return "server_partial";
     }
-    return t("mcpStatus.allStopped");
-  }, [isLoading, stats.error, stats.running, stats.total, t]);
+    return "server_inactive";
+  }, [pythonLoading, selectedPython, browseMcpInfo, stats, mcpServerStatuses]);
 
+  // Determine variant based on phase
+  const variant: StatusVariant = React.useMemo(() => {
+    switch (phase) {
+      case "python_checking":
+      case "package_checking":
+        return "neutral";
+      case "python_missing":
+      case "package_missing":
+      case "server_error":
+        return "error";
+      case "server_none":
+      case "server_inactive":
+        return "warning";
+      case "server_partial":
+        return "warning";
+      case "server_active":
+        return "success";
+      default:
+        return "neutral";
+    }
+  }, [phase]);
+
+  // Handle click to navigate to appropriate page
+  const handleClick = () => {
+    switch (phase) {
+      case "python_checking":
+      case "python_missing":
+      case "package_checking":
+      case "package_missing":
+        navigate("/settings");
+        break;
+      default:
+        navigate("/search-service");
+    }
+  };
+
+  // Get display text
+  const displayText = React.useMemo(() => {
+    switch (phase) {
+      case "python_checking":
+        return t("mcpStatus.pythonChecking");
+      case "python_missing":
+        return t("mcpStatus.pythonMissing");
+      case "package_checking":
+        return t("mcpStatus.packageChecking");
+      case "package_missing":
+        return t("mcpStatus.packageMissing");
+      case "server_none":
+        return t("mcpStatus.serverNone");
+      case "server_inactive":
+        return t("mcpStatus.count", { running: 0, total: stats.total });
+      case "server_partial":
+      case "server_active":
+      case "server_error":
+        return t("mcpStatus.count", { running: stats.running, total: stats.total });
+      default:
+        return "";
+    }
+  }, [phase, stats, t]);
+
+  // Get tooltip content
+  const tooltipContent = React.useMemo(() => {
+    switch (phase) {
+      case "python_checking":
+        return t("mcpStatus.pythonCheckingTooltip");
+      case "python_missing":
+        return t("mcpStatus.pythonMissingTooltip");
+      case "package_checking":
+        return t("mcpStatus.packageCheckingTooltip");
+      case "package_missing":
+        return t("mcpStatus.packageMissingTooltip");
+      case "server_none":
+        return t("mcpStatus.serverNoneTooltip");
+      case "server_inactive":
+        return t("mcpStatus.allStopped");
+      case "server_partial":
+        return t("mcpStatus.partialRunning", { running: stats.running, total: stats.total });
+      case "server_active":
+        return t("mcpStatus.allRunning");
+      case "server_error":
+        return t("mcpStatus.hasErrors", { count: stats.error });
+      default:
+        return "";
+    }
+  }, [phase, stats, t]);
+
+  // Get icon based on phase
+  const Icon = React.useMemo(() => {
+    switch (phase) {
+      case "python_checking":
+      case "package_checking":
+        return Loader2;
+      case "python_missing":
+      case "package_missing":
+        return AlertCircle;
+      case "server_none":
+        return AlertCircle;
+      case "server_inactive":
+        return Server;
+      case "server_partial":
+        return Server;
+      case "server_active":
+        return CheckCircle2;
+      case "server_error":
+        return AlertTriangle;
+      default:
+        return Server;
+    }
+  }, [phase]);
+
+  const isLoading = phase === "python_checking" || phase === "package_checking";
+
+  // Collapsed view - just icon with tooltip
+  if (collapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleClick}
+              className={cn(
+                "flex justify-center items-center w-full py-2 rounded-md transition-colors",
+                "hover:bg-sidebar-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-4 w-4",
+                  isLoading && "animate-spin",
+                  variant === "success" && "text-green-500",
+                  variant === "warning" && "text-yellow-500",
+                  variant === "error" && "text-red-500",
+                  variant === "neutral" && "text-muted-foreground"
+                )}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {tooltipContent}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Expanded view - full indicator
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
@@ -88,66 +254,24 @@ export function McpStatusIndicator() {
           <button
             type="button"
             onClick={handleClick}
-            onKeyDown={handleKeyDown}
             className={cn(
-              // Position and layout
-              "fixed bottom-4 left-4 z-40",
-              "inline-flex items-center gap-1.5",
-              // Sizing
-              "h-7 px-3",
-              // Typography
-              "text-xs font-medium",
-              // Shape
-              "rounded-full",
-              // Base styles
-              "border shadow-sm",
-              // Transition
-              "transition-all duration-200",
-              // Hover and focus states
-              "cursor-pointer",
-              "hover:scale-105",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-              // Variant-specific styles
-              variant === "success" && [
-                "bg-green-500/10 border-green-500/30 text-green-700",
-                "dark:bg-green-500/20 dark:border-green-500/40 dark:text-green-400",
-                "hover:bg-green-500/20 hover:border-green-500/50",
-                "dark:hover:bg-green-500/30 dark:hover:border-green-500/50",
-              ],
-              variant === "warning" && [
-                "bg-amber-500/10 border-amber-500/30 text-amber-700",
-                "dark:bg-amber-500/20 dark:border-amber-500/40 dark:text-amber-400",
-                "hover:bg-amber-500/20 hover:border-amber-500/50",
-                "dark:hover:bg-amber-500/30 dark:hover:border-amber-500/50",
-              ],
-              variant === "error" && [
-                "bg-red-500/10 border-red-500/30 text-red-700",
-                "dark:bg-red-500/20 dark:border-red-500/40 dark:text-red-400",
-                "hover:bg-red-500/20 hover:border-red-500/50",
-                "dark:hover:bg-red-500/30 dark:hover:border-red-500/50",
-              ],
-              variant === "neutral" && [
-                "bg-muted border-border text-muted-foreground",
-                "hover:bg-accent hover:border-border-strong",
-              ]
+              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs",
+              "transition-colors duration-200",
+              "hover:bg-sidebar-accent",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             )}
-            aria-label={t("mcpStatus.ariaLabel", { running: stats.running, total: stats.total })}
           >
-            {/* Icon */}
-            {isLoading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : stats.error > 0 ? (
-              <AlertTriangle className="h-3 w-3" />
-            ) : (
-              <Server className="h-3 w-3" />
-            )}
-
-            {/* Count */}
-            <span>
-              {isLoading
-                ? t("mcpStatus.loading")
-                : t("mcpStatus.count", { running: stats.running, total: stats.total })}
-            </span>
+            <Icon
+              className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                isLoading && "animate-spin",
+                variant === "success" && "text-green-500",
+                variant === "warning" && "text-yellow-500",
+                variant === "error" && "text-red-500",
+                variant === "neutral" && "text-muted-foreground"
+              )}
+            />
+            <span className="text-sidebar-foreground/70 truncate">{displayText}</span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="font-medium">

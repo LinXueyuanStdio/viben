@@ -69,7 +69,17 @@
     "allStopped": "所有服务器已停止",
     "partialRunning": "{{total}} 个服务器中有 {{running}} 个运行中",
     "hasErrors": "{{count}} 个服务器出错",
-    "ariaLabel": "MCP 服务器：{{total}} 个中有 {{running}} 个运行中。点击管理服务器。"
+    "ariaLabel": "MCP 服务器：{{total}} 个中有 {{running}} 个运行中。点击管理服务器。",
+    "pythonChecking": "检测 Python...",
+    "pythonCheckingTooltip": "正在检测 Python 安装",
+    "pythonMissing": "需要 Python",
+    "pythonMissingTooltip": "需要 Python 3.10+。点击配置。",
+    "packageChecking": "检测包...",
+    "packageCheckingTooltip": "正在检测 browse-mcp 安装",
+    "packageMissing": "安装 browse-mcp",
+    "packageMissingTooltip": "browse-mcp 包未安装。点击配置。",
+    "serverNone": "无服务器",
+    "serverNoneTooltip": "未创建 MCP 服务器。点击创建。"
   },
   "dashboard": {
     "title": "仪表盘",
