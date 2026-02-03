@@ -1,8 +1,34 @@
-import { ExternalLink, Github, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug } from "lucide-react";
+import { ExternalLink, Github, RefreshCw, CheckCircle2, XCircle, AlertCircle, Home, Book, Bug, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
+import { motion } from "framer-motion";
+import { openUrl } from "@tauri-apps/plugin-opener";
+
+// Animation variants for staggered entrance
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.05,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ease-out-expo
+    },
+  },
+};
 
 export function AboutPage() {
   const { t } = useTranslation();
@@ -16,9 +42,23 @@ export function AboutPage() {
   const mcpInstalled = browseMcpInfo?.installed ?? false;
   const isSetupComplete = pythonValid && mcpInstalled;
 
+  // Handle external link click using Tauri opener
+  const handleExternalLink = async (url: string) => {
+    try {
+      await openUrl(url);
+    } catch (error) {
+      console.error("Failed to open URL:", error);
+    }
+  };
+
   return (
-    <div className="p-6 max-w-lg">
-      <div className="text-center mb-8">
+    <motion.div
+      className="p-6 max-w-lg"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      <motion.div className="text-center mb-8" variants={itemVariants}>
         <div className="flex justify-center mb-4">
           <div className="h-16 w-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
             B
@@ -26,14 +66,14 @@ export function AboutPage() {
         </div>
         <h1 className="text-2xl font-bold">{t("about.title")}</h1>
         <p className="text-muted-foreground">{t("about.version", { version: appVersion })}</p>
-      </div>
+      </motion.div>
 
       {/* System Status */}
-      <section className="mb-6">
+      <motion.section className="mb-6" variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           SYSTEM STATUS
         </h2>
-        <div className="rounded-lg border bg-card p-4 space-y-3">
+        <div className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           {/* Python Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -91,14 +131,14 @@ export function AboutPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Update */}
-      <section className="mb-6">
+      <motion.section className="mb-6" variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           UPDATES
         </h2>
-        <div className="rounded-lg border bg-card p-4">
+        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           {updateAvailable ? (
             <div className="flex items-center justify-between">
               <div>
@@ -121,10 +161,10 @@ export function AboutPage() {
             </div>
           )}
         </div>
-      </section>
+      </motion.section>
 
       {/* Links */}
-      <section className="mb-6">
+      <motion.section className="mb-6" variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
           {t("about.links")}
         </h2>
@@ -133,40 +173,65 @@ export function AboutPage() {
             icon={Home}
             label={t("about.homepage")}
             href="https://linxueyuan.online/browse-mcp/"
+            onClick={handleExternalLink}
           />
           <LinkButton
             icon={Github}
             label={t("about.githubRepo")}
             href="https://github.com/LinXueyuanStdio/browse-mcp"
+            onClick={handleExternalLink}
           />
           <LinkButton
             icon={Book}
             label={t("about.documentation")}
             href="https://linxueyuan.online/browse-mcp/docs"
+            onClick={handleExternalLink}
           />
           <LinkButton
             icon={Bug}
             label={t("about.reportIssue")}
             href="https://github.com/LinXueyuanStdio/browse-mcp/issues"
+            onClick={handleExternalLink}
           />
         </div>
-      </section>
+      </motion.section>
 
-      {/* Credits */}
-      <section>
+      {/* Author */}
+      <motion.section variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-          {t("about.credits")}
+          {t("about.author")}
         </h2>
-        <div className="rounded-lg border bg-card p-4 text-sm text-muted-foreground">
-          <p className="mb-2">
-            {t("about.builtWith")}
-          </p>
-          <p>
-            {t("about.poweredBy")}
-          </p>
+        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <User className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium">{t("about.authorName")}</p>
+              <p className="text-xs text-muted-foreground">Developer</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <button
+              onClick={() => handleExternalLink("https://github.com/LinXueyuanStdio")}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+            >
+              <Github className="h-4 w-4" />
+              <span>{t("about.authorGithub")}</span>
+              <ExternalLink className="h-3 w-3 ml-auto" />
+            </button>
+            <button
+              onClick={() => handleExternalLink("https://linxueyuan.online")}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+            >
+              <Home className="h-4 w-4" />
+              <span>{t("about.authorHomepage")}</span>
+              <ExternalLink className="h-3 w-3 ml-auto" />
+            </button>
+          </div>
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   );
 }
 
@@ -174,21 +239,20 @@ interface LinkButtonProps {
   icon: React.ElementType;
   label: string;
   href: string;
+  onClick: (url: string) => void;
 }
 
-function LinkButton({ icon: Icon, label, href }: LinkButtonProps) {
+function LinkButton({ icon: Icon, label, href, onClick }: LinkButtonProps) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center justify-between rounded-lg border bg-card p-3 hover:bg-muted transition-colors"
+    <button
+      onClick={() => onClick(href)}
+      className="flex items-center justify-between rounded-xl border bg-card p-3 hover:bg-muted hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 w-full"
     >
       <div className="flex items-center gap-3">
         <Icon className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm">{label}</span>
       </div>
       <ExternalLink className="h-4 w-4 text-muted-foreground" />
-    </a>
+    </button>
   );
 }

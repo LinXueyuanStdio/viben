@@ -139,12 +139,14 @@
     "upToDate": "Güncelsiniz!",
     "checkForUpdates": "Güncellemeleri Kontrol Et",
     "links": "BAĞLANTILAR",
+    "homepage": "Ana Sayfa",
     "githubRepo": "GitHub Deposu",
     "documentation": "Dokümantasyon",
     "reportIssue": "Sorun Bildir",
-    "credits": "KREDİLER",
-    "builtWith": "Tauri, React ve Model Context Protocol ile yapılmıştır.",
-    "poweredBy": "Akademik makale araması arXiv, PubMed, Semantic Scholar ve diğer açık erişim veritabanları tarafından desteklenmektedir."
+    "author": "YAZAR",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Kişisel Sayfa"
   },
   "providers": {
     "title": "Veri Kaynakları",

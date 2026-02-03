@@ -139,12 +139,14 @@
     "upToDate": "У вас остання версія!",
     "checkForUpdates": "Перевірити оновлення",
     "links": "ПОСИЛАННЯ",
+    "homepage": "Домашня сторінка",
     "githubRepo": "Репозиторій GitHub",
     "documentation": "Документація",
     "reportIssue": "Повідомити про проблему",
-    "credits": "ПОДЯКИ",
-    "builtWith": "Створено за допомогою Tauri, React та Model Context Protocol.",
-    "poweredBy": "Пошук наукових статей працює на базі arXiv, PubMed, Semantic Scholar та інших баз даних відкритого доступу."
+    "author": "АВТОР",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Особиста сторінка"
   },
   "providers": {
     "title": "Джерела даних",

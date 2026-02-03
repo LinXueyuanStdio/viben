@@ -139,12 +139,14 @@
     "upToDate": "Sie sind auf dem neuesten Stand!",
     "checkForUpdates": "Nach Updates suchen",
     "links": "LINKS",
+    "homepage": "Startseite",
     "githubRepo": "GitHub-Repository",
     "documentation": "Dokumentation",
     "reportIssue": "Problem melden",
-    "credits": "DANKSAGUNGEN",
-    "builtWith": "Erstellt mit Tauri, React und dem Model Context Protocol.",
-    "poweredBy": "Akademische Papiersuche unterstützt von arXiv, PubMed, Semantic Scholar und anderen Open-Access-Datenbanken."
+    "author": "AUTOR",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Persönliche Homepage"
   },
   "providers": {
     "title": "Datenquellen",

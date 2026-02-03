@@ -139,12 +139,14 @@
     "upToDate": "最新版です！",
     "checkForUpdates": "更新を確認",
     "links": "リンク",
+    "homepage": "ホームページ",
     "githubRepo": "GitHubリポジトリ",
     "documentation": "ドキュメント",
     "reportIssue": "問題を報告",
-    "credits": "クレジット",
-    "builtWith": "Tauri、React、Model Context Protocolで構築されています。",
-    "poweredBy": "学術論文検索はarXiv、PubMed、Semantic Scholar、その他のオープンアクセスデータベースによって提供されています。"
+    "author": "作者",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "個人ホームページ"
   },
   "providers": {
     "title": "データソース",

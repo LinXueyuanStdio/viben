@@ -139,12 +139,14 @@
     "upToDate": "Masz najnowszą wersję!",
     "checkForUpdates": "Sprawdź aktualizacje",
     "links": "LINKI",
+    "homepage": "Strona główna",
     "githubRepo": "Repozytorium GitHub",
     "documentation": "Dokumentacja",
     "reportIssue": "Zgłoś problem",
-    "credits": "PODZIĘKOWANIA",
-    "builtWith": "Zbudowane z Tauri, React i Model Context Protocol.",
-    "poweredBy": "Wyszukiwanie artykułów naukowych obsługiwane przez arXiv, PubMed, Semantic Scholar i inne bazy danych open access."
+    "author": "AUTOR",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Strona osobista"
   },
   "providers": {
     "title": "Źródła danych",
