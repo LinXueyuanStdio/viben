@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 title: "browse_search"
-description: "Search academic papers across multiple databases"
+description: "跨多个数据库搜索学术论文"
 ---
 
 # browse_search
 
-The `browse_search` tool searches for academic papers across multiple platforms simultaneously. It supports querying 19+ academic databases with flexible filtering options.
+`browse_search` 工具可同时在多个平台上搜索学术论文。它支持查询 19+ 个学术数据库，并提供灵活的过滤选项。
 
-## Basic Usage
+## 基本用法
 
-Search a single platform:
+搜索单个平台：
 
 ```python
 browse_search([
@@ -18,7 +18,7 @@ browse_search([
 ])
 ```
 
-Search multiple platforms at once:
+同时搜索多个平台：
 
 ```python
 browse_search([
@@ -28,7 +28,7 @@ browse_search([
 ])
 ```
 
-Search all enabled platforms:
+搜索所有已启用的平台：
 
 ```python
 browse_search([
@@ -36,68 +36,68 @@ browse_search([
 ])
 ```
 
-## Parameters
+## 参数
 
-| Parameter | Type | Required | Default | Description |
+| 参数 | 类型 | 必需 | 默认值 | 描述 |
 |-----------|------|----------|---------|-------------|
-| `query` | string | Yes | - | Search query (1-500 characters) |
-| `searcher` | string | No | all | Platform to search (omit for all platforms) |
-| `max_results` | integer | No | 10 | Number of results (1-100) |
-| `year` | string | No | - | Year filter (Semantic Scholar only) |
-| `fetch_details` | boolean | No | true | Fetch paper details (IACR only) |
-| `kwargs` | object | No | - | Additional parameters (CrossRef only) |
+| `query` | string | 是 | - | 搜索查询（1-500 字符） |
+| `searcher` | string | 否 | all | 要搜索的平台（省略则搜索所有平台） |
+| `max_results` | integer | 否 | 10 | 结果数量（1-100） |
+| `year` | string | 否 | - | 年份过滤（仅 Semantic Scholar） |
+| `fetch_details` | boolean | 否 | true | 获取论文详情（仅 IACR） |
+| `kwargs` | object | 否 | - | 附加参数（仅 CrossRef） |
 
-## Available Searchers
+## 可用搜索器
 
-### Free Sources (No API Key Required)
+### 免费来源（无需 API 密钥）
 
-| Searcher | Description |
+| 搜索器 | 描述 |
 |----------|-------------|
-| `arxiv` | Pre-print repository for physics, mathematics, CS |
-| `pubmed` | Biomedical literature from MEDLINE |
-| `pmc` | PubMed Central full-text archive |
-| `biorxiv` | Pre-print server for biology |
-| `medrxiv` | Pre-print server for health sciences |
-| `semantic` | Semantic Scholar AI-powered search |
-| `crossref` | CrossRef DOI metadata |
-| `google_scholar` | Google Scholar search |
-| `core` | CORE open access aggregator |
-| `iacr` | IACR cryptology pre-prints |
+| `arxiv` | 物理、数学、计算机科学的预印本库 |
+| `pubmed` | MEDLINE 生物医学文献 |
+| `pmc` | PubMed Central 全文档案 |
+| `biorxiv` | 生物学预印本服务器 |
+| `medrxiv` | 健康科学预印本服务器 |
+| `semantic` | Semantic Scholar AI 驱动搜索 |
+| `crossref` | CrossRef DOI 元数据 |
+| `google_scholar` | Google Scholar 搜索 |
+| `core` | CORE 开放获取聚合器 |
+| `iacr` | IACR 密码学预印本 |
 
-### Premium Sources (API Key Required)
+### 高级来源（需要 API 密钥）
 
-| Searcher | API Key Variable |
+| 搜索器 | API 密钥变量 |
 |----------|-----------------|
 | `ieee` | `IEEE_API_KEY` |
 | `scopus` | `SCOPUS_API_KEY` |
 | `springer` | `SPRINGER_API_KEY` |
 | `sciencedirect` | `SCIENCEDIRECT_API_KEY` |
 
-## Search Examples
+## 搜索示例
 
-### Single Platform Search
+### 单平台搜索
 
 ```python
-# Search arXiv for machine learning papers
+# 在 arXiv 上搜索机器学习论文
 browse_search([
     {"searcher": "arxiv", "query": "machine learning", "max_results": 5}
 ])
 
-# Search PubMed Central for biomedical papers
+# 在 PubMed Central 上搜索生物医学论文
 browse_search([
     {"searcher": "pmc", "query": "cancer treatment", "max_results": 5}
 ])
 
-# Search CORE for open access papers
+# 在 CORE 上搜索开放获取论文
 browse_search([
     {"searcher": "core", "query": "climate change", "max_results": 5}
 ])
 ```
 
-### Multi-Platform Search
+### 多平台搜索
 
 ```python
-# Search multiple platforms simultaneously
+# 同时搜索多个平台
 browse_search([
     {"searcher": "arxiv", "query": "deep learning", "max_results": 5},
     {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
@@ -105,9 +105,9 @@ browse_search([
 ])
 ```
 
-### Platform-Specific Parameters
+### 平台特定参数
 
-**Semantic Scholar with year filter:**
+**Semantic Scholar 带年份过滤：**
 
 ```python
 browse_search([
@@ -115,13 +115,13 @@ browse_search([
 ])
 ```
 
-Year filter formats:
-- Single year: `"2019"`
-- Year range: `"2016-2020"`
-- From year onwards: `"2010-"`
-- Up to year: `"-2015"`
+年份过滤格式：
+- 单个年份：`"2019"`
+- 年份范围：`"2016-2020"`
+- 从某年开始：`"2010-"`
+- 到某年为止：`"-2015"`
 
-**CrossRef with additional filters:**
+**CrossRef 带附加过滤：**
 
 ```python
 browse_search([
@@ -138,7 +138,7 @@ browse_search([
 ])
 ```
 
-**IACR without fetching details:**
+**IACR 不获取详情：**
 
 ```python
 browse_search([
@@ -146,28 +146,28 @@ browse_search([
 ])
 ```
 
-### Premium Sources
+### 高级来源
 
 ```python
-# Search IEEE Xplore (requires IEEE_API_KEY)
+# 搜索 IEEE Xplore（需要 IEEE_API_KEY）
 browse_search([
     {"searcher": "ieee", "query": "neural networks", "max_results": 5}
 ])
 
-# Search Springer Link (requires SPRINGER_API_KEY)
+# 搜索 Springer Link（需要 SPRINGER_API_KEY）
 browse_search([
     {"searcher": "springer", "query": "quantum computing", "max_results": 5}
 ])
 
-# Search Scopus (requires SCOPUS_API_KEY)
+# 搜索 Scopus（需要 SCOPUS_API_KEY）
 browse_search([
     {"searcher": "scopus", "query": "artificial intelligence", "max_results": 5}
 ])
 ```
 
-## Response Format
+## 响应格式
 
-Results are returned as formatted text for each paper:
+结果以格式化文本返回每篇论文：
 
 ```
 Source: 'arxiv'
@@ -181,30 +181,30 @@ DOI: 10.48550/arXiv.2303.08774
 Categories: cs.CL; cs.AI
 ```
 
-## Input Validation
+## 输入验证
 
-The tool validates inputs before searching:
+工具在搜索前会验证输入：
 
-- **query**: Must be 1-500 characters, cannot be empty or whitespace only
-- **max_results**: Must be between 1 and 100
-- **searcher**: Must be one of the enabled sources (if specified)
-- **year**: Must match format `YYYY`, `YYYY-YYYY`, `YYYY-`, or `-YYYY`
+- **query**：必须是 1-500 字符，不能为空或仅空白
+- **max_results**：必须在 1 到 100 之间
+- **searcher**：如果指定，必须是启用的来源之一
+- **year**：必须匹配格式 `YYYY`、`YYYY-YYYY`、`YYYY-` 或 `-YYYY`
 
-:::tip Best Practice
-Specify the `searcher` parameter to target specific platforms. Omitting it searches all enabled platforms, which can be slower and may return more results than needed.
+:::tip 最佳实践
+指定 `searcher` 参数以定向特定平台。省略它会搜索所有已启用的平台，这可能会更慢并返回超出所需的结果。
 :::
 
-## Error Handling
+## 错误处理
 
-If a search fails, the tool continues with other searches and returns partial results. Common errors:
+如果搜索失败，工具会继续其他搜索并返回部分结果。常见错误：
 
-- **Invalid searcher**: Returns available searchers list
-- **Empty query**: Returns validation error
-- **API rate limit**: Returns error for that source, continues with others
-- **Network timeout**: Returns error for that source, continues with others
+- **无效的搜索器**：返回可用搜索器列表
+- **空查询**：返回验证错误
+- **API 速率限制**：该来源返回错误，继续其他来源
+- **网络超时**：该来源返回错误，继续其他来源
 
-## Next Steps
+## 下一步
 
-- [browse_download](./browse-download) - Download paper PDFs
-- [browse_read](./browse-read) - Extract text from papers
-- [Configuration](../configuration) - Configure sources and API keys
+- [browse_download](./browse-download) - 下载论文 PDF
+- [browse_read](./browse-read) - 从论文中提取文本
+- [配置](../configuration) - 配置来源和 API 密钥
