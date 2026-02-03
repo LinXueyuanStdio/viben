@@ -149,12 +149,14 @@
     "upToDate": "आप अपडेटेड हैं!",
     "checkForUpdates": "अपडेट की जांच करें",
     "links": "लिंक",
+    "homepage": "होमपेज",
     "githubRepo": "GitHub रिपॉजिटरी",
     "documentation": "दस्तावेज़ीकरण",
     "reportIssue": "समस्या रिपोर्ट करें",
-    "credits": "श्रेय",
-    "builtWith": "Tauri, React और Model Context Protocol के साथ बनाया गया।",
-    "poweredBy": "अकादमिक पेपर खोज arXiv, PubMed, Semantic Scholar और अन्य ओपन एक्सेस डेटाबेस द्वारा संचालित।"
+    "author": "लेखक",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "व्यक्तिगत होमपेज"
   },
   "providers": {
     "title": "डेटा स्रोत",

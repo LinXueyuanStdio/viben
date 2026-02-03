@@ -149,12 +149,14 @@
     "upToDate": "Anda sudah menggunakan versi terbaru!",
     "checkForUpdates": "Periksa Pembaruan",
     "links": "TAUTAN",
+    "homepage": "Beranda",
     "githubRepo": "Repositori GitHub",
     "documentation": "Dokumentasi",
     "reportIssue": "Laporkan Masalah",
-    "credits": "KREDIT",
-    "builtWith": "Dibangun dengan Tauri, React, dan Model Context Protocol.",
-    "poweredBy": "Pencarian makalah akademis didukung oleh arXiv, PubMed, Semantic Scholar, dan basis data akses terbuka lainnya."
+    "author": "PENULIS",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Halaman Pribadi"
   },
   "providers": {
     "title": "Sumber Data",

@@ -149,12 +149,14 @@
     "upToDate": "已是最新版本！",
     "checkForUpdates": "检查更新",
     "links": "链接",
+    "homepage": "主页",
     "githubRepo": "GitHub 仓库",
     "documentation": "文档",
     "reportIssue": "报告问题",
-    "credits": "致谢",
-    "builtWith": "基于 Tauri、React 和 Model Context Protocol 构建。",
-    "poweredBy": "学术论文搜索由 arXiv、PubMed、Semantic Scholar 及其他开放获取数据库提供支持。"
+    "author": "作者",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "个人主页"
   },
   "providers": {
     "title": "数据源",

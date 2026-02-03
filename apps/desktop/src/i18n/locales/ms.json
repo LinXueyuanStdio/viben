@@ -149,12 +149,14 @@
     "upToDate": "Anda sudah dikemaskini!",
     "checkForUpdates": "Semak Kemaskini",
     "links": "PAUTAN",
+    "homepage": "Laman Utama",
     "githubRepo": "Repositori GitHub",
     "documentation": "Dokumentasi",
     "reportIssue": "Laporkan Isu",
-    "credits": "KREDIT",
-    "builtWith": "Dibina dengan Tauri, React, dan Model Context Protocol.",
-    "poweredBy": "Carian kertas akademik dikuasakan oleh arXiv, PubMed, Semantic Scholar, dan pangkalan data akses terbuka yang lain."
+    "author": "PENGARANG",
+    "authorName": "LinXueyuan",
+    "authorGithub": "GitHub",
+    "authorHomepage": "Laman Peribadi"
   },
   "providers": {
     "title": "Sumber Data",
