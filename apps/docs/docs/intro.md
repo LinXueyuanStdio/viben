@@ -14,7 +14,7 @@ description: "Browse MCP - Search, download, and read any content from extensibl
 
 - **Extensible Plugin System** - Add new content sources by installing plugins or creating your own. Use the `ContentSource[T]` API to support any content type beyond academic papers.
 
-- **Unified Interface** - All sources accessible through three consistent tools: `paper_search`, `paper_download`, and `paper_read`.
+- **Unified Interface** - All sources accessible through three consistent tools: `browse_search`, `browse_download`, and `browse_read`.
 
 - **Standardized Output** - Content is returned in a consistent format regardless of source, making it easy for AI assistants to process results.
 
@@ -40,9 +40,9 @@ browse-mcp
 
 | Tool | Description |
 |------|-------------|
-| `paper_search` | Search content across multiple sources |
-| `paper_download` | Download content files and return file paths |
-| `paper_read` | Extract and read text content from files |
+| `browse_search` | Search content across multiple sources |
+| `browse_download` | Download content files and return file paths |
+| `browse_read` | Extract and read text content from files |
 
 ## Beyond Academic Papers
 
@@ -60,13 +60,13 @@ Then search social media content:
 
 ```python
 # Search GitHub repositories
-paper_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
+browse_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
 
 # Search Twitter posts
-paper_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
+browse_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
 
 # Search Chinese platforms
-paper_search([{"searcher": "zhihu", "query": "artificial intelligence", "max_results": 5}])
+browse_search([{"searcher": "zhihu", "query": "artificial intelligence", "max_results": 5}])
 ```
 
 ### Plugin Architecture
@@ -117,4 +117,4 @@ See the [Plugins](./plugins/overview) section for more information.
 - [Quick Start](./getting-started/quick-start) - Get up and running in 2 minutes
 - [Client Configuration](./getting-started/client-configuration) - Configure Claude Desktop, Cline, and more
 - [Plugins Overview](./plugins/overview) - Learn about the plugin system
-- [paper_search Tool](./mcp-server/tools/paper-search) - Learn how to search content
+- [browse_search Tool](./mcp-server/tools/paper-search) - Learn how to search content

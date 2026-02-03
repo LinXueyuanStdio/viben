@@ -1,17 +1,17 @@
 ---
 sidebar_position: 3
-title: "paper_read"
+title: "browse_read"
 description: "Extract and read text content from papers and other content"
 ---
 
-# paper_read
+# browse_read
 
-The `paper_read` tool extracts and reads text content from papers and other content sources. It automatically downloads the content if not already present, then extracts the text.
+The `browse_read` tool extracts and reads text content from papers and other content sources. It automatically downloads the content if not already present, then extracts the text.
 
 ## Basic Usage
 
 ```python
-paper_read(searcher="arxiv", paper_id="2303.08774")
+browse_read(searcher="arxiv", paper_id="2303.08774")
 ```
 
 ## Parameters
@@ -26,7 +26,7 @@ paper_read(searcher="arxiv", paper_id="2303.08774")
 
 ## Pagination
 
-The `paper_read` tool supports reading specific pages or page ranges from PDF documents. This is useful for:
+The `browse_read` tool supports reading specific pages or page ranges from PDF documents. This is useful for:
 
 - Reading specific sections without loading the entire document
 - Navigating long papers efficiently
@@ -54,16 +54,16 @@ The `paper_read` tool supports reading specific pages or page ranges from PDF do
 
 ```python
 # Read only the abstract (usually page 1)
-paper_read(searcher="arxiv", paper_id="2303.08774", page=1)
+browse_read(searcher="arxiv", paper_id="2303.08774", page=1)
 
 # Read the introduction (pages 1-3)
-paper_read(searcher="arxiv", paper_id="2303.08774", start_page=1, end_page=3)
+browse_read(searcher="arxiv", paper_id="2303.08774", start_page=1, end_page=3)
 
 # Read from the methods section onwards (assuming it starts at page 5)
-paper_read(searcher="arxiv", paper_id="2303.08774", start_page=5)
+browse_read(searcher="arxiv", paper_id="2303.08774", start_page=5)
 
 # Read up to the conclusion (first 10 pages)
-paper_read(searcher="arxiv", paper_id="2303.08774", end_page=10)
+browse_read(searcher="arxiv", paper_id="2303.08774", end_page=10)
 ```
 
 ### Paginated Response Format
@@ -86,7 +86,7 @@ capable of processing image and text inputs...
 
 ## Paper ID Formats
 
-Each platform uses a different identifier format. See the [paper_download](./paper-download#paper-id-formats) reference for complete format details.
+Each platform uses a different identifier format. See the [browse_download](./paper-download#paper-id-formats) reference for complete format details.
 
 | Searcher | Example |
 |----------|---------|
@@ -106,31 +106,31 @@ Each platform uses a different identifier format. See the [paper_download](./pap
 
 ```python
 # Read from arXiv
-paper_read(searcher="arxiv", paper_id="2106.12345")
+browse_read(searcher="arxiv", paper_id="2106.12345")
 
 # Read from PubMed
-paper_read(searcher="pubmed", paper_id="32790614")
+browse_read(searcher="pubmed", paper_id="32790614")
 
 # Read from PubMed Central
-paper_read(searcher="pmc", paper_id="PMC7419405")
+browse_read(searcher="pmc", paper_id="PMC7419405")
 
 # Read from bioRxiv
-paper_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
+browse_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
 
 # Read from medRxiv
-paper_read(searcher="medrxiv", paper_id="10.1101/2020.01.01.123456")
+browse_read(searcher="medrxiv", paper_id="10.1101/2020.01.01.123456")
 
 # Read from IACR
-paper_read(searcher="iacr", paper_id="2009/101")
+browse_read(searcher="iacr", paper_id="2009/101")
 
 # Read from Semantic Scholar
-paper_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
+browse_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
 
 # Read from CrossRef
-paper_read(searcher="crossref", paper_id="10.1038/s41586-020-2649-2")
+browse_read(searcher="crossref", paper_id="10.1038/s41586-020-2649-2")
 
 # Read from CORE
-paper_read(searcher="core", paper_id="123456789")
+browse_read(searcher="core", paper_id="123456789")
 ```
 
 ### Read from Plugin Sources
@@ -139,13 +139,13 @@ If you have the social media plugin installed:
 
 ```python
 # Read from GitHub
-paper_read(searcher="github", paper_id="owner/repo")
+browse_read(searcher="github", paper_id="owner/repo")
 
 # Read from Twitter
-paper_read(searcher="twitter", paper_id="1234567890")
+browse_read(searcher="twitter", paper_id="1234567890")
 
 # Read from Zhihu
-paper_read(searcher="zhihu", paper_id="123456789")
+browse_read(searcher="zhihu", paper_id="123456789")
 ```
 
 ## How It Works
@@ -157,7 +157,7 @@ paper_read(searcher="zhihu", paper_id="123456789")
 5. **Return content**: Returns the extracted text as a string
 
 ```
-paper_read(searcher, paper_id, page?, start_page?, end_page?)
+browse_read(searcher, paper_id, page?, start_page?, end_page?)
         |
         v
 +------------------+
@@ -230,7 +230,7 @@ Common errors and their meanings:
 ## Tips
 
 :::tip Workflow
-For best results, use `paper_search` first to find papers, then use the returned paper IDs with `paper_read` to extract content.
+For best results, use `browse_search` first to find papers, then use the returned paper IDs with `browse_read` to extract content.
 :::
 
 :::tip Pagination for Long Papers
@@ -240,7 +240,7 @@ For long papers, use pagination to read specific sections:
 - Read the full paper only when needed
 :::
 
-- The tool automatically downloads papers, so you do not need to call `paper_download` first
+- The tool automatically downloads papers, so you do not need to call `browse_download` first
 - Already downloaded papers are cached, so subsequent reads are faster
 - Text extraction quality depends on the PDF structure (some scanned PDFs may not extract well)
 - Pagination only works for PDF content; other content types return the full text
@@ -267,7 +267,7 @@ After searching:
 
 ## Next Steps
 
-- [paper_search](./paper-search) - Find papers to read
-- [paper_download](./paper-download) - Download papers for offline access
+- [browse_search](./paper-search) - Find papers to read
+- [browse_download](./paper-download) - Download papers for offline access
 - [Configuration](../configuration) - Configure download path
 - [Plugins](../../plugins/overview) - Extend with more content sources

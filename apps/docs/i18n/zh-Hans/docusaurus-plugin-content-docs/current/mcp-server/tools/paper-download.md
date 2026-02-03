@@ -1,19 +1,19 @@
 ---
 sidebar_position: 2
-title: "paper_download"
+title: "browse_download"
 description: "Download paper PDFs from academic databases"
 ---
 
-# paper_download
+# browse_download
 
-The `paper_download` tool downloads paper PDFs from academic databases using paper identifiers. It supports batch downloads and returns the paths to downloaded files.
+The `browse_download` tool downloads paper PDFs from academic databases using paper identifiers. It supports batch downloads and returns the paths to downloaded files.
 
 ## Basic Usage
 
 Download a single paper:
 
 ```python
-paper_download([
+browse_download([
     {"searcher": "arxiv", "paper_id": "2303.08774"}
 ])
 ```
@@ -21,7 +21,7 @@ paper_download([
 Download multiple papers:
 
 ```python
-paper_download([
+browse_download([
     {"searcher": "arxiv", "paper_id": "2303.08774"},
     {"searcher": "pubmed", "paper_id": "32790614"},
     {"searcher": "pmc", "paper_id": "PMC7419405"}
@@ -72,32 +72,32 @@ Semantic Scholar accepts multiple identifier formats:
 
 ```python
 # Download from arXiv
-paper_download([
+browse_download([
     {"searcher": "arxiv", "paper_id": "2106.12345"}
 ])
 
 # Download from PubMed
-paper_download([
+browse_download([
     {"searcher": "pubmed", "paper_id": "32790614"}
 ])
 
 # Download from PubMed Central
-paper_download([
+browse_download([
     {"searcher": "pmc", "paper_id": "PMC7419405"}
 ])
 
 # Download from bioRxiv
-paper_download([
+browse_download([
     {"searcher": "biorxiv", "paper_id": "10.1101/2020.01.01.123456"}
 ])
 
 # Download from Semantic Scholar
-paper_download([
+browse_download([
     {"searcher": "semantic", "paper_id": "DOI:10.18653/v1/N18-3011"}
 ])
 
 # Download from CORE
-paper_download([
+browse_download([
     {"searcher": "core", "paper_id": "123456789"}
 ])
 ```
@@ -105,7 +105,7 @@ paper_download([
 ### Batch Download
 
 ```python
-paper_download([
+browse_download([
     {"searcher": "arxiv", "paper_id": "2106.12345"},
     {"searcher": "pubmed", "paper_id": "32790614"},
     {"searcher": "pmc", "paper_id": "PMC7419405"},
@@ -171,12 +171,12 @@ Common errors:
 
 ## Tips
 
-- Use paper IDs from `paper_search` results for accurate downloads
+- Use paper IDs from `browse_search` results for accurate downloads
 - Batch downloads are processed concurrently for faster results
 - Check the download path if files appear missing
 
 ## Next Steps
 
-- [paper_read](./paper-read) - Extract text from downloaded papers
-- [paper_search](./paper-search) - Find papers to download
+- [browse_read](./paper-read) - Extract text from downloaded papers
+- [browse_search](./paper-search) - Find papers to download
 - [Configuration](../configuration) - Configure download path
