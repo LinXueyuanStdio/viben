@@ -14,7 +14,7 @@ description: "Browse MCP - 通过 MCP 插件从可扩展的来源搜索、下载
 
 - **可扩展插件系统** - 通过安装插件或创建自己的插件来添加新的内容来源。使用 `ContentSource[T]` API 支持学术论文之外的任何内容类型。
 
-- **统一接口** - 所有来源都可以通过三个一致的工具访问：`paper_search`、`paper_download` 和 `paper_read`。
+- **统一接口** - 所有来源都可以通过三个一致的工具访问：`browse_search`、`browse_download` 和 `browse_read`。
 
 - **标准化输出** - 无论来源如何，内容都以一致的格式返回，使 AI 助手易于处理结果。
 
@@ -40,9 +40,9 @@ browse-mcp
 
 | 工具 | 描述 |
 |------|-------------|
-| `paper_search` | 在多个来源中搜索内容 |
-| `paper_download` | 下载内容文件并返回文件路径 |
-| `paper_read` | 从文件中提取和阅读文本内容 |
+| `browse_search` | 在多个来源中搜索内容 |
+| `browse_download` | 下载内容文件并返回文件路径 |
+| `browse_read` | 从文件中提取和阅读文本内容 |
 
 ## 超越学术论文
 
@@ -60,13 +60,13 @@ pip install browse-mcp-plugin-social-media
 
 ```python
 # 搜索 GitHub 仓库
-paper_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
+browse_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
 
 # 搜索 Twitter 帖子
-paper_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
+browse_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
 
 # 搜索中文平台
-paper_search([{"searcher": "zhihu", "query": "人工智能", "max_results": 5}])
+browse_search([{"searcher": "zhihu", "query": "人工智能", "max_results": 5}])
 ```
 
 ### 插件架构
@@ -117,4 +117,4 @@ browse-mcp (核心)
 - [快速开始](./getting-started/quick-start) - 2 分钟内快速上手
 - [客户端配置](./getting-started/client-configuration) - 配置 Claude Desktop、Cline 等
 - [插件概述](./plugins/overview) - 了解插件系统
-- [paper_search 工具](./mcp-server/tools/paper-search) - 了解如何搜索内容
+- [browse_search 工具](./mcp-server/tools/paper-search) - 了解如何搜索内容

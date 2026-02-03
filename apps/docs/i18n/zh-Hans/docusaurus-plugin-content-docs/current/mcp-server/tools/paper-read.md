@@ -1,17 +1,17 @@
 ---
 sidebar_position: 3
-title: "paper_read"
+title: "browse_read"
 description: "从论文和其他内容中提取和阅读文本内容"
 ---
 
-# paper_read
+# browse_read
 
-`paper_read` 工具从论文和其他内容来源中提取和阅读文本内容。如果内容尚未下载，它会自动下载，然后提取文本。
+`browse_read` 工具从论文和其他内容来源中提取和阅读文本内容。如果内容尚未下载，它会自动下载，然后提取文本。
 
 ## 基本用法
 
 ```python
-paper_read(searcher="arxiv", paper_id="2303.08774")
+browse_read(searcher="arxiv", paper_id="2303.08774")
 ```
 
 ## 参数
@@ -26,7 +26,7 @@ paper_read(searcher="arxiv", paper_id="2303.08774")
 
 ## 分页
 
-`paper_read` 工具支持从 PDF 文档中读取特定页面或页面范围。这对于以下场景很有用：
+`browse_read` 工具支持从 PDF 文档中读取特定页面或页面范围。这对于以下场景很有用：
 
 - 读取特定部分而不加载整个文档
 - 高效浏览长论文
@@ -54,16 +54,16 @@ paper_read(searcher="arxiv", paper_id="2303.08774")
 
 ```python
 # 只读取摘要（通常是第 1 页）
-paper_read(searcher="arxiv", paper_id="2303.08774", page=1)
+browse_read(searcher="arxiv", paper_id="2303.08774", page=1)
 
 # 读取引言（第 1-3 页）
-paper_read(searcher="arxiv", paper_id="2303.08774", start_page=1, end_page=3)
+browse_read(searcher="arxiv", paper_id="2303.08774", start_page=1, end_page=3)
 
 # 从方法部分开始读取（假设从第 5 页开始）
-paper_read(searcher="arxiv", paper_id="2303.08774", start_page=5)
+browse_read(searcher="arxiv", paper_id="2303.08774", start_page=5)
 
 # 读取到结论为止（前 10 页）
-paper_read(searcher="arxiv", paper_id="2303.08774", end_page=10)
+browse_read(searcher="arxiv", paper_id="2303.08774", end_page=10)
 ```
 
 ### 分页响应格式
@@ -86,7 +86,7 @@ capable of processing image and text inputs...
 
 ## 论文 ID 格式
 
-每个平台使用不同的标识符格式。查看 [paper_download](./paper-download#paper-id-formats) 参考了解完整格式详情。
+每个平台使用不同的标识符格式。查看 [browse_download](./paper-download#paper-id-formats) 参考了解完整格式详情。
 
 | 搜索器 | 示例 |
 |----------|---------|
@@ -106,31 +106,31 @@ capable of processing image and text inputs...
 
 ```python
 # 从 arXiv 读取
-paper_read(searcher="arxiv", paper_id="2106.12345")
+browse_read(searcher="arxiv", paper_id="2106.12345")
 
 # 从 PubMed 读取
-paper_read(searcher="pubmed", paper_id="32790614")
+browse_read(searcher="pubmed", paper_id="32790614")
 
 # 从 PubMed Central 读取
-paper_read(searcher="pmc", paper_id="PMC7419405")
+browse_read(searcher="pmc", paper_id="PMC7419405")
 
 # 从 bioRxiv 读取
-paper_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
+browse_read(searcher="biorxiv", paper_id="10.1101/2020.01.01.123456")
 
 # 从 medRxiv 读取
-paper_read(searcher="medrxiv", paper_id="10.1101/2020.01.01.123456")
+browse_read(searcher="medrxiv", paper_id="10.1101/2020.01.01.123456")
 
 # 从 IACR 读取
-paper_read(searcher="iacr", paper_id="2009/101")
+browse_read(searcher="iacr", paper_id="2009/101")
 
 # 从 Semantic Scholar 读取
-paper_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
+browse_read(searcher="semantic", paper_id="DOI:10.18653/v1/N18-3011")
 
 # 从 CrossRef 读取
-paper_read(searcher="crossref", paper_id="10.1038/s41586-020-2649-2")
+browse_read(searcher="crossref", paper_id="10.1038/s41586-020-2649-2")
 
 # 从 CORE 读取
-paper_read(searcher="core", paper_id="123456789")
+browse_read(searcher="core", paper_id="123456789")
 ```
 
 ### 从插件来源读取
@@ -139,13 +139,13 @@ paper_read(searcher="core", paper_id="123456789")
 
 ```python
 # 从 GitHub 读取
-paper_read(searcher="github", paper_id="owner/repo")
+browse_read(searcher="github", paper_id="owner/repo")
 
 # 从 Twitter 读取
-paper_read(searcher="twitter", paper_id="1234567890")
+browse_read(searcher="twitter", paper_id="1234567890")
 
 # 从知乎读取
-paper_read(searcher="zhihu", paper_id="123456789")
+browse_read(searcher="zhihu", paper_id="123456789")
 ```
 
 ## 工作原理
@@ -157,7 +157,7 @@ paper_read(searcher="zhihu", paper_id="123456789")
 5. **返回内容**：将提取的文本作为字符串返回
 
 ```
-paper_read(searcher, paper_id, page?, start_page?, end_page?)
+browse_read(searcher, paper_id, page?, start_page?, end_page?)
         |
         v
 +------------------+
@@ -230,7 +230,7 @@ outputs...
 ## 提示
 
 :::tip 工作流程
-为获得最佳结果，首先使用 `paper_search` 查找论文，然后使用返回的论文 ID 与 `paper_read` 提取内容。
+为获得最佳结果，首先使用 `browse_search` 查找论文，然后使用返回的论文 ID 与 `browse_read` 提取内容。
 :::
 
 :::tip 长论文分页
@@ -240,7 +240,7 @@ outputs...
 - 仅在需要时读取完整论文
 :::
 
-- 工具会自动下载论文，因此您不需要先调用 `paper_download`
+- 工具会自动下载论文，因此您不需要先调用 `browse_download`
 - 已下载的论文会被缓存，因此后续读取更快
 - 文本提取质量取决于 PDF 结构（某些扫描的 PDF 可能提取效果不佳）
 - 分页仅适用于 PDF 内容；其他内容类型返回完整文本
@@ -267,7 +267,7 @@ outputs...
 
 ## 下一步
 
-- [paper_search](./paper-search) - 查找要阅读的论文
-- [paper_download](./paper-download) - 下载论文以供离线访问
+- [browse_search](./paper-search) - 查找要阅读的论文
+- [browse_download](./paper-download) - 下载论文以供离线访问
 - [配置](../configuration) - 配置下载路径
 - [插件](../../plugins/overview) - 使用更多内容来源扩展

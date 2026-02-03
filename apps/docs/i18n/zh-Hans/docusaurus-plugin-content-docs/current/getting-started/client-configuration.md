@@ -200,9 +200,9 @@ python -m browse_mcp
 **Protocol:** MCP 1.0
 
 **Available tools:**
-- `paper_search` - Search academic papers
-- `paper_download` - Download paper PDFs
-- `paper_read` - Extract text from papers
+- `browse_search` - Search academic papers
+- `browse_download` - Download paper PDFs
+- `browse_read` - Extract text from papers
 
 **Environment variables** (all optional):
 
@@ -261,4 +261,4 @@ tail -f ~/Library/Logs/Claude/mcp*.log
 ## Next Steps
 
 - [Configuration](../mcp-server/configuration) - Configure sources and API keys
-- [paper_search Tool](../mcp-server/tools/paper-search) - Learn search parameters
+- [browse_search Tool](../mcp-server/tools/paper-search) - Learn search parameters

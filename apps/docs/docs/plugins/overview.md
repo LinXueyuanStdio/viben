@@ -10,7 +10,7 @@ Browse MCP uses a powerful plugin system that allows you to extend its capabilit
 
 ## What are Plugins?
 
-Plugins are Python packages that add new content sources to Browse MCP. When you install a plugin, its sources are automatically discovered and become available through the same `paper_search`, `paper_download`, and `paper_read` tools.
+Plugins are Python packages that add new content sources to Browse MCP. When you install a plugin, its sources are automatically discovered and become available through the same `browse_search`, `browse_download`, and `browse_read` tools.
 
 ```
 browse-mcp (core)
@@ -149,13 +149,13 @@ Regardless of content type, users interact through the same tools:
 
 ```python
 # Search any source
-paper_search([{"searcher": "github", "query": "machine learning"}])
+browse_search([{"searcher": "github", "query": "machine learning"}])
 
 # Download any content
-paper_download(searcher="github", paper_id="owner/repo")
+browse_download(searcher="github", paper_id="owner/repo")
 
 # Read any content
-paper_read(searcher="github", paper_id="owner/repo")
+browse_read(searcher="github", paper_id="owner/repo")
 ```
 
 ### Source Naming

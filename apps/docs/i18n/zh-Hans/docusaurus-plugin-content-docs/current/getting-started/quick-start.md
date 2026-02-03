@@ -57,7 +57,7 @@ Or be more specific:
 
 ## Example Response
 
-Claude will use the `paper_search` tool and return results like:
+Claude will use the `browse_search` tool and return results like:
 
 ```
 Source: 'arxiv'
@@ -87,7 +87,7 @@ URL: https://arxiv.org/abs/2303.08774
 
 When you ask Claude to search for papers:
 
-1. Claude recognizes the intent and calls the `paper_search` tool
+1. Claude recognizes the intent and calls the `browse_search` tool
 2. Browse MCP queries the specified academic databases
 3. Results are returned in a standardized format
 4. Claude presents the information to you
@@ -95,5 +95,5 @@ When you ask Claude to search for papers:
 ## Next Steps
 
 - [Client Configuration](./client-configuration) - Configure for other clients (Cline, Zed)
-- [paper_search Tool](../mcp-server/tools/paper-search) - Learn advanced search options
+- [browse_search Tool](../mcp-server/tools/paper-search) - Learn advanced search options
 - [Configuration](../mcp-server/configuration) - Enable premium sources with API keys

@@ -48,12 +48,12 @@ To create a token:
 
 ```python
 # Search repositories
-paper_search([
+browse_search([
     {"searcher": "github", "query": "machine learning python", "max_results": 10}
 ])
 
 # Search with specific filters
-paper_search([
+browse_search([
     {"searcher": "github", "query": "language:python stars:>1000", "max_results": 5}
 ])
 ```
@@ -87,7 +87,7 @@ GitHub supports advanced search syntax:
 
 Example:
 ```python
-paper_search([{
+browse_search([{
     "searcher": "github",
     "query": "transformer language:python stars:>500 topic:nlp",
     "max_results": 10
@@ -113,12 +113,12 @@ To get a token:
 
 ```python
 # Search tweets
-paper_search([
+browse_search([
     {"searcher": "twitter", "query": "#MachineLearning", "max_results": 20}
 ])
 
 # Search with operators
-paper_search([
+browse_search([
     {"searcher": "twitter", "query": "from:OpenAI GPT", "max_results": 10}
 ])
 ```
@@ -163,12 +163,12 @@ Search Zhihu questions, answers, and articles.
 
 ```python
 # Search Zhihu content
-paper_search([
+browse_search([
     {"searcher": "zhihu", "query": "machine learning", "max_results": 10}
 ])
 
 # Search in Chinese
-paper_search([
+browse_search([
     {"searcher": "zhihu", "query": "machine learning", "max_results": 5}
 ])
 ```
@@ -201,7 +201,7 @@ Search Xiaohongshu notes and posts.
 
 ```python
 # Search Xiaohongshu content
-paper_search([
+browse_search([
     {"searcher": "xiaohongshu", "query": "tech review", "max_results": 10}
 ])
 ```

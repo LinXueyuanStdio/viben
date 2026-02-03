@@ -10,7 +10,7 @@ Browse MCP 使用强大的插件系统，允许您将其功能扩展到学术论
 
 ## 什么是插件？
 
-插件是为 Browse MCP 添加新内容来源的 Python 包。当您安装插件时，其来源会被自动发现，并可通过相同的 `paper_search`、`paper_download` 和 `paper_read` 工具使用。
+插件是为 Browse MCP 添加新内容来源的 Python 包。当您安装插件时，其来源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
 
 ```
 browse-mcp (核心)
@@ -149,13 +149,13 @@ class MyPaperSource(PaperSource):
 
 ```python
 # 搜索任何来源
-paper_search([{"searcher": "github", "query": "machine learning"}])
+browse_search([{"searcher": "github", "query": "machine learning"}])
 
 # 下载任何内容
-paper_download(searcher="github", paper_id="owner/repo")
+browse_download(searcher="github", paper_id="owner/repo")
 
 # 阅读任何内容
-paper_read(searcher="github", paper_id="owner/repo")
+browse_read(searcher="github", paper_id="owner/repo")
 ```
 
 ### 来源命名
