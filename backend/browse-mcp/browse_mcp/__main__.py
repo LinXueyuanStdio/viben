@@ -24,7 +24,12 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 engine2searcher: Dict[str, PaperSource] = get_enabled_searchers()
 
 # Initialize API logger at module load
-init_api_logger()
+_api_logger_instance = init_api_logger()
+logger.info(
+    f"Browse MCP API logging ready: run_id={_api_logger_instance.run_id}, "
+    f"log_file={_api_logger_instance.log_file_path}, "
+    f"enabled={_api_logger_instance.enabled}"
+)
 
 
 def _get_available_sources_str() -> str:
