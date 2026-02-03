@@ -169,7 +169,16 @@
     "free": "free",
     "optional": "optional",
     "required": "required",
-    "documentation": "Documentation"
+    "documentation": "Documentation",
+    "builtinSources": "Built-in Sources",
+    "marketplace": "Marketplace",
+    "installedPlugins": "{{count}} plugins installed",
+    "totalSourcesAvailable": "{{count}} sources available",
+    "noPluginsInstalled": "No plugins installed",
+    "installPluginsDesc": "Install plugins to add more data sources",
+    "includedSources": "Included Sources",
+    "enabled": "enabled",
+    "noSourcesInPlugin": "No sources in this plugin"
   },
   "agents": {
     "title": "AI Agents",
