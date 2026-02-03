@@ -191,22 +191,24 @@ jobs:
         if: needs.prepare.outputs.is_draft == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.prepare.outputs.tag }}
         run: |
           # Get the release ID for the draft release
           RELEASE_ID=$(gh api repos/${{ github.repository }}/releases | \
-            jq -r '.[] | select(.tag_name == "${{ needs.prepare.outputs.tag }}" and .draft == true) | .id')
+            jq -r --arg tag "$TAG_NAME" '.[] | select(.tag_name == $tag and .draft == true) | .id')
           
           if [ -n "$RELEASE_ID" ]; then
             echo "Publishing draft release ID: $RELEASE_ID"
             gh api -X PATCH repos/${{ github.repository }}/releases/$RELEASE_ID \
               -f draft=false
             echo "Release published successfully"
-            # Wait a moment for the API to update
+            # Wait for GitHub API to propagate the release state change
+            # This ensures the release is accessible via tag in the next step
             sleep 5
           else
-            echo "No draft release found with tag ${{ needs.prepare.outputs.tag }}"
+            echo "No draft release found with tag $TAG_NAME"
             echo "Checking if a published release already exists..."
-            gh release view ${{ needs.prepare.outputs.tag }} || echo "Release not found"
+            gh release view "$TAG_NAME" || echo "Release not found"
           fi
 
       - name: Download release assets
