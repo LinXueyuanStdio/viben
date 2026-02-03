@@ -1,27 +1,27 @@
 ---
 sidebar_position: 2
-title: "Quick Start"
-description: "Get Browse MCP working in 2 minutes"
+title: "快速开始"
+description: "2 分钟内快速上手 Browse MCP"
 ---
 
-# Quick Start
+# 快速开始
 
-Get Browse MCP working with Claude Desktop in under 2 minutes.
+2 分钟内让 Browse MCP 与 Claude Desktop 协同工作。
 
-## Step 1: Install Browse MCP
+## 步骤 1：安装 Browse MCP
 
 ```bash
 pip install browse-mcp
 ```
 
-## Step 2: Configure Claude Desktop
+## 步骤 2：配置 Claude Desktop
 
-Open your Claude Desktop configuration file:
+打开您的 Claude Desktop 配置文件：
 
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Add the following configuration:
+添加以下配置：
 
 ```json
 {
@@ -37,27 +37,27 @@ Add the following configuration:
 }
 ```
 
-:::tip Minimal Configuration
-This minimal configuration enables all free sources (arXiv, PubMed, etc.) without requiring any API keys. You can add API keys later for premium sources.
+:::tip 最小配置
+这个最小配置启用了所有免费来源（arXiv、PubMed 等），无需任何 API 密钥。您可以稍后为高级来源添加 API 密钥。
 :::
 
-## Step 3: Restart Claude Desktop
+## 步骤 3：重启 Claude Desktop
 
-Completely quit and reopen Claude Desktop for the configuration to take effect.
+完全退出并重新打开 Claude Desktop，使配置生效。
 
-## Step 4: Search Your First Paper
+## 步骤 4：搜索您的第一篇论文
 
-In Claude Desktop, try asking:
+在 Claude Desktop 中，尝试询问：
 
-> "Search for recent papers about large language models on arXiv"
+> "在 arXiv 上搜索关于大语言模型的最新论文"
 
-Or be more specific:
+或者更具体一些：
 
-> "Find papers about transformer architecture published in 2023"
+> "查找 2023 年发表的关于 transformer 架构的论文"
 
-## Example Response
+## 示例响应
 
-Claude will use the `browse_search` tool and return results like:
+Claude 将使用 `browse_search` 工具并返回如下结果：
 
 ```
 Source: 'arxiv'
@@ -69,31 +69,31 @@ Published Date: 2023-03-15
 URL: https://arxiv.org/abs/2303.08774
 ```
 
-## Try More Features
+## 尝试更多功能
 
-### Download a Paper
+### 下载论文
 
-> "Download the paper with arXiv ID 2303.08774"
+> "下载 arXiv ID 为 2303.08774 的论文"
 
-### Read Paper Content
+### 阅读论文内容
 
-> "Read the content of the paper 2303.08774 from arXiv"
+> "从 arXiv 阅读论文 2303.08774 的内容"
 
-### Search Multiple Sources
+### 搜索多个来源
 
-> "Search for papers about CRISPR gene editing on PubMed and bioRxiv"
+> "在 PubMed 和 bioRxiv 上搜索关于 CRISPR 基因编辑的论文"
 
-## What is Happening?
+## 发生了什么？
 
-When you ask Claude to search for papers:
+当您要求 Claude 搜索论文时：
 
-1. Claude recognizes the intent and calls the `browse_search` tool
-2. Browse MCP queries the specified academic databases
-3. Results are returned in a standardized format
-4. Claude presents the information to you
+1. Claude 识别意图并调用 `browse_search` 工具
+2. Browse MCP 查询指定的学术数据库
+3. 结果以标准化格式返回
+4. Claude 将信息呈现给您
 
-## Next Steps
+## 下一步
 
-- [Client Configuration](./client-configuration) - Configure for other clients (Cline, Zed)
-- [browse_search Tool](../mcp-server/tools/browse-search) - Learn advanced search options
-- [Configuration](../mcp-server/configuration) - Enable premium sources with API keys
+- [客户端配置](./client-configuration) - 配置其他客户端（Cline、Zed）
+- [browse_search 工具](../mcp-server/tools/browse-search) - 了解高级搜索选项
+- [配置](../mcp-server/configuration) - 使用 API 密钥启用高级来源
