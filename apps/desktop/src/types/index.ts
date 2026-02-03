@@ -104,50 +104,74 @@ export interface AgentMcpConfig {
   mcpServers: Record<string, McpServerJsonConfig>;
 }
 
-// Marketplace types - hierarchical provider/source structure
+// Marketplace types - plugin-centric structure (v2 schema)
 
-/** Source info from a provider in the marketplace index */
+/** Category definition in the marketplace index */
+export interface MarketplaceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  plugin_count: number;
+  source_count: number;
+}
+
+/** Source info from a plugin in the marketplace index */
 export interface MarketplaceSource {
   name: string;
   description: string;
+  category?: string;
   apiKey: "none" | "optional" | "required";
   documentation?: string;
 }
 
-/** Provider info in the marketplace index */
-export interface MarketplaceProvider {
+/** Plugin info in the marketplace index (v2 schema) */
+export interface MarketplacePlugin {
+  id: string;
   name: string;
   description: string;
-  author: string;
+  version?: string;
+  author_name: string;
+  author_email?: string;
+  author_url?: string;
   homepage?: string;
-  sources: Record<string, MarketplaceSource>;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  builtin: boolean;
+  package?: string;
+  source_count: number;
+  sources: string[];
 }
 
-/** Full provider index from provider.index.json */
+/** Full provider index response from backend (v2 schema) */
 export interface ProviderIndex {
   version: string;
   updated_at?: string;
-  providers: Record<string, MarketplaceProvider>;
+  categories: MarketplaceCategory[];
+  plugins: MarketplacePlugin[];
 }
 
 /** Flattened source for UI display */
 export interface FlatSource {
-  /** Hierarchical ID: provider/source */
+  /** Hierarchical ID: plugin/source */
   id: string;
   /** Flat source name */
   source_name: string;
-  /** Provider ID */
-  provider_id: string;
+  /** Plugin ID */
+  plugin_id: string;
   /** Display name */
   name: string;
   /** Description */
   description: string;
+  /** Category ID */
+  category?: string;
   /** API key requirement */
   api_key_type: "none" | "optional" | "required";
   /** Documentation URL */
   documentation?: string;
-  /** Provider display name */
-  provider_name: string;
+  /** Plugin display name */
+  plugin_name: string;
 }
 
 // API Log types
