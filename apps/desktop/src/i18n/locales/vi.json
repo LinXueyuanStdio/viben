@@ -61,6 +61,16 @@
     "setupComplete": "Thiết lập hoàn tất",
     "setupRequired": "Cần thiết lập"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Đang kiểm tra trạng thái máy chủ...",
+    "allRunning": "Tất cả máy chủ đang chạy",
+    "allStopped": "Tất cả máy chủ đã dừng",
+    "partialRunning": "{{running}} trong {{total}} máy chủ đang chạy",
+    "hasErrors": "{{count}} máy chủ có lỗi",
+    "ariaLabel": "Máy chủ MCP: {{running}} trong {{total}} đang chạy. Nhấp để quản lý."
+  },
   "dashboard": {
     "title": "Bảng điều khiển",
     "setupRequired": "Cần thiết lập",

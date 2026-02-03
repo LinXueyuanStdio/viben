@@ -61,6 +61,16 @@
     "setupComplete": "Persediaan Selesai",
     "setupRequired": "Persediaan Diperlukan"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Menyemak status pelayan...",
+    "allRunning": "Semua pelayan berjalan",
+    "allStopped": "Semua pelayan dihentikan",
+    "partialRunning": "{{running}} daripada {{total}} pelayan berjalan",
+    "hasErrors": "{{count}} pelayan dengan ralat",
+    "ariaLabel": "Pelayan MCP: {{running}} daripada {{total}} berjalan. Klik untuk mengurus."
+  },
   "dashboard": {
     "title": "Papan Pemuka",
     "setupRequired": "Persediaan Diperlukan",

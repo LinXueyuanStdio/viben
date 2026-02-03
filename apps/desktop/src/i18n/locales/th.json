@@ -61,6 +61,16 @@
     "setupComplete": "ตั้งค่าเสร็จสมบูรณ์",
     "setupRequired": "ต้องการการตั้งค่า"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "กำลังตรวจสอบสถานะเซิร์ฟเวอร์...",
+    "allRunning": "เซิร์ฟเวอร์ทั้งหมดกำลังทำงาน",
+    "allStopped": "เซิร์ฟเวอร์ทั้งหมดหยุดทำงาน",
+    "partialRunning": "{{running}} จาก {{total}} เซิร์ฟเวอร์กำลังทำงาน",
+    "hasErrors": "{{count}} เซิร์ฟเวอร์มีข้อผิดพลาด",
+    "ariaLabel": "เซิร์ฟเวอร์ MCP: {{running}} จาก {{total}} กำลังทำงาน คลิกเพื่อจัดการ"
+  },
   "dashboard": {
     "title": "แดชบอร์ด",
     "setupRequired": "ต้องการการตั้งค่า",
