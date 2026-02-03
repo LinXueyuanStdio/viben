@@ -1,0 +1,146 @@
+{
+  "version": "1.0.0",
+  "updated_at": "2025-02-02T00:00:00Z",
+  "providers": {
+    "academic": {
+      "name": "Academic Sources",
+      "description": "Academic paper search and retrieval from scholarly databases",
+      "author": "browse-mcp",
+      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "sources": {
+        "arxiv": {
+          "name": "arXiv",
+          "description": "Pre-prints in physics, mathematics, computer science",
+          "apiKey": "none",
+          "documentation": "https://arxiv.org/help/api"
+        },
+        "pubmed": {
+          "name": "PubMed",
+          "description": "Biomedical literature from MEDLINE",
+          "apiKey": "none",
+          "documentation": "https://www.ncbi.nlm.nih.gov/home/develop/api/"
+        },
+        "pmc": {
+          "name": "PMC",
+          "description": "Full-text archive of biomedical articles",
+          "apiKey": "none",
+          "documentation": "https://www.ncbi.nlm.nih.gov/pmc/tools/developers/"
+        },
+        "biorxiv": {
+          "name": "bioRxiv",
+          "description": "Pre-prints in biology",
+          "apiKey": "none",
+          "documentation": "https://api.biorxiv.org/"
+        },
+        "medrxiv": {
+          "name": "medRxiv",
+          "description": "Pre-prints in health sciences",
+          "apiKey": "none",
+          "documentation": "https://api.biorxiv.org/"
+        },
+        "semantic": {
+          "name": "Semantic Scholar",
+          "description": "AI-powered research tool",
+          "apiKey": "optional",
+          "documentation": "https://www.semanticscholar.org/product/api"
+        },
+        "core": {
+          "name": "CORE",
+          "description": "World's largest collection of open access papers",
+          "apiKey": "optional",
+          "documentation": "https://core.ac.uk/services/api"
+        },
+        "crossref": {
+          "name": "Crossref",
+          "description": "DOI registration agency metadata",
+          "apiKey": "none",
+          "documentation": "https://www.crossref.org/documentation/"
+        },
+        "iacr": {
+          "name": "IACR",
+          "description": "Cryptology ePrint Archive",
+          "apiKey": "none",
+          "documentation": "https://eprint.iacr.org/"
+        },
+        "acm": {
+          "name": "ACM Digital Library",
+          "description": "Computing and IT research",
+          "apiKey": "none",
+          "documentation": "https://libraries.acm.org/digital-library"
+        }
+      }
+    },
+    "publisher": {
+      "name": "Publisher Sources",
+      "description": "Academic publishers with API access",
+      "author": "browse-mcp",
+      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "sources": {
+        "sciencedirect": {
+          "name": "ScienceDirect",
+          "description": "Elsevier's platform for peer-reviewed literature",
+          "apiKey": "required",
+          "documentation": "https://dev.elsevier.com/"
+        },
+        "springer": {
+          "name": "Springer",
+          "description": "Scientific, technical and medical publications",
+          "apiKey": "required",
+          "documentation": "https://dev.springernature.com/"
+        },
+        "ieee": {
+          "name": "IEEE Xplore",
+          "description": "IEEE and IET technical literature",
+          "apiKey": "required",
+          "documentation": "https://developer.ieee.org/"
+        },
+        "scopus": {
+          "name": "Scopus",
+          "description": "Elsevier's abstract and citation database",
+          "apiKey": "required",
+          "documentation": "https://dev.elsevier.com/"
+        }
+      }
+    },
+    "institutional": {
+      "name": "Institutional Sources",
+      "description": "Sources requiring institutional access",
+      "author": "browse-mcp",
+      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "sources": {
+        "wos": {
+          "name": "Web of Science",
+          "description": "Clarivate's citation database",
+          "apiKey": "none",
+          "documentation": "https://clarivate.com/products/scientific-and-academic-research/research-discovery-and-workflow-solutions/web-of-science/"
+        },
+        "jstor": {
+          "name": "JSTOR",
+          "description": "Digital library of academic journals",
+          "apiKey": "none",
+          "documentation": "https://www.jstor.org/"
+        },
+        "researchgate": {
+          "name": "ResearchGate",
+          "description": "Social network for researchers",
+          "apiKey": "none",
+          "documentation": "https://www.researchgate.net/"
+        }
+      }
+    },
+    "web": {
+      "name": "Web Sources",
+      "description": "Web-based academic search engines",
+      "author": "browse-mcp",
+      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "sources": {
+        "google_scholar": {
+          "name": "Google Scholar",
+          "description": "Google's academic search",
+          "apiKey": "none",
+          "documentation": "https://scholar.google.com/"
+        }
+      }
+    }
+  }
+}
