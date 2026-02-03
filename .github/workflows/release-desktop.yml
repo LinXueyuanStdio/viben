@@ -187,6 +187,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Publish draft release
+        if: needs.prepare.outputs.is_draft == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the release ID for the draft release
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases | \
+            jq -r '.[] | select(.tag_name == "${{ needs.prepare.outputs.tag }}" and .draft == true) | .id')
+          
+          if [ -n "$RELEASE_ID" ]; then
+            echo "Publishing draft release ID: $RELEASE_ID"
+            gh api -X PATCH repos/${{ github.repository }}/releases/$RELEASE_ID \
+              -f draft=false
+            echo "Release published successfully"
+            # Wait a moment for the API to update
+            sleep 5
+          else
+            echo "No draft release found with tag ${{ needs.prepare.outputs.tag }}"
+            echo "Checking if a published release already exists..."
+            gh release view ${{ needs.prepare.outputs.tag }} || echo "Release not found"
+          fi
+
       - name: Download release assets
         uses: robinraju/release-downloader@v1
         with:
