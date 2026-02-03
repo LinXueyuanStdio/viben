@@ -1,56 +1,75 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
+// ============================================================================
+// Types (v2 Schema - Plugin-centric)
+// ============================================================================
+
 /**
- * Source info from a provider
+ * Category definition in the marketplace index
  */
-export interface SourceInfo {
+export interface MarketplaceCategory {
+  id: string;
   name: string;
   description: string;
-  apiKey: "none" | "optional" | "required";
-  documentation?: string;
+  icon?: string;
+  plugin_count: number;
+  source_count: number;
 }
 
 /**
- * Provider info from the index
+ * Plugin info in the marketplace (v2 schema)
  */
-export interface ProviderInfo {
+export interface MarketplacePlugin {
+  id: string;
   name: string;
   description: string;
-  author: string;
+  version?: string;
+  author_name: string;
+  author_email?: string;
+  author_url?: string;
   homepage?: string;
-  sources: Record<string, SourceInfo>;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  builtin: boolean;
+  package?: string;
+  source_count: number;
+  sources: string[];
 }
 
 /**
- * Full provider index
+ * Full provider index response (v2 schema)
  */
 export interface ProviderIndex {
   version: string;
   updated_at?: string;
-  providers: Record<string, ProviderInfo>;
+  categories: MarketplaceCategory[];
+  plugins: MarketplacePlugin[];
 }
 
 /**
  * Flattened source for UI display
  */
 export interface FlatSource {
-  /** Hierarchical ID: provider/source */
+  /** Hierarchical ID: plugin/source */
   id: string;
   /** Flat source name */
   source_name: string;
-  /** Provider ID */
-  provider_id: string;
+  /** Plugin ID */
+  plugin_id: string;
   /** Display name */
   name: string;
   /** Description */
   description: string;
+  /** Category ID */
+  category?: string;
   /** API key requirement */
   api_key_type: "none" | "optional" | "required";
   /** Documentation URL */
   documentation?: string;
-  /** Provider display name */
-  provider_name: string;
+  /** Plugin display name */
+  plugin_name: string;
 }
 
 // ============================================================================
@@ -87,13 +106,16 @@ export interface InstalledSourcesResponse {
   enabled: number;
 }
 
+// ============================================================================
+// Hook
+// ============================================================================
+
 /**
  * Hook for accessing the plugin marketplace
  */
 export function useMarketplace() {
   const [index, setIndex] = useState<ProviderIndex | null>(null);
   const [sources, setSources] = useState<FlatSource[]>([]);
-  const [sourcesByProvider, setSourcesByProvider] = useState<Record<string, FlatSource[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -138,25 +160,6 @@ export function useMarketplace() {
   }, []);
 
   /**
-   * Fetch sources grouped by provider
-   */
-  const fetchSourcesByProvider = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await invoke<Record<string, FlatSource[]>>("get_sources_by_provider");
-      setSourcesByProvider(result);
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return {};
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
    * Clear the cached provider index
    */
   const clearCache = useCallback(async () => {
@@ -177,14 +180,43 @@ export function useMarketplace() {
     await Promise.all([
       fetchIndex(force),
       fetchSources(),
-      fetchSourcesByProvider(),
     ]);
-  }, [fetchIndex, fetchSources, fetchSourcesByProvider]);
+  }, [fetchIndex, fetchSources]);
 
   // Load on mount
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // ============================================================================
+  // Computed Properties
+  // ============================================================================
+
+  /**
+   * Get all plugins (memoized)
+   */
+  const plugins = useMemo(() => index?.plugins ?? [], [index]);
+
+  /**
+   * Get all categories (memoized)
+   */
+  const categories = useMemo(() => index?.categories ?? [], [index]);
+
+  /**
+   * Get built-in plugins (memoized)
+   */
+  const builtinPlugins = useMemo(
+    () => plugins.filter((p) => p.builtin),
+    [plugins]
+  );
+
+  /**
+   * Get third-party plugins (memoized)
+   */
+  const thirdPartyPlugins = useMemo(
+    () => plugins.filter((p) => !p.builtin),
+    [plugins]
+  );
 
   /**
    * Get sources that require API keys (memoized)
@@ -211,6 +243,57 @@ export function useMarketplace() {
   );
 
   /**
+   * Get plugins grouped by category (memoized)
+   */
+  const pluginsByCategory = useMemo(() => {
+    const result: Record<string, MarketplacePlugin[]> = {};
+    for (const plugin of plugins) {
+      for (const categoryId of plugin.categories) {
+        if (!result[categoryId]) {
+          result[categoryId] = [];
+        }
+        result[categoryId].push(plugin);
+      }
+    }
+    return result;
+  }, [plugins]);
+
+  /**
+   * Get sources grouped by category (memoized)
+   * Computed from sources instead of fetching from backend
+   */
+  const sourcesByCategory = useMemo(() => {
+    const result: Record<string, FlatSource[]> = {};
+    for (const source of sources) {
+      const category = source.category ?? "uncategorized";
+      if (!result[category]) {
+        result[category] = [];
+      }
+      result[category].push(source);
+    }
+    return result;
+  }, [sources]);
+
+  /**
+   * Get sources grouped by plugin (memoized)
+   * Computed from sources instead of fetching from backend
+   */
+  const sourcesByPlugin = useMemo(() => {
+    const result: Record<string, FlatSource[]> = {};
+    for (const source of sources) {
+      if (!result[source.plugin_id]) {
+        result[source.plugin_id] = [];
+      }
+      result[source.plugin_id].push(source);
+    }
+    return result;
+  }, [sources]);
+
+  // ============================================================================
+  // Helper Functions
+  // ============================================================================
+
+  /**
    * Get a specific source by ID (hierarchical or flat)
    */
   const getSource = useCallback(
@@ -227,13 +310,23 @@ export function useMarketplace() {
   );
 
   /**
-   * Get provider info
+   * Get plugin info by ID
    */
-  const getProvider = useCallback(
-    (providerId: string): ProviderInfo | undefined => {
-      return index?.providers[providerId];
+  const getPlugin = useCallback(
+    (pluginId: string): MarketplacePlugin | undefined => {
+      return plugins.find((p) => p.id === pluginId);
     },
-    [index]
+    [plugins]
+  );
+
+  /**
+   * Get category info by ID
+   */
+  const getCategory = useCallback(
+    (categoryId: string): MarketplaceCategory | undefined => {
+      return categories.find((c) => c.id === categoryId);
+    },
+    [categories]
   );
 
   /**
@@ -248,21 +341,45 @@ export function useMarketplace() {
           s.name.toLowerCase().includes(lowerQuery) ||
           s.description.toLowerCase().includes(lowerQuery) ||
           s.source_name.toLowerCase().includes(lowerQuery) ||
-          s.provider_name.toLowerCase().includes(lowerQuery)
+          s.plugin_name.toLowerCase().includes(lowerQuery)
       );
     },
     [sources]
+  );
+
+  /**
+   * Search plugins by name or description
+   */
+  const searchPlugins = useCallback(
+    (query: string): MarketplacePlugin[] => {
+      if (!query.trim()) return plugins;
+      const lowerQuery = query.toLowerCase();
+      return plugins.filter(
+        (p) =>
+          p.name.toLowerCase().includes(lowerQuery) ||
+          p.description.toLowerCase().includes(lowerQuery) ||
+          p.id.toLowerCase().includes(lowerQuery) ||
+          p.author_name.toLowerCase().includes(lowerQuery)
+      );
+    },
+    [plugins]
   );
 
   return {
     // Data
     index,
     sources,
-    sourcesByProvider,
+    plugins,
+    categories,
+    sourcesByCategory,
+    sourcesByPlugin,
     loading,
     error,
 
     // Computed
+    builtinPlugins,
+    thirdPartyPlugins,
+    pluginsByCategory,
     apiKeyRequiredSources,
     apiKeyOptionalSources,
     freeSources,
@@ -270,13 +387,14 @@ export function useMarketplace() {
     // Actions
     fetchIndex,
     fetchSources,
-    fetchSourcesByProvider,
     clearCache,
     refresh,
 
     // Helpers
     getSource,
-    getProvider,
+    getPlugin,
+    getCategory,
     searchSources,
+    searchPlugins,
   };
 }
