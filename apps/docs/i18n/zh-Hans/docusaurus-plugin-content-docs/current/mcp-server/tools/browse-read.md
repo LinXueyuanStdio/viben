@@ -86,7 +86,7 @@ capable of processing image and text inputs...
 
 ## 论文 ID 格式
 
-每个平台使用不同的标识符格式。查看 [browse_download](./browse-download#paper-id-formats) 参考了解完整格式详情。
+每个平台使用不同的标识符格式。查看 [browse_download](./browse-download#论文-id-格式) 参考了解完整格式详情。
 
 | 搜索器 | 示例 |
 |----------|---------|
