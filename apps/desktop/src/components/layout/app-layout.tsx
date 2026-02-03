@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
+import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 
@@ -36,6 +37,7 @@ export function AppLayout() {
         {/* Page transition animation removed - causes blank screen during navigation */}
         <Outlet />
       </main>
+      <McpStatusIndicator />
     </div>
   );
 }

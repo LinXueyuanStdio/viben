@@ -61,6 +61,16 @@
     "setupComplete": "सेटअप पूर्ण",
     "setupRequired": "सेटअप आवश्यक"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "सर्वर स्थिति जांच रहे हैं...",
+    "allRunning": "सभी सर्वर चल रहे हैं",
+    "allStopped": "सभी सर्वर रुके हुए हैं",
+    "partialRunning": "{{total}} में से {{running}} सर्वर चल रहे हैं",
+    "hasErrors": "{{count}} सर्वर में त्रुटि",
+    "ariaLabel": "MCP सर्वर: {{total}} में से {{running}} चल रहे हैं। प्रबंधित करने के लिए क्लिक करें।"
+  },
   "dashboard": {
     "title": "डैशबोर्ड",
     "setupRequired": "सेटअप आवश्यक",

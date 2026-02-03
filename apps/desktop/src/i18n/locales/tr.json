@@ -61,6 +61,16 @@
     "setupComplete": "Kurulum Tamamlandı",
     "setupRequired": "Kurulum Gerekli"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Sunucu durumu kontrol ediliyor...",
+    "allRunning": "Tüm sunucular çalışıyor",
+    "allStopped": "Tüm sunucular durduruldu",
+    "partialRunning": "{{total}} sunucudan {{running}} tanesi çalışıyor",
+    "hasErrors": "{{count}} sunucuda hata",
+    "ariaLabel": "MCP sunucuları: {{total}} üzerinden {{running}} çalışıyor. Yönetmek için tıklayın."
+  },
   "dashboard": {
     "title": "Panel",
     "setupRequired": "Kurulum Gerekli",

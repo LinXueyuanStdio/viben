@@ -61,6 +61,16 @@
     "setupComplete": "Configuración completada",
     "setupRequired": "Configuración requerida"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Verificando estado del servidor...",
+    "allRunning": "Todos los servidores en ejecución",
+    "allStopped": "Todos los servidores detenidos",
+    "partialRunning": "{{running}} de {{total}} servidores en ejecución",
+    "hasErrors": "{{count}} servidor(es) con errores",
+    "ariaLabel": "Servidores MCP: {{running}} de {{total}} en ejecución. Haga clic para administrar."
+  },
   "dashboard": {
     "title": "Panel",
     "setupRequired": "Configuración requerida",
