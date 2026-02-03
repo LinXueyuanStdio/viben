@@ -66,18 +66,44 @@ class ApiLogger:
             logs_dir: Directory to store log files. Defaults to ~/.browse-mcp/logs.
             run_id: Unique identifier for this run. Generated if not provided.
         """
-        self._logs_dir = logs_dir or self._get_default_logs_dir()
-        self._run_id = run_id or self._generate_run_id()
-        self._api_key_hash: Optional[str] = None
-        self._enabled = True
+        try:
+            self._logs_dir = logs_dir or self._get_default_logs_dir()
+            self._run_id = run_id or self._generate_run_id()
+            self._api_key_hash: Optional[str] = None
+            self._enabled = True
+            self._write_count = 0
 
-        # Ensure logs directory exists
-        self._api_logs_dir = Path(self._logs_dir) / "api"
-        self._api_logs_dir.mkdir(parents=True, exist_ok=True)
+            # Ensure logs directory exists
+            self._api_logs_dir = Path(self._logs_dir) / "api"
+            self._api_logs_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.debug(
-            f"ApiLogger initialized: run_id={self._run_id}, logs_dir={self._api_logs_dir}"
-        )
+            # Log initialization at INFO level for visibility
+            logger.info(
+                f"API Logger initialized: run_id={self._run_id}, "
+                f"log_file={self.log_file_path}"
+            )
+
+            # Verify directory is writable by creating a test file
+            test_file = self._api_logs_dir / ".write_test"
+            try:
+                test_file.write_text("test")
+                test_file.unlink()
+                logger.debug(f"API logs directory is writable: {self._api_logs_dir}")
+            except Exception as e:
+                logger.error(
+                    f"API logs directory is NOT writable: {self._api_logs_dir}, error: {e}"
+                )
+                self._enabled = False
+
+        except Exception as e:
+            logger.error(f"Failed to initialize API Logger: {e}")
+            # Set safe defaults
+            self._logs_dir = "."
+            self._run_id = "error"
+            self._api_key_hash = None
+            self._enabled = False
+            self._write_count = 0
+            self._api_logs_dir = Path(".")
 
     @staticmethod
     def _get_default_logs_dir() -> str:
@@ -154,16 +180,42 @@ class ApiLogger:
     def _write_entry(self, entry: ApiLogEntry) -> None:
         """Write a log entry to the log file."""
         if not self._enabled:
+            logger.debug(
+                f"API logging disabled, skipping entry for {entry.source}/{entry.method}"
+            )
             return
 
+        log_file = self.log_file_path
         try:
             entry_dict = asdict(entry)
             line = json.dumps(entry_dict, ensure_ascii=False, default=str)
 
-            with open(self.log_file_path, "a", encoding="utf-8") as f:
+            # Open file in append mode with explicit flush
+            with open(log_file, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
+                f.flush()  # Ensure data is written to disk
+                os.fsync(f.fileno())  # Force OS to write to disk
+
+            self._write_count += 1
+            logger.debug(
+                f"API log entry written to {log_file} "
+                f"(entry #{self._write_count}, {entry.source}/{entry.method})"
+            )
+        except PermissionError as e:
+            logger.error(
+                f"Permission denied writing API log to {log_file}: {e}. "
+                f"Check directory permissions for {self._api_logs_dir}"
+            )
+        except OSError as e:
+            logger.error(
+                f"OS error writing API log to {log_file}: {e}. "
+                f"Disk may be full or path invalid."
+            )
         except Exception as e:
-            logger.warning(f"Failed to write API log entry: {e}")
+            logger.error(
+                f"Unexpected error writing API log entry to {log_file}: {e}. "
+                f"Entry: {entry.source}/{entry.method}"
+            )
 
     def log_request(
         self,
@@ -373,6 +425,9 @@ def get_api_logger() -> ApiLogger:
     """
     global _api_logger
     if _api_logger is None:
+        logger.warning(
+            "API logger accessed before initialization, creating default instance"
+        )
         _api_logger = ApiLogger()
     return _api_logger
 
@@ -393,10 +448,22 @@ def init_api_logger(
         The initialized ApiLogger instance.
     """
     global _api_logger
-    _api_logger = ApiLogger(logs_dir=logs_dir, run_id=run_id)
-    if api_key:
-        _api_logger.set_api_key(api_key)
-    return _api_logger
+    try:
+        _api_logger = ApiLogger(logs_dir=logs_dir, run_id=run_id)
+        if api_key:
+            _api_logger.set_api_key(api_key)
+        logger.info(
+            f"Global API logger initialized successfully: "
+            f"run_id={_api_logger.run_id}, enabled={_api_logger.enabled}, "
+            f"log_file={_api_logger.log_file_path}"
+        )
+        return _api_logger
+    except Exception as e:
+        logger.error(f"Failed to initialize global API logger: {e}")
+        # Create a disabled logger as fallback
+        _api_logger = ApiLogger()
+        _api_logger.enabled = False
+        return _api_logger
 
 
 def reset_api_logger() -> None:

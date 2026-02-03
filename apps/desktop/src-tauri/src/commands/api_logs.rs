@@ -244,3 +244,42 @@ pub async fn clear_api_logs(run_id: String) -> Result<(), String> {
 pub async fn get_api_logs_dir_path() -> Result<String, String> {
     Ok(get_api_logs_dir().to_string_lossy().to_string())
 }
+
+/// Open the API logs directory in the system file explorer
+#[tauri::command]
+pub async fn open_api_logs_dir() -> Result<(), String> {
+    let logs_dir = get_api_logs_dir();
+
+    // Ensure directory exists
+    if !logs_dir.exists() {
+        fs::create_dir_all(&logs_dir)
+            .map_err(|e| format!("Failed to create logs directory: {}", e))?;
+    }
+
+    // Open directory in system file explorer
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&logs_dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&logs_dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&logs_dir)
+            .spawn()
+            .map_err(|e| format!("Failed to open directory: {}", e))?;
+    }
+
+    Ok(())
+}

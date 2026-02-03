@@ -462,6 +462,7 @@ function ApiLogsTab() {
     clearFilter,
     clearLogs,
     refresh,
+    openLogsFolder,
     uniqueProviders,
     uniqueSources,
     uniqueMethods,
@@ -498,10 +499,14 @@ function ApiLogsTab() {
             {t("logs.sessionCount", { count: sessions.length })}
           </p>
           {logsDirPath && (
-            <p className="text-[10px] text-muted-foreground mt-1 font-mono truncate flex items-center gap-1">
+            <button
+              onClick={openLogsFolder}
+              className="text-[10px] text-muted-foreground mt-1 font-mono truncate flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+              title={t("logs.openLogsFolder")}
+            >
               <FolderOpen className="h-3 w-3 flex-shrink-0" />
               <span className="truncate">{logsDirPath}</span>
-            </p>
+            </button>
           )}
         </div>
         <ScrollArea className="flex-1">
@@ -559,6 +564,15 @@ function ApiLogsTab() {
           >
             <Filter className="h-4 w-4 mr-1" />
             {t("logs.filters")}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={openLogsFolder}
+            title={t("logs.openLogsFolder")}
+          >
+            <FolderOpen className="h-4 w-4 mr-1" />
+            {t("logs.openFolder")}
           </Button>
           <div className="flex-1" />
           {selectedRunId && (
