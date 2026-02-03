@@ -117,4 +117,4 @@ See the [Plugins](./plugins/overview) section for more information.
 - [Quick Start](./getting-started/quick-start) - Get up and running in 2 minutes
 - [Client Configuration](./getting-started/client-configuration) - Configure Claude Desktop, Cline, and more
 - [Plugins Overview](./plugins/overview) - Learn about the plugin system
-- [browse_search Tool](./mcp-server/tools/paper-search) - Learn how to search content
+- [browse_search Tool](./mcp-server/tools/browse-search) - Learn how to search content

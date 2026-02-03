@@ -332,5 +332,5 @@ Browse MCP 可以使用环境变量进行配置。本页涵盖核心功能和插
 ## 下一步
 
 - [客户端配置](../getting-started/client-configuration) - 配置您的 MCP 客户端
-- [browse_search 工具](./tools/paper-search) - 了解搜索参数
+- [browse_search 工具](./tools/browse-search) - 了解搜索参数
 - [插件配置](../plugins/configuration) - 高级插件设置
