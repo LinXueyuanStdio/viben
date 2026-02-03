@@ -528,39 +528,6 @@ pub async fn get_flat_sources() -> Result<Vec<FlatSource>, String> {
     Ok(sources)
 }
 
-/// Get sources grouped by category
-#[tauri::command]
-pub async fn get_sources_by_category() -> Result<HashMap<String, Vec<FlatSource>>, String> {
-    let sources = get_flat_sources().await?;
-    let mut by_category: HashMap<String, Vec<FlatSource>> = HashMap::new();
-
-    for source in sources {
-        let category = source.category.clone().unwrap_or_else(|| "uncategorized".to_string());
-        by_category
-            .entry(category)
-            .or_default()
-            .push(source);
-    }
-
-    Ok(by_category)
-}
-
-/// Get sources grouped by plugin
-#[tauri::command]
-pub async fn get_sources_by_plugin() -> Result<HashMap<String, Vec<FlatSource>>, String> {
-    let sources = get_flat_sources().await?;
-    let mut by_plugin: HashMap<String, Vec<FlatSource>> = HashMap::new();
-
-    for source in sources {
-        by_plugin
-            .entry(source.plugin_id.clone())
-            .or_default()
-            .push(source);
-    }
-
-    Ok(by_plugin)
-}
-
 /// Clear the provider index cache
 #[tauri::command]
 pub async fn clear_provider_cache() -> Result<(), String> {
