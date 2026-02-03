@@ -45,7 +45,8 @@
     "cleanup": "ล้างข้อมูล",
     "less": "น้อยลง",
     "more": "มากขึ้น",
-    "requests": "คำขอ"
+    "requests": "คำขอ",
+    "clear": "ล้าง"
   },
   "nav": {
     "dashboard": "แดชบอร์ด",
@@ -74,6 +75,7 @@
     "mcpServers": "เซิร์ฟเวอร์ MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} กำลังทำงาน",
+    "errorCount": "{{count}} มีข้อผิดพลาด",
     "allStopped": "หยุดทั้งหมด",
     "noServers": "ไม่มีเซิร์ฟเวอร์",
     "configureAgents": "กำหนดค่าเอเจนต์ AI",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- เลือกคีย์ API --",
     "createApiKeyToEnable": "สร้างคีย์ API ด้านบนเพื่อเปิดใช้งานการคัดลอกการกำหนดค่า",
     "selectKeyToCopy": "เลือกคีย์ API เพื่อคัดลอกการกำหนดค่าพร้อมคีย์จริง",
-    "clickToCopy": "คลิก \"คัดลอก\" เพื่อคัดลอกการกำหนดค่าพร้อมคีย์ API จริง"
+    "clickToCopy": "คลิก \"คัดลอก\" เพื่อคัดลอกการกำหนดค่าพร้อมคีย์ API จริง",
+    "serverRunning": "เซิร์ฟเวอร์กำลังทำงาน",
+    "serverStopped": "เซิร์ฟเวอร์หยุดทำงาน",
+    "serverError": "ข้อผิดพลาดของเซิร์ฟเวอร์"
   }
 }

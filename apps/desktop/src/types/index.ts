@@ -31,6 +31,9 @@ export interface ServiceApiKey {
   usageCount?: number; // Number of requests made with this key
 }
 
+// MCP Server Status - runtime status of a server
+export type McpServerStatus = "stopped" | "running" | "error";
+
 // MCP Server Instance - a configured server with selected sources
 export interface McpServerInstance {
   id: string;
@@ -41,8 +44,15 @@ export interface McpServerInstance {
   enabledSources: string[]; // Provider IDs
   apiKeys: ServiceApiKey[];
   // Runtime state
-  status: "stopped" | "running";
+  status: McpServerStatus;
   pid?: number;
+}
+
+// MCP Server Status Info - cached status with metadata
+export interface McpServerStatusInfo {
+  status: McpServerStatus;
+  lastChecked: number; // timestamp
+  error?: string;
 }
 
 // MCP Config for starting a server (internal use)

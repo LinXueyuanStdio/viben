@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, ServiceApiKey, AgentMcpAssignment } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment } from "@/types";
 
 // Provider definitions with all 18 sources
 // Note: enabled is removed - providers only track installation/API key status
@@ -52,9 +52,15 @@ interface AppState {
   updateMcpServer: (id: string, updates: Partial<McpServerInstance>) => void;
   deleteMcpServer: (id: string) => void;
   getMcpServer: (id: string) => McpServerInstance | undefined;
-  setMcpServerStatus: (id: string, status: "stopped" | "running", pid?: number) => void;
+  setMcpServerStatus: (id: string, status: McpServerStatus, pid?: number, error?: string) => void;
   addServerApiKey: (serverId: string, apiKey: ServiceApiKey) => void;
   deleteServerApiKey: (serverId: string, keyId: string) => void;
+
+  // MCP Server Status Cache (for monitoring)
+  mcpServerStatuses: Record<string, McpServerStatusInfo>;
+  setMcpServerStatusInfo: (id: string, info: McpServerStatusInfo) => void;
+  getMcpServerStatusInfo: (id: string) => McpServerStatusInfo | undefined;
+  clearMcpServerStatuses: () => void;
 
   // Agent Assignments (which server+key each agent uses)
   agentAssignments: AgentMcpAssignment[];
@@ -182,11 +188,20 @@ export const useAppStore = create<AppState>()(
           agentAssignments: state.agentAssignments.filter((a) => a.serverId !== id),
         })),
       getMcpServer: (id) => get().mcpServers.find((s) => s.id === id),
-      setMcpServerStatus: (id, status, pid) =>
+      setMcpServerStatus: (id, status, pid, error) =>
         set((state) => ({
           mcpServers: state.mcpServers.map((s) =>
-            s.id === id ? { ...s, status, pid } : s
+            s.id === id ? { ...s, status, pid: status === "stopped" ? undefined : pid } : s
           ),
+          // Also update the status cache
+          mcpServerStatuses: {
+            ...state.mcpServerStatuses,
+            [id]: {
+              status,
+              lastChecked: Date.now(),
+              error,
+            },
+          },
         })),
       addServerApiKey: (serverId, apiKey) =>
         set((state) => ({
@@ -204,6 +219,18 @@ export const useAppStore = create<AppState>()(
               : s
           ),
         })),
+
+      // MCP Server Status Cache
+      mcpServerStatuses: {},
+      setMcpServerStatusInfo: (id, info) =>
+        set((state) => ({
+          mcpServerStatuses: {
+            ...state.mcpServerStatuses,
+            [id]: info,
+          },
+        })),
+      getMcpServerStatusInfo: (id) => get().mcpServerStatuses[id],
+      clearMcpServerStatuses: () => set({ mcpServerStatuses: {} }),
 
       // Agent Assignments
       agentAssignments: [],

@@ -45,7 +45,8 @@
     "cleanup": "Nettoyer",
     "less": "Moins",
     "more": "Plus",
-    "requests": "requêtes"
+    "requests": "requêtes",
+    "clear": "Effacer"
   },
   "nav": {
     "dashboard": "Tableau de bord",
@@ -74,6 +75,7 @@
     "mcpServers": "Serveurs MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} en cours",
+    "errorCount": "{{count}} en erreur",
     "allStopped": "Tous arrêtés",
     "noServers": "Aucun serveur",
     "configureAgents": "Configurer les agents IA",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Sélectionner la clé API --",
     "createApiKeyToEnable": "Créez une clé API ci-dessus pour activer la copie de configuration.",
     "selectKeyToCopy": "Sélectionnez une clé API pour copier la configuration avec la vraie clé.",
-    "clickToCopy": "Cliquez sur \"Copier\" pour copier la configuration avec la vraie clé API."
+    "clickToCopy": "Cliquez sur \"Copier\" pour copier la configuration avec la vraie clé API.",
+    "serverRunning": "Le serveur est en cours d'exécution",
+    "serverStopped": "Le serveur est arrêté",
+    "serverError": "Erreur serveur"
   }
 }

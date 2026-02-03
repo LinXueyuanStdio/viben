@@ -45,7 +45,8 @@
     "cleanup": "Bereinigen",
     "less": "Weniger",
     "more": "Mehr",
-    "requests": "Anfragen"
+    "requests": "Anfragen",
+    "clear": "Leeren"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP-Server",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} läuft",
+    "errorCount": "{{count}} mit Fehler",
     "allStopped": "Alle gestoppt",
     "noServers": "Keine Server",
     "configureAgents": "KI-Agenten konfigurieren",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- API-Schlüssel auswählen --",
     "createApiKeyToEnable": "Erstellen Sie oben einen API-Schlüssel, um das Kopieren der Konfiguration zu ermöglichen.",
     "selectKeyToCopy": "Wählen Sie einen API-Schlüssel, um die Konfiguration mit dem echten Schlüssel zu kopieren.",
-    "clickToCopy": "Klicken Sie auf \"Kopieren\", um die Konfiguration mit dem echten API-Schlüssel zu kopieren."
+    "clickToCopy": "Klicken Sie auf \"Kopieren\", um die Konfiguration mit dem echten API-Schlüssel zu kopieren.",
+    "serverRunning": "Server läuft",
+    "serverStopped": "Server gestoppt",
+    "serverError": "Serverfehler"
   }
 }

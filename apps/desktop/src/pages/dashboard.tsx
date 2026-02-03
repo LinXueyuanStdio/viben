@@ -7,6 +7,7 @@ import { BentoGrid, BentoCard } from "@/components/layout";
 import { useAgents } from "@/hooks/use-agents";
 import { usePython } from "@/hooks/use-python";
 import { useUsage } from "@/hooks/use-usage";
+import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
 import { useMemo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -50,10 +51,17 @@ export function DashboardPage() {
     setupStatus,
   } = useAppStore();
 
+  // MCP Status Monitor - triggers status check on page enter and starts polling
+  const { getStats } = useMcpStatusMonitor();
+  useOnPageEnter({ enabled: mcpServers.length > 0 });
+
   const installedAgents = agents.filter((a) => a.installed);
   const configuredAgents = agents.filter((a) => a.configured);
   const availableProviders = getAvailableProviders();
-  const runningServers = mcpServers.filter((s) => s.status === "running");
+
+  // Get server stats from the status monitor (includes real-time status)
+  const serverStats = getStats();
+  const runningServers = serverStats.running;
 
   // Read global setup status (calculated in AppLayout)
   // ONLY show banner when cache explicitly confirms setup is incomplete
@@ -184,16 +192,24 @@ export function DashboardPage() {
               ) : (
                 <StatCardContent
                   title={t("dashboard.mcpServers")}
-                  value={t("dashboard.serverCount", { running: runningServers.length, total: mcpServers.length })}
+                  value={t("dashboard.serverCount", { running: runningServers, total: mcpServers.length })}
                   description={
-                    runningServers.length > 0
-                      ? t("dashboard.runningCount", { count: runningServers.length })
+                    serverStats.error > 0
+                      ? t("dashboard.errorCount", { count: serverStats.error })
+                      : runningServers > 0
+                      ? t("dashboard.runningCount", { count: runningServers })
                       : mcpServers.length > 0
                       ? t("dashboard.allStopped")
                       : t("dashboard.noServers")
                   }
                   icon={Activity}
-                  valueClassName={runningServers.length > 0 ? "text-green-600" : "text-muted-foreground"}
+                  valueClassName={
+                    serverStats.error > 0
+                      ? "text-red-600"
+                      : runningServers > 0
+                      ? "text-green-600"
+                      : "text-muted-foreground"
+                  }
                 />
               )}
             </Link>
@@ -338,9 +354,11 @@ export function DashboardPage() {
                 value={
                   mcpServers.length === 0
                     ? t("dashboard.noServers")
-                    : `${runningServers.length}/${mcpServers.length} ${t("common.running")}`
+                    : serverStats.error > 0
+                    ? `${runningServers}/${mcpServers.length} ${t("common.running")} (${serverStats.error} ${t("common.error")})`
+                    : `${runningServers}/${mcpServers.length} ${t("common.running")}`
                 }
-                ok={runningServers.length > 0}
+                ok={runningServers > 0 && serverStats.error === 0}
               />
               <StatusRow
                 label={t("dashboard.configuredAgents")}

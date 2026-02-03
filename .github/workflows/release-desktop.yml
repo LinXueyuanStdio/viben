@@ -142,16 +142,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS code signing (optional)
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows code signing (optional)
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          # Note: macOS and Windows code signing disabled
+          # Users can install unsigned apps by right-clicking and selecting "Open"
+          # To enable signing later, add APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, etc.
         with:
           projectPath: apps/desktop
           tagName: ${{ needs.prepare.outputs.tag }}
@@ -162,6 +155,8 @@ jobs:
             ### Installation
 
             - **macOS**: Download the `.dmg` file and drag Browse MCP to Applications
+              - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
+              - Or run: `xattr -cr /Applications/Browse\ MCP.app`
             - **Windows**: Download the `.msi` or `.exe` installer and run it
             - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
 
@@ -175,6 +170,12 @@ jobs:
           releaseDraft: ${{ needs.prepare.outputs.is_draft == 'true' }}
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Remove macOS signature artifacts (unsigned build)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # For unsigned builds, remove any .sig files that might cause confusion
+          find apps/desktop/src-tauri/target -name "*.sig" -delete 2>/dev/null || true
 
   # Generate checksums after all builds complete
   checksums:

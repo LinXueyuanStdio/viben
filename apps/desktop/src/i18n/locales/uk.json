@@ -45,7 +45,8 @@
     "cleanup": "Очистити",
     "less": "Менше",
     "more": "Більше",
-    "requests": "запитів"
+    "requests": "запитів",
+    "clear": "Очистити"
   },
   "nav": {
     "dashboard": "Панель",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP-сервери",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} працює",
+    "errorCount": "{{count}} з помилкою",
     "allStopped": "Всі зупинені",
     "noServers": "Немає серверів",
     "configureAgents": "Налаштувати AI-агентів",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Виберіть API-ключ --",
     "createApiKeyToEnable": "Створіть API-ключ вище, щоб увімкнути копіювання конфігурації.",
     "selectKeyToCopy": "Виберіть API-ключ, щоб скопіювати конфігурацію зі справжнім ключем.",
-    "clickToCopy": "Натисніть \"Копіювати\", щоб скопіювати конфігурацію зі справжнім API-ключем."
+    "clickToCopy": "Натисніть \"Копіювати\", щоб скопіювати конфігурацію зі справжнім API-ключем.",
+    "serverRunning": "Сервер запущено",
+    "serverStopped": "Сервер зупинено",
+    "serverError": "Помилка сервера"
   }
 }
