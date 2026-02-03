@@ -25,8 +25,9 @@ import { usePython } from "@/hooks/use-python";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useServiceKeys } from "@/hooks/use-service-keys";
 import { useUsage, type ApiKeyUsage } from "@/hooks/use-usage";
+import { useOnPageEnter, useServerStatus } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
-import type { McpServerInstance, ServiceApiKey } from "@/types";
+import type { McpServerInstance, McpServerStatus, ServiceApiKey } from "@/types";
 import { useTranslation } from "react-i18next";
 
 export function SearchServicePage() {
@@ -46,6 +47,9 @@ export function SearchServicePage() {
 
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
   const hasInitialized = useRef(false);
+
+  // Enable status monitoring on page enter
+  useOnPageEnter({ enabled: mcpServers.length > 0 });
 
   // Use global setup status (calculated in AppLayout)
   // Only show requirements card when cache explicitly says setup is incomplete
@@ -169,7 +173,7 @@ interface ServerCardProps {
   onToggleExpand: () => void;
   onUpdate: (updates: Partial<McpServerInstance>) => void;
   onDelete: () => void;
-  onStatusChange: (status: "stopped" | "running", pid?: number) => void;
+  onStatusChange: (status: McpServerStatus, pid?: number, error?: string) => void;
   onAddApiKey: (key: ServiceApiKey) => void;
   onDeleteApiKey: (keyId: string) => void;
   availableProviders: { id: string; name: string }[];
@@ -191,9 +195,13 @@ function ServerCard({
   pythonPath,
 }: ServerCardProps) {
   const { t } = useTranslation();
-  const { startServer, stopServer, loading, error, checkPortStatus, killProcess, isProcessAlive } = useMcp();
+  const { startServer, stopServer, loading, error, checkPortStatus, killProcess } = useMcp();
   const { getAllApiKeys } = useApiKeys();
   const { getKeyById } = useServiceKeys();
+
+  // Use the status monitor hook to get real-time status
+  const { status: monitoredStatus, statusInfo, isError } = useServerStatus(server.id);
+
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(server.name);
   const [copied, setCopied] = useState(false);
@@ -299,14 +307,11 @@ function ServerCard({
 
   const handleStop = async () => {
     try {
-      // Check if process is still alive before stopping
-      if (server.pid) {
-        const alive = await isProcessAlive(server.pid);
-        if (!alive) {
-          setNotification(t("searchService.processTerminated"));
-          onStatusChange("stopped");
-          return;
-        }
+      // If status monitor detected error (process died), just update state
+      if (isError) {
+        setNotification(t("searchService.processTerminated"));
+        onStatusChange("stopped");
+        return;
       }
       await stopServer();
       onStatusChange("stopped");
@@ -372,7 +377,10 @@ function ServerCard({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isRunning = server.status === "running";
+  // Use monitored status (more accurate than server.status from store)
+  const effectiveStatus = monitoredStatus;
+  const isRunning = effectiveStatus === "running";
+  const isErrorState = effectiveStatus === "error";
 
   return (
     <div className="rounded-lg border bg-card">
@@ -444,8 +452,19 @@ function ServerCard({
           </button>
           <div
             className={`h-3 w-3 rounded-full ${
-              isRunning ? "bg-green-500 animate-pulse" : "bg-muted"
+              isRunning
+                ? "bg-green-500 animate-pulse"
+                : isErrorState
+                ? "bg-red-500"
+                : "bg-muted"
             }`}
+            title={
+              isRunning
+                ? t("searchService.serverRunning")
+                : isErrorState
+                ? statusInfo?.error || t("searchService.serverError")
+                : t("searchService.serverStopped")
+            }
           />
           {editingName ? (
             <div
@@ -527,6 +546,17 @@ function ServerCard({
           {error && (
             <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
               {error}
+            </div>
+          )}
+
+          {/* Status Monitor Error */}
+          {isErrorState && statusInfo?.error && (
+            <div className="p-3 rounded-lg bg-red-100 dark:bg-red-950 border border-red-200 dark:border-red-900 text-red-800 dark:text-red-200 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <div>
+                <span className="font-medium">{t("searchService.serverError")}: </span>
+                {statusInfo.error}
+              </div>
             </div>
           )}
 

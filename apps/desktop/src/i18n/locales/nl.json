@@ -45,7 +45,8 @@
     "cleanup": "Opschonen",
     "less": "Minder",
     "more": "Meer",
-    "requests": "verzoeken"
+    "requests": "verzoeken",
+    "clear": "Wissen"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -74,6 +75,7 @@
     "mcpServers": "MCP-servers",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} actief",
+    "errorCount": "{{count}} met fout",
     "allStopped": "Alle gestopt",
     "noServers": "Geen servers",
     "configureAgents": "AI-agents configureren",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- API-sleutel selecteren --",
     "createApiKeyToEnable": "Maak hierboven een API-sleutel aan om configuratie kopiëren in te schakelen.",
     "selectKeyToCopy": "Selecteer een API-sleutel om de configuratie met de echte sleutel te kopiëren.",
-    "clickToCopy": "Klik op \"Kopiëren\" om de configuratie met de echte API-sleutel te kopiëren."
+    "clickToCopy": "Klik op \"Kopiëren\" om de configuratie met de echte API-sleutel te kopiëren.",
+    "serverRunning": "Server is actief",
+    "serverStopped": "Server is gestopt",
+    "serverError": "Serverfout"
   }
 }

@@ -45,7 +45,8 @@
     "cleanup": "Dọn dẹp",
     "less": "Ít hơn",
     "more": "Nhiều hơn",
-    "requests": "yêu cầu"
+    "requests": "yêu cầu",
+    "clear": "Xóa"
   },
   "nav": {
     "dashboard": "Bảng điều khiển",
@@ -74,6 +75,7 @@
     "mcpServers": "Máy chủ MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} đang chạy",
+    "errorCount": "{{count}} lỗi",
     "allStopped": "Tất cả đã dừng",
     "noServers": "Không có máy chủ",
     "configureAgents": "Cấu hình AI Agent",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Chọn khóa API --",
     "createApiKeyToEnable": "Tạo khóa API ở trên để kích hoạt sao chép cấu hình.",
     "selectKeyToCopy": "Chọn một khóa API để sao chép cấu hình với khóa thật.",
-    "clickToCopy": "Nhấn \"Sao chép\" để sao chép cấu hình với khóa API thật."
+    "clickToCopy": "Nhấn \"Sao chép\" để sao chép cấu hình với khóa API thật.",
+    "serverRunning": "Máy chủ đang chạy",
+    "serverStopped": "Máy chủ đã dừng",
+    "serverError": "Lỗi máy chủ"
   }
 }

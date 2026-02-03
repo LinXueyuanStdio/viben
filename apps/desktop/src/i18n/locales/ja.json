@@ -45,7 +45,8 @@
     "cleanup": "クリーンアップ",
     "less": "少",
     "more": "多",
-    "requests": "リクエスト"
+    "requests": "リクエスト",
+    "clear": "クリア"
   },
   "nav": {
     "dashboard": "ダッシュボード",
@@ -74,6 +75,7 @@
     "mcpServers": "MCPサーバー",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}}件実行中",
+    "errorCount": "{{count}}件エラー",
     "allStopped": "すべて停止中",
     "noServers": "サーバーなし",
     "configureAgents": "AIエージェントを設定",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- APIキーを選択 --",
     "createApiKeyToEnable": "設定コピーを有効にするには上でAPIキーを作成してください。",
     "selectKeyToCopy": "実際のキーを含む設定をコピーするにはAPIキーを選択してください。",
-    "clickToCopy": "「コピー」をクリックして実際のAPIキーを含む設定をコピーしてください。"
+    "clickToCopy": "「コピー」をクリックして実際のAPIキーを含む設定をコピーしてください。",
+    "serverRunning": "サーバーは実行中です",
+    "serverStopped": "サーバーは停止中です",
+    "serverError": "サーバーエラー"
   }
 }

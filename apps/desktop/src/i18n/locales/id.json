@@ -45,7 +45,8 @@
     "cleanup": "Bersihkan",
     "less": "Lebih sedikit",
     "more": "Lebih banyak",
-    "requests": "permintaan"
+    "requests": "permintaan",
+    "clear": "Hapus"
   },
   "nav": {
     "dashboard": "Dasbor",
@@ -74,6 +75,7 @@
     "mcpServers": "Server MCP",
     "serverCount": "{{running}}/{{total}}",
     "runningCount": "{{count}} berjalan",
+    "errorCount": "{{count}} dengan kesalahan",
     "allStopped": "Semua dihentikan",
     "noServers": "Tidak ada server",
     "configureAgents": "Konfigurasi Agen AI",
@@ -244,6 +246,9 @@
     "selectApiKeyOption": "-- Pilih Kunci API --",
     "createApiKeyToEnable": "Buat kunci API di atas untuk mengaktifkan penyalinan konfigurasi.",
     "selectKeyToCopy": "Pilih kunci API untuk menyalin konfigurasi dengan kunci asli.",
-    "clickToCopy": "Klik \"Salin\" untuk menyalin konfigurasi dengan kunci API asli."
+    "clickToCopy": "Klik \"Salin\" untuk menyalin konfigurasi dengan kunci API asli.",
+    "serverRunning": "Server sedang berjalan",
+    "serverStopped": "Server dihentikan",
+    "serverError": "Kesalahan server"
   }
 }
