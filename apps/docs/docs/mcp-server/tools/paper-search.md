@@ -1,19 +1,19 @@
 ---
 sidebar_position: 1
-title: "paper_search"
+title: "browse_search"
 description: "Search academic papers across multiple databases"
 ---
 
-# paper_search
+# browse_search
 
-The `paper_search` tool searches for academic papers across multiple platforms simultaneously. It supports querying 19+ academic databases with flexible filtering options.
+The `browse_search` tool searches for academic papers across multiple platforms simultaneously. It supports querying 19+ academic databases with flexible filtering options.
 
 ## Basic Usage
 
 Search a single platform:
 
 ```python
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "machine learning", "max_results": 5}
 ])
 ```
@@ -21,7 +21,7 @@ paper_search([
 Search multiple platforms at once:
 
 ```python
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "deep learning", "max_results": 5},
     {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
     {"searcher": "semantic", "query": "climate change", "max_results": 4}
@@ -31,7 +31,7 @@ paper_search([
 Search all enabled platforms:
 
 ```python
-paper_search([
+browse_search([
     {"query": "quantum computing", "max_results": 10}
 ])
 ```
@@ -79,17 +79,17 @@ paper_search([
 
 ```python
 # Search arXiv for machine learning papers
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "machine learning", "max_results": 5}
 ])
 
 # Search PubMed Central for biomedical papers
-paper_search([
+browse_search([
     {"searcher": "pmc", "query": "cancer treatment", "max_results": 5}
 ])
 
 # Search CORE for open access papers
-paper_search([
+browse_search([
     {"searcher": "core", "query": "climate change", "max_results": 5}
 ])
 ```
@@ -98,7 +98,7 @@ paper_search([
 
 ```python
 # Search multiple platforms simultaneously
-paper_search([
+browse_search([
     {"searcher": "arxiv", "query": "deep learning", "max_results": 5},
     {"searcher": "pubmed", "query": "cancer immunotherapy", "max_results": 3},
     {"searcher": "pmc", "query": "diabetes treatment", "max_results": 3}
@@ -110,7 +110,7 @@ paper_search([
 **Semantic Scholar with year filter:**
 
 ```python
-paper_search([
+browse_search([
     {"searcher": "semantic", "query": "climate change", "max_results": 4, "year": "2020-2023"}
 ])
 ```
@@ -124,7 +124,7 @@ Year filter formats:
 **CrossRef with additional filters:**
 
 ```python
-paper_search([
+browse_search([
     {
         "searcher": "crossref",
         "query": "deep learning",
@@ -141,7 +141,7 @@ paper_search([
 **IACR without fetching details:**
 
 ```python
-paper_search([
+browse_search([
     {"searcher": "iacr", "query": "cryptography", "max_results": 10, "fetch_details": false}
 ])
 ```
@@ -150,17 +150,17 @@ paper_search([
 
 ```python
 # Search IEEE Xplore (requires IEEE_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "ieee", "query": "neural networks", "max_results": 5}
 ])
 
 # Search Springer Link (requires SPRINGER_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "springer", "query": "quantum computing", "max_results": 5}
 ])
 
 # Search Scopus (requires SCOPUS_API_KEY)
-paper_search([
+browse_search([
     {"searcher": "scopus", "query": "artificial intelligence", "max_results": 5}
 ])
 ```
@@ -205,6 +205,6 @@ If a search fails, the tool continues with other searches and returns partial re
 
 ## Next Steps
 
-- [paper_download](./paper-download) - Download paper PDFs
-- [paper_read](./paper-read) - Extract text from papers
+- [browse_download](./paper-download) - Download paper PDFs
+- [browse_read](./paper-read) - Extract text from papers
 - [Configuration](../configuration) - Configure sources and API keys
