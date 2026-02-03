@@ -116,8 +116,6 @@ export interface InstalledSourcesResponse {
 export function useMarketplace() {
   const [index, setIndex] = useState<ProviderIndex | null>(null);
   const [sources, setSources] = useState<FlatSource[]>([]);
-  const [sourcesByCategory, setSourcesByCategory] = useState<Record<string, FlatSource[]>>({});
-  const [sourcesByPlugin, setSourcesByPlugin] = useState<Record<string, FlatSource[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -162,44 +160,6 @@ export function useMarketplace() {
   }, []);
 
   /**
-   * Fetch sources grouped by category
-   */
-  const fetchSourcesByCategory = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await invoke<Record<string, FlatSource[]>>("get_sources_by_category");
-      setSourcesByCategory(result);
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return {};
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
-   * Fetch sources grouped by plugin
-   */
-  const fetchSourcesByPlugin = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await invoke<Record<string, FlatSource[]>>("get_sources_by_plugin");
-      setSourcesByPlugin(result);
-      return result;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      return {};
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  /**
    * Clear the cached provider index
    */
   const clearCache = useCallback(async () => {
@@ -220,10 +180,8 @@ export function useMarketplace() {
     await Promise.all([
       fetchIndex(force),
       fetchSources(),
-      fetchSourcesByCategory(),
-      fetchSourcesByPlugin(),
     ]);
-  }, [fetchIndex, fetchSources, fetchSourcesByCategory, fetchSourcesByPlugin]);
+  }, [fetchIndex, fetchSources]);
 
   // Load on mount
   useEffect(() => {
@@ -299,6 +257,37 @@ export function useMarketplace() {
     }
     return result;
   }, [plugins]);
+
+  /**
+   * Get sources grouped by category (memoized)
+   * Computed from sources instead of fetching from backend
+   */
+  const sourcesByCategory = useMemo(() => {
+    const result: Record<string, FlatSource[]> = {};
+    for (const source of sources) {
+      const category = source.category ?? "uncategorized";
+      if (!result[category]) {
+        result[category] = [];
+      }
+      result[category].push(source);
+    }
+    return result;
+  }, [sources]);
+
+  /**
+   * Get sources grouped by plugin (memoized)
+   * Computed from sources instead of fetching from backend
+   */
+  const sourcesByPlugin = useMemo(() => {
+    const result: Record<string, FlatSource[]> = {};
+    for (const source of sources) {
+      if (!result[source.plugin_id]) {
+        result[source.plugin_id] = [];
+      }
+      result[source.plugin_id].push(source);
+    }
+    return result;
+  }, [sources]);
 
   // ============================================================================
   // Helper Functions
@@ -398,8 +387,6 @@ export function useMarketplace() {
     // Actions
     fetchIndex,
     fetchSources,
-    fetchSourcesByCategory,
-    fetchSourcesByPlugin,
     clearCache,
     refresh,
 

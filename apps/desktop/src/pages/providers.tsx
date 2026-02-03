@@ -100,16 +100,6 @@ const tabContentVariants = {
 
 type TabValue = "builtin" | "marketplace";
 
-// Icon mapping for categories
-const categoryIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  academic: GraduationCap,
-  publisher: BookOpen,
-  institutional: Building,
-  web: Globe,
-  social: Users,
-  docs: FileText,
-};
-
 function getCategoryIcon(iconName?: string) {
   if (!iconName) return Package;
   // Map icon names to components
@@ -121,7 +111,7 @@ function getCategoryIcon(iconName?: string) {
     users: Users,
     "file-text": FileText,
   };
-  return iconMap[iconName] || categoryIcons[iconName] || Package;
+  return iconMap[iconName] || Package;
 }
 
 export function ProvidersPage() {
