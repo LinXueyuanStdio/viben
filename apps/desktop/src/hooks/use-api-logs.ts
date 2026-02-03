@@ -167,6 +167,17 @@ export function useApiLogs() {
   }, []);
 
   /**
+   * Open the logs directory in system file explorer
+   */
+  const openLogsFolder = useCallback(async () => {
+    try {
+      await invoke("open_api_logs_dir");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, []);
+
+  /**
    * Refresh all data
    */
   const refresh = useCallback(() => {
@@ -275,6 +286,7 @@ export function useApiLogs() {
     fetchSummary,
     clearLogs,
     refresh,
+    openLogsFolder,
 
     // Computed
     uniqueProviders,
