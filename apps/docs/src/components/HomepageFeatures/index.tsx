@@ -36,7 +36,7 @@ const FeatureList: FeatureItem[] = [
     description: (
       <>
         Simple installation via pip. Configure once, search everywhere.
-        Three tools: paper_search, paper_download, and paper_read.
+        Three tools: browse_search, browse_download, and browse_read.
       </>
     ),
   },

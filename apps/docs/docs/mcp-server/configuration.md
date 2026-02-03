@@ -332,5 +332,5 @@ If plugin sources are not available:
 ## Next Steps
 
 - [Client Configuration](../getting-started/client-configuration) - Configure your MCP client
-- [paper_search Tool](./tools/paper-search) - Learn search parameters
+- [browse_search Tool](./tools/paper-search) - Learn search parameters
 - [Plugin Configuration](../plugins/configuration) - Advanced plugin settings

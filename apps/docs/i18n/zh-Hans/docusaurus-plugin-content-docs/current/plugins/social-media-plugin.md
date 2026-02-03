@@ -48,12 +48,12 @@ pip install browse-mcp-plugin-social-media
 
 ```python
 # 搜索仓库
-paper_search([
+browse_search([
     {"searcher": "github", "query": "machine learning python", "max_results": 10}
 ])
 
 # 使用特定过滤器搜索
-paper_search([
+browse_search([
     {"searcher": "github", "query": "language:python stars:>1000", "max_results": 5}
 ])
 ```
@@ -87,7 +87,7 @@ GitHub 支持高级搜索语法：
 
 示例：
 ```python
-paper_search([{
+browse_search([{
     "searcher": "github",
     "query": "transformer language:python stars:>500 topic:nlp",
     "max_results": 10
@@ -113,12 +113,12 @@ paper_search([{
 
 ```python
 # 搜索推文
-paper_search([
+browse_search([
     {"searcher": "twitter", "query": "#MachineLearning", "max_results": 20}
 ])
 
 # 使用运算符搜索
-paper_search([
+browse_search([
     {"searcher": "twitter", "query": "from:OpenAI GPT", "max_results": 10}
 ])
 ```
@@ -163,12 +163,12 @@ Tags: #MachineLearning, #AI
 
 ```python
 # 搜索知乎内容
-paper_search([
+browse_search([
     {"searcher": "zhihu", "query": "机器学习", "max_results": 10}
 ])
 
 # 搜索英文关键词
-paper_search([
+browse_search([
     {"searcher": "zhihu", "query": "machine learning", "max_results": 5}
 ])
 ```
@@ -201,7 +201,7 @@ Tags: 机器学习, 人工智能
 
 ```python
 # 搜索小红书内容
-paper_search([
+browse_search([
     {"searcher": "xiaohongshu", "query": "数码产品测评", "max_results": 10}
 ])
 ```
