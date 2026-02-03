@@ -61,6 +61,16 @@
     "setupComplete": "セットアップ完了",
     "setupRequired": "セットアップが必要"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "サーバー状態を確認中...",
+    "allRunning": "すべてのサーバーが実行中",
+    "allStopped": "すべてのサーバーが停止中",
+    "partialRunning": "{{total}}台中{{running}}台のサーバーが実行中",
+    "hasErrors": "{{count}}台のサーバーにエラー",
+    "ariaLabel": "MCPサーバー: {{total}}台中{{running}}台が実行中。クリックして管理。"
+  },
   "dashboard": {
     "title": "ダッシュボード",
     "setupRequired": "セットアップが必要",

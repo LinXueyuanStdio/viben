@@ -61,6 +61,16 @@
     "setupComplete": "Konfiguration klar",
     "setupRequired": "Konfiguration krävs"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Kontrollerar serverstatus...",
+    "allRunning": "Alla servrar körs",
+    "allStopped": "Alla servrar stoppade",
+    "partialRunning": "{{running}} av {{total}} servrar körs",
+    "hasErrors": "{{count}} server/servrar med fel",
+    "ariaLabel": "MCP-servrar: {{running}} av {{total}} körs. Klicka för att hantera."
+  },
   "dashboard": {
     "title": "Instrumentpanel",
     "setupRequired": "Konfiguration krävs",

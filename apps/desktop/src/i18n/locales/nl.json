@@ -61,6 +61,16 @@
     "setupComplete": "Setup voltooid",
     "setupRequired": "Setup vereist"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Serverstatus controleren...",
+    "allRunning": "Alle servers actief",
+    "allStopped": "Alle servers gestopt",
+    "partialRunning": "{{running}} van {{total}} servers actief",
+    "hasErrors": "{{count}} server(s) met fouten",
+    "ariaLabel": "MCP-servers: {{running}} van {{total}} actief. Klik om te beheren."
+  },
   "dashboard": {
     "title": "Dashboard",
     "setupRequired": "Setup vereist",

@@ -61,6 +61,16 @@
     "setupComplete": "설정 완료",
     "setupRequired": "설정 필요"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "서버 상태 확인 중...",
+    "allRunning": "모든 서버 실행 중",
+    "allStopped": "모든 서버 중지됨",
+    "partialRunning": "{{total}}개 중 {{running}}개 서버 실행 중",
+    "hasErrors": "{{count}}개 서버에 오류",
+    "ariaLabel": "MCP 서버: {{total}}개 중 {{running}}개 실행 중. 클릭하여 관리."
+  },
   "dashboard": {
     "title": "대시보드",
     "setupRequired": "설정 필요",

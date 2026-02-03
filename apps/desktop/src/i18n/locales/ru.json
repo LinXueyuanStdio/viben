@@ -61,6 +61,16 @@
     "setupComplete": "Настройка завершена",
     "setupRequired": "Требуется настройка"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Проверка состояния сервера...",
+    "allRunning": "Все серверы работают",
+    "allStopped": "Все серверы остановлены",
+    "partialRunning": "{{running}} из {{total}} серверов работают",
+    "hasErrors": "{{count}} сервер(ов) с ошибками",
+    "ariaLabel": "MCP-серверы: {{running}} из {{total}} работают. Нажмите для управления."
+  },
   "dashboard": {
     "title": "Панель",
     "setupRequired": "Требуется настройка",
