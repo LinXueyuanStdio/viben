@@ -15,7 +15,7 @@ This directory contains guidelines for frontend development. These specs ensure 
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Design System](./design-system.md) | Complete design system: colors, typography, motion, components | ✅ Complete |
-| [Component Guidelines](./component-guidelines.md) | React component patterns and best practices | To fill |
+| [Component Guidelines](./components.md) | React component patterns and best practices | ✅ Complete |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | To fill |
 | [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | To fill |
