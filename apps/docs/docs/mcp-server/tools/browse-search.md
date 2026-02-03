@@ -205,6 +205,6 @@ If a search fails, the tool continues with other searches and returns partial re
 
 ## Next Steps
 
-- [browse_download](./paper-download) - Download paper PDFs
-- [browse_read](./paper-read) - Extract text from papers
+- [browse_download](./browse-download) - Download paper PDFs
+- [browse_read](./browse-read) - Extract text from papers
 - [Configuration](../configuration) - Configure sources and API keys
