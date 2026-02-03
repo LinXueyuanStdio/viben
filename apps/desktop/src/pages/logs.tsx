@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   RefreshCw,
   Download,
@@ -63,11 +64,57 @@ export function LogsPage() {
   const [exporting, setExporting] = useState(false);
   const [cleaning, setCleaning] = useState(false);
 
+  // Track directly checked PIDs for sessions not in current server list
+  const [directPidStatus, setDirectPidStatus] = useState<Record<number, boolean>>({});
+  const pidCheckInProgress = useRef<Set<number>>(new Set());
+
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
+
+  // Check PIDs directly for sessions that don't match any current server
+  const checkOrphanedPids = useCallback(async () => {
+    const orphanedPids: number[] = [];
+
+    for (const session of sessions) {
+      // Skip if session has ended or no PID
+      if (session.ended_at || !session.pid) continue;
+
+      // Skip if this PID matches a current server
+      const matchesServer = session.server_id && mcpServerStatuses[session.server_id];
+      const matchesPid = Object.values(mcpServerStatuses).some(s => s.pid === session.pid);
+      const matchesServerPid = mcpServers.some(s => s.pid === session.pid);
+
+      if (!matchesServer && !matchesPid && !matchesServerPid) {
+        orphanedPids.push(session.pid);
+      }
+    }
+
+    // Check each orphaned PID
+    for (const pid of orphanedPids) {
+      // Skip if already checking or already checked
+      if (pidCheckInProgress.current.has(pid) || directPidStatus[pid] !== undefined) {
+        continue;
+      }
+
+      pidCheckInProgress.current.add(pid);
+      try {
+        const isAlive = await invoke<boolean>("is_process_alive", { pid });
+        setDirectPidStatus(prev => ({ ...prev, [pid]: isAlive }));
+      } catch {
+        setDirectPidStatus(prev => ({ ...prev, [pid]: false }));
+      } finally {
+        pidCheckInProgress.current.delete(pid);
+      }
+    }
+  }, [sessions, mcpServerStatuses, mcpServers, directPidStatus]);
+
+  // Check orphaned PIDs on mount and when sessions change
+  useEffect(() => {
+    checkOrphanedPids();
+  }, [sessions, checkOrphanedPids]);
 
   // Map server statuses from the monitor to session process status
   // This uses the global status monitor instead of per-session checks
-  // Uses a hybrid approach: server_id first, then PID matching for robustness
+  // Uses a hybrid approach: server_id first, then PID matching, then direct check
   const processStatus = useCallback((_sessionId: string, serverId: string | undefined, pid: number | null, endedAt: string | null): boolean | undefined => {
     // If session has ended, don't show as alive
     if (endedAt) return undefined;
@@ -93,13 +140,20 @@ export function LogsPage() {
       return matchingServer.status === "running";
     }
 
+    // Option 4: Check directly checked PID status
+    if (directPidStatus[pid] !== undefined) {
+      return directPidStatus[pid];
+    }
+
     // Fallback: can't determine from monitor
     return undefined;
-  }, [mcpServerStatuses, mcpServers]);
+  }, [mcpServerStatuses, mcpServers, directPidStatus]);
 
-  // Handle refresh - also trigger status check
+  // Handle refresh - also trigger status check and re-check orphaned PIDs
   const handleRefresh = useCallback(async () => {
     refresh();
+    // Clear cached direct PID status to force re-check
+    setDirectPidStatus({});
     await checkAllServers(true);
   }, [refresh, checkAllServers]);
 

@@ -7,8 +7,6 @@ import {
   FileText,
   Info,
   Search,
-  CheckCircle2,
-  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useAppStore } from "@/stores";
+import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { useTranslation } from "react-i18next";
 
 interface NavItem {
@@ -46,13 +44,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
-  const { t } = useTranslation();
-  // Read global setup status from store (calculated in AppLayout)
-  const { setupStatus } = useAppStore();
-
-  // Only show as complete if cache explicitly says so
-  const isSetupComplete = setupStatus?.isComplete === true;
-
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -93,38 +84,9 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             ))}
           </nav>
 
-          {/* Setup Status Indicator */}
-          <div className="mt-3 px-3 py-2">
-            {collapsed ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex justify-center">
-                    {isSetupComplete ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    )}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
-                  {isSetupComplete ? t("sidebar.setupComplete") : t("sidebar.setupRequired")}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <div className="flex items-center gap-2 text-xs">
-                {isSetupComplete ? (
-                  <>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                    <span className="text-sidebar-foreground/70">{t("sidebar.setupComplete")}</span>
-                  </>
-                ) : (
-                  <>
-                    <AlertCircle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
-                    <span className="text-sidebar-foreground/70">{t("sidebar.setupRequired")}</span>
-                  </>
-                )}
-              </div>
-            )}
+          {/* Unified Status Indicator */}
+          <div className="mt-3">
+            <McpStatusIndicator collapsed={collapsed} />
           </div>
         </div>
       </aside>
