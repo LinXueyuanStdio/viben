@@ -103,6 +103,7 @@ export function useMcpStatusMonitor() {
           status,
           lastChecked: Date.now(),
           error,
+          pid: server.pid ?? undefined,
         };
 
         // Update store with new status
