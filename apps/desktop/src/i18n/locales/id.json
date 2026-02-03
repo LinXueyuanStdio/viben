@@ -61,6 +61,16 @@
     "setupComplete": "Pengaturan Selesai",
     "setupRequired": "Pengaturan Diperlukan"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "Memeriksa status server...",
+    "allRunning": "Semua server berjalan",
+    "allStopped": "Semua server dihentikan",
+    "partialRunning": "{{running}} dari {{total}} server berjalan",
+    "hasErrors": "{{count}} server dengan kesalahan",
+    "ariaLabel": "Server MCP: {{running}} dari {{total}} berjalan. Klik untuk mengelola."
+  },
   "dashboard": {
     "title": "Dasbor",
     "setupRequired": "Pengaturan Diperlukan",

@@ -61,6 +61,16 @@
     "setupComplete": "设置完成",
     "setupRequired": "需要设置"
   },
+  "mcpStatus": {
+    "count": "{{running}}/{{total}}",
+    "loading": "...",
+    "checking": "正在检查服务器状态...",
+    "allRunning": "所有服务器运行中",
+    "allStopped": "所有服务器已停止",
+    "partialRunning": "{{total}} 个服务器中有 {{running}} 个运行中",
+    "hasErrors": "{{count}} 个服务器出错",
+    "ariaLabel": "MCP 服务器：{{total}} 个中有 {{running}} 个运行中。点击管理服务器。"
+  },
   "dashboard": {
     "title": "仪表盘",
     "setupRequired": "需要设置",
