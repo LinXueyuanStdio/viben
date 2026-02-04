@@ -1,0 +1,101 @@
+import { db, mcpPackages, users } from '@/lib/db';
+import { eq, desc, ilike, or, and, count } from 'drizzle-orm';
+import { McpCard } from './mcp-card';
+import { Pagination } from '@/components/shared/pagination';
+
+interface McpGridProps {
+  searchParams: {
+    q?: string;
+    category?: string;
+    sort?: string;
+    page?: string;
+  };
+}
+
+export async function McpGrid({ searchParams }: McpGridProps) {
+  const { q, category, sort = 'latest', page = '1' } = searchParams;
+  const limit = 12;
+  const offset = (Number(page) - 1) * limit;
+
+  // Build conditions
+  const conditions = [eq(mcpPackages.isPublished, true)];
+  if (q) {
+    conditions.push(
+      or(
+        ilike(mcpPackages.name, `%${q}%`),
+        ilike(mcpPackages.description, `%${q}%`)
+      )!
+    );
+  }
+  if (category) {
+    conditions.push(eq(mcpPackages.category, category));
+  }
+
+  // Build order
+  const orderBy =
+    sort === 'popular'
+      ? desc(mcpPackages.favoritesCount)
+      : sort === 'downloads'
+        ? desc(mcpPackages.downloadsCount)
+        : desc(mcpPackages.createdAt);
+
+  // Query
+  const packages = await db
+    .select({
+      id: mcpPackages.id,
+      name: mcpPackages.name,
+      slug: mcpPackages.slug,
+      version: mcpPackages.version,
+      description: mcpPackages.description,
+      category: mcpPackages.category,
+      transport: mcpPackages.transport,
+      favoritesCount: mcpPackages.favoritesCount,
+      downloadsCount: mcpPackages.downloadsCount,
+      ratingAvg: mcpPackages.ratingAvg,
+      author: {
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+    .from(mcpPackages)
+    .leftJoin(users, eq(mcpPackages.authorId, users.id))
+    .where(and(...conditions))
+    .orderBy(orderBy)
+    .limit(limit)
+    .offset(offset);
+
+  const [totalResult] = await db
+    .select({ count: count() })
+    .from(mcpPackages)
+    .where(and(...conditions));
+
+  const total = totalResult?.count ?? 0;
+  const totalPages = Math.ceil(total / limit);
+
+  if (packages.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <p className="text-lg text-muted-foreground">No packages found</p>
+        {q && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Try adjusting your search or filters
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {packages.map((pkg) => (
+          <McpCard key={pkg.id} package={pkg} />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <Pagination currentPage={Number(page)} totalPages={totalPages} />
+      )}
+    </div>
+  );
+}
