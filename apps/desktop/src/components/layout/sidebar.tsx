@@ -7,6 +7,7 @@ import {
   FileText,
   Info,
   Search,
+  SearchCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -30,6 +31,7 @@ const mainNav: NavItem[] = [
   { titleKey: "nav.dashboard", href: "/", icon: LayoutDashboard },
   { titleKey: "nav.dataSources", href: "/providers", icon: Database },
   { titleKey: "nav.searchService", href: "/search-service", icon: Search },
+  { titleKey: "nav.inspector", href: "/inspector", icon: SearchCode },
   { titleKey: "nav.agents", href: "/agents", icon: Bot },
   { titleKey: "nav.logs", href: "/logs", icon: FileText },
 ];

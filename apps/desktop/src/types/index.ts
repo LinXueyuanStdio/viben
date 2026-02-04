@@ -175,6 +175,59 @@ export interface FlatSource {
   plugin_name: string;
 }
 
+// Inspector types
+
+/** Connection status for MCP inspector */
+export type InspectorConnectionStatus = "disconnected" | "connecting" | "connected" | "error";
+
+/** Notification entry in inspector */
+export interface InspectorNotification {
+  id: string;
+  method: string;
+  params?: Record<string, unknown>;
+  timestamp: Date;
+  type: "notification" | "stderr";
+}
+
+/** Tool definition from MCP server */
+export interface McpTool {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+/** Resource definition from MCP server */
+export interface McpResource {
+  uri: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+}
+
+/** Prompt definition from MCP server */
+export interface McpPrompt {
+  name: string;
+  description?: string;
+  arguments?: Array<{
+    name: string;
+    description?: string;
+    required?: boolean;
+  }>;
+}
+
+/** Server capabilities from MCP */
+export interface McpServerCapabilities {
+  tools?: Record<string, unknown>;
+  resources?: Record<string, unknown>;
+  prompts?: Record<string, unknown>;
+  roots?: Record<string, unknown>;
+  sampling?: Record<string, unknown>;
+}
+
 // API Log types
 
 /** API log entry from JSONL files */

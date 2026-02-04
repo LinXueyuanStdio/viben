@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment } from "@/types";
+import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification } from "@/types";
 
 // Provider definitions with all 18 sources
 // Note: enabled is removed - providers only track installation/API key status
@@ -101,6 +101,16 @@ interface AppState {
   } | null;
   setSetupStatus: (isComplete: boolean) => void;
   shouldCheckSetup: () => boolean; // Returns true if check is needed
+
+  // Inspector State
+  inspectorSelectedServerId: string | null;
+  inspectorConnectionStatus: InspectorConnectionStatus;
+  inspectorNotifications: InspectorNotification[];
+  setInspectorSelectedServerId: (id: string | null) => void;
+  setInspectorConnectionStatus: (status: InspectorConnectionStatus) => void;
+  addInspectorNotification: (notification: Omit<InspectorNotification, "id" | "timestamp">) => void;
+  removeInspectorNotification: (id: string) => void;
+  clearInspectorNotifications: () => void;
 }
 
 // Generate unique ID
@@ -300,6 +310,29 @@ export const useAppStore = create<AppState>()(
         const fiveMinutes = 5 * 60 * 1000;
         return Date.now() - status.lastChecked > fiveMinutes; // Re-check every 5 minutes
       },
+
+      // Inspector State
+      inspectorSelectedServerId: null,
+      inspectorConnectionStatus: "disconnected",
+      inspectorNotifications: [],
+      setInspectorSelectedServerId: (id) => set({ inspectorSelectedServerId: id }),
+      setInspectorConnectionStatus: (status) => set({ inspectorConnectionStatus: status }),
+      addInspectorNotification: (notification) =>
+        set((state) => ({
+          inspectorNotifications: [
+            {
+              ...notification,
+              id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              timestamp: new Date(),
+            },
+            ...state.inspectorNotifications,
+          ].slice(0, 100), // Keep max 100 notifications
+        })),
+      removeInspectorNotification: (id) =>
+        set((state) => ({
+          inspectorNotifications: state.inspectorNotifications.filter((n) => n.id !== id),
+        })),
+      clearInspectorNotifications: () => set({ inspectorNotifications: [] }),
     }),
     {
       name: "browse-mcp-storage",
