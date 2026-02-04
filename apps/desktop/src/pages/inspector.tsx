@@ -48,6 +48,12 @@ export function InspectorPage() {
     return `http://localhost:${port}`;
   };
 
+  // Get transport type for the hook
+  const getTransportType = (server: McpServerInstance | undefined): "sse" | "http" => {
+    if (!server) return "sse";
+    return server.transport === "http" ? "http" : "sse";
+  };
+
   const [isConnecting, setIsConnecting] = useState(false);
 
   // MCP connection hook
@@ -59,6 +65,7 @@ export function InspectorPage() {
     makeRequest,
   } = useMcpConnection({
     serverUrl: getServerUrl(selectedServer),
+    transportType: getTransportType(selectedServer),
     onNotification: useCallback(
       (method: string, params?: Record<string, unknown>) => {
         addInspectorNotification({
