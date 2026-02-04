@@ -54,6 +54,8 @@
     "searchService": "Search Service",
     "inspector": "Inspector",
     "agents": "Agents",
+    "mcpMarketplace": "MCP Store",
+    "skillsMarket": "Skills Market",
     "logs": "Logs",
     "settings": "Settings",
     "about": "About"

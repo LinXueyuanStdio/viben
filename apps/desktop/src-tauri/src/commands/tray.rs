@@ -72,8 +72,17 @@ pub async fn show_tray_popup<R: Runtime>(app: AppHandle<R>) -> Result<(), String
         if let Ok(Some(rect)) = tray.rect() {
             // Position the popup near the tray icon
             // On macOS, the tray is at the top, so we position below it
-            let x = (rect.position.x as i32).saturating_sub(150); // Center the 400px window
-            let y = (rect.position.y + rect.size.height) as i32 + 5;
+            // Convert Position/Size enums to physical values
+            let (pos_x, pos_y) = match rect.position {
+                tauri::Position::Physical(p) => (p.x, p.y),
+                tauri::Position::Logical(l) => (l.x as i32, l.y as i32),
+            };
+            let height = match rect.size {
+                tauri::Size::Physical(s) => s.height as i32,
+                tauri::Size::Logical(s) => s.height as i32,
+            };
+            let x = pos_x.saturating_sub(150); // Center the 400px window
+            let y = pos_y + height + 5;
 
             let _ = popup.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
         }
@@ -125,12 +134,16 @@ pub async fn get_tray_position<R: Runtime>(
         .ok_or_else(|| "Tray not found".to_string())?;
 
     if let Ok(Some(rect)) = tray.rect() {
-        Ok(Some((
-            rect.position.x as f64,
-            rect.position.y as f64,
-            rect.size.width as f64,
-            rect.size.height as f64,
-        )))
+        // Convert Position/Size enums to f64 values
+        let (pos_x, pos_y) = match rect.position {
+            tauri::Position::Physical(p) => (p.x as f64, p.y as f64),
+            tauri::Position::Logical(l) => (l.x, l.y),
+        };
+        let (width, height) = match rect.size {
+            tauri::Size::Physical(s) => (s.width as f64, s.height as f64),
+            tauri::Size::Logical(s) => (s.width, s.height),
+        };
+        Ok(Some((pos_x, pos_y, width, height)))
     } else {
         Ok(None)
     }

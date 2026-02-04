@@ -49,7 +49,7 @@ function App() {
           <Route path="inspector" element={<InspectorPage />} />
           <Route path="agents" element={<AgentsPage />} />
           <Route
-            path="marketplace"
+            path="mcp-marketplace"
             element={
               <Suspense fallback={<PageLoadingFallback />}>
                 <MarketplacePage />
