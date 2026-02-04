@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { db, users } from '@/lib/db';
 import { verifyPassword } from '@/lib/auth/password';

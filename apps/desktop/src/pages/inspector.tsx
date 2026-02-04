@@ -16,6 +16,12 @@ import {
   Loader2,
   Shield,
   Download,
+  ChevronDown,
+  ChevronRight,
+  ListTodo,
+  MessageCircleQuestion,
+  KeyRound,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -107,15 +113,18 @@ export function InspectorPage() {
       const targetUrl = parsedConfig.url;
       const originalTransport = parsedConfig.transport || "streamable-http";
 
+      const effectiveUrl = buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http");
+      const effectiveHeaders = {
+        ...parsedConfig.headers,
+        ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
+      };
+
       return {
         ...parsedConfig,
         // Connection to proxy is always streamable-http, regardless of target transport
         transport: "streamable-http" as const,
-        url: buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http"),
-        headers: {
-          ...parsedConfig.headers,
-          ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
-        },
+        url: effectiveUrl,
+        headers: effectiveHeaders,
       };
     }
 
@@ -132,6 +141,9 @@ export function InspectorPage() {
 
   // Copy state
   const [copied, setCopied] = useState(false);
+
+  // Examples collapsed state
+  const [examplesCollapsed, setExamplesCollapsed] = useState(true);
 
   // Sidebar dragging
   const [sidebarWidth, setSidebarWidth] = useState(360);
@@ -306,6 +318,8 @@ export function InspectorPage() {
   const hasPrompts = serverCapabilities?.prompts !== undefined;
   const hasRoots = serverCapabilities?.roots !== undefined;
   const hasSampling = serverCapabilities?.sampling !== undefined;
+  // Tasks capability check - MCP 2024-11-05 added tasks support
+  const hasTasks = (serverCapabilities as Record<string, unknown>)?.tasks !== undefined;
 
   // Check if config is STDIO (not browser compatible)
   const isStdioConfig = parsedConfig && "command" in parsedConfig;
@@ -432,10 +446,22 @@ export function InspectorPage() {
               )}
             </div>
 
-            {/* Config Examples */}
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p className="font-medium">{t("inspector.configExamples")}:</p>
-              <pre className="p-2 rounded bg-muted/50 overflow-x-auto whitespace-pre-wrap">
+            {/* Config Examples - Collapsible */}
+            <div className="text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setExamplesCollapsed(!examplesCollapsed)}
+                className="flex items-center gap-1 font-medium hover:text-foreground transition-colors w-full text-left"
+              >
+                {examplesCollapsed ? (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                {t("inspector.configExamples")}
+              </button>
+              {!examplesCollapsed && (
+                <pre className="p-2 mt-1 rounded bg-muted/50 overflow-x-auto whitespace-pre-wrap">
 {`// SSE (auto-detects from /sse in URL)
 {"url": "http://localhost:3000/sse"}
 
@@ -453,7 +479,8 @@ export function InspectorPage() {
   "url": "http://localhost:3000/mcp",
   "auth": "your-api-key"
 }`}
-              </pre>
+                </pre>
+              )}
             </div>
 
             {/* STDIO Warning */}
@@ -527,7 +554,11 @@ export function InspectorPage() {
         <div className="flex-1 overflow-auto p-4">
           {connectionStatus === "connected" ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-4">
+              <TabsList className="mb-4 flex-wrap">
+                <TabsTrigger value="tools" disabled={!hasTools}>
+                  <Wrench className="w-4 h-4 mr-2" />
+                  {t("inspector.tools")}
+                </TabsTrigger>
                 <TabsTrigger value="resources" disabled={!hasResources}>
                   <Files className="w-4 h-4 mr-2" />
                   {t("inspector.resources")}
@@ -535,10 +566,6 @@ export function InspectorPage() {
                 <TabsTrigger value="prompts" disabled={!hasPrompts}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   {t("inspector.prompts")}
-                </TabsTrigger>
-                <TabsTrigger value="tools" disabled={!hasTools}>
-                  <Wrench className="w-4 h-4 mr-2" />
-                  {t("inspector.tools")}
                 </TabsTrigger>
                 <TabsTrigger value="ping">
                   <Zap className="w-4 h-4 mr-2" />
@@ -552,8 +579,31 @@ export function InspectorPage() {
                   <FolderTree className="w-4 h-4 mr-2" />
                   {t("inspector.roots")}
                 </TabsTrigger>
+                <TabsTrigger value="tasks" disabled={!hasTasks}>
+                  <ListTodo className="w-4 h-4 mr-2" />
+                  {t("inspector.tasks")}
+                </TabsTrigger>
+                <TabsTrigger value="elicitations">
+                  <MessageCircleQuestion className="w-4 h-4 mr-2" />
+                  {t("inspector.elicitations")}
+                </TabsTrigger>
+                <TabsTrigger value="auth">
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  {t("inspector.auth")}
+                </TabsTrigger>
+                <TabsTrigger value="metadata">
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  {t("inspector.metadata")}
+                </TabsTrigger>
               </TabsList>
 
+              <TabsContent value="tools" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="tools"
+                />
+              </TabsContent>
               <TabsContent value="resources" className="mt-0">
                 <Inspector
                   makeRequest={makeRequest}
@@ -566,13 +616,6 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="prompts"
-                />
-              </TabsContent>
-              <TabsContent value="tools" className="mt-0">
-                <Inspector
-                  makeRequest={makeRequest}
-                  serverCapabilities={serverCapabilities}
-                  activeTab="tools"
                 />
               </TabsContent>
               <TabsContent value="ping" className="mt-0">
@@ -594,6 +637,34 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="roots"
+                />
+              </TabsContent>
+              <TabsContent value="tasks" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="tasks"
+                />
+              </TabsContent>
+              <TabsContent value="elicitations" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="elicitations"
+                />
+              </TabsContent>
+              <TabsContent value="auth" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="auth"
+                />
+              </TabsContent>
+              <TabsContent value="metadata" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="metadata"
                 />
               </TabsContent>
             </Tabs>
