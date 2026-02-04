@@ -9,6 +9,94 @@ use commands::package_install::InstalledPackagesState;
 use commands::usage::UsageState;
 use commands::workspace_sync::WorkspaceSyncState;
 
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager,
+};
+
+fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    // Create menu items
+    let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+    let start_all_item =
+        MenuItem::with_id(app, "start_all", "Start All Servers", true, None::<&str>)?;
+    let stop_all_item =
+        MenuItem::with_id(app, "stop_all", "Stop All Servers", true, None::<&str>)?;
+    let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+
+    // Create menu
+    let menu = Menu::with_items(
+        app,
+        &[&show_item, &start_all_item, &stop_all_item, &quit_item],
+    )?;
+
+    // Get the default icon
+    let icon = app
+        .default_window_icon()
+        .cloned()
+        .expect("Failed to get default icon");
+
+    // Build tray icon
+    let _tray = TrayIconBuilder::with_id("main-tray")
+        .icon(icon)
+        .menu(&menu)
+        .show_menu_on_left_click(false) // Left click shows popup, not menu
+        .tooltip("Browse MCP")
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            "start_all" => {
+                // Emit event to frontend to start all servers
+                let _ = app.emit("tray-start-all", ());
+            }
+            "stop_all" => {
+                // Emit event to frontend to stop all servers
+                let _ = app.emit("tray-stop-all", ());
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+
+                // Toggle popup visibility
+                if let Some(popup) = app.get_webview_window("tray-popup") {
+                    if popup.is_visible().unwrap_or(false) {
+                        let _ = popup.hide();
+                    } else {
+                        // Position popup near tray icon if possible
+                        if let Ok(Some(rect)) = tray.rect() {
+                            // On macOS, position below the menu bar
+                            // rect.position and rect.size are PhysicalPosition/PhysicalSize
+                            let x = (rect.position.x as i32).saturating_sub(150); // Center the 400px popup
+                            let y = (rect.position.y + rect.size.height) as i32 + 5;
+                            let _ = popup.set_position(tauri::Position::Physical(
+                                tauri::PhysicalPosition { x, y },
+                            ));
+                        }
+                        let _ = popup.show();
+                        let _ = popup.set_focus();
+                    }
+                }
+            }
+        })
+        .build(app)?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -16,6 +104,22 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .setup(|app| {
+            setup_tray(app)?;
+
+            // Set up blur handler for popup window
+            if let Some(popup) = app.get_webview_window("tray-popup") {
+                let popup_clone = popup.clone();
+                popup.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Focused(false) = event {
+                        // Hide popup when it loses focus
+                        let _ = popup_clone.hide();
+                    }
+                });
+            }
+
+            Ok(())
+        })
         .manage(ApiClientState::default())
         .manage(AuthState::default())
         .manage(McpProcessState::default())
@@ -144,6 +248,12 @@ pub fn run() {
             commands::workspace_sync::sync_workspace,
             commands::workspace_sync::push_local_config,
             commands::workspace_sync::get_sync_status,
+            // Tray commands
+            commands::tray::update_tray_status,
+            commands::tray::show_tray_popup,
+            commands::tray::hide_tray_popup,
+            commands::tray::show_main_window,
+            commands::tray::get_tray_position,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -35,4 +35,37 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  // Build optimizations for production
+  build: {
+    // Enable code splitting for dynamic imports
+    rollupOptions: {
+      output: {
+        // Manual chunk splitting for better caching
+        manualChunks: {
+          // Vendor chunk for React and related libraries
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          // UI components chunk
+          "ui-vendor": ["framer-motion", "lucide-react"],
+          // i18n chunk
+          "i18n-vendor": ["i18next", "react-i18next"],
+        },
+      },
+    },
+    // Target modern browsers for smaller bundle size
+    target: "esnext",
+    // Chunk size warning threshold (500KB)
+    chunkSizeWarningLimit: 500,
+  },
+  // Optimize dependencies pre-bundling
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "framer-motion",
+      "lucide-react",
+      "i18next",
+      "react-i18next",
+    ],
+  },
 }));

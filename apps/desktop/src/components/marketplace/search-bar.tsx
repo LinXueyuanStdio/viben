@@ -12,7 +12,11 @@ interface SearchBarProps {
   loading?: boolean;
 }
 
-export function SearchBar({
+/**
+ * SearchBar component for marketplace search
+ * Memoized to prevent unnecessary re-renders
+ */
+export const SearchBar = React.memo(function SearchBar({
   value,
   onChange,
   placeholder = "Search packages...",
@@ -21,10 +25,17 @@ export function SearchBar({
 }: SearchBarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const handleClear = () => {
+  const handleClear = React.useCallback(() => {
     onChange("");
     inputRef.current?.focus();
-  };
+  }, [onChange]);
+
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange]
+  );
 
   return (
     <div className={cn("relative", className)}>
@@ -38,7 +49,7 @@ export function SearchBar({
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         placeholder={placeholder}
         className="pl-10 pr-10"
       />
@@ -55,4 +66,4 @@ export function SearchBar({
       )}
     </div>
   );
-}
+});

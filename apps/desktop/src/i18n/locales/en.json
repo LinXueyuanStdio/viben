@@ -531,5 +531,18 @@
     "mcpAvailable": "{{count}} MCP update(s) available",
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
+  },
+  "tray": {
+    "serverStatus": "Server Status",
+    "openApp": "Open App",
+    "noServers": "No servers configured",
+    "running": "running",
+    "stopped": "stopped",
+    "errors": "errors",
+    "noServersTitle": "No MCP Servers",
+    "noServersDesc": "Create a server to get started",
+    "createServer": "Create Server",
+    "startAll": "Start All",
+    "stopAll": "Stop All"
   }
 }

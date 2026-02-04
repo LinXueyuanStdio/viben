@@ -13,7 +13,11 @@ interface CategoryFilterProps {
   className?: string;
 }
 
-export function CategoryFilter({
+/**
+ * CategoryFilter component for marketplace filtering
+ * Memoized to prevent unnecessary re-renders
+ */
+export const CategoryFilter = React.memo(function CategoryFilter({
   categories,
   selectedCategory,
   onSelect,
@@ -22,14 +26,22 @@ export function CategoryFilter({
 }: CategoryFilterProps) {
   const { t } = useTranslation();
 
+  // Memoize total package count calculation
+  const totalPackageCount = React.useMemo(
+    () => categories.reduce((sum, c) => sum + (c.packageCount ?? 0), 0),
+    [categories]
+  );
+
+  // Memoize the "All" button click handler
+  const handleSelectAll = React.useCallback(() => {
+    onSelect(null);
+  }, [onSelect]);
+
   if (loading) {
     return (
       <div className={cn("space-y-2", className)}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-9 rounded-lg bg-muted animate-pulse"
-          />
+          <div key={i} className="h-9 rounded-lg bg-muted animate-pulse" />
         ))}
       </div>
     );
@@ -41,31 +53,57 @@ export function CategoryFilter({
         <Button
           variant={selectedCategory === null ? "secondary" : "ghost"}
           size="sm"
-          onClick={() => onSelect(null)}
+          onClick={handleSelectAll}
           className="w-full justify-start"
         >
           <span className="truncate">{t("marketplace.allCategories")}</span>
           <span className="ml-auto text-xs text-muted-foreground">
-            {categories.reduce((sum, c) => sum + (c.packageCount ?? 0), 0)}
+            {totalPackageCount}
           </span>
         </Button>
         {categories.map((category) => (
-          <Button
+          <CategoryButton
             key={category.id}
-            variant={selectedCategory === category.id ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => onSelect(category.id)}
-            className="w-full justify-start"
-          >
-            <span className="truncate">{category.name}</span>
-            {category.packageCount != null && (
-              <span className="ml-auto text-xs text-muted-foreground">
-                {category.packageCount}
-              </span>
-            )}
-          </Button>
+            category={category}
+            isSelected={selectedCategory === category.id}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     </ScrollArea>
   );
-}
+});
+
+/**
+ * Individual category button component
+ * Memoized to prevent re-renders when other categories change
+ */
+const CategoryButton = React.memo(function CategoryButton({
+  category,
+  isSelected,
+  onSelect,
+}: {
+  category: CloudMcpCategory;
+  isSelected: boolean;
+  onSelect: (categoryId: string | null) => void;
+}) {
+  const handleClick = React.useCallback(() => {
+    onSelect(category.id);
+  }, [onSelect, category.id]);
+
+  return (
+    <Button
+      variant={isSelected ? "secondary" : "ghost"}
+      size="sm"
+      onClick={handleClick}
+      className="w-full justify-start"
+    >
+      <span className="truncate">{category.name}</span>
+      {category.packageCount != null && (
+        <span className="ml-auto text-xs text-muted-foreground">
+          {category.packageCount}
+        </span>
+      )}
+    </Button>
+  );
+});

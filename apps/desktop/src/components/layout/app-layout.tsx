@@ -2,12 +2,16 @@ import { useEffect, useRef } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { usePython } from "@/hooks/use-python";
+import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
   const { selectedPython, browseMcpInfo } = usePython();
   const { setupStatus, setSetupStatus } = useAppStore();
   const hasInitialized = useRef(false);
+
+  // Initialize tray status synchronization
+  useTrayStatusSync();
 
   // Setup status detection - runs ONLY ONCE at app startup
   // After that, only Settings page "Detect" button can trigger update
@@ -22,7 +26,8 @@ export function AppLayout() {
     // Only initialize if no cached status exists
     // If user already has cached status from previous session, respect it
     if (setupStatus === null) {
-      const isSetupComplete = (selectedPython?.is_valid === true) && (browseMcpInfo?.installed === true);
+      const isSetupComplete =
+        selectedPython?.is_valid === true && browseMcpInfo?.installed === true;
       setSetupStatus(isSetupComplete);
     }
 
