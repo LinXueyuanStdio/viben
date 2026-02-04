@@ -5,7 +5,7 @@
  */
 
 import { db, mcpPackages, skillPackages, reports, moderationLogs, users } from '@/lib/db';
-import { eq, gte, count } from 'drizzle-orm';
+import { eq, gte, count, inArray } from 'drizzle-orm';
 
 /**
  * Stats for the admin dashboard overview.
@@ -112,46 +112,73 @@ export async function getRecentActivity(limit: number = 10): Promise<ActivityIte
     },
   });
 
-  // We need to fetch entity names separately
-  const activities: ActivityItem[] = [];
+  // Group entity IDs by type for batch fetching (using Sets to avoid duplicates)
+  const mcpIds = new Set<string>();
+  const skillIds = new Set<string>();
+  const userIds = new Set<string>();
 
   for (const log of logs) {
+    if (log.entityType === 'mcp') {
+      mcpIds.add(log.entityId);
+    } else if (log.entityType === 'skill') {
+      skillIds.add(log.entityId);
+    } else if (log.entityType === 'user') {
+      userIds.add(log.entityId);
+    }
+  }
+
+  // Batch fetch entities
+  const [mcpEntities, skillEntities, userEntities] = await Promise.all([
+    mcpIds.size > 0
+      ? db.query.mcpPackages.findMany({
+          where: inArray(mcpPackages.id, Array.from(mcpIds)),
+          columns: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    skillIds.size > 0
+      ? db.query.skillPackages.findMany({
+          where: inArray(skillPackages.id, Array.from(skillIds)),
+          columns: { id: true, name: true },
+        })
+      : Promise.resolve([]),
+    userIds.size > 0
+      ? db.query.users.findMany({
+          where: inArray(users.id, Array.from(userIds)),
+          columns: { id: true, username: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // Create lookup maps
+  const mcpMap = new Map(mcpEntities.map((m) => [m.id, m.name]));
+  const skillMap = new Map(skillEntities.map((s) => [s.id, s.name]));
+  const userMap = new Map(userEntities.map((u) => [u.id, u.username]));
+
+  // Build activity items using lookup maps
+  const activities: ActivityItem[] = logs.map((log) => {
     let entityName = 'Unknown';
 
-    // Try to get entity name based on type
     if (log.entityType === 'mcp') {
-      const mcp = await db.query.mcpPackages.findFirst({
-        where: eq(mcpPackages.id, log.entityId),
-        columns: { name: true },
-      });
-      entityName = mcp?.name ?? 'Deleted Package';
+      entityName = mcpMap.get(log.entityId) ?? 'Deleted Package';
     } else if (log.entityType === 'skill') {
-      const skill = await db.query.skillPackages.findFirst({
-        where: eq(skillPackages.id, log.entityId),
-        columns: { name: true },
-      });
-      entityName = skill?.name ?? 'Deleted Package';
+      entityName = skillMap.get(log.entityId) ?? 'Deleted Package';
     } else if (log.entityType === 'user') {
-      const user = await db.query.users.findFirst({
-        where: eq(users.id, log.entityId),
-        columns: { username: true },
-      });
-      entityName = user?.username ?? 'Deleted User';
+      entityName = userMap.get(log.entityId) ?? 'Deleted User';
     } else if (log.entityType === 'report') {
       entityName = `Report #${log.entityId.slice(0, 8)}`;
     } else {
       entityName = `${log.entityType} #${log.entityId.slice(0, 8)}`;
     }
 
-    activities.push({
+    return {
       id: log.id,
       action: log.action,
       entityType: log.entityType,
       entityName,
       adminName: log.admin?.username ?? 'Unknown',
       createdAt: log.createdAt,
-    });
-  }
+    };
+  });
 
   return activities;
 }
