@@ -1,5 +1,7 @@
 export { AppLayout } from "./app-layout";
 export { Sidebar } from "./sidebar";
+export { SidebarSection } from "./sidebar-section";
+export { WorkspaceSection } from "./workspace-section";
 export {
   PageWrapper,
   StaggerContainer,

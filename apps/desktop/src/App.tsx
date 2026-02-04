@@ -12,6 +12,8 @@ import {
   SettingsPage,
   AboutPage,
   TrayPopupPage,
+  WorkspaceDetailPage,
+  AgentDetailPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -67,6 +69,9 @@ function App() {
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />
+          {/* Workspace routes */}
+          <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
+          <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
         </Route>
         {/* Tray popup - separate window without layout */}
         <Route path="/tray-popup" element={<TrayPopupPage />} />

@@ -4,15 +4,15 @@ import {
   AlertTriangle,
   Bell,
   ChevronDown,
-  ChevronUp,
+  ChevronRight,
   Info,
   Trash2,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
 import type { InspectorNotification } from "@/types";
 
@@ -24,31 +24,19 @@ interface NotificationsPanelProps {
 
 type NotificationFilterType = "all" | "info" | "progress" | "stderr";
 
-interface NotificationCounts {
-  all: number;
-  info: number;
-  progress: number;
-  stderr: number;
-}
-
 export function NotificationsPanel({
   notifications,
   onClearNotifications,
   onRemoveNotification,
 }: NotificationsPanelProps) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(true);
   const [activeFilter, setActiveFilter] = useState<NotificationFilterType>("all");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const { filteredNotifications, counts } = useMemo(() => {
-    const counts: NotificationCounts = {
-      all: notifications.length,
-      info: 0,
-      progress: 0,
-      stderr: 0,
-    };
+    const counts = { all: notifications.length, info: 0, progress: 0, stderr: 0 };
 
-    // Count notifications by type
     notifications.forEach((notification) => {
       if (notification.type === "stderr") {
         counts.stderr++;
@@ -59,13 +47,10 @@ export function NotificationsPanel({
       }
     });
 
-    // Filter notifications based on active filter
     const filtered = notifications.filter((notification) => {
       if (activeFilter === "all") return true;
       if (activeFilter === "stderr") return notification.type === "stderr";
-      if (activeFilter === "progress") {
-        return notification.method?.includes("progress");
-      }
+      if (activeFilter === "progress") return notification.method?.includes("progress");
       if (activeFilter === "info") {
         return notification.type !== "stderr" && !notification.method?.includes("progress");
       }
@@ -75,197 +60,177 @@ export function NotificationsPanel({
     return { filteredNotifications: filtered, counts };
   }, [notifications, activeFilter]);
 
-  const formatTimestamp = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString();
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
-  const getNotificationTypeInfo = (notification: InspectorNotification) => {
-    if (notification.type === "stderr") {
-      return {
-        icon: AlertTriangle,
-        color: "text-red-600 dark:text-red-400",
-        bgColor: "bg-red-50 dark:bg-red-950/20",
-        borderColor: "border-red-200 dark:border-red-800",
-        badge: "stderr",
-        badgeVariant: "destructive" as const,
-      };
-    }
+  const copyToClipboard = async (notification: InspectorNotification) => {
+    const text = JSON.stringify(
+      { method: notification.method, params: notification.params },
+      null,
+      2
+    );
+    await navigator.clipboard.writeText(text);
+    setCopiedId(notification.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
+  const getNotificationStyle = (notification: InspectorNotification) => {
+    if (notification.type === "stderr") {
+      return { icon: AlertTriangle, color: "text-red-500", bg: "bg-red-500/10" };
+    }
     if (notification.method?.includes("progress")) {
-      return {
-        icon: Activity,
-        color: "text-blue-600 dark:text-blue-400",
-        bgColor: "bg-blue-50 dark:bg-blue-950/20",
-        borderColor: "border-blue-200 dark:border-blue-800",
-        badge: "progress",
-        badgeVariant: "secondary" as const,
-      };
+      return { icon: Activity, color: "text-blue-500", bg: "bg-blue-500/10" };
     }
-
-    return {
-      icon: Bell,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-50 dark:bg-green-950/20",
-      borderColor: "border-green-200 dark:border-green-800",
-      badge: "info",
-      badgeVariant: "default" as const,
-    };
+    return { icon: Bell, color: "text-green-500", bg: "bg-green-500/10" };
   };
 
-  const renderNotificationContent = (notification: InspectorNotification) => {
-    if (notification.type === "stderr") {
-      return (
-        <div className="text-xs text-red-700 dark:text-red-300 font-mono bg-red-50 dark:bg-red-950/20 p-1.5 rounded border border-red-200 dark:border-red-800">
-          {(notification.params as { content?: string })?.content || "stderr output"}
-        </div>
-      );
-    }
+  const filterButtons: { key: NotificationFilterType; label: string; count: number }[] = [
+    { key: "all", label: t("inspector.all"), count: counts.all },
+    { key: "info", label: "Info", count: counts.info },
+    { key: "progress", label: "Progress", count: counts.progress },
+    { key: "stderr", label: "Stderr", count: counts.stderr },
+  ];
 
-    return (
-      <div className="space-y-1">
-        <div className="text-xs font-medium text-foreground">
-          Method:{" "}
-          <code className="text-xs bg-muted px-1 rounded">{notification.method}</code>
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <Bell className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t("inspector.mcpNotifications")}</span>
+            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+              {counts.all}
+            </Badge>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1 ml-4">
+            {filterButtons.map(({ key, label, count }) => (
+              <button
+                key={key}
+                onClick={() => setActiveFilter(key)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                  activeFilter === key
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                }`}
+              >
+                {label}
+                {count > 0 && (
+                  <span className={`ml-1 ${activeFilter === key ? "opacity-80" : "opacity-60"}`}>
+                    ({count})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-        {notification.params && (
-          <div className="text-xs text-muted-foreground">
-            <div className="font-medium mb-0.5">Parameters:</div>
-            <pre className="text-xs bg-muted p-1.5 rounded border overflow-x-auto max-h-24">
-              {JSON.stringify(notification.params, null, 2)}
-            </pre>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClearNotifications}
+          disabled={notifications.length === 0}
+          className="h-7 text-xs"
+        >
+          <Trash2 className="h-3 w-3 mr-1" />
+          {t("inspector.clearAll")}
+        </Button>
+      </div>
+
+      {/* Notifications List */}
+      <div className="flex-1 overflow-auto">
+        {filteredNotifications.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+            <Info className="h-4 w-4 mr-2" />
+            {t("inspector.noNotifications", { type: activeFilter === "all" ? "" : activeFilter })}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {filteredNotifications.map((notification) => {
+              const style = getNotificationStyle(notification);
+              const Icon = style.icon;
+              const isExpanded = expandedIds.has(notification.id);
+
+              return (
+                <div key={notification.id} className="group">
+                  <div
+                    className="flex items-center gap-2 px-4 py-2 hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleExpand(notification.id)}
+                  >
+                    <button className="p-0.5">
+                      {isExpanded ? (
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                      )}
+                    </button>
+
+                    <div className={`p-1 rounded ${style.bg}`}>
+                      <Icon className={`h-3 w-3 ${style.color}`} />
+                    </div>
+
+                    <code className="text-xs font-mono flex-1 truncate">
+                      {notification.method || "stderr"}
+                    </code>
+
+                    <span className="text-xs text-muted-foreground">
+                      {notification.timestamp.toLocaleTimeString()}
+                    </span>
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          copyToClipboard(notification);
+                        }}
+                      >
+                        {copiedId === notification.id ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemoveNotification(notification.id);
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isExpanded && notification.params && (
+                    <div className="px-4 pb-2 pl-12">
+                      <pre className="text-xs bg-muted/50 p-2 rounded border overflow-x-auto max-h-32">
+                        {JSON.stringify(notification.params, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
-    );
-  };
-
-  return (
-    <Card className="w-full shadow-none" interactive={false}>
-      <CardHeader className="py-2 pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <CardTitle className="text-sm">{t("inspector.mcpNotifications")}</CardTitle>
-            <Badge variant="outline" className="text-xs h-5 px-1.5">
-              {notifications.length}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClearNotifications}
-              disabled={notifications.length === 0}
-              className="h-7 text-xs px-2"
-            >
-              <Trash2 className="h-3 w-3 mr-1" />
-              {t("inspector.clearAll")}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="h-7 w-7 p-0"
-            >
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      {isExpanded && (
-        <CardContent className="pt-0 px-3 pb-3">
-          <Tabs value={activeFilter} onValueChange={(value) => setActiveFilter(value as NotificationFilterType)}>
-            <div className="flex justify-start">
-              <TabsList className="h-8 p-0.5 inline-flex w-auto">
-                <TabsTrigger value="all" className="text-xs h-6 px-3 flex items-center gap-1">
-                  <Bell className="h-3 w-3" />
-                  {t("inspector.all")}
-                  <Badge variant="outline" className="text-xs h-4 px-1 ml-1">
-                    {counts.all}
-                  </Badge>
-                </TabsTrigger>
-
-                <TabsTrigger value="info" className="text-xs h-6 px-3 flex items-center gap-1">
-                  <Info className="h-3 w-3" />
-                  Info
-                  <Badge
-                    variant={counts.info > 0 ? "default" : "outline"}
-                    className="text-xs h-4 px-1 ml-1"
-                  >
-                    {counts.info}
-                  </Badge>
-                </TabsTrigger>
-
-                <TabsTrigger value="progress" className="text-xs h-6 px-3 flex items-center gap-1">
-                  <Activity className="h-3 w-3" />
-                  Progress
-                  <Badge
-                    variant={counts.progress > 0 ? "secondary" : "outline"}
-                    className="text-xs h-4 px-1 ml-1"
-                  >
-                    {counts.progress}
-                  </Badge>
-                </TabsTrigger>
-
-                <TabsTrigger value="stderr" className="text-xs h-6 px-3 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  Stderr
-                  <Badge
-                    variant={counts.stderr > 0 ? "destructive" : "outline"}
-                    className="text-xs h-4 px-1 ml-1"
-                  >
-                    {counts.stderr}
-                  </Badge>
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value={activeFilter} className="mt-2">
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {filteredNotifications.length === 0 ? (
-                  <div className="text-center text-xs text-muted-foreground py-4">
-                    {t("inspector.noNotifications", { type: activeFilter === "all" ? "" : activeFilter })}
-                  </div>
-                ) : (
-                  filteredNotifications.map((notification) => {
-                    const typeInfo = getNotificationTypeInfo(notification);
-                    const Icon = typeInfo.icon;
-
-                    return (
-                      <div key={notification.id}>
-                        <div className={`p-2 rounded border ${typeInfo.bgColor} ${typeInfo.borderColor}`}>
-                          <div className="flex items-start justify-between mb-1.5">
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                              <Icon className={`h-3 w-3 flex-shrink-0 ${typeInfo.color}`} />
-                              <Badge variant={typeInfo.badgeVariant} className="text-xs py-0 h-4 px-1">
-                                {typeInfo.badge}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground flex-shrink-0">
-                                {formatTimestamp(notification.timestamp)}
-                              </span>
-                            </div>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0 flex-shrink-0"
-                              onClick={() => onRemoveNotification(notification.id)}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-
-                          <div>{renderNotificationContent(notification)}</div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      )}
-    </Card>
+    </div>
   );
 }

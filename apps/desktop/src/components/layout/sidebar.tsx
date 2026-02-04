@@ -28,6 +28,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { UserMenu } from "@/components/auth/user-menu";
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { Button } from "@/components/ui/button";
+import { SidebarSection } from "./sidebar-section";
+import { WorkspaceSection } from "./workspace-section";
 
 interface NavItem {
   titleKey: string;
@@ -35,18 +37,28 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-const mainNav: NavItem[] = [
+// Home section navigation
+const homeNav: NavItem[] = [
   { titleKey: "nav.dashboard", href: "/", icon: LayoutDashboard },
+];
+
+// MCP section navigation
+const mcpNav: NavItem[] = [
+  { titleKey: "nav.mcpMarketplace", href: "/mcp-marketplace", icon: Store },
   { titleKey: "nav.dataSources", href: "/providers", icon: Database },
   { titleKey: "nav.searchService", href: "/search-service", icon: Search },
   { titleKey: "nav.inspector", href: "/inspector", icon: SearchCode },
   { titleKey: "nav.agents", href: "/agents", icon: Bot },
-  { titleKey: "nav.mcpMarketplace", href: "/mcp-marketplace", icon: Store },
-  { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
   { titleKey: "nav.logs", href: "/logs", icon: FileText },
 ];
 
-const bottomNav: NavItem[] = [
+// Skills section navigation
+const skillsNav: NavItem[] = [
+  { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
+];
+
+// Preferences section navigation
+const preferencesNav: NavItem[] = [
   { titleKey: "nav.settings", href: "/settings", icon: Settings },
   { titleKey: "nav.about", href: "/about", icon: Info },
 ];
@@ -81,23 +93,70 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           </div>
         </div>
 
-        {/* Main Navigation */}
+        {/* Main Navigation with Sections */}
         <ScrollArea className="flex-1 px-2 py-4">
-          <nav className="flex flex-col gap-1">
-            {mainNav.map((item) => (
-              <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-            ))}
-          </nav>
+          <div className="space-y-4">
+            {/* Workspaces Section */}
+            <WorkspaceSection collapsed={collapsed} />
+
+            <Separator className="bg-sidebar-border" />
+
+            {/* Home Section */}
+            <SidebarSection title={t("workspace.sections.home")} collapsed={collapsed}>
+              <nav className="flex flex-col gap-1">
+                {homeNav.map((item) => (
+                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                ))}
+              </nav>
+            </SidebarSection>
+
+            {/* MCP Section */}
+            <SidebarSection
+              title={t("workspace.sections.mcp")}
+              collapsible
+              defaultOpen
+              collapsed={collapsed}
+            >
+              <nav className="flex flex-col gap-1">
+                {mcpNav.map((item) => (
+                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                ))}
+              </nav>
+            </SidebarSection>
+
+            {/* Skills Section */}
+            <SidebarSection
+              title={t("workspace.sections.skills")}
+              collapsible
+              defaultOpen
+              collapsed={collapsed}
+            >
+              <nav className="flex flex-col gap-1">
+                {skillsNav.map((item) => (
+                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                ))}
+              </nav>
+            </SidebarSection>
+
+            {/* Preferences Section */}
+            <SidebarSection
+              title={t("workspace.sections.preferences")}
+              collapsible
+              defaultOpen
+              collapsed={collapsed}
+            >
+              <nav className="flex flex-col gap-1">
+                {preferencesNav.map((item) => (
+                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                ))}
+              </nav>
+            </SidebarSection>
+          </div>
         </ScrollArea>
 
-        {/* Bottom Navigation */}
+        {/* Bottom Status & Auth */}
         <div className="px-2 pb-4">
           <Separator className="mb-4 bg-sidebar-border" />
-          <nav className="flex flex-col gap-1">
-            {bottomNav.map((item) => (
-              <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-            ))}
-          </nav>
 
           {/* Unified Status Indicator */}
           <div className="mt-3">
