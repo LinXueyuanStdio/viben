@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { db, mcpPackages, users } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { listMcpQuerySchema, createMcpSchema } from '@/lib/validations/mcp';
-import { slugify, generateId } from '@/lib/utils';
+import { generateId } from '@/lib/utils';
 import { eq, desc, and, count } from 'drizzle-orm';
 import { ZodError } from 'zod';
 
