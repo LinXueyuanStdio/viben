@@ -9,12 +9,15 @@ import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import {
   getPackageType,
-  updateMcpPackageStatus,
-  updateSkillPackageStatus,
-  createModerationLog,
+  db,
+  mcpPackages,
+  skillPackages,
+  moderationLogs,
 } from '@/lib/admin';
 import { approvePackageSchema } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
+import { eq } from 'drizzle-orm';
+import type { PackageStatus } from '@/lib/types/admin';
 
 /**
  * POST /api/admin/packages/[id]/approve
@@ -45,28 +48,36 @@ export async function POST(
 
     // Parse optional request body
     let note: string | undefined;
-    try {
-      const body = await request.json();
-      const data = approvePackageSchema.parse(body);
+    const bodyText = await request.text();
+    if (bodyText) {
+      const data = approvePackageSchema.parse(JSON.parse(bodyText));
       note = data.note;
-    } catch {
-      // Body is optional, ignore parse errors
     }
 
-    // Update package status
-    if (packageType === 'mcp') {
-      await updateMcpPackageStatus(id, 'approved', session.userId);
-    } else {
-      await updateSkillPackageStatus(id, 'approved', session.userId);
-    }
+    // Use transaction to ensure atomicity
+    await db.transaction(async (tx: any) => {
+      // Update package status
+      const updateData: Record<string, unknown> = {
+        status: 'approved' as PackageStatus,
+        reviewedAt: new Date(),
+        reviewedBy: session.userId,
+      };
 
-    // Create moderation log
-    await createModerationLog({
-      adminId: session.userId,
-      entityType: packageType,
-      entityId: id,
-      action: 'approve',
-      reason: note,
+      if (packageType === 'mcp') {
+        await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+      } else {
+        await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+      }
+
+      // Create moderation log
+      await tx.insert(moderationLogs).values({
+        adminId: session.userId,
+        entityType: packageType,
+        entityId: id,
+        action: 'approve',
+        reason: note ?? null,
+        metadata: null,
+      });
     });
 
     return NextResponse.json({
