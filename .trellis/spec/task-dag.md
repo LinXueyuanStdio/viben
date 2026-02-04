@@ -146,8 +146,10 @@
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T20 | Desktop Integration | T13 | [desktop-integration.md](./modules/desktop-integration.md) | Desktop API client |
+| T20 | Desktop Integration | T13 | [desktop-task-dag.md](./desktop-task-dag.md) | 16 sub-tasks (TD0-TD15): Auth, Marketplace, Install, Sync, Offline |
 | T21 | Deploy & Polish | All | [deployment.md](./modules/deployment.md) | Vercel deploy, testing |
+
+> **Note**: T20 is expanded into a separate task DAG with 16 sub-tasks. See [desktop-task-dag.md](./desktop-task-dag.md) for details.
 
 ---
 

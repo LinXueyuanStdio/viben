@@ -1,5 +1,7 @@
 mod commands;
 
+use commands::api_client::ApiClientState;
+use commands::auth::AuthState;
 use commands::logs::LogsState;
 use commands::mcp::McpProcessState;
 use commands::usage::UsageState;
@@ -11,10 +13,15 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(ApiClientState::default())
         .manage(McpProcessState::default())
         .manage(LogsState::default())
         .manage(UsageState::default())
         .invoke_handler(tauri::generate_handler![
+            // API Client commands
+            commands::api_client::api_request,
+            commands::api_client::get_api_base_url,
+            commands::api_client::set_api_base_url,
             // Python commands
             commands::python::detect_python,
             commands::python::check_python_path,
@@ -76,6 +83,16 @@ pub fn run() {
             commands::marketplace::get_provider_index,
             commands::marketplace::get_flat_sources,
             commands::marketplace::clear_provider_cache,
+            // Cloud MCP commands
+            commands::cloud_mcp::list_cloud_mcp_packages,
+            commands::cloud_mcp::search_cloud_mcp_packages,
+            commands::cloud_mcp::get_cloud_mcp_package,
+            commands::cloud_mcp::get_cloud_mcp_categories,
+            // Cloud Skills commands
+            commands::cloud_skills::list_cloud_skill_packages,
+            commands::cloud_skills::search_cloud_skill_packages,
+            commands::cloud_skills::get_cloud_skill_package,
+            commands::cloud_skills::get_cloud_skill_categories,
             // Installed sources commands (via browse-mcp-cli)
             commands::marketplace::get_installed_sources,
             commands::marketplace::show_installed_provider,
