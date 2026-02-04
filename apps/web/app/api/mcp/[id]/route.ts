@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { db, mcpPackages, users } from '@/lib/db';
+import { db, mcpPackages } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth/middleware';
 import { updateMcpSchema } from '@/lib/validations/mcp';
 import { eq } from 'drizzle-orm';
