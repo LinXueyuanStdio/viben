@@ -206,8 +206,8 @@ export async function listPackagesForReview(
       status: mcpPackages.status,
       createdAt: mcpPackages.createdAt,
       authorId: mcpPackages.authorId,
-      transport: mcpPackages.transport,
-      entryPoint: mcpPackages.entryPoint,
+      transport: sql<string | null>`${mcpPackages.transport}`.as('transport'),
+      entryPoint: sql<string | null>`${mcpPackages.entryPoint}`.as('entryPoint'),
       skillType: sql<string | null>`NULL`.as('skillType'),
     })
     .from(mcpPackages)
@@ -228,7 +228,7 @@ export async function listPackagesForReview(
       authorId: skillPackages.authorId,
       transport: sql<string | null>`NULL`.as('transport'),
       entryPoint: sql<string | null>`NULL`.as('entryPoint'),
-      skillType: skillPackages.skillType,
+      skillType: sql<string | null>`${skillPackages.skillType}`.as('skillType'),
     })
     .from(skillPackages)
     .where(eq(skillPackages.status, status));
