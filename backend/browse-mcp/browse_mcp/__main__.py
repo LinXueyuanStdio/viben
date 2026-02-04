@@ -8,6 +8,8 @@ import httpx
 from loguru import logger
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field, field_validator, model_validator
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
 import typer
 
 from .types import Paper, PaperSource, paper2text
@@ -572,6 +574,11 @@ def serve(
         "-t",
         help="Transport method. One of: stdio, sse, streamable-http, http. Default is stdio; if host/port are set, defaults to sse.",
     ),
+    stateless: bool = typer.Option(
+        False,
+        "--stateless",
+        help="Enable stateless mode for HTTP transport. No session tracking, ideal for browser clients.",
+    ),
 ) -> None:
     """Start the Browse MCP server.
 
@@ -586,10 +593,30 @@ def serve(
         mcp.run(transport="stdio", log_level=log_level)
         return
 
+    # Build middleware list for network transports
+    middleware = []
+    cors_middleware = Middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    middleware.append(cors_middleware)
+    logger.info("CORS enabled for browser clients")
+
     logger.info(
         f"Starting Browse MCP server on {host}:{port} with transport '{transport}'"
+        + (", stateless mode" if stateless else "")
     )
-    mcp.run(transport=transport, host=host, port=port, log_level=log_level)
+    mcp.run(
+        transport=transport,
+        host=host,
+        port=port,
+        log_level=log_level,
+        middleware=middleware if middleware else None,
+        stateless_http=stateless,
+    )
 
 
 

@@ -13,6 +13,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@radix-ui/react-scroll-area": "^1.2.10",
+    "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tooltip": "^1.2.8",
@@ -23,6 +24,7 @@
     "@tauri-apps/plugin-shell": "^2.3.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "fastmcp": "^3.31.0",
     "framer-motion": "^12.29.2",
     "i18next": "^25.8.0",
     "i18next-browser-languagedetector": "^8.2.0",

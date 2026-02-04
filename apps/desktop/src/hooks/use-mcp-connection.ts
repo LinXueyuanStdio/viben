@@ -6,11 +6,112 @@ import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { InspectorConnectionStatus, McpServerCapabilities } from "@/types";
 
+/**
+ * MCP Server Configuration Types
+ * Based on fastmcp's canonical MCP configuration format
+ * @see https://gofastmcp.com
+ */
+
+/** Transport type for MCP connections */
+export type McpTransportType = "stdio" | "sse" | "http" | "streamable-http";
+
+/** Base configuration shared by all server types */
+interface BaseMcpServerConfig {
+  /** Transport type */
+  transport?: McpTransportType;
+  /** Alternative transport field name (for compatibility) */
+  type?: McpTransportType;
+  /** Maximum response time in milliseconds */
+  timeout?: number;
+  /** Human-readable server description */
+  description?: string;
+  /** Icon path or URL for UI display */
+  icon?: string;
+  /** Authentication configuration object */
+  authentication?: Record<string, unknown>;
+}
+
+/** Configuration for STDIO transport */
+export interface StdioMcpServerConfig extends BaseMcpServerConfig {
+  transport?: "stdio";
+  type?: "stdio";
+  /** Command to execute */
+  command: string;
+  /** Command arguments */
+  args?: string[];
+  /** Environment variables */
+  env?: Record<string, string>;
+  /** Working directory for command execution */
+  cwd?: string;
+}
+
+/** Configuration for remote (HTTP/SSE) transport */
+export interface RemoteMcpServerConfig extends BaseMcpServerConfig {
+  transport?: "http" | "streamable-http" | "sse";
+  type?: "http" | "streamable-http" | "sse";
+  /** Server URL */
+  url: string;
+  /** HTTP headers to include in requests */
+  headers?: Record<string, string>;
+  /** Authentication: Bearer token string, "oauth", or custom auth config */
+  auth?: string | "oauth" | Record<string, unknown>;
+  /** SSE read timeout in milliseconds */
+  sse_read_timeout?: number;
+}
+
+/** Union type for all MCP server configurations */
+export type McpServerConfig = StdioMcpServerConfig | RemoteMcpServerConfig;
+
+/** Full MCP configuration with multiple servers */
+export interface McpConfig {
+  mcpServers?: Record<string, McpServerConfig>;
+}
+
+/** Check if config is for remote transport */
+function isRemoteConfig(config: McpServerConfig): config is RemoteMcpServerConfig {
+  return "url" in config;
+}
+
+/** Check if config is for STDIO transport */
+function isStdioConfig(config: McpServerConfig): config is StdioMcpServerConfig {
+  return "command" in config;
+}
+
+/** Infer transport type from URL path */
+function inferTransportFromUrl(url: string): "http" | "sse" {
+  try {
+    const parsedUrl = new URL(url);
+    // Match /sse followed by /, ?, &, or end of string
+    if (/\/sse(\/|\?|&|$)/.test(parsedUrl.pathname)) {
+      return "sse";
+    }
+  } catch {
+    // Invalid URL, default to http
+  }
+  return "http";
+}
+
+/** Get effective transport type from config */
+function getEffectiveTransport(config: McpServerConfig): McpTransportType {
+  // Check explicit transport field first
+  const transport = config.transport || config.type;
+
+  if (transport) {
+    return transport;
+  }
+
+  // For remote configs, infer from URL
+  if (isRemoteConfig(config)) {
+    return inferTransportFromUrl(config.url);
+  }
+
+  // Default to stdio for command-based configs
+  return "stdio";
+}
+
 interface UseMcpConnectionOptions {
-  /** Server URL for SSE/HTTP transport (e.g., http://localhost:3000) */
-  serverUrl: string;
-  /** Transport type: 'sse' or 'http' */
-  transportType: "sse" | "http";
+  /** MCP server configuration object */
+  config: McpServerConfig | null;
   /** Callback for MCP notifications */
   onNotification?: (method: string, params?: Record<string, unknown>) => void;
   /** Callback for stderr notifications (reserved for future use) */
@@ -22,20 +123,21 @@ interface UseMcpConnectionOptions {
 interface UseMcpConnectionReturn {
   connectionStatus: InspectorConnectionStatus;
   serverCapabilities: McpServerCapabilities | null;
+  connectionError: string | null;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
 }
 
 export function useMcpConnection({
-  serverUrl,
-  transportType = "sse",
+  config,
   onNotification,
   onStdErrNotification: _onStdErrNotification, // Reserved for future use
   enabled = true,
 }: UseMcpConnectionOptions): UseMcpConnectionReturn {
   const [connectionStatus, setConnectionStatus] = useState<InspectorConnectionStatus>("disconnected");
   const [serverCapabilities, setServerCapabilities] = useState<McpServerCapabilities | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   const clientRef = useRef<Client | null>(null);
   const transportRef = useRef<Transport | null>(null);
@@ -56,11 +158,10 @@ export function useMcpConnection({
     };
 
     const requestOptions: RequestOptions = {
-      timeout: 30000,
+      timeout: config?.timeout ?? 30000,
     };
 
     try {
-      // Use the client's request method with dynamic result handling
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const result = await client.request(request as any, undefined as never, requestOptions);
       return result as T;
@@ -68,12 +169,32 @@ export function useMcpConnection({
       console.error(`MCP request failed (${method}):`, error);
       throw error;
     }
-  }, []);
+  }, [config?.timeout]);
 
   // Connect to MCP server
   const connect = useCallback(async () => {
-    if (!enabled || !serverUrl) {
-      console.warn("Cannot connect: hook disabled or no server URL");
+    if (!enabled || !config) {
+      console.warn("Cannot connect: hook disabled or no config");
+      return;
+    }
+
+    // Clear previous error
+    setConnectionError(null);
+
+    // STDIO not supported in browser
+    if (isStdioConfig(config)) {
+      const errorMsg = "STDIO transport is not supported in browser environment";
+      console.warn(errorMsg);
+      setConnectionError(errorMsg);
+      setConnectionStatus("error");
+      return;
+    }
+
+    if (!isRemoteConfig(config)) {
+      const errorMsg = "Invalid config: missing url";
+      console.warn(errorMsg);
+      setConnectionError(errorMsg);
+      setConnectionStatus("error");
       return;
     }
 
@@ -112,26 +233,43 @@ export function useMcpConnection({
         };
       }
 
+      // Build headers from config
+      const headers: Record<string, string> = {
+        ...config.headers,
+      };
+
+      // Add auth header if specified
+      if (config.auth && typeof config.auth === "string" && config.auth !== "oauth") {
+        // Bearer token auth
+        headers["Authorization"] = config.auth.startsWith("Bearer ")
+          ? config.auth
+          : `Bearer ${config.auth}`;
+      }
+
+      // Determine transport type
+      const effectiveTransport = getEffectiveTransport(config);
+
       // Create transport based on type
       let transport: Transport;
-      const url = new URL(serverUrl);
+      const url = new URL(config.url);
 
-      if (transportType === "http") {
-        // Streamable HTTP transport (MCP over HTTP)
+      if (effectiveTransport === "sse") {
+        console.log("Connecting with SSE transport to:", url.toString());
+        transport = new SSEClientTransport(url, {
+          requestInit: {
+            headers,
+          },
+        });
+      } else {
+        // Both "http" and "streamable-http" use StreamableHTTPClientTransport
+        console.log("Connecting with HTTP transport to:", url.toString());
         transport = new StreamableHTTPClientTransport(url, {
           requestInit: {
             headers: {
               "Content-Type": "application/json",
+              "Accept": "application/json, text/event-stream",
+              ...headers,
             },
-          },
-        });
-      } else {
-        // SSE transport (default)
-        // SSE endpoint is typically at /sse
-        const sseUrl = new URL("/sse", serverUrl);
-        transport = new SSEClientTransport(sseUrl, {
-          requestInit: {
-            headers: {},
           },
         });
       }
@@ -158,16 +296,37 @@ export function useMcpConnection({
       setServerCapabilities(mcpCapabilities);
       setConnectionStatus("connected");
 
-      console.log("Connected to MCP server:", serverUrl);
+      console.log("Connected to MCP server:", config.url);
       console.log("Server capabilities:", capabilities);
 
     } catch (error) {
       console.error("Connection error:", error);
+      // Extract detailed error message
+      let errorMsg = "Connection failed";
+      if (error instanceof Error) {
+        errorMsg = error.message;
+        // Try to extract more details from the error
+        if ("cause" in error && error.cause) {
+          errorMsg += `: ${String(error.cause)}`;
+        }
+      } else if (typeof error === "object" && error !== null) {
+        // Handle JSON-RPC error responses
+        const errObj = error as Record<string, unknown>;
+        if (errObj.error && typeof errObj.error === "object") {
+          const rpcError = errObj.error as Record<string, unknown>;
+          errorMsg = String(rpcError.message || rpcError.code || JSON.stringify(rpcError));
+        } else {
+          errorMsg = JSON.stringify(error);
+        }
+      } else {
+        errorMsg = String(error);
+      }
+      setConnectionError(errorMsg);
       setConnectionStatus("error");
       setServerCapabilities(null);
       throw error;
     }
-  }, [enabled, serverUrl, transportType, onNotification]);
+  }, [enabled, config, onNotification]);
 
   // Disconnect from MCP server
   const disconnect = useCallback(async () => {
@@ -194,6 +353,7 @@ export function useMcpConnection({
     transportRef.current = null;
     setConnectionStatus("disconnected");
     setServerCapabilities(null);
+    setConnectionError(null);
   }, []);
 
   // Cleanup on unmount
@@ -218,8 +378,60 @@ export function useMcpConnection({
   return {
     connectionStatus,
     serverCapabilities,
+    connectionError,
     connect,
     disconnect,
     makeRequest,
   };
+}
+
+/**
+ * Parse MCP server configuration from JSON string
+ */
+export function parseMcpConfig(jsonString: string): McpServerConfig {
+  const config = JSON.parse(jsonString);
+
+  // If it looks like a full MCPConfig with mcpServers, extract the first server
+  if (config.mcpServers && typeof config.mcpServers === "object") {
+    const serverNames = Object.keys(config.mcpServers);
+    if (serverNames.length > 0) {
+      return config.mcpServers[serverNames[0]] as McpServerConfig;
+    }
+  }
+
+  // Otherwise treat as a single server config
+  return config as McpServerConfig;
+}
+
+/**
+ * Validate MCP server configuration
+ */
+export function validateMcpConfig(config: McpServerConfig): { valid: boolean; error?: string } {
+  if (isStdioConfig(config)) {
+    if (!config.command) {
+      return { valid: false, error: "STDIO config requires 'command' field" };
+    }
+    return { valid: true };
+  }
+
+  if (isRemoteConfig(config)) {
+    if (!config.url) {
+      return { valid: false, error: "Remote config requires 'url' field" };
+    }
+    try {
+      new URL(config.url);
+    } catch {
+      return { valid: false, error: `Invalid URL: ${config.url}` };
+    }
+    return { valid: true };
+  }
+
+  return { valid: false, error: "Config must have either 'command' (stdio) or 'url' (remote)" };
+}
+
+/**
+ * Check if config can be used in browser environment
+ */
+export function isBrowserCompatible(config: McpServerConfig): boolean {
+  return isRemoteConfig(config);
 }

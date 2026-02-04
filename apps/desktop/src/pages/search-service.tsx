@@ -348,12 +348,13 @@ function ServerCard({
 
   const generateMcpConfig = (includeRealKey: boolean = false) => {
     const baseUrl = `http://localhost:${server.port || 3000}`;
-    const url = server.transport === "sse" ? `${baseUrl}/sse` : baseUrl;
+    // SSE transport uses /sse endpoint, HTTP transport uses /mcp endpoint
+    const url = server.transport === "sse" ? `${baseUrl}/sse` : `${baseUrl}/mcp`;
 
     const config: Record<string, unknown> = {
       "browse-mcp": {
         url,
-        transport: server.transport,
+        transport: server.transport === "sse" ? "sse" : "streamable-http",
       },
     };
 
@@ -704,19 +705,14 @@ function ServerCard({
               )}
             </div>
 
-            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto">
-              {JSON.stringify(generateMcpConfig(false), null, 2)}
+            {/* Show config with real API key if selected */}
+            <pre className="bg-muted rounded-md p-3 text-sm overflow-x-auto select-all">
+              {JSON.stringify(generateMcpConfig(!!selectedKeyForConfig && !!fullApiKey), null, 2)}
             </pre>
 
             {!selectedKeyForConfig && server.apiKeys.length > 0 && (
               <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
                 {t("searchService.selectKeyToCopy")}
-              </p>
-            )}
-
-            {selectedApiKey && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                {t("searchService.clickToCopy")}
               </p>
             )}
           </div>
@@ -896,41 +892,109 @@ function ServerApiKeysSection({
       ) : (
         <div className="space-y-2">
           {server.apiKeys.map((key) => (
-            <div
+            <ApiKeyItem
               key={key.id}
-              className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{key.name}</p>
-                  <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
-                    {key.keyPrefix}
-                  </code>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-                  <span>{t("searchService.created", { date: key.createdAt })}</span>
-                  {keyUsages[key.id]?.last_used && (
-                    <span>{t("searchService.lastUsed", { date: keyUsages[key.id].last_used })}</span>
-                  )}
-                  <span className="flex items-center gap-1">
-                    <Activity className="h-3 w-3" />
-                    {t("searchService.requestsCount", { count: keyUsages[key.id]?.usage_count ?? 0 })}
-                  </span>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleDelete(key.id, key.name)}
-                disabled={disabled}
-                className="text-destructive hover:text-destructive disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+              apiKey={key}
+              usage={keyUsages[key.id]}
+              onDelete={() => handleDelete(key.id, key.name)}
+              disabled={disabled}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface ApiKeyItemProps {
+  apiKey: ServiceApiKey;
+  usage?: ApiKeyUsage;
+  onDelete: () => void;
+  disabled?: boolean;
+}
+
+function ApiKeyItem({ apiKey, usage, onDelete, disabled }: ApiKeyItemProps) {
+  const { t } = useTranslation();
+  const { getKeyById } = useServiceKeys();
+  const [fullKey, setFullKey] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch full key on mount
+  useEffect(() => {
+    setLoading(true);
+    getKeyById(apiKey.id).then((result) => {
+      setFullKey(result?.key ?? null);
+      setLoading(false);
+    });
+  }, [apiKey.id, getKeyById]);
+
+  const handleCopy = () => {
+    if (!fullKey) return;
+    navigator.clipboard.writeText(fullKey);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="p-3 rounded-lg bg-muted/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">{apiKey.name}</p>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopy}
+            disabled={!fullKey}
+            className="h-7 px-2"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-green-600" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            disabled={disabled}
+            className="h-7 px-2 text-destructive hover:text-destructive disabled:opacity-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      {/* Full API Key Display */}
+      <div className="mt-2">
+        {loading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            {t("common.loading")}
+          </div>
+        ) : fullKey ? (
+          <code className="block w-full bg-muted px-2 py-1.5 rounded text-xs font-mono break-all select-all">
+            {fullKey}
+          </code>
+        ) : (
+          <code className="block w-full bg-muted px-2 py-1.5 rounded text-xs font-mono text-muted-foreground">
+            {apiKey.keyPrefix}...
+          </code>
+        )}
+      </div>
+      {/* Usage info */}
+      <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+        <span>{t("searchService.created", { date: apiKey.createdAt })}</span>
+        {usage?.last_used && (
+          <span>{t("searchService.lastUsed", { date: usage.last_used })}</span>
+        )}
+        <span className="flex items-center gap-1">
+          <Activity className="h-3 w-3" />
+          {t("searchService.requestsCount", { count: usage?.usage_count ?? 0 })}
+        </span>
+      </div>
     </div>
   );
 }
