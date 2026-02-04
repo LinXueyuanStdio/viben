@@ -226,8 +226,8 @@ export async function listPackagesForReview(
       status: skillPackages.status,
       createdAt: skillPackages.createdAt,
       authorId: skillPackages.authorId,
-      transport: sql<string | null>`NULL`.as('transport'),
-      entryPoint: sql<string | null>`NULL`.as('entryPoint'),
+      transport: sql<'stdio' | 'sse' | 'http'>`'stdio'`.as('transport'),
+      entryPoint: sql<string>`''`.as('entryPoint'),
       skillType: skillPackages.skillType,
     })
     .from(skillPackages)
