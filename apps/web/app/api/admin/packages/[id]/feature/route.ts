@@ -10,12 +10,15 @@ import { requirePermission, AuthError } from '@/lib/auth';
 import {
   getPackageType,
   getPackageStatus,
-  updateMcpPackageStatus,
-  updateSkillPackageStatus,
-  createModerationLog,
+  db,
+  mcpPackages,
+  skillPackages,
+  moderationLogs,
 } from '@/lib/admin';
 import { featurePackageSchema } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
+import { eq } from 'drizzle-orm';
+import type { PackageStatus } from '@/lib/types/admin';
 
 /**
  * POST /api/admin/packages/[id]/feature
@@ -71,25 +74,36 @@ export async function POST(
           package: {
             id,
             status: 'featured',
-            featuredAt: null, // Keep existing
-            featuredBy: null,
           },
         });
       }
 
-      // Update to featured
-      if (packageType === 'mcp') {
-        await updateMcpPackageStatus(id, 'featured', session.userId);
-      } else {
-        await updateSkillPackageStatus(id, 'featured', session.userId);
-      }
+      // Use transaction to ensure atomicity
+      await db.transaction(async (tx: any) => {
+        // Update to featured
+        const updateData: Record<string, unknown> = {
+          status: 'featured' as PackageStatus,
+          reviewedAt: new Date(),
+          reviewedBy: session.userId,
+          featuredAt: new Date(),
+          featuredBy: session.userId,
+        };
 
-      // Create moderation log
-      await createModerationLog({
-        adminId: session.userId,
-        entityType: packageType,
-        entityId: id,
-        action: 'feature',
+        if (packageType === 'mcp') {
+          await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+        } else {
+          await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+        }
+
+        // Create moderation log
+        await tx.insert(moderationLogs).values({
+          adminId: session.userId,
+          entityType: packageType,
+          entityId: id,
+          action: 'feature',
+          reason: null,
+          metadata: null,
+        });
       });
 
       return NextResponse.json({
@@ -115,19 +129,32 @@ export async function POST(
         });
       }
 
-      // Update to approved (unfeature)
-      if (packageType === 'mcp') {
-        await updateMcpPackageStatus(id, 'approved', session.userId);
-      } else {
-        await updateSkillPackageStatus(id, 'approved', session.userId);
-      }
+      // Use transaction to ensure atomicity
+      await db.transaction(async (tx: any) => {
+        // Update to approved (unfeature)
+        const updateData: Record<string, unknown> = {
+          status: 'approved' as PackageStatus,
+          reviewedAt: new Date(),
+          reviewedBy: session.userId,
+          featuredAt: null,
+          featuredBy: null,
+        };
 
-      // Create moderation log
-      await createModerationLog({
-        adminId: session.userId,
-        entityType: packageType,
-        entityId: id,
-        action: 'unfeature',
+        if (packageType === 'mcp') {
+          await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+        } else {
+          await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+        }
+
+        // Create moderation log
+        await tx.insert(moderationLogs).values({
+          adminId: session.userId,
+          entityType: packageType,
+          entityId: id,
+          action: 'unfeature',
+          reason: null,
+          metadata: null,
+        });
       });
 
       return NextResponse.json({

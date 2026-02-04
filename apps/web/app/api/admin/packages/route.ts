@@ -32,13 +32,9 @@ export async function GET(request: NextRequest) {
 
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
-    const query = listAdminPackagesQuerySchema.parse({
-      type: searchParams.get('type') ?? undefined,
-      status: searchParams.get('status') ?? undefined,
-      page: searchParams.get('page') ?? undefined,
-      limit: searchParams.get('limit') ?? undefined,
-      sort: searchParams.get('sort') ?? undefined,
-    });
+    const query = listAdminPackagesQuerySchema.parse(
+      Object.fromEntries(searchParams.entries())
+    );
 
     // Fetch packages
     const result = await listPackagesForReview(query);

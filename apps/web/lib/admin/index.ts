@@ -4,6 +4,9 @@
  * Exports all admin-related functions for package moderation and logging.
  */
 
+// Re-export db and schema for transaction usage
+export { db, mcpPackages, skillPackages, moderationLogs } from '@/lib/db';
+
 // Package moderation functions
 export {
   listPackagesForReview,
