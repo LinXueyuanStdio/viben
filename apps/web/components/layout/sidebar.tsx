@@ -11,6 +11,7 @@ import {
   User,
   Building2,
   Layers,
+  BarChart3,
 } from 'lucide-react';
 
 const navigation = [
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Workspaces', href: '/workspaces', icon: FolderKanban },
   { name: 'Organizations', href: '/orgs', icon: Building2 },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 const userNavigation = [
