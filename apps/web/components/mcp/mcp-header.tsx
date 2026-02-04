@@ -74,7 +74,7 @@ export function McpHeader({ package: pkg }: McpHeaderProps) {
           </span>
           {pkg.ratingCount > 0 && (
             <span className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               {ratingAvg.toFixed(1)} ({pkg.ratingCount})
             </span>
           )}

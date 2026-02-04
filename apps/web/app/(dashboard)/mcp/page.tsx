@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
+import { Store } from 'lucide-react';
 import { McpGrid } from '@/components/mcp/mcp-grid';
 import { McpFilters } from '@/components/mcp/mcp-filters';
 import { SearchInput } from '@/components/shared/search-input';
+import { PageHeader } from '@/components/shared/page-header';
 
 export const metadata = {
   title: 'MCP Marketplace',
@@ -21,12 +23,11 @@ export default async function McpPage({ searchParams }: McpPageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">MCP Marketplace</h1>
-        <p className="mt-2 text-muted-foreground">
-          Discover and install Model Context Protocol servers
-        </p>
-      </div>
+      <PageHeader
+        icon={Store}
+        title="MCP Marketplace"
+        subtitle="Discover and install Model Context Protocol servers"
+      />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
@@ -49,7 +50,7 @@ function McpGridSkeleton() {
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="h-48 animate-pulse rounded-lg border bg-muted"
+          className="h-48 animate-pulse rounded-xl border bg-muted"
         />
       ))}
     </div>

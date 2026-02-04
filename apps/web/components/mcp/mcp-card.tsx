@@ -3,6 +3,19 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Download, Star } from 'lucide-react';
 
+/**
+ * Format large numbers with K/M suffix
+ */
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
+  }
+  return num.toString();
+}
+
 interface McpCardProps {
   package: {
     id: string;
@@ -27,7 +40,7 @@ export function McpCard({ package: pkg }: McpCardProps) {
 
   return (
     <Link href={`/mcp/${pkg.id}`}>
-      <div className="group relative flex h-full flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50">
+      <div className="group relative flex h-full flex-col rounded-xl border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:shadow-lg hover:-translate-y-1">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <h3 className="font-semibold group-hover:text-primary">
@@ -35,7 +48,9 @@ export function McpCard({ package: pkg }: McpCardProps) {
             </h3>
             <p className="text-xs text-muted-foreground">v{pkg.version}</p>
           </div>
-          <Badge variant="secondary">{pkg.transport}</Badge>
+          <Badge variant="outline" className="text-[10px] shrink-0">
+            {pkg.transport.toUpperCase()}
+          </Badge>
         </div>
 
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
@@ -60,15 +75,15 @@ export function McpCard({ package: pkg }: McpCardProps) {
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Heart className="h-3 w-3" />
-              {pkg.favoritesCount}
+              {formatNumber(pkg.favoritesCount)}
             </span>
             <span className="flex items-center gap-1">
               <Download className="h-3 w-3" />
-              {pkg.downloadsCount}
+              {formatNumber(pkg.downloadsCount)}
             </span>
             {ratingAvg > 0 && (
               <span className="flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 {ratingAvg.toFixed(1)}
               </span>
             )}
