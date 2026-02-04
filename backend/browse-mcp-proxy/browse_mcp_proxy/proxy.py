@@ -515,7 +515,7 @@ def register_routes(app: FastAPI):
 
         elif request.method == "POST":
             # JSON-RPC request
-            body = await request.json()
+            body = await request.body()
 
             # Get existing session or create new one
             session = None
@@ -529,19 +529,27 @@ def register_routes(app: FastAPI):
                     headers=headers,
                 )
 
-            # Add server session ID if we have one
-            request_headers = {**headers}
+            # Build request headers - ensure Content-Type is set
+            request_headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+                **headers,
+            }
             if session.server_session_id:
                 request_headers["mcp-session-id"] = session.server_session_id
+
+            logger.debug(f"Proxying POST to {url} with headers: {request_headers}")
 
             try:
                 async with httpx.AsyncClient() as client:
                     response = await client.post(
                         url,
-                        json=body,
+                        content=body,
                         headers=request_headers,
-                        timeout=30.0,
+                        timeout=60.0,
                     )
+
+                    logger.debug(f"Response status: {response.status_code}, headers: {dict(response.headers)}")
 
                     # Capture session ID from response
                     server_session = response.headers.get("mcp-session-id")
@@ -550,33 +558,35 @@ def register_routes(app: FastAPI):
                             session.id, server_session_id=server_session
                         )
 
+                    # Build response headers - preserve important headers from server
+                    response_headers = {
+                        "x-proxy-session-id": session.id,
+                    }
+
+                    # Copy relevant headers from server response
+                    for header_name in ["mcp-session-id", "content-type"]:
+                        if header_name in response.headers:
+                            response_headers[header_name] = response.headers[header_name]
+
                     # Check content type for streaming response
                     content_type = response.headers.get("content-type", "")
 
                     if "text/event-stream" in content_type:
-                        # Streaming response - relay as SSE
-                        async def stream_response():
-                            async for line in response.aiter_lines():
-                                if line:
-                                    yield {"event": "message", "data": line}
-
-                        return EventSourceResponse(
-                            stream_response(),
-                            headers={
-                                "x-proxy-session-id": session.id,
-                                "mcp-session-id": server_session or "",
-                            },
-                        )
-                    else:
-                        # Regular JSON response
+                        # Streaming response - need to relay as SSE
+                        # But for now, just return the content directly
                         return Response(
                             content=response.content,
                             status_code=response.status_code,
-                            headers={
-                                "x-proxy-session-id": session.id,
-                                "mcp-session-id": server_session or "",
-                                "content-type": content_type,
-                            },
+                            headers=response_headers,
+                            media_type=content_type,
+                        )
+                    else:
+                        # Regular JSON response - pass through directly
+                        return Response(
+                            content=response.content,
+                            status_code=response.status_code,
+                            headers=response_headers,
+                            media_type=content_type or "application/json",
                         )
 
             except httpx.TimeoutException:
