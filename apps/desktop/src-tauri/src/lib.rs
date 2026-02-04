@@ -4,7 +4,10 @@ use commands::api_client::ApiClientState;
 use commands::auth::AuthState;
 use commands::logs::LogsState;
 use commands::mcp::McpProcessState;
+use commands::offline_cache::OfflineCacheState;
+use commands::package_install::InstalledPackagesState;
 use commands::usage::UsageState;
+use commands::workspace_sync::WorkspaceSyncState;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,9 +17,13 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(ApiClientState::default())
+        .manage(AuthState::default())
         .manage(McpProcessState::default())
         .manage(LogsState::default())
         .manage(UsageState::default())
+        .manage(OfflineCacheState::default())
+        .manage(InstalledPackagesState::default())
+        .manage(WorkspaceSyncState::default())
         .invoke_handler(tauri::generate_handler![
             // API Client commands
             commands::api_client::api_request,
@@ -104,6 +111,39 @@ pub fn run() {
             commands::api_logs::clear_api_logs,
             commands::api_logs::get_api_logs_dir_path,
             commands::api_logs::open_api_logs_dir,
+            // Auth commands
+            commands::auth::login_with_credentials,
+            commands::auth::login_with_github,
+            commands::auth::handle_oauth_callback,
+            commands::auth::logout,
+            commands::auth::get_current_user,
+            commands::auth::refresh_session,
+            // Offline cache commands
+            commands::offline_cache::get_cache_info,
+            commands::offline_cache::refresh_cache,
+            commands::offline_cache::clear_cache,
+            commands::offline_cache::get_cached_mcp_packages,
+            commands::offline_cache::get_cached_mcp_categories,
+            commands::offline_cache::get_cached_skill_packages,
+            commands::offline_cache::get_cached_skill_categories,
+            commands::offline_cache::set_cache_settings,
+            commands::offline_cache::get_cache_settings,
+            commands::offline_cache::is_offline,
+            commands::offline_cache::should_refresh_cache,
+            // Package installation commands
+            commands::package_install::install_cloud_mcp_package,
+            commands::package_install::install_cloud_skill_package,
+            commands::package_install::uninstall_package,
+            commands::package_install::get_installed_packages,
+            commands::package_install::update_package,
+            commands::package_install::is_package_installed,
+            commands::package_install::get_installed_package,
+            // Workspace sync commands
+            commands::workspace_sync::list_cloud_workspaces,
+            commands::workspace_sync::get_cloud_workspace,
+            commands::workspace_sync::sync_workspace,
+            commands::workspace_sync::push_local_config,
+            commands::workspace_sync::get_sync_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -149,7 +149,8 @@
     "system": "System",
     "language": "Language",
     "storage": "Storage",
-    "downloadPath": "Download Path"
+    "downloadPath": "Download Path",
+    "offlineCache": "Offline Cache"
   },
   "about": {
     "title": "Browse MCP",
@@ -322,6 +323,33 @@
     "serverStopped": "Server is stopped",
     "serverError": "Server error"
   },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "signUp": "Sign Up",
+    "signInTitle": "Welcome Back",
+    "signInDescription": "Sign in to your account to sync your settings and access cloud features.",
+    "continueWithGitHub": "Continue with GitHub",
+    "orContinueWith": "or continue with email",
+    "email": "Email",
+    "emailPlaceholder": "name@example.com",
+    "emailRequired": "Email is required",
+    "emailInvalid": "Please enter a valid email address",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 6 characters",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "forgotPassword": "Forgot password?",
+    "rememberMe": "Remember me",
+    "signInWithEmail": "Sign In with Email",
+    "noAccount": "Don't have an account?",
+    "profile": "Profile",
+    "settings": "Settings",
+    "signInRequired": "Sign In Required",
+    "signInRequiredDescription": "Please sign in to access this feature. Your data will be synced across devices."
+  },
   "inspector": {
     "title": "MCP Inspector",
     "subtitle": "Inspect and interact with MCP servers in real-time",
@@ -481,5 +509,27 @@
     "clearAll": "Clear All",
     "all": "All",
     "noNotifications": "No {{type}} notifications"
+  },
+  "updates": {
+    "title": "Package Updates",
+    "available": "{{count}} update(s) available",
+    "upToDate": "All packages are up to date",
+    "checkForUpdates": "Check for updates",
+    "checking": "Checking for updates...",
+    "updating": "Updating...",
+    "updateAll": "Update All",
+    "allUpToDate": "All packages up to date",
+    "noUpdates": "There are no pending updates",
+    "lastChecked": "Last checked",
+    "justNow": "Just now",
+    "minutesAgo_one": "{{count}} minute ago",
+    "minutesAgo_other": "{{count}} minutes ago",
+    "hoursAgo_one": "{{count}} hour ago",
+    "hoursAgo_other": "{{count}} hours ago",
+    "updatesAvailable": "Updates Available",
+    "viewUpdates": "View",
+    "mcpAvailable": "{{count}} MCP update(s) available",
+    "skillsAvailable": "{{count}} skill update(s) available",
+    "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   }
 }
