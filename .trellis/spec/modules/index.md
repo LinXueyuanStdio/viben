@@ -74,6 +74,12 @@ This directory contains detailed specifications for implementing each module of 
 | [desktop-integration.md](./desktop-integration.md) | T20: Desktop app API client | 3 | Pending |
 | [deployment.md](./deployment.md) | T21: Vercel deployment | 5 | Pending |
 
+### Phase 7: Admin System
+
+| Module | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| [admin-ui.md](./admin-ui.md) | T22: Admin dashboard, package & content moderation | 8 | Pending |
+
 ---
 
 ## Quick Reference

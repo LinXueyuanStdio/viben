@@ -1,0 +1,14 @@
+{
+  "name": "browse-mcp-proxy-test",
+  "type": "module",
+  "scripts": {
+    "test": "npx tsx test-proxy.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.8.3"
+  }
+}

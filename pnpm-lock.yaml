@@ -315,6 +315,19 @@ importers:
         specifier: ^4.0.18
         version: 4.0.18(@types/node@22.19.8)(jsdom@28.0.0)
 
+  backend/browse-mcp-proxy/test:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.25.3
+        version: 1.25.3(hono@4.11.7)(zod@4.3.6)
+    devDependencies:
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   packages/api-client:
     devDependencies:
       tsup:
@@ -17173,6 +17186,17 @@ packages:
       - supports-color
       - tsx
       - yaml
+    dev: true
+
+  /tsx@4.21.0:
+    resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
+    dependencies:
+      esbuild: 0.27.2
+      get-tsconfig: 4.13.1
+    optionalDependencies:
+      fsevents: 2.3.3
     dev: true
 
   /tsyringe@4.10.0:
