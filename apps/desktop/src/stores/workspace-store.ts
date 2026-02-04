@@ -1,6 +1,18 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Workspace } from "@/types";
+import type { Workspace, WorkspaceAgent } from "@/types";
+
+/**
+ * Discovery task for a workspace - tracks auto-discovery progress
+ */
+export interface DiscoveryTask {
+  workspaceId: string;
+  status: "pending" | "running" | "completed" | "error";
+  startedAt: number;
+  completedAt?: number;
+  error?: string;
+  agents?: WorkspaceAgent[];
+}
 
 interface WorkspaceState {
   // Workspaces list
@@ -9,6 +21,9 @@ interface WorkspaceState {
   selectedAgentId: string | null;
   isLoading: boolean;
   error: string | null;
+
+  // Discovery tasks - track auto-discovery for each workspace
+  discoveryTasks: Record<string, DiscoveryTask>;
 
   // Actions - Workspace management
   setWorkspaces: (workspaces: Workspace[]) => void;
@@ -24,9 +39,17 @@ interface WorkspaceState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 
+  // Actions - Discovery tasks
+  startDiscovery: (workspaceId: string) => void;
+  completeDiscovery: (workspaceId: string, agents: WorkspaceAgent[]) => void;
+  failDiscovery: (workspaceId: string, error: string) => void;
+  clearDiscovery: (workspaceId: string) => void;
+
   // Getters
   getWorkspace: (workspaceId: string) => Workspace | undefined;
   getActiveWorkspace: () => Workspace | undefined;
+  getDiscoveryTask: (workspaceId: string) => DiscoveryTask | undefined;
+  hasRunningDiscovery: () => boolean;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(
@@ -38,6 +61,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       selectedAgentId: null,
       isLoading: false,
       error: null,
+      discoveryTasks: {},
 
       // Workspace management
       setWorkspaces: (workspaces) => set({ workspaces }),
@@ -57,9 +81,12 @@ export const useWorkspaceStore = create<WorkspaceState>()(
             state.activeWorkspaceId === workspaceId
               ? null
               : state.activeWorkspaceId;
+          // Also remove discovery task
+          const { [workspaceId]: _, ...remainingTasks } = state.discoveryTasks;
           return {
             workspaces: newWorkspaces,
             activeWorkspaceId: activeId,
+            discoveryTasks: remainingTasks,
           };
         }),
 
@@ -85,6 +112,51 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
 
+      // Discovery tasks
+      startDiscovery: (workspaceId) =>
+        set((state) => ({
+          discoveryTasks: {
+            ...state.discoveryTasks,
+            [workspaceId]: {
+              workspaceId,
+              status: "running",
+              startedAt: Date.now(),
+            },
+          },
+        })),
+
+      completeDiscovery: (workspaceId, agents) =>
+        set((state) => ({
+          discoveryTasks: {
+            ...state.discoveryTasks,
+            [workspaceId]: {
+              ...state.discoveryTasks[workspaceId],
+              status: "completed",
+              completedAt: Date.now(),
+              agents,
+            },
+          },
+        })),
+
+      failDiscovery: (workspaceId, error) =>
+        set((state) => ({
+          discoveryTasks: {
+            ...state.discoveryTasks,
+            [workspaceId]: {
+              ...state.discoveryTasks[workspaceId],
+              status: "error",
+              completedAt: Date.now(),
+              error,
+            },
+          },
+        })),
+
+      clearDiscovery: (workspaceId) =>
+        set((state) => {
+          const { [workspaceId]: _, ...remainingTasks } = state.discoveryTasks;
+          return { discoveryTasks: remainingTasks };
+        }),
+
       // Getters
       getWorkspace: (workspaceId) =>
         get().workspaces.find((w) => w.id === workspaceId),
@@ -94,12 +166,17 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         if (!state.activeWorkspaceId) return undefined;
         return state.workspaces.find((w) => w.id === state.activeWorkspaceId);
       },
+
+      getDiscoveryTask: (workspaceId) => get().discoveryTasks[workspaceId],
+
+      hasRunningDiscovery: () =>
+        Object.values(get().discoveryTasks).some((t) => t.status === "running"),
     }),
     {
       name: "workspace-storage",
       partialize: (state) => ({
         activeWorkspaceId: state.activeWorkspaceId,
-        // Don't persist workspaces - load from backend
+        // Don't persist workspaces or discovery tasks - load from backend
       }),
     }
   )

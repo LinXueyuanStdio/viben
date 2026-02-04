@@ -25,7 +25,7 @@ pub struct Workspace {
 }
 
 /// Agent type identifier
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
 pub enum WorkspaceAgentType {
     ClaudeCode,
@@ -284,6 +284,117 @@ pub async fn update_workspace_accessed(workspace_id: String) -> Result<(), Strin
     Ok(())
 }
 
+/// Agent configuration pattern for detection
+struct AgentConfigPattern {
+    folder: &'static str,
+    agent_type: WorkspaceAgentType,
+    name: &'static str,
+    /// MCP config file path relative to agent folder (for project scope)
+    mcp_file_in_folder: Option<&'static str>,
+    /// MCP config file path relative to workspace (for global scope, e.g., ~/.claude.json)
+    mcp_file_in_parent: Option<&'static str>,
+    /// Skills/plugins file path relative to agent folder
+    skills_file: Option<&'static str>,
+    /// For agents with complex MCP paths (relative to home, not workspace)
+    global_mcp_path: Option<&'static str>,
+}
+
+/// Get all agent detection patterns
+fn get_agent_patterns() -> Vec<AgentConfigPattern> {
+    vec![
+        // Claude Code:
+        // - Global: ~/.claude/mcp_servers.json for MCP, ~/.claude/plugins/installed_plugins.json for plugins
+        // - Project: .mcp.json in project root
+        AgentConfigPattern {
+            folder: ".claude",
+            agent_type: WorkspaceAgentType::ClaudeCode,
+            name: "Claude Code",
+            mcp_file_in_folder: Some("mcp_servers.json"),
+            mcp_file_in_parent: Some(".mcp.json"),
+            skills_file: Some("plugins/installed_plugins.json"),
+            global_mcp_path: None,
+        },
+        // Codex (OpenAI):
+        // Uses similar structure to Claude
+        AgentConfigPattern {
+            folder: ".codex",
+            agent_type: WorkspaceAgentType::Codex,
+            name: "Codex",
+            mcp_file_in_folder: Some("config.json"),
+            mcp_file_in_parent: None,
+            skills_file: Some("skills.json"),
+            global_mcp_path: None,
+        },
+        // Cursor:
+        // - Global: ~/.cursor/mcp.json
+        // - Project: .cursor/mcp.json
+        AgentConfigPattern {
+            folder: ".cursor",
+            agent_type: WorkspaceAgentType::Cursor,
+            name: "Cursor",
+            mcp_file_in_folder: Some("mcp.json"),
+            mcp_file_in_parent: None,
+            skills_file: None, // Cursor uses symlinks in skills/ directory
+            global_mcp_path: None,
+        },
+        // Windsurf (Codeium):
+        // - Global: ~/.codeium/windsurf/mcp_config.json
+        // Note: Uses .codeium folder structure, but we detect by .windsurf for project scope
+        AgentConfigPattern {
+            folder: ".windsurf",
+            agent_type: WorkspaceAgentType::Windsurf,
+            name: "Windsurf",
+            mcp_file_in_folder: Some("mcp_config.json"),
+            mcp_file_in_parent: None,
+            skills_file: None,
+            global_mcp_path: Some(".codeium/windsurf/mcp_config.json"),
+        },
+        // VS Code with Copilot/MCP extension:
+        // - Project: .vscode/mcp.json
+        AgentConfigPattern {
+            folder: ".vscode",
+            agent_type: WorkspaceAgentType::Vscode,
+            name: "VS Code",
+            mcp_file_in_folder: Some("mcp.json"),
+            mcp_file_in_parent: None,
+            skills_file: None,
+            global_mcp_path: None,
+        },
+        // Continue:
+        // - Global: ~/.continue/config.json
+        AgentConfigPattern {
+            folder: ".continue",
+            agent_type: WorkspaceAgentType::Continue,
+            name: "Continue",
+            mcp_file_in_folder: Some("config.json"),
+            mcp_file_in_parent: None,
+            skills_file: None,
+            global_mcp_path: None,
+        },
+        // Zed:
+        // - Global: ~/.config/zed/settings.json
+        AgentConfigPattern {
+            folder: ".zed",
+            agent_type: WorkspaceAgentType::Zed,
+            name: "Zed",
+            mcp_file_in_folder: Some("settings.json"),
+            mcp_file_in_parent: None,
+            skills_file: None,
+            global_mcp_path: Some(".config/zed/settings.json"),
+        },
+        // Codeium folder (for global Windsurf detection)
+        AgentConfigPattern {
+            folder: ".codeium",
+            agent_type: WorkspaceAgentType::Windsurf,
+            name: "Windsurf (Codeium)",
+            mcp_file_in_folder: Some("windsurf/mcp_config.json"),
+            mcp_file_in_parent: None,
+            skills_file: None,
+            global_mcp_path: None,
+        },
+    ]
+}
+
 /// Detect agents in a workspace path
 #[tauri::command]
 pub async fn detect_workspace_agents(workspace_id: String) -> Result<Vec<WorkspaceAgent>, String> {
@@ -295,46 +406,105 @@ pub async fn detect_workspace_agents(workspace_id: String) -> Result<Vec<Workspa
         .ok_or_else(|| format!("Workspace not found: {}", workspace_id))?;
 
     let workspace_path = PathBuf::from(&workspace.path);
+    let is_global = workspace.workspace_type == WorkspaceType::Global;
     let mut agents = Vec::new();
+    let mut detected_types = std::collections::HashSet::new();
 
-    // Agent detection patterns
-    let agent_patterns = vec![
-        (".claude", WorkspaceAgentType::ClaudeCode, "Claude Code", "mcp.json", "skills.json"),
-        (".codex", WorkspaceAgentType::Codex, "Codex", "config.json", "skills.json"),
-        (".cursor", WorkspaceAgentType::Cursor, "Cursor", "mcp.json", "skills.json"),
-        (".windsurf", WorkspaceAgentType::Windsurf, "Windsurf", "mcp.json", "skills.json"),
-        (".vscode", WorkspaceAgentType::Vscode, "VS Code", "mcp.json", "skills.json"),
-        (".continue", WorkspaceAgentType::Continue, "Continue", "config.json", "skills.json"),
-        (".zed", WorkspaceAgentType::Zed, "Zed", "settings.json", "skills.json"),
-    ];
+    let patterns = get_agent_patterns();
 
-    for (folder, agent_type, name, mcp_file, skills_file) in agent_patterns {
-        let agent_path = workspace_path.join(folder);
+    for pattern in patterns {
+        let agent_path = workspace_path.join(pattern.folder);
         if agent_path.exists() && agent_path.is_dir() {
-            let mcp_config_path = agent_path.join(mcp_file);
-            let skills_config_path = agent_path.join(skills_file);
+            // Skip if we already detected this agent type (avoid duplicates like .codeium and .windsurf)
+            if detected_types.contains(&pattern.agent_type) {
+                continue;
+            }
+
+            // Determine MCP config file path
+            let mcp_config_file = if is_global {
+                // For global workspace, try:
+                // 1. global_mcp_path if specified (e.g., .codeium/windsurf/mcp_config.json)
+                // 2. mcp_file_in_folder (e.g., .claude/mcp_servers.json)
+                // 3. mcp_file_in_parent (e.g., .mcp.json at workspace root - rare for global)
+                if let Some(global_path) = pattern.global_mcp_path {
+                    let path = workspace_path.join(global_path);
+                    if path.exists() { Some(path) } else { None }
+                } else if let Some(mcp_file) = pattern.mcp_file_in_folder {
+                    let path = agent_path.join(mcp_file);
+                    if path.exists() { Some(path) } else { None }
+                } else {
+                    None
+                }
+            } else {
+                // For project workspace, try:
+                // 1. mcp_file_in_folder (e.g., .cursor/mcp.json)
+                // 2. mcp_file_in_parent (e.g., .mcp.json at project root)
+                let from_folder = pattern.mcp_file_in_folder.map(|f| agent_path.join(f));
+                let from_parent = pattern.mcp_file_in_parent.map(|f| workspace_path.join(f));
+
+                from_folder
+                    .filter(|p| p.exists())
+                    .or_else(|| from_parent.filter(|p| p.exists()))
+            };
+
+            // Determine skills config file path
+            let skills_config_file = pattern.skills_file.map(|f| {
+                let path = agent_path.join(f);
+                if path.exists() { Some(path) } else { None }
+            }).flatten();
 
             agents.push(WorkspaceAgent {
-                id: format!("{}:{}", workspace_id, folder),
+                id: format!("{}:{}", workspace_id, pattern.folder),
                 workspace_id: workspace_id.clone(),
-                name: name.to_string(),
-                agent_type,
+                name: pattern.name.to_string(),
+                agent_type: pattern.agent_type.clone(),
                 config_path: agent_path.to_string_lossy().to_string(),
-                mcp_config_file: if mcp_config_path.exists() {
-                    Some(mcp_config_path.to_string_lossy().to_string())
-                } else {
-                    None
-                },
-                skills_config_file: if skills_config_path.exists() {
-                    Some(skills_config_path.to_string_lossy().to_string())
-                } else {
-                    None
-                },
+                mcp_config_file: mcp_config_file.map(|p| p.to_string_lossy().to_string()),
+                skills_config_file: skills_config_file.map(|p| p.to_string_lossy().to_string()),
             });
+
+            detected_types.insert(pattern.agent_type.clone());
         }
     }
 
     Ok(agents)
+}
+
+/// Parse MCP servers from a JSON value with mcpServers object
+fn parse_mcp_servers_from_object(mcp_servers: &serde_json::Map<String, serde_json::Value>) -> Vec<WorkspaceMcpServer> {
+    let mut servers = Vec::new();
+    for (name, config) in mcp_servers {
+        let server = WorkspaceMcpServer {
+            name: name.clone(),
+            command: config.get("command").and_then(|v| v.as_str()).map(String::from),
+            args: config.get("args").and_then(|v| {
+                v.as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
+            }),
+            env: config.get("env").and_then(|v| {
+                v.as_object().map(|obj| {
+                    obj.iter()
+                        .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                        .collect()
+                })
+            }),
+            url: config.get("url").and_then(|v| v.as_str()).map(String::from),
+            transport: config.get("transport").and_then(|v| v.as_str()).map(String::from),
+            headers: config.get("headers").and_then(|v| {
+                v.as_object().map(|obj| {
+                    obj.iter()
+                        .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                        .collect()
+                })
+            }),
+            disabled: config.get("disabled").and_then(|v| v.as_bool()),
+        };
+        servers.push(server);
+    }
+    servers
 }
 
 /// Get MCP servers from agent config
@@ -362,48 +532,60 @@ pub async fn get_workspace_mcp_servers(
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read config: {}", e))?;
 
-    // Parse the config - handle different formats
+    // Parse the config - handle different formats based on agent type
     let value: serde_json::Value = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse config: {}", e))?;
 
     let mut servers = Vec::new();
 
-    // Try to find mcpServers object
+    // Different agents store MCP config differently:
+    // - Most: { "mcpServers": { ... } }
+    // - Continue: { "mcpServers": [ ... ] } or nested in config
+    // - Zed: { "context_servers": { ... } }
+
+    // Try mcpServers object (Claude Code, Cursor, Windsurf, VS Code)
     if let Some(mcp_servers) = value.get("mcpServers").and_then(|v| v.as_object()) {
-        for (name, config) in mcp_servers {
-            let server = WorkspaceMcpServer {
-                name: name.clone(),
-                command: config.get("command").and_then(|v| v.as_str()).map(String::from),
-                args: config.get("args").and_then(|v| {
-                    v.as_array().map(|arr| {
-                        arr.iter()
-                            .filter_map(|v| v.as_str().map(String::from))
-                            .collect()
-                    })
-                }),
-                env: config.get("env").and_then(|v| {
-                    v.as_object().map(|obj| {
-                        obj.iter()
-                            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                            .collect()
-                    })
-                }),
-                url: config.get("url").and_then(|v| v.as_str()).map(String::from),
-                transport: config.get("transport").and_then(|v| v.as_str()).map(String::from),
-                headers: config.get("headers").and_then(|v| {
-                    v.as_object().map(|obj| {
-                        obj.iter()
-                            .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                            .collect()
-                    })
-                }),
-                disabled: config.get("disabled").and_then(|v| v.as_bool()),
-            };
-            servers.push(server);
+        servers.extend(parse_mcp_servers_from_object(mcp_servers));
+    }
+
+    // Try context_servers for Zed
+    if servers.is_empty() {
+        if let Some(context_servers) = value.get("context_servers").and_then(|v| v.as_object()) {
+            servers.extend(parse_mcp_servers_from_object(context_servers));
+        }
+    }
+
+    // Try models.servers for Continue (newer format)
+    if servers.is_empty() {
+        if let Some(models) = value.get("models").and_then(|v| v.as_object()) {
+            if let Some(model_servers) = models.get("servers").and_then(|v| v.as_object()) {
+                servers.extend(parse_mcp_servers_from_object(model_servers));
+            }
         }
     }
 
     Ok(servers)
+}
+
+/// Get the MCP config file path for writing (may differ from reading path for some agents)
+fn get_mcp_write_path(agent: &WorkspaceAgent) -> PathBuf {
+    // If agent already has an mcp_config_file, use that
+    if let Some(ref config_file) = agent.mcp_config_file {
+        return PathBuf::from(config_file);
+    }
+
+    // Otherwise, determine default path based on agent type
+    let config_path = PathBuf::from(&agent.config_path);
+    match agent.agent_type {
+        WorkspaceAgentType::ClaudeCode => config_path.join("mcp_servers.json"),
+        WorkspaceAgentType::Cursor => config_path.join("mcp.json"),
+        WorkspaceAgentType::Windsurf => config_path.join("mcp_config.json"),
+        WorkspaceAgentType::Vscode => config_path.join("mcp.json"),
+        WorkspaceAgentType::Continue => config_path.join("config.json"),
+        WorkspaceAgentType::Zed => config_path.join("settings.json"),
+        WorkspaceAgentType::Codex => config_path.join("config.json"),
+        WorkspaceAgentType::Unknown => config_path.join("mcp.json"),
+    }
 }
 
 /// Add MCP server to agent config
@@ -419,8 +601,7 @@ pub async fn add_workspace_mcp_server(
         .find(|a| a.id == agent_id)
         .ok_or_else(|| format!("Agent not found: {}", agent_id))?;
 
-    let config_path = PathBuf::from(&agent.config_path);
-    let mcp_config_file = config_path.join(get_mcp_config_filename(&agent.agent_type));
+    let mcp_config_file = get_mcp_write_path(agent);
 
     // Read existing config or create new
     let mut value: serde_json::Value = if mcp_config_file.exists() {
@@ -560,6 +741,40 @@ pub async fn get_workspace_skills(
 
     let mut skills = Vec::new();
 
+    // Handle Claude Code installed_plugins.json format:
+    // { "version": 2, "plugins": { "plugin-name@marketplace": [{ "scope": "user", "version": "1.0.0", ... }] } }
+    if let Some(plugins) = value.get("plugins").and_then(|v| v.as_object()) {
+        for (plugin_id, versions) in plugins {
+            // plugin_id is in format "plugin-name@marketplace-name"
+            let parts: Vec<&str> = plugin_id.split('@').collect();
+            let plugin_name = parts.first().map(|s| s.to_string()).unwrap_or_else(|| plugin_id.clone());
+            let marketplace = parts.get(1).map(|s| s.to_string()).unwrap_or_else(|| "unknown".to_string());
+
+            // Get the first (most recent) version entry
+            if let Some(version_entries) = versions.as_array() {
+                if let Some(entry) = version_entries.first() {
+                    let version = entry.get("version")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown");
+                    let install_path = entry.get("installPath")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+
+                    skills.push(WorkspaceSkill {
+                        id: plugin_id.clone(),
+                        name: plugin_name.clone(),
+                        version: version.to_string(),
+                        source: marketplace.clone(),
+                        path: install_path,
+                    });
+                }
+            }
+        }
+        return Ok(skills);
+    }
+
+    // Handle generic skills.json format (array-based):
+    // { "skills": [{ "id": "...", "name": "...", "version": "...", "source": "..." }] }
     if let Some(skills_array) = value.get("skills").and_then(|v| v.as_array()) {
         for skill_value in skills_array {
             if let (Some(id), Some(name), Some(version), Some(source)) = (
@@ -690,16 +905,3 @@ pub async fn delete_workspace_skill(
     Ok(())
 }
 
-/// Helper function to get MCP config filename for an agent type
-fn get_mcp_config_filename(agent_type: &WorkspaceAgentType) -> &'static str {
-    match agent_type {
-        WorkspaceAgentType::ClaudeCode => "mcp.json",
-        WorkspaceAgentType::Codex => "config.json",
-        WorkspaceAgentType::Cursor => "mcp.json",
-        WorkspaceAgentType::Windsurf => "mcp.json",
-        WorkspaceAgentType::Vscode => "mcp.json",
-        WorkspaceAgentType::Continue => "config.json",
-        WorkspaceAgentType::Zed => "settings.json",
-        WorkspaceAgentType::Unknown => "mcp.json",
-    }
-}

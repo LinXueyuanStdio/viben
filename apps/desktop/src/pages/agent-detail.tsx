@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   Bot,
@@ -175,6 +175,8 @@ export function AgentDetailPage() {
             <SkillsSection
               skills={skills}
               loading={skillsLoading}
+              workspaceId={workspaceId!}
+              agentId={agentId!}
               onRefresh={loadSkills}
               onAdd={addSkill}
               onDelete={deleteSkill}
@@ -649,6 +651,8 @@ function EditMcpServerDialog({
 interface SkillsSectionProps {
   skills: WorkspaceSkill[];
   loading: boolean;
+  workspaceId: string;
+  agentId: string;
   onRefresh: () => void;
   onAdd: (skill: WorkspaceSkill) => Promise<void>;
   onDelete: (skillId: string) => Promise<void>;
@@ -657,6 +661,8 @@ interface SkillsSectionProps {
 function SkillsSection({
   skills,
   loading,
+  workspaceId,
+  agentId,
   onRefresh,
   onAdd,
   onDelete,
@@ -713,7 +719,12 @@ function SkillsSection({
         <StaggerContainer delay={0.05} className="grid gap-3">
           {skills.map((skill) => (
             <StaggerItem key={skill.id}>
-              <SkillCard skill={skill} onDelete={() => onDelete(skill.id)} />
+              <SkillCard
+                skill={skill}
+                workspaceId={workspaceId}
+                agentId={agentId}
+                onDelete={() => onDelete(skill.id)}
+              />
             </StaggerItem>
           ))}
         </StaggerContainer>
@@ -724,15 +735,25 @@ function SkillsSection({
 
 interface SkillCardProps {
   skill: WorkspaceSkill;
+  workspaceId: string;
+  agentId: string;
   onDelete: () => void;
 }
 
-function SkillCard({ skill, onDelete }: SkillCardProps) {
+function SkillCard({ skill, workspaceId, agentId, onDelete }: SkillCardProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
+  const handleClick = () => {
+    navigate(`/workspace/${workspaceId}/agent/${agentId}/skill/${skill.id}`);
+  };
+
   return (
-    <Card interactive={false}>
+    <Card
+      className="cursor-pointer hover:border-primary/30 hover:shadow-md transition-all"
+      onClick={handleClick}
+    >
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -744,7 +765,7 @@ function SkillCard({ skill, onDelete }: SkillCardProps) {
                 <span className="bg-muted px-1.5 py-0.5 rounded">
                   {skill.source === "marketplace"
                     ? t("workspace.fromMarketplace")
-                    : t("workspace.fromLocal")}
+                    : skill.source}
                 </span>
               </div>
             </div>
@@ -756,6 +777,7 @@ function SkillCard({ skill, onDelete }: SkillCardProps) {
                 variant="ghost"
                 size="icon"
                 className="text-destructive hover:text-destructive"
+                onClick={(e) => e.stopPropagation()}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

@@ -23,6 +23,7 @@ export function useLocalWorkspaces() {
     selectedAgentId,
     isLoading,
     error,
+    discoveryTasks,
     setWorkspaces,
     addWorkspace: addWorkspaceToStore,
     removeWorkspace: removeWorkspaceFromStore,
@@ -32,9 +33,14 @@ export function useLocalWorkspaces() {
     setError,
     getWorkspace,
     getActiveWorkspace,
+    startDiscovery,
+    completeDiscovery,
+    failDiscovery,
+    getDiscoveryTask,
+    hasRunningDiscovery,
   } = useWorkspaceStore();
 
-  // Load workspaces on mount
+  // Load workspaces on mount (without auto-discovery - that happens on workspace detail page)
   const loadWorkspaces = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -48,6 +54,25 @@ export function useLocalWorkspaces() {
       setLoading(false);
     }
   }, [setWorkspaces, setLoading, setError]);
+
+  // Run auto-discovery for a workspace
+  const runDiscovery = useCallback(
+    async (workspaceId: string) => {
+      startDiscovery(workspaceId);
+      try {
+        const agents = await invoke<WorkspaceAgent[]>("detect_workspace_agents", {
+          workspaceId,
+        });
+        completeDiscovery(workspaceId, agents);
+        return agents;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        failDiscovery(workspaceId, message);
+        throw new Error(message);
+      }
+    },
+    [startDiscovery, completeDiscovery, failDiscovery]
+  );
 
   // Add workspace via folder picker
   const addWorkspace = useCallback(async () => {
@@ -63,6 +88,8 @@ export function useLocalWorkspaces() {
       const path = typeof selected === "string" ? selected : selected;
       const workspace = await invoke<Workspace>("add_workspace", { path });
       addWorkspaceToStore(workspace);
+
+      // Note: Discovery will happen when user navigates to the workspace detail page
       return workspace;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -115,25 +142,39 @@ export function useLocalWorkspaces() {
     selectedAgentId,
     isLoading,
     error,
+    discoveryTasks,
     // Actions
     loadWorkspaces,
     addWorkspace,
     removeWorkspace,
     selectWorkspace,
     setSelectedAgentId,
+    runDiscovery,
     // Getters
     getWorkspace,
     getActiveWorkspace,
+    getDiscoveryTask,
+    hasRunningDiscovery,
   };
 }
 
 /**
  * Hook for managing agents within a workspace
+ * Uses store-based discovery state for debouncing/backpressure
  */
 export function useWorkspaceAgents(workspaceId: string | null) {
   const [agents, setAgents] = useState<WorkspaceAgent[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    startDiscovery,
+    completeDiscovery,
+    failDiscovery,
+    getDiscoveryTask,
+  } = useWorkspaceStore();
+
+  const discoveryTask = workspaceId ? getDiscoveryTask(workspaceId) : undefined;
+  const loading = discoveryTask?.status === "running";
 
   const loadAgents = useCallback(async () => {
     if (!workspaceId) {
@@ -141,24 +182,36 @@ export function useWorkspaceAgents(workspaceId: string | null) {
       return;
     }
 
-    setLoading(true);
+    // Backpressure: don't start if already running
+    const currentTask = getDiscoveryTask(workspaceId);
+    if (currentTask?.status === "running") {
+      return;
+    }
+
+    startDiscovery(workspaceId);
     setError(null);
+
     try {
       const result = await invoke<WorkspaceAgent[]>("detect_workspace_agents", {
         workspaceId,
       });
       setAgents(result);
+      completeDiscovery(workspaceId, result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
-    } finally {
-      setLoading(false);
+      failDiscovery(workspaceId, message);
     }
-  }, [workspaceId]);
+  }, [workspaceId, startDiscovery, completeDiscovery, failDiscovery, getDiscoveryTask]);
 
+  // Update agents when discovery completes from elsewhere
   useEffect(() => {
-    loadAgents();
-  }, [loadAgents]);
+    if (discoveryTask?.status === "completed" && discoveryTask.agents) {
+      setAgents(discoveryTask.agents);
+    }
+  }, [discoveryTask?.status, discoveryTask?.agents]);
+
+  // Note: Don't auto-load here - let the detail page control when to load
 
   return {
     agents,
