@@ -1,0 +1,63 @@
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { decryptSession } from './jwe';
+import type { Session } from './types';
+
+export async function authMiddleware(request: NextRequest) {
+  const token = request.cookies.get('session')?.value;
+
+  if (!token) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const session = await decryptSession(token);
+
+  if (!session) {
+    return NextResponse.json({ error: 'Session expired' }, { status: 401 });
+  }
+
+  // Add session to request headers for downstream use
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-user-id', session.userId);
+  requestHeaders.set('x-user-role', session.role);
+
+  return NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+}
+
+// Helper to get session in API routes
+export async function requireAuth(request: NextRequest): Promise<Session> {
+  const token = request.cookies.get('session')?.value;
+
+  if (!token) {
+    throw new AuthError('Unauthorized', 401);
+  }
+
+  const session = await decryptSession(token);
+
+  if (!session) {
+    throw new AuthError('Session expired', 401);
+  }
+
+  return session;
+}
+
+// Helper to get optional session (doesn't throw)
+export async function getOptionalSession(
+  request: NextRequest
+): Promise<Session | null> {
+  const token = request.cookies.get('session')?.value;
+  if (!token) return null;
+  return decryptSession(token);
+}
+
+export class AuthError extends Error {
+  constructor(
+    message: string,
+    public status: number = 401
+  ) {
+    super(message);
+    this.name = 'AuthError';
+  }
+}
