@@ -1,11 +1,22 @@
-import { FolderKanban, Plus } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
+import { listWorkspaces } from '@/lib/services/workspaces';
+import { WorkspaceCard } from '@/components/workspaces/workspace-card';
+import { CreateWorkspaceDialog } from '@/components/workspaces/create-workspace-dialog';
+import { FolderKanban } from 'lucide-react';
 
 export const metadata = {
   title: 'Workspaces',
 };
 
-export default function WorkspacesPage() {
+export default async function WorkspacesPage() {
+  const session = await getSession();
+  if (!session?.userId) {
+    redirect('/login');
+  }
+
+  const workspaces = await listWorkspaces(session.userId);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -15,32 +26,33 @@ export default function WorkspacesPage() {
             Manage your project-scoped configurations.
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Workspace
-        </Button>
+        <CreateWorkspaceDialog />
       </div>
 
-      {/* Placeholder for workspaces list */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="rounded-lg bg-primary/10 p-2">
-              <FolderKanban className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1 space-y-1">
-              <h3 className="font-semibold">Default Workspace</h3>
-              <p className="text-sm text-muted-foreground">
-                Your default workspace configuration.
-              </p>
-            </div>
+      {workspaces.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <FolderKanban className="h-8 w-8 text-muted-foreground" />
           </div>
-          <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-            <span>3 MCPs enabled</span>
-            <span>5 Skills enabled</span>
+          <h3 className="mt-4 text-lg font-semibold">No workspaces yet</h3>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            Create a workspace to organize your packages and configurations.
+          </p>
+          <div className="mt-4">
+            <CreateWorkspaceDialog />
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {workspaces.map((workspace) => (
+            <WorkspaceCard
+              key={workspace.id}
+              workspace={workspace}
+              isOwner={workspace.ownerId === session.userId}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -22,6 +22,10 @@ export interface WorkspaceWithOwner extends Workspace {
     displayName: string;
     avatarUrl: string | null;
   };
+  _count?: {
+    mcpPackages: number;
+    skillPackages: number;
+  };
 }
 
 export interface WorkspaceEntity {
@@ -56,10 +60,24 @@ export async function listWorkspaces(userId: string): Promise<WorkspaceWithOwner
           avatarUrl: true,
         },
       },
+      entities: true,
     },
   });
 
-  return results;
+  // Calculate package counts for each workspace
+  return results.map((workspace) => {
+    const entities = workspace.entities || [];
+    const mcpCount = entities.filter((e) => e.entityType === 'mcp').length;
+    const skillCount = entities.filter((e) => e.entityType === 'skill').length;
+
+    return {
+      ...workspace,
+      _count: {
+        mcpPackages: mcpCount,
+        skillPackages: skillCount,
+      },
+    };
+  });
 }
 
 export async function getWorkspace(workspaceId: string): Promise<WorkspaceWithOwner | null> {
