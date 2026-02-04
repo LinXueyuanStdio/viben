@@ -17,7 +17,11 @@ interface SearchBarProps {
   className?: string;
 }
 
-export function SearchBar({
+/**
+ * SearchBar component for skills marketplace search
+ * Memoized to prevent unnecessary re-renders
+ */
+export const SearchBar = React.memo(function SearchBar({
   value,
   onChange,
   placeholder,
@@ -28,10 +32,18 @@ export function SearchBar({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   // Clear search
-  const handleClear = () => {
+  const handleClear = React.useCallback(() => {
     onChange("");
     inputRef.current?.focus();
-  };
+  }, [onChange]);
+
+  // Handle input change
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      onChange(e.target.value);
+    },
+    [onChange]
+  );
 
   // Handle keyboard shortcuts
   React.useEffect(() => {
@@ -63,12 +75,9 @@ export function SearchBar({
         ref={inputRef}
         type="text"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleChange}
         placeholder={placeholder || t("skillsMarket.searchPlaceholder")}
-        className={cn(
-          "pl-10",
-          value && "pr-10"
-        )}
+        className={cn("pl-10", value && "pr-10")}
       />
 
       {/* Clear Button */}
@@ -85,6 +94,6 @@ export function SearchBar({
       )}
     </div>
   );
-}
+});
 
 export default SearchBar;

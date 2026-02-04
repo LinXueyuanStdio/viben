@@ -1,6 +1,12 @@
 import * as React from "react";
-import { Download, Star, User, Tag, ExternalLink } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Download, Star, User, ExternalLink } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,7 +22,57 @@ interface PackageCardProps {
   className?: string;
 }
 
-export function PackageCard({
+/**
+ * Format large numbers with K/M suffix
+ */
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
+  }
+  return num.toString();
+};
+
+/**
+ * Render star rating visualization
+ * Memoized to prevent unnecessary re-renders
+ */
+const StarRating = React.memo(function StarRating({
+  rating,
+}: {
+  rating: number;
+}) {
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, i) => {
+        if (i < fullStars) {
+          return (
+            <Star key={i} className="h-3 w-3 fill-amber-400 text-amber-400" />
+          );
+        } else if (i === fullStars && hasHalfStar) {
+          return (
+            <Star
+              key={i}
+              className="h-3 w-3 fill-amber-400/50 text-amber-400"
+            />
+          );
+        }
+        return <Star key={i} className="h-3 w-3 text-muted-foreground/30" />;
+      })}
+    </>
+  );
+});
+
+/**
+ * PackageCard component displays a cloud MCP package in the marketplace
+ * Memoized to prevent unnecessary re-renders in list views
+ */
+export const PackageCard = React.memo(function PackageCard({
   package: pkg,
   onSelect,
   onInstall,
@@ -25,48 +81,23 @@ export function PackageCard({
 }: PackageCardProps) {
   const { t } = useTranslation();
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    }
-    if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
-    }
-    return num.toString();
-  };
+  // Memoize callbacks to prevent child re-renders
+  const handleInstall = React.useCallback(() => {
+    onInstall?.();
+  }, [onInstall]);
 
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const stars = [];
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(
-          <Star
-            key={i}
-            className="h-3 w-3 fill-amber-400 text-amber-400"
-          />
-        );
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(
-          <Star
-            key={i}
-            className="h-3 w-3 fill-amber-400/50 text-amber-400"
-          />
-        );
-      } else {
-        stars.push(
-          <Star
-            key={i}
-            className="h-3 w-3 text-muted-foreground/30"
-          />
-        );
-      }
+  const handleOpenRepo = React.useCallback(() => {
+    if (pkg.repositoryUrl) {
+      window.open(pkg.repositoryUrl, "_blank");
     }
+  }, [pkg.repositoryUrl]);
 
-    return stars;
-  };
+  const handleStopPropagation = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+    },
+    []
+  );
 
   return (
     <Card
@@ -100,7 +131,9 @@ export function PackageCard({
         {pkg.author && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-3">
             <User className="h-3 w-3" />
-            <span className="truncate">{pkg.author.displayName || pkg.author.username}</span>
+            <span className="truncate">
+              {pkg.author.displayName || pkg.author.username}
+            </span>
           </div>
         )}
 
@@ -133,7 +166,7 @@ export function PackageCard({
             </div>
             {pkg.ratingAvg > 0 && (
               <div className="flex items-center gap-1">
-                {renderStars(pkg.ratingAvg)}
+                <StarRating rating={pkg.ratingAvg} />
                 <span className="ml-0.5">({pkg.ratingAvg.toFixed(1)})</span>
               </div>
             )}
@@ -142,13 +175,10 @@ export function PackageCard({
         </div>
 
         {/* Actions */}
-        <div
-          className="flex items-center gap-2"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="flex items-center gap-2" onClick={handleStopPropagation}>
           <InstallButton
             state={installed ? "installed" : "not-installed"}
-            onInstall={() => onInstall?.()}
+            onInstall={handleInstall}
             className="flex-1"
           />
           {pkg.repositoryUrl && (
@@ -156,7 +186,7 @@ export function PackageCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={() => window.open(pkg.repositoryUrl!, "_blank")}
+              onClick={handleOpenRepo}
             >
               <ExternalLink className="h-4 w-4" />
               <span className="sr-only">{t("marketplace.viewRepo")}</span>
@@ -166,9 +196,11 @@ export function PackageCard({
       </CardContent>
     </Card>
   );
-}
+});
 
-// Skeleton for loading state
+/**
+ * Skeleton for loading state
+ */
 export function PackageCardSkeleton() {
   return (
     <Card className="animate-pulse">

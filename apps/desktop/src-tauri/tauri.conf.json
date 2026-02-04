@@ -12,12 +12,25 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Browse MCP",
         "width": 1200,
         "height": 800,
         "minWidth": 900,
         "minHeight": 600,
         "center": true
+      },
+      {
+        "label": "tray-popup",
+        "title": "Server Status",
+        "width": 400,
+        "height": 500,
+        "visible": false,
+        "decorations": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "url": "/tray-popup"
       }
     ],
     "security": {

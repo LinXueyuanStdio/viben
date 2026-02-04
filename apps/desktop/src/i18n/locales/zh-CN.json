@@ -505,5 +505,18 @@
     "mcpAvailable": "{{count}} 个 MCP 更新可用",
     "skillsAvailable": "{{count}} 个技能更新可用",
     "mixedAvailable": "{{mcpCount}} 个 MCP 和 {{skillCount}} 个技能更新"
+  },
+  "tray": {
+    "serverStatus": "服务器状态",
+    "openApp": "打开应用",
+    "noServers": "未配置服务器",
+    "running": "运行中",
+    "stopped": "已停止",
+    "errors": "错误",
+    "noServersTitle": "无 MCP 服务器",
+    "noServersDesc": "创建服务器以开始使用",
+    "createServer": "创建服务器",
+    "startAll": "全部启动",
+    "stopAll": "全部停止"
   }
 }

@@ -10,7 +10,6 @@ export { useApiLogs } from "./use-api-logs";
 export { useTheme } from "./use-theme";
 export { useUnifiedSessions } from "./use-unified-sessions";
 export { useMcpConnection } from "./use-mcp-connection";
-export { useAuth } from "./use-auth";
 
 // Browse MCP Platform Integration
 export {
@@ -63,3 +62,4 @@ export type {
   UsePackageUpdatesOptions,
   UsePackageUpdatesReturn,
 } from "./use-package-updates";
+export { useTrayStatus, useTrayStatusSync } from "./use-tray-status";

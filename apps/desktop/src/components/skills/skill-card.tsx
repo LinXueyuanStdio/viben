@@ -1,5 +1,4 @@
 import * as React from "react";
-import { motion } from "framer-motion";
 import {
   Download,
   Star,
@@ -17,6 +16,39 @@ import { useTranslation } from "react-i18next";
 import type { CloudSkillPackage } from "@/hooks/use-cloud-skills";
 
 /* -----------------------------------------------------------------------------
+ * Utility Functions (defined outside component to avoid recreation)
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Get badge variant based on skill type
+ */
+const getSkillTypeBadgeVariant = (skillType: string) => {
+  switch (skillType) {
+    case "automation":
+      return "default";
+    case "analysis":
+      return "secondary";
+    case "generation":
+      return "success";
+    default:
+      return "outline";
+  }
+};
+
+/**
+ * Format download count with K/M suffix
+ */
+const formatDownloads = (count: number) => {
+  if (count >= 1000000) {
+    return `${(count / 1000000).toFixed(1)}M`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1)}K`;
+  }
+  return count.toString();
+};
+
+/* -----------------------------------------------------------------------------
  * Skill Card Component
  * -------------------------------------------------------------------------- */
 
@@ -28,7 +60,11 @@ interface SkillCardProps {
   onInstall?: (skill: CloudSkillPackage) => void;
 }
 
-export function SkillCard({
+/**
+ * SkillCard component displays a cloud skill package in the marketplace
+ * Memoized to prevent unnecessary re-renders in list views
+ */
+export const SkillCard = React.memo(function SkillCard({
   skill,
   onViewDetails,
   isInstalled = false,
@@ -37,30 +73,30 @@ export function SkillCard({
 }: SkillCardProps) {
   const { t } = useTranslation();
 
-  // Get skill type badge color
-  const getSkillTypeBadgeVariant = (skillType: string) => {
-    switch (skillType) {
-      case "automation":
-        return "default";
-      case "analysis":
-        return "secondary";
-      case "generation":
-        return "success";
-      default:
-        return "outline";
-    }
-  };
+  // Memoize callbacks to prevent child re-renders
+  const handleViewDetails = React.useCallback(() => {
+    onViewDetails(skill);
+  }, [onViewDetails, skill]);
 
-  // Format download count
-  const formatDownloads = (count: number) => {
-    if (count >= 1000000) {
-      return `${(count / 1000000).toFixed(1)}M`;
-    }
-    if (count >= 1000) {
-      return `${(count / 1000).toFixed(1)}K`;
-    }
-    return count.toString();
-  };
+  const handleInstall = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!isInstalled && !isInstalling && onInstall) {
+        onInstall(skill);
+      }
+    },
+    [isInstalled, isInstalling, onInstall, skill]
+  );
+
+  const handleOpenRepo = React.useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (skill.repositoryUrl) {
+        window.open(skill.repositoryUrl, "_blank");
+      }
+    },
+    [skill.repositoryUrl]
+  );
 
   return (
     <div
@@ -70,7 +106,7 @@ export function SkillCard({
         "hover:border-primary/30 hover:shadow-lg hover:-translate-y-1",
         "theme-transition cursor-pointer"
       )}
-      onClick={() => onViewDetails(skill)}
+      onClick={handleViewDetails}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-3">
@@ -174,10 +210,7 @@ export function SkillCard({
           <Button
             variant="ghost"
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              window.open(skill.repositoryUrl!, "_blank");
-            }}
+            onClick={handleOpenRepo}
             className="h-8 px-2"
           >
             <ExternalLink className="h-3.5 w-3.5 mr-1" />
@@ -189,12 +222,7 @@ export function SkillCard({
           <Button
             variant={isInstalled ? "outline" : "default"}
             size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isInstalled && !isInstalling) {
-                onInstall(skill);
-              }
-            }}
+            onClick={handleInstall}
             disabled={isInstalling}
             className="h-8 text-xs"
           >
@@ -219,7 +247,7 @@ export function SkillCard({
       </div>
     </div>
   );
-}
+});
 
 /* -----------------------------------------------------------------------------
  * Skill Card Skeleton

@@ -15,8 +15,6 @@ const SKILL_TYPES = [
   { id: "generation", label: "skillsMarket.typeGeneration" },
 ] as const;
 
-type SkillTypeId = (typeof SKILL_TYPES)[number]["id"];
-
 /* -----------------------------------------------------------------------------
  * Category Filter Component
  * -------------------------------------------------------------------------- */
@@ -30,7 +28,11 @@ interface CategoryFilterProps {
   loading?: boolean;
 }
 
-export function CategoryFilter({
+/**
+ * CategoryFilter component for skills marketplace filtering
+ * Memoized to prevent unnecessary re-renders
+ */
+export const CategoryFilter = React.memo(function CategoryFilter({
   categories,
   selectedCategory,
   onCategoryChange,
@@ -39,6 +41,11 @@ export function CategoryFilter({
   loading = false,
 }: CategoryFilterProps) {
   const { t } = useTranslation();
+
+  // Memoize the "All Categories" click handler
+  const handleSelectAllCategories = React.useCallback(() => {
+    onCategoryChange(null);
+  }, [onCategoryChange]);
 
   return (
     <div className="space-y-6">
@@ -51,26 +58,16 @@ export function CategoryFilter({
           </h4>
           <div className="space-y-1">
             {SKILL_TYPES.map((type) => (
-              <button
+              <SkillTypeButton
                 key={type.id}
-                onClick={() =>
-                  onTypeChange(type.id === "all" ? null : type.id)
-                }
-                className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm",
-                  "transition-colors duration-200",
+                typeId={type.id}
+                label={t(type.label)}
+                isSelected={
                   (type.id === "all" && !selectedType) ||
-                    selectedType === type.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span>{t(type.label)}</span>
-                {((type.id === "all" && !selectedType) ||
-                  selectedType === type.id) && (
-                  <Check className="h-4 w-4" />
-                )}
-              </button>
+                  selectedType === type.id
+                }
+                onSelect={onTypeChange}
+              />
             ))}
           </div>
         </section>
@@ -85,7 +82,7 @@ export function CategoryFilter({
         <div className="space-y-1">
           {/* All Categories Option */}
           <button
-            onClick={() => onCategoryChange(null)}
+            onClick={handleSelectAllCategories}
             className={cn(
               "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm",
               "transition-colors duration-200",
@@ -116,27 +113,12 @@ export function CategoryFilter({
           {/* Category List */}
           {!loading &&
             categories.map((category) => (
-              <button
+              <CategoryButton
                 key={category.id}
-                onClick={() => onCategoryChange(category.id)}
-                className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm",
-                  "transition-colors duration-200",
-                  selectedCategory === category.id
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <span className="truncate">{category.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    ({category.count})
-                  </span>
-                  {selectedCategory === category.id && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </div>
-              </button>
+                category={category}
+                isSelected={selectedCategory === category.id}
+                onSelect={onCategoryChange}
+              />
             ))}
 
           {/* Empty State */}
@@ -149,6 +131,79 @@ export function CategoryFilter({
       </section>
     </div>
   );
-}
+});
+
+/**
+ * Individual skill type button component
+ * Memoized to prevent re-renders when other types change
+ */
+const SkillTypeButton = React.memo(function SkillTypeButton({
+  typeId,
+  label,
+  isSelected,
+  onSelect,
+}: {
+  typeId: string;
+  label: string;
+  isSelected: boolean;
+  onSelect: (type: string | null) => void;
+}) {
+  const handleClick = React.useCallback(() => {
+    onSelect(typeId === "all" ? null : typeId);
+  }, [onSelect, typeId]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm",
+        "transition-colors duration-200",
+        isSelected
+          ? "bg-primary/10 text-primary font-medium"
+          : "hover:bg-muted text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <span>{label}</span>
+      {isSelected && <Check className="h-4 w-4" />}
+    </button>
+  );
+});
+
+/**
+ * Individual category button component
+ * Memoized to prevent re-renders when other categories change
+ */
+const CategoryButton = React.memo(function CategoryButton({
+  category,
+  isSelected,
+  onSelect,
+}: {
+  category: SkillCategory;
+  isSelected: boolean;
+  onSelect: (categoryId: string | null) => void;
+}) {
+  const handleClick = React.useCallback(() => {
+    onSelect(category.id);
+  }, [onSelect, category.id]);
+
+  return (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm",
+        "transition-colors duration-200",
+        isSelected
+          ? "bg-primary/10 text-primary font-medium"
+          : "hover:bg-muted text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <span className="truncate">{category.name}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">({category.count})</span>
+        {isSelected && <Check className="h-4 w-4" />}
+      </div>
+    </button>
+  );
+});
 
 export default CategoryFilter;
