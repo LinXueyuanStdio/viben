@@ -623,10 +623,13 @@ def _verify_auth(request: Request):
     auth_header = request.headers.get("x-mcp-proxy-auth", "")
     expected = f"Bearer {get_auth_token()}"
 
+    logger.debug(f"Auth verification - received: '{auth_header[:50]}...' expected token starts with: '{get_auth_token()[:16]}...'")
+
     # Use constant-time comparison
     if not secrets.compare_digest(auth_header, expected):
         # Also check if auth is disabled (for development)
         if get_auth_token() != "":
+            logger.warning(f"Auth failed - received header: '{auth_header}', expected: '{expected}'")
             raise HTTPException(status_code=401, detail="Unauthorized")
 
 

@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,7 +76,7 @@ export function SkillsMarketPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>("latest");
+  const sortBy: SortOption = "popular"; // Default sort order, matching MCP marketplace
   const [page, setPage] = useState(1);
 
   // Detail dialog state
@@ -134,7 +135,7 @@ export function SkillsMarketPage() {
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [selectedCategory, sortBy, searchQuery]);
+  }, [selectedCategory, searchQuery]);
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -162,42 +163,46 @@ export function SkillsMarketPage() {
     setInstalledIds((prev) => new Set(prev).add(skill.id));
   };
 
-  // Pagination helpers
-  const totalPages = pagination?.totalPages || 1;
-  const hasNextPage = page < totalPages;
-  const hasPrevPage = page > 1;
+  // Calculate total pages
+  const totalPages = pagination?.totalPages ?? 1;
 
   return (
     <div className="p-6 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold font-serif flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            {t("skillsMarket.title")}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {t("skillsMarket.subtitle")}
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Sparkles className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold font-serif">
+              {t("skillsMarket.title")}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {t("skillsMarket.subtitle")}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {/* View Mode Toggle */}
-          <div className="flex items-center rounded-lg border p-1">
+          <div className="flex items-center border rounded-lg p-1">
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => setViewMode("grid")}
-              className="h-7 w-7 p-0"
             >
               <Grid3X3 className="h-4 w-4" />
+              <span className="sr-only">{t("skillsMarket.gridView")}</span>
             </Button>
             <Button
               variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => setViewMode("list")}
-              className="h-7 w-7 p-0"
             >
               <List className="h-4 w-4" />
+              <span className="sr-only">{t("skillsMarket.listView")}</span>
             </Button>
           </div>
 
@@ -218,18 +223,33 @@ export function SkillsMarketPage() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-4">
+        <SearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder={t("skillsMarket.searchPlaceholder")}
+          loading={searchLoading}
+          className="max-w-md"
+        />
+      </div>
+
       {/* Error Banner */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
+        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex gap-6 min-h-0">
+      <div className="flex-1 min-h-0 flex gap-6">
         {/* Sidebar - Category Filter */}
-        <aside className="w-64 flex-shrink-0 hidden lg:block">
-          <div className="rounded-xl border bg-card p-4">
+        <aside className="w-56 shrink-0 hidden lg:block">
+          <div className="rounded-lg border bg-card p-4 h-full">
+            <h3 className="font-medium text-sm mb-3">
+              {t("skillsMarket.categories")}
+            </h3>
             <CategoryFilter
               categories={categories}
               selectedCategory={selectedCategory}
@@ -241,53 +261,29 @@ export function SkillsMarketPage() {
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0">
-          {/* Search and Sort Bar */}
-          <div className="flex items-center gap-4 mb-4">
-            <SearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder={t("skillsMarket.searchPlaceholder")}
-              loading={searchLoading}
-              className="flex-1"
-            />
-
-            {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="h-9 px-3 rounded-lg border bg-background text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="latest">{t("skillsMarket.sortLatest")}</option>
-              <option value="popular">{t("skillsMarket.sortPopular")}</option>
-              <option value="downloads">{t("skillsMarket.sortDownloads")}</option>
-            </select>
-          </div>
-
-          {/* Results Count */}
-          <div className="text-sm text-muted-foreground mb-4">
-            {searchQuery.trim() ? (
-              t("skillsMarket.searchResults", {
-                count: filteredPackages.length,
-                query: searchQuery,
-              })
-            ) : (
-              t("skillsMarket.showingPackages", {
-                count: filteredPackages.length,
-                total: pagination?.total || 0,
-              })
-            )}
+        {/* Package Grid */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Results Summary */}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? t("skillsMarket.searchResults", {
+                    count: filteredPackages.length,
+                    query: searchQuery,
+                  })
+                : t("skillsMarket.packagesCount", {
+                    count: pagination?.total ?? 0,
+                  })}
+            </p>
           </div>
 
           {/* Skills Grid/List */}
           <ScrollArea className="flex-1">
-            {isLoading ? (
+            {isLoading && filteredPackages.length === 0 ? (
               <div
                 className={cn(
-                  "gap-4 pb-4",
                   viewMode === "grid"
-                    ? "grid sm:grid-cols-2 xl:grid-cols-3"
+                    ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
                     : "space-y-4"
                 )}
               >
@@ -296,15 +292,15 @@ export function SkillsMarketPage() {
                 ))}
               </div>
             ) : filteredPackages.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                <p className="text-lg font-medium text-muted-foreground">
-                  {searchQuery
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Package className="h-12 w-12 mb-4 opacity-50" />
+                <h3 className="text-lg font-medium">
+                  {searchQuery.trim()
                     ? t("skillsMarket.noSearchResults")
                     : t("skillsMarket.noPackages")}
-                </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {searchQuery
+                </h3>
+                <p className="text-sm mt-1">
+                  {searchQuery.trim()
                     ? t("skillsMarket.tryDifferentSearch")
                     : t("skillsMarket.checkBackLater")}
                 </p>
@@ -315,10 +311,10 @@ export function SkillsMarketPage() {
                 initial="hidden"
                 animate={mounted ? "visible" : "hidden"}
                 className={cn(
-                  "gap-4 pb-4",
                   viewMode === "grid"
-                    ? "grid sm:grid-cols-2 xl:grid-cols-3"
-                    : "space-y-4"
+                    ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                    : "space-y-4",
+                  "pb-4"
                 )}
               >
                 {filteredPackages.map((skill) => (
@@ -338,15 +334,15 @@ export function SkillsMarketPage() {
 
           {/* Pagination */}
           {!searchQuery.trim() && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 pt-4 border-t">
+            <div className="flex items-center justify-center gap-2 pt-4 border-t mt-4">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={!hasPrevPage || isLoading}
+                disabled={page <= 1 || isLoading}
               >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                {t("common.previous")}
+                <ChevronLeft className="h-4 w-4" />
+                {t("skillsMarket.previous")}
               </Button>
               <span className="text-sm text-muted-foreground px-4">
                 {t("skillsMarket.pageOf", { page, total: totalPages })}
@@ -355,10 +351,10 @@ export function SkillsMarketPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={!hasNextPage || isLoading}
+                disabled={page >= totalPages || isLoading}
               >
-                {t("common.next")}
-                <ChevronRight className="h-4 w-4 ml-1" />
+                {t("skillsMarket.next")}
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}

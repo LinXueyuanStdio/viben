@@ -152,19 +152,55 @@ export function useMcpConnection({
       throw new Error("Not connected to MCP server");
     }
 
-    const request = {
-      method,
-      params: params ?? {},
-    };
-
-    const requestOptions: RequestOptions = {
-      timeout: config?.timeout ?? 30000,
-    };
-
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await client.request(request as any, undefined as never, requestOptions);
-      return result as T;
+      // Use built-in SDK methods for standard MCP requests to avoid schema validation issues
+      switch (method) {
+        case "tools/list": {
+          const result = await client.listTools();
+          return result as T;
+        }
+        case "tools/call": {
+          const result = await client.callTool({
+            name: params?.name as string,
+            arguments: params?.arguments as Record<string, unknown>,
+          });
+          return result as T;
+        }
+        case "resources/list": {
+          const result = await client.listResources();
+          return result as T;
+        }
+        case "resources/read": {
+          const result = await client.readResource({
+            uri: params?.uri as string,
+          });
+          return result as T;
+        }
+        case "prompts/list": {
+          const result = await client.listPrompts();
+          return result as T;
+        }
+        case "prompts/get": {
+          const result = await client.getPrompt({
+            name: params?.name as string,
+            arguments: params?.arguments as Record<string, string>,
+          });
+          return result as T;
+        }
+        case "ping": {
+          const result = await client.ping();
+          return result as T;
+        }
+        default: {
+          // For custom methods, use raw request
+          const requestOptions: RequestOptions = {
+            timeout: config?.timeout ?? 30000,
+          };
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = await client.request({ method, params: params ?? {} } as any, undefined as never, requestOptions);
+          return result as T;
+        }
+      }
     } catch (error) {
       console.error(`MCP request failed (${method}):`, error);
       throw error;
@@ -254,7 +290,6 @@ export function useMcpConnection({
       const url = new URL(config.url);
 
       if (effectiveTransport === "sse") {
-        console.log("Connecting with SSE transport to:", url.toString());
         transport = new SSEClientTransport(url, {
           requestInit: {
             headers,
@@ -262,7 +297,6 @@ export function useMcpConnection({
         });
       } else {
         // Both "http" and "streamable-http" use StreamableHTTPClientTransport
-        console.log("Connecting with HTTP transport to:", url.toString());
         transport = new StreamableHTTPClientTransport(url, {
           requestInit: {
             headers: {
