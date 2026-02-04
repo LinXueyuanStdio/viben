@@ -43,12 +43,13 @@ pub struct ApiLogSession {
 }
 
 /// Get the API logs directory
+/// API logs are now stored in the same directory as server logs for unified sessions.
+/// Server logs: {run_id}.log, API logs: {run_id}.jsonl
 fn get_api_logs_dir() -> PathBuf {
     let logs_dir = dirs::data_local_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join("browse-mcp")
-        .join("logs")
-        .join("api");
+        .join("logs");
 
     fs::create_dir_all(&logs_dir).ok();
     logs_dir
