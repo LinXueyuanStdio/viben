@@ -1,0 +1,650 @@
+/**
+ * Browse MCP API Client
+ *
+ * A client library for interacting with the Browse MCP platform API.
+ * Works in both browser and Node.js environments.
+ */
+
+import type {
+  ListParams,
+  SkillListParams,
+  PaginatedResponse,
+  McpPackage,
+  McpPackageResponse,
+  SkillPackage,
+  SkillPackageResponse,
+  User,
+  UserResponse,
+  FavoritesResponse,
+  Workspace,
+  WorkspacesResponse,
+  WorkspaceResponse,
+  WorkspacePackagesResponse,
+  Collection,
+  CollectionsResponse,
+  CommentsResponse,
+  ApiKeysResponse,
+  CreateApiKeyResponse,
+} from './types';
+
+/**
+ * Configuration options for the API client
+ */
+export interface BrowseMcpClientConfig {
+  /** Base URL of the API (e.g., "https://browse-mcp.vercel.app") */
+  baseUrl: string;
+  /** API key for authentication (optional for public endpoints) */
+  apiKey?: string;
+  /** Request timeout in milliseconds (default: 30000) */
+  timeout?: number;
+}
+
+/**
+ * API error with status code
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public details?: unknown
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
+/**
+ * Build query string from parameters
+ */
+function buildQuery(params?: ListParams | SkillListParams): string {
+  if (!params) return '';
+
+  const query = new URLSearchParams();
+
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+  if (params.sort) query.set('sort', params.sort);
+  if (params.category) query.set('category', params.category);
+
+  // Skill-specific parameters
+  if ('type' in params && params.type) {
+    query.set('type', params.type);
+  }
+
+  const queryString = query.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
+/**
+ * Browse MCP API Client
+ *
+ * @example
+ * ```ts
+ * const client = new BrowseMcpClient({
+ *   baseUrl: 'https://browse-mcp.vercel.app',
+ *   apiKey: 'bmcp_xxx...',
+ * });
+ *
+ * // List MCP packages
+ * const { packages, pagination } = await client.mcp.list({ page: 1, limit: 10 });
+ *
+ * // Search skills
+ * const results = await client.skills.search('git', { type: 'command' });
+ *
+ * // Get current user
+ * const { user } = await client.user.me();
+ * ```
+ */
+export class BrowseMcpClient {
+  private baseUrl: string;
+  private apiKey?: string;
+  private timeout: number;
+
+  constructor(config: BrowseMcpClientConfig) {
+    this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.apiKey = config.apiKey;
+    this.timeout = config.timeout || 30000;
+  }
+
+  /**
+   * Set API key for authentication
+   */
+  setApiKey(apiKey: string | undefined): void {
+    this.apiKey = apiKey;
+  }
+
+  /**
+   * Get the current API key
+   */
+  getApiKey(): string | undefined {
+    return this.apiKey;
+  }
+
+  /**
+   * Make an authenticated request to the API
+   */
+  private async request<T>(
+    path: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        let details: unknown;
+
+        try {
+          const errorBody = await response.json();
+          errorMessage = errorBody.error || errorMessage;
+          details = errorBody.details;
+        } catch {
+          // Unable to parse error body
+        }
+
+        throw new ApiError(errorMessage, response.status, details);
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new ApiError('Request timeout', 408);
+        }
+        throw new ApiError(error.message, 0);
+      }
+
+      throw new ApiError('Unknown error', 0);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Download a file from the API
+   */
+  private async downloadFile(path: string): Promise<Blob> {
+    const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {};
+
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const response = await fetch(url, {
+        headers,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        throw new ApiError(
+          `Download failed: HTTP ${response.status}`,
+          response.status
+        );
+      }
+
+      return response.blob();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new ApiError('Download timeout', 408);
+        }
+        throw new ApiError(error.message, 0);
+      }
+
+      throw new ApiError('Download failed', 0);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  // ============================================
+  // MCP Packages API
+  // ============================================
+
+  /**
+   * MCP package endpoints
+   */
+  mcp = {
+    /**
+     * List MCP packages
+     */
+    list: (params?: ListParams): Promise<PaginatedResponse<McpPackage>> =>
+      this.request<PaginatedResponse<McpPackage>>(
+        `/api/mcp${buildQuery(params)}`
+      ),
+
+    /**
+     * Get a specific MCP package by ID
+     */
+    get: (id: string): Promise<McpPackageResponse> =>
+      this.request<McpPackageResponse>(`/api/mcp/${id}`),
+
+    /**
+     * Search MCP packages
+     */
+    search: (
+      query: string,
+      params?: ListParams
+    ): Promise<PaginatedResponse<McpPackage>> =>
+      this.request<PaginatedResponse<McpPackage>>(
+        `/api/mcp/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
+      ),
+
+    /**
+     * Download MCP package
+     * @returns Blob containing the package archive
+     */
+    download: (id: string, version?: string): Promise<Blob> =>
+      this.downloadFile(
+        `/api/packages/mcp/${id}/download${version ? `?version=${encodeURIComponent(version)}` : ''}`
+      ),
+
+    /**
+     * Toggle favorite on MCP package
+     */
+    toggleFavorite: (id: string): Promise<{ favorited: boolean }> =>
+      this.request<{ favorited: boolean }>(`/api/mcp/${id}/favorite`, {
+        method: 'POST',
+      }),
+
+    /**
+     * Get comments on MCP package
+     */
+    comments: (id: string): Promise<CommentsResponse> =>
+      this.request<CommentsResponse>(`/api/mcp/${id}/comments`),
+
+    /**
+     * Add comment to MCP package
+     */
+    addComment: (
+      id: string,
+      content: string,
+      parentId?: string
+    ): Promise<{ success: boolean; id: string }> =>
+      this.request<{ success: boolean; id: string }>(`/api/mcp/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parentId }),
+      }),
+
+    /**
+     * Rate MCP package (1-5)
+     */
+    rate: (id: string, score: number): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/mcp/${id}/rating`, {
+        method: 'POST',
+        body: JSON.stringify({ score }),
+      }),
+  };
+
+  // ============================================
+  // Skills API
+  // ============================================
+
+  /**
+   * Skills package endpoints
+   */
+  skills = {
+    /**
+     * List skill packages
+     */
+    list: (params?: SkillListParams): Promise<PaginatedResponse<SkillPackage>> =>
+      this.request<PaginatedResponse<SkillPackage>>(
+        `/api/skills${buildQuery(params)}`
+      ),
+
+    /**
+     * Get a specific skill package by ID
+     */
+    get: (id: string): Promise<SkillPackageResponse> =>
+      this.request<SkillPackageResponse>(`/api/skills/${id}`),
+
+    /**
+     * Search skill packages
+     */
+    search: (
+      query: string,
+      params?: SkillListParams
+    ): Promise<PaginatedResponse<SkillPackage>> =>
+      this.request<PaginatedResponse<SkillPackage>>(
+        `/api/skills/search?q=${encodeURIComponent(query)}${buildQuery(params).replace('?', '&')}`
+      ),
+
+    /**
+     * Download skill package
+     * @returns Blob containing the package archive
+     */
+    download: (id: string, version?: string): Promise<Blob> =>
+      this.downloadFile(
+        `/api/packages/skills/${id}/download${version ? `?version=${encodeURIComponent(version)}` : ''}`
+      ),
+
+    /**
+     * Toggle favorite on skill package
+     */
+    toggleFavorite: (id: string): Promise<{ favorited: boolean }> =>
+      this.request<{ favorited: boolean }>(`/api/skills/${id}/favorite`, {
+        method: 'POST',
+      }),
+
+    /**
+     * Get comments on skill package
+     */
+    comments: (id: string): Promise<CommentsResponse> =>
+      this.request<CommentsResponse>(`/api/skills/${id}/comments`),
+
+    /**
+     * Add comment to skill package
+     */
+    addComment: (
+      id: string,
+      content: string,
+      parentId?: string
+    ): Promise<{ success: boolean; id: string }> =>
+      this.request<{ success: boolean; id: string }>(`/api/skills/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content, parentId }),
+      }),
+
+    /**
+     * Rate skill package (1-5)
+     */
+    rate: (id: string, score: number): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/skills/${id}/rating`, {
+        method: 'POST',
+        body: JSON.stringify({ score }),
+      }),
+  };
+
+  // ============================================
+  // User API
+  // ============================================
+
+  /**
+   * User endpoints
+   */
+  user = {
+    /**
+     * Get current authenticated user
+     */
+    me: (): Promise<UserResponse> =>
+      this.request<UserResponse>('/api/users/me'),
+
+    /**
+     * Update current user profile
+     */
+    update: (data: {
+      displayName?: string;
+      bio?: string;
+      websiteUrl?: string;
+    }): Promise<UserResponse> =>
+      this.request<UserResponse>('/api/users/me', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Get user's favorites
+     */
+    favorites: (): Promise<FavoritesResponse> =>
+      this.request<FavoritesResponse>('/api/users/me/favorites'),
+
+    /**
+     * Get public profile by username
+     */
+    profile: (username: string): Promise<UserResponse> =>
+      this.request<UserResponse>(`/api/users/${username}`),
+
+    /**
+     * List API keys
+     */
+    apiKeys: (): Promise<ApiKeysResponse> =>
+      this.request<ApiKeysResponse>('/api/users/me/api-keys'),
+
+    /**
+     * Create a new API key
+     */
+    createApiKey: (data: {
+      name: string;
+      scopes?: string[];
+      expiresIn?: number;
+    }): Promise<CreateApiKeyResponse> =>
+      this.request<CreateApiKeyResponse>('/api/users/me/api-keys', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Delete an API key
+     */
+    deleteApiKey: (id: string): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/users/me/api-keys/${id}`, {
+        method: 'DELETE',
+      }),
+  };
+
+  // ============================================
+  // Workspaces API
+  // ============================================
+
+  /**
+   * Workspace endpoints
+   */
+  workspaces = {
+    /**
+     * List user's workspaces
+     */
+    list: (): Promise<WorkspacesResponse> =>
+      this.request<WorkspacesResponse>('/api/workspaces'),
+
+    /**
+     * Get a specific workspace
+     */
+    get: (id: string): Promise<WorkspaceResponse> =>
+      this.request<WorkspaceResponse>(`/api/workspaces/${id}`),
+
+    /**
+     * Create a new workspace
+     */
+    create: (data: {
+      name: string;
+      description?: string;
+      isDefault?: boolean;
+    }): Promise<WorkspaceResponse> =>
+      this.request<WorkspaceResponse>('/api/workspaces', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Update a workspace
+     */
+    update: (
+      id: string,
+      data: { name?: string; description?: string }
+    ): Promise<WorkspaceResponse> =>
+      this.request<WorkspaceResponse>(`/api/workspaces/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Delete a workspace
+     */
+    delete: (id: string): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/workspaces/${id}`, {
+        method: 'DELETE',
+      }),
+
+    /**
+     * Get packages in a workspace
+     */
+    packages: (id: string): Promise<WorkspacePackagesResponse> =>
+      this.request<WorkspacePackagesResponse>(`/api/workspaces/${id}/packages`),
+
+    /**
+     * Add a package to a workspace
+     */
+    addPackage: (
+      workspaceId: string,
+      data: {
+        entityType: 'mcp' | 'skill';
+        entityId: string;
+        enabled?: boolean;
+        config?: Record<string, unknown>;
+      }
+    ): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/workspaces/${workspaceId}/packages`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Remove a package from a workspace
+     */
+    removePackage: (
+      workspaceId: string,
+      entityType: 'mcp' | 'skill',
+      entityId: string
+    ): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/workspaces/${workspaceId}/packages`, {
+        method: 'DELETE',
+        body: JSON.stringify({ entityType, entityId }),
+      }),
+  };
+
+  // ============================================
+  // Collections API
+  // ============================================
+
+  /**
+   * Collection endpoints
+   */
+  collections = {
+    /**
+     * List collections
+     */
+    list: (params?: {
+      page?: number;
+      limit?: number;
+      entityType?: 'mcp' | 'skill';
+      userId?: string;
+    }): Promise<CollectionsResponse> => {
+      const query = new URLSearchParams();
+      if (params?.page) query.set('page', String(params.page));
+      if (params?.limit) query.set('limit', String(params.limit));
+      if (params?.entityType) query.set('entityType', params.entityType);
+      if (params?.userId) query.set('userId', params.userId);
+      const queryString = query.toString();
+      return this.request<CollectionsResponse>(
+        `/api/collections${queryString ? `?${queryString}` : ''}`
+      );
+    },
+
+    /**
+     * Get a specific collection
+     */
+    get: (id: string): Promise<{ collection: Collection; items: unknown[] }> =>
+      this.request<{ collection: Collection; items: unknown[] }>(
+        `/api/collections/${id}`
+      ),
+
+    /**
+     * Create a new collection
+     */
+    create: (data: {
+      name: string;
+      description?: string;
+      entityType: 'mcp' | 'skill';
+      isPublic?: boolean;
+    }): Promise<{ collection: Collection }> =>
+      this.request<{ collection: Collection }>('/api/collections', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Update a collection
+     */
+    update: (
+      id: string,
+      data: { name?: string; description?: string; isPublic?: boolean }
+    ): Promise<{ collection: Collection }> =>
+      this.request<{ collection: Collection }>(`/api/collections/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    /**
+     * Delete a collection
+     */
+    delete: (id: string): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/collections/${id}`, {
+        method: 'DELETE',
+      }),
+
+    /**
+     * Add item to collection
+     */
+    addItem: (
+      collectionId: string,
+      entityId: string,
+      note?: string
+    ): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(`/api/collections/${collectionId}/items`, {
+        method: 'POST',
+        body: JSON.stringify({ entityId, note }),
+      }),
+
+    /**
+     * Remove item from collection
+     */
+    removeItem: (
+      collectionId: string,
+      entityId: string
+    ): Promise<{ success: boolean }> =>
+      this.request<{ success: boolean }>(
+        `/api/collections/${collectionId}/items/${entityId}`,
+        {
+          method: 'DELETE',
+        }
+      ),
+
+    /**
+     * Fork a collection
+     */
+    fork: (id: string): Promise<{ collection: Collection }> =>
+      this.request<{ collection: Collection }>(`/api/collections/${id}/fork`, {
+        method: 'POST',
+      }),
+  };
+}
