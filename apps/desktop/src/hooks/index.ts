@@ -7,3 +7,4 @@ export { useMarketplace } from "./use-marketplace";
 export { useInstalledSources } from "./use-installed-sources";
 export { useApiLogs } from "./use-api-logs";
 export { useTheme } from "./use-theme";
+export { useUnifiedSessions } from "./use-unified-sessions";

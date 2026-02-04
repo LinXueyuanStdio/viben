@@ -127,6 +127,12 @@ pub async fn start_mcp_server(
         }
     }
 
+    // Pass run_id to Python for unified API logging
+    // This allows API logs to use the same run_id as server logs
+    if let Some(ref sid) = session_id {
+        cmd.env("BROWSE_MCP_RUN_ID", sid);
+    }
+
     // Configure stdio - pipe stdout and stderr for capture
     cmd.stdin(Stdio::null());
     cmd.stdout(Stdio::piped());
