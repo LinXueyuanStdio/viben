@@ -35,7 +35,7 @@ async function startBrowseMcp(): Promise<void> {
     "--transport", "streamable-http",
     "--host", "127.0.0.1",
     "--port", String(BROWSE_MCP_PORT),
-    "--stateless"  // Important: stateless mode for browser clients
+    // No --stateless: proxy handles session management
   ], {
     stdio: ["ignore", "pipe", "pipe"],
   });

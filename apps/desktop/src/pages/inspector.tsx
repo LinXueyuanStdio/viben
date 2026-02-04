@@ -105,11 +105,13 @@ export function InspectorPage() {
     if ("url" in parsedConfig && parsedConfig.url) {
       const proxyUrl = proxyStatus.url || "http://127.0.0.1:6277";
       const targetUrl = parsedConfig.url;
-      const transport = parsedConfig.transport || "streamable-http";
+      const originalTransport = parsedConfig.transport || "streamable-http";
 
       return {
         ...parsedConfig,
-        url: buildProxyUrl(proxyUrl, targetUrl, transport as "stdio" | "sse" | "streamable-http"),
+        // Connection to proxy is always streamable-http, regardless of target transport
+        transport: "streamable-http" as const,
+        url: buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http"),
         headers: {
           ...parsedConfig.headers,
           ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
