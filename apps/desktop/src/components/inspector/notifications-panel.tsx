@@ -139,10 +139,6 @@ export function NotificationsPanel({
     );
   };
 
-  if (notifications.length === 0) {
-    return null;
-  }
-
   return (
     <Card className="w-full shadow-none" interactive={false}>
       <CardHeader className="py-2 pb-2">
