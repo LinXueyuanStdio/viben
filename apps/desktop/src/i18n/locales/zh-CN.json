@@ -131,6 +131,18 @@
   },
   "settings": {
     "title": "设置",
+    "sections": {
+      "general": "通用",
+      "appearance": "外观",
+      "environment": "环境",
+      "storage": "存储",
+      "about": "关于"
+    },
+    "generalDescription": "通用应用设置",
+    "appearanceDescription": "自定义外观和主题",
+    "environmentDescription": "Python 和包配置",
+    "storageDescription": "管理下载和缓存",
+    "aboutDescription": "应用信息和更新",
     "pythonEnvironment": "Python 环境",
     "detect": "检测",
     "detectedInstallations": "检测到的 Python 安装",
@@ -172,7 +184,12 @@
     "author": "作者",
     "authorName": "LinXueyuan",
     "authorGithub": "GitHub",
-    "authorHomepage": "个人主页"
+    "authorHomepage": "个人主页",
+    "systemStatus": "系统状态",
+    "systemReady": "系统就绪",
+    "setupRequired": "需要设置",
+    "showBanner": "显示提示",
+    "updates": "更新"
   },
   "providers": {
     "title": "数据源",

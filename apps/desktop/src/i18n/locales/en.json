@@ -131,6 +131,18 @@
   },
   "settings": {
     "title": "Settings",
+    "sections": {
+      "general": "General",
+      "appearance": "Appearance",
+      "environment": "Environment",
+      "storage": "Storage",
+      "about": "About"
+    },
+    "generalDescription": "General application settings",
+    "appearanceDescription": "Customize the look and feel",
+    "environmentDescription": "Python and package configuration",
+    "storageDescription": "Manage downloads and cache",
+    "aboutDescription": "App information and updates",
     "pythonEnvironment": "Python Environment",
     "detect": "Detect",
     "detectedInstallations": "Detected Python Installations",
@@ -172,7 +184,12 @@
     "author": "AUTHOR",
     "authorName": "LinXueyuan",
     "authorGithub": "GitHub",
-    "authorHomepage": "Personal Homepage"
+    "authorHomepage": "Personal Homepage",
+    "systemStatus": "System Status",
+    "systemReady": "System ready",
+    "setupRequired": "Setup required",
+    "showBanner": "Show banner",
+    "updates": "Updates"
   },
   "providers": {
     "title": "Data Sources",
