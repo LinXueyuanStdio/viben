@@ -51,7 +51,7 @@ export async function POST(
     const data = rejectPackageSchema.parse(body);
 
     // Use transaction to ensure atomicity
-    await db.transaction(async (tx: any) => {
+    await db.transaction(async (tx) => {
       // Update package status
       const updateData: Record<string, unknown> = {
         status: 'rejected' as PackageStatus,
