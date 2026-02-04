@@ -207,7 +207,12 @@
     "installPluginsDesc": "Install plugins to add more data sources",
     "includedSources": "Included Sources",
     "enabled": "enabled",
-    "noSourcesInPlugin": "No sources in this plugin"
+    "noSourcesInPlugin": "No sources in this plugin",
+    "builtin": "Built-in",
+    "homepage": "Homepage",
+    "repository": "Repository",
+    "installWith": "Install with:",
+    "searchPlugins": "Search plugins..."
   },
   "agents": {
     "title": "AI Agents",
@@ -567,14 +572,17 @@
     "clearCache": "Clear Cache",
     "confirmClear": "Are you sure you want to clear all offline cache?",
     "autoRefresh": "Auto Refresh",
+    "autoRefreshDesc": "Automatically refresh cache every {{hours}} hours",
     "enableCaching": "Enable Caching",
     "enableCachingDesc": "Automatically cache installed packages for offline use",
     "lastUpdated": "Last Updated",
+    "lastSynced": "Last synced {{time}}",
     "maxCacheSize": "Max Cache Size",
     "maxCacheSizeDesc": "Maximum storage space for cached data",
     "mcpPackages": "MCP Packages",
     "never": "Never",
     "offline": "Offline",
+    "offlineTooltip": "No internet connection",
     "online": "Online",
     "onlineTooltip": "Connected to internet",
     "openFolder": "Open Folder",
@@ -615,7 +623,9 @@
     "noDescription": "No description",
     "sortLatest": "Latest",
     "sortPopular": "Popular",
-    "sortDownloads": "Downloads"
+    "sortDownloads": "Downloads",
+    "pageOf": "Page {{page}} of {{total}}",
+    "showingPackages": "Showing {{count}} packages"
   },
   "marketplace": {
     "title": "MCP Marketplace",
@@ -646,7 +656,9 @@
     "gridView": "Grid View",
     "listView": "List View",
     "next": "Next",
-    "previous": "Previous"
+    "previous": "Previous",
+    "pageOf": "Page {{page}} of {{total}}",
+    "packagesCount": "{{count}} packages"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -668,6 +680,7 @@
     "never": "Never",
     "today": "Today",
     "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
     "syncComplete": "Sync Complete",
     "syncInProgress": "Sync in Progress",
     "error": "Error",
@@ -677,6 +690,10 @@
     "autoSyncDesc": "Automatically sync changes to cloud",
     "syncInterval": "Sync Interval",
     "syncIntervalDesc": "Time interval for automatic sync",
+    "intervalMinutes": "{{count}} minutes",
+    "intervalHour": "1 hour",
+    "intervalHours": "{{count}} hours",
+    "totalPackagesProcessed": "{{count}} packages processed",
     "conflictResolution": "Conflict Resolution",
     "conflictResolutionDesc": "How to handle sync conflicts",
     "preferLocal": "Prefer Local",
