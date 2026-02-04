@@ -10,6 +10,7 @@ import {
   Settings,
   User,
   Building2,
+  BarChart3,
 } from 'lucide-react';
 
 const navigation = [
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Skills', href: '/skills', icon: Sparkles },
   { name: 'Workspaces', href: '/workspaces', icon: FolderKanban },
   { name: 'Organizations', href: '/orgs', icon: Building2 },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 const userNavigation = [

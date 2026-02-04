@@ -9,6 +9,8 @@ import {
   LogsPage,
   SettingsPage,
   AboutPage,
+  SkillsMarketPage,
+  MarketplacePage,
 } from "@/pages";
 
 function App() {
@@ -21,6 +23,8 @@ function App() {
           <Route path="search-service" element={<SearchServicePage />} />
           <Route path="inspector" element={<InspectorPage />} />
           <Route path="agents" element={<AgentsPage />} />
+          <Route path="marketplace" element={<MarketplacePage />} />
+          <Route path="skills-market" element={<SkillsMarketPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />

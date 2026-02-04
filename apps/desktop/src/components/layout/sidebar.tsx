@@ -8,6 +8,8 @@ import {
   Info,
   Search,
   SearchCode,
+  LogIn,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,7 +21,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
+import { OfflineIndicator } from "@/components/offline/offline-indicator";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/hooks/use-auth";
+import { UserMenu } from "@/components/auth/user-menu";
+import { LoginDialog } from "@/components/auth/login-dialog";
+import { Button } from "@/components/ui/button";
 
 interface NavItem {
   titleKey: string;
@@ -33,6 +40,7 @@ const mainNav: NavItem[] = [
   { titleKey: "nav.searchService", href: "/search-service", icon: Search },
   { titleKey: "nav.inspector", href: "/inspector", icon: SearchCode },
   { titleKey: "nav.agents", href: "/agents", icon: Bot },
+  { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
   { titleKey: "nav.logs", href: "/logs", icon: FileText },
 ];
 
@@ -46,6 +54,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed = false }: SidebarProps) {
+  const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -89,6 +100,44 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           {/* Unified Status Indicator */}
           <div className="mt-3">
             <McpStatusIndicator collapsed={collapsed} />
+          </div>
+
+          {/* Offline Status Indicator */}
+          <div className="mt-1">
+            <OfflineIndicator collapsed={collapsed} />
+          </div>
+
+          {/* User Auth Section */}
+          <div className="mt-3 pt-3 border-t border-sidebar-border">
+            {isAuthenticated ? (
+              <UserMenu collapsed={collapsed} />
+            ) : (
+              <LoginDialog
+                trigger={
+                  collapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-full h-10"
+                        >
+                          <LogIn className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {t("auth.signIn")}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button variant="outline" className="w-full">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      {t("auth.signIn")}
+                    </Button>
+                  )
+                }
+              />
+            )}
           </div>
         </div>
       </aside>
