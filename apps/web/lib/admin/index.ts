@@ -1,8 +1,22 @@
 /**
- * Admin Module
+ * Admin module
  *
  * Exports all admin-related functions for package moderation and logging.
  */
+
+export {
+  type AdminStats,
+  type ActivityItem,
+  type QueueItem,
+  countPendingPackages,
+  countOpenReports,
+  countTodayActions,
+  countTotalUsers,
+  getRecentActivity,
+  getPendingQueue,
+  getAdminStats,
+} from './stats';
+
 
 // Re-export db and schema for transaction usage
 export { db, mcpPackages, skillPackages, moderationLogs } from '@/lib/db';
