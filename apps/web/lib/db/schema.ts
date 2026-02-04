@@ -5,6 +5,7 @@ import {
   boolean,
   integer,
   json,
+  jsonb,
   real,
   index,
   uniqueIndex,
@@ -32,8 +33,11 @@ export const users = pgTable(
     passwordHash: text('password_hash'),
     emailVerified: boolean('email_verified').default(false).notNull(),
 
-    // Role
-    role: text('role', { enum: ['user', 'developer', 'admin'] })
+    // Role - expanded to include admin roles
+    // 'admin' is legacy, treated as 'super_admin' for backward compatibility
+    role: text('role', {
+      enum: ['user', 'developer', 'admin', 'super_admin', 'moderator', 'support'],
+    })
       .default('user')
       .notNull(),
 
@@ -183,6 +187,16 @@ export const mcpPackages = pgTable(
     // Status
     isPublished: boolean('is_published').default(false).notNull(),
 
+    // Moderation status
+    status: text('status', {
+      enum: ['pending', 'approved', 'rejected', 'featured'],
+    }).default('pending'),
+    featuredAt: timestamp('featured_at'),
+    featuredBy: text('featured_by').references(() => users.id),
+    reviewedAt: timestamp('reviewed_at'),
+    reviewedBy: text('reviewed_by').references(() => users.id),
+    rejectionReason: text('rejection_reason'),
+
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -194,6 +208,7 @@ export const mcpPackages = pgTable(
     index('mcp_packages_author_id_idx').on(table.authorId),
     index('mcp_packages_category_idx').on(table.category),
     index('mcp_packages_created_at_idx').on(table.createdAt),
+    index('mcp_packages_status_idx').on(table.status),
   ]
 );
 
@@ -240,6 +255,16 @@ export const skillPackages = pgTable(
     // Status
     isPublished: boolean('is_published').default(false).notNull(),
 
+    // Moderation status
+    status: text('status', {
+      enum: ['pending', 'approved', 'rejected', 'featured'],
+    }).default('pending'),
+    featuredAt: timestamp('featured_at'),
+    featuredBy: text('featured_by').references(() => users.id),
+    reviewedAt: timestamp('reviewed_at'),
+    reviewedBy: text('reviewed_by').references(() => users.id),
+    rejectionReason: text('rejection_reason'),
+
     // Timestamps
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -251,6 +276,7 @@ export const skillPackages = pgTable(
     index('skill_packages_author_id_idx').on(table.authorId),
     index('skill_packages_category_idx').on(table.category),
     index('skill_packages_skill_type_idx').on(table.skillType),
+    index('skill_packages_status_idx').on(table.status),
   ]
 );
 
@@ -445,6 +471,93 @@ export const workspaceEntities = pgTable(
 );
 
 // ============================================
+// Admin & Moderation Tables
+// ============================================
+
+export const reports = pgTable(
+  'reports',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+    // What is being reported
+    entityType: text('entity_type', {
+      enum: ['mcp', 'skill', 'comment', 'collection', 'user'],
+    }).notNull(),
+    entityId: text('entity_id').notNull(),
+
+    // Who reported
+    reporterId: text('reporter_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // Report details
+    reason: text('reason', {
+      enum: ['spam', 'inappropriate', 'copyright', 'security', 'other'],
+    }).notNull(),
+    description: text('description'),
+
+    // Resolution
+    status: text('status', {
+      enum: ['pending', 'resolved', 'dismissed'],
+    }).default('pending'),
+    resolvedAt: timestamp('resolved_at'),
+    resolvedBy: text('resolved_by').references(() => users.id),
+    resolution: text('resolution'), // Admin notes
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('reports_entity_idx').on(table.entityType, table.entityId),
+    index('reports_reporter_id_idx').on(table.reporterId),
+    index('reports_status_idx').on(table.status),
+    index('reports_created_at_idx').on(table.createdAt),
+  ]
+);
+
+export const moderationLogs = pgTable(
+  'moderation_logs',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+
+    // Who performed the action
+    adminId: text('admin_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    // What was affected
+    entityType: text('entity_type', {
+      enum: ['mcp', 'skill', 'comment', 'collection', 'user', 'report'],
+    }).notNull(),
+    entityId: text('entity_id').notNull(),
+
+    // Action details
+    action: text('action', {
+      enum: [
+        'approve',
+        'reject',
+        'feature',
+        'unfeature',
+        'delete',
+        'warn',
+        'ban',
+        'unban',
+      ],
+    }).notNull(),
+
+    reason: text('reason'),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>(),
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('moderation_logs_admin_id_idx').on(table.adminId),
+    index('moderation_logs_entity_idx').on(table.entityType, table.entityId),
+    index('moderation_logs_action_idx').on(table.action),
+    index('moderation_logs_created_at_idx').on(table.createdAt),
+  ]
+);
+
+// ============================================
 // Relations
 // ============================================
 
@@ -457,6 +570,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   collections: many(collections),
   comments: many(comments),
   workspaces: many(workspaces),
+  reports: many(reports),
+  moderationLogs: many(moderationLogs),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -550,5 +665,23 @@ export const workspaceEntitiesRelations = relations(workspaceEntities, ({ one })
   workspace: one(workspaces, {
     fields: [workspaceEntities.workspaceId],
     references: [workspaces.id],
+  }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  reporter: one(users, {
+    fields: [reports.reporterId],
+    references: [users.id],
+  }),
+  resolver: one(users, {
+    fields: [reports.resolvedBy],
+    references: [users.id],
+  }),
+}));
+
+export const moderationLogsRelations = relations(moderationLogs, ({ one }) => ({
+  admin: one(users, {
+    fields: [moderationLogs.adminId],
+    references: [users.id],
   }),
 }));

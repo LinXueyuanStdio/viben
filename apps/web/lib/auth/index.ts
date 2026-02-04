@@ -15,6 +15,21 @@ export {
   AuthError,
 } from './middleware';
 
+// Admin middleware and helpers
+export {
+  hasPermission,
+  hasAllPermissions,
+  hasAnyPermission,
+  getPermissions,
+  isAdminRole,
+  getRoleLevel,
+  requireAdmin,
+  requirePermission,
+  requireAnyPermission,
+  requireAllPermissions,
+  getAdminSession,
+} from './admin';
+
 // API Key
 export { validateApiKey, generateApiKey } from './api-key';
 
