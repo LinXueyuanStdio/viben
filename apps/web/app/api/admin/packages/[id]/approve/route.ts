@@ -4,6 +4,8 @@
  * POST /api/admin/packages/[id]/approve - Approve a package
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
