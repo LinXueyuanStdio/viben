@@ -13,6 +13,9 @@ import {
   Hash,
   Server,
   AlertCircle,
+  Loader2,
+  Shield,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,14 +27,15 @@ import {
   isBrowserCompatible,
   type McpServerConfig,
 } from "@/hooks/use-mcp-connection";
+import { useMcpProxy, buildProxyUrl, buildProxyHeaders } from "@/hooks/use-mcp-proxy";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import type { InspectorConnectionStatus } from "@/types";
 
-// Default MCP server config example
+// Default MCP server config example - now with proxy support
 const DEFAULT_CONFIG: McpServerConfig = {
-  transport: "sse",
-  url: "http://localhost:3000/sse",
+  transport: "streamable-http",
+  url: "http://localhost:8000/mcp",
 };
 
 export function InspectorPage() {
@@ -41,6 +45,20 @@ export function InspectorPage() {
     addInspectorNotification,
     clearInspectorNotifications,
   } = useAppStore();
+
+  // MCP Proxy hook
+  const {
+    status: proxyStatus,
+    isLoading: proxyLoading,
+    error: proxyError,
+    isInstalled: proxyInstalled,
+    startProxy,
+    stopProxy,
+    installProxy,
+  } = useMcpProxy();
+
+  // Use proxy mode state
+  const [useProxy, setUseProxy] = useState(true);
 
   // JSON config state
   const [configJson, setConfigJson] = useState<string>(() => {
@@ -74,11 +92,41 @@ export function InspectorPage() {
     }
   }, [configJson]);
 
+  // Build effective config for connection (with proxy if enabled)
+  const effectiveConfig = useMemo<McpServerConfig | null>(() => {
+    if (!parsedConfig) return null;
+
+    // If not using proxy, use original config
+    if (!useProxy || !proxyStatus?.running || !proxyStatus?.auth_token) {
+      return parsedConfig;
+    }
+
+    // If using proxy, wrap the URL
+    if ("url" in parsedConfig && parsedConfig.url) {
+      const proxyUrl = proxyStatus.url || "http://127.0.0.1:6277";
+      const targetUrl = parsedConfig.url;
+      const transport = parsedConfig.transport || "streamable-http";
+
+      return {
+        ...parsedConfig,
+        url: buildProxyUrl(proxyUrl, targetUrl, transport as "stdio" | "sse" | "streamable-http"),
+        headers: {
+          ...parsedConfig.headers,
+          ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
+        },
+      };
+    }
+
+    return parsedConfig;
+  }, [parsedConfig, useProxy, proxyStatus]);
+
   // Check if config can connect
   const canConnect = useMemo(() => {
     if (!parsedConfig || parseError) return false;
+    // With proxy, we can connect even without browser compatibility
+    if (useProxy && proxyStatus?.running) return true;
     return isBrowserCompatible(parsedConfig);
-  }, [parsedConfig, parseError]);
+  }, [parsedConfig, parseError, useProxy, proxyStatus]);
 
   // Copy state
   const [copied, setCopied] = useState(false);
@@ -98,6 +146,13 @@ export function InspectorPage() {
   // Connection state
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState("tools");
+
+  // Auto-start proxy when entering page if installed
+  useEffect(() => {
+    if (proxyInstalled && !proxyStatus?.running && useProxy && !proxyLoading) {
+      startProxy().catch(console.error);
+    }
+  }, [proxyInstalled, proxyStatus?.running, useProxy, proxyLoading, startProxy]);
 
   // Persist config to localStorage
   useEffect(() => {
@@ -162,7 +217,7 @@ export function InspectorPage() {
     };
   }, [isBottomDragging]);
 
-  // MCP connection hook - now uses full config object
+  // MCP connection hook - uses effective config (with proxy if enabled)
   const {
     connectionStatus,
     serverCapabilities,
@@ -171,7 +226,7 @@ export function InspectorPage() {
     disconnect,
     makeRequest,
   } = useMcpConnection({
-    config: parsedConfig,
+    config: effectiveConfig,
     onNotification: useCallback(
       (method: string, params?: Record<string, unknown>) => {
         addInspectorNotification({
@@ -273,6 +328,72 @@ export function InspectorPage() {
         {/* Sidebar Content */}
         <div className="p-4 flex-1 overflow-auto">
           <div className="space-y-4">
+            {/* Proxy Status Section */}
+            <div className="p-3 rounded-lg border border-border bg-muted/30">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t("inspector.proxy", "Proxy")}</span>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useProxy}
+                    onChange={(e) => setUseProxy(e.target.checked)}
+                    className="rounded border-input"
+                  />
+                  <span className="text-xs text-muted-foreground">{t("inspector.useProxy", "Enable")}</span>
+                </label>
+              </div>
+
+              {useProxy && (
+                <div className="space-y-2">
+                  {proxyInstalled === false && (
+                    <div className="flex items-center justify-between p-2 rounded bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 text-xs">
+                      <span>{t("inspector.proxyNotInstalled", "Proxy not installed")}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => installProxy()}
+                        disabled={proxyLoading}
+                        className="h-6 text-xs"
+                      >
+                        {proxyLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
+                        {t("inspector.install", "Install")}
+                      </Button>
+                    </div>
+                  )}
+
+                  {proxyInstalled && (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${proxyStatus?.running ? "bg-green-500" : "bg-gray-400"}`} />
+                        <span className="text-xs text-muted-foreground">
+                          {proxyStatus?.running
+                            ? `${t("inspector.proxyRunning", "Running")} (${proxyStatus.url})`
+                            : t("inspector.proxyStopped", "Stopped")}
+                        </span>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => proxyStatus?.running ? stopProxy() : startProxy()}
+                        disabled={proxyLoading}
+                        className="h-6 text-xs"
+                      >
+                        {proxyLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
+                        {proxyStatus?.running ? t("inspector.stop", "Stop") : t("inspector.start", "Start")}
+                      </Button>
+                    </div>
+                  )}
+
+                  {proxyError && (
+                    <div className="text-xs text-red-500 dark:text-red-400">{proxyError}</div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* JSON Config Label */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">{t("inspector.serverConfig")}</label>

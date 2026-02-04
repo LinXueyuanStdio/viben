@@ -9,6 +9,7 @@ import {
   Search,
   SearchCode,
   LogIn,
+  Store,
   Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ const mainNav: NavItem[] = [
   { titleKey: "nav.searchService", href: "/search-service", icon: Search },
   { titleKey: "nav.inspector", href: "/inspector", icon: SearchCode },
   { titleKey: "nav.agents", href: "/agents", icon: Bot },
+  { titleKey: "nav.mcpMarketplace", href: "/mcp-marketplace", icon: Store },
   { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
   { titleKey: "nav.logs", href: "/logs", icon: FileText },
 ];

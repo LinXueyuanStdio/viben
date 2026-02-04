@@ -4,6 +4,7 @@ use commands::api_client::ApiClientState;
 use commands::auth::AuthState;
 use commands::logs::LogsState;
 use commands::mcp::McpProcessState;
+use commands::mcp_proxy::McpProxyState;
 use commands::offline_cache::OfflineCacheState;
 use commands::package_install::InstalledPackagesState;
 use commands::usage::UsageState;
@@ -79,9 +80,17 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
                         // Position popup near tray icon if possible
                         if let Ok(Some(rect)) = tray.rect() {
                             // On macOS, position below the menu bar
-                            // rect.position and rect.size are PhysicalPosition/PhysicalSize
-                            let x = (rect.position.x as i32).saturating_sub(150); // Center the 400px popup
-                            let y = (rect.position.y + rect.size.height) as i32 + 5;
+                            // Convert Position/Size enums to physical values
+                            let (pos_x, pos_y) = match rect.position {
+                                tauri::Position::Physical(p) => (p.x, p.y),
+                                tauri::Position::Logical(l) => (l.x as i32, l.y as i32),
+                            };
+                            let height = match rect.size {
+                                tauri::Size::Physical(s) => s.height as i32,
+                                tauri::Size::Logical(s) => s.height as i32,
+                            };
+                            let x = pos_x.saturating_sub(150); // Center the 400px popup
+                            let y = pos_y + height + 5;
                             let _ = popup.set_position(tauri::Position::Physical(
                                 tauri::PhysicalPosition { x, y },
                             ));
@@ -123,6 +132,7 @@ pub fn run() {
         .manage(ApiClientState::default())
         .manage(AuthState::default())
         .manage(McpProcessState::default())
+        .manage(McpProxyState::default())
         .manage(LogsState::default())
         .manage(UsageState::default())
         .manage(OfflineCacheState::default())
@@ -254,6 +264,12 @@ pub fn run() {
             commands::tray::hide_tray_popup,
             commands::tray::show_main_window,
             commands::tray::get_tray_position,
+            // MCP Proxy commands
+            commands::mcp_proxy::start_mcp_proxy,
+            commands::mcp_proxy::stop_mcp_proxy,
+            commands::mcp_proxy::get_mcp_proxy_status,
+            commands::mcp_proxy::check_mcp_proxy_installed,
+            commands::mcp_proxy::install_mcp_proxy,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

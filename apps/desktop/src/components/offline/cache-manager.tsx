@@ -38,7 +38,6 @@ export function CacheManager({ className }: CacheManagerProps) {
     updateCacheSettings,
     formatCacheSize,
     formatLastUpdated,
-    fetchCacheInfo,
   } = useOfflineStatus();
 
   const [clearing, setClearing] = React.useState(false);

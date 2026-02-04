@@ -1,4 +1,3 @@
-import * as React from "react";
 import {
   Download,
   Star,
@@ -7,8 +6,8 @@ import {
   ExternalLink,
   GitBranch,
   Tag,
-  X,
   Loader2,
+  // X - not currently used
 } from "lucide-react";
 import {
   Dialog,
@@ -21,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import type { CloudMcpPackage } from "@/hooks/use-cloud-mcp";
 import { InstallButton } from "./install-button";
@@ -62,39 +60,6 @@ export function PackageDetail({
       month: "short",
       day: "numeric",
     });
-  };
-
-  const renderStars = (rating: number) => {
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    const stars = [];
-
-    for (let i = 0; i < 5; i++) {
-      if (i < fullStars) {
-        stars.push(
-          <Star
-            key={i}
-            className="h-4 w-4 fill-amber-400 text-amber-400"
-          />
-        );
-      } else if (i === fullStars && hasHalfStar) {
-        stars.push(
-          <Star
-            key={i}
-            className="h-4 w-4 fill-amber-400/50 text-amber-400"
-          />
-        );
-      } else {
-        stars.push(
-          <Star
-            key={i}
-            className="h-4 w-4 text-muted-foreground/30"
-          />
-        );
-      }
-    }
-
-    return stars;
   };
 
   return (

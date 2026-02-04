@@ -8,6 +8,7 @@ pub mod cloud_skills;
 pub mod logs;
 pub mod marketplace;
 pub mod mcp;
+pub mod mcp_proxy;
 pub mod offline_cache;
 pub mod package_install;
 pub mod python;
