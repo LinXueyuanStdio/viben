@@ -92,9 +92,6 @@ export async function listPackagesForReview(
   const { type, status = 'pending', page, limit, sort } = options;
   const offset = (page - 1) * limit;
 
-  // Determine ordering
-  const orderDirection = sort === 'newest' ? 'DESC' : 'ASC';
-
   // If specific type is requested, query only that type
   if (type === 'mcp') {
     const mcpConditions = [eq(mcpPackages.status, status)];
@@ -263,7 +260,7 @@ export async function listPackagesForReview(
     })
     .from(unionQuery)
     .innerJoin(users, eq(unionQuery.authorId, users.id))
-    .orderBy(sql.raw(`created_at ${orderDirection}`))
+    .orderBy(sort === 'newest' ? desc(unionQuery.createdAt) : asc(unionQuery.createdAt))
     .limit(limit)
     .offset(offset);
 
