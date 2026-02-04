@@ -471,6 +471,54 @@ export const workspaceEntities = pgTable(
 );
 
 // ============================================
+// Draft Tables (for publish workflow)
+// ============================================
+
+export const drafts = pgTable(
+  'drafts',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    packageType: text('package_type', { enum: ['mcp', 'skill'] }).notNull(),
+    data: jsonb('data').$type<Record<string, unknown>>().default({}).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at')
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    expiresAt: timestamp('expires_at').notNull(),
+  },
+  (table) => [
+    index('drafts_user_id_idx').on(table.userId),
+    index('drafts_expires_at_idx').on(table.expiresAt),
+  ]
+);
+
+// ============================================
+// GitHub Connection Tables (for skill import)
+// ============================================
+
+export const githubConnections = pgTable(
+  'github_connections',
+  {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accessTokenEncrypted: text('access_token_encrypted').notNull(),
+    scope: text('scope').notNull(),
+    githubUserId: text('github_user_id'),
+    githubUsername: text('github_username'),
+    connectedAt: timestamp('connected_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('github_connections_user_id_idx').on(table.userId),
+  ]
+);
+
+// ============================================
 // Admin & Moderation Tables
 // ============================================
 
@@ -561,7 +609,7 @@ export const moderationLogs = pgTable(
 // Relations
 // ============================================
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   apiKeys: many(apiKeys),
   oauthConnections: many(oauthConnections),
   organizations: many(organizations),
@@ -572,6 +620,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   workspaces: many(workspaces),
   reports: many(reports),
   moderationLogs: many(moderationLogs),
+  drafts: many(drafts),
+  githubConnection: one(githubConnections, {
+    fields: [users.id],
+    references: [githubConnections.userId],
+  }),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -682,6 +735,20 @@ export const reportsRelations = relations(reports, ({ one }) => ({
 export const moderationLogsRelations = relations(moderationLogs, ({ one }) => ({
   admin: one(users, {
     fields: [moderationLogs.adminId],
+    references: [users.id],
+  }),
+}));
+
+export const draftsRelations = relations(drafts, ({ one }) => ({
+  user: one(users, {
+    fields: [drafts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const githubConnectionsRelations = relations(githubConnections, ({ one }) => ({
+  user: one(users, {
+    fields: [githubConnections.userId],
     references: [users.id],
   }),
 }));

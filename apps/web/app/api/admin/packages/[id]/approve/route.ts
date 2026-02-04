@@ -55,7 +55,7 @@ export async function POST(
     }
 
     // Use transaction to ensure atomicity
-    await db.transaction(async (tx: any) => {
+    await db.transaction(async (tx) => {
       // Update package status
       const updateData: Record<string, unknown> = {
         status: 'approved' as PackageStatus,
