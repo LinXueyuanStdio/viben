@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Package, Zap, Users, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
@@ -39,13 +40,13 @@ export default function HomePage() {
         </div>
 
         <div className="mt-12">
-          <a
+          <Link
             href="/mcp"
             className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
           >
             Explore Marketplace
             <ArrowRight className="h-4 w-4" />
-          </a>
+          </Link>
         </div>
 
         <p className="mt-8 text-sm text-muted-foreground">
