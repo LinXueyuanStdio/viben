@@ -19,9 +19,6 @@ import { ZodError } from 'zod';
 import { eq } from 'drizzle-orm';
 import type { PackageStatus } from '@/lib/types/admin';
 
-// Type for transaction callback
-type TransactionCallback = Parameters<typeof db.transaction>[0];
-
 /**
  * POST /api/admin/packages/[id]/approve
  *
