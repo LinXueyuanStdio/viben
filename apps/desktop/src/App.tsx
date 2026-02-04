@@ -4,6 +4,7 @@ import {
   DashboardPage,
   ProvidersPage,
   SearchServicePage,
+  InspectorPage,
   AgentsPage,
   LogsPage,
   SettingsPage,
@@ -18,6 +19,7 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="providers" element={<ProvidersPage />} />
           <Route path="search-service" element={<SearchServicePage />} />
+          <Route path="inspector" element={<InspectorPage />} />
           <Route path="agents" element={<AgentsPage />} />
           <Route path="logs" element={<LogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
