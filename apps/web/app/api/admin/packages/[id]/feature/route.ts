@@ -79,7 +79,7 @@ export async function POST(
       }
 
       // Use transaction to ensure atomicity
-      await db.transaction(async (tx: any) => {
+      await db.transaction(async (tx) => {
         // Update to featured
         const updateData: Record<string, unknown> = {
           status: 'featured' as PackageStatus,
@@ -130,7 +130,7 @@ export async function POST(
       }
 
       // Use transaction to ensure atomicity
-      await db.transaction(async (tx: any) => {
+      await db.transaction(async (tx) => {
         // Update to approved (unfeature)
         const updateData: Record<string, unknown> = {
           status: 'approved' as PackageStatus,
