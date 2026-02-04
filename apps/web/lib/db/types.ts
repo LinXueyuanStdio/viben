@@ -21,6 +21,8 @@ export type PackageRelease = InferSelectModel<typeof schema.packageReleases>;
 export type DownloadRecord = InferSelectModel<typeof schema.downloadRecords>;
 export type Workspace = InferSelectModel<typeof schema.workspaces>;
 export type WorkspaceEntity = InferSelectModel<typeof schema.workspaceEntities>;
+export type Report = InferSelectModel<typeof schema.reports>;
+export type ModerationLog = InferSelectModel<typeof schema.moderationLogs>;
 
 // ============================================
 // Insert Types (for creating new records)
@@ -42,15 +44,35 @@ export type NewPackageRelease = InferInsertModel<typeof schema.packageReleases>;
 export type NewDownloadRecord = InferInsertModel<typeof schema.downloadRecords>;
 export type NewWorkspace = InferInsertModel<typeof schema.workspaces>;
 export type NewWorkspaceEntity = InferInsertModel<typeof schema.workspaceEntities>;
+export type NewReport = InferInsertModel<typeof schema.reports>;
+export type NewModerationLog = InferInsertModel<typeof schema.moderationLogs>;
 
 // ============================================
 // Enum Types
 // ============================================
 
-export type UserRole = 'user' | 'developer' | 'admin';
+export type UserRole =
+  | 'user'
+  | 'developer'
+  | 'admin'
+  | 'super_admin'
+  | 'moderator'
+  | 'support';
 export type OAuthProvider = 'github' | 'google';
 export type OrgMemberRole = 'member' | 'admin' | 'owner';
 export type Transport = 'stdio' | 'sse' | 'http';
 export type SkillType = 'command' | 'prompt' | 'agent';
 export type EntityType = 'mcp' | 'skill';
 export type SocialEntityType = 'mcp' | 'skill' | 'collection';
+export type PackageStatus = 'pending' | 'approved' | 'rejected' | 'featured';
+export type ReportReason = 'spam' | 'inappropriate' | 'copyright' | 'security' | 'other';
+export type ReportStatus = 'pending' | 'resolved' | 'dismissed';
+export type ModerationAction =
+  | 'approve'
+  | 'reject'
+  | 'feature'
+  | 'unfeature'
+  | 'delete'
+  | 'warn'
+  | 'ban'
+  | 'unban';

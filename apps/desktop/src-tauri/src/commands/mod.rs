@@ -15,4 +15,5 @@ pub mod python;
 pub mod service_keys;
 pub mod tray;
 pub mod usage;
+pub mod workspace;
 pub mod workspace_sync;

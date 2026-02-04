@@ -270,6 +270,22 @@ pub fn run() {
             commands::mcp_proxy::get_mcp_proxy_status,
             commands::mcp_proxy::check_mcp_proxy_installed,
             commands::mcp_proxy::install_mcp_proxy,
+            // Workspace management commands
+            commands::workspace::list_workspaces,
+            commands::workspace::add_workspace,
+            commands::workspace::remove_workspace,
+            commands::workspace::get_workspace,
+            commands::workspace::set_active_workspace,
+            commands::workspace::get_active_workspace_id,
+            commands::workspace::update_workspace_accessed,
+            commands::workspace::detect_workspace_agents,
+            commands::workspace::get_workspace_mcp_servers,
+            commands::workspace::add_workspace_mcp_server,
+            commands::workspace::update_workspace_mcp_server,
+            commands::workspace::delete_workspace_mcp_server,
+            commands::workspace::get_workspace_skills,
+            commands::workspace::add_workspace_skill,
+            commands::workspace::delete_workspace_skill,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -7,5 +7,7 @@ export { SettingsPage } from "./settings";
 export { AboutPage } from "./about";
 export { InspectorPage } from "./inspector";
 export { TrayPopupPage } from "./tray-popup";
+export { WorkspaceDetailPage } from "./workspace-detail";
+export { AgentDetailPage } from "./agent-detail";
 // Note: MarketplacePage and SkillsMarketPage are lazy-loaded in App.tsx for code splitting
 // They should be imported directly from their modules when lazy loading
