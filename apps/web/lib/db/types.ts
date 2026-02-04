@@ -23,6 +23,8 @@ export type Workspace = InferSelectModel<typeof schema.workspaces>;
 export type WorkspaceEntity = InferSelectModel<typeof schema.workspaceEntities>;
 export type Report = InferSelectModel<typeof schema.reports>;
 export type ModerationLog = InferSelectModel<typeof schema.moderationLogs>;
+export type Draft = InferSelectModel<typeof schema.drafts>;
+export type GithubConnection = InferSelectModel<typeof schema.githubConnections>;
 
 // ============================================
 // Insert Types (for creating new records)
@@ -46,6 +48,8 @@ export type NewWorkspace = InferInsertModel<typeof schema.workspaces>;
 export type NewWorkspaceEntity = InferInsertModel<typeof schema.workspaceEntities>;
 export type NewReport = InferInsertModel<typeof schema.reports>;
 export type NewModerationLog = InferInsertModel<typeof schema.moderationLogs>;
+export type NewDraft = InferInsertModel<typeof schema.drafts>;
+export type NewGithubConnection = InferInsertModel<typeof schema.githubConnections>;
 
 // ============================================
 // Enum Types
@@ -76,3 +80,4 @@ export type ModerationAction =
   | 'warn'
   | 'ban'
   | 'unban';
+export type DraftPackageType = 'mcp' | 'skill';

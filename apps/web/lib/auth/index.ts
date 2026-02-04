@@ -35,3 +35,6 @@ export { validateApiKey, generateApiKey } from './api-key';
 
 // Password
 export { hashPassword, verifyPassword } from './password';
+
+// Token encryption (for GitHub access tokens)
+export { encryptToken, decryptToken } from './token-encryption';

@@ -228,7 +228,7 @@ export async function listPackagesForReview(
       authorId: skillPackages.authorId,
 transport: sql<string | null>`NULL`.as('transport'),
       entryPoint: sql<string | null>`NULL`.as('entryPoint'),
-      skillType: skillPackages.skillType,
+      skillType: sql<string | null>`${skillPackages.skillType}`.as('skillType'),
     })
     .from(skillPackages)
     .where(eq(skillPackages.status, status));
