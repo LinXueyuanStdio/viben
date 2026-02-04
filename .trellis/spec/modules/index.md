@@ -80,6 +80,12 @@ This directory contains detailed specifications for implementing each module of 
 |--------|-------------|--------|--------|
 | [admin-ui.md](./admin-ui.md) | T22: Admin dashboard, package & content moderation | 8 | Pending |
 
+### Cross-Cutting Concerns
+
+| Module | Description | Effort | Status |
+|--------|-------------|--------|--------|
+| [workspace-management.md](./workspace-management.md) | Multi-workspace MCP/Skills management system | 13 | Planning |
+
 ---
 
 ## Quick Reference
