@@ -16,6 +16,8 @@ import {
   Loader2,
   Shield,
   Download,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -107,15 +109,18 @@ export function InspectorPage() {
       const targetUrl = parsedConfig.url;
       const originalTransport = parsedConfig.transport || "streamable-http";
 
+      const effectiveUrl = buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http");
+      const effectiveHeaders = {
+        ...parsedConfig.headers,
+        ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
+      };
+
       return {
         ...parsedConfig,
         // Connection to proxy is always streamable-http, regardless of target transport
         transport: "streamable-http" as const,
-        url: buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http"),
-        headers: {
-          ...parsedConfig.headers,
-          ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
-        },
+        url: effectiveUrl,
+        headers: effectiveHeaders,
       };
     }
 
@@ -132,6 +137,9 @@ export function InspectorPage() {
 
   // Copy state
   const [copied, setCopied] = useState(false);
+
+  // Examples collapsed state
+  const [examplesCollapsed, setExamplesCollapsed] = useState(true);
 
   // Sidebar dragging
   const [sidebarWidth, setSidebarWidth] = useState(360);
@@ -432,10 +440,22 @@ export function InspectorPage() {
               )}
             </div>
 
-            {/* Config Examples */}
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p className="font-medium">{t("inspector.configExamples")}:</p>
-              <pre className="p-2 rounded bg-muted/50 overflow-x-auto whitespace-pre-wrap">
+            {/* Config Examples - Collapsible */}
+            <div className="text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setExamplesCollapsed(!examplesCollapsed)}
+                className="flex items-center gap-1 font-medium hover:text-foreground transition-colors w-full text-left"
+              >
+                {examplesCollapsed ? (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+                {t("inspector.configExamples")}
+              </button>
+              {!examplesCollapsed && (
+                <pre className="p-2 mt-1 rounded bg-muted/50 overflow-x-auto whitespace-pre-wrap">
 {`// SSE (auto-detects from /sse in URL)
 {"url": "http://localhost:3000/sse"}
 
@@ -453,7 +473,8 @@ export function InspectorPage() {
   "url": "http://localhost:3000/mcp",
   "auth": "your-api-key"
 }`}
-              </pre>
+                </pre>
+              )}
             </div>
 
             {/* STDIO Warning */}
