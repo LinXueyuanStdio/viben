@@ -264,3 +264,61 @@ export interface ApiLogSummary {
   by_method: Record<string, number>;
   avg_latency_ms: number;
 }
+
+// Workspace Management types
+
+/** Workspace type - global (non-deletable) or custom (user-added) */
+export type WorkspaceType = "global" | "custom";
+
+/** Workspace represents a folder that can contain agent configurations */
+export interface Workspace {
+  id: string;
+  name: string;
+  path: string;
+  type: WorkspaceType;
+  created_at: string;
+  last_accessed: string;
+}
+
+/** Agent type identifier for workspace agents */
+export type WorkspaceAgentType =
+  | "claude-code"
+  | "codex"
+  | "cursor"
+  | "windsurf"
+  | "vscode"
+  | "continue"
+  | "zed"
+  | "unknown";
+
+/** Agent detected within a workspace */
+export interface WorkspaceAgent {
+  id: string;
+  workspace_id: string;
+  name: string;
+  type: WorkspaceAgentType;
+  config_path: string;
+  mcp_config_file: string | null;
+  skills_config_file: string | null;
+}
+
+/** MCP Server configuration from workspace agent config */
+export interface WorkspaceMcpServer {
+  name: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  transport?: string;
+  headers?: Record<string, string>;
+  disabled?: boolean;
+}
+
+/** Skill installed for an agent in workspace */
+export interface WorkspaceSkill {
+  id: string;
+  name: string;
+  version: string;
+  source: "marketplace" | "local";
+  path?: string; // For local skills
+}
