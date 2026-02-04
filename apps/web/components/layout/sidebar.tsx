@@ -10,12 +10,14 @@ import {
   Settings,
   User,
   Building2,
+  Layers,
   BarChart3,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'MCP Marketplace', href: '/mcp', icon: Package },
   { name: 'Skills', href: '/skills', icon: Sparkles },
+  { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Workspaces', href: '/workspaces', icon: FolderKanban },
   { name: 'Organizations', href: '/orgs', icon: Building2 },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
