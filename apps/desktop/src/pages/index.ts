@@ -6,3 +6,5 @@ export { LogsPage } from "./logs";
 export { SettingsPage } from "./settings";
 export { AboutPage } from "./about";
 export { InspectorPage } from "./inspector";
+export { SkillsMarketPage } from "./skills-market";
+export { MarketplacePage } from "./marketplace";

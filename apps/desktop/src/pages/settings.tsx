@@ -1,6 +1,7 @@
 import { Check, AlertCircle, FolderOpen, RefreshCw, Loader2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/settings/theme-switcher";
+import { CacheManager } from "@/components/offline/cache-manager";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import { useState, useCallback } from "react";
@@ -335,6 +336,14 @@ export function SettingsPage() {
               </Button>
             </div>
           </div>
+        </div>
+      </motion.section>
+
+      {/* Offline Cache */}
+      <motion.section className="mb-8" variants={itemVariants}>
+        <h2 className="text-lg font-semibold mb-4">{t("settings.offlineCache")}</h2>
+        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+          <CacheManager />
         </div>
       </motion.section>
     </motion.div>
