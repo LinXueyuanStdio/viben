@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
+import { Sparkles } from 'lucide-react';
 import { SkillsGrid } from '@/components/skills/skills-grid';
 import { SkillsFilters } from '@/components/skills/skills-filters';
 import { SearchInput } from '@/components/shared/search-input';
+import { PageHeader } from '@/components/shared/page-header';
 
 export const metadata = {
   title: 'Skills Marketplace',
@@ -22,12 +24,11 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Skills Marketplace</h1>
-        <p className="mt-2 text-muted-foreground">
-          Discover and install AI agent skills and capabilities
-        </p>
-      </div>
+      <PageHeader
+        icon={Sparkles}
+        title="Skills Marketplace"
+        subtitle="Discover and install AI agent skills and capabilities"
+      />
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
@@ -54,7 +55,7 @@ function SkillsGridSkeleton() {
       {[...Array(6)].map((_, i) => (
         <div
           key={i}
-          className="h-48 animate-pulse rounded-lg border bg-muted"
+          className="h-48 animate-pulse rounded-xl border bg-muted"
         />
       ))}
     </div>
