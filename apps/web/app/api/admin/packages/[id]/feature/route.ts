@@ -4,6 +4,8 @@
  * POST /api/admin/packages/[id]/feature - Feature or unfeature a package
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
@@ -79,7 +81,7 @@ export async function POST(
       }
 
       // Use transaction to ensure atomicity
-      await db.transaction(async (tx: any) => {
+      await db.transaction(async (tx) => {
         // Update to featured
         const updateData: Record<string, unknown> = {
           status: 'featured' as PackageStatus,
@@ -130,7 +132,7 @@ export async function POST(
       }
 
       // Use transaction to ensure atomicity
-      await db.transaction(async (tx: any) => {
+      await db.transaction(async (tx) => {
         // Update to approved (unfeature)
         const updateData: Record<string, unknown> = {
           status: 'approved' as PackageStatus,
