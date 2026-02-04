@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   ArrowLeft,
@@ -15,7 +15,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -25,25 +25,68 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PageWrapper, StaggerContainer, StaggerItem } from "@/components/layout";
+import { PageWrapper } from "@/components/layout";
 import { useLocalWorkspaces, useWorkspaceAgents } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { WorkspaceAgent } from "@/types";
 
+// Auto-refresh interval (10 minutes)
+const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
+
 export function WorkspaceDetailPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
-  const { removeWorkspace, getWorkspace } = useLocalWorkspaces();
+  const { removeWorkspace, getWorkspace, getDiscoveryTask } = useLocalWorkspaces();
   const { agents, loading: agentsLoading, loadAgents } = useWorkspaceAgents(
     workspaceId || null
   );
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const lastRefreshRef = useRef<number>(0);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+  const discoveryTask = workspaceId ? getDiscoveryTask(workspaceId) : undefined;
+  const isDiscovering = discoveryTask?.status === "running";
+
+  // Auto-refresh on workspace enter (with debounce)
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const now = Date.now();
+    // Debounce: only refresh if more than 5 seconds since last refresh
+    if (now - lastRefreshRef.current > 5000) {
+      lastRefreshRef.current = now;
+      loadAgents();
+    }
+  }, [workspaceId, loadAgents]);
+
+  // Auto-refresh every 10 minutes
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const interval = setInterval(() => {
+      // Only refresh if not currently loading
+      if (!agentsLoading) {
+        lastRefreshRef.current = Date.now();
+        loadAgents();
+      }
+    }, AUTO_REFRESH_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [workspaceId, agentsLoading, loadAgents]);
+
+  // Manual refresh handler with debounce
+  const handleRefresh = () => {
+    const now = Date.now();
+    // Debounce: prevent rapid clicks
+    if (now - lastRefreshRef.current > 1000 && !agentsLoading) {
+      lastRefreshRef.current = now;
+      loadAgents();
+    }
+  };
 
   if (!workspace) {
     return (
@@ -116,13 +159,24 @@ export function WorkspaceDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={`file://${workspace.path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {t("workspace.openInFinder")}
+              </a>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
-              onClick={() => loadAgents()}
-              disabled={agentsLoading}
+              onClick={handleRefresh}
+              disabled={agentsLoading || isDiscovering}
             >
-              {agentsLoading ? (
+              {agentsLoading || isDiscovering ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -221,41 +275,18 @@ export function WorkspaceDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            <StaggerContainer delay={0.05} className="grid gap-4">
+            <div className="grid gap-4" key={workspaceId}>
               {agents.map((agent) => (
-                <StaggerItem key={agent.id}>
-                  <AgentCard
-                    agent={agent}
-                    workspaceId={workspace.id}
-                  />
-                </StaggerItem>
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  workspaceId={workspace.id}
+                />
               ))}
-            </StaggerContainer>
+            </div>
           )}
         </div>
 
-        {/* Quick Actions */}
-        <Card interactive={false}>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {t("workspace.quickActions")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={`file://${workspace.path}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {t("workspace.openInFinder")}
-                </a>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </PageWrapper>
   );
