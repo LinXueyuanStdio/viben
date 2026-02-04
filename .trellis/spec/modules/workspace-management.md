@@ -27,13 +27,17 @@ A **workspace** is a folder on the user's file system that represents a project 
 
 **Global Workspace**:
 - Default workspace that always exists (non-deletable)
-- Represents the user's application-level configuration
-- Located in application data directory or user home
+- **Path**: `~` (user's home directory)
+- Tracks global agent configurations: `~/.claude/`, `~/.codex/`, `~/.cursor/`
+- Represents system-wide AI assistant configurations
+- Cannot be removed or modified (only the agents within it can be configured)
 
 **Custom Workspace**:
 - User-added project-specific workspaces
 - Typically points to project directories (e.g., `/Users/name/projects/my-project`)
+- Tracks project-local agent configurations: `<project>/.claude/`, `<project>/.codex/`
 - Can be added/removed by user
+- Useful for project-specific MCP servers and skills
 
 ### Agent
 
@@ -191,7 +195,7 @@ interface Skill {
 ### Workspace List Storage
 
 **Location**: Application data directory
-**File**: `~/.browsemcp/workspaces.json` (or similar)
+**File**: `~/.browsemcp/workspaces.json`
 
 ```json
 {
@@ -200,7 +204,7 @@ interface Skill {
     {
       "id": "global",
       "name": "Global",
-      "path": "~/.browsemcp",
+      "path": "~",
       "type": "global",
       "createdAt": "2026-02-05T00:00:00Z",
       "lastAccessed": "2026-02-05T10:30:00Z"
@@ -217,6 +221,24 @@ interface Skill {
   "activeWorkspaceId": "workspace-abc123"
 }
 ```
+
+### Global Workspace Agent Detection
+
+For the **Global Workspace** (path: `~`), agents are detected at:
+- `~/.claude/` → Claude Code global configuration
+- `~/.codex/` → Codex global configuration
+- `~/.cursor/` → Cursor global configuration
+
+These contain the user's system-wide AI assistant settings.
+
+### Custom Workspace Agent Detection
+
+For **Custom Workspaces**, agents are detected within the workspace folder:
+- `<workspace>/.claude/` → Project-specific Claude Code configuration
+- `<workspace>/.codex/` → Project-specific Codex configuration
+- `<workspace>/.cursor/` → Project-specific Cursor configuration
+
+This allows projects to have their own MCP servers and skills that override or extend global settings.
 
 ### Agent Config Storage
 

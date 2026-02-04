@@ -18,6 +18,10 @@ import {
   Download,
   ChevronDown,
   ChevronRight,
+  ListTodo,
+  MessageCircleQuestion,
+  KeyRound,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -314,6 +318,8 @@ export function InspectorPage() {
   const hasPrompts = serverCapabilities?.prompts !== undefined;
   const hasRoots = serverCapabilities?.roots !== undefined;
   const hasSampling = serverCapabilities?.sampling !== undefined;
+  // Tasks capability check - MCP 2024-11-05 added tasks support
+  const hasTasks = (serverCapabilities as Record<string, unknown>)?.tasks !== undefined;
 
   // Check if config is STDIO (not browser compatible)
   const isStdioConfig = parsedConfig && "command" in parsedConfig;
@@ -548,7 +554,11 @@ export function InspectorPage() {
         <div className="flex-1 overflow-auto p-4">
           {connectionStatus === "connected" ? (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="mb-4">
+              <TabsList className="mb-4 flex-wrap">
+                <TabsTrigger value="tools" disabled={!hasTools}>
+                  <Wrench className="w-4 h-4 mr-2" />
+                  {t("inspector.tools")}
+                </TabsTrigger>
                 <TabsTrigger value="resources" disabled={!hasResources}>
                   <Files className="w-4 h-4 mr-2" />
                   {t("inspector.resources")}
@@ -556,10 +566,6 @@ export function InspectorPage() {
                 <TabsTrigger value="prompts" disabled={!hasPrompts}>
                   <MessageSquare className="w-4 h-4 mr-2" />
                   {t("inspector.prompts")}
-                </TabsTrigger>
-                <TabsTrigger value="tools" disabled={!hasTools}>
-                  <Wrench className="w-4 h-4 mr-2" />
-                  {t("inspector.tools")}
                 </TabsTrigger>
                 <TabsTrigger value="ping">
                   <Zap className="w-4 h-4 mr-2" />
@@ -573,8 +579,31 @@ export function InspectorPage() {
                   <FolderTree className="w-4 h-4 mr-2" />
                   {t("inspector.roots")}
                 </TabsTrigger>
+                <TabsTrigger value="tasks" disabled={!hasTasks}>
+                  <ListTodo className="w-4 h-4 mr-2" />
+                  {t("inspector.tasks")}
+                </TabsTrigger>
+                <TabsTrigger value="elicitations">
+                  <MessageCircleQuestion className="w-4 h-4 mr-2" />
+                  {t("inspector.elicitations")}
+                </TabsTrigger>
+                <TabsTrigger value="auth">
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  {t("inspector.auth")}
+                </TabsTrigger>
+                <TabsTrigger value="metadata">
+                  <Settings2 className="w-4 h-4 mr-2" />
+                  {t("inspector.metadata")}
+                </TabsTrigger>
               </TabsList>
 
+              <TabsContent value="tools" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="tools"
+                />
+              </TabsContent>
               <TabsContent value="resources" className="mt-0">
                 <Inspector
                   makeRequest={makeRequest}
@@ -587,13 +616,6 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="prompts"
-                />
-              </TabsContent>
-              <TabsContent value="tools" className="mt-0">
-                <Inspector
-                  makeRequest={makeRequest}
-                  serverCapabilities={serverCapabilities}
-                  activeTab="tools"
                 />
               </TabsContent>
               <TabsContent value="ping" className="mt-0">
@@ -615,6 +637,34 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="roots"
+                />
+              </TabsContent>
+              <TabsContent value="tasks" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="tasks"
+                />
+              </TabsContent>
+              <TabsContent value="elicitations" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="elicitations"
+                />
+              </TabsContent>
+              <TabsContent value="auth" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="auth"
+                />
+              </TabsContent>
+              <TabsContent value="metadata" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="metadata"
                 />
               </TabsContent>
             </Tabs>
