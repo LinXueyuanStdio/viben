@@ -217,6 +217,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(@neondatabase/serverless@1.0.2)(postgres@3.4.8)
+      framer-motion:
+        specifier: ^12.29.2
+        version: 12.29.2(react-dom@19.2.4)(react@19.2.4)
       jose:
         specifier: ^5.10.0
         version: 5.10.0

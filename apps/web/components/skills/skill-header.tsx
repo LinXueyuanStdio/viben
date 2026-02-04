@@ -35,7 +35,7 @@ export function SkillHeader({ package: pkg }: SkillHeaderProps) {
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <Zap className="h-8 w-8 text-yellow-500" />
+            <Zap className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">{pkg.name}</h1>
             <Badge variant="secondary">v{pkg.version}</Badge>
             <Badge>{pkg.skillType}</Badge>
@@ -75,7 +75,7 @@ export function SkillHeader({ package: pkg }: SkillHeaderProps) {
           </span>
           {pkg.ratingCount > 0 && (
             <span className="flex items-center gap-1">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
               {ratingAvg.toFixed(1)} ({pkg.ratingCount})
             </span>
           )}
