@@ -3,7 +3,10 @@
 This module provides logging for API requests and responses to track usage,
 performance, and errors. Logs are stored in JSONL format for easy analysis.
 
-Log file location: {logs_dir}/api/{run_id}.jsonl
+Log file location: {logs_dir}/{run_id}.jsonl
+
+The run_id can be provided via the BROWSE_MCP_RUN_ID environment variable
+to enable unified session logging with server logs (which use {run_id}.log).
 
 Each log entry contains:
 - timestamp: ISO 8601 timestamp
@@ -64,17 +67,20 @@ class ApiLogger:
 
         Args:
             logs_dir: Directory to store log files. Defaults to ~/.browse-mcp/logs.
-            run_id: Unique identifier for this run. Generated if not provided.
+            run_id: Unique identifier for this run. Can be provided via BROWSE_MCP_RUN_ID
+                   environment variable for unified session logging with server logs.
         """
         try:
             self._logs_dir = logs_dir or self._get_default_logs_dir()
-            self._run_id = run_id or self._generate_run_id()
+            # Check for run_id from environment variable (for unified session logging)
+            self._run_id = run_id or os.getenv("BROWSE_MCP_RUN_ID") or self._generate_run_id()
             self._api_key_hash: Optional[str] = None
             self._enabled = True
             self._write_count = 0
 
-            # Ensure logs directory exists
-            self._api_logs_dir = Path(self._logs_dir) / "api"
+            # Store API logs directly in logs directory (unified with server logs)
+            # Server logs: {run_id}.log, API logs: {run_id}.jsonl
+            self._api_logs_dir = Path(self._logs_dir)
             self._api_logs_dir.mkdir(parents=True, exist_ok=True)
 
             # Log initialization at INFO level for visibility
