@@ -50,13 +50,19 @@ impl Default for McpProxyState {
     }
 }
 
+/// Check if a port is available
+fn is_port_available(host: &str, port: u16) -> bool {
+    use std::net::TcpListener;
+    TcpListener::bind(format!("{}:{}", host, port)).is_ok()
+}
+
 /// Start the MCP proxy server
 #[tauri::command]
 pub async fn start_mcp_proxy(
     config: McpProxyConfig,
     state: State<'_, McpProxyState>,
 ) -> Result<McpProxyStatus, String> {
-    // Check if already running
+    // Check if already running in our state
     {
         let process = state.process.lock().map_err(|e| e.to_string())?;
         if process.is_some() {
@@ -75,6 +81,14 @@ pub async fn start_mcp_proxy(
                 });
             }
         }
+    }
+
+    // Check if port is already in use (by another process)
+    if !is_port_available(&config.host, config.port) {
+        return Err(format!(
+            "Port {} is already in use. Please stop any existing proxy process and try again.",
+            config.port
+        ));
     }
 
     // Generate auth token if not provided
@@ -134,6 +148,10 @@ pub async fn start_mcp_proxy(
             }
         });
     }
+
+    // Wait for server to be ready (give it time to bind to port)
+    // This is important because we return immediately after spawn
+    thread::sleep(std::time::Duration::from_millis(1500));
 
     // Store state
     {
