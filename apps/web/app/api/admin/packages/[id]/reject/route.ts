@@ -9,12 +9,15 @@ import type { NextRequest } from 'next/server';
 import { requirePermission, AuthError } from '@/lib/auth';
 import {
   getPackageType,
-  updateMcpPackageStatus,
-  updateSkillPackageStatus,
-  createModerationLog,
+  db,
+  mcpPackages,
+  skillPackages,
+  moderationLogs,
 } from '@/lib/admin';
 import { rejectPackageSchema } from '@/lib/validations/admin';
 import { ZodError } from 'zod';
+import { eq } from 'drizzle-orm';
+import type { PackageStatus } from '@/lib/types/admin';
 
 /**
  * POST /api/admin/packages/[id]/reject
@@ -47,20 +50,31 @@ export async function POST(
     const body = await request.json();
     const data = rejectPackageSchema.parse(body);
 
-    // Update package status
-    if (packageType === 'mcp') {
-      await updateMcpPackageStatus(id, 'rejected', session.userId, data.reason);
-    } else {
-      await updateSkillPackageStatus(id, 'rejected', session.userId, data.reason);
-    }
+    // Use transaction to ensure atomicity
+    await db.transaction(async (tx: any) => {
+      // Update package status
+      const updateData: Record<string, unknown> = {
+        status: 'rejected' as PackageStatus,
+        reviewedAt: new Date(),
+        reviewedBy: session.userId,
+        rejectionReason: data.reason,
+      };
 
-    // Create moderation log
-    await createModerationLog({
-      adminId: session.userId,
-      entityType: packageType,
-      entityId: id,
-      action: 'reject',
-      reason: data.reason,
+      if (packageType === 'mcp') {
+        await tx.update(mcpPackages).set(updateData).where(eq(mcpPackages.id, id));
+      } else {
+        await tx.update(skillPackages).set(updateData).where(eq(skillPackages.id, id));
+      }
+
+      // Create moderation log
+      await tx.insert(moderationLogs).values({
+        adminId: session.userId,
+        entityType: packageType,
+        entityId: id,
+        action: 'reject',
+        reason: data.reason,
+        metadata: null,
+      });
     });
 
     return NextResponse.json({
