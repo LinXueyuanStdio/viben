@@ -1,0 +1,110 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Heart, Download, Star, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+
+interface McpHeaderProps {
+  package: {
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    transport: string;
+    category: string | null;
+    tags: string[] | null;
+    favoritesCount: number;
+    downloadsCount: number;
+    ratingAvg: number;
+    ratingCount: number;
+    repositoryUrl: string | null;
+    author: {
+      id: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+    } | null;
+  };
+}
+
+export function McpHeader({ package: pkg }: McpHeaderProps) {
+  const ratingAvg = pkg.ratingAvg || 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">{pkg.name}</h1>
+            <Badge variant="secondary">v{pkg.version}</Badge>
+            <Badge>{pkg.transport}</Badge>
+          </div>
+          <p className="mt-2 text-lg text-muted-foreground">
+            {pkg.description}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        {pkg.author && (
+          <Link
+            href={`/users/${pkg.author.username}`}
+            className="flex items-center gap-2 hover:underline"
+          >
+            <Avatar className="h-6 w-6">
+              <AvatarImage src={pkg.author.avatarUrl || undefined} />
+              <AvatarFallback>
+                {pkg.author.username[0].toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="text-sm">
+              by <span className="font-medium">{pkg.author.displayName}</span>
+            </span>
+          </Link>
+        )}
+
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Heart className="h-4 w-4" />
+            {pkg.favoritesCount} favorites
+          </span>
+          <span className="flex items-center gap-1">
+            <Download className="h-4 w-4" />
+            {pkg.downloadsCount} downloads
+          </span>
+          {pkg.ratingCount > 0 && (
+            <span className="flex items-center gap-1">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+              {ratingAvg.toFixed(1)} ({pkg.ratingCount})
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button>
+          <Download className="mr-2 h-4 w-4" />
+          Install
+        </Button>
+        {pkg.repositoryUrl && (
+          <Button variant="outline" asChild>
+            <a href={pkg.repositoryUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Repository
+            </a>
+          </Button>
+        )}
+      </div>
+
+      {pkg.tags && pkg.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {pkg.tags.map((tag) => (
+            <Badge key={tag} variant="outline">
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
