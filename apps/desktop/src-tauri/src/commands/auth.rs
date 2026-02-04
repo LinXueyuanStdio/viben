@@ -177,14 +177,14 @@ pub async fn login_with_credentials(
 /// The OAuth URL that was opened
 #[tauri::command]
 pub fn login_with_github(
-    app: AppHandle,
+    #[allow(unused_variables)] app: AppHandle,
     api_state: State<'_, ApiClientState>,
 ) -> Result<String, String> {
     let base_url = api_state.base_url.lock().unwrap().clone();
     let oauth_url = format!("{}/api/auth/github", base_url);
 
     // Open OAuth URL in default browser using the opener plugin
-    tauri_plugin_opener::open_url(&app, &oauth_url, None::<&str>)
+    tauri_plugin_opener::open_url(&oauth_url, None::<&str>)
         .map_err(|e| format!("Failed to open browser: {}", e))?;
 
     Ok(oauth_url)
