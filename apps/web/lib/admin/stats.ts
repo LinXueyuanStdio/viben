@@ -112,38 +112,38 @@ export async function getRecentActivity(limit: number = 10): Promise<ActivityIte
     },
   });
 
-  // Group entity IDs by type for batch fetching
-  const mcpIds: string[] = [];
-  const skillIds: string[] = [];
-  const userIds: string[] = [];
+  // Group entity IDs by type for batch fetching (using Sets to avoid duplicates)
+  const mcpIds = new Set<string>();
+  const skillIds = new Set<string>();
+  const userIds = new Set<string>();
 
   for (const log of logs) {
     if (log.entityType === 'mcp') {
-      mcpIds.push(log.entityId);
+      mcpIds.add(log.entityId);
     } else if (log.entityType === 'skill') {
-      skillIds.push(log.entityId);
+      skillIds.add(log.entityId);
     } else if (log.entityType === 'user') {
-      userIds.push(log.entityId);
+      userIds.add(log.entityId);
     }
   }
 
   // Batch fetch entities
   const [mcpEntities, skillEntities, userEntities] = await Promise.all([
-    mcpIds.length > 0
+    mcpIds.size > 0
       ? db.query.mcpPackages.findMany({
-          where: inArray(mcpPackages.id, mcpIds),
+          where: inArray(mcpPackages.id, Array.from(mcpIds)),
           columns: { id: true, name: true },
         })
       : Promise.resolve([]),
-    skillIds.length > 0
+    skillIds.size > 0
       ? db.query.skillPackages.findMany({
-          where: inArray(skillPackages.id, skillIds),
+          where: inArray(skillPackages.id, Array.from(skillIds)),
           columns: { id: true, name: true },
         })
       : Promise.resolve([]),
-    userIds.length > 0
+    userIds.size > 0
       ? db.query.users.findMany({
-          where: inArray(users.id, userIds),
+          where: inArray(users.id, Array.from(userIds)),
           columns: { id: true, username: true },
         })
       : Promise.resolve([]),
