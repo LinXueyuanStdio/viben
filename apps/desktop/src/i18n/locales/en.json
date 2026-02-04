@@ -270,7 +270,10 @@
     "response": "Response",
     "apiKeyHash": "API Key Hash",
     "openLogsFolder": "Open logs folder in file explorer",
-    "openFolder": "Open Folder"
+    "openFolder": "Open Folder",
+    "noServerLogs": "No server logs for this session",
+    "noServerLogsDesc": "This session only has API logs",
+    "noApiLogsForSession": "No API logs for this session"
   },
   "searchService": {
     "title": "Search Service",
