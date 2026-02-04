@@ -1,8 +1,13 @@
 export { Inspector } from "./inspector";
+export type { InspectorTab } from "./inspector";
 export { InspectorTools } from "./inspector-tools";
 export { InspectorResources } from "./inspector-resources";
 export { InspectorPrompts } from "./inspector-prompts";
 export { InspectorPing } from "./inspector-ping";
 export { InspectorRoots } from "./inspector-roots";
 export { InspectorSampling } from "./inspector-sampling";
+export { InspectorTasks } from "./inspector-tasks";
+export { InspectorElicitations } from "./inspector-elicitations";
+export { InspectorAuth } from "./inspector-auth";
+export { InspectorMetadata } from "./inspector-metadata";
 export { NotificationsPanel } from "./notifications-panel";

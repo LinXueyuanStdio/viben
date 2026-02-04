@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
 import {
   ListTodo,
-  Play,
   Square,
   RefreshCw,
   AlertTriangle,
@@ -97,7 +96,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const getStatusStyle = (status: string) => {
+  const getStatusStyle = (status: string): { icon: typeof Clock; color: string; bg: string; animate?: boolean } => {
     switch (status) {
       case "pending":
         return { icon: Clock, color: "text-yellow-500", bg: "bg-yellow-500/10" };
@@ -203,7 +202,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
               {t("inspector.noTasksFound")}
             </div>
           ) : (
-            filteredTasks.map((task) => {
+            filteredTasks.map((task: McpTask) => {
               const style = getStatusStyle(task.status);
               const Icon = style.icon;
               const isExpanded = expandedTasks.has(task.id);

@@ -8,7 +8,6 @@ import {
   Server,
   Cpu,
   Globe,
-  Clock,
   Tag,
   ChevronDown,
   ChevronRight,
