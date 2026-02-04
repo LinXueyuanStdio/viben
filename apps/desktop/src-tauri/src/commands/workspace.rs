@@ -142,6 +142,10 @@ fn get_current_timestamp() -> String {
 }
 
 /// Ensure global workspace exists
+/// Global workspace path is ~ (user home directory) to track:
+/// - ~/.claude/ (Claude Code global config)
+/// - ~/.codex/ (Codex global config)
+/// - ~/.cursor/ (Cursor global config)
 fn ensure_global_workspace(store: &mut WorkspacesStore) {
     let has_global = store
         .workspaces
@@ -149,7 +153,9 @@ fn ensure_global_workspace(store: &mut WorkspacesStore) {
         .any(|w| w.workspace_type == WorkspaceType::Global);
 
     if !has_global {
-        let global_path = get_workspaces_dir().to_string_lossy().to_string();
+        // Global workspace is the user's home directory (~)
+        let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+        let global_path = home.to_string_lossy().to_string();
         let now = get_current_timestamp();
         store.workspaces.insert(
             0,

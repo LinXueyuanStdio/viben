@@ -326,6 +326,100 @@ Check the following:
 
 ### Build Failures
 
+#### Error: `No database connection string was provided to neon()`
+
+**Error Message**:
+```
+Error: No database connection string was provided to `neon()`.
+Perhaps an environment variable has not been set?
+```
+
+**Cause**: Next.js is trying to connect to the database during build time for static page generation, but `POSTGRES_URL` is not set in the build environment.
+
+**Fix 1: Add POSTGRES_URL to Vercel Environment Variables** (Recommended)
+
+Ensure `POSTGRES_URL` is added to **all environments** in Vercel:
+1. Go to Vercel Dashboard → Settings → Environment Variables
+2. Add `POSTGRES_URL` with your Neon connection string
+3. **Important**: Check **Production**, **Preview**, and **Development**
+4. Redeploy
+
+**Fix 2: Make database connection optional during build**
+
+If you don't need database access during build, make it optional:
+
+```typescript
+// lib/db/index.ts
+const connectionString = process.env.POSTGRES_URL || '';
+
+// Only create db instance if connection string exists
+export const db = connectionString
+  ? drizzle(neon(connectionString), { schema })
+  : null;
+```
+
+Then check for `db` before using:
+```typescript
+if (!db) {
+  return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
+}
+```
+
+**Fix 3: Use dynamic imports for API routes**
+
+API routes that use the database should not be statically analyzed:
+
+```typescript
+// In route files that use db
+export const dynamic = 'force-dynamic';
+```
+
+**Note**: For production deployments, Fix 1 is recommended as it ensures all features work correctly.
+
+#### Warning: `Mismatching @next/swc version`
+
+**Warning Message**:
+```
+⚠ Mismatching @next/swc version, detected: 15.5.7 while Next.js is on 15.5.11
+```
+
+**Cause**: Next.js and `@next/swc` versions are out of sync. This happens when:
+- `package.json` uses `^15.1.0` (allows minor version updates)
+- Vercel installs the latest compatible version (e.g., `15.5.11`)
+- But `@next/swc` binary hasn't been updated to match
+
+**Impact**: Usually safe to ignore - this is just a warning, not an error. Build will complete successfully.
+
+**Fix** (if you want to eliminate the warning):
+
+1. **Update to specific version** (recommended for production):
+   ```bash
+   # In apps/web directory
+   pnpm add next@15.5.11
+   pnpm install
+   git commit -am "fix: lock Next.js to 15.5.11"
+   git push
+   ```
+
+2. **Or clear Vercel cache and rebuild**:
+   - Vercel Dashboard → Settings → Build & Deploy
+   - Under "Cache", click "Clear Cache"
+   - Re-deploy
+
+3. **Or add explicit @next/swc dependency** (not recommended):
+   ```bash
+   pnpm add -D @next/swc-linux-x64-gnu@15.5.11
+   ```
+
+**Best Practice**: Lock to a specific Next.js version in production to ensure consistent builds:
+```json
+{
+  "dependencies": {
+    "next": "15.5.11"  // Remove ^ for production
+  }
+}
+```
+
 #### Error: `Module not found` (monorepo packages)
 
 **Cause**: Monorepo packages not included in build
