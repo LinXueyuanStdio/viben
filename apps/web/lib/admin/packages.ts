@@ -193,7 +193,7 @@ export async function listPackagesForReview(
   }
 
   // When no specific type is requested, use UNION ALL to combine both types
-  // Build MCP subquery
+  // Build MCP subquery - use sql templates for nullable union compatibility
   const mcpSubquery = db
     .select({
       id: mcpPackages.id,
@@ -206,14 +206,14 @@ export async function listPackagesForReview(
       status: mcpPackages.status,
       createdAt: mcpPackages.createdAt,
       authorId: mcpPackages.authorId,
-      transport: mcpPackages.transport,
-      entryPoint: mcpPackages.entryPoint,
+      transport: sql<string | null>`${mcpPackages.transport}`.as('transport'),
+      entryPoint: sql<string | null>`${mcpPackages.entryPoint}`.as('entryPoint'),
       skillType: sql<string | null>`NULL`.as('skillType'),
     })
     .from(mcpPackages)
     .where(eq(mcpPackages.status, status));
 
-  // Build Skill subquery
+  // Build Skill subquery - use sql templates for nullable union compatibility
   const skillSubquery = db
     .select({
       id: skillPackages.id,
@@ -226,8 +226,8 @@ export async function listPackagesForReview(
       status: skillPackages.status,
       createdAt: skillPackages.createdAt,
       authorId: skillPackages.authorId,
-      transport: sql<'stdio' | 'sse' | 'http'>`'stdio'`.as('transport'),
-      entryPoint: sql<string>`''`.as('entryPoint'),
+transport: sql<string | null>`NULL`.as('transport'),
+      entryPoint: sql<string | null>`NULL`.as('entryPoint'),
       skillType: skillPackages.skillType,
     })
     .from(skillPackages)
