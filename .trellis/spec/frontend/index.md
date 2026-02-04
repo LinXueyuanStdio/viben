@@ -16,6 +16,7 @@ This directory contains guidelines for frontend development. These specs ensure 
 |-------|-------------|--------|
 | [Design System](./design-system.md) | Complete design system: colors, typography, motion, components | ✅ Complete |
 | [Component Guidelines](./components.md) | React component patterns and best practices | ✅ Complete |
+| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" and "Publish My Skill" wizard flows | ✅ Complete |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | To fill |
 | [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | To fill |
