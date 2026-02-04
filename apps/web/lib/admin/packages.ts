@@ -12,7 +12,7 @@ import {
   moderationLogs,
   comments,
 } from '@/lib/db';
-import { eq, and, desc, asc, count } from 'drizzle-orm';
+import { eq, and, desc, asc, count, sql } from 'drizzle-orm';
 import type { PackageStatus } from '@/lib/types/admin';
 
 // ============================================
@@ -92,14 +92,11 @@ export async function listPackagesForReview(
   const { type, status = 'pending', page, limit, sort } = options;
   const offset = (page - 1) * limit;
 
-  const packages: PackageForReview[] = [];
-  let total = 0;
-
   // Determine ordering
-  const orderDirection = sort === 'newest' ? desc : asc;
+  const orderDirection = sort === 'newest' ? 'DESC' : 'ASC';
 
-  // Query MCP packages if type is not 'skill'
-  if (type !== 'skill') {
+  // If specific type is requested, query only that type
+  if (type === 'mcp') {
     const mcpConditions = [eq(mcpPackages.status, status)];
 
     const mcpResults = await db
@@ -124,33 +121,32 @@ export async function listPackagesForReview(
       .from(mcpPackages)
       .innerJoin(users, eq(mcpPackages.authorId, users.id))
       .where(and(...mcpConditions))
-      .orderBy(orderDirection(mcpPackages.createdAt))
-      .limit(type ? limit : Math.ceil(limit / 2))
-      .offset(type ? offset : Math.ceil(offset / 2));
+      .orderBy(sort === 'newest' ? desc(mcpPackages.createdAt) : asc(mcpPackages.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const [mcpCount] = await db
       .select({ count: count() })
       .from(mcpPackages)
       .where(and(...mcpConditions));
 
-    packages.push(
-      ...mcpResults.map((p) => ({
+    return {
+      packages: mcpResults.map((p) => ({
         ...p,
         type: 'mcp' as const,
         tags: (p.tags as string[]) || [],
         status: p.status as PackageStatus,
-      }))
-    );
-
-    if (type === 'mcp') {
-      total = mcpCount?.count ?? 0;
-    } else {
-      total += mcpCount?.count ?? 0;
-    }
+      })),
+      pagination: {
+        page,
+        limit,
+        total: mcpCount?.count ?? 0,
+        totalPages: Math.ceil((mcpCount?.count ?? 0) / limit),
+      },
+    };
   }
 
-  // Query Skill packages if type is not 'mcp'
-  if (type !== 'mcp') {
+  if (type === 'skill') {
     const skillConditions = [eq(skillPackages.status, status)];
 
     const skillResults = await db
@@ -174,42 +170,131 @@ export async function listPackagesForReview(
       .from(skillPackages)
       .innerJoin(users, eq(skillPackages.authorId, users.id))
       .where(and(...skillConditions))
-      .orderBy(orderDirection(skillPackages.createdAt))
-      .limit(type ? limit : Math.ceil(limit / 2))
-      .offset(type ? offset : Math.ceil(offset / 2));
+      .orderBy(sort === 'newest' ? desc(skillPackages.createdAt) : asc(skillPackages.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const [skillCount] = await db
       .select({ count: count() })
       .from(skillPackages)
       .where(and(...skillConditions));
 
-    packages.push(
-      ...skillResults.map((p) => ({
+    return {
+      packages: skillResults.map((p) => ({
         ...p,
         type: 'skill' as const,
         tags: (p.tags as string[]) || [],
         status: p.status as PackageStatus,
-      }))
-    );
-
-    if (type === 'skill') {
-      total = skillCount?.count ?? 0;
-    } else {
-      total += skillCount?.count ?? 0;
-    }
+      })),
+      pagination: {
+        page,
+        limit,
+        total: skillCount?.count ?? 0,
+        totalPages: Math.ceil((skillCount?.count ?? 0) / limit),
+      },
+    };
   }
 
-  // Sort combined results by createdAt
-  packages.sort((a, b) => {
-    const comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    return sort === 'newest' ? -comparison : comparison;
-  });
+  // When no specific type is requested, use UNION ALL to combine both types
+  // Build MCP subquery
+  const mcpSubquery = db
+    .select({
+      id: mcpPackages.id,
+      type: sql<string>`'mcp'`.as('type'),
+      name: mcpPackages.name,
+      slug: mcpPackages.slug,
+      version: mcpPackages.version,
+      description: mcpPackages.description,
+      tags: mcpPackages.tags,
+      status: mcpPackages.status,
+      createdAt: mcpPackages.createdAt,
+      authorId: mcpPackages.authorId,
+      transport: mcpPackages.transport,
+      entryPoint: mcpPackages.entryPoint,
+      skillType: sql<string | null>`NULL`.as('skillType'),
+    })
+    .from(mcpPackages)
+    .where(eq(mcpPackages.status, status));
 
-  // Apply pagination if we combined both types
-  const paginatedPackages = type ? packages : packages.slice(0, limit);
+  // Build Skill subquery
+  const skillSubquery = db
+    .select({
+      id: skillPackages.id,
+      type: sql<string>`'skill'`.as('type'),
+      name: skillPackages.name,
+      slug: skillPackages.slug,
+      version: skillPackages.version,
+      description: skillPackages.description,
+      tags: skillPackages.tags,
+      status: skillPackages.status,
+      createdAt: skillPackages.createdAt,
+      authorId: skillPackages.authorId,
+      transport: sql<string | null>`NULL`.as('transport'),
+      entryPoint: sql<string | null>`NULL`.as('entryPoint'),
+      skillType: skillPackages.skillType,
+    })
+    .from(skillPackages)
+    .where(eq(skillPackages.status, status));
+
+  // Combine with UNION ALL and apply ordering + pagination
+  const unionQuery = mcpSubquery.unionAll(skillSubquery).as('packages');
+
+  const results = await db
+    .select({
+      id: unionQuery.id,
+      type: unionQuery.type,
+      name: unionQuery.name,
+      slug: unionQuery.slug,
+      version: unionQuery.version,
+      description: unionQuery.description,
+      tags: unionQuery.tags,
+      status: unionQuery.status,
+      createdAt: unionQuery.createdAt,
+      authorId: unionQuery.authorId,
+      transport: unionQuery.transport,
+      entryPoint: unionQuery.entryPoint,
+      skillType: unionQuery.skillType,
+      author: {
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        avatarUrl: users.avatarUrl,
+      },
+    })
+    .from(unionQuery)
+    .innerJoin(users, eq(unionQuery.authorId, users.id))
+    .orderBy(sql.raw(`created_at ${orderDirection}`))
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count for both types
+  const [mcpCount] = await db
+    .select({ count: count() })
+    .from(mcpPackages)
+    .where(eq(mcpPackages.status, status));
+
+  const [skillCount] = await db
+    .select({ count: count() })
+    .from(skillPackages)
+    .where(eq(skillPackages.status, status));
+
+  const total = (mcpCount?.count ?? 0) + (skillCount?.count ?? 0);
 
   return {
-    packages: paginatedPackages,
+    packages: results.map((p) => ({
+      id: p.id,
+      type: p.type as 'mcp' | 'skill',
+      name: p.name,
+      slug: p.slug,
+      version: p.version,
+      description: p.description,
+      author: p.author,
+      tags: (p.tags as string[]) || [],
+      status: p.status as PackageStatus,
+      createdAt: p.createdAt,
+      ...(p.type === 'mcp' ? { transport: p.transport!, entryPoint: p.entryPoint! } : {}),
+      ...(p.type === 'skill' ? { skillType: p.skillType! } : {}),
+    })),
     pagination: {
       page,
       limit,

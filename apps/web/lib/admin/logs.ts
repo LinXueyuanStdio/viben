@@ -13,7 +13,7 @@ import {
   comments,
   collections,
 } from '@/lib/db';
-import { eq, and, desc, count } from 'drizzle-orm';
+import { eq, and, desc, count, inArray } from 'drizzle-orm';
 import type { ModerationAction, ModerationEntityType } from '@/lib/types/admin';
 
 // ============================================
@@ -144,31 +144,24 @@ export async function listModerationLogs(
 
   const total = totalResult?.count ?? 0;
 
-  // Resolve entity names
-  const logsWithNames = await Promise.all(
-    logs.map(async (log) => {
-      const entityName = await resolveEntityName(
-        log.entityType as ModerationEntityType,
-        log.entityId
-      );
+  // Batch resolve entity names by type
+  const entityNameMap = await batchResolveEntityNames(logs);
 
-      return {
-        id: log.id,
-        admin: {
-          id: log.adminId,
-          username: log.adminUsername,
-          displayName: log.adminDisplayName,
-        },
-        entityType: log.entityType as ModerationEntityType,
-        entityId: log.entityId,
-        entityName,
-        action: log.action as ModerationAction,
-        reason: log.reason,
-        metadata: log.metadata as Record<string, unknown> | null,
-        createdAt: log.createdAt,
-      };
-    })
-  );
+  const logsWithNames = logs.map((log) => ({
+    id: log.id,
+    admin: {
+      id: log.adminId,
+      username: log.adminUsername,
+      displayName: log.adminDisplayName,
+    },
+    entityType: log.entityType as ModerationEntityType,
+    entityId: log.entityId,
+    entityName: entityNameMap.get(`${log.entityType}:${log.entityId}`) ?? `Unknown ${log.entityId.slice(0, 8)}`,
+    action: log.action as ModerationAction,
+    reason: log.reason,
+    metadata: log.metadata as Record<string, unknown> | null,
+    createdAt: log.createdAt,
+  }));
 
   return {
     logs: logsWithNames,
@@ -186,7 +179,139 @@ export async function listModerationLogs(
 // ============================================
 
 /**
+ * Batch resolve entity names to avoid N+1 queries.
+ */
+async function batchResolveEntityNames(
+  logs: Array<{ entityType: string; entityId: string }>
+): Promise<Map<string, string>> {
+  const entityNameMap = new Map<string, string>();
+
+  // Group entity IDs by type
+  const entityIdsByType: Record<string, Set<string>> = {};
+  
+  for (const log of logs) {
+    if (!entityIdsByType[log.entityType]) {
+      entityIdsByType[log.entityType] = new Set();
+    }
+    entityIdsByType[log.entityType].add(log.entityId);
+  }
+
+  // Batch fetch names for each entity type
+  for (const [entityType, entityIds] of Object.entries(entityIdsByType)) {
+    if (entityIds.size === 0) continue;
+
+    const idsArray = Array.from(entityIds);
+
+    switch (entityType as ModerationEntityType) {
+      case 'mcp': {
+        const packages = await db
+          .select({ id: mcpPackages.id, name: mcpPackages.name })
+          .from(mcpPackages)
+          .where(inArray(mcpPackages.id, idsArray));
+        
+        for (const pkg of packages) {
+          entityNameMap.set(`mcp:${pkg.id}`, pkg.name);
+        }
+        // Fill in missing IDs with fallback
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`mcp:${id}`)) {
+            entityNameMap.set(`mcp:${id}`, `MCP Package ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'skill': {
+        const packages = await db
+          .select({ id: skillPackages.id, name: skillPackages.name })
+          .from(skillPackages)
+          .where(inArray(skillPackages.id, idsArray));
+        
+        for (const pkg of packages) {
+          entityNameMap.set(`skill:${pkg.id}`, pkg.name);
+        }
+        // Fill in missing IDs with fallback
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`skill:${id}`)) {
+            entityNameMap.set(`skill:${id}`, `Skill Package ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'comment': {
+        const commentResults = await db
+          .select({ id: comments.id, content: comments.content })
+          .from(comments)
+          .where(inArray(comments.id, idsArray));
+        
+        for (const comment of commentResults) {
+          const content = comment.content;
+          const displayContent = content.length > 50 ? `${content.slice(0, 50)}...` : content;
+          entityNameMap.set(`comment:${comment.id}`, displayContent);
+        }
+        // Fill in missing IDs with fallback
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`comment:${id}`)) {
+            entityNameMap.set(`comment:${id}`, 'Unknown comment');
+          }
+        }
+        break;
+      }
+      case 'collection': {
+        const collectionResults = await db
+          .select({ id: collections.id, name: collections.name })
+          .from(collections)
+          .where(inArray(collections.id, idsArray));
+        
+        for (const collection of collectionResults) {
+          entityNameMap.set(`collection:${collection.id}`, collection.name);
+        }
+        // Fill in missing IDs with fallback
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`collection:${id}`)) {
+            entityNameMap.set(`collection:${id}`, `Collection ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'user': {
+        const userResults = await db
+          .select({ id: users.id, username: users.username })
+          .from(users)
+          .where(inArray(users.id, idsArray));
+        
+        for (const user of userResults) {
+          entityNameMap.set(`user:${user.id}`, `@${user.username}`);
+        }
+        // Fill in missing IDs with fallback
+        for (const id of idsArray) {
+          if (!entityNameMap.has(`user:${id}`)) {
+            entityNameMap.set(`user:${id}`, `User ${id.slice(0, 8)}`);
+          }
+        }
+        break;
+      }
+      case 'report': {
+        // Reports don't have names, just use ID
+        for (const id of idsArray) {
+          entityNameMap.set(`report:${id}`, `Report ${id.slice(0, 8)}`);
+        }
+        break;
+      }
+      default: {
+        // Unknown entity types
+        for (const id of idsArray) {
+          entityNameMap.set(`${entityType}:${id}`, `Unknown ${id.slice(0, 8)}`);
+        }
+      }
+    }
+  }
+
+  return entityNameMap;
+}
+
+/**
  * Resolve the name of an entity for display in logs.
+ * @deprecated Use batchResolveEntityNames instead to avoid N+1 queries
  */
 async function resolveEntityName(
   entityType: ModerationEntityType,
