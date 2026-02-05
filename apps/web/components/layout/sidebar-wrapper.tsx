@@ -22,6 +22,9 @@ export async function SidebarWrapper() {
   return (
     <Sidebar
       userRole={session?.role}
+      username={session?.username}
+      email={session?.email}
+      avatarUrl={session?.avatarUrl}
       pendingPackagesCount={pendingPackagesCount}
       pendingReportsCount={pendingReportsCount}
     />
