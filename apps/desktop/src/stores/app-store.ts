@@ -111,6 +111,10 @@ interface AppState {
   addInspectorNotification: (notification: Omit<InspectorNotification, "id" | "timestamp">) => void;
   removeInspectorNotification: (id: string) => void;
   clearInspectorNotifications: () => void;
+
+  // Onboarding
+  onboardingCompleted: boolean;
+  setOnboardingCompleted: (completed: boolean) => void;
 }
 
 // Generate unique ID
@@ -333,6 +337,10 @@ export const useAppStore = create<AppState>()(
           inspectorNotifications: state.inspectorNotifications.filter((n) => n.id !== id),
         })),
       clearInspectorNotifications: () => set({ inspectorNotifications: [] }),
+
+      // Onboarding
+      onboardingCompleted: false,
+      setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
     }),
     {
       name: "viben-storage",
@@ -350,6 +358,7 @@ export const useAppStore = create<AppState>()(
         language: state.language,
         setupBannerDismissed: state.setupBannerDismissed,
         setupStatus: state.setupStatus,
+        onboardingCompleted: state.onboardingCompleted,
       }),
     }
   )

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Github, Loader2, Mail, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Github, Loader2, Mail, AlertCircle, Eye, EyeOff, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+// Check if running in development mode
+const isDev = import.meta.env.DEV;
 
 interface LoginDialogProps {
   /** Custom trigger element. If not provided, uses default button */
@@ -42,7 +45,7 @@ interface LoginDialogProps {
  */
 export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const { t } = useTranslation();
-  const { login, loginWithGitHub, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError } = useAuth();
 
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -50,6 +53,10 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [rememberMe, setRememberMe] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  // Dev mode: manual OAuth code input
+  const [showDevOAuth, setShowDevOAuth] = React.useState(false);
+  const [oauthCode, setOauthCode] = React.useState("");
 
   // Clear errors when dialog opens/closes
   React.useEffect(() => {
@@ -99,6 +106,28 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
       await loginWithGitHub();
       // OAuth flow continues in browser
       // Dialog stays open until callback completes
+      // In dev mode, show the manual code input after opening browser
+      if (isDev) {
+        setShowDevOAuth(true);
+      }
+    } catch {
+      // Error is handled by the store
+    }
+  };
+
+  // Dev mode: handle manual OAuth code submission
+  const handleDevOAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!oauthCode.trim()) {
+      setFormError("Please enter the OAuth code");
+      return;
+    }
+    try {
+      await handleOAuthCallback(oauthCode.trim());
+      setOpen(false);
+      setShowDevOAuth(false);
+      setOauthCode("");
+      onSuccess?.();
     } catch {
       // Error is handled by the store
     }
@@ -150,6 +179,29 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
             )}
             {t("auth.continueWithGitHub")}
           </Button>
+
+          {/* Dev mode: Manual OAuth code input */}
+          {isDev && showDevOAuth && (
+            <form onSubmit={handleDevOAuthSubmit} className="space-y-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Terminal className="h-3 w-3" />
+                <span>Dev Mode: Paste the OAuth code from the URL</span>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="Paste code from browsemcp://oauth?code=..."
+                  value={oauthCode}
+                  onChange={(e) => setOauthCode(e.target.value)}
+                  disabled={isLoading}
+                  className="flex-1 text-sm"
+                />
+                <Button type="submit" size="sm" disabled={isLoading || !oauthCode.trim()}>
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+                </Button>
+              </div>
+            </form>
+          )}
 
           {/* Divider */}
           <div className="relative">

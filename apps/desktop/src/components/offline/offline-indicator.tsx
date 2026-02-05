@@ -76,7 +76,7 @@ export function OfflineIndicator({ collapsed = false, className }: OfflineIndica
               onClick={handleClick}
               disabled={refreshing}
               className={cn(
-                "flex justify-center items-center w-full py-2 rounded-md transition-colors",
+                "flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
                 "hover:bg-sidebar-accent",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 "disabled:opacity-50 disabled:cursor-not-allowed",

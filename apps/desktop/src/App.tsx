@@ -14,6 +14,8 @@ import {
   WorkspaceDetailPage,
   AgentDetailPage,
   WorkspaceSkillDetailPage,
+  HomeRedirect,
+  OnboardingPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -45,8 +47,8 @@ function App() {
       <Routes>
         {/* Main app routes with layout */}
         <Route path="/" element={<AppLayout />}>
-          {/* Default route redirects to MCP Services Dashboard */}
-          <Route index element={<Navigate to="/mcp-services/dashboard" replace />} />
+          {/* Default route redirects to global workspace */}
+          <Route index element={<HomeRedirect />} />
 
           {/* MCP Services routes - with secondary navigation layout */}
           <Route path="mcp-services" element={<McpServicesLayout />}>
@@ -97,6 +99,9 @@ function App() {
 
         {/* Tray popup - separate window without layout */}
         <Route path="/tray-popup" element={<TrayPopupPage />} />
+
+        {/* Onboarding - separate full-screen wizard without layout */}
+        <Route path="/onboarding" element={<OnboardingPage />} />
       </Routes>
     </BrowserRouter>
   );

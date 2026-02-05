@@ -221,7 +221,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
               type="button"
               onClick={handleClick}
               className={cn(
-                "flex justify-center items-center w-full py-2 rounded-md transition-colors",
+                "flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
                 "hover:bg-sidebar-accent",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               )}
