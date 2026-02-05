@@ -10,7 +10,7 @@ export default function AuthLayout({
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <Link href="/" className="mb-8 flex items-center gap-2">
         <Package className="h-8 w-8 text-primary" />
-        <span className="font-serif text-2xl font-semibold">Browse MCP</span>
+        <span className="font-serif text-2xl font-semibold">Viben</span>
       </Link>
       {children}
     </div>
