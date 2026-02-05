@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 title: "Client Configuration"
-description: "Configure Browse MCP for Claude Desktop, Claude Code, Cline, and Zed"
+description: "Configure Viben for Claude Desktop, Claude Code, Cline, and Zed"
 ---
 
 import Tabs from '@theme/Tabs';
@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 # Client Configuration
 
-Browse MCP works with any MCP-compatible client. This guide covers configuration for popular clients.
+Viben works with any MCP-compatible client. This guide covers configuration for popular clients.
 
 ## Configuration Overview
 

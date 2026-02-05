@@ -39,8 +39,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - Academic Paper Search`}
-      description="Search, download, and read academic papers from 19+ sources with MCP integration">
+      title={`${siteConfig.title} - MCP Content Search`}
+      description="Search, download, and read any content from extensible sources with MCP integration">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "简介"
-description: "Browse MCP - 通过 MCP 插件从可扩展的来源搜索、下载和阅读任何内容"
+description: "Viben - 通过 MCP 插件从可扩展的来源搜索、下载和阅读任何内容"
 ---
 
-# Browse MCP
+# Viben
 
-**Browse MCP** 是一个基于 Python 的 MCP（模型上下文协议）服务器，它使 AI 助手能够通过可扩展的插件系统从任何来源搜索、下载和阅读内容。开箱即用，它支持 19+ 个学术数据库，您还可以扩展它以支持社交媒体、文档站点、新闻源等。
+**Viben** 是一个基于 Python 的 MCP（模型上下文协议）服务器，它使 AI 助手能够通过可扩展的插件系统从任何来源搜索、下载和阅读内容。开箱即用，它支持 19+ 个学术数据库，您还可以扩展它以支持社交媒体、文档站点、新闻源等。
 
 ## 主要特性
 
@@ -46,7 +46,7 @@ browse-mcp
 
 ## 超越学术论文
 
-虽然 Browse MCP 最初是一个学术论文搜索工具，但现在它通过插件系统支持**任何内容类型**。以下是一些您可以做的事情：
+虽然 Viben 最初是一个学术论文搜索工具，但现在它通过插件系统支持**任何内容类型**。以下是一些您可以做的事情：
 
 ### 社交媒体插件
 
@@ -71,7 +71,7 @@ browse_search([{"searcher": "zhihu", "query": "人工智能", "max_results": 5}]
 
 ### 插件架构
 
-Browse MCP 使用 stevedore 进行自动插件发现。任何在 `browse_mcp.searchers` 命名空间中注册的已安装插件都会自动加载：
+Viben 使用 stevedore 进行自动插件发现。任何在 `browse_mcp.searchers` 命名空间中注册的已安装插件都会自动加载：
 
 ```
 browse-mcp (核心)
