@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[3490],{725(s){s.exports=JSON.parse('{"tags":[{"label":"announcement","permalink":"/browse-mcp/docs/blog/tags/announcement","count":1},{"label":"mcp","permalink":"/browse-mcp/docs/blog/tags/mcp","count":1}]}')}}]);

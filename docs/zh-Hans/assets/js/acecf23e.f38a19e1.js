@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[1903],{1912(s){s.exports=JSON.parse('{"blogBasePath":"/viben/docs/zh-Hans/blog","blogTitle":"Blog","authorsListPath":"/viben/docs/zh-Hans/blog/authors"}')}}]);

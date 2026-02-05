@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunk_browse_mcp_docs=globalThis.webpackChunk_browse_mcp_docs||[]).push([[7472],{5513(e){e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"Welcome to Browse MCP","permalink":"/browse-mcp/docs/blog/welcome","unlisted":false,"date":"2025-02-01T00:00:00.000Z"}]}')}}]);
