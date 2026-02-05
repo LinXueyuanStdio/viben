@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-/// Get the browse-mcp config directory path (~/.browsemcp)
+/// Get the Viben config directory path (~/.viben)
 fn get_config_dir() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or("Could not determine home directory")?;
-    let config_dir = home.join(".browsemcp");
+    let config_dir = home.join(".viben");
 
     // Create directory if it doesn't exist
     if !config_dir.exists() {
@@ -15,9 +15,10 @@ fn get_config_dir() -> Result<PathBuf, String> {
     Ok(config_dir)
 }
 
-/// Get the MCP servers file path (~/.browsemcp/browse_mcp_servers.json)
+/// Get the MCP servers file path (~/.viben/viben_servers.json)
 fn get_servers_file_path() -> Result<PathBuf, String> {
-    Ok(get_config_dir()?.join("browse_mcp_servers.json"))
+    let config_dir = get_config_dir()?;
+    Ok(config_dir.join("viben_servers.json"))
 }
 
 /// Read MCP servers state from file

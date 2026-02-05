@@ -1,6 +1,6 @@
 # Frontend Development Guidelines
 
-> Best practices for frontend development in Browse MCP project.
+> Best practices for frontend development in Viben project.
 
 ---
 
@@ -37,7 +37,7 @@ Before writing any frontend code, read the [Design System](./design-system.md) t
 
 ### 2. Design Philosophy
 
-Browse MCP follows a **"Warm Futurism"** aesthetic:
+Viben follows a **"Warm Futurism"** aesthetic:
 
 - **Warm**: Orange/amber color palette (not typical blue/purple)
 - **Future-forward**: Modern, innovative, with sophisticated animations
@@ -94,7 +94,7 @@ The goal is to help AI assistants and new team members understand how YOUR proje
 
 ## Migration Plan
 
-We are currently migrating from a generic design to the Browse MCP Design System:
+We are currently migrating from a generic design to the Viben Design System:
 
 ### Phase 1: Foundation (In Progress)
 - [x] Define color system (warm amber/orange)

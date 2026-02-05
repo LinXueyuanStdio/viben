@@ -58,8 +58,8 @@ const crimsonPro = Crimson_Pro({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Browse MCP',
-    template: '%s | Browse MCP',
+    default: 'Viben',
+    template: '%s | Viben',
   },
   description: 'AI Tool Platform - MCP & Skills Marketplace',
 };
@@ -150,7 +150,7 @@ export function Sidebar() {
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2">
           <Package className="h-6 w-6 text-primary" />
-          <span className="font-serif text-xl font-semibold">Browse MCP</span>
+          <span className="font-serif text-xl font-semibold">Viben</span>
         </Link>
       </div>
 

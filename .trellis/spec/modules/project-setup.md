@@ -29,7 +29,7 @@
 ### 1. Project Structure
 
 ```
-browse-mcp/
+viben/
 ├── apps/
 │   └── web/                      # New Next.js app
 │       ├── package.json
@@ -69,7 +69,7 @@ packages:
 
 ```json
 {
-  "name": "@browse-mcp/web",
+  "name": "@viben/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -178,7 +178,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Browse MCP Platform',
+  title: 'Viben Platform',
   description: 'AI Tool Platform - MCP & Skills Marketplace',
 };
 
@@ -201,7 +201,7 @@ export default function RootLayout({
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
-      <h1 className="text-4xl font-bold">Browse MCP Platform</h1>
+      <h1 className="text-4xl font-bold">Viben Platform</h1>
       <p className="mt-4 text-lg text-gray-600">
         AI Tool Platform - Coming Soon
       </p>
@@ -230,8 +230,8 @@ export function generateId(): string {
 ## Acceptance Criteria
 
 - [ ] `pnpm install` succeeds
-- [ ] `pnpm --filter @browse-mcp/web dev` starts dev server
-- [ ] `pnpm --filter @browse-mcp/web build` produces no errors
+- [ ] `pnpm --filter @viben/web dev` starts dev server
+- [ ] `pnpm --filter @viben/web build` produces no errors
 - [ ] Homepage renders at `localhost:3000`
 - [ ] TypeScript compilation passes
 - [ ] ESLint passes with no errors
@@ -242,7 +242,7 @@ export function generateId(): string {
 
 ```bash
 # Initialize
-cd browse-mcp
+cd viben
 mkdir -p apps/web
 cd apps/web
 

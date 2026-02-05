@@ -13,7 +13,7 @@ export { useMcpConnection } from "./use-mcp-connection";
 export { useMcpProxy, buildProxyUrl, buildProxyHeaders } from "./use-mcp-proxy";
 export type { McpProxyConfig, McpProxyStatus } from "./use-mcp-proxy";
 
-// Browse MCP Platform Integration
+// Viben Platform Integration
 export {
   useMcpSearch,
   useSkillSearch,
@@ -23,7 +23,7 @@ export {
   usePlatformAuth,
   usePlatformUser,
   useFavorite,
-} from "./use-browse-mcp";
+} from "./use-viben";
 export {
   useCloudSkillPackages,
   useCloudSkillSearch,

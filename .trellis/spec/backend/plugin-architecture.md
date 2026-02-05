@@ -1,12 +1,12 @@
 # Plugin Architecture
 
-> Pluggable provider system for extensible data sources in Browse MCP.
+> Pluggable provider system for extensible data sources in Viben.
 
 ---
 
 ## Overview
 
-Browse MCP implements a pluggable architecture that allows extending data sources through:
+Viben implements a pluggable architecture that allows extending data sources through:
 
 1. **Built-in Providers**: Core academic/research data sources in `backend/browse-mcp`
 2. **Plugin Providers**: Third-party extensions in `backend/plugins/*`

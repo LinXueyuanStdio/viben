@@ -1,8 +1,8 @@
 /**
- * React Hooks for Browse MCP Platform Integration
+ * React Hooks for Viben Platform Integration
  *
  * Provides hooks for searching, installing, and managing packages
- * from the Browse MCP platform in the desktop app.
+ * from the Viben platform in the desktop app.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,7 +20,7 @@ import {
   type SkillPackage,
   type Workspace,
   type WorkspaceSyncResult,
-} from '@/lib/browse-mcp';
+} from '@/lib/viben';
 
 // ============================================
 // MCP Search Hook
@@ -410,7 +410,7 @@ export function useWorkspaces() {
 /**
  * Hook for platform authentication
  *
- * Manages API key state for the Browse MCP platform.
+ * Manages API key state for the Viben platform.
  *
  * @returns Auth state and methods
  *

@@ -1,6 +1,6 @@
 # Frontend Component Guidelines
 
-> Conventions and patterns for React components in Browse MCP desktop application.
+> Conventions and patterns for React components in Viben desktop application.
 
 ---
 

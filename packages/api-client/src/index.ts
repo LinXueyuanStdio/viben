@@ -1,15 +1,15 @@
 /**
- * Browse MCP API Client
+ * Viben API Client
  *
- * A TypeScript client library for the Browse MCP platform API.
+ * A TypeScript client library for the Viben platform API.
  *
  * @example
  * ```ts
- * import { BrowseMcpClient } from '@browse-mcp/api-client';
+ * import { VibenClient } from '@viben/api-client';
  *
- * const client = new BrowseMcpClient({
- *   baseUrl: 'https://browse-mcp.vercel.app',
- *   apiKey: 'bmcp_xxx...',
+ * const client = new VibenClient({
+ *   baseUrl: 'https://viben-web.vercel.app',
+ *   apiKey: 'viben_xxx...',
  * });
  *
  * // List MCP packages
@@ -29,8 +29,12 @@
  */
 
 // Client
-export { BrowseMcpClient, ApiError } from './client';
-export type { BrowseMcpClientConfig } from './client';
+export { VibenClient, ApiError } from './client';
+export type { VibenClientConfig } from './client';
+
+// Backwards compatibility aliases
+export { VibenClient as BrowseMcpClient } from './client';
+export type { VibenClientConfig as BrowseMcpClientConfig } from './client';
 
 // Types
 export type {

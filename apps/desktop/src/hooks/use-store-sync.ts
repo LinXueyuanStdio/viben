@@ -55,7 +55,7 @@ async function writeServersToFile(state: McpServersFileState): Promise<void> {
 
 /**
  * Hook to synchronize Zustand store across different Tauri windows
- * using file-based persistence (~/.browsemcp/browse_mcp_servers.json)
+ * using file-based persistence (~/.viben/viben_servers.json)
  *
  * This hook:
  * 1. Persists MCP servers state to a JSON file

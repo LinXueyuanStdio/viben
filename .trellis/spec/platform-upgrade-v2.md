@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-This document outlines the comprehensive upgrade plan to transform Browse MCP from a single-purpose academic search tool into a full-featured **AI Tool Platform** with:
+This document outlines the comprehensive upgrade plan to transform Viben from a single-purpose academic search tool into a full-featured **AI Tool Platform** with:
 
 1. **User System** - Authentication, identity, developer accounts
 2. **MCP Marketplace** - Browse, search, publish, and manage MCP servers
@@ -577,11 +577,11 @@ DELETE /api/v1/agents/:id/uninstall/:type/:entity_id
 
 ---
 
-## Module 4: Browse MCP Enhancement
+## Module 4: Data Browse Enhancement
 
 ### 4.1 Feature Overview
 
-Enhance the existing Browse MCP (academic search) with:
+Enhance the existing Data Browse (academic search) with:
 
 | Feature | Description |
 |---------|-------------|
@@ -1576,7 +1576,7 @@ export default defineConfig({
 - Entity assignment
 - Configuration export
 
-### Phase 7: Browse MCP Enhancement
+### Phase 7: Data Browse Enhancement
 
 **Duration**: Weeks 15-16
 
@@ -1587,7 +1587,7 @@ export default defineConfig({
 | Source Management | CRUD for sources | P1 |
 
 **Deliverables**:
-- Enhanced Browse MCP
+- Enhanced Data Browse
 - Data source collections
 
 ---
@@ -1938,7 +1938,7 @@ apps/desktop/src/
 │   ├── workspaces/              # Workspace management
 │   │   ├── index.tsx
 │   │   └── [id]/
-│   └── browse/                  # Enhanced: Browse MCP
+│   └── browse/                  # Enhanced: Data Browse
 │       ├── index.tsx
 │       ├── sources/
 │       └── collections/

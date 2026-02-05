@@ -83,7 +83,7 @@ export default function RegisterPage() {
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-bold">Create an account</h1>
         <p className="text-muted-foreground">
-          Get started with Browse MCP
+          Get started with Viben
         </p>
       </div>
 
@@ -128,7 +128,7 @@ export default function AuthLayout({
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <Link href="/" className="mb-8 flex items-center gap-2">
         <Package className="h-8 w-8 text-primary" />
-        <span className="font-serif text-2xl font-semibold">Browse MCP</span>
+        <span className="font-serif text-2xl font-semibold">Viben</span>
       </Link>
       {children}
     </div>
@@ -309,7 +309,7 @@ export function RegisterForm() {
         throw new Error(result.error || 'Registration failed');
       }
 
-      toast.success('Account created! Welcome to Browse MCP.');
+      toast.success('Account created! Welcome to Viben.');
       router.push('/mcp');
       router.refresh();
     } catch (error) {

@@ -1,7 +1,7 @@
 /**
- * Browse MCP API Client Types
+ * Viben API Client Types
  *
- * Type definitions for the Browse MCP platform API responses.
+ * Type definitions for the Viben platform API responses.
  */
 
 // ============================================

@@ -85,7 +85,7 @@ HF_TOKEN=<huggingface-token>
 HF_NAMESPACE=browse-mcp
 
 # App
-NEXT_PUBLIC_APP_URL=https://browse-mcp.vercel.app
+NEXT_PUBLIC_APP_URL=https://viben-web.vercel.app
 NODE_ENV=production
 ```
 
@@ -350,9 +350,9 @@ export default function RootLayout({ children }) {
 
 | Environment | URL |
 |-------------|-----|
-| Production | https://browse-mcp.vercel.app |
+| Production | https://viben-web.vercel.app |
 | Preview | https://browse-mcp-*.vercel.app |
-| API | https://browse-mcp.vercel.app/api |
+| API | https://viben-web.vercel.app/api |
 
 ---
 

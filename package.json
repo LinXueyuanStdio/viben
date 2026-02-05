@@ -1,17 +1,17 @@
 {
-  "name": "browse-mcp",
+  "name": "viben",
   "version": "0.1.0",
   "private": true,
-  "description": "Cross-platform desktop app for academic paper search with MCP integration",
+  "description": "Multi-agent workspace manager with kanban, calendar, timeline, and task management",
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
-    "desktop": "pnpm --filter @browse-mcp/desktop",
-    "mcp-server": "pnpm --filter @browse-mcp/mcp-server",
-    "docs": "pnpm --filter @browse-mcp/docs"
+    "desktop": "pnpm --filter @viben/desktop",
+    "mcp-server": "pnpm --filter @viben/mcp-server",
+    "docs": "pnpm --filter @viben/docs"
   },
   "devDependencies": {
     "turbo": "^2.3.0",

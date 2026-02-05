@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if this is a desktop client callback
-    if (desktopRedirectUri?.startsWith('browsemcp://')) {
+    if (desktopRedirectUri?.startsWith('viben://')) {
       // For desktop client, redirect to deep link with the code
       // Desktop will exchange the code for tokens via its own API call
       const redirectUrl = new URL(desktopRedirectUri);
@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
     console.error('OAuth error:', error);
 
     // If desktop client, redirect with error
-    if (desktopRedirectUri?.startsWith('browsemcp://')) {
+    if (desktopRedirectUri?.startsWith('viben://')) {
       const redirectUrl = new URL(desktopRedirectUri);
       redirectUrl.searchParams.set('error', 'oauth_failed');
       return NextResponse.redirect(redirectUrl.toString());

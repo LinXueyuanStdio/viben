@@ -75,7 +75,7 @@ import type { StorageBackend, StorageResult } from './types';
 import crypto from 'crypto';
 
 const HF_TOKEN = process.env.HF_TOKEN!;
-const HF_NAMESPACE = process.env.HF_NAMESPACE || 'browse-mcp';
+const HF_NAMESPACE = process.env.HF_NAMESPACE || 'viben';
 const HF_REPO = `${HF_NAMESPACE}/packages`;
 
 export class HuggingFaceBackend implements StorageBackend {
@@ -328,7 +328,7 @@ export const storage = {
 |----------|----------|-------------|
 | `STORAGE_BACKEND` | No | `huggingface` (default) or `local` |
 | `HF_TOKEN` | Yes* | HuggingFace API token |
-| `HF_NAMESPACE` | No | HuggingFace namespace (default: `browse-mcp`) |
+| `HF_NAMESPACE` | No | HuggingFace namespace (default: `viben`) |
 | `LOCAL_STORAGE_DIR` | No | Local storage directory (default: `./.storage`) |
 
 *Required when using HuggingFace backend
@@ -360,7 +360,7 @@ const result = await storage.upload(
   file,
   'package.zip'
 );
-// result.storageRef = 'hf://browse-mcp/packages/my-package/1.0.0/package.zip'
+// result.storageRef = 'hf://viben/packages/my-package/1.0.0/package.zip'
 
 // Download
 const data = await storage.download(result.storageRef);

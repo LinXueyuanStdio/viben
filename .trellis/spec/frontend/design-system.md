@@ -1,4 +1,4 @@
-# Browse MCP Design System
+# Viben Design System
 
 > **Vision**: A warm, future-forward academic tool with distinctive motion design and custom visualizations.
 

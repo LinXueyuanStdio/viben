@@ -1,11 +1,11 @@
-# @browse-mcp/api-client
+# @viben/api-client
 
-API client library for the Browse MCP platform. Works in both browser and Node.js environments.
+API client library for the Viben platform. Works in both browser and Node.js environments.
 
 ## Installation
 
 ```bash
-pnpm add @browse-mcp/api-client
+pnpm add @viben/api-client
 ```
 
 ## Usage
@@ -13,11 +13,11 @@ pnpm add @browse-mcp/api-client
 ### Basic Usage
 
 ```typescript
-import { BrowseMcpClient } from '@browse-mcp/api-client';
+import { VibenClient } from '@viben/api-client';
 
-const client = new BrowseMcpClient({
-  baseUrl: 'https://browse-mcp.vercel.app',
-  apiKey: 'bmcp_xxx...', // Optional for public endpoints
+const client = new VibenClient({
+  baseUrl: 'https://viben-web.vercel.app',
+  apiKey: 'viben_xxx...', // Optional for public endpoints
 });
 
 // List MCP packages
@@ -65,7 +65,7 @@ await client.mcp.rate(packageId, 5);
 
 ## API Reference
 
-### BrowseMcpClient
+### VibenClient
 
 Main client class with the following namespaced methods:
 
@@ -119,7 +119,7 @@ Same methods as `client.mcp` but for skill packages.
 ## Error Handling
 
 ```typescript
-import { ApiError } from '@browse-mcp/api-client';
+import { ApiError } from '@viben/api-client';
 
 try {
   await client.user.me();
@@ -142,7 +142,7 @@ import type {
   User,
   Workspace,
   PaginatedResponse,
-} from '@browse-mcp/api-client';
+} from '@viben/api-client';
 ```
 
 ## License

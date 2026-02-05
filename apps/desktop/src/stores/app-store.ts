@@ -272,7 +272,7 @@ export const useAppStore = create<AppState>()(
       // Legacy MCP Config (single server mode)
       mcpTransport: "sse",
       mcpPort: 3000,
-      downloadPath: "~/Downloads/browse-mcp",
+      downloadPath: "~/Downloads/viben",
       setMcpTransport: (transport) => set({ mcpTransport: transport }),
       setMcpPort: (port) => set({ mcpPort: port }),
       setDownloadPath: (path) => set({ downloadPath: path }),

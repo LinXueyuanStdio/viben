@@ -787,7 +787,7 @@
     "workspaces": "工作区",
     "addWorkspace": "添加工作区",
     "noWorkspaces": "暂无工作区",
-    "global": "全局",
+    "global": "全局工作空间",
     "custom": "自定义",
     "type": "类型",
     "agentsCount": "智能体数",

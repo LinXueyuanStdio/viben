@@ -147,7 +147,7 @@ sudo apt-get install -f
 从应用菜单启动或运行：
 
 ```bash
-browse-mcp-desktop
+viben
 ```
 
 ### 依赖
@@ -243,7 +243,7 @@ rm -rf ~/Library/Caches/com.viben.app
 
 **Debian 包：**
 ```bash
-sudo apt-get remove browse-mcp-desktop
+sudo apt-get remove viben
 ```
 
 要删除配置：

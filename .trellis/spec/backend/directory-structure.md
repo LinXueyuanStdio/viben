@@ -6,7 +6,7 @@
 
 ## Overview
 
-Browse MCP backend consists of two main components:
+Viben backend consists of two main components:
 
 1. **Core Package** (`backend/browse-mcp`): Main application with built-in data sources
 2. **Plugin Packages** (`backend/plugins/*`): Third-party extensible data sources

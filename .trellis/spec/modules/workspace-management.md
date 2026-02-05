@@ -308,7 +308,7 @@ This allows projects to have their own MCP servers and skills that override or e
 ├─────────────────────────────┤
 │ ▼ MCP                       │  ← Section 2
 │   🛒 MCP Marketplace        │  2.1
-│   ▼ Browse MCP              │  2.2 (collapsible)
+│   ▼ Viben                   │  2.2 (collapsible)
 │     📊 Dashboard            │    2.2.1
 │     📦 Data Sources         │    2.2.2
 │     🔍 Search Services      │    2.2.3
@@ -543,7 +543,7 @@ App
 
   <Section title="MCP" collapsible>
     <NavItem href="/marketplace" icon={<Store />} label="MCP Marketplace" />
-    <Section title="Browse MCP" collapsible nested>
+    <Section title="Viben" collapsible nested>
       <NavItem href="/mcp/dashboard" icon={<LayoutDashboard />} />
       <NavItem href="/providers" icon={<Database />} label="Data Sources" />
       <NavItem href="/search" icon={<Search />} label="Search Services" />
