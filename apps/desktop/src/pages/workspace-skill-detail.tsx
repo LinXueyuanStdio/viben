@@ -13,6 +13,7 @@ import {
   X,
   ExternalLink,
   File,
+  Edit3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,7 +27,7 @@ import {
   useSkillFileContent,
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
-import { FileTree } from "@/components/skill-files";
+import { FileTree, CodeEditor } from "@/components/skill-files";
 import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
@@ -421,27 +422,48 @@ function SkillFilesView({ skill }: { skill: WorkspaceSkill }) {
       <div className="flex-1 overflow-hidden flex flex-col">
         {selectedFile ? (
           <>
-            <div className="p-3 border-b flex items-center gap-2">
-              <File className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-mono truncate">{selectedFile.name}</span>
+            <div className="p-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-mono truncate">{selectedFile.name}</span>
+              </div>
+              {!selectedFile.is_directory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 flex-shrink-0"
+                  asChild
+                >
+                  <a
+                    href={`file://${selectedFile.path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                    {t("workspace.openInEditor")}
+                  </a>
+                </Button>
+              )}
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-hidden">
               {selectedFile.is_directory ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <p>{t("workspace.selectFile")}</p>
                 </div>
               ) : fileLoading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center h-full">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 </div>
               ) : fileError ? (
                 <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
               ) : fileContent ? (
-                <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-words">
-                  {fileContent}
-                </pre>
+                <CodeEditor
+                  value={fileContent}
+                  filename={selectedFile.name}
+                  height="100%"
+                />
               ) : null}
-            </ScrollArea>
+            </div>
           </>
         ) : (
           <div className="flex items-center justify-center h-full text-muted-foreground">
