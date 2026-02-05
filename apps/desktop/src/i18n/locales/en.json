@@ -56,8 +56,9 @@
     "dataSources": "Data Sources",
     "searchService": "Search Service",
     "inspector": "Inspector",
-    "agents": "Agents",
     "mcpMarketplace": "MCP Store",
+    "mcpServices": "MCP Services",
+    "dedicatedSearchServices": "Dedicated Search Services",
     "skillsMarket": "Skills Market",
     "logs": "Logs",
     "settings": "Settings",
@@ -672,7 +673,8 @@
     "syncing": "Syncing",
     "syncingTooltip": "Syncing data",
     "tryReconnect": "Try Reconnect",
-    "usingCachedData": "Using cached data"
+    "usingCachedData": "Using cached data",
+    "cannotRefreshOffline": "Cannot refresh cache: offline"
   },
   "skillsMarket": {
     "title": "Skills Marketplace",
@@ -706,7 +708,9 @@
     "sortPopular": "Popular",
     "sortDownloads": "Downloads",
     "pageOf": "Page {{page}} of {{total}}",
-    "showingPackages": "Showing {{count}} packages"
+    "showingPackages": "Showing {{count}} packages",
+    "packagesCount": "{{count}} packages",
+    "searchResults": "{{count}} results for \"{{query}}\""
   },
   "marketplace": {
     "title": "MCP Marketplace",
@@ -758,7 +762,21 @@
     "remoteEndpoints": "Remote Endpoints",
     "noInstallationOptions": "No installation options available for this server",
     "envVars": "Environment Variables",
-    "installPackage": "Install this package"
+    "installPackage": "Install this package",
+    "packageType": "Package Type",
+    "filterByPackageType": "Filter by package type",
+    "noPackageTypes": "No package types available",
+    "sort": "Sort",
+    "sortBy": "Sort By",
+    "sortByName": "Name",
+    "sortByUpdated": "Last Updated",
+    "sortByPublished": "Published Date",
+    "direction": "Direction",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "latestOnly": "Latest Only",
+    "clearFilters": "Clear Filters",
+    "filteredResults": "{{filtered}} of {{total}} servers"
   },
   "workspace": {
     "workspaces": "Workspaces",

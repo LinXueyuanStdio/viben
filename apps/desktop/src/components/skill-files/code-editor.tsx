@@ -1,12 +1,19 @@
-import Editor from "@monaco-editor/react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Editor, { OnChange } from "@monaco-editor/react";
 import { useTheme } from "@/hooks/use-theme";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save, Check, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { SaveStatus } from "@/hooks";
 
 interface CodeEditorProps {
   value: string;
   filename: string;
   className?: string;
   height?: string;
+  readOnly?: boolean;
+  onChange?: (value: string) => void;
+  onSave?: (value: string) => Promise<void>;
+  saveStatus?: SaveStatus;
 }
 
 // Map file extensions to Monaco language identifiers
@@ -164,30 +171,129 @@ function getLanguage(filename: string): string {
   }
 }
 
-export function CodeEditor({ value, filename, className, height = "100%" }: CodeEditorProps) {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+export function CodeEditor({
+  value,
+  filename,
+  className,
+  height = "100%",
+  readOnly = false,
+  onChange,
+  onSave,
+  saveStatus = "idle",
+}: CodeEditorProps) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === "dark";
   const language = getLanguage(filename);
 
+  // Track current content for auto-save
+  const [localValue, setLocalValue] = useState(value);
+  const [isDirty, setIsDirty] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Update local value when prop changes (new file selected)
+  useEffect(() => {
+    setLocalValue(value);
+    setIsDirty(false);
+  }, [value]);
+
+  // Auto-save with debounce
+  const handleChange: OnChange = useCallback(
+    (newValue) => {
+      if (newValue === undefined) return;
+
+      setLocalValue(newValue);
+      setIsDirty(newValue !== value);
+      onChange?.(newValue);
+
+      // Clear previous timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Auto-save after 1 second of inactivity
+      if (onSave && newValue !== value) {
+        saveTimeoutRef.current = setTimeout(() => {
+          onSave(newValue);
+        }, 1000);
+      }
+    },
+    [value, onChange, onSave]
+  );
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Save status indicator
+  const renderSaveStatus = () => {
+    if (readOnly) return null;
+
+    return (
+      <div
+        className={cn(
+          "absolute top-2 right-2 flex items-center gap-1.5 px-2 py-1 rounded-md text-xs z-10",
+          "transition-all duration-200",
+          saveStatus === "saving" && "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+          saveStatus === "saved" && "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+          saveStatus === "error" && "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+          saveStatus === "idle" && isDirty && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+          saveStatus === "idle" && !isDirty && "opacity-0"
+        )}
+      >
+        {saveStatus === "saving" && (
+          <>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Saving...</span>
+          </>
+        )}
+        {saveStatus === "saved" && (
+          <>
+            <Check className="h-3 w-3" />
+            <span>Saved</span>
+          </>
+        )}
+        {saveStatus === "error" && (
+          <>
+            <AlertCircle className="h-3 w-3" />
+            <span>Save failed</span>
+          </>
+        )}
+        {saveStatus === "idle" && isDirty && (
+          <>
+            <Save className="h-3 w-3" />
+            <span>Unsaved</span>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
-    <div className={className} style={{ height }}>
+    <div className={cn("relative", className)} style={{ height }}>
+      {renderSaveStatus()}
       <Editor
         height="100%"
         language={language}
-        value={value}
+        value={localValue}
         theme={isDark ? "vs-dark" : "light"}
+        onChange={readOnly ? undefined : handleChange}
         loading={
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         }
         options={{
-          readOnly: true,
+          readOnly,
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
           fontSize: 13,
           lineNumbers: "on",
-          renderLineHighlight: "none",
+          renderLineHighlight: readOnly ? "none" : "line",
           wordWrap: "on",
           folding: true,
           automaticLayout: true,
@@ -204,6 +310,10 @@ export function CodeEditor({ value, filename, className, height = "100%" }: Code
           mouseWheelZoom: false,
           links: true,
           padding: { top: 8, bottom: 8 },
+          tabSize: 2,
+          insertSpaces: true,
+          formatOnPaste: false,
+          formatOnType: false,
         }}
       />
     </div>

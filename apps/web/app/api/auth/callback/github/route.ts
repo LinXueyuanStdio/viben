@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
 import { db, users, oauthConnections } from '@/lib/db';
-import { setSessionCookie } from '@/lib/auth/cookies';
+import { encryptSession } from '@/lib/auth/jwe';
 import { generateId } from '@/lib/utils';
 import { eq, and } from 'drizzle-orm';
 
@@ -20,25 +19,36 @@ interface GitHubEmail {
   verified: boolean;
 }
 
-export async function GET(request: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const searchParams = request.nextUrl.searchParams;
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-
-  // Verify state and get desktop redirect URI if present
-  const cookieStore = await cookies();
-  const storedState = cookieStore.get('oauth_state')?.value;
-  const desktopRedirectUri = cookieStore.get('oauth_redirect_uri')?.value;
-  cookieStore.delete('oauth_state');
-  cookieStore.delete('oauth_redirect_uri');
-
-  if (!code || !state || state !== storedState) {
-    return NextResponse.redirect(`${appUrl}/login?error=invalid_state`);
-  }
-
+/**
+ * Desktop client OAuth callback handler
+ *
+ * This endpoint is called by the desktop app to exchange an OAuth code
+ * for user session data. Unlike the web callback which redirects,
+ * this returns JSON with tokens.
+ *
+ * Request: POST /api/auth/callback/github
+ * Body: { code: string }
+ *
+ * Response: {
+ *   user: { id, email, username, displayName, avatarUrl },
+ *   accessToken: string,
+ *   refreshToken: string | null,
+ *   expiresAt: number
+ * }
+ */
+export async function POST(request: NextRequest) {
   try {
-    // Exchange code for token
+    const body = await request.json();
+    const { code } = body;
+
+    if (!code) {
+      return NextResponse.json(
+        { error: 'Missing authorization code' },
+        { status: 400 }
+      );
+    }
+
+    // Exchange code for GitHub access token
     const tokenResponse = await fetch(
       'https://github.com/login/oauth/access_token',
       {
@@ -56,29 +66,35 @@ export async function GET(request: NextRequest) {
     );
 
     const tokenData = await tokenResponse.json();
-    const accessToken = tokenData.access_token;
+    const githubAccessToken = tokenData.access_token;
 
-    if (!accessToken) {
+    if (!githubAccessToken) {
       console.error('No access token received:', tokenData);
-      return NextResponse.redirect(`${appUrl}/login?error=no_token`);
+      return NextResponse.json(
+        { error: 'Failed to get access token from GitHub' },
+        { status: 401 }
+      );
     }
 
-    // Get user info
+    // Get GitHub user info
     const userResponse = await fetch('https://api.github.com/user', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${githubAccessToken}` },
     });
     const githubUser: GitHubUser = await userResponse.json();
 
-    // Get email
+    // Get GitHub user email
     const emailResponse = await fetch('https://api.github.com/user/emails', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${githubAccessToken}` },
     });
     const emails: GitHubEmail[] = await emailResponse.json();
     const primaryEmail =
       emails.find((e) => e.primary)?.email || githubUser.email;
 
     if (!primaryEmail) {
-      return NextResponse.redirect(`${appUrl}/login?error=no_email`);
+      return NextResponse.json(
+        { error: 'No email associated with GitHub account' },
+        { status: 400 }
+      );
     }
 
     // Find existing OAuth connection
@@ -96,7 +112,7 @@ export async function GET(request: NextRequest) {
       // Update access token
       await db
         .update(oauthConnections)
-        .set({ accessToken })
+        .set({ accessToken: githubAccessToken })
         .where(eq(oauthConnections.id, existingConnection.id));
 
       user = existingConnection.user;
@@ -113,7 +129,7 @@ export async function GET(request: NextRequest) {
           userId: existingUser.id,
           provider: 'github',
           providerId: String(githubUser.id),
-          accessToken,
+          accessToken: githubAccessToken,
         });
         user = existingUser;
       } else {
@@ -135,7 +151,7 @@ export async function GET(request: NextRequest) {
           userId,
           provider: 'github',
           providerId: String(githubUser.id),
-          accessToken,
+          accessToken: githubAccessToken,
         });
 
         user = await db.query.users.findFirst({
@@ -148,17 +164,8 @@ export async function GET(request: NextRequest) {
       throw new Error('Failed to create or find user');
     }
 
-    // Check if this is a desktop client callback
-    if (desktopRedirectUri?.startsWith('browsemcp://')) {
-      // For desktop client, redirect to deep link with the code
-      // Desktop will exchange the code for tokens via its own API call
-      const redirectUrl = new URL(desktopRedirectUri);
-      redirectUrl.searchParams.set('code', code!);
-      return NextResponse.redirect(redirectUrl.toString());
-    }
-
-    // Set session for web client
-    await setSessionCookie({
+    // Create JWT access token for desktop client
+    const accessToken = await encryptSession({
       userId: user.id,
       username: user.username,
       email: user.email,
@@ -166,17 +173,26 @@ export async function GET(request: NextRequest) {
       avatarUrl: user.avatarUrl ?? undefined,
     });
 
-    return NextResponse.redirect(`${appUrl}/mcp`);
+    // Calculate expiration (7 days from now)
+    const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+    return NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+      },
+      accessToken,
+      refreshToken: null, // TODO: Implement refresh tokens
+      expiresAt,
+    });
   } catch (error) {
-    console.error('OAuth error:', error);
-
-    // If desktop client, redirect with error
-    if (desktopRedirectUri?.startsWith('browsemcp://')) {
-      const redirectUrl = new URL(desktopRedirectUri);
-      redirectUrl.searchParams.set('error', 'oauth_failed');
-      return NextResponse.redirect(redirectUrl.toString());
-    }
-
-    return NextResponse.redirect(`${appUrl}/login?error=oauth_failed`);
+    console.error('Desktop OAuth callback error:', error);
+    return NextResponse.json(
+      { error: 'OAuth authentication failed' },
+      { status: 500 }
+    );
   }
 }

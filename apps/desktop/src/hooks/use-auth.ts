@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
+import { listen } from "@tauri-apps/api/event";
 import { useAuthStore } from "@/stores/auth-store";
 
 /**
@@ -90,6 +91,25 @@ export function useAuth() {
   // Initialize auth state on mount
   useEffect(() => {
     store.initializeAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for OAuth callback from deep link (browsemcp://oauth?code=xxx)
+  useEffect(() => {
+    const unlisten = listen<string>("oauth-callback", async (event) => {
+      const code = event.payload;
+      if (code) {
+        try {
+          await store.handleOAuthCallback(code);
+        } catch (err) {
+          console.error("OAuth callback failed:", err);
+        }
+      }
+    });
+
+    return () => {
+      unlisten.then((fn) => fn());
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

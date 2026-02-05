@@ -3,6 +3,13 @@
   "productName": "Browse MCP",
   "version": "0.1.0",
   "identifier": "com.browsemcp.app",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["browsemcp"]
+      }
+    }
+  },
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",

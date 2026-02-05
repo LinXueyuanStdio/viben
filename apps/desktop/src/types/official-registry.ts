@@ -29,12 +29,13 @@ export interface OfficialServerIcon {
 
 /**
  * Repository information for a server
+ * Note: Official API can return empty object {} for repository, so all fields are optional
  */
 export interface OfficialServerRepository {
   /** Full repository URL */
-  url: string;
+  url?: string;
   /** Source platform (e.g., "github", "gitlab") */
-  source: string;
+  source?: string;
   /** Repository identifier (e.g., "owner/repo") */
   id?: string;
   /** Subfolder within the repository */
