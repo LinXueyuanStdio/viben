@@ -49,7 +49,7 @@ Download from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/release
 1. **Download** the installer for your platform
 2. **Install** following [platform-specific instructions](/docs/desktop-app/installation)
 3. **Launch** Viben from your applications
-4. **Search** for papers using the search bar
+4. **Search** for content using the search bar
 
 ## Architecture
 
