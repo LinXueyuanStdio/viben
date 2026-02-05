@@ -295,6 +295,10 @@ pub fn run() {
             commands::workspace::get_skill_readme,
             commands::workspace::list_skill_files,
             commands::workspace::read_skill_file,
+            commands::workspace::get_workspace_agent_configs,
+            commands::workspace::read_agent_config_file,
+            commands::workspace::get_workspace_commands,
+            commands::workspace::read_command_file,
             // Store sync commands
             commands::store_sync::read_mcp_servers_file,
             commands::store_sync::write_mcp_servers_file,

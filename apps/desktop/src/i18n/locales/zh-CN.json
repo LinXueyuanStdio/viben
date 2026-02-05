@@ -826,7 +826,18 @@
       "mcp": "MCP",
       "skills": "技能",
       "preferences": "偏好设置"
-    }
+    },
+    "agentConfigs": "代理配置",
+    "agentConfigsDesc": "代理配置文件 (.claude/agents/*.md)",
+    "noAgentConfigs": "暂无代理配置",
+    "noAgentConfigsDesc": "在 .claude/agents/ 文件夹中未找到代理配置文件。",
+    "selectAgentConfig": "选择一个代理配置查看",
+    "commands": "命令",
+    "commandsDesc": "斜杠命令文件 (.claude/commands/**/*.md)",
+    "noCommands": "暂无命令",
+    "noCommandsDesc": "在 .claude/commands/ 文件夹中未找到命令文件。",
+    "selectCommand": "选择一个命令查看",
+    "rootNamespace": "根目录"
   },
   "sync": {
     "workspaceSync": "工作区同步",

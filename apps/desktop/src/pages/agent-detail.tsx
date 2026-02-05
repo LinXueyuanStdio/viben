@@ -16,10 +16,17 @@ import {
   FolderOpen,
   Copy,
   Check,
+  Users,
+  MessageSquare,
+  FileCode,
+  ChevronRight,
+  Wrench,
+  Cpu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -42,9 +49,13 @@ import {
   useWorkspaceAgents,
   useWorkspaceMcpServers,
   useWorkspaceSkills,
+  useWorkspaceAgentConfigs,
+  useWorkspaceCommands,
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
-import type { WorkspaceMcpServer, WorkspaceSkill } from "@/types";
+import { CodeEditor } from "@/components/skill-files";
+import { cn } from "@/lib/utils";
+import type { WorkspaceMcpServer, WorkspaceSkill, WorkspaceAgentConfig, WorkspaceCommand } from "@/types";
 
 export function AgentDetailPage() {
   const { t } = useTranslation();
@@ -70,6 +81,16 @@ export function AgentDetailPage() {
     addSkill,
     deleteSkill,
   } = useWorkspaceSkills(workspaceId || null, agentId || null);
+  const {
+    configs: agentConfigs,
+    loading: agentConfigsLoading,
+    loadConfigs: loadAgentConfigs,
+  } = useWorkspaceAgentConfigs(workspaceId || null, agentId || null);
+  const {
+    commands,
+    loading: commandsLoading,
+    loadCommands,
+  } = useWorkspaceCommands(workspaceId || null, agentId || null);
 
   const [activeTab, setActiveTab] = useState("mcp");
 
@@ -212,7 +233,7 @@ export function AgentDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Tabs for MCP and Skills */}
+        {/* Tabs for MCP, Skills, Agents, and Commands */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="mcp" className="gap-2">
@@ -227,6 +248,20 @@ export function AgentDetailPage() {
               {t("workspace.skills")}
               <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
                 {skills.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="agents" className="gap-2">
+              <Users className="h-4 w-4" />
+              {t("workspace.agentConfigs")}
+              <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                {agentConfigs.length}
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              {t("workspace.commands")}
+              <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
+                {commands.length}
               </span>
             </TabsTrigger>
           </TabsList>
@@ -253,6 +288,24 @@ export function AgentDetailPage() {
               onRefresh={loadSkills}
               onAdd={addSkill}
               onDelete={deleteSkill}
+            />
+          </TabsContent>
+
+          {/* Agent Configs Tab */}
+          <TabsContent value="agents">
+            <AgentConfigsSection
+              configs={agentConfigs}
+              loading={agentConfigsLoading}
+              onRefresh={loadAgentConfigs}
+            />
+          </TabsContent>
+
+          {/* Commands Tab */}
+          <TabsContent value="commands">
+            <CommandsSection
+              commands={commands}
+              loading={commandsLoading}
+              onRefresh={loadCommands}
             />
           </TabsContent>
         </Tabs>
@@ -1092,5 +1145,308 @@ function AddSkillDialog({ open, onOpenChange, onAdd }: AddSkillDialogProps) {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ============================================================================
+// Agent Configs Section
+// ============================================================================
+
+interface AgentConfigsSectionProps {
+  configs: WorkspaceAgentConfig[];
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+function AgentConfigsSection({
+  configs,
+  loading,
+  onRefresh,
+}: AgentConfigsSectionProps) {
+  const { t } = useTranslation();
+  const [selectedConfig, setSelectedConfig] = useState<WorkspaceAgentConfig | null>(null);
+
+  // Auto-select first config when loaded
+  useEffect(() => {
+    if (configs.length > 0 && !selectedConfig) {
+      setSelectedConfig(configs[0]);
+    }
+  }, [configs, selectedConfig]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          {t("workspace.agentConfigsDesc")}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {loading && configs.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : configs.length === 0 ? (
+        <Card interactive={false}>
+          <CardContent className="py-12 text-center">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-semibold mb-2">{t("workspace.noAgentConfigs")}</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              {t("workspace.noAgentConfigsDesc")}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex gap-4 h-[500px]">
+          {/* Left sidebar - Config list */}
+          <div className="w-64 border rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-muted/30">
+              <h3 className="text-sm font-medium">{t("workspace.agentConfigs")}</h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {configs.map((config) => (
+                  <button
+                    key={config.id}
+                    onClick={() => setSelectedConfig(config)}
+                    className={cn(
+                      "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
+                      "hover:bg-accent transition-colors",
+                      selectedConfig?.id === config.id && "bg-accent"
+                    )}
+                  >
+                    <FileCode className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">{config.name}</div>
+                      {config.model && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {config.model}
+                        </div>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Right content - Config details */}
+          <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
+            {selectedConfig ? (
+              <>
+                {/* Header with metadata */}
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold">{selectedConfig.name}</h3>
+                      {selectedConfig.description && (
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          {selectedConfig.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedConfig.model && (
+                      <div className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded">
+                        <Cpu className="h-3 w-3" />
+                        {selectedConfig.model}
+                      </div>
+                    )}
+                    {selectedConfig.tools.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-xs bg-muted px-2 py-1 rounded">
+                        <Wrench className="h-3 w-3" />
+                        {selectedConfig.tools.length} {t("inspector.tools").toLowerCase()}
+                      </div>
+                    )}
+                  </div>
+                  {selectedConfig.tools.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {selectedConfig.tools.map((tool) => (
+                        <span
+                          key={tool}
+                          className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-1.5 py-0.5 rounded"
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  <CodeEditor
+                    value={selectedConfig.content}
+                    filename={`${selectedConfig.id}.md`}
+                    height="100%"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>{t("workspace.selectAgentConfig")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Commands Section
+// ============================================================================
+
+interface CommandsSectionProps {
+  commands: WorkspaceCommand[];
+  loading: boolean;
+  onRefresh: () => void;
+}
+
+function CommandsSection({
+  commands,
+  loading,
+  onRefresh,
+}: CommandsSectionProps) {
+  const { t } = useTranslation();
+  const [selectedCommand, setSelectedCommand] = useState<WorkspaceCommand | null>(null);
+
+  // Group commands by namespace
+  const groupedCommands = commands.reduce<Record<string, WorkspaceCommand[]>>(
+    (acc, cmd) => {
+      const ns = cmd.namespace || "(root)";
+      if (!acc[ns]) {
+        acc[ns] = [];
+      }
+      acc[ns].push(cmd);
+      return acc;
+    },
+    {}
+  );
+
+  // Auto-select first command when loaded
+  useEffect(() => {
+    if (commands.length > 0 && !selectedCommand) {
+      setSelectedCommand(commands[0]);
+    }
+  }, [commands, selectedCommand]);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-muted-foreground">
+          {t("workspace.commandsDesc")}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {loading && commands.length === 0 ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : commands.length === 0 ? (
+        <Card interactive={false}>
+          <CardContent className="py-12 text-center">
+            <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-semibold mb-2">{t("workspace.noCommands")}</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              {t("workspace.noCommandsDesc")}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex gap-4 h-[500px]">
+          {/* Left sidebar - Command list grouped by namespace */}
+          <div className="w-64 border rounded-lg overflow-hidden flex flex-col">
+            <div className="p-3 border-b bg-muted/30">
+              <h3 className="text-sm font-medium">{t("workspace.commands")}</h3>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-3">
+                {Object.entries(groupedCommands).map(([namespace, cmds]) => (
+                  <div key={namespace}>
+                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      {namespace === "(root)" ? t("workspace.rootNamespace") : namespace}
+                    </div>
+                    <div className="space-y-0.5">
+                      {cmds.map((cmd) => (
+                        <button
+                          key={cmd.id}
+                          onClick={() => setSelectedCommand(cmd)}
+                          className={cn(
+                            "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
+                            "hover:bg-accent transition-colors",
+                            selectedCommand?.id === cmd.id && "bg-accent"
+                          )}
+                        >
+                          <MessageSquare className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <span className="truncate">{cmd.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+
+          {/* Right content - Command content */}
+          <div className="flex-1 border rounded-lg overflow-hidden flex flex-col">
+            {selectedCommand ? (
+              <>
+                {/* Header */}
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5 text-green-500" />
+                    <div>
+                      <h3 className="font-semibold">{selectedCommand.name}</h3>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        {selectedCommand.id}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {/* Content */}
+                <div className="flex-1 overflow-hidden">
+                  <CodeEditor
+                    value={selectedCommand.content}
+                    filename={`${selectedCommand.name}.md`}
+                    height="100%"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>{t("workspace.selectCommand")}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
