@@ -94,7 +94,7 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for OAuth callback from deep link (browsemcp://oauth?code=xxx)
+  // Listen for OAuth callback from deep link (viben://oauth?code=xxx)
   useEffect(() => {
     const unlisten = listen<string>("oauth-callback", async (event) => {
       const code = event.payload;

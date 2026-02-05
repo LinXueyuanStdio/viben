@@ -541,7 +541,7 @@ function StorageSection() {
         <div className="flex gap-2">
           <input
             type="text"
-            defaultValue="~/Downloads/browse-mcp"
+            defaultValue="~/Downloads/viben"
             className="flex-1 rounded-xl border bg-background px-3 py-2 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary"
           />
           <Button variant="outline" size="icon" className="rounded-xl">
@@ -629,7 +629,7 @@ function AboutSection() {
           </span>
         </div>
 
-        {/* Browse MCP Status */}
+        {/* Viben Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {mcpInstalled ? (
@@ -713,25 +713,25 @@ function AboutSection() {
           <LinkButton
             icon={Home}
             label={t("about.homepage")}
-            href="https://linxueyuan.online/browse-mcp/"
+            href="https://linxueyuan.online/viben/"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Github}
             label={t("about.githubRepo")}
-            href="https://github.com/LinXueyuanStdio/browse-mcp"
+            href="https://github.com/LinXueyuanStdio/viben"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Book}
             label={t("about.documentation")}
-            href="https://linxueyuan.online/browse-mcp/docs"
+            href="https://linxueyuan.online/viben/docs"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Bug}
             label={t("about.reportIssue")}
-            href="https://github.com/LinXueyuanStdio/browse-mcp/issues"
+            href="https://github.com/LinXueyuanStdio/viben/issues"
             onClick={handleExternalLink}
           />
         </div>

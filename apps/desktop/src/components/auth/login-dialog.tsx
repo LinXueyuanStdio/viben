@@ -186,7 +186,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">{t("auth.password")}</Label>
                 <a
-                  href="https://browse-mcp.vercel.app/forgot-password"
+                  href="https://viben-web.vercel.app/forgot-password"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline"
@@ -254,7 +254,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
           <p className="text-center text-sm text-muted-foreground">
             {t("auth.noAccount")}{" "}
             <a
-              href="https://browse-mcp.vercel.app/signup"
+              href="https://viben-web.vercel.app/signup"
               target="_blank"
               rel="noopener noreferrer"
               className="text-primary hover:underline"

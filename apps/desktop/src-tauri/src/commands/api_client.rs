@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use tauri::State;
 
 /// Default Platform base URL
-const DEFAULT_BASE_URL: &str = "https://browse-mcp-web.vercel.app";
+const DEFAULT_BASE_URL: &str = "https://viben-web.vercel.app";
 
 /// Managed state for API client configuration
 pub struct ApiClientState {
@@ -105,7 +105,7 @@ pub fn get_api_base_url(state: State<'_, ApiClientState>) -> String {
 /// Set the API base URL
 ///
 /// # Arguments
-/// * `url` - New base URL (e.g., "https://browse-mcp.vercel.app")
+/// * `url` - New base URL (e.g., "https://viben-web.vercel.app")
 #[tauri::command]
 pub fn set_api_base_url(url: String, state: State<'_, ApiClientState>) -> Result<(), String> {
     // Validate URL format
