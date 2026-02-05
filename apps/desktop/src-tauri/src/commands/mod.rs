@@ -10,6 +10,7 @@ pub mod marketplace;
 pub mod mcp;
 pub mod mcp_proxy;
 pub mod offline_cache;
+pub mod official_registry;
 pub mod package_install;
 pub mod python;
 pub mod service_keys;

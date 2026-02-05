@@ -77,3 +77,27 @@ export {
   useSkillFiles,
   useSkillFileContent,
 } from "./use-skill-content";
+
+// Official MCP Registry Integration
+export {
+  useOfficialRegistryServers,
+  useOfficialRegistrySearch,
+  useOfficialRegistryServer,
+  useOfficialRegistry,
+  getPackageTypeLabel,
+  getInstallCommand,
+  getServerIconUrl,
+} from "./use-official-registry";
+export type {
+  OfficialServerListDisplay,
+  UseOfficialRegistryServersOptions,
+  UseOfficialRegistryServersReturn,
+  UseOfficialRegistrySearchOptions,
+  UseOfficialRegistrySearchReturn,
+  UseOfficialRegistryServerReturn,
+  UseOfficialRegistryOptions,
+  OfficialServerDisplay,
+  OfficialServerResponse,
+  OfficialPackage,
+  OfficialPackageRegistryType,
+} from "./use-official-registry";
