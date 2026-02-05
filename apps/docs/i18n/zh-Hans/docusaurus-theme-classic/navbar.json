@@ -1,10 +1,10 @@
 {
   "title": {
-    "message": "Browse MCP",
+    "message": "Viben",
     "description": "The title in the navbar"
   },
   "logo.alt": {
-    "message": "Browse MCP Logo",
+    "message": "Viben Logo",
     "description": "The alt text of navbar logo"
   },
   "item.label.Docs": {

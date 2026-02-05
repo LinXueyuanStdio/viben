@@ -1,18 +1,18 @@
 ---
 sidebar_position: 2
 title: "安装"
-description: "如何在 macOS、Windows 和 Linux 上安装 Browse MCP 桌面应用"
+description: "如何在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
 ---
 
 # 桌面应用安装
 
-在所有支持平台上安装 Browse MCP Desktop 的详细说明。
+在所有支持平台上安装 Viben Desktop 的详细说明。
 
 ## 下载
 
-[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/browse-mcp?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop)
+[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-从 [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop) 下载最新版本。
+从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本。
 
 ## macOS
 
@@ -23,36 +23,36 @@ description: "如何在 macOS、Windows 和 Linux 上安装 Browse MCP 桌面应
 
 ### 安装步骤
 
-1. 下载 `Browse-MCP_x.x.x_universal.dmg` 文件
+1. 下载 `Viben_x.x.x_universal.dmg` 文件
 2. 双击打开磁盘映像
-3. 将 **Browse MCP** 拖到 **应用程序** 文件夹
+3. 将 **Viben** 拖到 **应用程序** 文件夹
 4. 弹出磁盘映像
 
 ### 首次启动
 
-由于 Browse MCP 未经 Apple 公证，首次启动时您可能会看到安全警告：
+由于 Viben 未经 Apple 公证，首次启动时您可能会看到安全警告：
 
 **方法 1：右键打开**
 1. 打开 **访达**，进入 **应用程序**
-2. 右键点击（或按住 Control 点击）**Browse MCP**
+2. 右键点击（或按住 Control 点击）**Viben**
 3. 从菜单中选择 **打开**
 4. 在对话框中点击 **打开**
 
 **方法 2：系统偏好设置**
 1. 前往 **系统偏好设置** > **安全性与隐私** > **通用**
-2. 在 Browse MCP 警告旁边点击 **仍要打开**
+2. 在 Viben 警告旁边点击 **仍要打开**
 
 ### 故障排除
 
-**"Browse MCP 已损坏，无法打开"**
+**"Viben 已损坏，无法打开"**
 
 这发生在 macOS 隔离应用时。移除隔离标记：
 
 ```bash
-xattr -cr /Applications/Browse\ MCP.app
+xattr -cr /Applications/Viben.app
 ```
 
-**"无法打开 Browse MCP，因为无法验证开发者"**
+**"无法打开 Viben，因为无法验证开发者"**
 
 这对于未签名的应用是正常的。使用上述方法之一绕过 Gatekeeper。
 
@@ -69,21 +69,21 @@ xattr -cr /Applications/Browse\ MCP.app
 
 **使用 MSI 安装程序（推荐）：**
 
-1. 下载 `Browse-MCP_x.x.x_x64_en-US.msi`
+1. 下载 `Viben_x.x.x_x64_en-US.msi`
 2. 双击运行安装程序
 3. 按照安装向导操作
 4. 完成后点击 **完成**
 
 **使用 EXE 安装程序：**
 
-1. 下载 `Browse-MCP_x.x.x_x64-setup.exe`
+1. 下载 `Viben_x.x.x_x64-setup.exe`
 2. 双击运行
 3. 按照提示操作
 
 ### 首次启动
 
-从以下位置启动 Browse MCP：
-- 开始菜单 > Browse MCP
+从以下位置启动 Viben：
+- 开始菜单 > Viben
 - 桌面快捷方式（如果在安装时创建）
 
 ### 故障排除
@@ -116,13 +116,13 @@ AppImage 无需安装即可在大多数 Linux 发行版上运行：
 
 ```bash
 # 下载 AppImage
-wget https://github.com/LinXueyuanStdio/browse-mcp/releases/latest/download/Browse-MCP_x.x.x_amd64.AppImage
+wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.AppImage
 
 # 添加可执行权限
-chmod +x Browse-MCP_*.AppImage
+chmod +x Viben_*.AppImage
 
 # 运行
-./Browse-MCP_*.AppImage
+./Viben_*.AppImage
 ```
 
 :::tip
@@ -135,10 +135,10 @@ chmod +x Browse-MCP_*.AppImage
 
 ```bash
 # 下载 .deb 包
-wget https://github.com/LinXueyuanStdio/browse-mcp/releases/latest/download/Browse-MCP_x.x.x_amd64.deb
+wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.deb
 
 # 安装
-sudo dpkg -i Browse-MCP_*_amd64.deb
+sudo dpkg -i Viben_*_amd64.deb
 
 # 修复可能缺失的依赖
 sudo apt-get install -f
@@ -187,14 +187,14 @@ sudo pacman -S webkit2gtk-4.1 libappindicator-gtk3
 cd ~/Downloads
 
 # 验证校验和
-sha256sum -c checksums.txt 2>/dev/null | grep -E "Browse-MCP.*OK"
+sha256sum -c checksums.txt 2>/dev/null | grep -E "Viben.*OK"
 ```
 
 ### 在 Windows 上验证（PowerShell）
 
 ```powershell
 # 获取下载文件的哈希值
-$hash = (Get-FileHash "Browse-MCP_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
+$hash = (Get-FileHash "Viben_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
 
 # 与 checksums.txt 比较
 Get-Content checksums.txt | Select-String $hash
@@ -204,9 +204,9 @@ Get-Content checksums.txt | Select-String $hash
 
 ## 更新
 
-Browse MCP 目前不支持自动更新。要更新：
+Viben 目前不支持自动更新。要更新：
 
-1. 从 [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop) 下载最新版本
+1. 从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本
 2. 覆盖现有版本安装（您的设置将被保留）
 
 :::info
@@ -220,19 +220,19 @@ Browse MCP 目前不支持自动更新。要更新：
 ### macOS
 
 1. 打开 **访达** > **应用程序**
-2. 将 **Browse MCP** 拖到废纸篓
+2. 将 **Viben** 拖到废纸篓
 3. 清空废纸篓
 
 要删除所有数据：
 ```bash
-rm -rf ~/Library/Application\ Support/com.browsemcp.app
-rm -rf ~/Library/Caches/com.browsemcp.app
+rm -rf ~/Library/Application\ Support/com.viben.app
+rm -rf ~/Library/Caches/com.viben.app
 ```
 
 ### Windows
 
 1. 打开 **设置** > **应用** > **已安装的应用**
-2. 找到 **Browse MCP**
+2. 找到 **Viben**
 3. 点击 **卸载**
 
 或使用控制面板 > 程序和功能。
@@ -248,6 +248,6 @@ sudo apt-get remove browse-mcp-desktop
 
 要删除配置：
 ```bash
-rm -rf ~/.config/browse-mcp
-rm -rf ~/.local/share/browse-mcp
+rm -rf ~/.config/viben
+rm -rf ~/.local/share/viben
 ```

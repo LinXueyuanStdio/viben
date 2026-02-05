@@ -1,14 +1,14 @@
 ---
 sidebar_position: 2
 title: "快速开始"
-description: "2 分钟内快速上手 Browse MCP"
+description: "2 分钟内快速上手 Viben"
 ---
 
 # 快速开始
 
-2 分钟内让 Browse MCP 与 Claude Desktop 协同工作。
+2 分钟内让 Viben 与 Claude Desktop 协同工作。
 
-## 步骤 1：安装 Browse MCP
+## 步骤 1：安装 Viben
 
 ```bash
 pip install browse-mcp
@@ -88,7 +88,7 @@ URL: https://arxiv.org/abs/2303.08774
 当您要求 Claude 搜索论文时：
 
 1. Claude 识别意图并调用 `browse_search` 工具
-2. Browse MCP 查询指定的学术数据库
+2. Viben 查询指定的学术数据库
 3. 结果以标准化格式返回
 4. Claude 将信息呈现给您
 

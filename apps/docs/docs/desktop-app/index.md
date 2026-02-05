@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "Desktop App"
-description: "Browse MCP Desktop App - A native application for academic paper search"
+description: "Viben Desktop App - A native application for content search"
 ---
 
 # Desktop App
 
-Browse MCP Desktop is a native application that brings the power of academic paper search directly to your desktop. Built with Tauri, it provides a fast, lightweight, and secure experience across macOS, Windows, and Linux.
+Viben Desktop is a native application that brings the power of content search directly to your desktop. Built with Tauri, it provides a fast, lightweight, and secure experience across macOS, Windows, and Linux.
 
 ## Features
 
@@ -18,9 +18,9 @@ Browse MCP Desktop is a native application that brings the power of academic pap
 
 ## Download
 
-[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/browse-mcp?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop)
+[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-Download from [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop).
+Download from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop).
 
 | Platform | File | Size |
 |----------|------|------|
@@ -48,12 +48,12 @@ Download from [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/re
 
 1. **Download** the installer for your platform
 2. **Install** following [platform-specific instructions](/docs/desktop-app/installation)
-3. **Launch** Browse MCP from your applications
+3. **Launch** Viben from your applications
 4. **Search** for papers using the search bar
 
 ## Architecture
 
-Browse MCP Desktop is built with modern technologies:
+Viben Desktop is built with modern technologies:
 
 - **Frontend**: React 19 + TypeScript + Tailwind CSS
 - **Backend**: Rust + Tauri v2

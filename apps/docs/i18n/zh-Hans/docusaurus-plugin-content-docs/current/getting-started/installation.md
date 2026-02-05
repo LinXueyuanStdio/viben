@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 title: "安装"
-description: "使用 pip、uv 或从源码安装 Browse MCP 和插件"
+description: "使用 pip、uv 或从源码安装 Viben 和插件"
 ---
 
 # 安装
 
-Browse MCP 可以使用 `pip`、`uv` 或从源码安装进行开发。本指南涵盖所有安装方法，包括插件安装。
+Viben 可以使用 `pip`、`uv` 或从源码安装进行开发。本指南涵盖所有安装方法，包括插件安装。
 
 ## 先决条件
 
-- **Python 3.10 或更高版本** - Browse MCP 需要 Python 3.10+
+- **Python 3.10 或更高版本** - Viben 需要 Python 3.10+
 - **pip 或 uv** - 用于安装的包管理器
 
 检查您的 Python 版本：
@@ -23,7 +23,7 @@ python --version
 
 ### 使用 pip（推荐）
 
-安装 Browse MCP 最简单的方法：
+安装 Viben 最简单的方法：
 
 ```bash
 pip install browse-mcp
@@ -50,8 +50,8 @@ uv add browse-mcp
 1. **克隆仓库**：
 
 ```bash
-git clone https://github.com/LinXueyuanStdio/browse-mcp.git
-cd browse-mcp
+git clone https://github.com/LinXueyuanStdio/viben.git
+cd viben
 ```
 
 2. **创建并激活虚拟环境**：
@@ -84,7 +84,7 @@ pip install pytest flake8
 
 ## 安装插件
 
-插件使用额外的内容来源扩展 Browse MCP。将它们与核心包一起安装。
+插件使用额外的内容来源扩展 Viben。将它们与核心包一起安装。
 
 ### 社交媒体插件
 
@@ -121,7 +121,7 @@ INFO     Successfully loaded 15 searcher plugins: arxiv, github, twitter...
 
 ## 验证安装
 
-安装后，验证 Browse MCP 是否正确安装：
+安装后，验证 Viben 是否正确安装：
 
 ```bash
 browse-mcp --help
