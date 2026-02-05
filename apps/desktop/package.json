@@ -13,6 +13,7 @@
   "dependencies": {
     "@browse-mcp/api-client": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.25.3",
+    "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",

@@ -817,6 +817,7 @@
     "selectFileToView": "Select a file from the tree to view its contents",
     "copyPath": "Copy path",
     "pathCopied": "Path copied!",
+    "openInEditor": "Open in Editor",
     "sections": {
       "home": "Home",
       "mcp": "MCP",
