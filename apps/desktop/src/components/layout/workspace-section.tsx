@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SidebarSection } from "./sidebar-section";
+import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useTranslation } from "react-i18next";
 import type { Workspace } from "@/types";
@@ -75,61 +76,32 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
   );
 
   if (collapsed) {
-    // In collapsed mode, show workspace icons that link to workspace detail pages
+    // In collapsed mode, use unified SidebarIconButton component
+    // Each item wrapped in centering container (same pattern as McpStatusIndicator)
     return (
-      <div className="space-y-1">
+      <>
         {workspaces.length > 0 ? (
           workspaces.slice(0, 3).map((ws) => (
-            <Tooltip key={ws.id}>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to={`/workspace/${ws.id}`}
-                  onClick={() => selectWorkspace(ws.id)}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center justify-center rounded-lg p-2",
-                      "transition-all duration-200",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )
-                  }
-                >
-                  {ws.type === "global" ? (
-                    <Globe className="h-4 w-4" />
-                  ) : (
-                    <Folder className="h-4 w-4" />
-                  )}
-                </NavLink>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {ws.name}
-              </TooltipContent>
-            </Tooltip>
+            <div key={ws.id} className="grid place-items-center w-full">
+              <SidebarIconButton
+                href={`/workspace/${ws.id}`}
+                onClick={() => selectWorkspace(ws.id)}
+                icon={ws.type === "global" ? <Globe className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
+                tooltip={ws.name}
+              />
+            </div>
           ))
         ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="w-full"
-                onClick={handleAddWorkspace}
-                disabled={isAdding}
-              >
-                {isAdding ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <FolderOpen className="h-4 w-4" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {t("workspace.addWorkspace")}
-            </TooltipContent>
-          </Tooltip>
+          <div className="grid place-items-center w-full">
+            <SidebarIconButton
+              onClick={handleAddWorkspace}
+              disabled={isAdding}
+              icon={isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+              tooltip={t("workspace.addWorkspace")}
+            />
+          </div>
         )}
-      </div>
+      </>
     );
   }
 

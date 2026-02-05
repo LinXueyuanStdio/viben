@@ -1,6 +1,7 @@
 export { AppLayout } from "./app-layout";
 export { Sidebar } from "./sidebar";
 export { SidebarSection } from "./sidebar-section";
+export { SidebarIconButton } from "./sidebar-icon-button";
 export { WorkspaceSection } from "./workspace-section";
 export { McpServicesLayout } from "./mcp-services-layout";
 export {
