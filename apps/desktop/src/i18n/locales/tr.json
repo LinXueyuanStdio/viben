@@ -141,7 +141,7 @@
     "downloadPath": "İndirme Yolu"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "Sürüm {{version}}",
     "updateAvailable": "Güncelleme Mevcut",
     "versionReady": "Sürüm {{version}} yüklenmeye hazır",

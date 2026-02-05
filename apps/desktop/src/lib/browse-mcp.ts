@@ -21,7 +21,7 @@ import { mkdir, writeFile, exists } from '@tauri-apps/plugin-fs';
 /**
  * Default platform URL
  */
-const PLATFORM_URL = 'https://browse-mcp.vercel.app';
+const PLATFORM_URL = 'https://viben-web.vercel.app';
 
 /**
  * Singleton client instance

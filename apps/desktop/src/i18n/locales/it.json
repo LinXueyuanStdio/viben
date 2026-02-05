@@ -141,7 +141,7 @@
     "downloadPath": "Percorso download"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "Versione {{version}}",
     "updateAvailable": "Aggiornamento disponibile",
     "versionReady": "La versione {{version}} è pronta per l'installazione",

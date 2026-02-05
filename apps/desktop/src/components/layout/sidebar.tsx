@@ -105,7 +105,7 @@ export function Sidebar() {
                   <Search className="h-4 w-4" />
                 </div>
                 <span className="font-serif font-semibold text-sidebar-foreground tracking-tight">
-                  Browse MCP
+                  Viben
                 </span>
               </div>
               <Tooltip>

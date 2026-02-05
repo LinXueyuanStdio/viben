@@ -72,7 +72,7 @@ export async function getApiBaseUrl(): Promise<string> {
 /**
  * Set the API base URL
  *
- * @param url - New base URL (e.g., "https://browse-mcp.vercel.app")
+ * @param url - New base URL (e.g., "https://viben-web.vercel.app")
  * @throws Error if URL format is invalid
  */
 export async function setApiBaseUrl(url: string): Promise<void> {

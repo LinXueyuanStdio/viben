@@ -89,7 +89,7 @@ export function AboutPage() {
             </span>
           </div>
 
-          {/* Browse MCP Status */}
+          {/* Viben Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {mcpInstalled ? (
@@ -172,25 +172,25 @@ export function AboutPage() {
           <LinkButton
             icon={Home}
             label={t("about.homepage")}
-            href="https://linxueyuan.online/browse-mcp/"
+            href="https://linxueyuan.online/viben/"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Github}
             label={t("about.githubRepo")}
-            href="https://github.com/LinXueyuanStdio/browse-mcp"
+            href="https://github.com/LinXueyuanStdio/viben"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Book}
             label={t("about.documentation")}
-            href="https://linxueyuan.online/browse-mcp/docs"
+            href="https://linxueyuan.online/viben/docs"
             onClick={handleExternalLink}
           />
           <LinkButton
             icon={Bug}
             label={t("about.reportIssue")}
-            href="https://github.com/LinXueyuanStdio/browse-mcp/issues"
+            href="https://github.com/LinXueyuanStdio/viben/issues"
             onClick={handleExternalLink}
           />
         </div>

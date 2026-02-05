@@ -141,7 +141,7 @@
     "downloadPath": "ダウンロードパス"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "バージョン {{version}}",
     "updateAvailable": "アップデートがあります",
     "versionReady": "バージョン {{version}}がインストール可能です",

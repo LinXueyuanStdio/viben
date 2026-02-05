@@ -61,7 +61,7 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
 
   const handleProfileClick = () => {
     // Open profile page in browser (web platform)
-    window.open("https://browse-mcp.vercel.app/profile", "_blank");
+    window.open("https://viben-web.vercel.app/profile", "_blank");
   };
 
   const handleSettingsClick = () => {
