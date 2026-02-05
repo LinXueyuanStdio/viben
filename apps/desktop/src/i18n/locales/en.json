@@ -860,7 +860,18 @@
       "mcp": "MCP",
       "skills": "Skills",
       "preferences": "Preferences"
-    }
+    },
+    "agentConfigs": "Agents",
+    "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
+    "noAgentConfigs": "No Agent Configs",
+    "noAgentConfigsDesc": "No agent configuration files found in .claude/agents/ folder.",
+    "selectAgentConfig": "Select an agent config to view",
+    "commands": "Commands",
+    "commandsDesc": "Slash command files (.claude/commands/**/*.md)",
+    "noCommands": "No Commands",
+    "noCommandsDesc": "No command files found in .claude/commands/ folder.",
+    "selectCommand": "Select a command to view",
+    "rootNamespace": "Root"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",

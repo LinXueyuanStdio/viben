@@ -79,6 +79,12 @@ export {
   useSkillFileWriter,
 } from "./use-skill-content";
 export type { SaveStatus } from "./use-skill-content";
+export {
+  useWorkspaceAgentConfigs,
+  useAgentConfigContent,
+  useWorkspaceCommands,
+  useCommandContent,
+} from "./use-agent-configs";
 
 // Official MCP Registry Integration
 export {

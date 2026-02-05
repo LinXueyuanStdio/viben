@@ -332,5 +332,25 @@ export interface SkillFileEntry {
   children?: SkillFileEntry[];
 }
 
+/** Agent config file (.claude/agents/*.md) */
+export interface WorkspaceAgentConfig {
+  id: string;              // filename without extension
+  name: string;            // from frontmatter
+  description: string;     // from frontmatter
+  tools: string[];         // parsed from comma-separated
+  model: string;           // from frontmatter
+  path: string;            // full file path
+  content: string;         // markdown content after frontmatter
+}
+
+/** Command file (.claude/commands/ folder) */
+export interface WorkspaceCommand {
+  id: string;              // namespace/command format
+  namespace: string;       // folder name (e.g., "trellis")
+  name: string;            // filename without extension
+  path: string;            // full file path
+  content: string;         // full markdown content
+}
+
 // Re-export official registry types
 export * from "./official-registry";
