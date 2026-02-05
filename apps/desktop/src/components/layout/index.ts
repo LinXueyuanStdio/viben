@@ -2,6 +2,7 @@ export { AppLayout } from "./app-layout";
 export { Sidebar } from "./sidebar";
 export { SidebarSection } from "./sidebar-section";
 export { WorkspaceSection } from "./workspace-section";
+export { McpServicesLayout } from "./mcp-services-layout";
 export {
   PageWrapper,
   StaggerContainer,

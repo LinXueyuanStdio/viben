@@ -20,8 +20,12 @@ import {
   MessageSquare,
   FileCode,
   ChevronRight,
+  ChevronLeft,
   Wrench,
   Cpu,
+  FileJson,
+  FormInput,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -506,47 +510,190 @@ interface AddMcpServerDialogProps {
   onAdd: (server: WorkspaceMcpServer) => Promise<void>;
 }
 
+type AddMethod = "form" | "json";
+type FormType = "command" | "url";
+type Step = "method" | "config" | "preview";
+
 function AddMcpServerDialog({
   open,
   onOpenChange,
   onAdd,
 }: AddMcpServerDialogProps) {
   const { t } = useTranslation();
+
+  // Step management
+  const [step, setStep] = useState<Step>("method");
+  const [addMethod, setAddMethod] = useState<AddMethod>("form");
+
+  // Form-based state
   const [name, setName] = useState("");
   const [command, setCommand] = useState("");
   const [args, setArgs] = useState("");
   const [url, setUrl] = useState("");
-  const [isUrlBased, setIsUrlBased] = useState(false);
+  const [formType, setFormType] = useState<FormType>("command");
+
+  // JSON-based state
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
+
+  // Parsed server for preview
+  const [parsedServer, setParsedServer] = useState<WorkspaceMcpServer | null>(null);
+
   const [isAdding, setIsAdding] = useState(false);
 
-  const handleAdd = async () => {
-    if (!name.trim()) return;
-
-    setIsAdding(true);
-    try {
-      const server: WorkspaceMcpServer = {
-        name: name.trim(),
-        ...(isUrlBased
-          ? { url: url.trim(), transport: "sse" }
-          : {
-              command: command.trim(),
-              args: args
-                .split(" ")
-                .map((a) => a.trim())
-                .filter(Boolean),
-            }),
-      };
-      await onAdd(server);
-      onOpenChange(false);
-      // Reset form
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setStep("method");
+      setAddMethod("form");
       setName("");
       setCommand("");
       setArgs("");
       setUrl("");
+      setFormType("command");
+      setJsonInput("");
+      setJsonError(null);
+      setParsedServer(null);
+    }
+  }, [open]);
+
+  // Build server from form inputs
+  const buildServerFromForm = (): WorkspaceMcpServer | null => {
+    if (!name.trim()) return null;
+
+    if (formType === "url") {
+      if (!url.trim()) return null;
+      return {
+        name: name.trim(),
+        url: url.trim(),
+        transport: "sse",
+      };
+    } else {
+      if (!command.trim()) return null;
+      return {
+        name: name.trim(),
+        command: command.trim(),
+        args: args
+          .split(" ")
+          .map((a) => a.trim())
+          .filter(Boolean),
+      };
+    }
+  };
+
+  // Parse JSON input
+  const parseJsonInput = (): { server: WorkspaceMcpServer | null; error: string | null } => {
+    if (!jsonInput.trim()) {
+      return { server: null, error: t("workspace.jsonRequired") };
+    }
+
+    try {
+      const parsed = JSON.parse(jsonInput);
+
+      // Validate required fields
+      if (!parsed.name || typeof parsed.name !== "string") {
+        return { server: null, error: t("workspace.jsonNameRequired") };
+      }
+
+      // Must have either command or url
+      if (!parsed.command && !parsed.url) {
+        return { server: null, error: t("workspace.jsonCommandOrUrlRequired") };
+      }
+
+      // Build server object
+      const server: WorkspaceMcpServer = {
+        name: parsed.name,
+      };
+
+      if (parsed.command) {
+        server.command = parsed.command;
+        if (parsed.args) {
+          server.args = Array.isArray(parsed.args) ? parsed.args : [parsed.args];
+        }
+        if (parsed.env && typeof parsed.env === "object") {
+          server.env = parsed.env;
+        }
+      }
+
+      if (parsed.url) {
+        server.url = parsed.url;
+        server.transport = parsed.transport || "sse";
+        if (parsed.headers && typeof parsed.headers === "object") {
+          server.headers = parsed.headers;
+        }
+      }
+
+      if (parsed.disabled !== undefined) {
+        server.disabled = parsed.disabled;
+      }
+
+      return { server, error: null };
+    } catch (e) {
+      return { server: null, error: t("workspace.jsonParseError") };
+    }
+  };
+
+  // Handle next step
+  const handleNext = () => {
+    if (step === "method") {
+      setStep("config");
+    } else if (step === "config") {
+      let server: WorkspaceMcpServer | null = null;
+
+      if (addMethod === "form") {
+        server = buildServerFromForm();
+        if (!server) return;
+      } else {
+        const { server: parsedSrv, error } = parseJsonInput();
+        if (error) {
+          setJsonError(error);
+          return;
+        }
+        server = parsedSrv;
+      }
+
+      setParsedServer(server);
+      setStep("preview");
+    }
+  };
+
+  // Handle back
+  const handleBack = () => {
+    if (step === "config") {
+      setStep("method");
+    } else if (step === "preview") {
+      setStep("config");
+    }
+  };
+
+  // Handle add
+  const handleAdd = async () => {
+    if (!parsedServer) return;
+
+    setIsAdding(true);
+    try {
+      await onAdd(parsedServer);
+      onOpenChange(false);
     } finally {
       setIsAdding(false);
     }
   };
+
+  // Check if can proceed to next step
+  const canProceed = () => {
+    if (step === "method") return true;
+    if (step === "config") {
+      if (addMethod === "form") {
+        return buildServerFromForm() !== null;
+      } else {
+        return jsonInput.trim().length > 0;
+      }
+    }
+    return false;
+  };
+
+  // Get step number for progress indicator
+  const stepNumber = step === "method" ? 1 : step === "config" ? 2 : 3;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -556,7 +703,7 @@ function AddMcpServerDialog({
           {t("workspace.addMcpServer")}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{t("workspace.addMcpServer")}</DialogTitle>
           <DialogDescription>
@@ -564,82 +711,257 @@ function AddMcpServerDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              {t("workspace.serverName")}
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="my-server"
-            />
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Button
-              variant={!isUrlBased ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsUrlBased(false)}
+        {/* Progress indicator */}
+        <div className="flex items-center justify-center gap-2 py-2">
+          {[1, 2, 3].map((n) => (
+            <div
+              key={n}
+              className={`flex items-center ${n < 3 ? "flex-1" : ""}`}
             >
-              <Terminal className="h-4 w-4 mr-2" />
-              {t("workspace.commandBased")}
-            </Button>
-            <Button
-              variant={isUrlBased ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsUrlBased(true)}
-            >
-              <Globe className="h-4 w-4 mr-2" />
-              {t("workspace.urlBased")}
-            </Button>
-          </div>
-
-          {isUrlBased ? (
-            <div>
-              <label className="text-sm font-medium mb-2 block">
-                {t("workspace.serverUrl")}
-              </label>
-              <Input
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="http://localhost:3000/sse"
-              />
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
+                  n <= stepNumber
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {n}
+              </div>
+              {n < 3 && (
+                <div
+                  className={`flex-1 h-0.5 mx-2 transition-colors ${
+                    n < stepNumber ? "bg-primary" : "bg-muted"
+                  }`}
+                />
+              )}
             </div>
-          ) : (
-            <>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  {t("workspace.command")}
-                </label>
-                <Input
-                  value={command}
-                  onChange={(e) => setCommand(e.target.value)}
-                  placeholder="npx"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-2 block">
-                  {t("workspace.arguments")}
-                </label>
-                <Input
-                  value={args}
-                  onChange={(e) => setArgs(e.target.value)}
-                  placeholder="-y @modelcontextprotocol/server-filesystem /path"
-                />
-              </div>
-            </>
-          )}
+          ))}
         </div>
 
-        <DialogFooter>
+        {/* Step 1: Choose method */}
+        {step === "method" && (
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              {t("workspace.chooseAddMethod")}
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setAddMethod("form")}
+                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                  addMethod === "form"
+                    ? "border-primary bg-primary/5"
+                    : "border-muted hover:border-muted-foreground/50"
+                }`}
+              >
+                <FormInput className="h-8 w-8 mb-2 text-primary" />
+                <h4 className="font-medium">{t("workspace.formMethod")}</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("workspace.formMethodDesc")}
+                </p>
+              </button>
+              <button
+                onClick={() => setAddMethod("json")}
+                className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                  addMethod === "json"
+                    ? "border-primary bg-primary/5"
+                    : "border-muted hover:border-muted-foreground/50"
+                }`}
+              >
+                <FileJson className="h-8 w-8 mb-2 text-primary" />
+                <h4 className="font-medium">{t("workspace.jsonMethod")}</h4>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("workspace.jsonMethodDesc")}
+                </p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Configuration */}
+        {step === "config" && addMethod === "form" && (
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                {t("workspace.serverName")}
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="my-server"
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Button
+                variant={formType === "command" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFormType("command")}
+              >
+                <Terminal className="h-4 w-4 mr-2" />
+                {t("workspace.commandBased")}
+              </Button>
+              <Button
+                variant={formType === "url" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFormType("url")}
+              >
+                <Globe className="h-4 w-4 mr-2" />
+                {t("workspace.urlBased")}
+              </Button>
+            </div>
+
+            {formType === "url" ? (
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  {t("workspace.serverUrl")}
+                </label>
+                <Input
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="http://localhost:3000/sse"
+                />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {t("workspace.command")}
+                  </label>
+                  <Input
+                    value={command}
+                    onChange={(e) => setCommand(e.target.value)}
+                    placeholder="npx"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">
+                    {t("workspace.arguments")}
+                  </label>
+                  <Input
+                    value={args}
+                    onChange={(e) => setArgs(e.target.value)}
+                    placeholder="-y @modelcontextprotocol/server-filesystem /path"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {step === "config" && addMethod === "json" && (
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                {t("workspace.jsonConfig")}
+              </label>
+              <textarea
+                value={jsonInput}
+                onChange={(e) => {
+                  setJsonInput(e.target.value);
+                  setJsonError(null);
+                }}
+                className="w-full h-48 p-3 rounded-md border bg-muted/50 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                placeholder={`{
+  "name": "my-server",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path"]
+}`}
+              />
+              {jsonError && (
+                <div className="flex items-center gap-2 mt-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {jsonError}
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>{t("workspace.jsonHint")}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Preview */}
+        {step === "preview" && parsedServer && (
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              {t("workspace.previewConfirm")}
+            </p>
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <h4 className="font-medium mb-3">{parsedServer.name}</h4>
+              <div className="space-y-2 text-sm">
+                {parsedServer.command && (
+                  <div>
+                    <span className="text-muted-foreground">{t("workspace.command")}:</span>{" "}
+                    <code className="bg-muted px-1.5 py-0.5 rounded">
+                      {parsedServer.command}
+                    </code>
+                  </div>
+                )}
+                {parsedServer.args && parsedServer.args.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">{t("workspace.arguments")}:</span>{" "}
+                    <code className="bg-muted px-1.5 py-0.5 rounded">
+                      {parsedServer.args.join(" ")}
+                    </code>
+                  </div>
+                )}
+                {parsedServer.url && (
+                  <div>
+                    <span className="text-muted-foreground">URL:</span>{" "}
+                    <code className="bg-muted px-1.5 py-0.5 rounded">
+                      {parsedServer.url}
+                    </code>
+                  </div>
+                )}
+                {parsedServer.transport && (
+                  <div>
+                    <span className="text-muted-foreground">Transport:</span>{" "}
+                    <code className="bg-muted px-1.5 py-0.5 rounded">
+                      {parsedServer.transport}
+                    </code>
+                  </div>
+                )}
+                {parsedServer.env && Object.keys(parsedServer.env).length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">{t("workspace.envVars")}:</span>
+                    <div className="mt-1 space-y-1">
+                      {Object.entries(parsedServer.env).map(([key, value]) => (
+                        <div key={key} className="pl-4">
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-xs">
+                            {key}={value}
+                          </code>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="gap-2">
+          {step !== "method" && (
+            <Button variant="outline" onClick={handleBack}>
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              {t("common.previous")}
+            </Button>
+          )}
+          <div className="flex-1" />
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={handleAdd} disabled={!name.trim() || isAdding}>
-            {isAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t("common.add")}
-          </Button>
+          {step !== "preview" ? (
+            <Button onClick={handleNext} disabled={!canProceed()}>
+              {t("common.next")}
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          ) : (
+            <Button onClick={handleAdd} disabled={isAdding}>
+              {isAdding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {t("common.add")}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
