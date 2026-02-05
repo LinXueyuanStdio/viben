@@ -6,6 +6,7 @@ use commands::logs::LogsState;
 use commands::mcp::McpProcessState;
 use commands::mcp_proxy::McpProxyState;
 use commands::offline_cache::OfflineCacheState;
+use commands::official_registry::OfficialRegistryState;
 use commands::package_install::InstalledPackagesState;
 use commands::usage::UsageState;
 use commands::workspace_sync::WorkspaceSyncState;
@@ -139,6 +140,7 @@ pub fn run() {
         .manage(OfflineCacheState::default())
         .manage(InstalledPackagesState::default())
         .manage(WorkspaceSyncState::default())
+        .manage(OfficialRegistryState::default())
         .invoke_handler(tauri::generate_handler![
             // API Client commands
             commands::api_client::api_request,
@@ -296,6 +298,12 @@ pub fn run() {
             // Store sync commands
             commands::store_sync::read_mcp_servers_file,
             commands::store_sync::write_mcp_servers_file,
+            // Official registry commands
+            commands::official_registry::list_official_servers,
+            commands::official_registry::get_official_server,
+            commands::official_registry::get_official_server_versions,
+            commands::official_registry::clear_official_registry_cache,
+            commands::official_registry::invalidate_official_server_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
