@@ -134,7 +134,7 @@ export function WorkspaceDetailPage() {
             {t("workspace.notFoundDesc")}
           </p>
           <Button asChild>
-            <Link to="/">
+            <Link to="/mcp-services/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("workspace.backToDashboard")}
             </Link>
@@ -164,7 +164,7 @@ export function WorkspaceDetailPage() {
     setIsDeleting(true);
     try {
       await removeWorkspace(workspaceId);
-      navigate("/");
+      navigate("/mcp-services/dashboard");
     } catch {
       // Error handled in hook
     } finally {
@@ -180,7 +180,7 @@ export function WorkspaceDetailPage() {
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
-              <Link to="/">
+              <Link to="/mcp-services/dashboard">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>

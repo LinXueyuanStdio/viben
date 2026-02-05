@@ -56,7 +56,7 @@ export function UserMenu({ collapsed = false, className }: UserMenuProps) {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    navigate("/mcp-services/dashboard");
   };
 
   const handleProfileClick = () => {
