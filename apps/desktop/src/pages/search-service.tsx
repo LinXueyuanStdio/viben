@@ -73,7 +73,7 @@ export function SearchServicePage() {
       name: `Server ${mcpServers.length + 1}`,
       transport: "sse", // Default to SSE (no more stdio)
       port: 3000 + mcpServers.length, // Auto-increment port
-      downloadPath: "~/Downloads/browse-mcp",
+      downloadPath: "~/Downloads/viben",
       enabledSources: availableSources.slice(0, 5),
     });
     setExpandedServer(id);

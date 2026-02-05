@@ -166,7 +166,7 @@ jobs:
 
             ### Changes
 
-            See [CHANGELOG](https://github.com/LinXueyuanStdio/browse-mcp/blob/main/CHANGELOG.md) for details.
+            See [CHANGELOG](https://github.com/LinXueyuanStdio/viben/blob/main/CHANGELOG.md) for details.
           releaseDraft: ${{ needs.prepare.outputs.is_draft == 'true' }}
           prerelease: false
           args: ${{ matrix.args }}
@@ -196,7 +196,7 @@ jobs:
           # Get the release ID for the draft release
           RELEASE_ID=$(gh api repos/${{ github.repository }}/releases | \
             jq -r --arg tag "$TAG_NAME" '.[] | select(.tag_name == $tag and .draft == true) | .id')
-          
+
           if [ -n "$RELEASE_ID" ]; then
             echo "Publishing draft release ID: $RELEASE_ID"
             gh api -X PATCH repos/${{ github.repository }}/releases/$RELEASE_ID \

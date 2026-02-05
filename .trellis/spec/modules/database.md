@@ -158,13 +158,13 @@ userId: text('user_id')
 
 ```bash
 # Generate migration
-pnpm --filter @browse-mcp/web db:generate
+pnpm --filter @viben/web db:generate
 
 # Push to database (dev)
-pnpm --filter @browse-mcp/web db:push
+pnpm --filter @viben/web db:push
 
 # Open Drizzle Studio
-pnpm --filter @browse-mcp/web db:studio
+pnpm --filter @viben/web db:studio
 ```
 
 ---

@@ -1,6 +1,6 @@
 # Desktop Application Platform Integration - Task DAG
 
-> Task Directed Acyclic Graph for integrating the Desktop app with the Browse MCP Platform (v3.0).
+> Task Directed Acyclic Graph for integrating the Desktop app with the Viben Platform (v3.0).
 
 ---
 
@@ -208,7 +208,7 @@ pub struct ApiClientState {
 impl Default for ApiClientState {
     fn default() -> Self {
         Self {
-            base_url: Mutex::new("https://browse-mcp.vercel.app".to_string()),
+            base_url: Mutex::new("https://viben.vercel.app".to_string()),
         }
     }
 }
@@ -377,7 +377,7 @@ pub async fn login_with_credentials(
 
 #[tauri::command]
 pub fn login_with_github(app: AppHandle) -> Result<String, String> {
-    let oauth_url = "https://browse-mcp.vercel.app/api/auth/github";
+    let oauth_url = "https://viben.vercel.app/api/auth/github";
     // Open OAuth URL in default browser
     tauri_plugin_opener::open_url(&app, oauth_url, None::<&str>)
         .map_err(|e| e.to_string())?;

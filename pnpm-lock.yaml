@@ -17,9 +17,6 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@browse-mcp/api-client':
-        specifier: workspace:*
-        version: link:../../packages/api-client
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.3
         version: 1.25.3(hono@4.11.7)(zod@4.3.6)
@@ -56,6 +53,9 @@ importers:
       '@tauri-apps/plugin-shell':
         specifier: ^2.3.4
         version: 2.3.4
+      '@viben/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

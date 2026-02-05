@@ -1,11 +1,11 @@
 /**
- * Temporary type declarations for @browse-mcp/api-client
+ * Temporary type declarations for @viben/api-client
  *
- * This module will be provided by the Browse MCP platform SDK when it's ready.
+ * This module will be provided by the Viben platform SDK when it's ready.
  * For now, we declare the types needed by the desktop app.
  */
 
-declare module "@browse-mcp/api-client" {
+declare module "@viben/api-client" {
   export interface McpPackage {
     id: string;
     name: string;
@@ -93,7 +93,7 @@ declare module "@browse-mcp/api-client" {
     configs: PackageConfig[];
   }
 
-  export class BrowseMcpClient {
+  export class VibenClient {
     constructor(config: { baseUrl: string; apiKey?: string; timeout?: number });
 
     setApiKey(apiKey: string | undefined): void;

@@ -1,7 +1,7 @@
 /**
- * Browse MCP API Client
+ * Viben API Client
  *
- * A client library for interacting with the Browse MCP platform API.
+ * A client library for interacting with the Viben platform API.
  * Works in both browser and Node.js environments.
  */
 
@@ -30,8 +30,8 @@ import type {
 /**
  * Configuration options for the API client
  */
-export interface BrowseMcpClientConfig {
-  /** Base URL of the API (e.g., "https://browse-mcp.vercel.app") */
+export interface VibenClientConfig {
+  /** Base URL of the API (e.g., "https://viben-web.vercel.app") */
   baseUrl: string;
   /** API key for authentication (optional for public endpoints) */
   apiKey?: string;
@@ -76,13 +76,13 @@ function buildQuery(params?: ListParams | SkillListParams): string {
 }
 
 /**
- * Browse MCP API Client
+ * Viben API Client
  *
  * @example
  * ```ts
- * const client = new BrowseMcpClient({
- *   baseUrl: 'https://browse-mcp.vercel.app',
- *   apiKey: 'bmcp_xxx...',
+ * const client = new VibenClient({
+ *   baseUrl: 'https://viben-web.vercel.app',
+ *   apiKey: 'viben_xxx...',
  * });
  *
  * // List MCP packages
@@ -95,12 +95,12 @@ function buildQuery(params?: ListParams | SkillListParams): string {
  * const { user } = await client.user.me();
  * ```
  */
-export class BrowseMcpClient {
+export class VibenClient {
   private baseUrl: string;
   private apiKey?: string;
   private timeout: number;
 
-  constructor(config: BrowseMcpClientConfig) {
+  constructor(config: VibenClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;

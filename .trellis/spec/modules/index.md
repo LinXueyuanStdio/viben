@@ -6,7 +6,7 @@
 
 ## Overview
 
-This directory contains detailed specifications for implementing each module of the Browse MCP Platform. Each spec includes:
+This directory contains detailed specifications for implementing each module of the Viben Platform. Each spec includes:
 
 - Objectives and deliverables
 - Code examples and API definitions

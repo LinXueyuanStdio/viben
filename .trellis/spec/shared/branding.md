@@ -9,9 +9,11 @@
 | Context | Value | Notes |
 |---------|-------|-------|
 | **Brand Name** | Viben | User-visible, marketing, UI |
-| **Technical Name** | browse-mcp | Package names, code identifiers (legacy) |
+| **Technical Name** | browse-mcp | PyPI package, MCP server config key |
 | **App Identifier** | com.viben.app | macOS/Windows bundle ID |
 | **URL Scheme** | viben:// | Deep links |
+| **npm Scope** | @viben/* | npm package names |
+| **Config Directory** | ~/.viben/ | User configuration storage |
 
 ---
 
@@ -60,16 +62,15 @@ These remain unchanged for backward compatibility:
 
 > **Note**: GitHub URL change affects 50+ file references (READMEs, docs, package.json, workflows).
 
-### Migrate Gradually (App-Specific)
+### Completed Changes
 
-These should be updated but require careful migration:
-
-| Type | Before | After | Migration Path |
-|------|--------|-------|----------------|
-| App identifier | `com.browsemcp.app` | `com.viben.app` | Next major release |
-| URL scheme | `browsemcp://` | `viben://` | Support both temporarily |
-| Config directory | `~/.browsemcp/` | `~/.viben/` | Auto-migrate on startup |
-| LocalStorage keys | `browse-mcp-*` | `viben-*` | Auto-migrate on startup |
+| Type | Old | New |
+|------|-----|-----|
+| App identifier | `com.browsemcp.app` | `com.viben.app` |
+| URL scheme | `browsemcp://` | `viben://` |
+| Config directory | `~/.browsemcp/` | `~/.viben/` |
+| Servers file | `browse_mcp_servers.json` | `viben_servers.json` |
+| LocalStorage key | `browse-mcp-storage` | `viben-storage` |
 
 ---
 
@@ -194,13 +195,13 @@ Only if needed. Breaking change for users.
 .tooltip("Viben")
 ```
 
-### Good: Technical identifier (unchanged)
+### Good: Technical identifier (unchanged for PyPI/MCP)
 
 ```typescript
-// Package import (unchanged)
-import { BrowseMcpClient } from '@browse-mcp/api-client';
+// Package import (new scope)
+import { VibenClient } from '@viben/api-client';
 
-// MCP server config (unchanged)
+// MCP server config (unchanged - PyPI package name)
 "browse-mcp": {
   "command": "uvx",
   "args": ["browse-mcp"]
@@ -254,4 +255,4 @@ Before merging rebranding changes:
 
 ---
 
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-06

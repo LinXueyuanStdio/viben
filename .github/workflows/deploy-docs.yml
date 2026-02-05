@@ -52,7 +52,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build documentation
-        run: pnpm --filter @browse-mcp/docs build
+        run: pnpm --filter @viben/docs build
 
       - name: Prepare deployment directory
         run: |

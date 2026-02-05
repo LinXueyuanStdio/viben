@@ -1,16 +1,16 @@
 /**
- * Browse MCP Platform Integration
+ * Viben Platform Integration
  *
- * Desktop app utilities for consuming the Browse MCP platform API.
+ * Desktop app utilities for consuming the Viben platform API.
  * Provides client initialization, package management, and workspace sync.
  */
 
 import {
-  BrowseMcpClient,
+  VibenClient,
   type McpPackage,
   type SkillPackage,
   type PaginatedResponse,
-} from '@browse-mcp/api-client';
+} from '@viben/api-client';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { mkdir, writeFile, exists } from '@tauri-apps/plugin-fs';
 
@@ -26,7 +26,7 @@ const PLATFORM_URL = 'https://viben-web.vercel.app';
 /**
  * Singleton client instance
  */
-let client: BrowseMcpClient | null = null;
+let client: VibenClient | null = null;
 
 // ============================================
 // Client Management
@@ -47,8 +47,8 @@ let client: BrowseMcpClient | null = null;
  * const client = initClient('bmcp_xxx...');
  * ```
  */
-export function initClient(apiKey?: string): BrowseMcpClient {
-  client = new BrowseMcpClient({
+export function initClient(apiKey?: string): VibenClient {
+  client = new VibenClient({
     baseUrl: PLATFORM_URL,
     apiKey,
     timeout: 30000,
@@ -61,9 +61,9 @@ export function initClient(apiKey?: string): BrowseMcpClient {
  *
  * @returns The client instance
  */
-export function getClient(): BrowseMcpClient {
+export function getClient(): VibenClient {
   if (!client) {
-    client = new BrowseMcpClient({ baseUrl: PLATFORM_URL });
+    client = new VibenClient({ baseUrl: PLATFORM_URL });
   }
   return client;
 }
@@ -305,7 +305,7 @@ export async function setApiKey(apiKey: string): Promise<boolean> {
     return true;
   } catch {
     // Invalid key, reset to unauthenticated client
-    client = new BrowseMcpClient({ baseUrl: PLATFORM_URL });
+    client = new VibenClient({ baseUrl: PLATFORM_URL });
     return false;
   }
 }
@@ -336,4 +336,4 @@ export type {
   PaginatedResponse,
   Workspace,
   User,
-} from '@browse-mcp/api-client';
+} from '@viben/api-client';

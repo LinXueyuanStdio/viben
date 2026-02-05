@@ -1,6 +1,6 @@
 # T20: Desktop Integration
 
-> Implement desktop app API client for consuming the Browse MCP platform.
+> Implement desktop app API client for consuming the Viben platform.
 
 ---
 
@@ -29,13 +29,13 @@
 ### 1. Client Configuration (`packages/api-client/src/client.ts`)
 
 ```typescript
-export interface BrowseMcpClientConfig {
+export interface VibenClientConfig {
   baseUrl: string;
   apiKey?: string;
   timeout?: number;
 }
 
-export class BrowseMcpClient {
+export class VibenClient {
   private baseUrl: string;
   private apiKey?: string;
   private timeout: number;
@@ -298,28 +298,28 @@ export interface WorkspacePackagesResponse {
 }
 ```
 
-### 3. Desktop App Integration (`apps/desktop/src/lib/browse-mcp.ts`)
+### 3. Desktop App Integration (`apps/desktop/src/lib/viben.ts`)
 
 ```typescript
-import { BrowseMcpClient, type McpPackage, type SkillPackage } from '@browse-mcp/api-client';
+import { VibenClient, type McpPackage, type SkillPackage } from '@viben/api-client';
 import { appDataDir, join } from '@tauri-apps/api/path';
 import { createDir, writeFile, exists } from '@tauri-apps/api/fs';
 
-const PLATFORM_URL = 'https://browse-mcp.vercel.app';
+const PLATFORM_URL = 'https://viben-web.vercel.app';
 
-let client: BrowseMcpClient | null = null;
+let client: VibenClient | null = null;
 
 export function initClient(apiKey?: string) {
-  client = new BrowseMcpClient({
+  client = new VibenClient({
     baseUrl: PLATFORM_URL,
     apiKey,
   });
   return client;
 }
 
-export function getClient(): BrowseMcpClient {
+export function getClient(): VibenClient {
   if (!client) {
-    client = new BrowseMcpClient({ baseUrl: PLATFORM_URL });
+    client = new VibenClient({ baseUrl: PLATFORM_URL });
   }
   return client;
 }
@@ -410,13 +410,13 @@ export async function setApiKey(apiKey: string) {
     await getClient().user.me();
     return true;
   } catch {
-    client = new BrowseMcpClient({ baseUrl: PLATFORM_URL });
+    client = new VibenClient({ baseUrl: PLATFORM_URL });
     return false;
   }
 }
 ```
 
-### 4. React Hooks for Desktop (`apps/desktop/src/hooks/use-browse-mcp.ts`)
+### 4. React Hooks for Desktop (`apps/desktop/src/hooks/use-viben.ts`)
 
 ```typescript
 import { useState, useEffect, useCallback } from 'react';
@@ -426,8 +426,8 @@ import {
   installMcpPackage,
   installSkillPackage,
   syncWorkspace,
-} from '@/lib/browse-mcp';
-import type { McpPackage, SkillPackage, Workspace } from '@browse-mcp/api-client';
+} from '@/lib/viben';
+import type { McpPackage, SkillPackage, Workspace } from '@viben/api-client';
 
 export function useMcpSearch(initialQuery = '') {
   const [query, setQuery] = useState(initialQuery);
@@ -577,9 +577,9 @@ export function useWorkspaces() {
 
 ```json
 {
-  "name": "@browse-mcp/api-client",
+  "name": "@viben/api-client",
   "version": "1.0.0",
-  "description": "API client for Browse MCP platform",
+  "description": "API client for Viben platform",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -606,8 +606,12 @@ export function useWorkspaces() {
 ### 6. Entry Point (`packages/api-client/src/index.ts`)
 
 ```typescript
-export { BrowseMcpClient, ApiError } from './client';
-export type { BrowseMcpClientConfig } from './client';
+export { VibenClient, ApiError } from './client';
+export type { VibenClientConfig } from './client';
+
+// Backwards compatibility aliases
+export { VibenClient as BrowseMcpClient } from './client';
+export type { VibenClientConfig as BrowseMcpClientConfig } from './client';
 export type {
   ListParams,
   PaginatedResponse,

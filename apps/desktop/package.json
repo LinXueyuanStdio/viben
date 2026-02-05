@@ -1,5 +1,5 @@
 {
-  "name": "@browse-mcp/desktop",
+  "name": "@viben/desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -11,7 +11,7 @@
     "tauri-dev": "pnpm run tauri dev"
   },
   "dependencies": {
-    "@browse-mcp/api-client": "workspace:*",
+    "@viben/api-client": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "@monaco-editor/react": "^4.7.0",
     "@radix-ui/react-scroll-area": "^1.2.10",

@@ -427,7 +427,7 @@ export async function GET(
 
 ```json
 {
-  "$schema": "https://browse-mcp.dev/schemas/manifest.v1.json",
+  "$schema": "https://viben.dev/schemas/manifest.v1.json",
   "name": "my-mcp-package",
   "version": "1.0.0",
   "type": "mcp",

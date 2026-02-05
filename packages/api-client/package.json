@@ -1,7 +1,7 @@
 {
-  "name": "@browse-mcp/api-client",
+  "name": "@viben/api-client",
   "version": "1.0.0",
-  "description": "API client for Browse MCP platform",
+  "description": "API client for Viben platform",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -26,10 +26,10 @@
     "typescript": "^5.4.0"
   },
   "keywords": [
-    "browse-mcp",
+    "viben",
     "api-client",
     "mcp",
-    "skills"
+    "multi-agent"
   ],
   "license": "MIT"
 }

@@ -134,10 +134,10 @@ impl Default for WorkspacesStore {
     }
 }
 
-/// Get the workspaces storage directory
+/// Get the workspaces storage directory (~/.viben)
 fn get_workspaces_dir() -> PathBuf {
     let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-    home.join(".browsemcp")
+    home.join(".viben")
 }
 
 /// Get the workspaces storage file path
@@ -195,7 +195,7 @@ fn ensure_global_workspace(store: &mut WorkspacesStore) {
             0,
             Workspace {
                 id: "global".to_string(),
-                name: "Global".to_string(),
+                name: "全局工作空间".to_string(),
                 path: global_path,
                 workspace_type: WorkspaceType::Global,
                 created_at: now.clone(),

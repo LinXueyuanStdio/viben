@@ -1,6 +1,6 @@
 # Vercel Deployment Guide
 
-> Deploy the Browse MCP web platform (`apps/web`) to Vercel
+> Deploy the Viben web platform (`apps/web`) to Vercel
 
 ---
 
@@ -68,7 +68,7 @@ vercel --cwd apps/web --prod
 ### Project Structure
 
 ```
-browse-mcp/
+viben/
 ├── apps/
 │   └── web/              # Next.js app to deploy
 │       ├── app/          # Next.js App Router
@@ -190,7 +190,7 @@ openssl rand -base64 32
 1. Go to: https://github.com/settings/developers
 2. Click "New OAuth App"
 3. Fill in:
-   - **Application name**: Browse MCP Platform
+   - **Application name**: Viben Platform
    - **Homepage URL**: `https://your-domain.vercel.app`
    - **Authorization callback URL**: `https://your-domain.vercel.app/api/auth/github/callback`
 4. Copy **Client ID** and **Client secret**
@@ -281,7 +281,7 @@ Check the following:
 
 1. **Add Domain**
    - Vercel Dashboard → Settings → Domains
-   - Add your custom domain (e.g., `browse-mcp.com`)
+   - Add your custom domain (e.g., `viben.com`)
 
 2. **Configure DNS**
    - Add CNAME record: `your-domain.com` → `cname.vercel-dns.com`
@@ -542,7 +542,7 @@ jobs:
         run: pnpm install
 
       - name: Run tests
-        run: pnpm test --filter=@browse-mcp/web
+        run: pnpm test --filter=@viben/web
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
@@ -658,7 +658,7 @@ vercel env rm <name> <environment>
 
 **Support**:
 - Vercel Support: https://vercel.com/support
-- Browse MCP Issues: GitHub Issues
+- Viben Issues: GitHub Issues
 
 ---
 

@@ -1,16 +1,16 @@
 # Provider System Documentation
 
-This document explains the Browse MCP provider architecture and how `provider.index.json` relates to the plugin system.
+This document explains the Viben provider architecture and how `provider.index.json` relates to the plugin system.
 
 ---
 
 ## Architecture Overview
 
-Browse MCP uses a **pluggable provider architecture** with two types of providers:
+Viben uses a **pluggable provider architecture** with two types of providers:
 
 1. **Built-in Plugins** (`backend/browse-mcp`)
    - Core academic/research data sources
-   - Maintained by the Browse MCP team
+   - Maintained by the Viben team
    - Installed by default
    - Marked with `builtin: true` in the registry
 
@@ -48,7 +48,7 @@ The v2 schema is **plugin-centric** rather than category-centric:
   },
   "plugins": {
     "browse-mcp": {
-      "name": "Browse MCP Core",
+      "name": "Viben Core",
       "description": "Core academic and research data sources",
       "version": "0.1.0",
       "author": {
@@ -56,8 +56,8 @@ The v2 schema is **plugin-centric** rather than category-centric:
         "email": "linxueyuanstdio@gmail.com",
         "url": "https://github.com/LinXueyuanStdio"
       },
-      "homepage": "https://github.com/LinXueyuanStdio/browse-mcp",
-      "repository": "https://github.com/LinXueyuanStdio/browse-mcp",
+      "homepage": "https://github.com/LinXueyuanStdio/viben",
+      "repository": "https://github.com/LinXueyuanStdio/viben",
       "license": "MIT",
       "categories": ["academic", "publisher", "institutional", "web"],
       "builtin": true,

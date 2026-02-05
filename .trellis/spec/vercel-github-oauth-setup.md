@@ -1,6 +1,6 @@
 # Vercel 部署 + GitHub OAuth 集成 - 完整操作指南
 
-> 手把手教你部署 Browse MCP 到 Vercel 并配置 GitHub 登录
+> 手把手教你部署 Viben 到 Vercel 并配置 GitHub 登录
 
 ---
 
@@ -25,7 +25,7 @@
 
 2. **导入项目**
    - 登录后，点击 **"Add New..."** → **"Project"**
-   - 在 "Import Git Repository" 页面，找到 `LinXueyuanStdio/browse-mcp`
+   - 在 "Import Git Repository" 页面，找到 `LinXueyuanStdio/viben`
    - 点击 **"Import"**
 
 3. **配置项目**
@@ -33,7 +33,7 @@
    在 "Configure Project" 页面：
 
    ```
-   Project Name: browse-mcp (或你想要的名字)
+   Project Name: viben (或你想要的名字)
 
    Framework Preset: Next.js (自动检测)
 
@@ -54,7 +54,7 @@
 
 部署后（即使失败），你会得到一个 Vercel 域名：
 ```
-https://browse-mcp-xxxxx.vercel.app
+https://viben-xxxxx.vercel.app
 ```
 
 **记下这个域名**，后面配置 GitHub OAuth 需要用！
@@ -73,14 +73,14 @@ https://browse-mcp-xxxxx.vercel.app
 2. **填写应用信息**
 
    ```
-   Application name: Browse MCP
+   Application name: Viben
 
-   Homepage URL: https://browse-mcp-xxxxx.vercel.app
+   Homepage URL: https://viben-xxxxx.vercel.app
    (替换成你的 Vercel 域名)
 
-   Application description: Browse MCP Platform (可选)
+   Application description: Viben Platform (可选)
 
-   Authorization callback URL: https://browse-mcp-xxxxx.vercel.app/api/auth/github/callback
+   Authorization callback URL: https://viben-xxxxx.vercel.app/api/auth/github/callback
    (重要！必须精确匹配，注意 /api/auth/github/callback 路径)
    ```
 
@@ -100,7 +100,7 @@ https://browse-mcp-xxxxx.vercel.app
 # GitHub OAuth 凭证（保密！）
 GITHUB_CLIENT_ID=Iv1.abc123xyz456
 GITHUB_CLIENT_SECRET=ghp_abc123def456ghi789...
-VERCEL_DOMAIN=https://browse-mcp-xxxxx.vercel.app
+VERCEL_DOMAIN=https://viben-xxxxx.vercel.app
 ```
 
 ---
@@ -168,7 +168,7 @@ Environments: ✓ Production  ✓ Preview  ✓ Development
 
 ```
 Key: NEXT_PUBLIC_APP_URL
-Value: https://browse-mcp-xxxxx.vercel.app  (你的 Vercel 域名)
+Value: https://viben-xxxxx.vercel.app  (你的 Vercel 域名)
 Environments: ✓ Production  ✓ Preview  ✓ Development
 ```
 
@@ -239,7 +239,7 @@ git push
 
 打开你的 Vercel 域名：
 ```
-https://browse-mcp-xxxxx.vercel.app
+https://viben-xxxxx.vercel.app
 ```
 
 ### 5.2 测试登录流程
@@ -255,7 +255,7 @@ https://browse-mcp-xxxxx.vercel.app
    - 在 GitHub 页面点击 **"Authorize"**
    - 如果是第一次，会看到权限说明：
      ```
-     Browse MCP would like to:
+     Viben would like to:
      - Read your user profile information
      - Access your email addresses
      ```
@@ -303,7 +303,7 @@ pnpm db:studio
 1. 检查 GitHub OAuth App 设置
 2. Callback URL 必须精确匹配：
    ```
-   https://browse-mcp-xxxxx.vercel.app/api/auth/github/callback
+   https://viben-xxxxx.vercel.app/api/auth/github/callback
    ```
 3. 注意：
    - 必须是 `https://`（不是 `http://`）

@@ -1,6 +1,6 @@
 # GitHub OAuth Integration Guide
 
-> Complete guide for integrating GitHub OAuth login in Browse MCP platform
+> Complete guide for integrating GitHub OAuth login in Viben platform
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## Overview
 
-Browse MCP uses GitHub OAuth 2.0 for social login, allowing users to:
+Viben uses GitHub OAuth 2.0 for social login, allowing users to:
 - Sign in with their GitHub account
 - Automatically link GitHub profile to user account
 - Skip email verification (GitHub email is pre-verified)
@@ -105,7 +105,7 @@ Redirect to /mcp (dashboard)
    - Click "OAuth Apps" → "New OAuth App"
 
 2. **Configure Application**:
-   - **Application name**: `Browse MCP` (or your app name)
+   - **Application name**: `Viben` (or your app name)
    - **Homepage URL**: `https://your-domain.com` (or `http://localhost:3000` for dev)
    - **Authorization callback URL**: `https://your-domain.com/api/auth/github/callback`
      - For development: `http://localhost:3000/api/auth/github/callback`

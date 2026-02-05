@@ -147,7 +147,7 @@ sudo apt-get install -f
 Launch from your application menu or run:
 
 ```bash
-browse-mcp-desktop
+viben
 ```
 
 ### Dependencies
@@ -243,7 +243,7 @@ Or use Control Panel > Programs and Features.
 
 **Debian package:**
 ```bash
-sudo apt-get remove browse-mcp-desktop
+sudo apt-get remove viben
 ```
 
 To remove configuration:

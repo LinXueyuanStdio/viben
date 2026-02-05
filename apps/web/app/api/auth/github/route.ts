@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   });
 
   // Store desktop redirect_uri if present (for deep link callback)
-  if (client === 'desktop' && redirectUri?.startsWith('browsemcp://')) {
+  if (client === 'desktop' && redirectUri?.startsWith('viben://')) {
     cookieStore.set('oauth_redirect_uri', redirectUri, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
