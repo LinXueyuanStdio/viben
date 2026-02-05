@@ -1187,6 +1187,34 @@ pub async fn read_skill_file(file_path: String, skill_path: String) -> Result<St
         .map_err(|e| format!("Failed to read file: {}", e))
 }
 
+/// Write content to a file in skill folder
+#[tauri::command]
+pub async fn write_skill_file(file_path: String, skill_path: String, content: String) -> Result<(), String> {
+    let file = PathBuf::from(&file_path);
+    let skill = PathBuf::from(&skill_path);
+
+    // Security check: ensure file is within skill folder
+    if !file.starts_with(&skill) {
+        return Err("Access denied: file is outside skill folder".to_string());
+    }
+
+    if !path_exists(&file) {
+        return Err("File not found".to_string());
+    }
+
+    if is_directory(&file) {
+        return Err("Cannot write to directory".to_string());
+    }
+
+    // Check content size (limit to 1MB)
+    if content.len() > 1_048_576 {
+        return Err("Content too large (max 1MB)".to_string());
+    }
+
+    fs::write(&file, content)
+        .map_err(|e| format!("Failed to write file: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

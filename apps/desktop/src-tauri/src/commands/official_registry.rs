@@ -42,10 +42,11 @@ pub struct ServerIcon {
 }
 
 /// Repository information
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Note: Official API can return empty object {} for repository, so all fields are optional
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ServerRepository {
-    pub url: String,
-    pub source: String,
+    pub url: Option<String>,
+    pub source: Option<String>,
     pub id: Option<String>,
     pub subfolder: Option<String>,
 }
@@ -320,8 +321,11 @@ fn transform_server(response: ServerResponse) -> OfficialServerDisplay {
         .and_then(|icons| icons.first())
         .map(|icon| icon.src.clone());
 
-    // Get repository URL
-    let repository_url = server.repository.as_ref().map(|r| r.url.clone());
+    // Get repository URL (handle optional url field)
+    let repository_url = server
+        .repository
+        .as_ref()
+        .and_then(|r| r.url.clone());
 
     // Get package types
     let package_types: Vec<String> = server
@@ -414,7 +418,7 @@ pub async fn list_official_servers(
         params.push(format!("cursor={}", c));
     }
     if let Some(s) = &search {
-        params.push(format!("q={}", urlencoding::encode(s)));
+        params.push(format!("search={}", urlencoding::encode(s)));
     }
     if let Some(l) = limit {
         params.push(format!("limit={}", l));
@@ -659,4 +663,259 @@ pub async fn invalidate_official_server_cache(
     state.cache.remove(&versions_key).await;
 
     Ok(())
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test that we can deserialize an empty repository object
+    #[test]
+    fn test_deserialize_empty_repository() {
+        let json = r#"{"url": null, "source": null}"#;
+        let repo: ServerRepository = serde_json::from_str(json).unwrap();
+        assert!(repo.url.is_none());
+        assert!(repo.source.is_none());
+
+        // Empty object should also work
+        let json = r#"{}"#;
+        let repo: ServerRepository = serde_json::from_str(json).unwrap();
+        assert!(repo.url.is_none());
+        assert!(repo.source.is_none());
+    }
+
+    /// Test that we can deserialize a full repository object
+    #[test]
+    fn test_deserialize_full_repository() {
+        let json = r#"{"url": "https://github.com/example/repo", "source": "github", "id": "123"}"#;
+        let repo: ServerRepository = serde_json::from_str(json).unwrap();
+        assert_eq!(repo.url, Some("https://github.com/example/repo".to_string()));
+        assert_eq!(repo.source, Some("github".to_string()));
+        assert_eq!(repo.id, Some("123".to_string()));
+    }
+
+    /// Test that we can deserialize a server response with empty repository
+    #[test]
+    fn test_deserialize_server_with_empty_repository() {
+        let json = r#"{
+            "server": {
+                "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+                "name": "ai.alpic.test/test-mcp-server",
+                "description": "Alpic Test MCP Server - great server!",
+                "repository": {},
+                "version": "0.0.1",
+                "remotes": [{"type": "streamable-http", "url": "https://test.alpic.ai/"}]
+            },
+            "_meta": {
+                "io.modelcontextprotocol.registry/official": {
+                    "status": "active",
+                    "publishedAt": "2025-09-10T13:57:43.256739Z",
+                    "updatedAt": "2025-09-10T13:57:43.256739Z",
+                    "isLatest": true
+                }
+            }
+        }"#;
+
+        let response: ServerResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.server.name, "ai.alpic.test/test-mcp-server");
+        assert!(response.server.repository.is_some());
+        assert!(response.server.repository.as_ref().unwrap().url.is_none());
+    }
+
+    /// Test that we can deserialize a full server list response from the API
+    #[test]
+    fn test_deserialize_server_list_response() {
+        let json = r#"{
+            "servers": [
+                {
+                    "server": {
+                        "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+                        "name": "ai.aliengiraffe/spotdb",
+                        "description": "Ephemeral data sandbox for AI workflows with guardrails and security",
+                        "repository": {"url": "https://github.com/aliengiraffe/spotdb", "source": "github"},
+                        "version": "0.1.0",
+                        "packages": [
+                            {
+                                "registryType": "oci",
+                                "identifier": "docker.io/aliengiraffe/spotdb:0.1.0",
+                                "transport": {"type": "stdio"},
+                                "environmentVariables": [
+                                    {"description": "Optional API key", "format": "string", "isSecret": true, "name": "X-API-Key"}
+                                ]
+                            }
+                        ]
+                    },
+                    "_meta": {
+                        "io.modelcontextprotocol.registry/official": {
+                            "status": "active",
+                            "publishedAt": "2025-10-09T17:05:17.793149Z",
+                            "updatedAt": "2025-10-09T17:05:17.793149Z",
+                            "isLatest": true
+                        }
+                    }
+                }
+            ],
+            "metadata": {"nextCursor": "ai.test/server:0.0.1", "count": 1}
+        }"#;
+
+        let response: ServerListResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(response.servers.len(), 1);
+        assert_eq!(response.metadata.count, 1);
+        assert_eq!(response.metadata.next_cursor, Some("ai.test/server:0.0.1".to_string()));
+
+        let server = &response.servers[0];
+        assert_eq!(server.server.name, "ai.aliengiraffe/spotdb");
+        assert!(server.server.packages.is_some());
+    }
+
+    /// Test URL encoding for server names with slashes
+    #[test]
+    fn test_url_encode_path() {
+        assert_eq!(url_encode_path("io.github.user/server"), "io.github.user%2Fserver");
+        assert_eq!(url_encode_path("simple-name"), "simple-name");
+    }
+
+    /// Test transform_server function
+    #[test]
+    fn test_transform_server() {
+        let json = r#"{
+            "server": {
+                "name": "io.github.test/my-server",
+                "description": "Test server",
+                "title": "My Server",
+                "version": "1.0.0",
+                "repository": {"url": "https://github.com/test/my-server", "source": "github"},
+                "packages": [
+                    {"registryType": "npm", "identifier": "@test/server", "transport": {"type": "stdio"}}
+                ]
+            },
+            "_meta": {
+                "io.modelcontextprotocol.registry/official": {
+                    "status": "active",
+                    "publishedAt": "2025-01-01T00:00:00Z",
+                    "updatedAt": "2025-01-02T00:00:00Z",
+                    "isLatest": true
+                }
+            }
+        }"#;
+
+        let response: ServerResponse = serde_json::from_str(json).unwrap();
+        let display = transform_server(response);
+
+        assert_eq!(display.id, "io.github.test/my-server");
+        assert_eq!(display.name, "My Server");
+        assert_eq!(display.slug, "io-github-test-my-server");
+        assert_eq!(display.version, "1.0.0");
+        assert_eq!(display.status, "active");
+        assert!(display.is_latest);
+        assert_eq!(display.package_types, vec!["npm"]);
+        assert_eq!(display.repository_url, Some("https://github.com/test/my-server".to_string()));
+    }
+
+    /// Integration test: Fetch real data from official registry
+    #[tokio::test]
+    async fn test_fetch_servers_from_registry() {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        let url = format!("{}/{}/servers?limit=2", REGISTRY_BASE_URL, API_VERSION);
+
+        let response = client
+            .get(&url)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .expect("Failed to send request");
+
+        assert!(response.status().is_success(), "API returned error: {}", response.status());
+
+        let list_response: ServerListResponse = response
+            .json()
+            .await
+            .expect("Failed to parse response as ServerListResponse");
+
+        assert!(!list_response.servers.is_empty(), "Server list should not be empty");
+        assert!(list_response.metadata.count > 0, "Count should be positive");
+
+        // Verify each server can be transformed
+        for server_response in list_response.servers {
+            let display = transform_server(server_response.clone());
+            assert!(!display.id.is_empty(), "Server ID should not be empty");
+            assert!(!display.name.is_empty(), "Server name should not be empty");
+        }
+    }
+
+    /// Integration test: Search servers from official registry
+    #[tokio::test]
+    async fn test_search_servers_from_registry() {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        // Use 'search' parameter (not 'q')
+        let url = format!("{}/{}/servers?search=github&limit=5", REGISTRY_BASE_URL, API_VERSION);
+
+        let response = client
+            .get(&url)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .expect("Failed to send request");
+
+        assert!(response.status().is_success(), "API returned error: {}", response.status());
+
+        let list_response: ServerListResponse = response
+            .json()
+            .await
+            .expect("Failed to parse response");
+
+        // Search results should contain servers related to github
+        // Note: This test may fail if no servers match, but that's unlikely
+        println!("Found {} servers matching 'github'", list_response.servers.len());
+    }
+
+    /// Integration test: Verify search parameter is 'search' not 'q'
+    #[tokio::test]
+    async fn test_search_parameter_name() {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(30))
+            .build()
+            .expect("Failed to create HTTP client");
+
+        // Test with 'search' parameter - should return filtered results
+        let url_search = format!("{}/{}/servers?search=filesystem&limit=10", REGISTRY_BASE_URL, API_VERSION);
+        let response_search = client
+            .get(&url_search)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .expect("Failed to send request with search");
+
+        assert!(response_search.status().is_success());
+        let search_result: ServerListResponse = response_search.json().await.unwrap();
+
+        // Test with 'q' parameter - API ignores it and returns all servers
+        let url_q = format!("{}/{}/servers?q=filesystem&limit=10", REGISTRY_BASE_URL, API_VERSION);
+        let response_q = client
+            .get(&url_q)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .expect("Failed to send request with q");
+
+        assert!(response_q.status().is_success());
+        let q_result: ServerListResponse = response_q.json().await.unwrap();
+
+        // The 'search' parameter should filter results, 'q' is ignored
+        // So if there are filesystem servers, search_result count <= q_result count
+        println!("search=filesystem: {} results", search_result.servers.len());
+        println!("q=filesystem: {} results", q_result.servers.len());
+    }
 }

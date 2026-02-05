@@ -97,3 +97,39 @@ export function useSkillFileContent() {
 
   return { content, loading, error, readFile, clearContent };
 }
+
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+/**
+ * Hook for writing a file to skill folder
+ */
+export function useSkillFileWriter() {
+  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const writeFile = useCallback(async (filePath: string, skillPath: string, content: string) => {
+    setSaving(true);
+    setSaveStatus("saving");
+    setSaveError(null);
+    try {
+      await invoke("write_skill_file", { filePath, skillPath, content });
+      setSaveStatus("saved");
+      // Reset to idle after 2 seconds
+      setTimeout(() => setSaveStatus("idle"), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSaveError(message);
+      setSaveStatus("error");
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const resetStatus = useCallback(() => {
+    setSaveStatus("idle");
+    setSaveError(null);
+  }, []);
+
+  return { saving, saveStatus, saveError, writeFile, resetStatus };
+}

@@ -9,7 +9,6 @@ import {
   Package,
   Code,
   FileText,
-  FolderTree,
   X,
   ExternalLink,
   File,
@@ -25,6 +24,7 @@ import {
   useSkillReadme,
   useSkillFiles,
   useSkillFileContent,
+  useSkillFileWriter,
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
@@ -234,48 +234,144 @@ interface SkillDetailContentProps {
   skill: WorkspaceSkill;
 }
 
+type SelectedItem = { type: "overview" } | { type: "file"; entry: SkillFileEntry };
+
 function SkillDetailContent({ skill }: SkillDetailContentProps) {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<"overview" | "files">("overview");
+  const { files, loading: filesLoading, error: filesError, loadFiles } = useSkillFiles(skill.path || null);
+  const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useSkillFileContent();
+  const { saveStatus, writeFile, resetStatus } = useSkillFileWriter();
+  const [selected, setSelected] = useState<SelectedItem>({ type: "overview" });
+
+  useEffect(() => {
+    if (skill.path) {
+      loadFiles(4);
+    }
+  }, [skill.path, loadFiles]);
+
+  const handleSelectOverview = () => {
+    setSelected({ type: "overview" });
+    clearContent();
+    resetStatus();
+  };
+
+  const handleSelectFile = (entry: SkillFileEntry) => {
+    setSelected({ type: "file", entry });
+    resetStatus();
+    if (!entry.is_directory && skill.path) {
+      readFile(entry.path, skill.path);
+    } else {
+      clearContent();
+    }
+  };
+
+  const handleSaveFile = async (content: string) => {
+    if (selected.type === "file" && !selected.entry.is_directory && skill.path) {
+      await writeFile(selected.entry.path, skill.path, content);
+    }
+  };
+
+  const selectedFile = selected.type === "file" ? selected.entry : null;
 
   return (
     <div className="h-full flex">
-      {/* Secondary Sidebar - Sections */}
-      <div className="w-48 border-r bg-muted/10">
-        <div className="p-2 space-y-0.5">
-          <button
-            onClick={() => setActiveSection("overview")}
-            className={cn(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
-              "hover:bg-accent transition-colors",
-              activeSection === "overview" && "bg-accent"
-            )}
-          >
-            <FileText className="h-4 w-4" />
-            {t("workspace.overview")}
-          </button>
-          {skill.path && (
+      {/* Unified Sidebar - Overview + File Tree */}
+      <div className="w-64 border-r overflow-hidden flex flex-col">
+        <ScrollArea className="flex-1">
+          <div className="p-2">
+            {/* Overview Entry */}
             <button
-              onClick={() => setActiveSection("files")}
+              onClick={handleSelectOverview}
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
+                "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left mb-1",
                 "hover:bg-accent transition-colors",
-                activeSection === "files" && "bg-accent"
+                selected.type === "overview" && "bg-accent"
               )}
             >
-              <FolderTree className="h-4 w-4" />
-              {t("workspace.files")}
+              <FileText className="h-4 w-4 text-blue-500" />
+              <span className="font-medium">{t("workspace.overview")}</span>
             </button>
-          )}
-        </div>
+
+            {/* Separator */}
+            {skill.path && (
+              <div className="border-t my-2" />
+            )}
+
+            {/* File Tree */}
+            {skill.path && (
+              filesLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filesError ? (
+                <div className="p-2 text-sm text-muted-foreground">{filesError}</div>
+              ) : (
+                <FileTree
+                  files={files}
+                  selectedPath={selectedFile?.path || null}
+                  onSelectFile={handleSelectFile}
+                />
+              )
+            )}
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-hidden">
-        {activeSection === "overview" ? (
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {selected.type === "overview" ? (
           <SkillOverview skill={skill} />
+        ) : selectedFile ? (
+          <>
+            <div className="p-3 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <span className="text-sm font-mono truncate">{selectedFile.name}</span>
+              </div>
+              {!selectedFile.is_directory && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 flex-shrink-0"
+                  asChild
+                >
+                  <a
+                    href={`file://${selectedFile.path}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5 mr-1.5" />
+                    {t("workspace.openInEditor")}
+                  </a>
+                </Button>
+              )}
+            </div>
+            <div className="flex-1 overflow-hidden">
+              {selectedFile.is_directory ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>{t("workspace.selectFile")}</p>
+                </div>
+              ) : fileLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : fileError ? (
+                <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
+              ) : fileContent ? (
+                <CodeEditor
+                  value={fileContent}
+                  filename={selectedFile.name}
+                  height="100%"
+                  onSave={handleSaveFile}
+                  saveStatus={saveStatus}
+                />
+              ) : null}
+            </div>
+          </>
         ) : (
-          <SkillFilesView skill={skill} />
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>{t("workspace.selectFileToView")}</p>
+          </div>
         )}
       </div>
     </div>
@@ -361,117 +457,6 @@ function SkillOverview({ skill }: { skill: WorkspaceSkill }) {
         </div>
       </div>
     </ScrollArea>
-  );
-}
-
-function SkillFilesView({ skill }: { skill: WorkspaceSkill }) {
-  const { t } = useTranslation();
-  const { files, loading: filesLoading, error: filesError, loadFiles } = useSkillFiles(skill.path || null);
-  const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useSkillFileContent();
-  const [selectedFile, setSelectedFile] = useState<SkillFileEntry | null>(null);
-
-  useEffect(() => {
-    if (skill.path) {
-      loadFiles(4);
-    }
-  }, [skill.path, loadFiles]);
-
-  const handleSelectFile = (entry: SkillFileEntry) => {
-    setSelectedFile(entry);
-    if (!entry.is_directory && skill.path) {
-      readFile(entry.path, skill.path);
-    } else {
-      clearContent();
-    }
-  };
-
-  if (!skill.path) {
-    return (
-      <div className="flex items-center justify-center h-full text-muted-foreground">
-        <p>{t("workspace.noSkillPath")}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="h-full flex">
-      {/* File Tree Sidebar */}
-      <div className="w-64 border-r overflow-hidden flex flex-col">
-        <div className="p-3 border-b">
-          <h3 className="text-sm font-medium">{t("workspace.files")}</h3>
-        </div>
-        <ScrollArea className="flex-1">
-          {filesLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : filesError ? (
-            <div className="p-4 text-sm text-muted-foreground">{filesError}</div>
-          ) : (
-            <FileTree
-              files={files}
-              selectedPath={selectedFile?.path || null}
-              onSelectFile={handleSelectFile}
-              className="p-2"
-            />
-          )}
-        </ScrollArea>
-      </div>
-
-      {/* File Content Preview */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {selectedFile ? (
-          <>
-            <div className="p-3 border-b flex items-center justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="text-sm font-mono truncate">{selectedFile.name}</span>
-              </div>
-              {!selectedFile.is_directory && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 flex-shrink-0"
-                  asChild
-                >
-                  <a
-                    href={`file://${selectedFile.path}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Edit3 className="h-3.5 w-3.5 mr-1.5" />
-                    {t("workspace.openInEditor")}
-                  </a>
-                </Button>
-              )}
-            </div>
-            <div className="flex-1 overflow-hidden">
-              {selectedFile.is_directory ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <p>{t("workspace.selectFile")}</p>
-                </div>
-              ) : fileLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : fileError ? (
-                <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
-              ) : fileContent ? (
-                <CodeEditor
-                  value={fileContent}
-                  filename={selectedFile.name}
-                  height="100%"
-                />
-              ) : null}
-            </div>
-          </>
-        ) : (
-          <div className="flex items-center justify-center h-full text-muted-foreground">
-            <p>{t("workspace.selectFileToView")}</p>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

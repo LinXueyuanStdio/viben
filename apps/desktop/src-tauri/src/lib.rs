@@ -16,6 +16,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager,
 };
+use tauri_plugin_deep_link::DeepLinkExt;
 
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     // Create menu items
@@ -115,6 +116,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_deep_link::init())
         .setup(|app| {
             setup_tray(app)?;
 
@@ -128,6 +130,29 @@ pub fn run() {
                     }
                 });
             }
+
+            // Register deep link handler for OAuth callback
+            // URL format: browsemcp://oauth?code=xxx
+            let app_handle = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                let urls = event.urls();
+                for url in urls {
+                    if url.scheme() == "browsemcp" && url.host_str() == Some("oauth") {
+                        // Extract code from query parameters
+                        if let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v.to_string()) {
+                            // Emit event to frontend with the OAuth code
+                            let _ = app_handle.emit("oauth-callback", code);
+
+                            // Focus main window
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    }
+                }
+            });
 
             Ok(())
         })
@@ -295,6 +320,7 @@ pub fn run() {
             commands::workspace::get_skill_readme,
             commands::workspace::list_skill_files,
             commands::workspace::read_skill_file,
+            commands::workspace::write_skill_file,
             // Store sync commands
             commands::store_sync::read_mcp_servers_file,
             commands::store_sync::write_mcp_servers_file,
