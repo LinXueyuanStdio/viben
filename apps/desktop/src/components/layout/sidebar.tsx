@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Settings,
@@ -8,6 +9,7 @@ import {
   Store,
   Sparkles,
   Server,
+  PanelLeftClose,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,6 +28,7 @@ import { UserMenu } from "@/components/auth/user-menu";
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
+import { SidebarIconButton } from "./sidebar-icon-button";
 import { WorkspaceSection } from "./workspace-section";
 
 interface NavItem {
@@ -46,13 +49,24 @@ const skillsNav: NavItem[] = [
   { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
 ];
 
-interface SidebarProps {
-  collapsed?: boolean;
-}
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
-export function Sidebar({ collapsed = false }: SidebarProps) {
+export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+
+  // Load collapsed state from localStorage
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return saved === "true";
+  });
+
+  // Persist collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+  }, [collapsed]);
+
+  const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -62,94 +76,152 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
           collapsed ? "w-16" : "w-56"
         )}
       >
-        {/* Logo */}
-        <div className="flex h-14 items-center border-b border-sidebar-border px-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:scale-105">
-              <Search className="h-4 w-4" />
-            </div>
-            {!collapsed && (
-              <span className="font-serif font-semibold text-sidebar-foreground tracking-tight">
-                Browse MCP
-              </span>
-            )}
-          </div>
+        {/* Logo & Collapse Toggle */}
+        <div className={cn(
+          "flex h-14 items-center border-b border-sidebar-border",
+          collapsed ? "justify-center px-2" : "justify-between px-3"
+        )}>
+          {collapsed ? (
+            // Collapsed: clickable logo to expand
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={toggleCollapsed}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:scale-105"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {t("sidebar.expand")}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            // Expanded: show logo, title, and collapse button
+            <>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:scale-105">
+                  <Search className="h-4 w-4" />
+                </div>
+                <span className="font-serif font-semibold text-sidebar-foreground tracking-tight">
+                  Browse MCP
+                </span>
+              </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                    onClick={toggleCollapsed}
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {t("sidebar.collapse")}
+                </TooltipContent>
+              </Tooltip>
+            </>
+          )}
         </div>
 
         {/* Main Navigation with Sections */}
-        <ScrollArea className="flex-1 px-2 py-4">
-          <div className="space-y-4">
-            {/* Workspaces Section */}
-            <WorkspaceSection collapsed={collapsed} />
+        <ScrollArea className="flex-1 py-4">
+          {collapsed ? (
+            // Collapsed: all items use SidebarIconButton with unified centering
+            <div className="flex flex-col gap-1">
+              {/* Workspaces Section */}
+              <WorkspaceSection collapsed={collapsed} />
 
-            <Separator className="bg-sidebar-border" />
+              <div className="grid place-items-center w-full py-2">
+                <Separator className="w-10 bg-sidebar-border" />
+              </div>
 
-            {/* MCP Section */}
-            <SidebarSection
-              title={t("workspace.sections.mcp")}
-              collapsible
-              defaultOpen
-              collapsed={collapsed}
-            >
-              <nav className="flex flex-col gap-1">
-                {mcpNav.map((item) => (
-                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                ))}
-              </nav>
-            </SidebarSection>
+              {/* MCP Section */}
+              {mcpNav.map((item) => (
+                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+              ))}
 
-            {/* Skills Section */}
-            <SidebarSection
-              title={t("workspace.sections.skills")}
-              collapsible
-              defaultOpen
-              collapsed={collapsed}
-            >
-              <nav className="flex flex-col gap-1">
-                {skillsNav.map((item) => (
-                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                ))}
-              </nav>
-            </SidebarSection>
-          </div>
+              <div className="grid place-items-center w-full py-2">
+                <Separator className="w-10 bg-sidebar-border" />
+              </div>
+
+              {/* Skills Section */}
+              {skillsNav.map((item) => (
+                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+              ))}
+            </div>
+          ) : (
+            // Expanded: full layout with sections
+            <div className="space-y-4 px-2">
+              {/* Workspaces Section */}
+              <WorkspaceSection collapsed={collapsed} />
+
+              <Separator className="bg-sidebar-border" />
+
+              {/* MCP Section */}
+              <SidebarSection
+                title={t("workspace.sections.mcp")}
+                collapsible
+                defaultOpen
+              >
+                <nav className="flex flex-col gap-1">
+                  {mcpNav.map((item) => (
+                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                  ))}
+                </nav>
+              </SidebarSection>
+
+              {/* Skills Section */}
+              <SidebarSection
+                title={t("workspace.sections.skills")}
+                collapsible
+                defaultOpen
+              >
+                <nav className="flex flex-col gap-1">
+                  {skillsNav.map((item) => (
+                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                  ))}
+                </nav>
+              </SidebarSection>
+            </div>
+          )}
         </ScrollArea>
 
         {/* Bottom Status & Auth */}
-        <div className="px-2 pb-4">
-          <Separator className="mb-4 bg-sidebar-border" />
-
-          {/* Unified Status Indicator */}
-          <div className="mt-3">
-            <McpStatusIndicator collapsed={collapsed} />
-          </div>
-
-          {/* Offline Status Indicator */}
-          <div className="mt-1">
-            <OfflineIndicator collapsed={collapsed} />
-          </div>
-
-          {/* Settings Navigation */}
-          <div className="mt-3 pt-3 border-t border-sidebar-border">
+        {collapsed ? (
+          // Collapsed: all items use grid centering
+          <div className="pb-4 flex flex-col gap-1">
+            <div className="grid place-items-center w-full py-2">
+              <Separator className="w-10 bg-sidebar-border" />
+            </div>
+            <div className="grid place-items-center w-full">
+              <McpStatusIndicator collapsed={collapsed} />
+            </div>
+            <div className="grid place-items-center w-full">
+              <OfflineIndicator collapsed={collapsed} />
+            </div>
+            <div className="grid place-items-center w-full py-2">
+              <Separator className="w-10 bg-sidebar-border" />
+            </div>
             <NavItemComponent
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
             />
-          </div>
-
-          {/* User Auth Section */}
-          <div className="mt-2">
-            {isAuthenticated ? (
-              <UserMenu collapsed={collapsed} />
-            ) : (
-              <LoginDialog
-                trigger={
-                  collapsed ? (
+            <div className="grid place-items-center w-full">
+              {isAuthenticated ? (
+                <UserMenu collapsed={collapsed} />
+              ) : (
+                <LoginDialog
+                  trigger={
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="w-full h-10"
+                          className="h-10 w-10"
                         >
                           <LogIn className="h-4 w-4" />
                         </Button>
@@ -158,17 +230,39 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                         {t("auth.signIn")}
                       </TooltipContent>
                     </Tooltip>
-                  ) : (
+                  }
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          // Expanded: full layout
+          <div className="pb-4 px-2">
+            <Separator className="mb-4 bg-sidebar-border" />
+            <McpStatusIndicator collapsed={collapsed} />
+            <OfflineIndicator collapsed={collapsed} />
+            <div className="mt-3 pt-3 border-t border-sidebar-border">
+              <NavItemComponent
+                item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
+                collapsed={collapsed}
+              />
+            </div>
+            <div className="mt-2">
+              {isAuthenticated ? (
+                <UserMenu collapsed={collapsed} />
+              ) : (
+                <LoginDialog
+                  trigger={
                     <Button variant="outline" className="w-full">
                       <LogIn className="mr-2 h-4 w-4" />
                       {t("auth.signIn")}
                     </Button>
-                  )
-                }
-              />
-            )}
+                  }
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </aside>
     </TooltipProvider>
   );
@@ -189,26 +283,37 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
   const isActiveOrChild = location.pathname === item.href ||
     location.pathname.startsWith(item.href + "/");
 
-  const link = (
+  // Collapsed view - use unified SidebarIconButton component with centering wrapper
+  if (collapsed) {
+    return (
+      <div className="grid place-items-center w-full">
+        <SidebarIconButton
+          href={item.href}
+          icon={<item.icon className="h-4 w-4" />}
+          tooltip={title}
+        />
+      </div>
+    );
+  }
+
+  // Expanded view - full link with text
+  return (
     <NavLink
       to={item.href}
-      className={() =>
-        cn(
-          "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm",
-          "transition-all duration-200",
-          isActiveOrChild
-            ? [
-                "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
-                "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
-                "before:h-6 before:w-1 before:rounded-r-full before:bg-primary",
-              ]
-            : [
-                "text-sidebar-foreground/70",
-                "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-              ],
-          collapsed && "justify-center px-2"
-        )
-      }
+      className={cn(
+        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
+        "transition-all duration-200",
+        isActiveOrChild
+          ? [
+              "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+              "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+              "before:h-6 before:w-1 before:rounded-r-full before:bg-primary",
+            ]
+          : [
+              "text-sidebar-foreground/70",
+              "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            ]
+      )}
     >
       <item.icon
         className={cn(
@@ -216,20 +321,7 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
           "group-hover:text-primary"
         )}
       />
-      {!collapsed && <span>{title}</span>}
+      <span>{title}</span>
     </NavLink>
   );
-
-  if (collapsed) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right" className="font-medium">
-          {title}
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return link;
 }

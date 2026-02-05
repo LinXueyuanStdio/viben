@@ -27,9 +27,10 @@ export function SidebarSection({
 }: SidebarSectionProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
-  // When sidebar is collapsed, don't show section headers
+  // When sidebar is collapsed, don't show section headers, just pass through children
+  // The children (nav) will handle their own centering
   if (collapsed) {
-    return <div className={cn("space-y-1", className)}>{children}</div>;
+    return <>{children}</>;
   }
 
   // Non-collapsible section
@@ -52,7 +53,7 @@ export function SidebarSection({
     <div className={cn("space-y-1", className)}>
       <div
         className={cn(
-          "flex w-full items-center justify-between px-3 py-2",
+          "flex w-full items-center justify-between",
           "text-xs font-semibold uppercase tracking-wider text-muted-foreground"
         )}
       >
@@ -60,21 +61,23 @@ export function SidebarSection({
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "flex items-center gap-1",
-            "hover:text-foreground transition-colors duration-200",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded"
+            "flex-1 flex items-center justify-between gap-1 px-3 py-2 -mx-0",
+            "hover:text-foreground hover:bg-sidebar-accent/50 transition-all duration-200",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-lg"
           )}
         >
           <span>{title}</span>
-          <ChevronDown
-            className={cn(
-              "h-3 w-3 transition-transform duration-200",
-              isOpen ? "rotate-0" : "-rotate-90"
-            )}
-          />
+          <div className="flex items-center gap-1">
+            <ChevronDown
+              className={cn(
+                "h-3 w-3 transition-transform duration-200",
+                isOpen ? "rotate-0" : "-rotate-90"
+              )}
+            />
+          </div>
         </button>
         {headerAction && (
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1 pr-2" onClick={(e) => e.stopPropagation()}>
             {headerAction}
           </div>
         )}
