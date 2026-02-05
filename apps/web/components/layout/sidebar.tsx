@@ -127,7 +127,7 @@ export function Sidebar({
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2">
           <Package className="h-6 w-6 text-primary" />
-          <span className="font-serif text-xl font-semibold">Browse MCP</span>
+          <span className="font-serif text-xl font-semibold">Viben</span>
         </Link>
       </div>
 
