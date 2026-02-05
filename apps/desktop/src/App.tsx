@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AppLayout } from "@/components/layout";
 import {
@@ -7,7 +7,6 @@ import {
   ProvidersPage,
   SearchServicePage,
   InspectorPage,
-  AgentsPage,
   LogsPage,
   SettingsPage,
   AboutPage,
@@ -46,11 +45,27 @@ function App() {
       <Routes>
         {/* Main app routes with layout */}
         <Route path="/" element={<AppLayout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="providers" element={<ProvidersPage />} />
-          <Route path="search-service" element={<SearchServicePage />} />
+          {/* Default route redirects to MCP Services Dashboard */}
+          <Route index element={<Navigate to="/mcp-services/dashboard" replace />} />
+
+          {/* MCP Services routes - new structure */}
+          <Route path="mcp-services">
+            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="data-sources" element={<ProvidersPage />} />
+            <Route path="search-service" element={<SearchServicePage />} />
+            <Route path="logs" element={<LogsPage />} />
+            {/* Default redirect for /mcp-services */}
+            <Route index element={<Navigate to="dashboard" replace />} />
+          </Route>
+
+          {/* Legacy route redirects for backward compatibility */}
+          <Route path="providers" element={<Navigate to="/mcp-services/data-sources" replace />} />
+          <Route path="search-service" element={<Navigate to="/mcp-services/search-service" replace />} />
+          <Route path="logs" element={<Navigate to="/mcp-services/logs" replace />} />
+          <Route path="agents" element={<Navigate to="/mcp-services/dashboard" replace />} />
+
+          {/* Top-level MCP routes (unchanged) */}
           <Route path="inspector" element={<InspectorPage />} />
-          <Route path="agents" element={<AgentsPage />} />
           <Route
             path="mcp-marketplace"
             element={
@@ -59,6 +74,8 @@ function App() {
               </Suspense>
             }
           />
+
+          {/* Skills routes */}
           <Route
             path="skills-market"
             element={
@@ -67,14 +84,17 @@ function App() {
               </Suspense>
             }
           />
-          <Route path="logs" element={<LogsPage />} />
+
+          {/* Settings and About */}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />
+
           {/* Workspace routes */}
           <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<WorkspaceSkillDetailPage />} />
         </Route>
+
         {/* Tray popup - separate window without layout */}
         <Route path="/tray-popup" element={<TrayPopupPage />} />
       </Routes>
