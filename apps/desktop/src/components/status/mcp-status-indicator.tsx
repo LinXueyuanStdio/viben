@@ -131,7 +131,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
         navigate("/settings");
         break;
       default:
-        navigate("/search-service");
+        navigate("/mcp-services/search-service");
     }
   };
 

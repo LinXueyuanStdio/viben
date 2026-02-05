@@ -136,7 +136,7 @@ export function AgentDetailPage() {
             {t("workspace.notFoundDesc")}
           </p>
           <Button asChild>
-            <Link to="/">
+            <Link to="/mcp-services/dashboard">
               <ArrowLeft className="h-4 w-4 mr-2" />
               {t("workspace.backToDashboard")}
             </Link>
