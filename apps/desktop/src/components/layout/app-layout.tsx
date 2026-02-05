@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { usePython } from "@/hooks/use-python";
@@ -9,7 +9,6 @@ import { useAppStore } from "@/stores";
 export function AppLayout() {
   const { selectedPython, browseMcpInfo } = usePython();
   const { setupStatus, setSetupStatus } = useAppStore();
-  const hasInitialized = useRef(false);
 
   // Initialize tray status synchronization
   useTrayStatusSync();
@@ -17,25 +16,20 @@ export function AppLayout() {
   // Initialize store synchronization across windows
   useMainWindowStoreSync();
 
-  // Setup status detection - runs ONLY ONCE at app startup
-  // After that, only Settings page "Detect" button can trigger update
+  // Setup status detection - updates whenever browseMcpInfo changes
+  // This ensures status is updated when user installs browse-mcp
   useEffect(() => {
-    // Skip if already initialized
-    if (hasInitialized.current) return;
-
-    // Skip if no cached status exists but data hasn't loaded yet
-    // This prevents setting status before data is ready
+    // Skip if data hasn't loaded yet
     if (selectedPython === null || browseMcpInfo === undefined) return;
 
-    // Only initialize if no cached status exists
-    // If user already has cached status from previous session, respect it
-    if (setupStatus === null) {
-      const isSetupComplete =
-        selectedPython?.is_valid === true && browseMcpInfo?.installed === true;
+    const isSetupComplete =
+      selectedPython?.is_valid === true && browseMcpInfo?.installed === true;
+
+    // Always update if the computed status differs from cached status
+    // This handles the case where user installs browse-mcp while app is running
+    if (setupStatus === null || setupStatus.isComplete !== isSetupComplete) {
       setSetupStatus(isSetupComplete);
     }
-
-    hasInitialized.current = true;
   }, [selectedPython, browseMcpInfo, setupStatus, setSetupStatus]);
 
   return (
