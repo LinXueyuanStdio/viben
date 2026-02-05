@@ -171,7 +171,7 @@
     "offlineCache": "离线缓存"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "版本 {{version}}",
     "updateAvailable": "有可用更新",
     "versionReady": "版本 {{version}} 已准备好安装",

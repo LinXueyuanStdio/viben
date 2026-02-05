@@ -141,7 +141,7 @@
     "downloadPath": "Downloadpad"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "Versie {{version}}",
     "updateAvailable": "Update beschikbaar",
     "versionReady": "Versie {{version}} is klaar om te installeren",

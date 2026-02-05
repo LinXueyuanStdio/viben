@@ -44,7 +44,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .icon(icon)
         .menu(&menu)
         .show_menu_on_left_click(false) // Left click shows popup, not menu
-        .tooltip("Browse MCP")
+        .tooltip("Viben")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
                 if let Some(window) = app.get_webview_window("main") {
@@ -132,12 +132,12 @@ pub fn run() {
             }
 
             // Register deep link handler for OAuth callback
-            // URL format: browsemcp://oauth?code=xxx
+            // URL format: viben://oauth?code=xxx
             let app_handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 let urls = event.urls();
                 for url in urls {
-                    if url.scheme() == "browsemcp" && url.host_str() == Some("oauth") {
+                    if url.scheme() == "viben" && url.host_str() == Some("oauth") {
                         // Extract code from query parameters
                         if let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v.to_string()) {
                             // Emit event to frontend with the OAuth code

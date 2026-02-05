@@ -1,7 +1,7 @@
 [package]
 name = "browse-mcp-desktop"
 version = "0.1.0"
-description = "Browse MCP Desktop - Academic Paper Search with MCP Integration"
+description = "Viben Desktop - Academic Paper Search with MCP Integration"
 authors = ["LinXueyuanStdio"]
 edition = "2021"
 

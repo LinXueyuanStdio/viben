@@ -335,7 +335,7 @@ export const useAppStore = create<AppState>()(
       clearInspectorNotifications: () => set({ inspectorNotifications: [] }),
     }),
     {
-      name: "browse-mcp-storage",
+      name: "viben-storage",
       partialize: (state) => ({
         selectedPython: state.selectedPython,
         providers: state.providers,

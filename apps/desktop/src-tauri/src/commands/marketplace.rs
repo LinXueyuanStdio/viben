@@ -7,11 +7,11 @@ use std::process::Command;
 
 /// Default URL for provider index (deployed via GitHub Pages)
 const DEFAULT_PROVIDER_INDEX_URL: &str =
-    "https://linxueyuan.online/browse-mcp/assets/provider.index.json";
+    "https://linxueyuan.online/viben/assets/provider.index.json";
 
 /// Fallback URL (raw GitHub)
 const FALLBACK_PROVIDER_INDEX_URL: &str =
-    "https://raw.githubusercontent.com/LinXueyuanStdio/browse-mcp/main/provider.index.json";
+    "https://raw.githubusercontent.com/LinXueyuanStdio/viben/main/provider.index.json";
 
 /// Get the provider index URL from environment or use default
 fn get_provider_index_url() -> String {
