@@ -16,8 +16,8 @@ const crimsonPro = Crimson_Pro({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Browse MCP',
-    template: '%s | Browse MCP',
+    default: 'Viben',
+    template: '%s | Viben',
   },
   description: 'AI Tool Platform - MCP & Skills Marketplace',
 };

@@ -6,7 +6,7 @@ export default function HomePage() {
     <main className="flex min-h-screen flex-col items-center justify-center p-8 md:p-24">
       <div className="max-w-4xl text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-          Browse MCP Platform
+          Viben Platform
         </h1>
         <p className="mt-6 text-lg leading-8 text-muted-foreground">
           The AI Tool Platform for discovering, sharing, and managing MCP

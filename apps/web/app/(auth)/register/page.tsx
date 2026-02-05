@@ -12,7 +12,7 @@ export default function RegisterPage() {
       <div className="space-y-2 text-center">
         <h1 className="text-3xl font-bold">Create an account</h1>
         <p className="text-muted-foreground">
-          Get started with Browse MCP
+          Get started with Viben
         </p>
       </div>
 
