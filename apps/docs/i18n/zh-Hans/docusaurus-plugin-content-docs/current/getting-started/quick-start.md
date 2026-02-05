@@ -88,7 +88,7 @@ URL: https://arxiv.org/abs/2303.08774
 当您要求 Claude 搜索论文时：
 
 1. Claude 识别意图并调用 `browse_search` 工具
-2. Viben 查询指定的学术数据库
+2. Viben 查询指定的内容来源
 3. 结果以标准化格式返回
 4. Claude 将信息呈现给您
 
