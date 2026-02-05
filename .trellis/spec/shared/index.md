@@ -1,6 +1,14 @@
 # Shared Coding Standards
 
-> Cross-cutting standards that apply to all code in the browse-mcp project.
+> Cross-cutting standards that apply to all code in the Viben project.
+
+---
+
+## Guidelines Index
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Branding](./branding.md) | Viben brand naming conventions, migration guide | ✅ Complete |
 
 ---
 

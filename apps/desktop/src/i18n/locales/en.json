@@ -66,7 +66,9 @@
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
-    "setupRequired": "Setup Required"
+    "setupRequired": "Setup Required",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -924,5 +926,54 @@
     "conflictResolutionDesc": "How to handle sync conflicts",
     "preferLocal": "Prefer Local",
     "preferCloud": "Prefer Cloud"
+  },
+  "onboarding": {
+    "footer": "Viben - Your AI-powered research assistant",
+    "steps": {
+      "python": "Python",
+      "claude": "AI Clients",
+      "login": "Account"
+    },
+    "python": {
+      "title": "Python Environment",
+      "description": "Viben requires Python 3.10+ to run. Select or configure your Python installation.",
+      "detected": "Detected Python Installations",
+      "detecting": "Detecting Python installations...",
+      "noPython": "No Python installations found. Please install Python 3.10 or later.",
+      "customPath": "Custom Python Path",
+      "check": "Check",
+      "invalidPath": "Invalid Python path or version below 3.10",
+      "installHint": "Run this command to install browse-mcp:",
+      "installRequired": "Please install browse-mcp to continue"
+    },
+    "claude": {
+      "title": "AI Client Detection",
+      "description": "Viben can integrate with various AI assistants. We've detected the following clients on your system.",
+      "aiClients": "AI Clients",
+      "detecting": "Detecting AI clients...",
+      "download": "Download",
+      "detected": "{{count}} AI client(s) detected",
+      "readyToConfigure": "You can configure browse-mcp for these clients after setup.",
+      "noClients": "No AI clients detected",
+      "noClientsHint": "You can still continue and install an AI client later."
+    },
+    "login": {
+      "title": "Sign In (Optional)",
+      "description": "Sign in to sync your settings across devices and access cloud features.",
+      "signInPrompt": "Sign in with GitHub",
+      "benefits": "Sync settings, access cloud features, and more",
+      "waitingAuth": "Waiting for authorization...",
+      "waitingHint": "Complete the sign-in process in your browser",
+      "remaining": "remaining",
+      "timeout": "Authorization timed out",
+      "timeoutHint": "The sign-in process took too long. You can try again or skip this step.",
+      "retry": "Try Again",
+      "skip": "Skip for Now",
+      "success": "Successfully signed in!",
+      "welcomeUser": "Welcome, {{name}}!",
+      "error": "Sign-in failed",
+      "errorHint": "There was an error during sign-in. You can try again or skip this step.",
+      "finish": "Get Started"
+    }
   }
 }
