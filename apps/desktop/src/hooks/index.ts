@@ -76,7 +76,9 @@ export {
   useSkillReadme,
   useSkillFiles,
   useSkillFileContent,
+  useSkillFileWriter,
 } from "./use-skill-content";
+export type { SaveStatus } from "./use-skill-content";
 
 // Official MCP Registry Integration
 export {

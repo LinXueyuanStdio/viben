@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { generateId } from '@/lib/utils';
 import { cookies } from 'next/headers';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
@@ -12,6 +13,11 @@ export async function GET() {
       { status: 500 }
     );
   }
+
+  // Check if this is from desktop client
+  const searchParams = request.nextUrl.searchParams;
+  const redirectUri = searchParams.get('redirect_uri');
+  const client = searchParams.get('client');
 
   const state = generateId();
 
@@ -23,6 +29,16 @@ export async function GET() {
     sameSite: 'lax',
     maxAge: 600, // 10 minutes
   });
+
+  // Store desktop redirect_uri if present (for deep link callback)
+  if (client === 'desktop' && redirectUri?.startsWith('browsemcp://')) {
+    cookieStore.set('oauth_redirect_uri', redirectUri, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minutes
+    });
+  }
 
   const params = new URLSearchParams({
     client_id: clientId,

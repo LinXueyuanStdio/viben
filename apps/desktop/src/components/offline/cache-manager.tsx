@@ -24,6 +24,11 @@ interface CacheManagerProps {
  *
  * Displays cache size, provides clear/refresh buttons, and cache settings.
  */
+// Map known backend error messages to translation keys
+const ERROR_TRANSLATION_MAP: Record<string, string> = {
+  "Cannot refresh cache: offline": "offline.cannotRefreshOffline",
+};
+
 export function CacheManager({ className }: CacheManagerProps) {
   const { t } = useTranslation();
   const {
@@ -148,7 +153,7 @@ export function CacheManager({ className }: CacheManagerProps) {
       {/* Error Message */}
       {error && (
         <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm">
-          {error}
+          {ERROR_TRANSLATION_MAP[error] ? t(ERROR_TRANSLATION_MAP[error]) : error}
         </div>
       )}
 

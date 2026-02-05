@@ -170,8 +170,9 @@ pub async fn login_with_credentials(
 
 /// Initiate GitHub OAuth flow by opening browser
 ///
-/// Opens the GitHub OAuth URL in the default browser.
-/// The callback will be handled by `handle_oauth_callback`.
+/// Opens the GitHub OAuth URL in the default browser with a redirect_uri
+/// pointing to the desktop app's deep link scheme.
+/// The callback will be handled via deep link: browsemcp://oauth?code=xxx
 ///
 /// # Returns
 /// The OAuth URL that was opened
@@ -181,7 +182,12 @@ pub fn login_with_github(
     api_state: State<'_, ApiClientState>,
 ) -> Result<String, String> {
     let base_url = api_state.base_url.lock().unwrap().clone();
-    let oauth_url = format!("{}/api/auth/github", base_url);
+    // Include redirect_uri parameter so the server knows to redirect back to desktop app
+    let redirect_uri = urlencoding::encode("browsemcp://oauth");
+    let oauth_url = format!(
+        "{}/api/auth/github?redirect_uri={}&client=desktop",
+        base_url, redirect_uri
+    );
 
     // Open OAuth URL in default browser using the opener plugin
     tauri_plugin_opener::open_url(&oauth_url, None::<&str>)
