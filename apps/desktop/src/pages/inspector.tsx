@@ -58,9 +58,11 @@ export function InspectorPage() {
     isLoading: proxyLoading,
     error: proxyError,
     isInstalled: proxyInstalled,
+    portConflict,
     startProxy,
     stopProxy,
     installProxy,
+    killAndRestart,
   } = useMcpProxy();
 
   // Use proxy mode state
@@ -161,12 +163,26 @@ export function InspectorPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState("tools");
 
+  // Track if we've attempted to start proxy (to prevent infinite retries)
+  const proxyStartAttempted = useRef(false);
+
   // Auto-start proxy when entering page if installed
   useEffect(() => {
-    if (proxyInstalled && !proxyStatus?.running && useProxy && !proxyLoading) {
-      startProxy().catch(console.error);
+    // Only attempt once per page load, and skip if there's a port conflict
+    if (proxyInstalled && !proxyStatus?.running && useProxy && !proxyLoading && !proxyStartAttempted.current && !portConflict) {
+      proxyStartAttempted.current = true;
+      startProxy().catch(() => {
+        // Error is handled in the hook, just ignore here
+      });
     }
-  }, [proxyInstalled, proxyStatus?.running, useProxy, proxyLoading, startProxy]);
+  }, [proxyInstalled, proxyStatus?.running, useProxy, proxyLoading, portConflict, startProxy]);
+
+  // Reset the start attempt flag when proxy is stopped manually
+  useEffect(() => {
+    if (!useProxy) {
+      proxyStartAttempted.current = false;
+    }
+  }, [useProxy]);
 
   // Persist config to localStorage
   useEffect(() => {
@@ -403,8 +419,63 @@ export function InspectorPage() {
                     </div>
                   )}
 
-                  {proxyError && (
+                  {proxyError && !portConflict && (
                     <div className="text-xs text-red-500 dark:text-red-400">{proxyError}</div>
+                  )}
+
+                  {/* Port conflict UI - Proxy already running */}
+                  {portConflict?.type === 'proxy_already_running' && (
+                    <div className="p-2 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                      <div className="text-xs text-blue-700 dark:text-blue-400 mb-2">
+                        {t("inspector.proxyAlreadyRunning", "browse-mcp-proxy is already running (PID: {{pid}}). Restart to manage it from this app.")
+                          .replace("{{pid}}", String(portConflict.process.pid))}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => killAndRestart()}
+                        disabled={proxyLoading}
+                        className="h-6 text-xs w-full"
+                      >
+                        {proxyLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <RotateCcw className="h-3 w-3 mr-1" />
+                        )}
+                        {t("inspector.restartProxy", "Restart Proxy")}
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Port conflict UI - Other process */}
+                  {portConflict?.type === 'other_process' && (
+                    <div className="p-2 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                      <div className="text-xs text-orange-700 dark:text-orange-400 mb-2">
+                        {portConflict.process.name
+                          ? t("inspector.portInUseByProcess", "Port {{port}} is in use by {{name}} (PID: {{pid}})")
+                              .replace("{{port}}", "6277")
+                              .replace("{{name}}", portConflict.process.name)
+                              .replace("{{pid}}", String(portConflict.process.pid))
+                          : t("inspector.portInUseByPid", "Port {{port}} is in use (PID: {{pid}})")
+                              .replace("{{port}}", "6277")
+                              .replace("{{pid}}", String(portConflict.process.pid))
+                        }
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => killAndRestart()}
+                        disabled={proxyLoading}
+                        className="h-6 text-xs w-full"
+                      >
+                        {proxyLoading ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                        )}
+                        {t("inspector.killAndRestart", "Kill Process & Restart")}
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}

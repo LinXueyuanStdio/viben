@@ -56,6 +56,213 @@ fn is_port_available(host: &str, port: u16) -> bool {
     TcpListener::bind(format!("{}:{}", host, port)).is_ok()
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PortProcess {
+    pub pid: u32,
+    pub name: Option<String>,
+    pub is_mcp_proxy: bool,
+}
+
+/// Check if the process on a port is browse-mcp-proxy by checking the process command line
+#[cfg(target_os = "macos")]
+fn is_mcp_proxy_process(pid: u32) -> bool {
+    // Get full command line
+    let output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "command="])
+        .output()
+        .ok();
+
+    if let Some(o) = output {
+        if o.status.success() {
+            let cmd = String::from_utf8_lossy(&o.stdout);
+            return cmd.contains("browse_mcp_proxy") || cmd.contains("browse-mcp-proxy");
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn is_mcp_proxy_process(pid: u32) -> bool {
+    // On Windows, check via wmic
+    let output = Command::new("wmic")
+        .args(["process", "where", &format!("ProcessId={}", pid), "get", "CommandLine"])
+        .output()
+        .ok();
+
+    if let Some(o) = output {
+        if o.status.success() {
+            let cmd = String::from_utf8_lossy(&o.stdout);
+            return cmd.contains("browse_mcp_proxy") || cmd.contains("browse-mcp-proxy");
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "linux")]
+fn is_mcp_proxy_process(pid: u32) -> bool {
+    // On Linux, read /proc/pid/cmdline
+    if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
+        return cmdline.contains("browse_mcp_proxy") || cmdline.contains("browse-mcp-proxy");
+    }
+    false
+}
+
+/// Find process using a specific port
+#[cfg(target_os = "macos")]
+fn find_process_on_port(port: u16) -> Option<PortProcess> {
+    // Use lsof to find process on port
+    let output = Command::new("lsof")
+        .args(["-i", &format!(":{}", port), "-t", "-sTCP:LISTEN"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let pid_str = String::from_utf8_lossy(&output.stdout);
+    let pid: u32 = pid_str.trim().lines().next()?.parse().ok()?;
+
+    // Get process name
+    let ps_output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "comm="])
+        .output()
+        .ok();
+
+    let name = ps_output.and_then(|o| {
+        if o.status.success() {
+            Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+        } else {
+            None
+        }
+    });
+
+    let is_mcp_proxy = is_mcp_proxy_process(pid);
+
+    Some(PortProcess { pid, name, is_mcp_proxy })
+}
+
+#[cfg(target_os = "windows")]
+fn find_process_on_port(port: u16) -> Option<PortProcess> {
+    // Use netstat to find process on port
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "TCP"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let port_pattern = format!(":{}", port);
+
+    for line in stdout.lines() {
+        if line.contains(&port_pattern) && line.contains("LISTENING") {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(pid_str) = parts.last() {
+                if let Ok(pid) = pid_str.parse::<u32>() {
+                    // Get process name via tasklist
+                    let tasklist = Command::new("tasklist")
+                        .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+                        .output()
+                        .ok();
+
+                    let name = tasklist.and_then(|o| {
+                        if o.status.success() {
+                            let out = String::from_utf8_lossy(&o.stdout);
+                            out.split(',').next().map(|s| s.trim_matches('"').to_string())
+                        } else {
+                            None
+                        }
+                    });
+
+                    let is_mcp_proxy = is_mcp_proxy_process(pid);
+
+                    return Some(PortProcess { pid, name, is_mcp_proxy });
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn find_process_on_port(port: u16) -> Option<PortProcess> {
+    // Use ss or netstat to find process on port
+    let output = Command::new("ss")
+        .args(["-tlnp", &format!("sport = :{}", port)])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Parse ss output to find PID
+    for line in stdout.lines().skip(1) {
+        if let Some(pid_info) = line.split("pid=").nth(1) {
+            if let Some(pid_str) = pid_info.split(',').next() {
+                if let Ok(pid) = pid_str.parse::<u32>() {
+                    // Get process name
+                    let ps_output = Command::new("ps")
+                        .args(["-p", &pid.to_string(), "-o", "comm="])
+                        .output()
+                        .ok();
+
+                    let name = ps_output.and_then(|o| {
+                        if o.status.success() {
+                            Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                        } else {
+                            None
+                        }
+                    });
+
+                    let is_mcp_proxy = is_mcp_proxy_process(pid);
+
+                    return Some(PortProcess { pid, name, is_mcp_proxy });
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Kill a process by PID
+#[cfg(unix)]
+fn kill_process(pid: u32) -> Result<(), String> {
+    let output = Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .output()
+        .map_err(|e| format!("Failed to kill process: {}", e))?;
+
+    if output.status.success() {
+        // Wait a moment for the process to die
+        thread::sleep(std::time::Duration::from_millis(500));
+        Ok(())
+    } else {
+        Err(format!("Failed to kill process {}: {}", pid, String::from_utf8_lossy(&output.stderr)))
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn kill_process(pid: u32) -> Result<(), String> {
+    let output = Command::new("taskkill")
+        .args(["/F", "/PID", &pid.to_string()])
+        .output()
+        .map_err(|e| format!("Failed to kill process: {}", e))?;
+
+    if output.status.success() {
+        // Wait a moment for the process to die
+        thread::sleep(std::time::Duration::from_millis(500));
+        Ok(())
+    } else {
+        Err(format!("Failed to kill process {}: {}", pid, String::from_utf8_lossy(&output.stderr)))
+    }
+}
+
 /// Start the MCP proxy server
 #[tauri::command]
 pub async fn start_mcp_proxy(
@@ -85,8 +292,18 @@ pub async fn start_mcp_proxy(
 
     // Check if port is already in use (by another process)
     if !is_port_available(&config.host, config.port) {
+        // Check if it's already a browse-mcp-proxy
+        if let Some(process) = find_process_on_port(config.port) {
+            if process.is_mcp_proxy {
+                // It's already a browse-mcp-proxy, return error with special marker
+                return Err(format!(
+                    "PROXY_ALREADY_RUNNING:{}:{}",
+                    config.port, process.pid
+                ));
+            }
+        }
         return Err(format!(
-            "Port {} is already in use. Please stop any existing proxy process and try again.",
+            "PORT_IN_USE:{}",
             config.port
         ));
     }
@@ -276,5 +493,22 @@ pub async fn install_mcp_proxy(python_path: String) -> Result<String, String> {
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("Failed to install browse-mcp-proxy: {}", stderr))
+    }
+}
+
+/// Get process info for a port
+#[tauri::command]
+pub async fn get_port_process(port: u16) -> Result<Option<PortProcess>, String> {
+    Ok(find_process_on_port(port))
+}
+
+/// Kill process using a port and optionally restart proxy
+#[tauri::command]
+pub async fn kill_port_process(port: u16) -> Result<(), String> {
+    if let Some(process) = find_process_on_port(port) {
+        kill_process(process.pid)?;
+        Ok(())
+    } else {
+        Err(format!("No process found on port {}", port))
     }
 }

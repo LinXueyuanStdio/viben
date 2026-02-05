@@ -166,16 +166,16 @@ export function useWorkspaceAgents(workspaceId: string | null) {
   const [agents, setAgents] = useState<WorkspaceAgent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    startDiscovery,
-    completeDiscovery,
-    failDiscovery,
-    getDiscoveryTask,
-  } = useWorkspaceStore();
+  // Get store functions directly (these are stable)
+  const startDiscovery = useWorkspaceStore((s) => s.startDiscovery);
+  const completeDiscovery = useWorkspaceStore((s) => s.completeDiscovery);
+  const failDiscovery = useWorkspaceStore((s) => s.failDiscovery);
+  const discoveryTasks = useWorkspaceStore((s) => s.discoveryTasks);
 
-  const discoveryTask = workspaceId ? getDiscoveryTask(workspaceId) : undefined;
+  const discoveryTask = workspaceId ? discoveryTasks[workspaceId] : undefined;
   const loading = discoveryTask?.status === "running";
 
+  // Stable loadAgents function - only depends on workspaceId
   const loadAgents = useCallback(async () => {
     if (!workspaceId) {
       setAgents([]);
@@ -183,7 +183,9 @@ export function useWorkspaceAgents(workspaceId: string | null) {
     }
 
     // Backpressure: don't start if already running
-    const currentTask = getDiscoveryTask(workspaceId);
+    // Check directly from store state to avoid stale closure
+    const store = useWorkspaceStore.getState();
+    const currentTask = store.discoveryTasks[workspaceId];
     if (currentTask?.status === "running") {
       return;
     }
@@ -202,7 +204,7 @@ export function useWorkspaceAgents(workspaceId: string | null) {
       setError(message);
       failDiscovery(workspaceId, message);
     }
-  }, [workspaceId, startDiscovery, completeDiscovery, failDiscovery, getDiscoveryTask]);
+  }, [workspaceId, startDiscovery, completeDiscovery, failDiscovery]);
 
   // Update agents when discovery completes from elsewhere
   useEffect(() => {
@@ -211,7 +213,11 @@ export function useWorkspaceAgents(workspaceId: string | null) {
     }
   }, [discoveryTask?.status, discoveryTask?.agents]);
 
-  // Note: Don't auto-load here - let the detail page control when to load
+  // Reset agents when workspace changes
+  useEffect(() => {
+    setAgents([]);
+    setError(null);
+  }, [workspaceId]);
 
   return {
     agents,

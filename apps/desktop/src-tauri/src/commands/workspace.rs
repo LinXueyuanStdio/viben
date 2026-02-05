@@ -905,3 +905,38 @@ pub async fn delete_workspace_skill(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_detect_global_workspace_agents() {
+        // This test directly checks that the global workspace detection works
+        let result = detect_workspace_agents("global".to_string()).await;
+        match result {
+            Ok(agents) => {
+                println!("Found {} agents in global workspace:", agents.len());
+                for agent in &agents {
+                    println!("  - {} ({:?})", agent.name, agent.agent_type);
+                    println!("    config_path: {}", agent.config_path);
+                    println!("    mcp_config_file: {:?}", agent.mcp_config_file);
+                    println!("    skills_config_file: {:?}", agent.skills_config_file);
+                }
+                // Should find at least Claude Code in global workspace
+                assert!(!agents.is_empty(), "Should find at least one agent");
+
+                // Check Claude Code is detected
+                let claude = agents.iter().find(|a| a.name == "Claude Code");
+                assert!(claude.is_some(), "Should find Claude Code");
+                if let Some(claude) = claude {
+                    assert!(claude.mcp_config_file.is_some(), "Claude should have mcp_config_file");
+                    assert!(claude.skills_config_file.is_some(), "Claude should have skills_config_file");
+                }
+            }
+            Err(e) => {
+                panic!("Detection failed: {}", e);
+            }
+        }
+    }
+}
+

@@ -232,7 +232,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                   {isExpanded && (
                     <div className="px-2.5 pb-2.5 space-y-2">
                       {/* Progress */}
-                      {task.progress !== undefined && (
+                      {typeof task.progress === 'number' && (
                         <div>
                           <div className="flex justify-between text-xs mb-1">
                             <span className="text-muted-foreground">Progress</span>
@@ -251,7 +251,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                       )}
 
                       {/* Result or Error */}
-                      {task.result && (
+                      {task.result !== undefined && task.result !== null && (
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Result:</div>
                           <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto max-h-32">
