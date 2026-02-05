@@ -148,15 +148,15 @@ jobs:
         with:
           projectPath: apps/desktop
           tagName: ${{ needs.prepare.outputs.tag }}
-          releaseName: 'Browse MCP Desktop v${{ needs.prepare.outputs.version }}'
+          releaseName: 'Viben Desktop v${{ needs.prepare.outputs.version }}'
           releaseBody: |
-            ## Browse MCP Desktop v${{ needs.prepare.outputs.version }}
+            ## Viben Desktop v${{ needs.prepare.outputs.version }}
 
             ### Installation
 
-            - **macOS**: Download the `.dmg` file and drag Browse MCP to Applications
+            - **macOS**: Download the `.dmg` file and drag Viben to Applications
               - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-              - Or run: `xattr -cr /Applications/Browse\ MCP.app`
+              - Or run: `xattr -cr /Applications/Viben.app`
             - **Windows**: Download the `.msi` or `.exe` installer and run it
             - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
 
