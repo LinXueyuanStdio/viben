@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -9,9 +9,10 @@ import {
   Package,
   Code,
   FileText,
-  Settings,
+  FolderTree,
   X,
   ExternalLink,
+  File,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -20,16 +21,16 @@ import {
   useLocalWorkspaces,
   useWorkspaceAgents,
   useWorkspaceSkills,
+  useSkillReadme,
+  useSkillFiles,
+  useSkillFileContent,
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
-import type { WorkspaceSkill } from "@/types";
-
-// Tab types for skill detail
-type TabType = "overview" | "config" | "readme";
+import { FileTree } from "@/components/skill-files";
+import type { WorkspaceSkill, SkillFileEntry } from "@/types";
 
 interface Tab {
   id: string;
-  type: TabType;
   skill: WorkspaceSkill;
 }
 
@@ -56,18 +57,21 @@ export function WorkspaceSkillDetailPage() {
   const agent = agents.find((a) => a.id === agentId);
   const selectedSkill = skills.find((s) => s.id === skillId);
 
-  // Auto-open tab for selected skill
-  useMemo(() => {
-    if (selectedSkill && !openTabs.find((t) => t.id === selectedSkill.id)) {
-      const newTab: Tab = {
-        id: selectedSkill.id,
-        type: "overview",
-        skill: selectedSkill,
-      };
-      setOpenTabs((prev) => [...prev, newTab]);
+  // Auto-open tab for selected skill (useEffect instead of useMemo to avoid side effects)
+  useEffect(() => {
+    if (selectedSkill) {
+      // Check if tab already exists
+      const existingTab = openTabs.find((t) => t.id === selectedSkill.id);
+      if (!existingTab) {
+        const newTab: Tab = {
+          id: selectedSkill.id,
+          skill: selectedSkill,
+        };
+        setOpenTabs((prev) => [...prev, newTab]);
+      }
       setActiveTabId(selectedSkill.id);
     }
-  }, [selectedSkill?.id]);
+  }, [selectedSkill?.id]); // Only depend on skill ID to avoid infinite loops
 
   if (!workspace || !agent) {
     return (
@@ -94,7 +98,6 @@ export function WorkspaceSkillDetailPage() {
     if (!openTabs.find((t) => t.id === skill.id)) {
       const newTab: Tab = {
         id: skill.id,
-        type: "overview",
         skill,
       };
       setOpenTabs((prev) => [...prev, newTab]);
@@ -211,7 +214,7 @@ export function WorkspaceSkillDetailPage() {
         )}
 
         {/* Content Area */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           {activeTab ? (
             <SkillDetailContent skill={activeTab.skill} />
           ) : (
@@ -232,7 +235,7 @@ interface SkillDetailContentProps {
 
 function SkillDetailContent({ skill }: SkillDetailContentProps) {
   const { t } = useTranslation();
-  const [activeSection, setActiveSection] = useState<"overview" | "config">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "files">("overview");
 
   return (
     <div className="h-full flex">
@@ -250,126 +253,238 @@ function SkillDetailContent({ skill }: SkillDetailContentProps) {
             <FileText className="h-4 w-4" />
             {t("workspace.overview")}
           </button>
-          <button
-            onClick={() => setActiveSection("config")}
-            className={cn(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
-              "hover:bg-accent transition-colors",
-              activeSection === "config" && "bg-accent"
-            )}
-          >
-            <Settings className="h-4 w-4" />
-            {t("workspace.configuration")}
-          </button>
+          {skill.path && (
+            <button
+              onClick={() => setActiveSection("files")}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-left",
+                "hover:bg-accent transition-colors",
+                activeSection === "files" && "bg-accent"
+              )}
+            >
+              <FolderTree className="h-4 w-4" />
+              {t("workspace.files")}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Main Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6 max-w-3xl">
-          {activeSection === "overview" ? (
-            <SkillOverview skill={skill} />
-          ) : (
-            <SkillConfig skill={skill} />
-          )}
-        </div>
-      </ScrollArea>
+      <div className="flex-1 overflow-hidden">
+        {activeSection === "overview" ? (
+          <SkillOverview skill={skill} />
+        ) : (
+          <SkillFilesView skill={skill} />
+        )}
+      </div>
     </div>
   );
 }
 
 function SkillOverview({ skill }: { skill: WorkspaceSkill }) {
   const { t } = useTranslation();
+  const { content, loading, error, loadReadme } = useSkillReadme(skill.path || null);
+
+  useEffect(() => {
+    if (skill.path) {
+      loadReadme();
+    }
+  }, [skill.path, loadReadme]);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-          <Sparkles className="h-7 w-7" />
+    <ScrollArea className="h-full">
+      <div className="p-6 max-w-3xl">
+        {/* Header */}
+        <div className="flex items-start gap-4 mb-6">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+            <Sparkles className="h-7 w-7" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold font-serif">{skill.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              {skill.description || t("workspace.installedSkill")}
+            </p>
+          </div>
         </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold font-serif">{skill.name}</h1>
-          <p className="text-muted-foreground mt-1">
-            {t("workspace.installedSkill")}
-          </p>
+
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <InfoCard
+            icon={<Code className="h-4 w-4" />}
+            label={t("common.version")}
+            value={skill.version}
+          />
+          <InfoCard
+            icon={<Package className="h-4 w-4" />}
+            label={t("workspace.source")}
+            value={skill.source}
+          />
         </div>
-      </div>
 
-      {/* Metadata Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        <InfoCard
-          icon={<Code className="h-4 w-4" />}
-          label={t("common.version")}
-          value={skill.version}
-        />
-        <InfoCard
-          icon={<Package className="h-4 w-4" />}
-          label={t("workspace.source")}
-          value={skill.source}
-        />
-      </div>
+        {/* Path */}
+        {skill.path && (
+          <div className="mb-6 space-y-2">
+            <h3 className="text-sm font-medium">{t("workspace.installPath")}</h3>
+            <code className="block text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
+              {skill.path}
+            </code>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`file://${skill.path}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                {t("workspace.openInFinder")}
+              </a>
+            </Button>
+          </div>
+        )}
 
-      {/* ID */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">{t("workspace.skillId")}</h3>
-        <code className="block text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-          {skill.id}
-        </code>
-      </div>
-
-      {/* Path (if local) */}
-      {skill.path && (
+        {/* SKILL.md Content */}
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">{t("workspace.installPath")}</h3>
-          <code className="block text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-            {skill.path}
-          </code>
-          <Button variant="outline" size="sm" asChild>
-            <a href={`file://${skill.path}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5 mr-2" />
-              {t("workspace.openInFinder")}
-            </a>
-          </Button>
+          <h3 className="text-sm font-medium">{t("workspace.skillContent")}</h3>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-sm text-muted-foreground py-4 bg-muted/30 rounded-lg px-4">
+              {error}
+            </div>
+          ) : content ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4">
+              <MarkdownRenderer content={content} />
+            </div>
+          ) : (
+            <div className="text-sm text-muted-foreground py-4">
+              {t("workspace.noSkillContent")}
+            </div>
+          )}
         </div>
-      )}
+      </div>
+    </ScrollArea>
+  );
+}
+
+function SkillFilesView({ skill }: { skill: WorkspaceSkill }) {
+  const { t } = useTranslation();
+  const { files, loading: filesLoading, error: filesError, loadFiles } = useSkillFiles(skill.path || null);
+  const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useSkillFileContent();
+  const [selectedFile, setSelectedFile] = useState<SkillFileEntry | null>(null);
+
+  useEffect(() => {
+    if (skill.path) {
+      loadFiles(4);
+    }
+  }, [skill.path, loadFiles]);
+
+  const handleSelectFile = (entry: SkillFileEntry) => {
+    setSelectedFile(entry);
+    if (!entry.is_directory && skill.path) {
+      readFile(entry.path, skill.path);
+    } else {
+      clearContent();
+    }
+  };
+
+  if (!skill.path) {
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <p>{t("workspace.noSkillPath")}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex">
+      {/* File Tree Sidebar */}
+      <div className="w-64 border-r overflow-hidden flex flex-col">
+        <div className="p-3 border-b">
+          <h3 className="text-sm font-medium">{t("workspace.files")}</h3>
+        </div>
+        <ScrollArea className="flex-1">
+          {filesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filesError ? (
+            <div className="p-4 text-sm text-muted-foreground">{filesError}</div>
+          ) : (
+            <FileTree
+              files={files}
+              selectedPath={selectedFile?.path || null}
+              onSelectFile={handleSelectFile}
+              className="p-2"
+            />
+          )}
+        </ScrollArea>
+      </div>
+
+      {/* File Content Preview */}
+      <div className="flex-1 overflow-hidden flex flex-col">
+        {selectedFile ? (
+          <>
+            <div className="p-3 border-b flex items-center gap-2">
+              <File className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-mono truncate">{selectedFile.name}</span>
+            </div>
+            <ScrollArea className="flex-1">
+              {selectedFile.is_directory ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <p>{t("workspace.selectFile")}</p>
+                </div>
+              ) : fileLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : fileError ? (
+                <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
+              ) : fileContent ? (
+                <pre className="p-4 text-xs font-mono whitespace-pre-wrap break-words">
+                  {fileContent}
+                </pre>
+              ) : null}
+            </ScrollArea>
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>{t("workspace.selectFileToView")}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function SkillConfig({ skill }: { skill: WorkspaceSkill }) {
-  const { t } = useTranslation();
+// Simple markdown renderer for SKILL.md
+function MarkdownRenderer({ content }: { content: string }) {
+  // Strip YAML frontmatter
+  const contentWithoutFrontmatter = content.replace(/^---[\s\S]*?---\n?/, '');
 
-  // Format skill as JSON for display
-  const configJson = JSON.stringify(
-    {
-      id: skill.id,
-      name: skill.name,
-      version: skill.version,
-      source: skill.source,
-      ...(skill.path ? { path: skill.path } : {}),
-    },
-    null,
-    2
-  );
+  // Basic markdown to HTML conversion
+  const html = contentWithoutFrontmatter
+    // Headers
+    .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4">$1</h1>')
+    // Bold
+    .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.*?)\*/gim, '<em>$1</em>')
+    // Code blocks
+    .replace(/```(\w+)?\n([\s\S]*?)```/gim, '<pre class="bg-muted p-3 rounded-lg text-xs overflow-auto my-3"><code>$2</code></pre>')
+    // Inline code
+    .replace(/`([^`]+)`/gim, '<code class="bg-muted px-1.5 py-0.5 rounded text-xs">$1</code>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/gim, '<a href="$2" class="text-primary hover:underline" target="_blank" rel="noopener">$1</a>')
+    // Lists
+    .replace(/^\- (.*$)/gim, '<li class="ml-4">$1</li>')
+    // Paragraphs
+    .replace(/\n\n/gim, '</p><p class="my-2">')
+    .replace(/\n/gim, '<br/>');
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold mb-2">{t("workspace.skillConfiguration")}</h2>
-        <p className="text-sm text-muted-foreground">
-          {t("workspace.skillConfigDesc")}
-        </p>
-      </div>
-
-      {/* JSON Config */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">{t("workspace.rawConfig")}</h3>
-        <pre className="text-xs bg-muted px-4 py-3 rounded-lg font-mono overflow-auto max-h-96">
-          {configJson}
-        </pre>
-      </div>
-    </div>
+    <div
+      className="markdown-content"
+      dangerouslySetInnerHTML={{ __html: `<p class="my-2">${html}</p>` }}
+    />
   );
 }
 

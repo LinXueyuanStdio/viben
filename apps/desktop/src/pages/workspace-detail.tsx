@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Loader2,
   FolderOpen,
-  ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +26,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PageWrapper } from "@/components/layout";
 import { useLocalWorkspaces, useWorkspaceAgents } from "@/hooks";
 import { useTranslation } from "react-i18next";
@@ -45,9 +52,36 @@ export function WorkspaceDetailPage() {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
   const initialLoadDoneRef = useRef<string | null>(null);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+
+  // Copy path to clipboard
+  const handleCopyPath = async () => {
+    if (!workspace?.path) return;
+    try {
+      await navigator.clipboard.writeText(workspace.path);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = workspace.path;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    }
+  };
+
+  // Open path in Finder
+  const handleOpenInFinder = () => {
+    if (!workspace?.path) return;
+    window.open(`file://${workspace.path}`, "_blank");
+  };
 
   // Auto-refresh on workspace enter (only once per workspace)
   // Must wait until workspaces are loaded to run discovery
@@ -160,28 +194,49 @@ export function WorkspaceDetailPage() {
                 <h1 className="text-2xl font-bold font-serif">
                   {workspace.name}
                 </h1>
-                <p
-                  className="text-sm text-muted-foreground font-mono truncate max-w-md"
-                  title={workspace.path}
-                >
-                  {workspace.path}
-                </p>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={handleOpenInFinder}
+                        className={cn(
+                          "group flex items-center gap-1.5 text-sm text-muted-foreground font-mono",
+                          "hover:text-foreground transition-colors cursor-pointer",
+                          "max-w-md text-left"
+                        )}
+                      >
+                        <span className="truncate">{workspace.path}</span>
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyPath();
+                          }}
+                          className={cn(
+                            "shrink-0 p-0.5 rounded hover:bg-muted transition-colors",
+                            pathCopied && "text-green-500"
+                          )}
+                        >
+                          {pathCopied ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-lg">
+                      <p className="font-mono text-xs break-all">{workspace.path}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("workspace.clickToOpenCopyHint")}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a
-                href={`file://${workspace.path}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                {t("workspace.openInFinder")}
-              </a>
-            </Button>
-
             <Button
               variant="outline"
               size="sm"

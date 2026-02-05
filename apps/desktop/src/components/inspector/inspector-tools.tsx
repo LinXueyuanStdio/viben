@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Wrench,
   Play,
@@ -14,11 +14,15 @@ import {
   ChevronRight,
   RefreshCw,
   Trash2,
+  Code2,
+  FileJson,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
 import type { McpTool } from "@/types";
 
@@ -57,6 +61,10 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedExecutions, setExpandedExecutions] = useState<Set<string>>(new Set());
+  const [showSchema, setShowSchema] = useState(false);
+  const [inputMode, setInputMode] = useState<"form" | "json">("form");
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
 
   // Filter tools by search query
   const filteredTools = useMemo(() => {
@@ -96,6 +104,8 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
   useEffect(() => {
     if (!selectedTool) {
       setArgumentInputs([]);
+      setJsonInput("{}");
+      setJsonError(null);
       return;
     }
 
@@ -131,26 +141,127 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     });
 
     setArgumentInputs(inputs);
+
+    // Initialize JSON input with default values
+    const defaultArgs: Record<string, unknown> = {};
+    inputs.forEach((input) => {
+      if (input.type === "json") {
+        try {
+          defaultArgs[input.key] = JSON.parse(input.value);
+        } catch {
+          defaultArgs[input.key] = input.value;
+        }
+      } else if (input.type === "number") {
+        defaultArgs[input.key] = input.value ? parseFloat(input.value) : 0;
+      } else if (input.type === "boolean") {
+        defaultArgs[input.key] = input.value === "true";
+      } else {
+        defaultArgs[input.key] = input.value;
+      }
+    });
+    setJsonInput(JSON.stringify(defaultArgs, null, 2));
+    setJsonError(null);
   }, [selectedTool]);
+
+  // Validate JSON input and provide error feedback
+  const validateJsonInput = useCallback((value: string): { valid: boolean; error?: string; parsed?: Record<string, unknown> } => {
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return { valid: false, error: t("inspector.jsonMustBeObject", "JSON must be an object") };
+      }
+
+      // Validate against schema if available
+      if (selectedTool?.inputSchema) {
+        const properties = (selectedTool.inputSchema.properties as Record<string, Record<string, unknown>>) || {};
+        const required = (selectedTool.inputSchema.required as string[]) || [];
+
+        // Check required fields
+        for (const field of required) {
+          if (!(field in parsed)) {
+            return { valid: false, error: t("inspector.missingRequired", "Missing required field: {{field}}").replace("{{field}}", field) };
+          }
+        }
+
+        // Type check each field
+        for (const [key, value] of Object.entries(parsed)) {
+          if (key in properties) {
+            const schema = properties[key];
+            const expectedType = schema.type as string;
+
+            if (expectedType === "string" && typeof value !== "string") {
+              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
+            }
+            if ((expectedType === "number" || expectedType === "integer") && typeof value !== "number") {
+              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
+            }
+            if (expectedType === "boolean" && typeof value !== "boolean") {
+              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
+            }
+            if (expectedType === "array" && !Array.isArray(value)) {
+              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
+            }
+            if (expectedType === "object" && (typeof value !== "object" || value === null || Array.isArray(value))) {
+              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
+            }
+          }
+        }
+      }
+
+      return { valid: true, parsed };
+    } catch (e) {
+      return { valid: false, error: (e as Error).message };
+    }
+  }, [selectedTool, t]);
+
+  // Handle JSON input change with validation
+  const handleJsonInputChange = useCallback((value: string) => {
+    setJsonInput(value);
+    const validation = validateJsonInput(value);
+    setJsonError(validation.valid ? null : validation.error || null);
+  }, [validateJsonInput]);
+
+  // Format JSON input
+  const formatJsonInput = useCallback(() => {
+    try {
+      const parsed = JSON.parse(jsonInput);
+      setJsonInput(JSON.stringify(parsed, null, 2));
+      setJsonError(null);
+    } catch (e) {
+      setJsonError((e as Error).message);
+    }
+  }, [jsonInput]);
 
   const executeTool = async () => {
     if (!selectedTool) return;
 
-    const argumentsObj: Record<string, unknown> = {};
-    for (const input of argumentInputs) {
-      try {
-        if (input.type === "number") {
-          argumentsObj[input.key] = input.value ? parseFloat(input.value) : 0;
-        } else if (input.type === "boolean") {
-          argumentsObj[input.key] = input.value === "true";
-        } else if (input.type === "json") {
-          argumentsObj[input.key] = input.value ? JSON.parse(input.value) : null;
-        } else {
-          argumentsObj[input.key] = input.value;
-        }
-      } catch {
-        console.error(`Invalid JSON for parameter: ${input.key}`);
+    let argumentsObj: Record<string, unknown> = {};
+
+    if (inputMode === "json") {
+      // Use JSON input
+      const validation = validateJsonInput(jsonInput);
+      if (!validation.valid) {
+        setJsonError(validation.error || "Invalid JSON");
         return;
+      }
+      argumentsObj = validation.parsed || {};
+    } else {
+      // Use form inputs
+      for (const input of argumentInputs) {
+        try {
+          if (input.type === "number") {
+            argumentsObj[input.key] = input.value ? parseFloat(input.value) : 0;
+          } else if (input.type === "boolean") {
+            argumentsObj[input.key] = input.value === "true";
+          } else if (input.type === "json") {
+            argumentsObj[input.key] = input.value ? JSON.parse(input.value) : null;
+          } else {
+            argumentsObj[input.key] = input.value;
+          }
+        } catch {
+          console.error(`Invalid JSON for parameter: ${input.key}`);
+          return;
+        }
       }
     }
 
@@ -310,68 +421,153 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
             <div className="mb-4">
               <h3 className="font-mono text-base font-semibold">{selectedTool.name}</h3>
               {selectedTool.description && (
-                <p className="text-sm text-muted-foreground mt-1">{selectedTool.description}</p>
+                <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedTool.description}</p>
               )}
             </div>
 
-            {/* Arguments */}
+            {/* Schema Collapsible */}
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={() => setShowSchema(!showSchema)}
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {showSchema ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+                <FileJson className="h-3.5 w-3.5" />
+                {t("inspector.viewSchema", "View Schema")}
+              </button>
+              {showSchema && selectedTool.inputSchema && (
+                <pre className="mt-2 p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-64">
+                  {JSON.stringify(selectedTool.inputSchema, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            {/* Arguments with Tabs for Form/JSON input */}
             <div className="flex-1 overflow-auto">
-              {argumentInputs.length > 0 ? (
-                <div className="space-y-4">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t("inspector.arguments")}
-                  </h4>
-                  {argumentInputs.map((input) => (
-                    <div key={input.key} className="space-y-1.5">
-                      <label className="flex items-center gap-1.5 text-sm font-medium">
-                        {input.key}
-                        {input.required && <span className="text-red-500">*</span>}
-                        <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
-                          {input.type}
-                        </Badge>
-                      </label>
-                      {input.description && (
-                        <p className="text-xs text-muted-foreground">{input.description}</p>
-                      )}
-                      {input.type === "json" ? (
-                        <Textarea
-                          value={input.value}
-                          onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                          placeholder={`Enter ${input.type} value...`}
-                          className="font-mono text-xs min-h-[80px]"
-                        />
-                      ) : input.type === "boolean" ? (
-                        <select
-                          value={input.value}
-                          onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                        >
-                          <option value="true">true</option>
-                          <option value="false">false</option>
-                        </select>
-                      ) : (
-                        <Input
-                          type={input.type === "number" ? "number" : "text"}
-                          value={input.value}
-                          onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                          placeholder={`Enter ${input.type} value...`}
-                          className={input.type === "text" ? "font-mono" : ""}
-                        />
+              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "form" | "json")} className="w-full">
+                <TabsList className="mb-3 h-8">
+                  <TabsTrigger value="form" className="text-xs h-7 px-3">
+                    <Wrench className="h-3 w-3 mr-1.5" />
+                    {t("inspector.formInput", "Form")}
+                  </TabsTrigger>
+                  <TabsTrigger value="json" className="text-xs h-7 px-3">
+                    <Code2 className="h-3 w-3 mr-1.5" />
+                    {t("inspector.jsonInput", "JSON")}
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="form" className="mt-0">
+                  {argumentInputs.length > 0 ? (
+                    <div className="space-y-4">
+                      {argumentInputs.map((input) => (
+                        <div key={input.key} className="space-y-1.5">
+                          <label className="flex items-center gap-1.5 text-sm font-medium">
+                            {input.key}
+                            {input.required && <span className="text-red-500">*</span>}
+                            <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
+                              {input.type}
+                            </Badge>
+                          </label>
+                          {input.description && (
+                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{input.description}</p>
+                          )}
+                          {input.type === "json" ? (
+                            <Textarea
+                              value={input.value}
+                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
+                              placeholder={`Enter ${input.type} value...`}
+                              className="font-mono text-xs min-h-[80px]"
+                            />
+                          ) : input.type === "boolean" ? (
+                            <select
+                              value={input.value}
+                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
+                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
+                            >
+                              <option value="true">true</option>
+                              <option value="false">false</option>
+                            </select>
+                          ) : (
+                            <Input
+                              type={input.type === "number" ? "number" : "text"}
+                              value={input.value}
+                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
+                              placeholder={`Enter ${input.type} value...`}
+                              className={input.type === "text" ? "font-mono" : ""}
+                            />
+                          )}
+                        </div>
+                      ))}
+
+                      {/* Execute Button - after form inputs */}
+                      <Button onClick={executeTool} disabled={executing} className="w-full mt-4">
+                        {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                        {executing ? t("inspector.calling") : t("inspector.callTool")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="text-sm text-muted-foreground">{t("inspector.noArguments")}</div>
+                      {/* Execute Button - for tools with no arguments */}
+                      <Button onClick={executeTool} disabled={executing} className="w-full">
+                        {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                        {executing ? t("inspector.calling") : t("inspector.callTool")}
+                      </Button>
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="json" className="mt-0">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {t("inspector.jsonArguments", "JSON Arguments")}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={formatJsonInput}
+                      >
+                        {t("inspector.format", "Format")}
+                      </Button>
+                    </div>
+
+                    <div className="relative">
+                      <Textarea
+                        value={jsonInput}
+                        onChange={(e) => handleJsonInputChange(e.target.value)}
+                        placeholder='{"key": "value"}'
+                        className={`font-mono text-xs min-h-[200px] ${
+                          jsonError ? "border-red-500 focus:ring-red-500" : ""
+                        }`}
+                        spellCheck={false}
+                      />
+                      {jsonError && (
+                        <div className="flex items-start gap-2 mt-2 p-2 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                          <span className="break-all">{jsonError}</span>
+                        </div>
                       )}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">{t("inspector.noArguments")}</div>
-              )}
-            </div>
 
-            {/* Execute Button */}
-            <div className="mt-4 pt-4 border-t border-border">
-              <Button onClick={executeTool} disabled={executing} className="w-full">
-                {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                {executing ? t("inspector.calling") : t("inspector.callTool")}
-              </Button>
+                    {/* Execute Button - after JSON input */}
+                    <Button
+                      onClick={executeTool}
+                      disabled={executing || !!jsonError}
+                      className="w-full"
+                    >
+                      {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      {executing ? t("inspector.calling") : t("inspector.callTool")}
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
             </div>
           </>
         ) : (

@@ -157,6 +157,7 @@ pub fn run() {
             commands::mcp::test_mcp_connection,
             commands::mcp::is_process_alive,
             commands::mcp::check_port_status,
+            commands::mcp::check_mcp_server_on_port,
             commands::mcp::kill_process,
             // Agent commands
             commands::agents::detect_agents,
@@ -289,6 +290,12 @@ pub fn run() {
             commands::workspace::get_workspace_skills,
             commands::workspace::add_workspace_skill,
             commands::workspace::delete_workspace_skill,
+            commands::workspace::get_skill_readme,
+            commands::workspace::list_skill_files,
+            commands::workspace::read_skill_file,
+            // Store sync commands
+            commands::store_sync::read_mcp_servers_file,
+            commands::store_sync::write_mcp_servers_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

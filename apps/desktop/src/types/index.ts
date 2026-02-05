@@ -319,6 +319,15 @@ export interface WorkspaceSkill {
   id: string;
   name: string;
   version: string;
-  source: "marketplace" | "local";
+  source: "marketplace" | "local" | string;
   path?: string; // For local skills
+  description?: string; // Skill description from SKILL.md
+}
+
+/** File entry for skill folder tree */
+export interface SkillFileEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  children?: SkillFileEntry[];
 }

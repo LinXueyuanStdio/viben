@@ -397,6 +397,168 @@ pub struct PortStatus {
     pub process_name: Option<String>,
 }
 
+/// MCP Server port check result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct McpServerPortStatus {
+    /// Status: "running" if MCP server found, "stopped" if port free, "conflict" if wrong process
+    pub status: String,
+    /// PID of the process using the port (if any)
+    pub pid: Option<u32>,
+    /// Name of the process using the port (if any)
+    pub process_name: Option<String>,
+    /// True if the process is a browse-mcp server
+    pub is_mcp_server: bool,
+}
+
+/// Check if a process is a browse-mcp server by examining its command line
+#[cfg(target_os = "macos")]
+fn is_browse_mcp_process(pid: u32) -> bool {
+    // Get full command line using ps
+    let output = Command::new("ps")
+        .args(["-p", &pid.to_string(), "-o", "command="])
+        .output()
+        .ok();
+
+    if let Some(o) = output {
+        if o.status.success() {
+            let cmd = String::from_utf8_lossy(&o.stdout);
+            // Check for browse_mcp module invocation
+            return cmd.contains("browse_mcp") || cmd.contains("browse-mcp");
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn is_browse_mcp_process(pid: u32) -> bool {
+    // On Windows, check via wmic
+    let output = Command::new("wmic")
+        .args(["process", "where", &format!("ProcessId={}", pid), "get", "CommandLine"])
+        .output()
+        .ok();
+
+    if let Some(o) = output {
+        if o.status.success() {
+            let cmd = String::from_utf8_lossy(&o.stdout);
+            return cmd.contains("browse_mcp") || cmd.contains("browse-mcp");
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "linux")]
+fn is_browse_mcp_process(pid: u32) -> bool {
+    // On Linux, read /proc/pid/cmdline
+    if let Ok(cmdline) = std::fs::read_to_string(format!("/proc/{}/cmdline", pid)) {
+        return cmdline.contains("browse_mcp") || cmdline.contains("browse-mcp");
+    }
+    false
+}
+
+/// Check if an MCP server is running on a specific port
+/// Returns status: "running" (MCP server found), "stopped" (port free), "conflict" (wrong process)
+#[tauri::command]
+pub async fn check_mcp_server_on_port(port: u16) -> Result<McpServerPortStatus, String> {
+    #[cfg(unix)]
+    {
+        // Use lsof to find process using the port
+        let output = Command::new("lsof")
+            .args(["-i", &format!(":{}", port), "-t", "-sTCP:LISTEN"])
+            .output()
+            .map_err(|e| format!("Failed to check port: {}", e))?;
+
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let pid_str = stdout.trim();
+            if !pid_str.is_empty() {
+                if let Ok(pid) = pid_str.lines().next().unwrap_or("").parse::<u32>() {
+                    // Get process name
+                    let ps_output = Command::new("ps")
+                        .args(["-p", &pid.to_string(), "-o", "comm="])
+                        .output();
+
+                    let process_name = ps_output.ok()
+                        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                        .filter(|s| !s.is_empty());
+
+                    // Check if it's a browse-mcp server
+                    let is_mcp = is_browse_mcp_process(pid);
+
+                    return Ok(McpServerPortStatus {
+                        status: if is_mcp { "running".to_string() } else { "conflict".to_string() },
+                        pid: Some(pid),
+                        process_name,
+                        is_mcp_server: is_mcp,
+                    });
+                }
+            }
+        }
+
+        // Port is not in use
+        Ok(McpServerPortStatus {
+            status: "stopped".to_string(),
+            pid: None,
+            process_name: None,
+            is_mcp_server: false,
+        })
+    }
+
+    #[cfg(windows)]
+    {
+        // Use netstat to find process using the port
+        let output = Command::new("netstat")
+            .args(["-ano", "-p", "TCP"])
+            .output()
+            .map_err(|e| format!("Failed to check port: {}", e))?;
+
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let port_str = format!(":{}", port);
+
+            for line in stdout.lines() {
+                if line.contains(&port_str) && line.contains("LISTENING") {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    if let Some(pid_str) = parts.last() {
+                        if let Ok(pid) = pid_str.parse::<u32>() {
+                            // Get process name using tasklist
+                            let tasklist = Command::new("tasklist")
+                                .args(["/FI", &format!("PID eq {}", pid), "/FO", "CSV", "/NH"])
+                                .output();
+
+                            let process_name = tasklist.ok()
+                                .map(|o| {
+                                    let out = String::from_utf8_lossy(&o.stdout);
+                                    out.split(',').next()
+                                        .map(|s| s.trim_matches('"').to_string())
+                                        .unwrap_or_default()
+                                })
+                                .filter(|s| !s.is_empty());
+
+                            // Check if it's a browse-mcp server
+                            let is_mcp = is_browse_mcp_process(pid);
+
+                            return Ok(McpServerPortStatus {
+                                status: if is_mcp { "running".to_string() } else { "conflict".to_string() },
+                                pid: Some(pid),
+                                process_name,
+                                is_mcp_server: is_mcp,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // Port is not in use
+        Ok(McpServerPortStatus {
+            status: "stopped".to_string(),
+            pid: None,
+            process_name: None,
+            is_mcp_server: false,
+        })
+    }
+}
+
 /// Check if a port is in use and get the PID of the process using it
 #[tauri::command]
 pub async fn check_port_status(port: u16) -> Result<PortStatus, String> {

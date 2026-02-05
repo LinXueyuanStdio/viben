@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -13,6 +13,9 @@ import {
   Terminal,
   Globe,
   Save,
+  FolderOpen,
+  Copy,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageWrapper, StaggerContainer, StaggerItem } from "@/components/layout";
 import {
@@ -43,8 +52,9 @@ export function AgentDetailPage() {
     workspaceId: string;
     agentId: string;
   }>();
-  const { getWorkspace } = useLocalWorkspaces();
-  const { agents } = useWorkspaceAgents(workspaceId || null);
+  const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
+  const { agents, loading: isDiscoveringAgents, loadAgents } = useWorkspaceAgents(workspaceId || null);
+  const initialLoadDoneRef = useRef<string | null>(null);
   const {
     servers,
     loading: serversLoading,
@@ -66,7 +76,70 @@ export function AgentDetailPage() {
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
   const agent = agents.find((a) => a.id === agentId);
 
-  if (!workspace || !agent) {
+  // Auto-trigger discovery if agents haven't been loaded yet
+  // Must wait until workspaces are loaded to run discovery
+  useEffect(() => {
+    if (!workspaceId || !workspace || isLoadingWorkspaces) {
+      return;
+    }
+
+    // Only load if this is a new workspace (not already loaded)
+    if (initialLoadDoneRef.current !== workspaceId && agents.length === 0 && !isDiscoveringAgents) {
+      initialLoadDoneRef.current = workspaceId;
+      loadAgents();
+    }
+  }, [workspaceId, workspace, isLoadingWorkspaces, agents.length, isDiscoveringAgents, loadAgents]);
+
+  // Show loading while workspaces are loading
+  if (isLoadingWorkspaces) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">{t("common.loading")}</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Workspace not found after loading
+  if (!workspace && workspaces.length > 0) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">
+            {t("workspace.notFound")}
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            {t("workspace.notFoundDesc")}
+          </p>
+          <Button asChild>
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              {t("workspace.backToDashboard")}
+            </Link>
+          </Button>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Show loading while discovering agents (no agents yet)
+  if (isDiscoveringAgents || agents.length === 0) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">{t("workspace.discoveringAgents")}</p>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Agent not found after discovery complete (agents exist but this one not found)
+  // Also handles case where workspace is undefined (shouldn't happen but guard for TypeScript)
+  if (!agent || !workspace) {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
@@ -744,9 +817,39 @@ function SkillCard({ skill, workspaceId, agentId, onDelete }: SkillCardProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
 
   const handleClick = () => {
     navigate(`/workspace/${workspaceId}/agent/${agentId}/skill/${skill.id}`);
+  };
+
+  // Truncate path for display
+  const truncatePath = (path: string, maxLength: number = 50) => {
+    if (path.length <= maxLength) return path;
+    const parts = path.split('/');
+    if (parts.length <= 2) return '...' + path.slice(-maxLength);
+    return '.../' + parts.slice(-2).join('/');
+  };
+
+  // Copy path to clipboard
+  const handleCopyPath = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!skill.path) return;
+    try {
+      await navigator.clipboard.writeText(skill.path);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = skill.path;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      setPathCopied(true);
+      setTimeout(() => setPathCopied(false), 2000);
+    }
   };
 
   return (
@@ -755,12 +858,20 @@ function SkillCard({ skill, workspaceId, agentId, onDelete }: SkillCardProps) {
       onClick={handleClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-amber-500" />
-            <div>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <Sparkles className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
               <h4 className="font-semibold">{skill.name}</h4>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+
+              {/* Description */}
+              {skill.description && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {skill.description}
+                </p>
+              )}
+
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
                 <span>v{skill.version}</span>
                 <span className="bg-muted px-1.5 py-0.5 rounded">
                   {skill.source === "marketplace"
@@ -768,6 +879,41 @@ function SkillCard({ skill, workspaceId, agentId, onDelete }: SkillCardProps) {
                     : skill.source}
                 </span>
               </div>
+
+              {/* Path with Tooltip */}
+              {skill.path && (
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div
+                        className="group flex items-center gap-1 text-xs text-muted-foreground mt-2 cursor-default"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <FolderOpen className="h-3 w-3 flex-shrink-0" />
+                        <code className="font-mono truncate max-w-[200px]">
+                          {truncatePath(skill.path)}
+                        </code>
+                        <button
+                          onClick={handleCopyPath}
+                          className="p-0.5 rounded hover:bg-muted transition-colors"
+                        >
+                          {pathCopied ? (
+                            <Check className="h-3 w-3 text-green-500" />
+                          ) : (
+                            <Copy className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-lg">
+                      <p className="font-mono text-xs break-all">{skill.path}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {t("workspace.copyPath")}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
 
@@ -776,7 +922,7 @@ function SkillCard({ skill, workspaceId, agentId, onDelete }: SkillCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="text-destructive hover:text-destructive"
+                className="text-destructive hover:text-destructive flex-shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 <Trash2 className="h-4 w-4" />

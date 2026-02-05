@@ -161,7 +161,7 @@
   --accent: var(--neutral-100);
   --accent-foreground: var(--neutral-900);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(1 0 0); /* White text on red background */
   --border: var(--neutral-200);
   --input: var(--neutral-200);
   --ring: var(--brand-amber-500);
@@ -200,8 +200,8 @@
   --muted-foreground: var(--neutral-400);
   --accent: var(--neutral-700);
   --accent-foreground: var(--neutral-50);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --destructive: oklch(0.55 0.22 25); /* Brighter red for dark mode visibility */
+  --destructive-foreground: oklch(1 0 0); /* White text on red background */
   --border: var(--neutral-700);
   --input: var(--neutral-700);
   --ring: var(--brand-amber-400);

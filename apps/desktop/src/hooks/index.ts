@@ -65,9 +65,15 @@ export type {
   UsePackageUpdatesReturn,
 } from "./use-package-updates";
 export { useTrayStatus, useTrayStatusSync } from "./use-tray-status";
+export { useStoreSync, useMainWindowStoreSync, useTrayWindowStoreSync } from "./use-store-sync";
 export {
   useLocalWorkspaces,
   useWorkspaceAgents,
   useWorkspaceMcpServers,
   useWorkspaceSkills,
 } from "./use-workspaces";
+export {
+  useSkillReadme,
+  useSkillFiles,
+  useSkillFileContent,
+} from "./use-skill-content";
