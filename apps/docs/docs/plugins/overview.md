@@ -1,16 +1,16 @@
 ---
 sidebar_position: 1
 title: "Plugin Overview"
-description: "Understanding the Browse MCP plugin system and ContentSource API"
+description: "Understanding the Viben plugin system and ContentSource API"
 ---
 
 # Plugin Overview
 
-Browse MCP uses a powerful plugin system that allows you to extend its capabilities beyond academic papers. This page explains how plugins work and what you can do with them.
+Viben uses a powerful plugin system that allows you to extend its capabilities beyond academic papers. This page explains how plugins work and what you can do with them.
 
 ## What are Plugins?
 
-Plugins are Python packages that add new content sources to Browse MCP. When you install a plugin, its sources are automatically discovered and become available through the same `browse_search`, `browse_download`, and `browse_read` tools.
+Plugins are Python packages that add new content sources to Viben. When you install a plugin, its sources are automatically discovered and become available through the same `browse_search`, `browse_download`, and `browse_read` tools.
 
 ```
 browse-mcp (core)
@@ -28,7 +28,7 @@ browse-mcp (core)
 
 ### Stevedore Plugin Discovery
 
-Browse MCP uses [stevedore](https://docs.openstack.org/stevedore/) for plugin discovery. When the server starts:
+Viben uses [stevedore](https://docs.openstack.org/stevedore/) for plugin discovery. When the server starts:
 
 1. Stevedore scans all installed packages for `browse_mcp.searchers` entry points
 2. Each registered entry point is loaded and instantiated

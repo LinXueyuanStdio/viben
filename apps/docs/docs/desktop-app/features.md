@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: "Features"
-description: "Browse MCP Desktop App features and capabilities"
+description: "Viben Desktop App features and capabilities"
 ---
 
 # Features
 
-Browse MCP Desktop provides a comprehensive set of features for academic paper search and management.
+Viben Desktop provides a comprehensive set of features for content search and management.
 
 ## Paper Search
 
@@ -65,7 +65,7 @@ Refine your search results with:
 
 ### Built-in MCP Server
 
-Browse MCP Desktop includes the MCP server, allowing AI assistants to:
+Viben Desktop includes the MCP server, allowing AI assistants to:
 
 - Search for papers on your behalf
 - Download and read paper content
@@ -128,9 +128,9 @@ Your data is stored in platform-specific locations:
 
 | Platform | Location |
 |----------|----------|
-| macOS | `~/Library/Application Support/com.browsemcp.app` |
-| Windows | `%APPDATA%\com.browsemcp.app` |
-| Linux | `~/.config/browse-mcp` |
+| macOS | `~/Library/Application Support/com.viben.app` |
+| Windows | `%APPDATA%\com.viben.app` |
+| Linux | `~/.config/viben` |
 
 ---
 
@@ -148,4 +148,4 @@ Features planned for future releases:
 
 ## Feature Requests
 
-Have a feature suggestion? Open an issue on [GitHub](https://github.com/LinXueyuanStdio/browse-mcp/issues/new?template=feature_request.md).
+Have a feature suggestion? Open an issue on [GitHub](https://github.com/LinXueyuanStdio/viben/issues/new?template=feature_request.md).

@@ -17,11 +17,11 @@
   },
   "link.item.label.GitHub Issues": {
     "message": "GitHub Issues",
-    "description": "The label of footer link with label=GitHub Issues linking to https://github.com/LinXueyuanStdio/browse-mcp/issues"
+    "description": "The label of footer link with label=GitHub Issues linking to https://github.com/LinXueyuanStdio/viben/issues"
   },
   "link.item.label.GitHub Discussions": {
     "message": "GitHub Discussions",
-    "description": "The label of footer link with label=GitHub Discussions linking to https://github.com/LinXueyuanStdio/browse-mcp/discussions"
+    "description": "The label of footer link with label=GitHub Discussions linking to https://github.com/LinXueyuanStdio/viben/discussions"
   },
   "link.item.label.Blog": {
     "message": "Blog",
@@ -29,14 +29,14 @@
   },
   "link.item.label.GitHub": {
     "message": "GitHub",
-    "description": "The label of footer link with label=GitHub linking to https://github.com/LinXueyuanStdio/browse-mcp"
+    "description": "The label of footer link with label=GitHub linking to https://github.com/LinXueyuanStdio/viben"
   },
   "link.item.label.PyPI": {
     "message": "PyPI",
     "description": "The label of footer link with label=PyPI linking to https://pypi.org/project/browse-mcp/"
   },
   "copyright": {
-    "message": "Copyright 2026 Browse MCP Project. Built with Docusaurus.",
+    "message": "Copyright 2026 Viben Project. Built with Docusaurus.",
     "description": "The footer copyright"
   }
 }

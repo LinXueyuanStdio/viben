@@ -1,18 +1,18 @@
 ---
 sidebar_position: 2
 title: "Installation"
-description: "How to install Browse MCP Desktop on macOS, Windows, and Linux"
+description: "How to install Viben Desktop on macOS, Windows, and Linux"
 ---
 
 # Desktop App Installation
 
-Detailed installation instructions for Browse MCP Desktop on all supported platforms.
+Detailed installation instructions for Viben Desktop on all supported platforms.
 
 ## Download
 
-[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/browse-mcp?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop)
+[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop).
+Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop).
 
 ## macOS
 
@@ -23,36 +23,36 @@ Download the latest version from [GitHub Releases](https://github.com/LinXueyuan
 
 ### Installation Steps
 
-1. Download the `Browse-MCP_x.x.x_universal.dmg` file
+1. Download the `Viben_x.x.x_universal.dmg` file
 2. Double-click to open the disk image
-3. Drag **Browse MCP** to the **Applications** folder
+3. Drag **Viben** to the **Applications** folder
 4. Eject the disk image
 
 ### First Launch
 
-Since Browse MCP is not notarized by Apple, you may see a security warning on first launch:
+Since Viben is not notarized by Apple, you may see a security warning on first launch:
 
 **Option 1: Right-click to Open**
 1. Open **Finder** and go to **Applications**
-2. Right-click (or Control-click) on **Browse MCP**
+2. Right-click (or Control-click) on **Viben**
 3. Select **Open** from the context menu
 4. Click **Open** in the dialog
 
 **Option 2: System Preferences**
 1. Go to **System Preferences** > **Security & Privacy** > **General**
-2. Click **Open Anyway** next to the Browse MCP warning
+2. Click **Open Anyway** next to the Viben warning
 
 ### Troubleshooting
 
-**"Browse MCP is damaged and can't be opened"**
+**"Viben is damaged and can't be opened"**
 
 This happens when macOS quarantines the app. Remove the quarantine flag:
 
 ```bash
-xattr -cr /Applications/Browse\ MCP.app
+xattr -cr /Applications/Viben.app
 ```
 
-**"Browse MCP cannot be opened because the developer cannot be verified"**
+**"Viben cannot be opened because the developer cannot be verified"**
 
 This is expected for unsigned apps. Use one of the methods above to bypass Gatekeeper.
 
@@ -69,21 +69,21 @@ This is expected for unsigned apps. Use one of the methods above to bypass Gatek
 
 **Using the MSI Installer (Recommended):**
 
-1. Download `Browse-MCP_x.x.x_x64_en-US.msi`
+1. Download `Viben_x.x.x_x64_en-US.msi`
 2. Double-click to run the installer
 3. Follow the installation wizard
 4. Click **Finish** when complete
 
 **Using the EXE Installer:**
 
-1. Download `Browse-MCP_x.x.x_x64-setup.exe`
+1. Download `Viben_x.x.x_x64-setup.exe`
 2. Double-click to run
 3. Follow the prompts
 
 ### First Launch
 
-Launch Browse MCP from:
-- Start Menu > Browse MCP
+Launch Viben from:
+- Start Menu > Viben
 - Desktop shortcut (if created during installation)
 
 ### Troubleshooting
@@ -116,13 +116,13 @@ AppImage works on most Linux distributions without installation:
 
 ```bash
 # Download the AppImage
-wget https://github.com/LinXueyuanStdio/browse-mcp/releases/latest/download/Browse-MCP_x.x.x_amd64.AppImage
+wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.AppImage
 
 # Make it executable
-chmod +x Browse-MCP_*.AppImage
+chmod +x Viben_*.AppImage
 
 # Run
-./Browse-MCP_*.AppImage
+./Viben_*.AppImage
 ```
 
 :::tip
@@ -135,10 +135,10 @@ For Debian, Ubuntu, Linux Mint, and other Debian-based distributions:
 
 ```bash
 # Download the .deb package
-wget https://github.com/LinXueyuanStdio/browse-mcp/releases/latest/download/Browse-MCP_x.x.x_amd64.deb
+wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.deb
 
 # Install
-sudo dpkg -i Browse-MCP_*_amd64.deb
+sudo dpkg -i Viben_*_amd64.deb
 
 # Fix any missing dependencies
 sudo apt-get install -f
@@ -187,14 +187,14 @@ All releases include SHA256 checksums for verification.
 cd ~/Downloads
 
 # Verify checksum
-sha256sum -c checksums.txt 2>/dev/null | grep -E "Browse-MCP.*OK"
+sha256sum -c checksums.txt 2>/dev/null | grep -E "Viben.*OK"
 ```
 
 ### Verify on Windows (PowerShell)
 
 ```powershell
 # Get the hash of downloaded file
-$hash = (Get-FileHash "Browse-MCP_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
+$hash = (Get-FileHash "Viben_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
 
 # Compare with checksums.txt
 Get-Content checksums.txt | Select-String $hash
@@ -204,9 +204,9 @@ Get-Content checksums.txt | Select-String $hash
 
 ## Updating
 
-Browse MCP does not currently auto-update. To update:
+Viben does not currently auto-update. To update:
 
-1. Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/browse-mcp/releases?q=desktop)
+1. Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 2. Install over the existing version (your settings will be preserved)
 
 :::info
@@ -220,19 +220,19 @@ Auto-update functionality is planned for a future release.
 ### macOS
 
 1. Open **Finder** > **Applications**
-2. Drag **Browse MCP** to the Trash
+2. Drag **Viben** to the Trash
 3. Empty Trash
 
 To remove all data:
 ```bash
-rm -rf ~/Library/Application\ Support/com.browsemcp.app
-rm -rf ~/Library/Caches/com.browsemcp.app
+rm -rf ~/Library/Application\ Support/com.viben.app
+rm -rf ~/Library/Caches/com.viben.app
 ```
 
 ### Windows
 
 1. Open **Settings** > **Apps** > **Installed apps**
-2. Find **Browse MCP**
+2. Find **Viben**
 3. Click **Uninstall**
 
 Or use Control Panel > Programs and Features.
@@ -248,6 +248,6 @@ sudo apt-get remove browse-mcp-desktop
 
 To remove configuration:
 ```bash
-rm -rf ~/.config/browse-mcp
-rm -rf ~/.local/share/browse-mcp
+rm -rf ~/.config/viben
+rm -rf ~/.local/share/viben
 ```

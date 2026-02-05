@@ -1,12 +1,12 @@
 ---
 sidebar_position: 5
 title: "Plugin Configuration"
-description: "Configure Browse MCP plugins with environment variables and settings"
+description: "Configure Viben plugins with environment variables and settings"
 ---
 
 # Plugin Configuration
 
-This page covers configuration options for Browse MCP plugins, including environment variables, source control, and API keys.
+This page covers configuration options for Viben plugins, including environment variables, source control, and API keys.
 
 ## Environment Variables
 
