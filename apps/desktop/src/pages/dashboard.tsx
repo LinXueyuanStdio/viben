@@ -55,7 +55,6 @@ export function DashboardPage() {
   const { getStats } = useMcpStatusMonitor();
   useOnPageEnter({ enabled: mcpServers.length > 0 });
 
-  const installedAgents = agents.filter((a) => a.installed);
   const configuredAgents = agents.filter((a) => a.configured);
   const availableProviders = getAvailableProviders();
 
@@ -170,7 +169,7 @@ export function DashboardPage() {
         </motion.div>
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" className="h-full">
-            <Link to="/providers" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+            <Link to="/mcp-services/data-sources" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
@@ -186,7 +185,7 @@ export function DashboardPage() {
         </motion.div>
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" className="h-full">
-            <Link to="/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
+            <Link to="/mcp-services/search-service" className="block h-full -m-6 p-6 hover:bg-muted/50 transition-all duration-200 hover:-translate-y-0.5 rounded-lg">
               {usageLoading ? (
                 <SkeletonCard className="border-0 p-0 bg-transparent" />
               ) : (
@@ -221,16 +220,16 @@ export function DashboardPage() {
         <motion.div variants={cardVariants} className="bento-card-small">
           <BentoCard size="small" asCard={false} className="flex flex-col gap-6 h-full">
             <QuickActionCard
-              title={t("dashboard.configureAgents")}
-              description={t("dashboard.configureAgentsDesc")}
-              linkTo="/agents"
-              count={t("dashboard.configuredCount", { configured: configuredAgents.length, installed: installedAgents.length })}
-            />
-            <QuickActionCard
               title={t("dashboard.manageDataSources")}
               description={t("dashboard.manageDataSourcesDesc")}
-              linkTo="/providers"
+              linkTo="/mcp-services/data-sources"
               count={t("dashboard.availableCount", { count: availableProviders.length })}
+            />
+            <QuickActionCard
+              title={t("dashboard.mcpServers")}
+              description={t("searchService.subtitle")}
+              linkTo="/mcp-services/search-service"
+              count={t("dashboard.serverCount", { running: runningServers, total: mcpServers.length })}
             />
           </BentoCard>
         </motion.div>
