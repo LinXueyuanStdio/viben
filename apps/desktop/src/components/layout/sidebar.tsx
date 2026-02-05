@@ -5,7 +5,6 @@ import {
   Settings,
   Bot,
   FileText,
-  Info,
   Search,
   SearchCode,
   LogIn,
@@ -55,12 +54,6 @@ const mcpNav: NavItem[] = [
 // Skills section navigation
 const skillsNav: NavItem[] = [
   { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
-];
-
-// Preferences section navigation
-const preferencesNav: NavItem[] = [
-  { titleKey: "nav.settings", href: "/settings", icon: Settings },
-  { titleKey: "nav.about", href: "/about", icon: Info },
 ];
 
 interface SidebarProps {
@@ -137,20 +130,6 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
                 ))}
               </nav>
             </SidebarSection>
-
-            {/* Preferences Section */}
-            <SidebarSection
-              title={t("workspace.sections.preferences")}
-              collapsible
-              defaultOpen
-              collapsed={collapsed}
-            >
-              <nav className="flex flex-col gap-1">
-                {preferencesNav.map((item) => (
-                  <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
-                ))}
-              </nav>
-            </SidebarSection>
           </div>
         </ScrollArea>
 
@@ -168,8 +147,16 @@ export function Sidebar({ collapsed = false }: SidebarProps) {
             <OfflineIndicator collapsed={collapsed} />
           </div>
 
-          {/* User Auth Section */}
+          {/* Settings Navigation */}
           <div className="mt-3 pt-3 border-t border-sidebar-border">
+            <NavItemComponent
+              item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
+              collapsed={collapsed}
+            />
+          </div>
+
+          {/* User Auth Section */}
+          <div className="mt-2">
             {isAuthenticated ? (
               <UserMenu collapsed={collapsed} />
             ) : (
