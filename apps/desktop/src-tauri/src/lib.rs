@@ -271,6 +271,8 @@ pub fn run() {
             commands::mcp_proxy::get_mcp_proxy_status,
             commands::mcp_proxy::check_mcp_proxy_installed,
             commands::mcp_proxy::install_mcp_proxy,
+            commands::mcp_proxy::get_port_process,
+            commands::mcp_proxy::kill_port_process,
             // Workspace management commands
             commands::workspace::list_workspaces,
             commands::workspace::add_workspace,

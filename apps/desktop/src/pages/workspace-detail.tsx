@@ -38,57 +38,57 @@ export function WorkspaceDetailPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const navigate = useNavigate();
-  const { removeWorkspace, getWorkspace, getDiscoveryTask } = useLocalWorkspaces();
-  const { agents, loading: agentsLoading, loadAgents } = useWorkspaceAgents(
+  const { removeWorkspace, getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
+  const { agents, loading: isDiscovering, loadAgents } = useWorkspaceAgents(
     workspaceId || null
   );
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const lastRefreshRef = useRef<number>(0);
+  const initialLoadDoneRef = useRef<string | null>(null);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  const discoveryTask = workspaceId ? getDiscoveryTask(workspaceId) : undefined;
-  const isDiscovering = discoveryTask?.status === "running";
 
-  // Auto-refresh on workspace enter (with debounce)
+  // Auto-refresh on workspace enter (only once per workspace)
+  // Must wait until workspaces are loaded to run discovery
   useEffect(() => {
-    if (!workspaceId) return;
+    // Don't run if no workspaceId or workspace not loaded yet
+    if (!workspaceId || !workspace || isLoadingWorkspaces) {
+      return;
+    }
 
-    const now = Date.now();
-    // Debounce: only refresh if more than 5 seconds since last refresh
-    if (now - lastRefreshRef.current > 5000) {
-      lastRefreshRef.current = now;
+    // Only load if this is a new workspace (not already loaded)
+    if (initialLoadDoneRef.current !== workspaceId) {
+      initialLoadDoneRef.current = workspaceId;
       loadAgents();
     }
-  }, [workspaceId, loadAgents]);
+  }, [workspaceId, workspace, isLoadingWorkspaces, loadAgents]);
 
   // Auto-refresh every 10 minutes
   useEffect(() => {
     if (!workspaceId) return;
 
     const interval = setInterval(() => {
-      // Only refresh if not currently loading
-      if (!agentsLoading) {
-        lastRefreshRef.current = Date.now();
-        loadAgents();
-      }
+      loadAgents();
     }, AUTO_REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [workspaceId, agentsLoading, loadAgents]);
+  }, [workspaceId, loadAgents]);
 
-  // Manual refresh handler with debounce
-  const handleRefresh = () => {
-    const now = Date.now();
-    // Debounce: prevent rapid clicks
-    if (now - lastRefreshRef.current > 1000 && !agentsLoading) {
-      lastRefreshRef.current = now;
-      loadAgents();
-    }
-  };
+  // Show loading state while workspaces are being fetched
+  if (isLoadingWorkspaces && !workspace) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Loading workspace...</p>
+        </div>
+      </PageWrapper>
+    );
+  }
 
-  if (!workspace) {
+  // Only show "not found" after workspaces have loaded
+  if (!workspace && workspaces.length > 0) {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
@@ -105,6 +105,18 @@ export function WorkspaceDetailPage() {
               {t("workspace.backToDashboard")}
             </Link>
           </Button>
+        </div>
+      </PageWrapper>
+    );
+  }
+
+  // Fallback - still loading or no workspaces
+  if (!workspace) {
+    return (
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </PageWrapper>
     );
@@ -173,15 +185,20 @@ export function WorkspaceDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleRefresh}
-              disabled={agentsLoading || isDiscovering}
+              onClick={loadAgents}
+              disabled={isDiscovering}
             >
-              {agentsLoading || isDiscovering ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {isDiscovering ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("workspace.discovering")}
+                </>
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  {t("common.refresh")}
+                </>
               )}
-              {t("common.refresh")}
             </Button>
 
             {!isGlobal && (
@@ -258,7 +275,7 @@ export function WorkspaceDetailPage() {
             </h2>
           </div>
 
-          {agentsLoading && agents.length === 0 ? (
+          {isDiscovering && agents.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
