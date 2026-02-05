@@ -172,7 +172,7 @@ pub async fn login_with_credentials(
 ///
 /// Opens the GitHub OAuth URL in the default browser with a redirect_uri
 /// pointing to the desktop app's deep link scheme.
-/// The callback will be handled via deep link: browsemcp://oauth?code=xxx
+/// The callback will be handled via deep link: viben://oauth?code=xxx
 ///
 /// # Returns
 /// The OAuth URL that was opened
@@ -183,7 +183,7 @@ pub fn login_with_github(
 ) -> Result<String, String> {
     let base_url = api_state.base_url.lock().unwrap().clone();
     // Include redirect_uri parameter so the server knows to redirect back to desktop app
-    let redirect_uri = urlencoding::encode("browsemcp://oauth");
+    let redirect_uri = urlencoding::encode("viben://oauth");
     let oauth_url = format!(
         "{}/api/auth/github?redirect_uri={}&client=desktop",
         base_url, redirect_uri

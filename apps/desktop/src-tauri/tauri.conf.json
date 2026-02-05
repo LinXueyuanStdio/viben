@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Browse MCP",
+  "productName": "Viben",
   "version": "0.1.0",
-  "identifier": "com.browsemcp.app",
+  "identifier": "com.viben.app",
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["browsemcp"]
+        "schemes": ["viben"]
       }
     }
   },
@@ -20,7 +20,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Browse MCP",
+        "title": "Viben",
         "width": 1200,
         "height": 800,
         "minWidth": 900,

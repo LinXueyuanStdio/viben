@@ -214,7 +214,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: "browse-mcp-auth",
+      name: "viben-auth",
       partialize: (state) => ({
         // Only persist user data, not loading/error states
         user: state.user,

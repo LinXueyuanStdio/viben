@@ -48,10 +48,10 @@ pub async fn update_tray_status<R: Runtime>(
 
     // Update tooltip based on status
     let tooltip = match status {
-        TrayStatus::AllRunning => "Browse MCP - All servers running",
-        TrayStatus::PartialRunning => "Browse MCP - Some servers running",
-        TrayStatus::HasErrors => "Browse MCP - Server errors",
-        TrayStatus::Inactive => "Browse MCP - No active servers",
+        TrayStatus::AllRunning => "Viben - All servers running",
+        TrayStatus::PartialRunning => "Viben - Some servers running",
+        TrayStatus::HasErrors => "Viben - Server errors",
+        TrayStatus::Inactive => "Viben - No active servers",
     };
 
     tray.set_tooltip(Some(tooltip))

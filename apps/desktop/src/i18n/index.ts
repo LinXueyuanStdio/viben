@@ -70,7 +70,7 @@ i18n
       // Cache to localStorage
       caches: ["localStorage"],
       // LocalStorage key name
-      lookupLocalStorage: "browse-mcp-language",
+      lookupLocalStorage: "viben-language",
     },
     // React specific options
     react: {
@@ -85,7 +85,7 @@ i18n
 export function changeLanguage(langCode: string): Promise<void> {
   return i18n.changeLanguage(langCode).then(() => {
     // Also save to localStorage (handled by detector, but explicit for clarity)
-    localStorage.setItem("browse-mcp-language", langCode);
+    localStorage.setItem("viben-language", langCode);
   });
 }
 

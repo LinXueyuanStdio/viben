@@ -141,7 +141,7 @@
     "downloadPath": "Nedladdningssökväg"
   },
   "about": {
-    "title": "Browse MCP",
+    "title": "Viben",
     "version": "Version {{version}}",
     "updateAvailable": "Uppdatering tillgänglig",
     "versionReady": "Version {{version}} är redo att installeras",
