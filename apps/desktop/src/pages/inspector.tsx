@@ -22,6 +22,8 @@ import {
   MessageCircleQuestion,
   KeyRound,
   Settings2,
+  WrapText,
+  AlignJustify,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -143,6 +145,9 @@ export function InspectorPage() {
 
   // Copy state
   const [copied, setCopied] = useState(false);
+
+  // JSON wrap mode state
+  const [jsonWrap, setJsonWrap] = useState(true);
 
   // Examples collapsed state
   const [examplesCollapsed, setExamplesCollapsed] = useState(true);
@@ -312,6 +317,24 @@ export function InspectorPage() {
       console.error("Failed to copy:", error);
     }
   }, [configJson]);
+
+  // Handle config JSON change with auto-format on valid JSON
+  const handleConfigJsonChange = useCallback((value: string) => {
+    // Try to parse and format if valid JSON
+    try {
+      const parsed = JSON.parse(value);
+      // Only auto-format if the JSON is complete (not while typing)
+      // Check if the value ends with a complete JSON structure
+      const trimmed = value.trim();
+      if (trimmed.endsWith('}') || trimmed.endsWith(']')) {
+        setConfigJson(JSON.stringify(parsed, null, 2));
+        return;
+      }
+    } catch {
+      // Not valid JSON yet, keep as-is
+    }
+    setConfigJson(value);
+  }, []);
 
   const getConnectionStatusInfo = (status: InspectorConnectionStatus) => {
     switch (status) {
@@ -484,28 +507,44 @@ export function InspectorPage() {
             {/* JSON Config Label */}
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium">{t("inspector.serverConfig")}</label>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopy}
-                className="h-7 px-2"
-              >
-                {copied ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setJsonWrap(!jsonWrap)}
+                  className={`h-7 px-2 ${jsonWrap ? "text-primary" : "text-muted-foreground"}`}
+                  title={jsonWrap ? t("inspector.nowrap", "No Wrap") : t("inspector.wrap", "Wrap")}
+                >
+                  {jsonWrap ? (
+                    <WrapText className="h-3.5 w-3.5" />
+                  ) : (
+                    <AlignJustify className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="h-7 px-2"
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             {/* JSON Config Textarea */}
             <div className="relative">
               <textarea
                 value={configJson}
-                onChange={(e) => setConfigJson(e.target.value)}
+                onChange={(e) => handleConfigJsonChange(e.target.value)}
                 className={`w-full h-48 p-3 font-mono text-sm rounded-md border resize-none
                   bg-muted/50 focus:outline-none focus:ring-2 focus:ring-ring
-                  ${parseError ? "border-red-500 focus:ring-red-500" : "border-input"}`}
+                  ${parseError ? "border-red-500 focus:ring-red-500" : "border-input"}
+                  ${jsonWrap ? "whitespace-pre-wrap break-all" : "whitespace-pre overflow-x-auto"}`}
                 placeholder={JSON.stringify(DEFAULT_CONFIG, null, 2)}
                 spellCheck={false}
               />

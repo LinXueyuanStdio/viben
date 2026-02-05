@@ -80,6 +80,18 @@ pub struct WorkspaceSkill {
     pub source: String, // "marketplace" or "local"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<String>, // For local skills
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>, // Skill description from SKILL.md
+}
+
+/// File entry for skill folder tree
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillFileEntry {
+    pub name: String,
+    pub path: String,
+    pub is_directory: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub children: Option<Vec<SkillFileEntry>>,
 }
 
 /// Workspaces storage file structure
@@ -289,12 +301,14 @@ struct AgentConfigPattern {
     folder: &'static str,
     agent_type: WorkspaceAgentType,
     name: &'static str,
-    /// MCP config file path relative to agent folder (for project scope)
-    mcp_file_in_folder: Option<&'static str>,
-    /// MCP config file path relative to workspace (for global scope, e.g., ~/.claude.json)
+    /// MCP config file paths relative to agent folder (for project scope) - tried in order
+    mcp_files_in_folder: &'static [&'static str],
+    /// MCP config file path relative to workspace root (e.g., .mcp.json at project root)
     mcp_file_in_parent: Option<&'static str>,
-    /// Skills/plugins file path relative to agent folder
+    /// Skills/plugins file path relative to agent folder (JSON format for global)
     skills_file: Option<&'static str>,
+    /// Skills folder path relative to agent folder (folder with SKILL.md for project)
+    skills_folder: Option<&'static str>,
     /// For agents with complex MCP paths (relative to home, not workspace)
     global_mcp_path: Option<&'static str>,
 }
@@ -303,15 +317,17 @@ struct AgentConfigPattern {
 fn get_agent_patterns() -> Vec<AgentConfigPattern> {
     vec![
         // Claude Code:
-        // - Global: ~/.claude/mcp_servers.json for MCP, ~/.claude/plugins/installed_plugins.json for plugins
-        // - Project: .mcp.json in project root
+        // - Global: ~/.claude/mcp_servers.json for MCP, ~/.claude/skills/ for skills
+        // - Project: .claude/.mcp.json or .mcp.json in project root, .claude/skills/ for skills
+        // Note: plugins (plugins/installed_plugins.json) are different from skills
         AgentConfigPattern {
             folder: ".claude",
             agent_type: WorkspaceAgentType::ClaudeCode,
             name: "Claude Code",
-            mcp_file_in_folder: Some("mcp_servers.json"),
+            mcp_files_in_folder: &["mcp_servers.json", ".mcp.json"],
             mcp_file_in_parent: Some(".mcp.json"),
-            skills_file: Some("plugins/installed_plugins.json"),
+            skills_file: None, // Plugins are not skills
+            skills_folder: Some("skills"),
             global_mcp_path: None,
         },
         // Codex (OpenAI):
@@ -320,9 +336,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".codex",
             agent_type: WorkspaceAgentType::Codex,
             name: "Codex",
-            mcp_file_in_folder: Some("config.json"),
+            mcp_files_in_folder: &["config.json"],
             mcp_file_in_parent: None,
             skills_file: Some("skills.json"),
+            skills_folder: Some("skills"),
             global_mcp_path: None,
         },
         // Cursor:
@@ -332,9 +349,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".cursor",
             agent_type: WorkspaceAgentType::Cursor,
             name: "Cursor",
-            mcp_file_in_folder: Some("mcp.json"),
+            mcp_files_in_folder: &["mcp.json"],
             mcp_file_in_parent: None,
-            skills_file: None, // Cursor uses symlinks in skills/ directory
+            skills_file: None,
+            skills_folder: Some("skills"),
             global_mcp_path: None,
         },
         // Windsurf (Codeium):
@@ -344,9 +362,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".windsurf",
             agent_type: WorkspaceAgentType::Windsurf,
             name: "Windsurf",
-            mcp_file_in_folder: Some("mcp_config.json"),
+            mcp_files_in_folder: &["mcp_config.json"],
             mcp_file_in_parent: None,
             skills_file: None,
+            skills_folder: None,
             global_mcp_path: Some(".codeium/windsurf/mcp_config.json"),
         },
         // VS Code with Copilot/MCP extension:
@@ -355,9 +374,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".vscode",
             agent_type: WorkspaceAgentType::Vscode,
             name: "VS Code",
-            mcp_file_in_folder: Some("mcp.json"),
+            mcp_files_in_folder: &["mcp.json"],
             mcp_file_in_parent: None,
             skills_file: None,
+            skills_folder: None,
             global_mcp_path: None,
         },
         // Continue:
@@ -366,9 +386,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".continue",
             agent_type: WorkspaceAgentType::Continue,
             name: "Continue",
-            mcp_file_in_folder: Some("config.json"),
+            mcp_files_in_folder: &["config.json"],
             mcp_file_in_parent: None,
             skills_file: None,
+            skills_folder: None,
             global_mcp_path: None,
         },
         // Zed:
@@ -377,9 +398,10 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".zed",
             agent_type: WorkspaceAgentType::Zed,
             name: "Zed",
-            mcp_file_in_folder: Some("settings.json"),
+            mcp_files_in_folder: &["settings.json"],
             mcp_file_in_parent: None,
             skills_file: None,
+            skills_folder: None,
             global_mcp_path: Some(".config/zed/settings.json"),
         },
         // Codeium folder (for global Windsurf detection)
@@ -387,12 +409,41 @@ fn get_agent_patterns() -> Vec<AgentConfigPattern> {
             folder: ".codeium",
             agent_type: WorkspaceAgentType::Windsurf,
             name: "Windsurf (Codeium)",
-            mcp_file_in_folder: Some("windsurf/mcp_config.json"),
+            mcp_files_in_folder: &["windsurf/mcp_config.json"],
             mcp_file_in_parent: None,
             skills_file: None,
+            skills_folder: None,
             global_mcp_path: None,
         },
     ]
+}
+
+/// Check if a path exists, following symlinks
+fn path_exists(path: &PathBuf) -> bool {
+    // Use fs::metadata which follows symlinks, unlike Path::exists which may not
+    fs::metadata(path).is_ok()
+}
+
+/// Check if a path is a directory, following symlinks
+fn is_directory(path: &PathBuf) -> bool {
+    fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
+}
+
+/// Find the first existing file from a list of candidates
+fn find_first_existing(base_path: &PathBuf, candidates: &[&str]) -> Option<PathBuf> {
+    for candidate in candidates {
+        let path = base_path.join(candidate);
+        if path_exists(&path) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+/// Check if a folder contains SKILL.md (skill folder detection)
+fn is_skill_folder(path: &PathBuf) -> bool {
+    let skill_md = path.join("SKILL.md");
+    path_exists(&skill_md)
 }
 
 /// Detect agents in a workspace path
@@ -414,7 +465,7 @@ pub async fn detect_workspace_agents(workspace_id: String) -> Result<Vec<Workspa
 
     for pattern in patterns {
         let agent_path = workspace_path.join(pattern.folder);
-        if agent_path.exists() && agent_path.is_dir() {
+        if path_exists(&agent_path) && is_directory(&agent_path) {
             // Skip if we already detected this agent type (avoid duplicates like .codeium and .windsurf)
             if detected_types.contains(&pattern.agent_type) {
                 continue;
@@ -424,34 +475,40 @@ pub async fn detect_workspace_agents(workspace_id: String) -> Result<Vec<Workspa
             let mcp_config_file = if is_global {
                 // For global workspace, try:
                 // 1. global_mcp_path if specified (e.g., .codeium/windsurf/mcp_config.json)
-                // 2. mcp_file_in_folder (e.g., .claude/mcp_servers.json)
-                // 3. mcp_file_in_parent (e.g., .mcp.json at workspace root - rare for global)
+                // 2. mcp_files_in_folder (e.g., .claude/mcp_servers.json)
                 if let Some(global_path) = pattern.global_mcp_path {
                     let path = workspace_path.join(global_path);
-                    if path.exists() { Some(path) } else { None }
-                } else if let Some(mcp_file) = pattern.mcp_file_in_folder {
-                    let path = agent_path.join(mcp_file);
-                    if path.exists() { Some(path) } else { None }
+                    if path_exists(&path) { Some(path) } else { None }
                 } else {
-                    None
+                    find_first_existing(&agent_path, pattern.mcp_files_in_folder)
                 }
             } else {
                 // For project workspace, try:
-                // 1. mcp_file_in_folder (e.g., .cursor/mcp.json)
+                // 1. mcp_files_in_folder (e.g., .claude/.mcp.json, .cursor/mcp.json)
                 // 2. mcp_file_in_parent (e.g., .mcp.json at project root)
-                let from_folder = pattern.mcp_file_in_folder.map(|f| agent_path.join(f));
-                let from_parent = pattern.mcp_file_in_parent.map(|f| workspace_path.join(f));
-
-                from_folder
-                    .filter(|p| p.exists())
-                    .or_else(|| from_parent.filter(|p| p.exists()))
+                find_first_existing(&agent_path, pattern.mcp_files_in_folder)
+                    .or_else(|| {
+                        pattern.mcp_file_in_parent.and_then(|f| {
+                            let path = workspace_path.join(f);
+                            if path_exists(&path) { Some(path) } else { None }
+                        })
+                    })
             };
 
-            // Determine skills config file path
-            let skills_config_file = pattern.skills_file.map(|f| {
+            // Determine skills config - a folder path containing skill subfolders with SKILL.md
+            // Skills are folders that contain a SKILL.md file at their root
+            // The skills_folder (e.g., "skills") is the starting point for recursive discovery
+            // skills_file is deprecated (plugins are different from skills)
+            let skills_config_file = pattern.skills_folder.and_then(|f| {
                 let path = agent_path.join(f);
-                if path.exists() { Some(path) } else { None }
-            }).flatten();
+                if path_exists(&path) && is_directory(&path) { Some(path) } else { None }
+            }).or_else(|| {
+                // Fallback: check skills_file for backwards compatibility (non-Claude agents)
+                pattern.skills_file.and_then(|f| {
+                    let path = agent_path.join(f);
+                    if path_exists(&path) { Some(path) } else { None }
+                })
+            });
 
             agents.push(WorkspaceAgent {
                 id: format!("{}:{}", workspace_id, pattern.folder),
@@ -711,6 +768,119 @@ pub async fn delete_workspace_mcp_server(
     Ok(())
 }
 
+/// Extract skill info from SKILL.md file
+fn parse_skill_md(skill_path: &PathBuf) -> Option<(String, String)> {
+    let skill_md = skill_path.join("SKILL.md");
+    if !path_exists(&skill_md) {
+        return None;
+    }
+
+    let content = fs::read_to_string(&skill_md).ok()?;
+
+    // Extract name and description from SKILL.md frontmatter or content
+    // Format: ---\nname: skill-name\ndescription: ...\n---
+    let mut name = None;
+    let mut description = None;
+
+    // Check for YAML frontmatter
+    if content.starts_with("---") {
+        let parts: Vec<&str> = content.splitn(3, "---").collect();
+        if parts.len() >= 2 {
+            let frontmatter = parts[1];
+            for line in frontmatter.lines() {
+                let line = line.trim();
+                if line.starts_with("name:") {
+                    name = Some(line.trim_start_matches("name:").trim().to_string());
+                } else if line.starts_with("description:") {
+                    description = Some(line.trim_start_matches("description:").trim().to_string());
+                }
+            }
+        }
+    }
+
+    // Fallback: use folder name as skill name
+    let skill_name = name.unwrap_or_else(|| {
+        skill_path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string()
+    });
+
+    // Fallback: extract first paragraph as description
+    let skill_desc = description.unwrap_or_else(|| {
+        // Find first non-empty line that's not frontmatter
+        let desc_content = if content.starts_with("---") {
+            content.splitn(3, "---").nth(2).unwrap_or(&content)
+        } else {
+            &content
+        };
+        desc_content.lines()
+            .find(|l| !l.trim().is_empty() && !l.starts_with('#'))
+            .unwrap_or("")
+            .trim()
+            .chars()
+            .take(100)
+            .collect::<String>()
+    });
+
+    Some((skill_name, skill_desc))
+}
+
+/// Scan skills folder for SKILL.md folders (non-recursive)
+/// Recursively scan for skills folders containing SKILL.md
+/// Once a skill folder is found (contains SKILL.md), its contents are not recursively searched
+fn scan_skills_folder(skills_path: &PathBuf) -> Vec<WorkspaceSkill> {
+    let mut skills = Vec::new();
+    scan_skills_recursive(skills_path, &mut skills, 0, 10); // Max depth of 10
+    skills
+}
+
+fn scan_skills_recursive(dir: &PathBuf, skills: &mut Vec<WorkspaceSkill>, depth: u32, max_depth: u32) {
+    if depth > max_depth {
+        return;
+    }
+
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+
+            // Skip hidden folders
+            if let Some(name) = entry_path.file_name().and_then(|n| n.to_str()) {
+                if name.starts_with('.') {
+                    continue;
+                }
+            }
+
+            if !is_directory(&entry_path) {
+                continue;
+            }
+
+            // Check if this folder is a skill (contains SKILL.md)
+            if is_skill_folder(&entry_path) {
+                if let Some((name, description)) = parse_skill_md(&entry_path) {
+                    let folder_name = entry_path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+
+                    skills.push(WorkspaceSkill {
+                        id: folder_name.clone(),
+                        name,
+                        version: "local".to_string(),
+                        source: "local".to_string(),
+                        path: Some(entry_path.to_string_lossy().to_string()),
+                        description: if description.is_empty() { None } else { Some(description) },
+                    });
+                    // Don't recurse into skill folders
+                }
+            } else {
+                // Not a skill folder, recurse into it
+                scan_skills_recursive(&entry_path, skills, depth + 1, max_depth);
+            }
+        }
+    }
+}
+
 /// Get skills from agent config
 #[tauri::command]
 pub async fn get_workspace_skills(
@@ -729,10 +899,17 @@ pub async fn get_workspace_skills(
     };
 
     let path = PathBuf::from(skills_config_file);
-    if !path.exists() {
+    if !path_exists(&path) {
         return Ok(Vec::new());
     }
 
+    // Check if it's a directory (skills folder) or a file (JSON config)
+    if is_directory(&path) {
+        // Scan for skill folders containing SKILL.md
+        return Ok(scan_skills_folder(&path));
+    }
+
+    // It's a file - parse as JSON
     let content = fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read config: {}", e))?;
 
@@ -766,6 +943,7 @@ pub async fn get_workspace_skills(
                         version: version.to_string(),
                         source: marketplace.clone(),
                         path: install_path,
+                        description: None,
                     });
                 }
             }
@@ -789,6 +967,7 @@ pub async fn get_workspace_skills(
                     version: version.to_string(),
                     source: source.to_string(),
                     path: skill_value.get("path").and_then(|v| v.as_str()).map(String::from),
+                    description: skill_value.get("description").and_then(|v| v.as_str()).map(String::from),
                 });
             }
         }
@@ -905,6 +1084,109 @@ pub async fn delete_workspace_skill(
     Ok(())
 }
 
+/// Get SKILL.md content for a skill
+#[tauri::command]
+pub async fn get_skill_readme(skill_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&skill_path);
+    let skill_md = path.join("SKILL.md");
+
+    if !path_exists(&skill_md) {
+        return Err("SKILL.md not found".to_string());
+    }
+
+    fs::read_to_string(&skill_md)
+        .map_err(|e| format!("Failed to read SKILL.md: {}", e))
+}
+
+/// List skill folder contents recursively
+#[tauri::command]
+pub async fn list_skill_files(skill_path: String, max_depth: Option<u32>) -> Result<Vec<SkillFileEntry>, String> {
+    let path = PathBuf::from(&skill_path);
+    let max_depth = max_depth.unwrap_or(3);
+
+    if !path_exists(&path) || !is_directory(&path) {
+        return Err("Invalid skill path".to_string());
+    }
+
+    fn scan_directory(dir: &PathBuf, current_depth: u32, max_depth: u32) -> Vec<SkillFileEntry> {
+        let mut entries = Vec::new();
+
+        if let Ok(read_dir) = fs::read_dir(dir) {
+            let mut items: Vec<_> = read_dir.flatten().collect();
+            items.sort_by(|a, b| {
+                // Directories first, then alphabetically
+                let a_is_dir = a.path().is_dir();
+                let b_is_dir = b.path().is_dir();
+                match (a_is_dir, b_is_dir) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.file_name().cmp(&b.file_name()),
+                }
+            });
+
+            for entry in items {
+                let entry_path = entry.path();
+                let name = entry.file_name().to_string_lossy().to_string();
+
+                // Skip hidden files/folders
+                if name.starts_with('.') {
+                    continue;
+                }
+
+                let is_dir = entry_path.is_dir();
+                let children = if is_dir && current_depth < max_depth {
+                    Some(scan_directory(&entry_path, current_depth + 1, max_depth))
+                } else if is_dir {
+                    Some(Vec::new()) // Indicate it's a directory but don't recurse
+                } else {
+                    None
+                };
+
+                entries.push(SkillFileEntry {
+                    name,
+                    path: entry_path.to_string_lossy().to_string(),
+                    is_directory: is_dir,
+                    children,
+                });
+            }
+        }
+
+        entries
+    }
+
+    Ok(scan_directory(&path, 0, max_depth))
+}
+
+/// Read a file from skill folder
+#[tauri::command]
+pub async fn read_skill_file(file_path: String, skill_path: String) -> Result<String, String> {
+    let file = PathBuf::from(&file_path);
+    let skill = PathBuf::from(&skill_path);
+
+    // Security check: ensure file is within skill folder
+    if !file.starts_with(&skill) {
+        return Err("Access denied: file is outside skill folder".to_string());
+    }
+
+    if !path_exists(&file) {
+        return Err("File not found".to_string());
+    }
+
+    if is_directory(&file) {
+        return Err("Cannot read directory".to_string());
+    }
+
+    // Check file size (limit to 1MB)
+    let metadata = fs::metadata(&file)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    if metadata.len() > 1_048_576 {
+        return Err("File too large (max 1MB)".to_string());
+    }
+
+    fs::read_to_string(&file)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -936,6 +1218,60 @@ mod tests {
             Err(e) => {
                 panic!("Detection failed: {}", e);
             }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_detect_project_workspace_agents() {
+        // First, add a test workspace (or find one that exists)
+        let store = load_workspaces_store();
+        let project_workspace = store.workspaces.iter()
+            .find(|w| w.workspace_type == WorkspaceType::Custom);
+
+        if let Some(workspace) = project_workspace {
+            println!("Testing project workspace: {} at {}", workspace.name, workspace.path);
+            let result = detect_workspace_agents(workspace.id.clone()).await;
+            match result {
+                Ok(agents) => {
+                    println!("Found {} agents in project workspace:", agents.len());
+                    for agent in &agents {
+                        println!("  - {} ({:?})", agent.name, agent.agent_type);
+                        println!("    config_path: {}", agent.config_path);
+                        println!("    mcp_config_file: {:?}", agent.mcp_config_file);
+                        println!("    skills_config_file: {:?}", agent.skills_config_file);
+                    }
+                    // Check Claude Code in project workspace
+                    if let Some(claude) = agents.iter().find(|a| a.name == "Claude Code") {
+                        println!("Claude Code detected in project workspace:");
+                        println!("  MCP config: {:?}", claude.mcp_config_file);
+                        println!("  Skills config: {:?}", claude.skills_config_file);
+
+                        // Test skill detection for project workspace
+                        if claude.skills_config_file.is_some() {
+                            let skills_result = get_workspace_skills(
+                                workspace.id.clone(),
+                                claude.id.clone()
+                            ).await;
+                            match skills_result {
+                                Ok(skills) => {
+                                    println!("Found {} skills:", skills.len());
+                                    for skill in &skills {
+                                        println!("  - {} ({})", skill.name, skill.source);
+                                    }
+                                }
+                                Err(e) => {
+                                    println!("Skills detection error: {}", e);
+                                }
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("Detection failed: {}", e);
+                }
+            }
+        } else {
+            println!("No custom workspace found, skipping project workspace test");
         }
     }
 }

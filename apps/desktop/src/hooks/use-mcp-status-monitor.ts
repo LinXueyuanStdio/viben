@@ -7,8 +7,16 @@ import type { McpServerStatus, McpServerStatusInfo } from "@/types";
 // Configuration constants
 const POLL_INTERVAL_MS = 60 * 1000; // 1 minute
 const CACHE_TTL_MS = 30 * 1000; // 30 seconds
-const DEBOUNCE_MS = 300; // 300ms debounce for page enter
+const DEBOUNCE_MS = 100; // 100ms debounce for page enter (reduced for faster response)
 const MAX_CONCURRENT_CHECKS = 2; // Max concurrent process checks
+
+// Port check result type from Rust backend
+interface McpServerPortStatus {
+  status: "running" | "stopped" | "conflict";
+  pid: number | null;
+  process_name: string | null;
+  is_mcp_server: boolean;
+}
 
 // Singleton queue instance for concurrency control
 let globalQueue: PQueue | null = null;
@@ -80,38 +88,75 @@ export function useMcpStatusMonitor() {
       try {
         let status: McpServerStatus = "stopped";
         let error: string | undefined;
+        let detectedPid: number | undefined = server.pid ?? undefined;
 
-        // Check if the server has a PID and if the process is alive
+        // Fast path: Check if the server has a PID and if the process is alive
         if (server.pid) {
           const isAlive = await invoke<boolean>("is_process_alive", { pid: server.pid });
           if (isAlive) {
             status = "running";
           } else {
-            // Process died unexpectedly
+            // PID is dead, clear it and fall through to port check
+            detectedPid = undefined;
+          }
+        }
+
+        // If no running PID found, fall back to port-based detection
+        // This catches servers started externally or after app restart
+        if (status !== "running" && server.port && server.transport !== "stdio") {
+          try {
+            const portStatus = await invoke<McpServerPortStatus>("check_mcp_server_on_port", {
+              port: server.port,
+            });
+
+            if (portStatus.status === "running" && portStatus.is_mcp_server) {
+              // Found a running MCP server on the port
+              status = "running";
+              detectedPid = portStatus.pid ?? undefined;
+            } else if (portStatus.status === "conflict") {
+              // Different process is using the port
+              status = "error";
+              error = `Port ${server.port} is in use by another process: ${portStatus.process_name || "unknown"}`;
+            } else {
+              // Port is free, server is stopped
+              status = "stopped";
+            }
+          } catch (portErr) {
+            // Port check failed, but don't fail the whole check
+            console.warn("Port check failed:", portErr);
+            // If we had a PID that died, mark as error
+            if (server.pid && !detectedPid) {
+              status = "error";
+              error = "Process terminated unexpectedly";
+            } else if (server.status === "running") {
+              status = "error";
+              error = "Server marked as running but status check failed";
+            }
+          }
+        } else if (status !== "running") {
+          // stdio transport or no port - rely on PID check only
+          if (server.pid && !detectedPid) {
             status = "error";
             error = "Process terminated unexpectedly";
+          } else if (server.status === "running" && !server.pid) {
+            status = "error";
+            error = "Server marked as running but no process ID";
           }
-        } else if (server.status === "running") {
-          // Server marked as running but no PID - likely an error state
-          status = "error";
-          error = "Server marked as running but no process ID";
-        } else {
-          status = "stopped";
         }
 
         const statusInfo: McpServerStatusInfo = {
           status,
           lastChecked: Date.now(),
           error,
-          pid: server.pid ?? undefined,
+          pid: detectedPid,
         };
 
         // Update store with new status
         setMcpServerStatusInfo(serverId, statusInfo);
 
-        // Also update the server's status if it changed
-        if (server.status !== status) {
-          setMcpServerStatus(serverId, status, server.pid, error);
+        // Also update the server's status and PID if they changed
+        if (server.status !== status || server.pid !== detectedPid) {
+          setMcpServerStatus(serverId, status, detectedPid, error);
         }
 
         return statusInfo;
@@ -266,8 +311,8 @@ export function useMcpStatusMonitor() {
  * Hook to trigger status check when a page is entered
  * Use this in page components that need fresh status
  */
-export function useOnPageEnter(options: { enabled?: boolean } = {}) {
-  const { enabled = true } = options;
+export function useOnPageEnter(options: { enabled?: boolean; forceCheck?: boolean } = {}) {
+  const { enabled = true, forceCheck = false } = options;
   const { triggerCheck, startPolling, stopPolling } = useMcpStatusMonitor();
   const hasTriggeredRef = useRef(false);
 
@@ -277,7 +322,8 @@ export function useOnPageEnter(options: { enabled?: boolean } = {}) {
     // Only trigger once per mount
     if (!hasTriggeredRef.current) {
       hasTriggeredRef.current = true;
-      triggerCheck();
+      // Force check on page enter to get fresh status (skip cache)
+      triggerCheck(forceCheck);
     }
 
     // Start polling while on this page
@@ -288,7 +334,7 @@ export function useOnPageEnter(options: { enabled?: boolean } = {}) {
       hasTriggeredRef.current = false;
       stopPolling();
     };
-  }, [enabled, triggerCheck, startPolling, stopPolling]);
+  }, [enabled, forceCheck, triggerCheck, startPolling, stopPolling]);
 }
 
 /**

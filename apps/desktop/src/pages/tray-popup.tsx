@@ -6,6 +6,7 @@ import { useMcp } from "@/hooks/use-mcp";
 import { usePython } from "@/hooks/use-python";
 import { useApiKeys } from "@/hooks/use-api-keys";
 import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
+import { useTrayWindowStoreSync } from "@/hooks/use-store-sync";
 import { useAppStore } from "@/stores";
 import type { McpServerInstance, McpServerStatus } from "@/types";
 import { useTranslation } from "react-i18next";
@@ -22,8 +23,11 @@ export function TrayPopupPage() {
   const { mcpServers, setMcpServerStatus, setupStatus } = useAppStore();
   const { getStats } = useMcpStatusMonitor();
 
-  // Enable status monitoring
-  useOnPageEnter({ enabled: mcpServers.length > 0 });
+  // Initialize store synchronization to receive updates from main window
+  useTrayWindowStoreSync();
+
+  // Enable status monitoring with force check to get fresh status when popup opens
+  useOnPageEnter({ enabled: mcpServers.length > 0, forceCheck: true });
 
   const stats = getStats();
   const isSetupComplete = setupStatus?.isComplete === true;

@@ -170,10 +170,17 @@ export function useWorkspaceAgents(workspaceId: string | null) {
   const startDiscovery = useWorkspaceStore((s) => s.startDiscovery);
   const completeDiscovery = useWorkspaceStore((s) => s.completeDiscovery);
   const failDiscovery = useWorkspaceStore((s) => s.failDiscovery);
-  const discoveryTasks = useWorkspaceStore((s) => s.discoveryTasks);
 
-  const discoveryTask = workspaceId ? discoveryTasks[workspaceId] : undefined;
-  const loading = discoveryTask?.status === "running";
+  // Subscribe to specific discovery task status for this workspace
+  // This ensures re-render when status changes
+  const discoveryTaskStatus = useWorkspaceStore(
+    (s) => workspaceId ? s.discoveryTasks[workspaceId]?.status : undefined
+  );
+  const discoveryTaskAgents = useWorkspaceStore(
+    (s) => workspaceId ? s.discoveryTasks[workspaceId]?.agents : undefined
+  );
+
+  const loading = discoveryTaskStatus === "running";
 
   // Stable loadAgents function - only depends on workspaceId
   const loadAgents = useCallback(async () => {
@@ -206,18 +213,36 @@ export function useWorkspaceAgents(workspaceId: string | null) {
     }
   }, [workspaceId, startDiscovery, completeDiscovery, failDiscovery]);
 
-  // Update agents when discovery completes from elsewhere
+  // Initialize agents from existing discovery task or reset when workspace changes
+  // This handles both:
+  // 1. Navigating to a workspace where discovery already completed
+  // 2. Switching to a different workspace (need to reset)
   useEffect(() => {
-    if (discoveryTask?.status === "completed" && discoveryTask.agents) {
-      setAgents(discoveryTask.agents);
+    if (!workspaceId) {
+      setAgents([]);
+      setError(null);
+      return;
     }
-  }, [discoveryTask?.status, discoveryTask?.agents]);
 
-  // Reset agents when workspace changes
-  useEffect(() => {
-    setAgents([]);
+    // Check if there's already completed discovery data for this workspace
+    const store = useWorkspaceStore.getState();
+    const task = store.discoveryTasks[workspaceId];
+    if (task?.status === "completed" && task.agents) {
+      // Use cached discovery results
+      setAgents(task.agents);
+    } else {
+      // No cached data, reset and wait for discovery
+      setAgents([]);
+    }
     setError(null);
   }, [workspaceId]);
+
+  // Keep agents in sync when discovery completes (from loadAgents call or elsewhere)
+  useEffect(() => {
+    if (discoveryTaskStatus === "completed" && discoveryTaskAgents) {
+      setAgents(discoveryTaskAgents);
+    }
+  }, [discoveryTaskStatus, discoveryTaskAgents]);
 
   return {
     agents,

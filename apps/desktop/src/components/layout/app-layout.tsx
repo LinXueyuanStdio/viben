@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sidebar } from "./sidebar";
 import { usePython } from "@/hooks/use-python";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
+import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
@@ -12,6 +13,9 @@ export function AppLayout() {
 
   // Initialize tray status synchronization
   useTrayStatusSync();
+
+  // Initialize store synchronization across windows
+  useMainWindowStoreSync();
 
   // Setup status detection - runs ONLY ONCE at app startup
   // After that, only Settings page "Detect" button can trigger update
