@@ -94,6 +94,28 @@ pub struct SkillFileEntry {
     pub children: Option<Vec<SkillFileEntry>>,
 }
 
+/// Agent config file (.claude/agents/*.md)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceAgentConfig {
+    pub id: String,              // filename without extension
+    pub name: String,            // from frontmatter
+    pub description: String,     // from frontmatter
+    pub tools: Vec<String>,      // parsed from comma-separated
+    pub model: String,           // from frontmatter
+    pub path: String,            // full file path
+    pub content: String,         // markdown content after frontmatter
+}
+
+/// Command file (.claude/commands/**/*.md)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkspaceCommand {
+    pub id: String,              // namespace/command format
+    pub namespace: String,       // folder name (e.g., "trellis")
+    pub name: String,            // filename without extension
+    pub path: String,            // full file path
+    pub content: String,         // full markdown content
+}
+
 /// Workspaces storage file structure
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct WorkspacesStore {
@@ -1185,6 +1207,317 @@ pub async fn read_skill_file(file_path: String, skill_path: String) -> Result<St
 
     fs::read_to_string(&file)
         .map_err(|e| format!("Failed to read file: {}", e))
+}
+
+/// Parse agent config YAML frontmatter from markdown file
+fn parse_agent_config_frontmatter(content: &str) -> (String, String, Vec<String>, String, String) {
+    let mut name = String::new();
+    let mut description = String::new();
+    let mut tools = Vec::new();
+    let mut model = String::new();
+    let mut markdown_content = content.to_string();
+
+    // Check for YAML frontmatter
+    if content.starts_with("---") {
+        let parts: Vec<&str> = content.splitn(3, "---").collect();
+        if parts.len() >= 3 {
+            let frontmatter = parts[1];
+            markdown_content = parts[2].trim_start().to_string();
+
+            // Parse YAML frontmatter line by line
+            let mut in_description = false;
+            let mut description_lines = Vec::new();
+
+            for line in frontmatter.lines() {
+                let trimmed = line.trim();
+
+                // Handle multiline description
+                if in_description {
+                    if trimmed.is_empty() || (!trimmed.starts_with(' ') && trimmed.contains(':')) {
+                        in_description = false;
+                        description = description_lines.join("\n").trim().to_string();
+                        description_lines.clear();
+                    } else {
+                        description_lines.push(trimmed);
+                        continue;
+                    }
+                }
+
+                if trimmed.starts_with("name:") {
+                    name = trimmed.trim_start_matches("name:").trim().to_string();
+                } else if trimmed.starts_with("description:") {
+                    let desc_value = trimmed.trim_start_matches("description:").trim();
+                    if desc_value == "|" || desc_value.is_empty() {
+                        // Multiline description
+                        in_description = true;
+                    } else {
+                        description = desc_value.to_string();
+                    }
+                } else if trimmed.starts_with("tools:") {
+                    let tools_str = trimmed.trim_start_matches("tools:").trim();
+                    tools = tools_str
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                } else if trimmed.starts_with("model:") {
+                    model = trimmed.trim_start_matches("model:").trim().to_string();
+                }
+            }
+
+            // Handle description if it was at the end
+            if in_description && !description_lines.is_empty() {
+                description = description_lines.join("\n").trim().to_string();
+            }
+        }
+    }
+
+    (name, description, tools, model, markdown_content)
+}
+
+/// Get agent config files from .claude/agents/ directory
+#[tauri::command]
+pub async fn get_workspace_agent_configs(
+    workspace_id: String,
+    agent_id: String,
+) -> Result<Vec<WorkspaceAgentConfig>, String> {
+    let agents = detect_workspace_agents(workspace_id).await?;
+    let agent = agents
+        .iter()
+        .find(|a| a.id == agent_id)
+        .ok_or_else(|| format!("Agent not found: {}", agent_id))?;
+
+    // Only Claude Code has agent configs
+    if agent.agent_type != WorkspaceAgentType::ClaudeCode {
+        return Ok(Vec::new());
+    }
+
+    let config_path = PathBuf::from(&agent.config_path);
+    let agents_dir = config_path.join("agents");
+
+    if !path_exists(&agents_dir) || !is_directory(&agents_dir) {
+        return Ok(Vec::new());
+    }
+
+    let mut configs = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(&agents_dir) {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+
+            // Only process .md files
+            if !file_name.ends_with(".md") || is_directory(&entry_path) {
+                continue;
+            }
+
+            // Read file content
+            let content = match fs::read_to_string(&entry_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            // Parse frontmatter
+            let (name, description, tools, model, markdown_content) =
+                parse_agent_config_frontmatter(&content);
+
+            // Use filename without extension as id
+            let id = file_name.trim_end_matches(".md").to_string();
+
+            // Use id as name fallback if frontmatter name is empty
+            let display_name = if name.is_empty() { id.clone() } else { name };
+
+            configs.push(WorkspaceAgentConfig {
+                id,
+                name: display_name,
+                description,
+                tools,
+                model,
+                path: entry_path.to_string_lossy().to_string(),
+                content: markdown_content,
+            });
+        }
+    }
+
+    // Sort by name
+    configs.sort_by(|a, b| a.name.cmp(&b.name));
+
+    Ok(configs)
+}
+
+/// Read a single agent config file
+#[tauri::command]
+pub async fn read_agent_config_file(path: String) -> Result<WorkspaceAgentConfig, String> {
+    let file_path = PathBuf::from(&path);
+
+    if !path_exists(&file_path) {
+        return Err("File not found".to_string());
+    }
+
+    if is_directory(&file_path) {
+        return Err("Path is a directory".to_string());
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    let (name, description, tools, model, markdown_content) =
+        parse_agent_config_frontmatter(&content);
+
+    let file_name = file_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown");
+    let id = file_name.trim_end_matches(".md").to_string();
+    let display_name = if name.is_empty() { id.clone() } else { name };
+
+    Ok(WorkspaceAgentConfig {
+        id,
+        name: display_name,
+        description,
+        tools,
+        model,
+        path,
+        content: markdown_content,
+    })
+}
+
+/// Scan commands directory recursively
+fn scan_commands_directory(
+    dir: &PathBuf,
+    namespace: &str,
+    commands: &mut Vec<WorkspaceCommand>,
+) {
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let entry_path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+
+            // Skip hidden files/folders
+            if file_name.starts_with('.') {
+                continue;
+            }
+
+            if is_directory(&entry_path) {
+                // Recursively scan subdirectory with new namespace
+                let new_namespace = if namespace.is_empty() {
+                    file_name.clone()
+                } else {
+                    format!("{}/{}", namespace, file_name)
+                };
+                scan_commands_directory(&entry_path, &new_namespace, commands);
+            } else if file_name.ends_with(".md") {
+                // Read command file
+                if let Ok(content) = fs::read_to_string(&entry_path) {
+                    let name = file_name.trim_end_matches(".md").to_string();
+                    let id = if namespace.is_empty() {
+                        name.clone()
+                    } else {
+                        format!("{}/{}", namespace, name)
+                    };
+
+                    commands.push(WorkspaceCommand {
+                        id,
+                        namespace: namespace.to_string(),
+                        name,
+                        path: entry_path.to_string_lossy().to_string(),
+                        content,
+                    });
+                }
+            }
+        }
+    }
+}
+
+/// Get command files from .claude/commands/ directory
+#[tauri::command]
+pub async fn get_workspace_commands(
+    workspace_id: String,
+    agent_id: String,
+) -> Result<Vec<WorkspaceCommand>, String> {
+    let agents = detect_workspace_agents(workspace_id).await?;
+    let agent = agents
+        .iter()
+        .find(|a| a.id == agent_id)
+        .ok_or_else(|| format!("Agent not found: {}", agent_id))?;
+
+    // Only Claude Code has commands
+    if agent.agent_type != WorkspaceAgentType::ClaudeCode {
+        return Ok(Vec::new());
+    }
+
+    let config_path = PathBuf::from(&agent.config_path);
+    let commands_dir = config_path.join("commands");
+
+    if !path_exists(&commands_dir) || !is_directory(&commands_dir) {
+        return Ok(Vec::new());
+    }
+
+    let mut commands = Vec::new();
+    scan_commands_directory(&commands_dir, "", &mut commands);
+
+    // Sort by namespace then name
+    commands.sort_by(|a, b| {
+        let namespace_cmp = a.namespace.cmp(&b.namespace);
+        if namespace_cmp == std::cmp::Ordering::Equal {
+            a.name.cmp(&b.name)
+        } else {
+            namespace_cmp
+        }
+    });
+
+    Ok(commands)
+}
+
+/// Read a single command file
+#[tauri::command]
+pub async fn read_command_file(path: String) -> Result<WorkspaceCommand, String> {
+    let file_path = PathBuf::from(&path);
+
+    if !path_exists(&file_path) {
+        return Err("File not found".to_string());
+    }
+
+    if is_directory(&file_path) {
+        return Err("Path is a directory".to_string());
+    }
+
+    let content = fs::read_to_string(&file_path)
+        .map_err(|e| format!("Failed to read file: {}", e))?;
+
+    let file_name = file_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown");
+    let name = file_name.trim_end_matches(".md").to_string();
+
+    // Try to extract namespace from path
+    let namespace = file_path
+        .parent()
+        .and_then(|p| p.file_name())
+        .and_then(|n| n.to_str())
+        .map(|s| {
+            if s == "commands" {
+                String::new()
+            } else {
+                s.to_string()
+            }
+        })
+        .unwrap_or_default();
+
+    let id = if namespace.is_empty() {
+        name.clone()
+    } else {
+        format!("{}/{}", namespace, name)
+    };
+
+    Ok(WorkspaceCommand {
+        id,
+        namespace,
+        name,
+        path,
+        content,
+    })
 }
 
 /// Write content to a file in skill folder
