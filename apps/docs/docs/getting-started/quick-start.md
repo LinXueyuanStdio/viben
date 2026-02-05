@@ -1,14 +1,14 @@
 ---
 sidebar_position: 2
 title: "Quick Start"
-description: "Get Browse MCP working in 2 minutes"
+description: "Get Viben working in 2 minutes"
 ---
 
 # Quick Start
 
-Get Browse MCP working with Claude Desktop in under 2 minutes.
+Get Viben working with Claude Desktop in under 2 minutes.
 
-## Step 1: Install Browse MCP
+## Step 1: Install Viben
 
 ```bash
 pip install browse-mcp
@@ -88,7 +88,7 @@ URL: https://arxiv.org/abs/2303.08774
 When you ask Claude to search for papers:
 
 1. Claude recognizes the intent and calls the `browse_search` tool
-2. Browse MCP queries the specified academic databases
+2. Viben queries the specified content sources
 3. Results are returned in a standardized format
 4. Claude presents the information to you
 

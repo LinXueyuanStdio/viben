@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Browse MCP',
+  title: 'Viben',
   tagline: 'Search, Download, and Read Any Content via MCP Plugins',
   favicon: 'img/favicon.ico',
 
@@ -17,12 +17,12 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://linxueyuan.online',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // Landing page is at /browse-mcp/, docs are at /browse-mcp/docs/
-  baseUrl: '/browse-mcp/docs/',
+  // Landing page is at /viben/, docs are at /viben/docs/
+  baseUrl: '/viben/docs/',
 
   // GitHub pages deployment config.
   organizationName: 'LinXueyuanStdio', // GitHub org/user name
-  projectName: 'browse-mcp', // Repo name
+  projectName: 'viben', // Repo name
   trailingSlash: false,
 
   onBrokenLinks: 'throw',
@@ -61,7 +61,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           // Build correct edit URLs for files under repo/apps/docs/docs
-          editUrl: 'https://github.com/LinXueyuanStdio/browse-mcp/edit/main/apps/docs/',
+          editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
         },
         blog: {
           showReadingTime: true,
@@ -70,7 +70,7 @@ const config: Config = {
             xslt: true,
           },
           // Build correct edit URLs for files under repo/apps/docs/blog
-          editUrl: 'https://github.com/LinXueyuanStdio/browse-mcp/edit/main/apps/docs/',
+          editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
           // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
@@ -87,7 +87,7 @@ const config: Config = {
 
   themeConfig: {
     // Replace with your project's social card
-    image: 'img/browse-mcp-social-card.png',
+    image: 'img/viben-social-card.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
@@ -109,9 +109,9 @@ const config: Config = {
       },
     },
     navbar: {
-      title: 'Browse MCP',
+      title: 'Viben',
       logo: {
-        alt: 'Browse MCP Logo',
+        alt: 'Viben Logo',
         src: 'img/logo.svg',
       },
       items: [
@@ -127,7 +127,7 @@ const config: Config = {
           position: 'right',
         },
         {
-          href: 'https://github.com/LinXueyuanStdio/browse-mcp',
+          href: 'https://github.com/LinXueyuanStdio/viben',
           label: 'GitHub',
           position: 'right',
           className: 'header-github-link',
@@ -146,20 +146,20 @@ const config: Config = {
         {
           title: 'Community',
           items: [
-            {label: 'GitHub Issues', href: 'https://github.com/LinXueyuanStdio/browse-mcp/issues'},
-            {label: 'GitHub Discussions', href: 'https://github.com/LinXueyuanStdio/browse-mcp/discussions'},
+            {label: 'GitHub Issues', href: 'https://github.com/LinXueyuanStdio/viben/issues'},
+            {label: 'GitHub Discussions', href: 'https://github.com/LinXueyuanStdio/viben/discussions'},
           ],
         },
         {
           title: 'More',
           items: [
             {label: 'Blog', to: '/blog'},
-            {label: 'GitHub', href: 'https://github.com/LinXueyuanStdio/browse-mcp'},
+            {label: 'GitHub', href: 'https://github.com/LinXueyuanStdio/viben'},
             {label: 'PyPI', href: 'https://pypi.org/project/browse-mcp/'},
           ],
         },
       ],
-      copyright: `Copyright ${new Date().getFullYear()} Browse MCP Project. Built with Docusaurus.`,
+      copyright: `Copyright ${new Date().getFullYear()} Viben Project. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 3
 title: "功能特点"
-description: "Browse MCP 桌面应用的功能和特性"
+description: "Viben 桌面应用的功能和特性"
 ---
 
 # 功能特点
 
-Browse MCP Desktop 提供了一套完整的学术论文搜索和管理功能。
+Viben Desktop 提供了一套完整的内容搜索和管理功能。
 
 ## 论文搜索
 
@@ -65,7 +65,7 @@ Browse MCP Desktop 提供了一套完整的学术论文搜索和管理功能。
 
 ### 内置 MCP 服务器
 
-Browse MCP Desktop 包含 MCP 服务器，允许 AI 助手：
+Viben Desktop 包含 MCP 服务器，允许 AI 助手：
 
 - 代替您搜索论文
 - 下载和阅读论文内容
@@ -128,9 +128,9 @@ Browse MCP Desktop 包含 MCP 服务器，允许 AI 助手：
 
 | 平台 | 位置 |
 |----------|----------|
-| macOS | `~/Library/Application Support/com.browsemcp.app` |
-| Windows | `%APPDATA%\com.browsemcp.app` |
-| Linux | `~/.config/browse-mcp` |
+| macOS | `~/Library/Application Support/com.viben.app` |
+| Windows | `%APPDATA%\com.viben.app` |
+| Linux | `~/.config/viben` |
 
 ---
 
@@ -148,4 +148,4 @@ Browse MCP Desktop 包含 MCP 服务器，允许 AI 助手：
 
 ## 功能请求
 
-有功能建议？在 [GitHub](https://github.com/LinXueyuanStdio/browse-mcp/issues/new?template=feature_request.md) 上提交 issue。
+有功能建议？在 [GitHub](https://github.com/LinXueyuanStdio/viben/issues/new?template=feature_request.md) 上提交 issue。

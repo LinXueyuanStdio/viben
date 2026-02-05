@@ -1,16 +1,16 @@
 ---
 sidebar_position: 3
 title: "Available Plugins"
-description: "List of official and community plugins for Browse MCP"
+description: "List of official and community plugins for Viben"
 ---
 
 # Available Plugins
 
-This page lists official and community plugins for Browse MCP.
+This page lists official and community plugins for Viben.
 
 ## Official Plugins
 
-These plugins are maintained by the Browse MCP team.
+These plugins are maintained by the Viben team.
 
 ### Social Media Plugin
 
@@ -62,7 +62,7 @@ These require API keys:
 ## Community Plugins
 
 :::info Coming Soon
-Community plugins will be listed here as they become available. If you have created a plugin for Browse MCP, please submit a pull request to add it to this list.
+Community plugins will be listed here as they become available. If you have created a plugin for Viben, please submit a pull request to add it to this list.
 :::
 
 ### Creating Your Own Plugin
@@ -140,7 +140,7 @@ Requirements for listing:
 
 - Plugin must be published on PyPI
 - Must have documentation or README
-- Must follow Browse MCP plugin conventions
+- Must follow Viben plugin conventions
 - Should include tests
 
 ## Next Steps

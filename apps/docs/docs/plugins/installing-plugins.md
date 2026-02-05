@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "Installing Plugins"
-description: "How to install, update, and manage Browse MCP plugins"
+description: "How to install, update, and manage Viben plugins"
 ---
 
 # Installing Plugins
 
-This guide covers how to install, update, and manage Browse MCP plugins.
+This guide covers how to install, update, and manage Viben plugins.
 
 ## Installation Methods
 
@@ -37,8 +37,8 @@ uv add browse-mcp-plugin-social-media
 For development or unreleased plugins:
 
 ```bash
-git clone https://github.com/LinXueyuanStdio/browse-mcp.git
-cd browse-mcp/backend/plugins/browse-mcp-plugin-social-media
+git clone https://github.com/LinXueyuanStdio/viben.git
+cd viben/backend/plugins/browse-mcp-plugin-social-media
 pip install -e .
 ```
 

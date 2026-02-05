@@ -1,12 +1,12 @@
 ---
 sidebar_position: 2
 title: "安装插件"
-description: "如何安装、更新和管理 Browse MCP 插件"
+description: "如何安装、更新和管理 Viben 插件"
 ---
 
 # 安装插件
 
-本指南介绍如何安装、更新和管理 Browse MCP 插件。
+本指南介绍如何安装、更新和管理 Viben 插件。
 
 ## 安装方法
 
@@ -37,8 +37,8 @@ uv add browse-mcp-plugin-social-media
 用于开发或未发布的插件：
 
 ```bash
-git clone https://github.com/LinXueyuanStdio/browse-mcp.git
-cd browse-mcp/backend/plugins/browse-mcp-plugin-social-media
+git clone https://github.com/LinXueyuanStdio/viben.git
+cd viben/backend/plugins/browse-mcp-plugin-social-media
 pip install -e .
 ```
 

@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "Introduction"
-description: "Browse MCP - Search, download, and read any content from extensible sources via MCP plugins"
+description: "Viben - Search, download, and read any content from extensible sources via MCP plugins"
 ---
 
-# Browse MCP
+# Viben
 
-**Browse MCP** is a Python-based MCP (Model Context Protocol) server that enables AI assistants to search, download, and read content from any source through an extensible plugin system. Out of the box, it supports 19+ academic databases, and you can extend it to support social media, documentation sites, news feeds, and more.
+**Viben** is a Python-based MCP (Model Context Protocol) server that enables AI assistants to search, download, and read content from any source through an extensible plugin system. Out of the box, it supports 19+ academic databases, and you can extend it to support social media, documentation sites, news feeds, and more.
 
 ## Key Features
 
@@ -46,7 +46,7 @@ browse-mcp
 
 ## Beyond Academic Papers
 
-While Browse MCP started as an academic paper search tool, it now supports **any content type** through its plugin system. Here are some examples of what you can do:
+While Viben started as an academic paper search tool, it now supports **any content type** through its plugin system. Here are some examples of what you can do:
 
 ### Social Media Plugin
 
@@ -71,7 +71,7 @@ browse_search([{"searcher": "zhihu", "query": "artificial intelligence", "max_re
 
 ### Plugin Architecture
 
-Browse MCP uses stevedore for automatic plugin discovery. Any installed plugin that registers in the `browse_mcp.searchers` namespace is automatically loaded:
+Viben uses stevedore for automatic plugin discovery. Any installed plugin that registers in the `browse_mcp.searchers` namespace is automatically loaded:
 
 ```
 browse-mcp (core)

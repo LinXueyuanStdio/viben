@@ -1,8 +1,8 @@
 {
-  "name": "@browse-mcp/docs",
+  "name": "@viben/docs",
   "version": "1.0.0",
   "private": true,
-  "description": "Documentation for Browse MCP - Academic Paper Search MCP Server",
+  "description": "Documentation for Viben - Search, Download, and Read Any Content via MCP Plugins",
   "scripts": {
     "docusaurus": "docusaurus",
     "dev": "docusaurus start",
