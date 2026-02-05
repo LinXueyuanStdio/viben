@@ -88,7 +88,7 @@ URL: https://arxiv.org/abs/2303.08774
 When you ask Claude to search for papers:
 
 1. Claude recognizes the intent and calls the `browse_search` tool
-2. Viben queries the specified academic databases
+2. Viben queries the specified content sources
 3. Results are returned in a standardized format
 4. Claude presents the information to you
 
