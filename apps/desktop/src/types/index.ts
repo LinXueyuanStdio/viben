@@ -331,3 +331,6 @@ export interface SkillFileEntry {
   is_directory: boolean;
   children?: SkillFileEntry[];
 }
+
+// Re-export official registry types
+export * from "./official-registry";
