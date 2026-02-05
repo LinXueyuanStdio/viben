@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     const total = totalResult?.count ?? 0;
 
     return NextResponse.json({
-      packages,
+      data: packages,
       pagination: {
         page,
         limit,

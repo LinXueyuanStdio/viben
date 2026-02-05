@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { AppLayout } from "@/components/layout";
+import { AppLayout, McpServicesLayout } from "@/components/layout";
 import {
   DashboardPage,
   ProvidersPage,
@@ -48,8 +48,8 @@ function App() {
           {/* Default route redirects to MCP Services Dashboard */}
           <Route index element={<Navigate to="/mcp-services/dashboard" replace />} />
 
-          {/* MCP Services routes - new structure */}
-          <Route path="mcp-services">
+          {/* MCP Services routes - with secondary navigation layout */}
+          <Route path="mcp-services" element={<McpServicesLayout />}>
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="data-sources" element={<ProvidersPage />} />
             <Route path="search-service" element={<SearchServicePage />} />
