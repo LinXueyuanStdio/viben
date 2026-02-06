@@ -110,6 +110,30 @@ const sidebars: SidebarsConfig = {
         'plugins/configuration',
       ],
     },
+    {
+      type: 'category',
+      label: 'CLI',
+      collapsed: false,
+      items: [
+        {
+          type: 'category',
+          label: 'Commands',
+          collapsed: false,
+          items: [
+            'cli/commands/index',
+            'cli/commands/init',
+            'cli/commands/config',
+            'cli/commands/service',
+            'cli/commands/mcp',
+            'cli/commands/skill',
+            'cli/commands/workspace',
+            'cli/commands/agent',
+            'cli/commands/provider',
+            'cli/commands/model',
+          ],
+        },
+      ],
+    },
   ],
 };
 
