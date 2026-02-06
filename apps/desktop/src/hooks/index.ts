@@ -109,3 +109,6 @@ export type {
   OfficialPackage,
   OfficialPackageRegistryType,
 } from "./use-official-registry";
+
+// Workspace Chat
+export { useAgent } from "./use-agent";

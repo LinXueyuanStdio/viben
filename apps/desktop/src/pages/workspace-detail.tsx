@@ -14,6 +14,7 @@ import {
   FolderOpen,
   Copy,
   Check,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -237,6 +238,17 @@ export function WorkspaceDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              asChild
+            >
+              <Link to={`/workspace/${workspaceId}/chat`}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                {t("chat.chatButton")}
+              </Link>
+            </Button>
+
             <Button
               variant="outline"
               size="sm"
