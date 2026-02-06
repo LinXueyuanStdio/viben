@@ -17,7 +17,7 @@ const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, m
 /**
  * Generate a unique ID
  */
-const generateId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+const generateId = () => crypto.randomUUID();
 
 /**
  * Mock agent hook for workspace chat
