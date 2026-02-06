@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, mcpPackages } from '@/lib/db';
-import { eq, sql, count } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
 
 // Predefined categories with descriptions
 const categoryDescriptions: Record<string, string> = {
