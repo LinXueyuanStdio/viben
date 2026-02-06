@@ -67,6 +67,17 @@ const sidebars: SidebarsConfig = {
             'cli/agents/templates',
           ],
         },
+        {
+          type: 'category',
+          label: 'Providers & Models',
+          collapsed: false,
+          items: [
+            'cli/providers-models/providers',
+            'cli/providers-models/models',
+            'cli/providers-models/aliases',
+            'cli/providers-models/fallbacks',
+          ],
+        },
       ],
     },
     {
@@ -97,24 +108,6 @@ const sidebars: SidebarsConfig = {
         'plugins/available-plugins',
         'plugins/social-media-plugin',
         'plugins/configuration',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'CLI',
-      collapsed: false,
-      items: [
-        {
-          type: 'category',
-          label: 'Providers & Models',
-          collapsed: false,
-          items: [
-            'cli/providers-models/providers',
-            'cli/providers-models/models',
-            'cli/providers-models/aliases',
-            'cli/providers-models/fallbacks',
-          ],
-        },
       ],
     },
   ],
