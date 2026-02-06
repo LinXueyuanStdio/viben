@@ -18,6 +18,9 @@ import {
   WorkspaceSkillDetailPage,
   HomeRedirect,
   OnboardingPage,
+  PublishPage,
+  MyPackagesPage,
+  AnalyticsPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -92,6 +95,11 @@ function App() {
           {/* Settings and About */}
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />
+
+          {/* Creator routes (require authentication, handled in sidebar visibility) */}
+          <Route path="publish" element={<PublishPage />} />
+          <Route path="my-packages" element={<MyPackagesPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
 
           {/* Workspace routes */}
           <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
