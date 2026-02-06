@@ -43,6 +43,30 @@ const sidebars: SidebarsConfig = {
         'cli/index',
         'cli/installation',
         'cli/quick-start',
+        {
+          type: 'category',
+          label: 'Configuration',
+          collapsed: false,
+          items: [
+            'cli/configuration/index',
+            'cli/configuration/config-command',
+            'cli/configuration/providers',
+            'cli/configuration/models',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Agent Management',
+          collapsed: false,
+          items: [
+            'cli/agents/index',
+            'cli/agents/creating-agents',
+            'cli/agents/agent-configuration',
+            'cli/agents/memory-system',
+            'cli/agents/sessions',
+            'cli/agents/templates',
+          ],
+        },
       ],
     },
     {
@@ -73,24 +97,6 @@ const sidebars: SidebarsConfig = {
         'plugins/available-plugins',
         'plugins/social-media-plugin',
         'plugins/configuration',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'CLI',
-      collapsed: false,
-      items: [
-        {
-          type: 'category',
-          label: 'Configuration',
-          collapsed: false,
-          items: [
-            'cli/configuration/index',
-            'cli/configuration/config-command',
-            'cli/configuration/providers',
-            'cli/configuration/models',
-          ],
-        },
       ],
     },
   ],
