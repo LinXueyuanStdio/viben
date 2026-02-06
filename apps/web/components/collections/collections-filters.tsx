@@ -10,16 +10,16 @@ import {
 } from '@/components/ui/select';
 
 interface CollectionsFiltersProps {
-  type?: string;
+  sort?: string;
 }
 
-export function CollectionsFilters({ type }: CollectionsFiltersProps) {
+export function CollectionsFilters({ sort }: CollectionsFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   function updateFilter(key: string, value: string | null) {
     const params = new URLSearchParams(searchParams.toString());
-    if (value && value !== 'all') {
+    if (value && value !== 'default') {
       params.set(key, value);
     } else {
       params.delete(key);
@@ -31,16 +31,17 @@ export function CollectionsFilters({ type }: CollectionsFiltersProps) {
   return (
     <div className="flex items-center gap-2">
       <Select
-        value={type || 'all'}
-        onValueChange={(value) => updateFilter('type', value)}
+        value={sort || 'default'}
+        onValueChange={(value) => updateFilter('sort', value)}
       >
-        <SelectTrigger className="w-[140px]">
-          <SelectValue placeholder="Type" />
+        <SelectTrigger className="w-[160px]">
+          <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="mcp">MCP</SelectItem>
-          <SelectItem value="skill">Skills</SelectItem>
+          <SelectItem value="default">Most Popular</SelectItem>
+          <SelectItem value="recent">Recently Added</SelectItem>
+          <SelectItem value="items">Most Items</SelectItem>
+          <SelectItem value="forks">Most Forked</SelectItem>
         </SelectContent>
       </Select>
     </div>

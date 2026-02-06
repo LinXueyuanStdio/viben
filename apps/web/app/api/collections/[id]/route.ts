@@ -9,6 +9,12 @@ interface RouteParams {
 
 const updateCollectionSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  slug: z
+    .string()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only')
+    .optional(),
   description: z.string().max(500).optional(),
   isPublic: z.boolean().optional(),
 });
@@ -71,6 +77,12 @@ export async function PATCH(
 
     return NextResponse.json({ collection });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Collection slug already exists') {
+      return NextResponse.json(
+        { error: 'Collection slug already exists' },
+        { status: 409 }
+      );
+    }
     console.error('Failed to update collection:', error);
     return NextResponse.json(
       { error: 'Failed to update collection' },

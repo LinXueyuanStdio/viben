@@ -12,7 +12,7 @@ export const metadata = {
 interface CollectionsPageProps {
   searchParams: Promise<{
     q?: string;
-    type?: string;
+    sort?: string;
     page?: string;
   }>;
 }
@@ -40,7 +40,7 @@ export default async function CollectionsPage({
           placeholder="Search collections..."
           defaultValue={params.q}
         />
-        <CollectionsFilters type={params.type} />
+        <CollectionsFilters sort={params.sort} />
       </div>
 
       <Suspense fallback={<CollectionsGridSkeleton />}>
