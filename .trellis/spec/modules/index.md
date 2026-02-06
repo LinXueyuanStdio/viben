@@ -85,6 +85,14 @@ This directory contains detailed specifications for implementing each module of 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
 | [workspace-management.md](./workspace-management.md) | Multi-workspace MCP/Skills management system | 13 | Planning |
+| [kanban-integration.md](./kanban-integration.md) | 工作空间任务看板 (vibe-kanban 集成) | 8 | 📝 Specification |
+
+### Shared Packages (新增)
+
+| Package | Description | Priority | Status |
+|---------|-------------|----------|--------|
+| [package-ui.md](./package-ui.md) | `@viben/ui` - 共享 UI 组件库 | P0 | 📝 Specification |
+| [package-kanban.md](./package-kanban.md) | `@viben/kanban` - Kanban 核心组件 | P1 | 📝 Specification |
 
 ---
 

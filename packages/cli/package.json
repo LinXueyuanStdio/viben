@@ -1,18 +1,17 @@
 {
   "name": "viben",
   "version": "0.1.0",
-  "description": "CLI wrapper for Viben (browse-mcp) - Search, download, and read academic papers via MCP",
+  "description": "CLI wrapper for Viben - Orchestrate AI agent clusters in your local workspace",
   "keywords": [
     "viben",
     "browse-mcp",
     "mcp",
-    "academic",
-    "papers",
-    "research",
-    "arxiv",
-    "pubmed",
     "ai",
-    "claude"
+    "agent",
+    "orchestration",
+    "workspace",
+    "claude",
+    "automation"
   ],
   "author": "LinXueyuanStdio",
   "license": "MIT",
