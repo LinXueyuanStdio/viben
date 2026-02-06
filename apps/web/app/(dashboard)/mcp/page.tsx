@@ -1,9 +1,12 @@
 import { Suspense } from 'react';
-import { Store } from 'lucide-react';
+import Link from 'next/link';
+import { Store, Package } from 'lucide-react';
 import { McpGrid } from '@/components/mcp/mcp-grid';
 import { McpFilters } from '@/components/mcp/mcp-filters';
 import { SearchInput } from '@/components/shared/search-input';
 import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+import { getSession } from '@/lib/auth/cookies';
 
 export const metadata = {
   title: 'MCP Marketplace',
@@ -20,6 +23,7 @@ interface McpPageProps {
 
 export default async function McpPage({ searchParams }: McpPageProps) {
   const params = await searchParams;
+  const session = await getSession();
 
   return (
     <div className="space-y-6">
@@ -27,7 +31,16 @@ export default async function McpPage({ searchParams }: McpPageProps) {
         icon={Store}
         title="MCP Marketplace"
         subtitle="Discover and install Model Context Protocol servers"
-      />
+      >
+        {session && (
+          <Button variant="outline" asChild>
+            <Link href="/my-packages">
+              <Package className="mr-2 h-4 w-4" />
+              My MCP
+            </Link>
+          </Button>
+        )}
+      </PageHeader>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput

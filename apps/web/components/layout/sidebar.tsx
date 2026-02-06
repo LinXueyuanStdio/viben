@@ -42,12 +42,12 @@ const navigation = [
   { name: 'Collections', href: '/collections', icon: Layers },
   { name: 'Workspaces', href: '/workspaces', icon: FolderKanban },
   { name: 'Organizations', href: '/orgs', icon: Building2 },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 const creatorNavigation = [
   { name: 'Publish', href: '/publish', icon: Upload },
   { name: 'My Packages', href: '/my-packages', icon: PackageSearch },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 interface AdminNavItem {
