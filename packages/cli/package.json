@@ -1,0 +1,41 @@
+{
+  "name": "viben",
+  "version": "0.1.0",
+  "description": "CLI wrapper for Viben (browse-mcp) - Search, download, and read academic papers via MCP",
+  "keywords": [
+    "viben",
+    "browse-mcp",
+    "mcp",
+    "academic",
+    "papers",
+    "research",
+    "arxiv",
+    "pubmed",
+    "ai",
+    "claude"
+  ],
+  "author": "LinXueyuanStdio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LinXueyuanStdio/viben.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/LinXueyuanStdio/viben",
+  "bugs": {
+    "url": "https://github.com/LinXueyuanStdio/viben/issues"
+  },
+  "bin": {
+    "viben": "./bin/viben.js"
+  },
+  "files": [
+    "bin",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepublishOnly": "node -c bin/viben.js"
+  }
+}

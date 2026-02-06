@@ -1,12 +1,12 @@
 ---
 sidebar_position: 1
 title: "Installation"
-description: "Install Viben using pip, uv, Desktop App, or from source"
+description: "Install Viben using pip, uv, npx, curl, Desktop App, or from source"
 ---
 
 # Installation
 
-Viben can be installed as a **Desktop App** (recommended for most users), via `pip`/`uv` (for MCP server integration), or from source for development.
+Viben can be installed as a **Desktop App** (recommended for most users), via **CLI** (for MCP server integration), or from source for development.
 
 ## Desktop App (Recommended)
 
@@ -74,24 +74,52 @@ Get-FileHash Viben_*.exe | Format-List
 
 ---
 
-## MCP Server (Python Package)
+## MCP Server (CLI)
 
-For integration with MCP clients like Claude Desktop, install the Python package.
+For integration with MCP clients like Claude Desktop, install the CLI. Choose your preferred method:
 
-### Prerequisites
+### Quick Install (Shell Script)
 
-- **Python 3.10 or higher** - Viben requires Python 3.10+
-- **pip or uv** - Package manager for installation
-
-To check your Python version:
+The fastest way to install on macOS or Linux:
 
 ```bash
-python --version
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
 ```
 
-### Using pip (Recommended)
+This script will:
+- Detect your OS and architecture
+- Check for Python 3.10+
+- Install `browse-mcp` using uv (preferred) or pip
+- Verify the installation
 
-The simplest way to install Viben:
+Options:
+```bash
+# Install with uv package manager (faster)
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash -s -- --with-uv
+
+# Skip confirmation prompts
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash -s -- --no-confirm
+```
+
+### Using npx (Node.js)
+
+If you have Node.js 18+ installed:
+
+```bash
+npx viben
+```
+
+This will automatically install the Python package if needed and start the MCP server.
+
+You can also install globally:
+```bash
+npm install -g viben
+viben
+```
+
+### Using pip
+
+The classic Python installation:
 
 ```bash
 pip install browse-mcp
@@ -109,6 +137,19 @@ Or add it to your project:
 
 ```bash
 uv add browse-mcp
+```
+
+### Prerequisites
+
+All CLI installation methods require:
+
+- **Python 3.10 or higher**
+- **pip or uv** - Package manager for installation
+
+To check your Python version:
+
+```bash
+python --version
 ```
 
 ---
