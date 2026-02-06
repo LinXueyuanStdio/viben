@@ -7,6 +7,8 @@ import { SearchInput } from '@/components/shared/search-input';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { getSession } from '@/lib/auth/cookies';
+import { SourceTabs, type McpSource } from '@/components/mcp/source-tabs';
+import { OfficialServerGrid } from '@/components/mcp/official-server-grid';
 
 export const metadata = {
   title: 'MCP Marketplace',
@@ -18,12 +20,14 @@ interface McpPageProps {
     category?: string;
     sort?: string;
     page?: string;
+    source?: McpSource;
   }>;
 }
 
 export default async function McpPage({ searchParams }: McpPageProps) {
   const params = await searchParams;
   const session = await getSession();
+  const source: McpSource = params.source === 'community' ? 'community' : 'official';
 
   return (
     <div className="space-y-6">
@@ -42,17 +46,30 @@ export default async function McpPage({ searchParams }: McpPageProps) {
         )}
       </PageHeader>
 
+      {/* Source Tabs */}
+      <SourceTabs source={source} />
+
+      {/* Search and Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
-          placeholder="Search MCP packages..."
+          placeholder={source === 'official' ? 'Search official servers...' : 'Search community packages...'}
           defaultValue={params.q}
         />
-        <McpFilters category={params.category} sort={params.sort} />
+        {source === 'community' && (
+          <McpFilters category={params.category} sort={params.sort} />
+        )}
       </div>
 
-      <Suspense fallback={<McpGridSkeleton />}>
-        <McpGrid searchParams={params} />
-      </Suspense>
+      {/* Content Grid */}
+      {source === 'official' ? (
+        <Suspense fallback={<McpGridSkeleton />}>
+          <OfficialServerGrid searchQuery={params.q} />
+        </Suspense>
+      ) : (
+        <Suspense fallback={<McpGridSkeleton />}>
+          <McpGrid searchParams={params} />
+        </Suspense>
+      )}
     </div>
   );
 }
