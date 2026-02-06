@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,41 +15,26 @@ import {
   LANGUAGES,
   DEFAULT_LANGUAGE,
   getLanguageByCode,
-  setLanguage,
-  getCurrentLanguage,
+  changeLanguage,
 } from '@/lib/i18n';
 
 export function LanguageSwitcher() {
-  const [currentLang, setCurrentLang] = useState(DEFAULT_LANGUAGE);
+  const { i18n } = useTranslation();
   const [mounted, setMounted] = useState(false);
 
   // Only access localStorage after mounting to avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
-    setCurrentLang(getCurrentLanguage());
-
-    // Listen for language changes from other components
-    const handleLanguageChange = (event: CustomEvent<{ language: string }>) => {
-      setCurrentLang(event.detail.language);
-    };
-
-    window.addEventListener(
-      'languagechange',
-      handleLanguageChange as EventListener
-    );
-    return () => {
-      window.removeEventListener(
-        'languagechange',
-        handleLanguageChange as EventListener
-      );
-    };
   }, []);
 
-  const handleLanguageSelect = useCallback((langCode: string) => {
-    setLanguage(langCode);
-    setCurrentLang(langCode);
-  }, []);
+  const handleLanguageSelect = useCallback(
+    (langCode: string) => {
+      changeLanguage(langCode);
+    },
+    []
+  );
 
+  const currentLang = i18n.language || DEFAULT_LANGUAGE;
   const currentLanguage = getLanguageByCode(currentLang);
 
   // Prevent hydration mismatch by showing a placeholder during SSR
