@@ -229,25 +229,25 @@ export function Sidebar({
 
       {/* Bottom Area */}
       <div className="border-t p-4">
-        {/* Settings Link */}
-        <Link
-          href="/profile/settings"
-          className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-            pathname === '/profile/settings'
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-          )}
-        >
-          <Settings className="h-4 w-4" />
-          Settings
-        </Link>
-
-        <Separator className="my-3" />
-
         {/* User Section */}
         {isLoggedIn && username ? (
-          <DropdownMenu>
+          <>
+            {/* Settings Link - Only visible when logged in */}
+            <Link
+              href="/profile/settings"
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                pathname === '/profile/settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+
+            <Separator className="my-3" />
+            <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
                 className={cn(
@@ -307,7 +307,8 @@ export function Sidebar({
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+            </DropdownMenu>
+          </>
         ) : (
           <Button asChild variant="outline" className="w-full">
             <Link href="/login">
