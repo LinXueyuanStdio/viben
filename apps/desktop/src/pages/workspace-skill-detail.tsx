@@ -14,6 +14,8 @@ import {
   File,
   Edit3,
 } from "lucide-react";
+import { WorkspaceHeader } from "@/components/workspace";
+import { PageWrapper } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -127,26 +129,34 @@ export function WorkspaceSkillDetailPage() {
   const activeTab = openTabs.find((t) => t.id === activeTabId);
 
   return (
-    <div className="flex h-full">
-      {/* Left Sidebar - Skill List */}
-      <div className="w-64 border-r flex flex-col bg-muted/30">
-        {/* Sidebar Header */}
-        <div className="p-3 border-b flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-            <Link to={`/workspace/${workspaceId}/agent/${agentId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium truncate">{agent.name}</h3>
-            <p className="text-xs text-muted-foreground truncate">
-              {t("workspace.skills")}
-            </p>
-          </div>
-        </div>
+    <PageWrapper className="flex flex-col h-full">
+      {/* Header with Breadcrumb */}
+      <WorkspaceHeader
+        workspace={workspace}
+        segments={[
+          { label: agent.name, href: `/workspace/${workspaceId}/agent/${agentId}` },
+          ...(selectedSkill
+            ? [{ label: selectedSkill.name, href: `/workspace/${workspaceId}/agent/${agentId}/skill/${skillId}` }]
+            : []),
+        ]}
+        showRefresh={false}
+        showRemove={false}
+      />
 
-        {/* Skill Tree */}
-        <ScrollArea className="flex-1">
+      <div className="flex flex-1 min-h-0">
+        {/* Left Sidebar - Skill List */}
+        <div className="w-64 border-r flex flex-col bg-muted/30">
+          {/* Sidebar Header */}
+          <div className="p-3 border-b flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-medium">{t("workspace.skills")}</span>
+            <span className="ml-auto text-xs bg-muted px-1.5 py-0.5 rounded-full">
+              {skills.length}
+            </span>
+          </div>
+
+          {/* Skill Tree */}
+          <ScrollArea className="flex-1">
           <div className="p-2">
             {skillsLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -176,11 +186,11 @@ export function WorkspaceSkillDetailPage() {
               </div>
             )}
           </div>
-        </ScrollArea>
-      </div>
+          </ScrollArea>
+        </div>
 
-      {/* Right Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+        {/* Right Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
         {/* Tabs Bar */}
         {openTabs.length > 0 && (
           <div className="border-b bg-muted/20">
@@ -223,10 +233,11 @@ export function WorkspaceSkillDetailPage() {
               <FolderOpen className="h-12 w-12 mb-4 opacity-50" />
               <p className="text-sm">{t("workspace.selectSkillToView")}</p>
             </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
 

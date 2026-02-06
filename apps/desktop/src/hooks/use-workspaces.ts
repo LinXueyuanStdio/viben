@@ -42,14 +42,24 @@ export function useLocalWorkspaces() {
 
   // Load workspaces on mount (without auto-discovery - that happens on workspace detail page)
   const loadWorkspaces = useCallback(async () => {
+    // Don't reload if already loading
+    if (useWorkspaceStore.getState().isLoading) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
       const result = await invoke<Workspace[]>("list_workspaces");
-      setWorkspaces(result);
+      // Only update if we got valid results
+      if (Array.isArray(result)) {
+        setWorkspaces(result);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
+      // Don't clear workspaces on error - keep existing data
+      console.error("Failed to load workspaces:", message);
     } finally {
       setLoading(false);
     }

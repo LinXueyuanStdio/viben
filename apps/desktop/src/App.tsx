@@ -13,6 +13,7 @@ import {
   TrayPopupPage,
   WorkspaceDetailPage,
   WorkspaceChatPage,
+  WorkspaceKanbanPage,
   AgentDetailPage,
   WorkspaceSkillDetailPage,
   HomeRedirect,
@@ -95,6 +96,7 @@ function App() {
           {/* Workspace routes */}
           <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
+          <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<WorkspaceSkillDetailPage />} />
         </Route>

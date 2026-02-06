@@ -33,6 +33,10 @@ apps/desktop/src/components/
 │   ├── sidebar.tsx
 │   ├── bento-grid.tsx
 │   └── page-wrapper.tsx
+├── workspace/       # Workspace-related components
+│   ├── workspace-breadcrumb.tsx
+│   ├── workspace-header.tsx
+│   └── index.ts
 └── settings/        # Feature-specific components
     └── theme-switcher.tsx
 ```
@@ -568,6 +572,100 @@ export function useFeature() {
 
 ---
 
+## Workspace Components
+
+### WorkspaceBreadcrumb
+
+**File**: `components/workspace/workspace-breadcrumb.tsx`
+
+Breadcrumb navigation for workspace pages with hover preview card.
+
+**Features**:
+- Root segment = workspace name + icon (Folder/Globe)
+- Hover shows tooltip with full path + copy button
+- Additional segments for sub-pages
+- Current page highlighted, not clickable
+
+```tsx
+import { WorkspaceBreadcrumb } from "@/components/workspace";
+
+// Root page (no segments)
+<WorkspaceBreadcrumb workspace={workspace} />
+
+// Sub-page with segments
+<WorkspaceBreadcrumb
+  workspace={workspace}
+  segments={[
+    { label: "对话", href: `/workspace/${workspaceId}/chat` },
+  ]}
+/>
+```
+
+**Hierarchy Structure**:
+```
+层级结构:
+  Workspace名                           → 工作空间根页面
+    ├─ 对话                             → Chat 页面
+    ├─ 任务看板                          → Kanban 页面
+    └─ {Agent名}                        → Agent 详情页
+         └─ {Skill名}                   → Skill 详情页
+
+示例:
+- Viben                                 (根页面，显示对话/看板入口+智能体列表)
+- Viben > 对话                          (Chat 页面)
+- Viben > 任务看板                       (Kanban 页面)
+- Viben > Claude Code                   (Agent 详情页，显示 MCP/Skills/Agents/Commands)
+- Viben > Claude Code > PDF Tools       (Skill 详情页，文件浏览器)
+```
+
+**Route Mapping**:
+| Route | Breadcrumb |
+|-------|------------|
+| `/workspace/:id` | `{Workspace}` |
+| `/workspace/:id/chat` | `{Workspace} > 对话` |
+| `/workspace/:id/kanban` | `{Workspace} > 任务看板` |
+| `/workspace/:id/agent/:agentId` | `{Workspace} > {Agent}` |
+| `/workspace/:id/agent/:agentId/skill/:skillId` | `{Workspace} > {Agent} > {Skill}` |
+
+### WorkspaceHeader
+
+**File**: `components/workspace/workspace-header.tsx`
+
+Unified header for all workspace pages with breadcrumb + actions.
+
+**Props**:
+| Prop | Type | Description |
+|------|------|-------------|
+| `workspace` | `Workspace` | Current workspace |
+| `segments` | `BreadcrumbSegment[]` | Breadcrumb path segments |
+| `onRefresh` | `() => void` | Refresh callback |
+| `onRemove` | `() => Promise<void>` | Remove workspace callback |
+| `isRefreshing` | `boolean` | Show loading spinner |
+| `showRefresh` | `boolean` | Show refresh button |
+| `showRemove` | `boolean` | Show remove button |
+| `rightContent` | `ReactNode` | Additional right-side content |
+
+```tsx
+<WorkspaceHeader
+  workspace={workspace}
+  segments={[{ label: t("workspace.kanban"), href: "..." }]}
+  onRefresh={loadAgents}
+  onRemove={handleRemove}
+  isRefreshing={isLoading}
+  rightContent={
+    <Button onClick={handleAdd}>Add Task</Button>
+  }
+/>
+```
+
+**Design Principles**:
+1. **常驻显示** - Always visible (fallback when sub-page fails)
+2. **无返回按钮** - Use breadcrumb for navigation, no back button
+3. **根页面无icon** - Root breadcrumb only shows workspace icon+name
+4. **悬停预览** - Hover on workspace name shows full path + copy
+
+---
+
 ## Missing Components (To Add)
 
 The following components are commonly needed but not yet in `ui/`:
@@ -576,7 +674,7 @@ The following components are commonly needed but not yet in `ui/`:
 |-----------|----------|-------|
 | Input | High | Text input with variants |
 | Select | High | Dropdown select |
-| Breadcrumb | High | Notion-style navigation breadcrumb (see [kanban-integration.md](../modules/kanban-integration.md)) |
+| ~~Breadcrumb~~ | ~~High~~ | ✅ Implemented in `workspace/` |
 | Dialog/Modal | Medium | Radix Dialog |
 | Toast | Medium | Notifications |
 | Dropdown | Medium | Radix DropdownMenu |
@@ -592,6 +690,6 @@ When adding these, follow shadcn/ui patterns and ensure:
 
 ---
 
-**Last Updated**: 2026-02-03
-**Version**: 1.0.0
+**Last Updated**: 2026-02-07
+**Version**: 1.1.0
 **Status**: Complete - Ready for use

@@ -127,10 +127,30 @@ interface AppState {
   // Onboarding
   onboardingCompleted: boolean;
   setOnboardingCompleted: (completed: boolean) => void;
+
+  // Shortcuts
+  shortcuts: {
+    sendMessage: string;
+    screenshot: string;
+    lock: string;
+    showHideWindow: string;
+  };
+  showHideWindowScope: "all" | "chatRelated";
+  setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
+  setShowHideWindowScope: (scope: "all" | "chatRelated") => void;
+  resetShortcuts: () => void;
 }
 
 // Generate unique ID
 const generateId = () => `srv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+// Default shortcuts
+const DEFAULT_SHORTCUTS = {
+  sendMessage: "Enter",
+  screenshot: "Ctrl+Cmd+A",
+  lock: "Cmd+L",
+  showHideWindow: "Shift+Cmd+W",
+};
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -365,6 +385,20 @@ export const useAppStore = create<AppState>()(
       // Onboarding
       onboardingCompleted: false,
       setOnboardingCompleted: (completed) => set({ onboardingCompleted: completed }),
+
+      // Shortcuts
+      shortcuts: { ...DEFAULT_SHORTCUTS },
+      showHideWindowScope: "all",
+      setShortcut: (key, value) =>
+        set((state) => ({
+          shortcuts: { ...state.shortcuts, [key]: value },
+        })),
+      setShowHideWindowScope: (scope) => set({ showHideWindowScope: scope }),
+      resetShortcuts: () =>
+        set({
+          shortcuts: { ...DEFAULT_SHORTCUTS },
+          showHideWindowScope: "all",
+        }),
     }),
     {
       name: "viben-storage",
@@ -388,6 +422,8 @@ export const useAppStore = create<AppState>()(
         setupBannerDismissed: state.setupBannerDismissed,
         setupStatus: state.setupStatus,
         onboardingCompleted: state.onboardingCompleted,
+        shortcuts: state.shortcuts,
+        showHideWindowScope: state.showHideWindowScope,
       }),
     }
   )

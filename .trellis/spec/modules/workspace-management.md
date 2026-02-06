@@ -3,6 +3,23 @@
 > **Status**: Planning
 > **Priority**: High
 > **Type**: Feature Architecture
+> **Platform**: Desktop only (apps/desktop)
+
+---
+
+## Important: Desktop-Only Feature
+
+> **Warning**: This workspace management system is **desktop-only** and should NOT be confused with or ported to the web app.
+>
+> | Aspect | Desktop (this spec) | Web (different system) |
+> |--------|---------------------|------------------------|
+> | **What** | Local filesystem folders | Cloud-based collaborative spaces |
+> | **Storage** | Local JSON + filesystem | PostgreSQL database |
+> | **Agents** | .claude/, .codex/, .cursor/ folders | N/A |
+> | **Features** | MCP servers, Skills, Chat, Kanban | Package organization, members |
+> | **Backend** | Tauri (Rust) + SQLite | Next.js API + PostgreSQL |
+>
+> The two systems share the name "workspace" but are **fundamentally different**.
 
 ---
 

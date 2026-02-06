@@ -1,9 +1,8 @@
 import * as React from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft,
   Settings,
   PanelRightOpen,
   PanelRightClose,
@@ -16,6 +15,7 @@ import {
   MessageList,
   RightSidebar,
 } from "@/components/chat";
+import { WorkspaceHeader } from "@/components/workspace";
 import { useAgent } from "@/hooks";
 import { useLocalWorkspaces } from "@/hooks";
 
@@ -75,60 +75,43 @@ export function WorkspaceChatPage() {
       animate={{ opacity: 1 }}
       className="flex h-full flex-col overflow-hidden"
     >
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-border bg-background px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            asChild
-            className="h-9 w-9"
-          >
-            <Link to={`/workspace/${workspaceId}`}>
-              <ArrowLeft className="h-5 w-5" />
-              <span className="sr-only">{t("workspace.backToWorkspace")}</span>
-            </Link>
-          </Button>
-          <div>
-            <h1 className="font-serif text-lg font-semibold text-foreground">
-              {t("chat.title")}
-            </h1>
-            <p className="text-xs text-muted-foreground">{workspace.name}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {messages.length > 0 && (
+      {/* Header with breadcrumb */}
+      <WorkspaceHeader
+        workspace={workspace}
+        segments={[{ label: t("chat.title"), href: `/workspace/${workspaceId}/chat` }]}
+        showRefresh={false}
+        showRemove={false}
+        rightContent={
+          <>
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearMessages}
+                className="h-8"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="ml-2 hidden sm:inline">{t("chat.clearMessages")}</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
-              size="icon"
-              onClick={clearMessages}
-              className="h-9 w-9"
+              size="sm"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="h-8"
             >
-              <Trash2 className="h-4 w-4" />
-              <span className="sr-only">{t("chat.clearMessages")}</span>
+              {isSidebarOpen ? (
+                <PanelRightClose className="h-4 w-4" />
+              ) : (
+                <PanelRightOpen className="h-4 w-4" />
+              )}
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="h-9 w-9"
-          >
-            {isSidebarOpen ? (
-              <PanelRightClose className="h-5 w-5" />
-            ) : (
-              <PanelRightOpen className="h-5 w-5" />
-            )}
-            <span className="sr-only">
-              {isSidebarOpen ? t("chat.closeSidebar") : t("chat.openSidebar")}
-            </span>
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Settings className="h-5 w-5" />
-            <span className="sr-only">{t("common.settings")}</span>
-          </Button>
-        </div>
-      </header>
+            <Button variant="ghost" size="sm" className="h-8">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </>
+        }
+      />
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">

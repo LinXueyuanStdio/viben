@@ -142,7 +142,8 @@
       "storage": "Storage",
       "about": "About",
       "preferences": "Preferences",
-      "languageAndTime": "Language & Time"
+      "languageAndTime": "Language & Time",
+      "shortcuts": "Shortcuts"
     },
     "generalDescription": "General application settings",
     "appearanceDescription": "Customize Viben's appearance on your device.",
@@ -186,7 +187,25 @@
     "timezoneDescription": "Current timezone setting.",
     "storage": "Storage",
     "downloadPath": "Download Path",
-    "offlineCache": "Offline Cache"
+    "offlineCache": "Offline Cache",
+    "shortcutsDescription": "Customize keyboard shortcuts",
+    "sendMessage": "Send Message",
+    "sendMessageDescription": "Shortcut to send chat message",
+    "screenshot": "Screenshot",
+    "screenshotDescription": "Shortcut to capture screen",
+    "lock": "Lock",
+    "lockDescription": "Shortcut to lock application",
+    "showHideWindow": "Show/Hide Window",
+    "showHideWindowDescription": "Shortcut to toggle window visibility",
+    "controlScope": "Control Scope",
+    "controlScopeDescription": "Select which windows the shortcut controls",
+    "chatRelatedWindows": "Chat-related windows only",
+    "allWindows": "All windows",
+    "resetShortcuts": "Reset to Defaults",
+    "pressKeys": "Press keys...",
+    "clearShortcut": "Clear shortcut",
+    "enterKey": "Enter",
+    "cmdEnter": "Cmd+Enter"
   },
   "about": {
     "title": "Viben",
@@ -902,7 +921,39 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "kanban": "Task Board",
+    "addTask": "Add Task",
+    "kanbanStatus": {
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "review": "Review",
+      "done": "Done"
+    },
+    "taskDetail": "Task Detail",
+    "taskName": "Task Name",
+    "description": "Description",
+    "priority": "Priority",
+    "noPriority": "No priority",
+    "tags": "Tags",
+    "taskDueDate": "Due Date",
+    "editTask": "Edit Task",
+    "deleteTask": "Delete Task",
+    "moveTask": "Move Task",
+    "noTasks": "No tasks yet",
+    "noTasksDesc": "Create your first task to get started",
+    "selectTaskToView": "Select a task to view details",
+    "updated": "Updated",
+    "sortBy": "Sort by",
+    "sort": {
+      "manual": "Manual",
+      "priority": "Priority",
+      "created": "Created",
+      "updated": "Updated",
+      "name": "Name"
+    },
+    "clearFilters": "Clear",
+    "workspace": "Workspace"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
