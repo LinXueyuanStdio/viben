@@ -27,6 +27,7 @@
     "@tauri-apps/plugin-os": "^2.3.2",
     "@tauri-apps/plugin-shell": "^2.3.4",
     "@viben/api-client": "workspace:*",
+    "@viben/core": "workspace:*",
     "@viben/kanban": "workspace:*",
     "@viben/ui": "workspace:*",
     "class-variance-authority": "^0.7.1",
