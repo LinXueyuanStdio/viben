@@ -2,31 +2,51 @@
 
 > Desktop 应用与 Viben CLI 的集成规范
 
+**Status**: ✅ 已实现 (2026-02-07)
+
 ---
 
 ## Overview
 
-### Architecture Principle
+### Architecture (已实现)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      @viben/core                             │
-│  (共享核心库 - 配置管理、Agent、Provider、Model 等)          │
+│                      viben-core (Rust)                       │
+│              crates/viben-core/                              │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐            │
+│  │AgentManager │ │ProviderMgr │ │ ModelManager│            │
+│  └─────────────┘ └─────────────┘ └─────────────┘            │
+│  ┌─────────────┐ ┌─────────────┐                            │
+│  │ConfigManager│ │   Paths    │  (async tokio)              │
+│  └─────────────┘ └─────────────┘                            │
 ├─────────────────────────────────────────────────────────────┤
 │                    ↑              ↑                          │
 │        ┌──────────────┐    ┌──────────────┐                 │
-│        │   viben CLI  │    │   Desktop    │                 │
-│        │ (命令行界面) │    │  (图形界面)  │                 │
+│        │  viben-cli   │    │   Desktop    │                 │
+│        │ crates/cli/  │    │apps/desktop/ │                 │
+│        │  (clap CLI)  │    │  (Tauri)     │                 │
 │        └──────────────┘    └──────────────┘                 │
+│              ↓                    ↓                          │
+│        直接链接 crate      37 个 Tauri Commands              │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 **核心原则**:
-- **@viben/core** 是共享库，包含所有业务逻辑
-- CLI 和 Desktop 都使用 @viben/core
-- CLI 提供命令行界面
-- Desktop 提供图形界面
+- **viben-core** 是 Rust 共享库 (crate)，包含所有业务逻辑
+- CLI (`crates/viben-cli/`) 直接链接 viben-core crate
+- Desktop (`apps/desktop/src-tauri/`) 通过 Tauri commands 暴露 viben-core API
 - 避免重复实现逻辑
+- 单一真相源：所有配置管理逻辑在 Rust 中实现
+- 数据存储在 `~/.viben/` 目录，CLI 和 Desktop 共享
+
+### Why Rust?
+
+1. **统一代码库**：CLI 和 Desktop 共享同一套 Rust 实现
+2. **类型安全**：Rust 的类型系统确保数据一致性
+3. **性能**：原生性能，无 Node.js 运行时开销
+4. **Tauri 原生支持**：Desktop 后端已是 Rust，无需 FFI
+5. **无浏览器兼容问题**：不需要处理 Node.js vs Browser 差异
 
 ---
 
@@ -34,7 +54,7 @@
 
 ### File Locations
 
-Desktop 使用与 CLI 相同的配置文件结构：
+Desktop 和 CLI 使用相同的配置文件结构：
 
 ```
 ~/.viben/                                    # 状态目录 (VIBEN_STATE_DIR)
@@ -57,450 +77,448 @@ Desktop 使用与 CLI 相同的配置文件结构：
     └── <name>/
 ```
 
-Desktop 通过 @viben/core 库读写这些配置文件。
-
 ---
 
-## Package Structure
+## Crate Structure (已实现)
 
-### @viben/core Library
-
-```
-packages/core/
-├── package.json
-├── tsconfig.json
-├── src/
-│   ├── index.ts                 # Main exports
-│   ├── config/
-│   │   ├── index.ts             # Config management
-│   │   ├── paths.ts             # Path utilities
-│   │   ├── scope.ts             # Scope detection
-│   │   └── yaml.ts              # YAML read/write
-│   ├── agents/
-│   │   ├── index.ts             # Agent management
-│   │   ├── types.ts             # Agent types
-│   │   ├── memory.ts            # Memory management
-│   │   └── session.ts           # Session management
-│   ├── providers/
-│   │   ├── index.ts             # Provider management
-│   │   ├── types.ts             # Provider types
-│   │   └── adapters/            # Provider adapters
-│   ├── models/
-│   │   ├── index.ts             # Model management
-│   │   ├── types.ts             # Model types
-│   │   ├── aliases.ts           # Alias management
-│   │   └── fallbacks.ts         # Fallback chain
-│   ├── mcp/
-│   │   ├── index.ts             # MCP management
-│   │   └── types.ts
-│   ├── skills/
-│   │   ├── index.ts             # Skills management
-│   │   └── types.ts
-│   └── types/
-│       └── index.ts             # Shared types
-```
-
-### Package Dependencies
-
-```json
-// packages/core/package.json
-{
-  "name": "@viben/core",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
-  },
-  "dependencies": {
-    "yaml": "^2.4.0"
-  }
-}
-```
-
----
-
-## Desktop UI Changes
-
-### New Pages/Tabs
-
-根据 CLI 功能，Desktop 需要在 Workspace 页面添加新的 Tab：
-
-| Tab 名称 | 位置 | 功能 |
-|----------|------|------|
-| **Agents** | 侧边栏 (发现的智能体右侧) | Agent 实例管理 |
-| **Providers** | Settings 页面内 | API Provider 配置 |
-| **Models** | Settings 页面内 | Model 别名和回退链 |
-
-### Tab Structure
+### viben-core Crate
 
 ```
-Workspace Detail Page
-├── Overview (现有)
-├── MCP Servers (现有)
-├── Skills (现有)
-├── Agents (新增)              ← Agent 实例管理
-│   ├── Agent List             # 列表视图
-│   ├── Agent Detail           # 详情/编辑
-│   ├── Templates              # 模板管理
-│   └── Sessions               # 会话管理
-├── Commands (现有)
-└── Chat (现有)
+crates/viben-core/
+├── Cargo.toml
+└── src/
+    ├── lib.rs                   # Main exports + initialize()
+    ├── error.rs                 # Error types (thiserror)
+    ├── config/
+    │   ├── mod.rs               # ConfigManager (GlobalConfig)
+    │   ├── paths.rs             # Path utilities (~/.viben/)
+    │   └── yaml.rs              # YAML/JSON read/write (async)
+    ├── agents/
+    │   ├── mod.rs               # AgentManager (CRUD + templates + sessions + memory)
+    │   └── types.rs             # Agent, AgentTemplate, CreateAgentOptions, etc.
+    ├── providers/
+    │   ├── mod.rs               # ProviderManager (CRUD + enable/disable + test)
+    │   └── types.rs             # Provider, ProviderType, CreateProviderOptions
+    └── models/
+        ├── mod.rs               # ModelManager (CRUD + known models)
+        ├── types.rs             # Model, CreateModelOptions, KnownModel
+        └── known.rs             # 内置已知模型列表 (OpenAI, Anthropic, Ollama, etc.)
+```
 
-Settings Page
-├── General (现有)
-├── Appearance (现有)
-├── Environment (现有)
-├── Providers (新增)           ← Provider 配置
-│   ├── Provider List          # 已配置的 providers
-│   ├── Add Provider           # 添加新 provider
-│   └── Provider Status        # 连通性检查
-├── Models (新增)              ← Model 配置
-│   ├── Available Models       # 可用模型列表
-│   ├── Aliases                # 模型别名
-│   └── Fallbacks              # 回退链配置
-├── Storage (现有)
-└── About (现有)
+### viben-cli Crate
+
+```
+crates/viben-cli/
+├── Cargo.toml
+└── src/
+    ├── main.rs                  # CLI entry (clap)
+    └── commands/
+        ├── mod.rs
+        ├── init.rs              # viben init
+        ├── config.rs            # viben config
+        ├── agent.rs             # viben agent <subcommand>
+        ├── provider.rs          # viben provider <subcommand>
+        └── model.rs             # viben model <subcommand>
+```
+
+### Desktop Tauri Commands
+
+```
+apps/desktop/src-tauri/src/commands/
+├── mod.rs                       # Re-exports
+├── viben_agents.rs              # 17 个 Agent 命令
+├── viben_providers.rs           # 10 个 Provider 命令
+└── viben_models.rs              # 10 个 Model 命令
+```
+
+### Dependencies
+
+```toml
+# crates/viben-core/Cargo.toml
+[package]
+name = "viben-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1.0"
+tokio = { version = "1", features = ["fs", "io-util"] }
+dirs = "5.0"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+thiserror = "1.0"
 ```
 
 ---
 
-## Desktop Implementation
+## CLI Integration (已实现)
 
-### 1. Agent Management UI
+### CLI Commands
 
-**File**: `apps/desktop/src/pages/workspace-agents.tsx`
+```bash
+# 初始化
+viben init [path]
+
+# 配置管理
+viben config [key] [value] --list
+
+# Agent 管理
+viben agent list                            # 列出所有 agents
+viben agent show --id <id>                  # 显示 agent 详情
+viben agent create --name <name>            # 创建 agent
+viben agent update --id <id>                # 更新 agent
+viben agent remove --id <id>                # 删除 agent
+viben agent set-default --id <id>           # 设置默认 agent
+
+# Provider 管理
+viben provider list                         # 列出所有 providers
+viben provider show --id <id>               # 显示 provider 详情
+viben provider add --name <n> --provider-type <t>  # 添加 provider
+viben provider update --id <id>             # 更新 provider
+viben provider remove --id <id>             # 删除 provider
+viben provider set-default --id <id>        # 设置默认 provider
+viben provider enable --id <id>             # 启用 provider
+viben provider disable --id <id>            # 禁用 provider
+viben provider test --id <id>               # 测试连接
+
+# Model 管理
+viben model list                            # 列出所有 models
+viben model show --id <id>                  # 显示 model 详情
+viben model add --id <id> --name <n> --provider <p>  # 添加自定义 model
+viben model update --id <id>                # 更新 model
+viben model remove --id <id>                # 删除 model
+viben model set-default --id <id>           # 设置默认 model
+viben model known                           # 列出内置已知 models
+
+# 全局选项
+--json                                      # JSON 输出
+--verbose                                   # 详细输出
+--quiet                                     # 安静模式
+```
+
+---
+
+## Desktop Integration (已实现)
+
+### Tauri Commands (37个)
+
+**Agent Commands (17个)** - `viben_agents.rs`:
+- `viben_list_agents` - 列出所有 agents
+- `viben_get_agent` - 获取单个 agent
+- `viben_create_agent` - 创建 agent
+- `viben_remove_agent` - 删除 agent
+- `viben_update_agent` - 更新 agent
+- `viben_set_default_agent` - 设置默认 agent
+- `viben_get_default_agent` - 获取默认 agent ID
+- `viben_list_templates` - 列出模板
+- `viben_get_template` - 获取模板
+- `viben_create_template` - 从 agent 创建模板
+- `viben_create_from_template` - 从模板创建 agent
+- `viben_list_sessions` - 列出会话
+- `viben_create_session` - 创建会话
+- `viben_remove_session` - 删除会话
+- `viben_get_memory` - 获取 agent 记忆
+- `viben_append_memory` - 追加 agent 记忆
+
+**Provider Commands (10个)** - `viben_providers.rs`:
+- `viben_list_providers` - 列出所有 providers
+- `viben_get_provider` - 获取单个 provider
+- `viben_create_provider` - 创建 provider
+- `viben_remove_provider` - 删除 provider
+- `viben_update_provider` - 更新 provider
+- `viben_set_default_provider` - 设置默认 provider
+- `viben_get_default_provider` - 获取默认 provider ID
+- `viben_enable_provider` - 启用 provider
+- `viben_disable_provider` - 禁用 provider
+- `viben_test_provider_connection` - 测试连接
+
+**Model Commands (10个)** - `viben_models.rs`:
+- `viben_list_models` - 列出所有 models
+- `viben_list_models_for_provider` - 按 provider 过滤 models
+- `viben_get_model` - 获取单个 model
+- `viben_create_model` - 创建自定义 model
+- `viben_remove_model` - 删除自定义 model
+- `viben_update_model` - 更新 model
+- `viben_set_default_model` - 设置默认 model
+- `viben_get_default_model` - 获取默认 model ID
+- `viben_enable_model` - 启用 model
+- `viben_disable_model` - 禁用 model
+
+### Frontend Usage Example
 
 ```typescript
-import { useState, useEffect } from 'react';
-import { AgentManager, type Agent, type AgentTemplate } from '@viben/core';
+// apps/desktop/src/hooks/use-agents.ts
+import { invoke } from "@tauri-apps/api/core";
 
-export function WorkspaceAgentsPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-
-  useEffect(() => {
-    async function loadAgents() {
-      const manager = new AgentManager();
-      setAgents(await manager.listAgents());
-      setTemplates(await manager.listTemplates());
-    }
-    loadAgents();
-  }, []);
-
-  // UI implementation...
-}
-```
-
-### 2. Provider Configuration UI
-
-**File**: `apps/desktop/src/pages/settings-providers.tsx`
-
-```typescript
-import { useState, useEffect } from 'react';
-import { ProviderManager, type Provider } from '@viben/core';
-
-export function SettingsProvidersPage() {
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [defaultProvider, setDefaultProvider] = useState<string>('');
-
-  useEffect(() => {
-    async function loadProviders() {
-      const manager = new ProviderManager();
-      setProviders(await manager.listProviders());
-      setDefaultProvider(await manager.getDefault());
-    }
-    loadProviders();
-  }, []);
-
-  async function handleAddProvider(type: string, config: ProviderConfig) {
-    const manager = new ProviderManager();
-    await manager.createProvider(config);
-    // Refresh list
-  }
-
-  async function handleCheckStatus(providerId: string) {
-    const manager = new ProviderManager();
-    return manager.checkStatus(providerId);
-  }
-
-  // UI implementation...
-}
-```
-
-### 3. Model Configuration UI
-
-**File**: `apps/desktop/src/pages/settings-models.tsx`
-
-```typescript
-import { useState, useEffect } from 'react';
-import { ModelManager, type ModelAlias, type ModelFallback } from '@viben/core';
-
-export function SettingsModelsPage() {
-  const [aliases, setAliases] = useState<Record<string, string>>({});
-  const [fallbacks, setFallbacks] = useState<string[]>([]);
-  const [defaultModel, setDefaultModel] = useState<string>('');
-
-  useEffect(() => {
-    async function loadModels() {
-      const manager = new ModelManager();
-      setAliases(await manager.getAliases());
-      setFallbacks(await manager.getFallbacks());
-      setDefaultModel(await manager.getDefault());
-    }
-    loadModels();
-  }, []);
-
-  // UI implementation...
-}
+// 调用 Tauri command
+const agents = await invoke<Agent[]>("viben_list_agents");
+const agent = await invoke<Agent>("viben_create_agent", { options });
+await invoke("viben_remove_agent", { id: "agent-id" });
 ```
 
 ---
 
-## @viben/core API Design
+## API Design
 
 ### AgentManager
 
-```typescript
-// packages/core/src/agents/index.ts
+```rust
+// crates/viben-core/src/agents/mod.rs
 
-export interface AgentManager {
-  // Agent CRUD
-  listAgents(): Promise<Agent[]>;
-  getAgent(id: string): Promise<Agent | null>;
-  createAgent(options: CreateAgentOptions): Promise<Agent>;
-  removeAgent(id: string): Promise<void>;
-  updateAgent(id: string, updates: Partial<Agent>): Promise<Agent>;
-  setDefault(id: string): Promise<void>;
-  getDefault(): Promise<string>;
+pub struct AgentManager {
+    base_dir: PathBuf,
+}
 
-  // Templates
-  listTemplates(): Promise<AgentTemplate[]>;
-  createTemplate(agentId: string, templateId: string): Promise<AgentTemplate>;
-  createAgentFromTemplate(templateId: string, agentId: string): Promise<Agent>;
+impl AgentManager {
+    pub fn new() -> Self;
 
-  // Sessions
-  listSessions(agentId: string): Promise<AgentSession[]>;
-  createSession(agentId: string, name?: string): Promise<AgentSession>;
-  removeSession(agentId: string, sessionId: string): Promise<void>;
+    // Agent CRUD
+    pub async fn list_agents(&self) -> Result<Vec<Agent>>;
+    pub async fn get_agent(&self, id: &str) -> Result<Option<Agent>>;
+    pub async fn create_agent(&self, options: CreateAgentOptions) -> Result<Agent>;
+    pub async fn remove_agent(&self, id: &str) -> Result<()>;
+    pub async fn update_agent(&self, id: &str, updates: AgentUpdate) -> Result<Agent>;
+    pub async fn set_default(&self, id: &str) -> Result<()>;
+    pub async fn get_default(&self) -> Result<Option<String>>;
 
-  // Memory
-  getMemory(agentId: string): Promise<AgentMemory>;
-  appendMemory(agentId: string, content: string): Promise<void>;
-  getDailyLogs(agentId: string, days?: number): Promise<DailyLog[]>;
+    // Templates
+    pub async fn list_templates(&self) -> Result<Vec<AgentTemplate>>;
+    pub async fn create_template(&self, agent_id: &str, template_id: &str) -> Result<AgentTemplate>;
+    pub async fn create_from_template(&self, template_id: &str, agent_id: &str) -> Result<Agent>;
+
+    // Sessions
+    pub async fn list_sessions(&self, agent_id: &str) -> Result<Vec<AgentSession>>;
+    pub async fn create_session(&self, agent_id: &str, name: Option<&str>) -> Result<AgentSession>;
+    pub async fn remove_session(&self, agent_id: &str, session_id: &str) -> Result<()>;
+
+    // Memory
+    pub async fn get_memory(&self, agent_id: &str) -> Result<AgentMemory>;
+    pub async fn append_memory(&self, agent_id: &str, content: &str) -> Result<()>;
 }
 ```
 
 ### ProviderManager
 
-```typescript
-// packages/core/src/providers/index.ts
+```rust
+// crates/viben-core/src/providers/mod.rs
 
-export interface ProviderManager {
-  listProviders(): Promise<Provider[]>;
-  getProvider(id: string): Promise<Provider | null>;
-  createProvider(config: CreateProviderOptions): Promise<Provider>;
-  removeProvider(id: string): Promise<void>;
-  setDefault(id: string): Promise<void>;
-  getDefault(): Promise<string>;
-  checkStatus(id: string): Promise<ProviderStatus>;
-  checkAllStatus(): Promise<Record<string, ProviderStatus>>;
+pub struct ProviderManager {
+    config_path: PathBuf,
+}
+
+impl ProviderManager {
+    pub fn new() -> Self;
+
+    pub async fn list_providers(&self) -> Result<Vec<Provider>>;
+    pub async fn get_provider(&self, id: &str) -> Result<Option<Provider>>;
+    pub async fn create_provider(&self, options: CreateProviderOptions) -> Result<Provider>;
+    pub async fn remove_provider(&self, id: &str) -> Result<()>;
+    pub async fn update_provider(&self, id: &str, updates: ProviderUpdate) -> Result<Provider>;
+    pub async fn set_default(&self, id: &str) -> Result<()>;
+    pub async fn get_default(&self) -> Result<Option<String>>;
+    pub async fn set_enabled(&self, id: &str, enabled: bool) -> Result<()>;
+    pub async fn check_status(&self, id: &str) -> Result<ProviderStatus>;
 }
 ```
 
 ### ModelManager
 
+```rust
+// crates/viben-core/src/models/mod.rs
+
+pub struct ModelManager {
+    config_path: PathBuf,
+}
+
+impl ModelManager {
+    pub fn new() -> Self;
+
+    // Models
+    pub fn list_known_models(&self) -> Vec<KnownModel>;
+    pub async fn get_default(&self) -> Result<Option<String>>;
+    pub async fn set_default(&self, model: &str) -> Result<()>;
+
+    // Aliases
+    pub async fn get_aliases(&self) -> Result<HashMap<String, String>>;
+    pub async fn create_alias(&self, alias: &str, model: &str) -> Result<()>;
+    pub async fn remove_alias(&self, alias: &str) -> Result<()>;
+    pub fn resolve_alias(&self, alias_or_model: &str) -> String;
+
+    // Fallbacks
+    pub async fn get_fallbacks(&self) -> Result<Vec<String>>;
+    pub async fn add_fallback(&self, model: &str) -> Result<()>;
+    pub async fn remove_fallback(&self, model: &str) -> Result<()>;
+    pub async fn set_fallbacks(&self, fallbacks: Vec<String>) -> Result<()>;
+}
+```
+
+---
+
+## Types
+
+### Serde Types
+
+```rust
+// crates/viben-core/src/agents/types.rs
+
+use serde::{Deserialize, Serialize};
+use chrono::{DateTime, Utc};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Agent {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CreateAgentOptions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_template: Option<String>,
+}
+```
+
+---
+
+## Implementation Status
+
+### Phase 1: Create viben-core Crate ✅
+
+- [x] 创建 `crates/viben-core/` 目录结构
+- [x] 实现配置文件读写 (YAML/JSON) - `config/yaml.rs`
+- [x] 实现路径工具 - `config/paths.rs`
+- [x] 实现 ConfigManager - `config/mod.rs`
+- [x] 实现 AgentManager - `agents/mod.rs` (CRUD + templates + sessions + memory)
+- [x] 实现 ProviderManager - `providers/mod.rs` (CRUD + enable/disable + test)
+- [x] 实现 ModelManager - `models/mod.rs` (CRUD + known models)
+- [x] Error types - `error.rs` (thiserror)
+- [ ] 单元测试 (下一步)
+
+### Phase 2: Integrate with Desktop ✅
+
+- [x] 添加 viben-core 为 Desktop 后端依赖
+- [x] 创建 37 个 Tauri commands
+- [x] 启动时调用 `viben_core::initialize()`
+- [ ] 创建 Frontend hooks 调用 Tauri commands
+- [ ] 更新 Settings 页面使用新 hooks
+
+### Phase 3: Create Rust CLI ✅
+
+- [x] 创建 `crates/viben-cli/` Rust CLI
+- [x] 使用 clap 实现命令行接口
+- [x] 实现 agent/provider/model 命令
+- [x] 支持 `--json` 输出格式
+
+### Phase 4: Testing & Polish (进行中)
+
+- [ ] viben-core 单元测试 (100% 覆盖率目标)
+- [ ] 测试 CLI 和 Desktop 的配置同步
+- [ ] 测试 Provider 连通性检查
+- [ ] 测试 Agent 创建/删除流程
+- [ ] UI 完善和错误处理
+
+---
+
+## Migration Notes
+
+### From TypeScript @viben/core
+
+原有的 TypeScript `@viben/core` 包将被废弃：
+
+1. 删除 `packages/core/` 目录
+2. 更新 Desktop 使用 Tauri invoke 而非直接导入
+3. CLI 可选择保留 TypeScript 或迁移到 Rust
+
+### TypeScript Type Definitions
+
+为 Desktop 前端提供类型定义：
+
 ```typescript
-// packages/core/src/models/index.ts
+// apps/desktop/src/types/viben-core.ts
+// 从 Rust 类型生成或手动维护
 
-export interface ModelManager {
-  // Models
-  listModels(): Promise<Model[]>;
-  getDefault(): Promise<string>;
-  setDefault(model: string): Promise<void>;
+export interface Agent {
+  id: string;
+  name: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
-  // Aliases
-  getAliases(): Promise<Record<string, string>>;
-  createAlias(alias: string, model: string): Promise<void>;
-  removeAlias(alias: string): Promise<void>;
-  resolveAlias(aliasOrModel: string): string;
-
-  // Fallbacks
-  getFallbacks(): Promise<string[]>;
-  addFallback(model: string): Promise<void>;
-  removeFallback(model: string): Promise<void>;
-  clearFallbacks(): Promise<void>;
-
-  // Config
-  getModelConfig(model: string): Promise<ModelConfig | null>;
-  setModelConfig(model: string, config: ModelConfig): Promise<void>;
+export interface CreateAgentOptions {
+  id?: string;
+  name: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  fromTemplate?: string;
 }
 ```
-
----
-
-## i18n Keys
-
-### English (`en.json`)
-
-```json
-{
-  "agents": {
-    "title": "Agents",
-    "list": "Agent List",
-    "create": "Create Agent",
-    "createFromTemplate": "Create from Template",
-    "clone": "Clone Agent",
-    "remove": "Remove Agent",
-    "setDefault": "Set as Default",
-    "templates": "Templates",
-    "sessions": "Sessions",
-    "memory": "Memory",
-    "noAgents": "No agents configured",
-    "noTemplates": "No templates available"
-  },
-  "providers": {
-    "title": "API Providers",
-    "list": "Configured Providers",
-    "add": "Add Provider",
-    "remove": "Remove Provider",
-    "setDefault": "Set as Default",
-    "status": "Status",
-    "connected": "Connected",
-    "error": "Error",
-    "checking": "Checking...",
-    "noProviders": "No providers configured"
-  },
-  "models": {
-    "title": "Models",
-    "default": "Default Model",
-    "aliases": "Model Aliases",
-    "fallbacks": "Fallback Chain",
-    "addAlias": "Add Alias",
-    "addFallback": "Add to Fallback",
-    "removeAlias": "Remove Alias",
-    "removeFallback": "Remove from Fallback",
-    "noAliases": "No aliases configured",
-    "noFallbacks": "No fallbacks configured"
-  }
-}
-```
-
-### Chinese (`zh-CN.json`)
-
-```json
-{
-  "agents": {
-    "title": "智能体",
-    "list": "智能体列表",
-    "create": "创建智能体",
-    "createFromTemplate": "从模板创建",
-    "clone": "克隆智能体",
-    "remove": "删除智能体",
-    "setDefault": "设为默认",
-    "templates": "模板",
-    "sessions": "会话",
-    "memory": "记忆",
-    "noAgents": "未配置智能体",
-    "noTemplates": "无可用模板"
-  },
-  "providers": {
-    "title": "API 提供商",
-    "list": "已配置的提供商",
-    "add": "添加提供商",
-    "remove": "删除提供商",
-    "setDefault": "设为默认",
-    "status": "状态",
-    "connected": "已连接",
-    "error": "错误",
-    "checking": "检查中...",
-    "noProviders": "未配置提供商"
-  },
-  "models": {
-    "title": "模型",
-    "default": "默认模型",
-    "aliases": "模型别名",
-    "fallbacks": "回退链",
-    "addAlias": "添加别名",
-    "addFallback": "添加到回退链",
-    "removeAlias": "删除别名",
-    "removeFallback": "从回退链移除",
-    "noAliases": "未配置别名",
-    "noFallbacks": "未配置回退链"
-  }
-}
-```
-
----
-
-## Implementation Phases
-
-### Phase 1: @viben/core Library
-
-1. 创建 `packages/core/` 目录结构
-2. 实现配置文件读写 (YAML)
-3. 实现 AgentManager
-4. 实现 ProviderManager
-5. 实现 ModelManager
-6. 添加类型定义
-
-### Phase 2: CLI Integration
-
-1. 更新 CLI 使用 @viben/core
-2. 验证所有 CLI 命令正常工作
-3. 确保配置文件格式一致
-
-### Phase 3: Desktop UI
-
-1. 添加 Agents Tab 到 Workspace
-2. 添加 Providers 页面到 Settings
-3. 添加 Models 页面到 Settings
-4. 添加 i18n 翻译
-
-### Phase 4: Testing & Polish
-
-1. 测试 CLI 和 Desktop 的配置同步
-2. 测试 Provider 连通性检查
-3. 测试 Agent 创建/删除流程
-4. UI 完善和错误处理
 
 ---
 
 ## Acceptance Criteria
 
-### @viben/core
+### viben-core Crate
 
-- [ ] 配置文件读写正常 (YAML)
-- [ ] AgentManager 实现完整
-- [ ] ProviderManager 实现完整
-- [ ] ModelManager 实现完整
-- [ ] TypeScript 类型定义完整
-- [ ] 单元测试覆盖
+- [x] 配置文件读写正常 (YAML)
+- [x] AgentManager 实现完整
+- [x] ProviderManager 实现完整
+- [x] ModelManager 实现完整
+- [ ] 单元测试覆盖 (100% 目标)
 
 ### Desktop Integration
 
-- [ ] Agents Tab 显示在 Workspace 页面
-- [ ] Agent 列表正确加载
-- [ ] Agent 创建/删除功能正常
-- [ ] Agent 模板管理正常
-- [ ] Providers 配置页面正常工作
-- [ ] Provider 连通性检查正常
-- [ ] Models 配置页面正常工作
-- [ ] 模型别名管理正常
-- [ ] 回退链管理正常
+- [x] Tauri commands 正常工作 (37 个)
+- [ ] Agents 页面功能正常
+- [ ] Providers 设置页面正常
+- [ ] Models 设置页面正常
 - [ ] i18n 支持 (EN/ZH-CN)
 
 ### CLI + Desktop 协同
 
-- [ ] Desktop 修改配置后 CLI 能读取
-- [ ] CLI 修改配置后 Desktop 能读取
-- [ ] 配置文件格式完全兼容
+- [x] CLI 和 Desktop 共享 viben-core
+- [x] 配置文件格式完全兼容 (~/.viben/)
+- [ ] Desktop 修改配置后 CLI 能读取 (需要测试)
+- [ ] CLI 修改配置后 Desktop 能读取 (需要测试)
 
 ---
 
