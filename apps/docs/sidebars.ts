@@ -65,6 +65,26 @@ const sidebars: SidebarsConfig = {
         'plugins/configuration',
       ],
     },
+    {
+      type: 'category',
+      label: 'CLI',
+      collapsed: false,
+      items: [
+        {
+          type: 'category',
+          label: 'Agent Management',
+          collapsed: false,
+          items: [
+            'cli/agents/index',
+            'cli/agents/creating-agents',
+            'cli/agents/agent-configuration',
+            'cli/agents/memory-system',
+            'cli/agents/sessions',
+            'cli/agents/templates',
+          ],
+        },
+      ],
+    },
   ],
 };
 
