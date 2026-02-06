@@ -1,7 +1,7 @@
 {
   "name": "viben",
   "version": "0.1.0",
-  "description": "CLI wrapper for Viben - Orchestrate AI agent clusters in your local workspace",
+  "description": "CLI for Viben - Orchestrate AI agent clusters in your local workspace",
   "keywords": [
     "viben",
     "browse-mcp",
@@ -11,7 +11,8 @@
     "orchestration",
     "workspace",
     "claude",
-    "automation"
+    "automation",
+    "cli"
   ],
   "author": "LinXueyuanStdio",
   "license": "MIT",
@@ -24,17 +25,43 @@
   "bugs": {
     "url": "https://github.com/LinXueyuanStdio/viben/issues"
   },
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "bin": {
     "viben": "./bin/viben.js"
   },
   "files": [
     "bin",
+    "dist",
     "README.md"
   ],
   "engines": {
     "node": ">=18"
   },
   "scripts": {
-    "prepublishOnly": "node -c bin/viben.js"
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "yaml": "^2.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
   }
 }

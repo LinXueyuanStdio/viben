@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/viben.svg)](https://www.npmjs.com/package/viben)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Node.js wrapper for [browse-mcp](https://pypi.org/project/browse-mcp/) - orchestrate AI agent clusters in your local workspace via MCP.
+Command-line interface for Viben - orchestrate AI agent clusters in your local workspace.
 
 ## Installation
 
@@ -12,106 +12,162 @@ Node.js wrapper for [browse-mcp](https://pypi.org/project/browse-mcp/) - orchest
 No installation needed - just run:
 
 ```bash
-npx viben
+npx viben --help
 ```
-
-This will:
-1. Check for Python 3.10+
-2. Install `browse-mcp` if not already installed
-3. Start the MCP server
 
 ### Global Installation
 
 ```bash
 npm install -g viben
-viben
+viben --help
 ```
 
-## Usage
+## Commands
+
+### Workspace Commands
 
 ```bash
-# Start MCP server (default: stdio mode)
-npx viben
+# Initialize a workspace
+viben init
+viben init --from <template>
 
-# Show help
-npx viben --help
+# Manage configuration (git-style)
+viben config list                    # List all config
+viben config list --show-origin      # Show config sources
+viben config get <key>               # Get a value
+viben config set <key> <value>       # Set a value
+viben config unset <key>             # Remove a value
+viben config edit                    # Open in editor
 
-# Start with SSE transport
-npx viben -t sse --port 8080
-
-# Force reinstall browse-mcp
-npx viben --install
+# Manage agents
+viben agent list                     # List all agents
+viben agent create -n <id>           # Create new agent
+viben agent show -n <id>             # Show agent details
 ```
 
-## Requirements
+### Server Commands
 
-- **Node.js 18+** - For running the wrapper
-- **Python 3.10+** - For the browse-mcp package
+```bash
+# Start MCP server (wraps browse-mcp Python package)
+viben serve                          # Start in stdio mode
+viben serve -t sse --port 8080       # Start SSE server
+viben mcp                            # Alias for serve
+```
+
+## Global Options
+
+```bash
+--json          Output in JSON format (for agent consumption)
+-g, --global    Use global scope (~/.viben/)
+-w, --workspace Use workspace scope (.viben/)
+--verbose       Enable verbose output
+-q, --quiet     Suppress non-essential output
+-v, --version   Show version
+-h, --help      Show help
+```
+
+## Configuration
+
+### File Locations
+
+- **Global config**: `~/.viben/config.yaml`
+- **Workspace config**: `<project>/.viben/config.yaml`
+- **Global agents**: `~/.viben/agents/*.yaml`
+- **Workspace agents**: `<project>/.viben/agents/*.yaml`
+
+### Environment Variables
+
+```bash
+VIBEN_STATE_DIR   # Override state directory (default: ~/.viben)
+VIBEN_AGENT       # Current agent ID
+VIBEN_SCOPE       # Default scope (global/workspace)
+```
+
+### Config File Format
+
+```yaml
+# .viben/config.yaml
+version: 1
+
+settings:
+  editor: code
+  pager: less
+  color: auto
+
+agents:
+  - main
+
+mcp:
+  enabled:
+    - filesystem
+    - git
+
+skills:
+  enabled:
+    - code-review
+```
+
+## JSON Output Mode
+
+All commands support `--json` for structured output:
+
+```bash
+# Human-readable (default)
+viben agent list
+# ID    Name        Model      Source
+# main  Main Agent  (default)  workspace
+
+# JSON output
+viben --json agent list
+# {
+#   "success": true,
+#   "data": {
+#     "agents": [{ "id": "main", "name": "Main Agent", ... }],
+#     "count": 1
+#   }
+# }
+```
+
+## MCP Server
+
+The `serve` command wraps the [browse-mcp](https://pypi.org/project/browse-mcp/) Python package.
+
+### Requirements
+
+- **Node.js 18+** - For the CLI
+- **Python 3.10+** - For the MCP server
 - **pip or uv** - For Python package installation
 
-## What This Package Does
+### MCP Client Configuration
 
-This is a thin wrapper that:
-
-1. Checks if Python 3.10+ is available
-2. Checks if `browse-mcp` Python package is installed
-3. Installs `browse-mcp` automatically if needed (using uv or pip)
-4. Proxies all arguments to the `browse-mcp` command
-
-The actual functionality is provided by the [browse-mcp](https://pypi.org/project/browse-mcp/) Python package.
-
-## MCP Client Configuration
-
-After running `npx viben`, configure your MCP client:
-
-### Claude Desktop
+#### Claude Desktop
 
 Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "browse-mcp": {
+    "viben": {
       "command": "npx",
-      "args": ["viben"]
+      "args": ["viben", "serve"]
     }
   }
 }
 ```
 
-### Claude Code
+#### Claude Code
 
 Add to `~/.config/claude/config.json`:
 
 ```json
 {
   "mcpServers": {
-    "browse-mcp": {
+    "viben": {
       "command": "npx",
-      "args": ["viben"]
+      "args": ["viben", "serve"]
     }
   }
 }
-```
-
-## Alternative Installation Methods
-
-### Shell Script
-
-```bash
-curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
-```
-
-### pip (Direct Python)
-
-```bash
-pip install browse-mcp
-```
-
-### uv (Faster)
-
-```bash
-uv pip install browse-mcp
 ```
 
 ## Links
