@@ -354,3 +354,6 @@ export interface WorkspaceCommand {
 
 // Re-export official registry types
 export * from "./official-registry";
+
+// Re-export chat types
+export * from "./chat";
