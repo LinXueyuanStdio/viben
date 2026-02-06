@@ -557,6 +557,20 @@ img, svg {
   line-height: 1.6;
 }
 
+.step-description.step-alt {
+  margin-top: var(--space-3);
+  font-size: 0.8125rem;
+}
+
+.step-description.step-alt code {
+  padding: var(--space-1) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+}
+
 .quickstart-cta {
   margin-top: var(--space-12);
   text-align: center;
