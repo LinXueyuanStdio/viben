@@ -1,42 +1,52 @@
 #!/usr/bin/env node
 
 /**
- * Viben CLI Wrapper
+ * Viben CLI Entry Point
  *
- * This script wraps the browse-mcp Python package, providing a convenient
- * way to run Viben via npx without manual Python setup.
+ * This script serves as the main entry point for the Viben CLI.
+ * It routes to either:
+ * - The TypeScript CLI (Commander.js) for workspace management commands
+ * - The Python browse-mcp wrapper for MCP server functionality
  *
  * Usage:
- *   npx viben              # Run the MCP server
- *   npx viben --help       # Show help
- *   npx viben serve        # Explicit serve command
+ *   viben init                # Initialize workspace (TypeScript CLI)
+ *   viben config list         # List config (TypeScript CLI)
+ *   viben agent list          # List agents (TypeScript CLI)
+ *   viben serve               # Start MCP server (Python wrapper)
+ *   viben mcp                  # Start MCP server (Python wrapper, alias)
  */
 
-const { spawnSync, execSync } = require("child_process");
-const { platform } = require("os");
+import { createRequire } from 'module';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { spawnSync, execSync } from 'child_process';
+import { platform } from 'os';
 
-// Configuration
-const PYTHON_PACKAGE = "browse-mcp";
-const MIN_PYTHON_VERSION = "3.10";
-const BRAND_NAME = "Viben";
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configuration for Python wrapper
+const PYTHON_PACKAGE = 'browse-mcp';
+const MIN_PYTHON_VERSION = '3.10';
+const BRAND_NAME = 'Viben';
+
+// Commands that should be handled by the TypeScript CLI
+const TS_CLI_COMMANDS = ['init', 'config', 'agent'];
+
+// Commands that should be handled by the Python wrapper
+const PYTHON_COMMANDS = ['serve', 'mcp'];
 
 // ANSI colors
 const colors = {
-  reset: "\x1b[0m",
-  red: "\x1b[31m",
-  green: "\x1b[32m",
-  yellow: "\x1b[33m",
-  blue: "\x1b[34m",
-  cyan: "\x1b[36m",
-  bold: "\x1b[1m",
+  reset: '\x1b[0m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  bold: '\x1b[1m',
 };
-
-/**
- * Print colored message
- */
-function log(message, color = "") {
-  console.log(`${color}${message}${colors.reset}`);
-}
 
 function info(message) {
   console.log(`${colors.blue}[INFO]${colors.reset} ${message}`);
@@ -54,28 +64,22 @@ function error(message) {
   console.error(`${colors.red}[ERROR]${colors.reset} ${message}`);
 }
 
-/**
- * Check if a command exists
- */
 function commandExists(cmd) {
   try {
-    const isWindows = platform() === "win32";
+    const isWindows = platform() === 'win32';
     const checkCmd = isWindows ? `where ${cmd}` : `command -v ${cmd}`;
-    execSync(checkCmd, { stdio: "ignore" });
+    execSync(checkCmd, { stdio: 'ignore' });
     return true;
   } catch {
     return false;
   }
 }
 
-/**
- * Get Python version
- */
 function getPythonVersion(pythonCmd) {
   try {
     const result = execSync(
       `${pythonCmd} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"`,
-      { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
     return result.trim();
   } catch {
@@ -83,12 +87,9 @@ function getPythonVersion(pythonCmd) {
   }
 }
 
-/**
- * Compare version strings
- */
 function versionGte(version, minVersion) {
-  const v1 = version.split(".").map(Number);
-  const v2 = minVersion.split(".").map(Number);
+  const v1 = version.split('.').map(Number);
+  const v2 = minVersion.split('.').map(Number);
 
   for (let i = 0; i < Math.max(v1.length, v2.length); i++) {
     const a = v1[i] || 0;
@@ -99,11 +100,8 @@ function versionGte(version, minVersion) {
   return true;
 }
 
-/**
- * Find suitable Python command
- */
 function findPython() {
-  const candidates = ["python3", "python"];
+  const candidates = ['python3', 'python'];
 
   for (const cmd of candidates) {
     if (commandExists(cmd)) {
@@ -117,13 +115,10 @@ function findPython() {
   return null;
 }
 
-/**
- * Check if browse-mcp is installed
- */
 function isBrowseMcpInstalled(pythonCmd) {
   try {
     execSync(`${pythonCmd} -c "import browse_mcp"`, {
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
     return true;
   } catch {
@@ -131,46 +126,24 @@ function isBrowseMcpInstalled(pythonCmd) {
   }
 }
 
-/**
- * Check if browse-mcp command is available
- */
 function browseMcpCommandExists() {
-  return commandExists("browse-mcp");
+  return commandExists('browse-mcp');
 }
 
-/**
- * Install browse-mcp package
- */
 function installBrowseMcp(pythonCmd) {
   info(`Installing ${PYTHON_PACKAGE}...`);
 
-  // Try uv first (faster)
-  if (commandExists("uv")) {
-    info("Using uv for installation...");
-    const result = spawnSync("uv", ["pip", "install", PYTHON_PACKAGE], {
-      stdio: "inherit",
+  if (commandExists('uv')) {
+    info('Using uv for installation...');
+    let result = spawnSync('uv', ['pip', 'install', PYTHON_PACKAGE], {
+      stdio: 'inherit',
     });
     if (result.status === 0) {
       success(`${PYTHON_PACKAGE} installed successfully`);
       return true;
     }
-    // Try with --system flag
-    const resultSystem = spawnSync(
-      "uv",
-      ["pip", "install", "--system", PYTHON_PACKAGE],
-      { stdio: "inherit" }
-    );
-    if (resultSystem.status === 0) {
-      success(`${PYTHON_PACKAGE} installed successfully`);
-      return true;
-    }
-  }
-
-  // Try pip3
-  if (commandExists("pip3")) {
-    info("Using pip3 for installation...");
-    const result = spawnSync("pip3", ["install", PYTHON_PACKAGE], {
-      stdio: "inherit",
+    result = spawnSync('uv', ['pip', 'install', '--system', PYTHON_PACKAGE], {
+      stdio: 'inherit',
     });
     if (result.status === 0) {
       success(`${PYTHON_PACKAGE} installed successfully`);
@@ -178,11 +151,10 @@ function installBrowseMcp(pythonCmd) {
     }
   }
 
-  // Try pip
-  if (commandExists("pip")) {
-    info("Using pip for installation...");
-    const result = spawnSync("pip", ["install", PYTHON_PACKAGE], {
-      stdio: "inherit",
+  if (commandExists('pip3')) {
+    info('Using pip3 for installation...');
+    const result = spawnSync('pip3', ['install', PYTHON_PACKAGE], {
+      stdio: 'inherit',
     });
     if (result.status === 0) {
       success(`${PYTHON_PACKAGE} installed successfully`);
@@ -190,11 +162,21 @@ function installBrowseMcp(pythonCmd) {
     }
   }
 
-  // Try python -m pip
+  if (commandExists('pip')) {
+    info('Using pip for installation...');
+    const result = spawnSync('pip', ['install', PYTHON_PACKAGE], {
+      stdio: 'inherit',
+    });
+    if (result.status === 0) {
+      success(`${PYTHON_PACKAGE} installed successfully`);
+      return true;
+    }
+  }
+
   if (pythonCmd) {
     info(`Using ${pythonCmd} -m pip for installation...`);
-    const result = spawnSync(pythonCmd, ["-m", "pip", "install", PYTHON_PACKAGE], {
-      stdio: "inherit",
+    const result = spawnSync(pythonCmd, ['-m', 'pip', 'install', PYTHON_PACKAGE], {
+      stdio: 'inherit',
     });
     if (result.status === 0) {
       success(`${PYTHON_PACKAGE} installed successfully`);
@@ -205,60 +187,122 @@ function installBrowseMcp(pythonCmd) {
   return false;
 }
 
-/**
- * Run browse-mcp with given arguments
- */
 function runBrowseMcp(args, pythonCmd) {
-  // Try browse-mcp command first
   if (browseMcpCommandExists()) {
-    const result = spawnSync("browse-mcp", args, { stdio: "inherit" });
+    const result = spawnSync('browse-mcp', args, { stdio: 'inherit' });
     process.exit(result.status || 0);
   }
 
-  // Fall back to python -m browse_mcp
   if (pythonCmd) {
-    const result = spawnSync(pythonCmd, ["-m", "browse_mcp", ...args], {
-      stdio: "inherit",
+    const result = spawnSync(pythonCmd, ['-m', 'browse_mcp', ...args], {
+      stdio: 'inherit',
     });
     process.exit(result.status || 0);
   }
 
-  error("Could not run browse-mcp");
+  error('Could not run browse-mcp');
   process.exit(1);
 }
 
-/**
- * Print help message
- */
-function printHelp() {
-  console.log(`
-${colors.cyan}${colors.bold}${BRAND_NAME} CLI${colors.reset}
+async function runTypeScriptCli(args) {
+  try {
+    const { run } = await import('../dist/index.js');
+    await run(['node', 'viben', ...args]);
+  } catch (err) {
+    // If dist doesn't exist, try running from source (development mode)
+    try {
+      const { run } = await import('../src/index.ts');
+      await run(['node', 'viben', ...args]);
+    } catch {
+      error('CLI not built. Run "npm run build" in packages/cli first.');
+      console.error(err);
+      process.exit(1);
+    }
+  }
+}
 
-A wrapper for the ${PYTHON_PACKAGE} Python package.
+function handlePythonCommand(args) {
+  // Remove 'serve' or 'mcp' from args if present
+  const filteredArgs = args.filter((a) => a !== 'serve' && a !== 'mcp');
+
+  const python = findPython();
+  if (!python) {
+    error(`Python ${MIN_PYTHON_VERSION}+ is required but not found.`);
+    console.log('');
+    console.log('Please install Python:');
+    if (platform() === 'darwin') {
+      console.log('  brew install python@3.12');
+    } else if (platform() === 'linux') {
+      console.log('  sudo apt install python3 python3-pip');
+    } else {
+      console.log('  https://www.python.org/downloads/');
+    }
+    process.exit(1);
+  }
+
+  const isInstalled = browseMcpCommandExists() || isBrowseMcpInstalled(python.cmd);
+
+  if (!isInstalled) {
+    warn(`${PYTHON_PACKAGE} is not installed.`);
+    console.log('');
+    info('Installing automatically...');
+    if (!installBrowseMcp(python.cmd)) {
+      error('Automatic installation failed.');
+      console.log('');
+      console.log('Please install manually:');
+      console.log(`  pip install ${PYTHON_PACKAGE}`);
+      console.log('');
+      console.log('Or with uv:');
+      console.log(`  uv pip install ${PYTHON_PACKAGE}`);
+      process.exit(1);
+    }
+    console.log('');
+  }
+
+  runBrowseMcp(filteredArgs, python.cmd);
+}
+
+function printHelp() {
+  const pkg = require('../package.json');
+  console.log(`
+${colors.cyan}${colors.bold}${BRAND_NAME} CLI${colors.reset} v${pkg.version}
+
+Orchestrate AI agent clusters in your local workspace.
 
 ${colors.bold}Usage:${colors.reset}
-  npx viben [OPTIONS] [COMMAND]
+  viben <command> [options]
 
-${colors.bold}Options:${colors.reset}
-  --help, -h          Show this help message
-  --install           Force reinstall ${PYTHON_PACKAGE}
-  --version, -v       Show version
+${colors.bold}Workspace Commands:${colors.reset}
+  init                  Initialize a Viben workspace
+  config <subcommand>   Manage configuration (get, set, list, edit, unset)
+  agent <subcommand>    Manage agents (list, create, show)
 
-${colors.bold}Commands:${colors.reset}
-  (default)           Start the MCP server (stdio mode)
-  serve               Start the MCP server
-  --host <host>       Bind host (SSE/HTTP only)
-  --port <port>       Bind port (SSE/HTTP only)
-  -t, --transport     Transport: stdio, sse, streamable-http, http
+${colors.bold}Server Commands:${colors.reset}
+  serve                 Start the MCP server (browse-mcp)
+  mcp                   Alias for serve
+
+${colors.bold}Global Options:${colors.reset}
+  --json                Output in JSON format
+  -g, --global          Use global scope
+  -w, --workspace       Use workspace scope
+  --verbose             Enable verbose output
+  -q, --quiet           Suppress non-essential output
+  -v, --version         Show version
+  -h, --help            Show help
 
 ${colors.bold}Examples:${colors.reset}
-  npx viben                    # Start MCP server
-  npx viben --help             # Show browse-mcp help
-  npx viben -t sse --port 8080 # Start SSE server
+  viben init                    # Initialize workspace
+  viben config list             # List all config
+  viben config set settings.editor vim
+  viben agent list              # List all agents
+  viben agent create -n my-agent
+  viben serve                   # Start MCP server
+  viben serve -t sse --port 8080
 
-${colors.bold}Requirements:${colors.reset}
-  - Python ${MIN_PYTHON_VERSION}+
-  - pip or uv package manager
+${colors.bold}Environment Variables:${colors.reset}
+  VIBEN_STATE_DIR       State directory (default: ~/.viben)
+  VIBEN_AGENT           Current agent ID
+  VIBEN_SCOPE           Default scope (global/workspace)
 
 ${colors.bold}More information:${colors.reset}
   https://github.com/LinXueyuanStdio/viben
@@ -266,82 +310,77 @@ ${colors.bold}More information:${colors.reset}
 }
 
 /**
- * Main entry point
+ * Find the first command (non-flag) argument
  */
-function main() {
-  const args = process.argv.slice(2);
+function findCommand(args) {
+  for (const arg of args) {
+    if (!arg.startsWith('-')) {
+      return arg;
+    }
+  }
+  return null;
+}
 
-  // Handle --help for this wrapper
-  if (args.includes("--install")) {
+async function main() {
+  const args = process.argv.slice(2);
+  const firstArg = args[0];
+
+  // Handle --install (Python package installation)
+  if (args.includes('--install')) {
     const python = findPython();
     if (!python) {
       error(`Python ${MIN_PYTHON_VERSION}+ is required`);
       process.exit(1);
     }
     if (installBrowseMcp(python.cmd)) {
-      success("Installation complete");
+      success('Installation complete');
       process.exit(0);
     } else {
-      error("Installation failed");
+      error('Installation failed');
       process.exit(1);
     }
   }
 
-  // Handle wrapper-specific help
-  if (args.length === 1 && (args[0] === "-h" || args[0] === "--help")) {
+  // Handle version (only if it's the only argument)
+  if (args.length === 1 && (firstArg === '-v' || firstArg === '--version')) {
+    const pkg = require('../package.json');
+    console.log(`${BRAND_NAME} CLI v${pkg.version}`);
+    process.exit(0);
+  }
+
+  // Handle help (only if no command is present)
+  if (args.length === 0) {
     printHelp();
     process.exit(0);
   }
 
-  // Handle version
-  if (args.length === 1 && (args[0] === "-v" || args[0] === "--version")) {
-    const pkg = require("../package.json");
-    console.log(`${BRAND_NAME} CLI v${pkg.version}`);
-    console.log(`Wraps: ${PYTHON_PACKAGE}`);
+  // Find the first command argument (skip flags)
+  const command = findCommand(args);
+
+  // If only help flag and no command
+  if (!command && (args.includes('-h') || args.includes('--help'))) {
+    printHelp();
     process.exit(0);
   }
 
-  // Check Python
-  const python = findPython();
-  if (!python) {
-    error(`Python ${MIN_PYTHON_VERSION}+ is required but not found.`);
-    console.log("");
-    console.log("Please install Python:");
-    if (platform() === "darwin") {
-      console.log("  brew install python@3.12");
-    } else if (platform() === "linux") {
-      console.log("  sudo apt install python3 python3-pip");
-    } else {
-      console.log("  https://www.python.org/downloads/");
-    }
-    process.exit(1);
+  // Route to appropriate handler based on command
+  if (command && TS_CLI_COMMANDS.includes(command)) {
+    // TypeScript CLI commands (pass all args including global flags)
+    await runTypeScriptCli(args);
+  } else if (command && PYTHON_COMMANDS.includes(command)) {
+    // Python wrapper commands
+    handlePythonCommand(args);
+  } else if (command) {
+    // Unknown command - try TypeScript CLI (it will show proper error)
+    await runTypeScriptCli(args);
+  } else {
+    // No command found - show help
+    printHelp();
+    process.exit(0);
   }
-
-  // Check if browse-mcp is installed
-  const isInstalled =
-    browseMcpCommandExists() || isBrowseMcpInstalled(python.cmd);
-
-  if (!isInstalled) {
-    warn(`${PYTHON_PACKAGE} is not installed.`);
-    console.log("");
-
-    // Auto-install
-    info("Installing automatically...");
-    if (!installBrowseMcp(python.cmd)) {
-      error("Automatic installation failed.");
-      console.log("");
-      console.log("Please install manually:");
-      console.log(`  pip install ${PYTHON_PACKAGE}`);
-      console.log("");
-      console.log("Or with uv:");
-      console.log(`  uv pip install ${PYTHON_PACKAGE}`);
-      process.exit(1);
-    }
-    console.log("");
-  }
-
-  // Run browse-mcp with all arguments
-  runBrowseMcp(args, python.cmd);
 }
 
-main();
+main().catch((err) => {
+  error(err.message || 'Unknown error');
+  process.exit(1);
+});
