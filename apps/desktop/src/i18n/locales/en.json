@@ -1079,5 +1079,11 @@
     "noArtifacts": "No artifacts generated yet",
     "noFiles": "No working files",
     "noTools": "No tools used yet"
+  },
+  "creator": {
+    "title": "Creator",
+    "publish": "Publish",
+    "myPackages": "My Packages",
+    "analytics": "Analytics"
   }
 }
