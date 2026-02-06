@@ -129,7 +129,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace packages
-        run: pnpm turbo build --filter=!@viben/desktop
+        run: pnpm turbo build --filter=@viben/api-client
 
       - name: Update version in tauri.conf.json
         shell: bash
