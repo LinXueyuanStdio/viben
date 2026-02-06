@@ -231,10 +231,10 @@ export function Sidebar({
       <div className="border-t p-4">
         {/* Settings Link */}
         <Link
-          href="/settings"
+          href="/profile/settings"
           className={cn(
             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-            pathname === '/settings'
+            pathname === '/profile/settings'
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           )}
@@ -291,7 +291,7 @@ export function Sidebar({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings" className="flex cursor-pointer items-center">
+                <Link href="/profile/settings" className="flex cursor-pointer items-center">
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Link>
