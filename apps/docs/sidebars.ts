@@ -65,6 +65,24 @@ const sidebars: SidebarsConfig = {
         'plugins/configuration',
       ],
     },
+    {
+      type: 'category',
+      label: 'CLI',
+      collapsed: false,
+      items: [
+        {
+          type: 'category',
+          label: 'Configuration',
+          collapsed: false,
+          items: [
+            'cli/configuration/index',
+            'cli/configuration/config-command',
+            'cli/configuration/providers',
+            'cli/configuration/models',
+          ],
+        },
+      ],
+    },
   ],
 };
 
