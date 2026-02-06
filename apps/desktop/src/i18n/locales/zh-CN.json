@@ -1082,5 +1082,11 @@
     "noArtifacts": "暂无生成的产物",
     "noFiles": "暂无工作文件",
     "noTools": "暂无使用的工具"
+  },
+  "creator": {
+    "title": "创作者",
+    "publish": "发布",
+    "myPackages": "我的包",
+    "analytics": "数据分析"
   }
 }

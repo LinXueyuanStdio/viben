@@ -10,6 +10,9 @@ import {
   Sparkles,
   Server,
   PanelLeftClose,
+  Upload,
+  PackageSearch,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,6 +50,13 @@ const mcpNav: NavItem[] = [
 // Skills section navigation
 const skillsNav: NavItem[] = [
   { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
+];
+
+// Creator section navigation (only visible when authenticated)
+const creatorNav: NavItem[] = [
+  { titleKey: "creator.publish", href: "/publish", icon: Upload },
+  { titleKey: "creator.myPackages", href: "/my-packages", icon: PackageSearch },
+  { titleKey: "creator.analytics", href: "/analytics", icon: BarChart3 },
 ];
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
@@ -152,6 +162,18 @@ export function Sidebar() {
               {skillsNav.map((item) => (
                 <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
               ))}
+
+              {/* Creator Section (only when authenticated) */}
+              {isAuthenticated && (
+                <>
+                  <div className="grid place-items-center w-full py-2">
+                    <Separator className="w-10 bg-sidebar-border" />
+                  </div>
+                  {creatorNav.map((item) => (
+                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                  ))}
+                </>
+              )}
             </div>
           ) : (
             // Expanded: full layout with sections
@@ -186,6 +208,21 @@ export function Sidebar() {
                   ))}
                 </nav>
               </SidebarSection>
+
+              {/* Creator Section (only when authenticated) */}
+              {isAuthenticated && (
+                <SidebarSection
+                  title={t("creator.title")}
+                  collapsible
+                  defaultOpen
+                >
+                  <nav className="flex flex-col gap-1">
+                    {creatorNav.map((item) => (
+                      <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                    ))}
+                  </nav>
+                </SidebarSection>
+              )}
             </div>
           )}
         </ScrollArea>
