@@ -247,66 +247,67 @@ export function Sidebar({
             </Link>
 
             <Separator className="my-3" />
+
             <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-lg p-2',
-                  'text-left transition-colors duration-200',
-                  'hover:bg-muted',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-                )}
-              >
-                <Avatar className="h-8 w-8">
-                  {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
-                  <AvatarFallback className="text-xs">
-                    {getInitials(username)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{username}</p>
-                  {email && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      {email}
-                    </p>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-lg p-2',
+                    'text-left transition-colors duration-200',
+                    'hover:bg-muted',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                   )}
-                </div>
-                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{username}</p>
-                  {email && (
-                    <p className="text-xs text-muted-foreground">{email}</p>
-                  )}
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/profile" className="flex cursor-pointer items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/profile/settings" className="flex cursor-pointer items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/api/auth/logout"
-                  className="flex cursor-pointer items-center text-destructive focus:text-destructive"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+                  <Avatar className="h-8 w-8">
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={username} />}
+                    <AvatarFallback className="text-xs">
+                      {getInitials(username)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{username}</p>
+                    {email && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        {email}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{username}</p>
+                    {email && (
+                      <p className="text-xs text-muted-foreground">{email}</p>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/profile" className="flex cursor-pointer items-center">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/profile/settings" className="flex cursor-pointer items-center">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/api/auth/logout"
+                    className="flex cursor-pointer items-center text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DropdownMenu>
           </>
         ) : (
