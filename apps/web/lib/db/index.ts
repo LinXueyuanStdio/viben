@@ -23,6 +23,9 @@ function getDb(): NeonHttpDatabase<typeof schema> {
 export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
   get(_target, prop) {
     const instance = getDb();
+    // We need 'any' here because the Proxy receives props as string | symbol,
+    // but NeonHttpDatabase doesn't have an index signature. This is the standard
+    // pattern for creating lazy-initialization proxies in TypeScript.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const value = (instance as any)[prop];
     if (typeof value === 'function') {
