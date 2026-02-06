@@ -156,12 +156,13 @@ interface PackageCardProps {
 
 function PackageCard({ package: pkg, href }: PackageCardProps) {
   const status = pkg.status ?? 'draft';
+  const statusColorMap: Record<string, string> = {
+    approved: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    featured: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+  };
   const statusColor =
-    status === 'approved' || status === 'featured'
-      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-      : status === 'pending'
-        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-        : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    statusColorMap[status] ?? 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
 
   return (
     <Link href={href}>
