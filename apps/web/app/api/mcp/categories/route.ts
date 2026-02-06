@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db, mcpPackages } from '@/lib/db';
-import { eq, sql, count } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
 
 // Predefined categories with descriptions
 const categoryDescriptions: Record<string, string> = {
@@ -36,11 +36,11 @@ export async function GET() {
 
     // Build response with descriptions
     const categories = categoryCounts
-      .filter((c) => c.category) // Filter out null categories
+      .filter((c): c is typeof c & { category: string } => Boolean(c.category)) // Filter out null categories with type guard
       .map((c) => ({
-        id: c.category!,
-        name: c.category!.charAt(0).toUpperCase() + c.category!.slice(1),
-        description: categoryDescriptions[c.category!] || null,
+        id: c.category,
+        name: c.category.charAt(0).toUpperCase() + c.category.slice(1),
+        description: categoryDescriptions[c.category] || null,
         packageCount: c.packageCount,
       }))
       .sort((a, b) => (b.packageCount || 0) - (a.packageCount || 0));
