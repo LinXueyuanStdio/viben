@@ -19,3 +19,8 @@ pub mod tray;
 pub mod usage;
 pub mod workspace;
 pub mod workspace_sync;
+
+// Viben-core integration modules
+pub mod viben_agents;
+pub mod viben_models;
+pub mod viben_providers;
