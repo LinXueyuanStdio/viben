@@ -37,6 +37,68 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'CLI',
+      collapsed: false,
+      items: [
+        'cli/index',
+        'cli/installation',
+        'cli/quick-start',
+        {
+          type: 'category',
+          label: 'Configuration',
+          collapsed: false,
+          items: [
+            'cli/configuration/index',
+            'cli/configuration/config-command',
+            'cli/configuration/providers',
+            'cli/configuration/models',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Agent Management',
+          collapsed: false,
+          items: [
+            'cli/agents/index',
+            'cli/agents/creating-agents',
+            'cli/agents/agent-configuration',
+            'cli/agents/memory-system',
+            'cli/agents/sessions',
+            'cli/agents/templates',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Providers & Models',
+          collapsed: false,
+          items: [
+            'cli/providers-models/providers',
+            'cli/providers-models/models',
+            'cli/providers-models/aliases',
+            'cli/providers-models/fallbacks',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Commands',
+          collapsed: false,
+          items: [
+            'cli/commands/index',
+            'cli/commands/init',
+            'cli/commands/config',
+            'cli/commands/service',
+            'cli/commands/mcp',
+            'cli/commands/skill',
+            'cli/commands/workspace',
+            'cli/commands/agent',
+            'cli/commands/provider',
+            'cli/commands/model',
+          ],
+        },
+      ],
+    },
+    {
+      type: 'category',
       label: 'MCP Server',
       collapsed: false,
       items: [
