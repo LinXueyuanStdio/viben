@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getSession } from '@/lib/auth/cookies';
 import { UserMenu } from '@/components/layout/user-menu';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
+import { LanguageSwitcher } from '@/components/layout/language-switcher';
 import { Button } from '@/components/ui/button';
 
 export async function Header() {
@@ -12,6 +13,7 @@ export async function Header() {
       <div>{/* Breadcrumbs or search could go here */}</div>
 
       <div className="flex items-center gap-4">
+        <LanguageSwitcher />
         <ThemeToggle />
         {session ? (
           <UserMenu session={session} />

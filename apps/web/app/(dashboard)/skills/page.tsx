@@ -1,9 +1,12 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { Sparkles } from 'lucide-react';
 import { SkillsGrid } from '@/components/skills/skills-grid';
 import { SkillsFilters } from '@/components/skills/skills-filters';
 import { SearchInput } from '@/components/shared/search-input';
 import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+import { getSession } from '@/lib/auth/cookies';
 
 export const metadata = {
   title: 'Skills Marketplace',
@@ -21,6 +24,7 @@ interface SkillsPageProps {
 
 export default async function SkillsPage({ searchParams }: SkillsPageProps) {
   const params = await searchParams;
+  const session = await getSession();
 
   return (
     <div className="space-y-6">
@@ -28,7 +32,16 @@ export default async function SkillsPage({ searchParams }: SkillsPageProps) {
         icon={Sparkles}
         title="Skills Marketplace"
         subtitle="Discover and install AI agent skills and capabilities"
-      />
+      >
+        {session && (
+          <Button variant="outline" asChild>
+            <Link href="/my-packages">
+              <Sparkles className="mr-2 h-4 w-4" />
+              My Skills
+            </Link>
+          </Button>
+        )}
+      </PageHeader>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <SearchInput
