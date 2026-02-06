@@ -37,6 +37,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'CLI',
+      collapsed: false,
+      items: [
+        'cli/index',
+        'cli/installation',
+        'cli/quick-start',
+      ],
+    },
+    {
+      type: 'category',
       label: 'MCP Server',
       collapsed: false,
       items: [

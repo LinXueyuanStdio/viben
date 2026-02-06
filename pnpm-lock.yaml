@@ -65,9 +65,6 @@ importers:
       '@viben/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@viben/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@viben/kanban':
         specifier: workspace:*
         version: link:../../packages/kanban
@@ -377,25 +374,6 @@ importers:
         version: 8.5.1(typescript@5.8.3)(yaml@2.8.2)
       typescript:
         specifier: ^5.4.0
-        version: 5.8.3
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/node@20.19.32)(yaml@2.8.2)
-
-  packages/core:
-    dependencies:
-      yaml:
-        specifier: ^2.4.5
-        version: 2.8.2
-    devDependencies:
-      '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.32
-      tsup:
-        specifier: ^8.0.0
-        version: 8.5.1(typescript@5.8.3)(yaml@2.8.2)
-      typescript:
-        specifier: ^5.7.0
         version: 5.8.3
       vitest:
         specifier: ^3.0.0
@@ -8062,7 +8040,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 7.3.1(@types/node@22.19.8)
+      vite: 7.3.1(@types/node@20.19.32)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
     dev: true
