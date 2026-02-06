@@ -1,15 +1,17 @@
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Layers, Lock, Heart, Server, Sparkles } from 'lucide-react';
+import { Layers, Lock, Heart, GitFork, Package } from 'lucide-react';
 
 interface CollectionCardProps {
   collection: {
     id: string;
     name: string;
+    slug: string;
     description: string | null;
     isPublic: boolean;
-    entityType: 'mcp' | 'skill';
+    itemCount: number;
+    forksCount: number;
     favoritesCount: number;
     owner: {
       id: string;
@@ -22,9 +24,6 @@ interface CollectionCardProps {
 }
 
 export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
-  const TypeIcon = collection.entityType === 'mcp' ? Server : Sparkles;
-  const typeLabel = collection.entityType === 'mcp' ? 'MCP' : 'Skills';
-
   return (
     <Link href={`/collections/${collection.id}`}>
       <div className="group flex h-full flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/50 hover:bg-accent/50">
@@ -42,10 +41,9 @@ export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
                   <Lock className="h-3 w-3 text-muted-foreground" />
                 )}
               </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <TypeIcon className="h-3 w-3" />
-                <span>{typeLabel} Collection</span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                @{collection.slug}
+              </p>
             </div>
           </div>
           {isOwner && <Badge variant="outline">Owner</Badge>}
@@ -66,9 +64,19 @@ export function CollectionCard({ collection, isOwner }: CollectionCardProps) {
             <span>{collection.owner.username}</span>
           </div>
 
-          <div className="flex items-center gap-1">
-            <Heart className="h-3 w-3" />
-            {collection.favoritesCount}
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <Package className="h-3 w-3" />
+              {collection.itemCount}
+            </span>
+            <span className="flex items-center gap-1">
+              <GitFork className="h-3 w-3" />
+              {collection.forksCount}
+            </span>
+            <span className="flex items-center gap-1">
+              <Heart className="h-3 w-3" />
+              {collection.favoritesCount}
+            </span>
           </div>
         </div>
       </div>

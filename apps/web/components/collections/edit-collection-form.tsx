@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -13,9 +13,15 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { slugify } from '@/lib/utils';
 
 const updateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+  slug: z
+    .string()
+    .min(1, 'Slug is required')
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
   description: z.string().max(500).optional(),
   isPublic: z.boolean(),
 });
@@ -26,24 +32,41 @@ interface EditCollectionFormProps {
   collection: {
     id: string;
     name: string;
+    slug: string;
     description: string | null;
     isPublic: boolean;
-    entityType: 'mcp' | 'skill';
   };
 }
 
 export function EditCollectionForm({ collection }: EditCollectionFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(true); // Start as true since we have existing slug
 
   const form = useForm<UpdateValues>({
     resolver: zodResolver(updateSchema),
     defaultValues: {
       name: collection.name,
+      slug: collection.slug,
       description: collection.description || '',
       isPublic: collection.isPublic,
     },
   });
+
+  const watchedName = form.watch('name');
+
+  // Auto-generate slug from name only if slug was reset to original
+  useEffect(() => {
+    if (!slugManuallyEdited && watchedName) {
+      const generatedSlug = slugify(watchedName);
+      form.setValue('slug', generatedSlug, { shouldValidate: false });
+    }
+  }, [watchedName, slugManuallyEdited, form]);
+
+  function handleSlugChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setSlugManuallyEdited(true);
+    form.setValue('slug', e.target.value, { shouldValidate: true });
+  }
 
   async function onSubmit(data: UpdateValues) {
     setIsLoading(true);
@@ -92,13 +115,21 @@ export function EditCollectionForm({ collection }: EditCollectionFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>Collection Type</Label>
-            <p className="text-sm text-muted-foreground">
-              {collection.entityType === 'mcp' ? 'MCP Servers' : 'Skills'}
-            </p>
+            <Label htmlFor="slug">Slug</Label>
+            <Input
+              id="slug"
+              placeholder="my-awesome-collection"
+              value={form.watch('slug')}
+              onChange={handleSlugChange}
+            />
             <p className="text-xs text-muted-foreground">
-              Collection type cannot be changed after creation
+              URL-friendly identifier. Must be unique.
             </p>
+            {form.formState.errors.slug && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.slug.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

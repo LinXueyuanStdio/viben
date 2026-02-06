@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: CollectionDetailPageProps) {
 
   return {
     title: collection.name,
-    description: collection.description || `A ${collection.entityType} collection`,
+    description: collection.description || 'A curated collection',
   };
 }
 
@@ -47,7 +47,6 @@ export default async function CollectionDetailPage({
       />
       <CollectionItems
         collectionId={collection.id}
-        entityType={collection.entityType}
         items={items}
         isOwner={isOwner}
       />

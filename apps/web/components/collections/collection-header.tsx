@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,12 +18,11 @@ import {
   Globe,
   GitFork,
   Heart,
+  Package,
   MoreVertical,
   Pencil,
   Trash2,
   Loader2,
-  Server,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,9 +30,12 @@ interface CollectionHeaderProps {
   collection: {
     id: string;
     name: string;
+    slug: string;
     description: string | null;
     isPublic: boolean;
-    entityType: 'mcp' | 'skill';
+    itemCount: number;
+    forksCount: number;
+    forkedFromId: string | null;
     favoritesCount: number;
     owner: {
       id: string;
@@ -55,9 +58,6 @@ export function CollectionHeader({
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const TypeIcon = collection.entityType === 'mcp' ? Server : Sparkles;
-  const typeLabel = collection.entityType === 'mcp' ? 'MCP' : 'Skills';
 
   async function handleFork() {
     setIsForking(true);
@@ -125,13 +125,24 @@ export function CollectionHeader({
                 )}
               </Badge>
             </div>
-            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-              <TypeIcon className="h-4 w-4" />
-              <span>{typeLabel} Collection</span>
-            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              @{collection.slug}
+            </p>
             {collection.description && (
               <p className="mt-2 text-muted-foreground">
                 {collection.description}
+              </p>
+            )}
+            {collection.forkedFromId && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                <GitFork className="mr-1 inline h-3 w-3" />
+                Forked from{' '}
+                <Link
+                  href={`/collections/${collection.forkedFromId}`}
+                  className="text-primary hover:underline"
+                >
+                  another collection
+                </Link>
               </p>
             )}
           </div>
@@ -194,8 +205,12 @@ export function CollectionHeader({
           <span>by {collection.owner.displayName}</span>
         </div>
         <span className="flex items-center gap-1">
-          <TypeIcon className="h-4 w-4" />
+          <Package className="h-4 w-4" />
           {itemCount} {itemCount === 1 ? 'item' : 'items'}
+        </span>
+        <span className="flex items-center gap-1">
+          <GitFork className="h-4 w-4" />
+          {collection.forksCount} forks
         </span>
         <span className="flex items-center gap-1">
           <Heart className="h-4 w-4" />
