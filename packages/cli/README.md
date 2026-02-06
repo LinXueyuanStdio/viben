@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/viben.svg)](https://www.npmjs.com/package/viben)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Node.js wrapper for [browse-mcp](https://pypi.org/project/browse-mcp/) - an MCP server for searching, downloading, and reading academic papers.
+Node.js wrapper for [browse-mcp](https://pypi.org/project/browse-mcp/) - orchestrate AI agent clusters in your local workspace via MCP.
 
 ## Installation
 

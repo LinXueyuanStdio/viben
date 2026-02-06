@@ -1,6 +1,6 @@
 # Settings Theme Page Overrides
 
-> **PROJECT:** Browse MCP Desktop
+> **PROJECT:** Viben Desktop
 > **Generated:** 2026-02-02 11:20:47
 > **Page Type:** Settings / Profile
 

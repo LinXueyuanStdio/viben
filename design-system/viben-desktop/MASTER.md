@@ -6,9 +6,9 @@
 
 ---
 
-**Project:** Browse MCP Desktop
+**Project:** Viben Desktop
 **Generated:** 2026-02-02 11:20:47
-**Category:** Healthcare App
+**Category:** Research Tool App
 
 ---
 

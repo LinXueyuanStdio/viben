@@ -576,6 +576,7 @@ The following components are commonly needed but not yet in `ui/`:
 |-----------|----------|-------|
 | Input | High | Text input with variants |
 | Select | High | Dropdown select |
+| Breadcrumb | High | Notion-style navigation breadcrumb (see [kanban-integration.md](../modules/kanban-integration.md)) |
 | Dialog/Modal | Medium | Radix Dialog |
 | Toast | Medium | Notifications |
 | Dropdown | Medium | Radix DropdownMenu |
