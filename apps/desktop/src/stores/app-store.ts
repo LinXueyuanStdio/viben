@@ -90,6 +90,18 @@ interface AppState {
   language: string;
   setLanguage: (lang: string) => void;
 
+  // Preferences
+  alwaysShowTextDirection: boolean;
+  setAlwaysShowTextDirection: (value: boolean) => void;
+  weekStartsOnMonday: boolean;
+  setWeekStartsOnMonday: (value: boolean) => void;
+  dateFormat: "relative" | "absolute";
+  setDateFormat: (format: "relative" | "absolute") => void;
+  autoSetTimezone: boolean;
+  setAutoSetTimezone: (value: boolean) => void;
+  timezone: string;
+  setTimezone: (timezone: string) => void;
+
   // Setup Banner
   setupBannerDismissed: boolean;
   setSetupBannerDismissed: (dismissed: boolean) => void;
@@ -295,6 +307,18 @@ export const useAppStore = create<AppState>()(
       language: "en",
       setLanguage: (lang) => set({ language: lang }),
 
+      // Preferences
+      alwaysShowTextDirection: false,
+      setAlwaysShowTextDirection: (value) => set({ alwaysShowTextDirection: value }),
+      weekStartsOnMonday: true,
+      setWeekStartsOnMonday: (value) => set({ weekStartsOnMonday: value }),
+      dateFormat: "relative",
+      setDateFormat: (format) => set({ dateFormat: format }),
+      autoSetTimezone: true,
+      setAutoSetTimezone: (value) => set({ autoSetTimezone: value }),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      setTimezone: (timezone) => set({ timezone }),
+
       // Setup Banner
       setupBannerDismissed: false,
       setSetupBannerDismissed: (dismissed) => set({ setupBannerDismissed: dismissed }),
@@ -356,6 +380,11 @@ export const useAppStore = create<AppState>()(
         totalSearches: state.totalSearches,
         theme: state.theme,
         language: state.language,
+        alwaysShowTextDirection: state.alwaysShowTextDirection,
+        weekStartsOnMonday: state.weekStartsOnMonday,
+        dateFormat: state.dateFormat,
+        autoSetTimezone: state.autoSetTimezone,
+        timezone: state.timezone,
         setupBannerDismissed: state.setupBannerDismissed,
         setupStatus: state.setupStatus,
         onboardingCompleted: state.onboardingCompleted,

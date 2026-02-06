@@ -74,14 +74,28 @@
 
 ## Installation
 
-`browse-mcp` can be installed using `uv` or `pip`. Below are detailed installation guides for different scenarios.
+`browse-mcp` can be installed using multiple methods. Choose what works best for you.
 
 ### Quick Install
 
-Install the package:
+**Shell Script (macOS/Linux):**
+```bash
+curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+```
 
+**npx (Node.js 18+):**
+```bash
+npx viben
+```
+
+**pip:**
 ```bash
 pip install browse-mcp
+```
+
+**uv (faster):**
+```bash
+uv pip install browse-mcp
 ```
 
 Start the MCP server:

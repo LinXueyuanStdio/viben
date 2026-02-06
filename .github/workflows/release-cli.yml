@@ -1,0 +1,152 @@
+name: Release CLI
+
+on:
+  push:
+    tags:
+      - 'cli-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.1.0). Leave empty to use version from package.json'
+        required: false
+        type: string
+      publish_npm:
+        description: 'Publish to npm'
+        type: boolean
+        default: true
+
+# Ensure only one release workflow runs at a time
+concurrency:
+  group: release-cli-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag: ${{ steps.get-version.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version
+        id: get-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ -n "${{ inputs.version }}" ]]; then
+              VERSION="${{ inputs.version }}"
+            else
+              VERSION=$(jq -r '.version' packages/cli/package.json)
+            fi
+          else
+            # Tag trigger - extract version from tag (cli-v0.1.0 -> 0.1.0)
+            VERSION="${GITHUB_REF_NAME#cli-v}"
+          fi
+
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=cli-v${VERSION}" >> $GITHUB_OUTPUT
+          echo "Building version: ${VERSION}"
+
+  release:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update version in package.json
+        run: |
+          cd packages/cli
+          VERSION="${{ needs.prepare.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          echo "Updated version to: $(jq -r '.version' package.json)"
+
+      - name: Prepare install.sh for release
+        run: |
+          # Make install.sh executable
+          chmod +x scripts/install.sh
+
+          # Create release directory
+          mkdir -p release-assets
+
+          # Copy install.sh
+          cp scripts/install.sh release-assets/install.sh
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: Viben CLI v${{ needs.prepare.outputs.version }}
+          body: |
+            ## Viben CLI v${{ needs.prepare.outputs.version }}
+
+            ### Installation Methods
+
+            #### 1. Shell Script (macOS/Linux)
+            ```bash
+            curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
+            ```
+
+            #### 2. npx (Node.js)
+            ```bash
+            npx viben
+            ```
+
+            #### 3. npm Global
+            ```bash
+            npm install -g viben
+            viben
+            ```
+
+            #### 4. pip (Direct Python)
+            ```bash
+            pip install browse-mcp
+            ```
+
+            ### Requirements
+            - Python 3.10+
+            - pip or uv (for Python package installation)
+
+            ### Links
+            - [Documentation](https://github.com/LinXueyuanStdio/viben)
+            - [PyPI Package](https://pypi.org/project/browse-mcp/)
+            - [npm Package](https://www.npmjs.com/package/viben)
+          files: |
+            release-assets/install.sh
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    needs: [prepare, release]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || inputs.publish_npm == true }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Update version in package.json
+        run: |
+          cd packages/cli
+          VERSION="${{ needs.prepare.outputs.version }}"
+          jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
+          mv package.tmp.json package.json
+          echo "Updated version to: $(jq -r '.version' package.json)"
+
+      - name: Publish to npm
+        run: |
+          cd packages/cli
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
