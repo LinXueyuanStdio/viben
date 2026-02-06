@@ -1,8 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Heart, Download, Star, Zap } from 'lucide-react';
+import { Download, Star, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { SkillActions } from './skill-actions';
 
 interface SkillHeaderProps {
   package: {
@@ -25,9 +25,10 @@ interface SkillHeaderProps {
       avatarUrl: string | null;
     } | null;
   };
+  isAuthenticated?: boolean;
 }
 
-export function SkillHeader({ package: pkg }: SkillHeaderProps) {
+export function SkillHeader({ package: pkg, isAuthenticated = false }: SkillHeaderProps) {
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -66,10 +67,6 @@ export function SkillHeader({ package: pkg }: SkillHeaderProps) {
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Heart className="h-4 w-4" />
-            {pkg.favoritesCount} favorites
-          </span>
-          <span className="flex items-center gap-1">
             <Download className="h-4 w-4" />
             {pkg.downloadsCount} downloads
           </span>
@@ -82,12 +79,11 @@ export function SkillHeader({ package: pkg }: SkillHeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Install
-        </Button>
-      </div>
+      <SkillActions
+        packageId={pkg.id}
+        favoritesCount={pkg.favoritesCount}
+        isAuthenticated={isAuthenticated}
+      />
 
       {pkg.triggerPatterns && pkg.triggerPatterns.length > 0 && (
         <div className="space-y-2">
