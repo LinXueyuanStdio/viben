@@ -29,3 +29,4 @@ uuid = { version = "1", features = ["v4"] }
 chrono = "0.4"
 reqwest = { version = "0.12", features = ["json"] }
 urlencoding = "2"
+viben-core = { path = "../../../crates/viben-core" }

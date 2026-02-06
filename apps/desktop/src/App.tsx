@@ -16,6 +16,7 @@ import {
   WorkspaceKanbanPage,
   AgentDetailPage,
   WorkspaceSkillDetailPage,
+  WorkspaceAgentsPage,
   HomeRedirect,
   OnboardingPage,
   PublishPage,
@@ -105,6 +106,7 @@ function App() {
           <Route path="workspace/:workspaceId" element={<WorkspaceDetailPage />} />
           <Route path="workspace/:workspaceId/chat" element={<WorkspaceChatPage />} />
           <Route path="workspace/:workspaceId/kanban" element={<WorkspaceKanbanPage />} />
+          <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
           <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<WorkspaceSkillDetailPage />} />
         </Route>
