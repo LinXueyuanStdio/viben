@@ -1,8 +1,8 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Heart, Download, Star, ExternalLink } from 'lucide-react';
+import { Download, Star } from 'lucide-react';
 import Link from 'next/link';
+import { McpActions } from './mcp-actions';
 
 interface McpHeaderProps {
   package: {
@@ -25,9 +25,10 @@ interface McpHeaderProps {
       avatarUrl: string | null;
     } | null;
   };
+  isAuthenticated?: boolean;
 }
 
-export function McpHeader({ package: pkg }: McpHeaderProps) {
+export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderProps) {
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -65,10 +66,6 @@ export function McpHeader({ package: pkg }: McpHeaderProps) {
 
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
-            <Heart className="h-4 w-4" />
-            {pkg.favoritesCount} favorites
-          </span>
-          <span className="flex items-center gap-1">
             <Download className="h-4 w-4" />
             {pkg.downloadsCount} downloads
           </span>
@@ -81,20 +78,12 @@ export function McpHeader({ package: pkg }: McpHeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
-        <Button>
-          <Download className="mr-2 h-4 w-4" />
-          Install
-        </Button>
-        {pkg.repositoryUrl && (
-          <Button variant="outline" asChild>
-            <a href={pkg.repositoryUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Repository
-            </a>
-          </Button>
-        )}
-      </div>
+      <McpActions
+        packageId={pkg.id}
+        favoritesCount={pkg.favoritesCount}
+        repositoryUrl={pkg.repositoryUrl}
+        isAuthenticated={isAuthenticated}
+      />
 
       {pkg.tags && pkg.tags.length > 0 && (
         <div className="flex flex-wrap gap-2">
