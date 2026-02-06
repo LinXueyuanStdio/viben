@@ -67,6 +67,7 @@ export type OrgMemberRole = 'member' | 'admin' | 'owner';
 export type Transport = 'stdio' | 'sse' | 'http';
 export type SkillType = 'command' | 'prompt' | 'agent';
 export type EntityType = 'mcp' | 'skill';
+export type ItemType = 'mcp' | 'skill';
 export type SocialEntityType = 'mcp' | 'skill' | 'collection';
 export type PackageStatus = 'pending' | 'approved' | 'rejected' | 'featured';
 export type ReportReason = 'spam' | 'inappropriate' | 'copyright' | 'security' | 'other';

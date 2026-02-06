@@ -7,14 +7,14 @@ import { Pagination } from '@/components/shared/pagination';
 interface CollectionsGridProps {
   searchParams: {
     q?: string;
-    type?: string;
+    sort?: string;
     page?: string;
   };
 }
 
 export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
   const session = await getSession();
-  const { q, type, page = '1' } = searchParams;
+  const { q, sort, page = '1' } = searchParams;
   const limit = 12;
   const offset = (Number(page) - 1) * limit;
 
@@ -37,13 +37,24 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
     conditions.push(
       or(
         ilike(collections.name, `%${q}%`),
+        ilike(collections.slug, `%${q}%`),
         ilike(collections.description, `%${q}%`)
       )
     );
   }
 
-  if (type && (type === 'mcp' || type === 'skill')) {
-    conditions.push(eq(collections.entityType, type));
+  // Build order by clause based on sort param
+  function getOrderBy() {
+    switch (sort) {
+      case 'recent':
+        return [desc(collections.createdAt)];
+      case 'items':
+        return [desc(collections.itemCount), desc(collections.createdAt)];
+      case 'forks':
+        return [desc(collections.forksCount), desc(collections.createdAt)];
+      default: // 'default' or undefined = most popular
+        return [desc(collections.favoritesCount), desc(collections.createdAt)];
+    }
   }
 
   // Query
@@ -51,9 +62,11 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
     .select({
       id: collections.id,
       name: collections.name,
+      slug: collections.slug,
       description: collections.description,
       isPublic: collections.isPublic,
-      entityType: collections.entityType,
+      itemCount: collections.itemCount,
+      forksCount: collections.forksCount,
       favoritesCount: collections.favoritesCount,
       createdAt: collections.createdAt,
       ownerId: collections.ownerId,
@@ -67,7 +80,7 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
     .from(collections)
     .leftJoin(users, eq(collections.ownerId, users.id))
     .where(and(...conditions))
-    .orderBy(desc(collections.favoritesCount), desc(collections.createdAt))
+    .orderBy(...getOrderBy())
     .limit(limit)
     .offset(offset);
 
@@ -107,9 +120,11 @@ export async function CollectionsGrid({ searchParams }: CollectionsGridProps) {
             collection={{
               id: collection.id,
               name: collection.name,
+              slug: collection.slug,
               description: collection.description,
               isPublic: collection.isPublic,
-              entityType: collection.entityType,
+              itemCount: collection.itemCount,
+              forksCount: collection.forksCount,
               favoritesCount: collection.favoritesCount,
               owner: collection.owner,
             }}

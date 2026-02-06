@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -10,13 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -28,11 +21,16 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { slugify } from '@/lib/utils';
 
 const createSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
+  slug: z
+    .string()
+    .min(1, 'Slug is required')
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, and hyphens only'),
   description: z.string().max(500).optional(),
-  entityType: z.enum(['mcp', 'skill']),
   isPublic: z.boolean(),
 });
 
@@ -42,16 +40,32 @@ export function CreateCollectionButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const form = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
     defaultValues: {
       name: '',
+      slug: '',
       description: '',
-      entityType: 'mcp',
       isPublic: true,
     },
   });
+
+  const watchedName = form.watch('name');
+
+  // Auto-generate slug from name if not manually edited
+  useEffect(() => {
+    if (!slugManuallyEdited && watchedName) {
+      const generatedSlug = slugify(watchedName);
+      form.setValue('slug', generatedSlug, { shouldValidate: false });
+    }
+  }, [watchedName, slugManuallyEdited, form]);
+
+  function handleSlugChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setSlugManuallyEdited(true);
+    form.setValue('slug', e.target.value, { shouldValidate: true });
+  }
 
   async function onSubmit(data: CreateValues) {
     setIsLoading(true);
@@ -72,6 +86,7 @@ export function CreateCollectionButton() {
       toast.success('Collection created');
       setOpen(false);
       form.reset();
+      setSlugManuallyEdited(false);
       router.push(`/collections/${collection.id}`);
       router.refresh();
     } catch (error) {
@@ -81,8 +96,16 @@ export function CreateCollectionButton() {
     }
   }
 
+  function handleOpenChange(isOpen: boolean) {
+    setOpen(isOpen);
+    if (!isOpen) {
+      form.reset();
+      setSlugManuallyEdited(false);
+    }
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
@@ -94,7 +117,7 @@ export function CreateCollectionButton() {
           <DialogHeader>
             <DialogTitle>Create Collection</DialogTitle>
             <DialogDescription>
-              Create a curated list of MCP servers or skills to share.
+              Create a curated list of MCP servers and skills to share.
             </DialogDescription>
           </DialogHeader>
 
@@ -114,24 +137,21 @@ export function CreateCollectionButton() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="entityType">Collection Type</Label>
-              <Select
-                value={form.watch('entityType')}
-                onValueChange={(value) =>
-                  form.setValue('entityType', value as 'mcp' | 'skill')
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mcp">MCP Servers</SelectItem>
-                  <SelectItem value="skill">Skills</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="slug">Slug</Label>
+              <Input
+                id="slug"
+                placeholder="my-awesome-collection"
+                value={form.watch('slug')}
+                onChange={handleSlugChange}
+              />
               <p className="text-xs text-muted-foreground">
-                Collections can only contain items of one type
+                URL-friendly identifier. Auto-generated from name.
               </p>
+              {form.formState.errors.slug && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.slug.message}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

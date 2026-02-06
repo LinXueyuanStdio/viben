@@ -289,12 +289,15 @@ export const collections = pgTable(
   {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     name: text('name').notNull(),
+    slug: text('slug').notNull(),
     description: text('description'),
     ownerId: text('owner_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     isPublic: boolean('is_public').default(true).notNull(),
-    entityType: text('entity_type', { enum: ['mcp', 'skill'] }).notNull(),
+    itemCount: integer('item_count').default(0).notNull(),
+    forksCount: integer('forks_count').default(0).notNull(),
+    forkedFromId: text('forked_from_id'),
     favoritesCount: integer('favorites_count').default(0).notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at')
@@ -304,22 +307,30 @@ export const collections = pgTable(
   },
   (table) => [
     index('collections_owner_id_idx').on(table.ownerId),
-    index('collections_entity_type_idx').on(table.entityType),
+    index('collections_slug_idx').on(table.slug),
+    uniqueIndex('collections_owner_slug_idx').on(table.ownerId, table.slug),
   ]
 );
 
 export const collectionItems = pgTable(
   'collection_items',
   {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     collectionId: text('collection_id')
       .notNull()
       .references(() => collections.id, { onDelete: 'cascade' }),
-    entityId: text('entity_id').notNull(), // MCP or Skill ID
+    itemId: text('item_id').notNull(), // MCP or Skill ID
+    itemType: text('item_type', { enum: ['mcp', 'skill'] }).notNull(),
     note: text('note'),
+    position: integer('position').default(0).notNull(),
     addedAt: timestamp('added_at').defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({ columns: [table.collectionId, table.entityId] }),
+    index('collection_items_collection_id_idx').on(table.collectionId),
+    uniqueIndex('collection_items_collection_item_idx').on(
+      table.collectionId,
+      table.itemId
+    ),
   ]
 );
 
@@ -689,6 +700,12 @@ export const collectionsRelations = relations(collections, ({ one, many }) => ({
     fields: [collections.ownerId],
     references: [users.id],
   }),
+  forkedFrom: one(collections, {
+    fields: [collections.forkedFromId],
+    references: [collections.id],
+    relationName: 'forkedFrom',
+  }),
+  forks: many(collections, { relationName: 'forkedFrom' }),
   items: many(collectionItems),
 }));
 
