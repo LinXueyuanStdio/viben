@@ -17,9 +17,16 @@ This directory contains guidelines for frontend development. These specs ensure 
 | [Design System](./design-system.md) | Complete design system: colors, typography, motion, components | ✅ Complete |
 | [Component Guidelines](./components.md) | React component patterns and best practices | ✅ Complete |
 | [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" and "Publish My Skill" wizard flows | ✅ Complete |
+| [Chat Integration](./chat-integration.md) | Workspace chat page integration from workany (**desktop only**) | ✅ Complete |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | To fill |
 | [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | To fill |
+
+### Desktop-CLI Integration
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Desktop-CLI Integration](../modules/desktop-cli-integration.md) | Desktop 与 CLI 共享 @viben/core 库，UI 页面规范 | 📝 Specification |
 
 ---
 

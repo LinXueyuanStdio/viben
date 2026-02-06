@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Check,
   AlertCircle,
@@ -18,6 +18,8 @@ import {
   Book,
   Bug,
   User,
+  Keyboard,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -38,9 +40,10 @@ import { changeLanguage, getCurrentLanguage } from "@/i18n";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { platform } from "@tauri-apps/plugin-os";
 
 // Settings section type
-type SettingsSection = "general" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -51,6 +54,7 @@ interface SectionConfig {
 
 const SECTIONS: SectionConfig[] = [
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
+  { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -177,6 +181,8 @@ export function SettingsPage() {
     switch (activeSection) {
       case "general":
         return <GeneralSection key="general" />;
+      case "shortcuts":
+        return <ShortcutsSection key="shortcuts" />;
       case "environment":
         return <EnvironmentSection key="environment" />;
       case "storage":
@@ -413,6 +419,282 @@ function GeneralSection() {
             </SelectContent>
           </Select>
         </SettingsItem>
+      </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * Shortcuts Section
+ * -------------------------------------------------------------------------- */
+
+// Platform detection using Tauri OS plugin
+function usePlatform(): string {
+  // platform() is synchronous and returns the compile-time platform value
+  try {
+    return platform();
+  } catch {
+    // Fallback to macos if detection fails (e.g., in dev mode without Tauri)
+    return "macos";
+  }
+}
+
+// Format shortcut string for display (convert to platform symbols)
+function formatShortcutForPlatform(shortcut: string, currentPlatform: string): string {
+  if (!shortcut) return "";
+
+  const isMac = currentPlatform === "macos";
+
+  if (isMac) {
+    return shortcut
+      .replace(/Ctrl\+/gi, "⌃")
+      .replace(/Alt\+/gi, "⌥")
+      .replace(/Shift\+/gi, "⇧")
+      .replace(/Cmd\+/gi, "⌘")
+      .replace(/Meta\+/gi, "⌘")
+      .replace(/Enter/gi, "↵");
+  } else {
+    // Windows/Linux: Show Ctrl instead of Cmd, Win instead of Meta
+    return shortcut
+      .replace(/Meta\+/gi, "Win+")
+      .replace(/Cmd\+/gi, "Ctrl+");
+  }
+}
+
+// Parse keyboard event to shortcut string
+function keyEventToShortcutForPlatform(e: KeyboardEvent, currentPlatform: string): string {
+  const parts: string[] = [];
+  const isMac = currentPlatform === "macos";
+
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.altKey) parts.push("Alt");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.metaKey) parts.push(isMac ? "Cmd" : "Meta");
+
+  // Get the key, excluding modifier keys themselves
+  const key = e.key;
+  if (!["Control", "Alt", "Shift", "Meta"].includes(key)) {
+    // Normalize key names
+    if (key === " ") {
+      parts.push("Space");
+    } else if (key.length === 1) {
+      parts.push(key.toUpperCase());
+    } else {
+      parts.push(key);
+    }
+  }
+
+  return parts.join("+");
+}
+
+// Shortcut Recorder Component
+interface ShortcutRecorderProps {
+  value: string;
+  onChange: (shortcut: string) => void;
+  onClear: () => void;
+  currentPlatform: string;
+}
+
+function ShortcutRecorder({ value, onChange, onClear, currentPlatform }: ShortcutRecorderProps) {
+  const { t } = useTranslation();
+  const [isRecording, setIsRecording] = useState(false);
+  const inputRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Escape to cancel recording
+      if (e.key === "Escape") {
+        setIsRecording(false);
+        return;
+      }
+
+      // Only record if there's at least one modifier or a valid single key
+      const shortcut = keyEventToShortcutForPlatform(e, currentPlatform);
+      if (shortcut && !["Ctrl", "Alt", "Shift", "Cmd", "Meta"].includes(shortcut)) {
+        onChange(shortcut);
+        setIsRecording(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [isRecording, onChange, currentPlatform]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        ref={inputRef}
+        onClick={() => setIsRecording(true)}
+        onBlur={() => setIsRecording(false)}
+        className={cn(
+          "min-w-[120px] px-3 py-1.5 rounded-lg border text-sm font-mono",
+          "transition-all duration-200",
+          "focus:outline-none focus:ring-2 focus:ring-primary/20",
+          isRecording
+            ? "border-primary bg-primary/5 text-primary"
+            : value
+              ? "border-border bg-muted text-foreground"
+              : "border-border bg-background text-muted-foreground"
+        )}
+      >
+        {isRecording ? t("settings.pressKeys") : value ? formatShortcutForPlatform(value, currentPlatform) : "—"}
+      </button>
+      {value && !isRecording && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          onClick={onClear}
+          title={t("settings.clearShortcut")}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function ShortcutsSection() {
+  const { t } = useTranslation();
+  const currentPlatform = usePlatform();
+  const {
+    shortcuts,
+    showHideWindowScope,
+    setShortcut,
+    setShowHideWindowScope,
+    resetShortcuts,
+  } = useAppStore();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold font-serif mb-1">
+          {t("settings.sections.shortcuts")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("settings.shortcutsDescription")}
+        </p>
+      </div>
+
+      {/* Shortcut Items */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        {/* Send Message */}
+        <SettingsItem
+          title={t("settings.sendMessage")}
+          description={t("settings.sendMessageDescription")}
+        >
+          <Select
+            value={shortcuts.sendMessage}
+            onValueChange={(value) => setShortcut("sendMessage", value)}
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue>
+                {shortcuts.sendMessage === "Enter"
+                  ? t("settings.enterKey")
+                  : t("settings.cmdEnter")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Enter">{t("settings.enterKey")}</SelectItem>
+              <SelectItem value="Cmd+Enter">{t("settings.cmdEnter")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsItem>
+
+        {/* Screenshot */}
+        <SettingsItem
+          title={t("settings.screenshot")}
+          description={t("settings.screenshotDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.screenshot}
+            onChange={(value) => setShortcut("screenshot", value)}
+            onClear={() => setShortcut("screenshot", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
+
+        {/* Lock */}
+        <SettingsItem
+          title={t("settings.lock")}
+          description={t("settings.lockDescription")}
+        >
+          <ShortcutRecorder
+            value={shortcuts.lock}
+            onChange={(value) => setShortcut("lock", value)}
+            onClear={() => setShortcut("lock", "")}
+            currentPlatform={currentPlatform}
+          />
+        </SettingsItem>
+
+        {/* Show/Hide Window */}
+        <div className="py-4 border-b border-border">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 pr-4">
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.showHideWindow")}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {t("settings.showHideWindowDescription")}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <ShortcutRecorder
+                value={shortcuts.showHideWindow}
+                onChange={(value) => setShortcut("showHideWindow", value)}
+                onClear={() => setShortcut("showHideWindow", "")}
+                currentPlatform={currentPlatform}
+              />
+            </div>
+          </div>
+
+          {/* Nested Control Scope option */}
+          <div className="mt-4 ml-4 pl-4 border-l-2 border-muted">
+            <div className="flex items-center justify-between">
+              <div className="flex-1 pr-4">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t("settings.controlScope")}
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("settings.controlScopeDescription")}
+                </p>
+              </div>
+              <Select
+                value={showHideWindowScope}
+                onValueChange={(value) => setShowHideWindowScope(value as "all" | "chatRelated")}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue>
+                    {showHideWindowScope === "all"
+                      ? t("settings.allWindows")
+                      : t("settings.chatRelatedWindows")}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("settings.allWindows")}</SelectItem>
+                  <SelectItem value="chatRelated">{t("settings.chatRelatedWindows")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Reset to Defaults Button */}
+        <div className="pt-4">
+          <Button
+            variant="outline"
+            onClick={resetShortcuts}
+            className="w-full"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            {t("settings.resetShortcuts")}
+          </Button>
+        </div>
       </div>
     </div>
   );

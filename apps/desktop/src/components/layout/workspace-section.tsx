@@ -165,7 +165,7 @@ function WorkspaceItem({ workspace, isActive, onSelect }: WorkspaceItemProps) {
       to={`/workspace/${workspace.id}`}
       onClick={onSelect}
       className={cn(
-        "group flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+        "group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
         "transition-all duration-200",
         isActive
           ? [

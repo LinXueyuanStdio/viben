@@ -34,6 +34,14 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    proxy: {
+      // Proxy vibe-kanban API to avoid CORS issues in development
+      "/vibe-kanban-api": {
+        target: "http://127.0.0.1:60964",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/vibe-kanban-api/, "/api"),
+      },
+    },
   },
   // Build optimizations for production
   build: {

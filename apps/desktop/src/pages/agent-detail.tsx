@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   Bot,
   Server,
   Sparkles,
@@ -26,6 +25,7 @@ import {
   FileJson,
   FormInput,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageWrapper, StaggerContainer, StaggerItem } from "@/components/layout";
+import { WorkspaceHeader } from "@/components/workspace";
 import {
   useLocalWorkspaces,
   useWorkspaceAgents,
@@ -186,56 +187,27 @@ export function AgentDetailPage() {
     );
   }
 
-  const agentIcons: Record<string, string> = {
-    "claude-code": "CC",
-    codex: "Cx",
-    cursor: "Cu",
-    windsurf: "W",
-    vscode: "VS",
-    continue: "Co",
-    zed: "Z",
-    unknown: "?",
-  };
-
   return (
-    <PageWrapper>
-      <div className="p-6 max-w-5xl mx-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to={`/workspace/${workspaceId}`}>
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold">
-                {agentIcons[agent.type] || agent.name[0]}
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold font-serif">{agent.name}</h1>
-                <p className="text-sm text-muted-foreground">
-                  {workspace.name}
-                </p>
-              </div>
-            </div>
+    <PageWrapper className="flex flex-col h-full">
+      {/* Header with Breadcrumb */}
+      <WorkspaceHeader
+        workspace={workspace}
+        segments={[
+          { label: agent.name, href: `/workspace/${workspaceId}/agent/${agentId}` },
+        ]}
+        showRefresh={false}
+        showRemove={false}
+        rightContent={
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Terminal className="h-4 w-4" />
+            <code className="font-mono text-xs bg-muted px-2 py-1 rounded max-w-[300px] truncate">
+              {agent.config_path}
+            </code>
           </div>
-        </div>
+        }
+      />
 
-        {/* Config Path */}
-        <Card className="mb-6" interactive={false}>
-          <CardContent className="py-4">
-            <div className="flex items-center gap-2 text-sm">
-              <Terminal className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                {t("workspace.configPath")}:
-              </span>
-              <code className="font-mono text-xs bg-muted px-2 py-1 rounded">
-                {agent.config_path}
-              </code>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex-1 overflow-auto p-6 max-w-5xl mx-auto w-full">
 
         {/* Tabs for MCP, Skills, Agents, and Commands */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
@@ -313,7 +285,7 @@ export function AgentDetailPage() {
             />
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
     </PageWrapper>
   );
 }

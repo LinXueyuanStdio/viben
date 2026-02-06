@@ -142,7 +142,8 @@
       "storage": "存储",
       "about": "关于",
       "preferences": "偏好",
-      "languageAndTime": "语言与时间"
+      "languageAndTime": "语言与时间",
+      "shortcuts": "快捷键"
     },
     "generalDescription": "通用应用设置",
     "appearanceDescription": "自定义 Viben 在设备上的外观。",
@@ -186,7 +187,25 @@
     "timezoneDescription": "当前时区设置。",
     "storage": "存储",
     "downloadPath": "下载路径",
-    "offlineCache": "离线缓存"
+    "offlineCache": "离线缓存",
+    "shortcutsDescription": "自定义键盘快捷键",
+    "sendMessage": "发送消息",
+    "sendMessageDescription": "发送聊天消息的快捷键",
+    "screenshot": "截图",
+    "screenshotDescription": "截取屏幕的快捷键",
+    "lock": "锁定",
+    "lockDescription": "锁定应用的快捷键",
+    "showHideWindow": "显示/隐藏窗口",
+    "showHideWindowDescription": "切换窗口可见性的快捷键",
+    "controlScope": "控制范围",
+    "controlScopeDescription": "选择快捷键控制的窗口范围",
+    "chatRelatedWindows": "仅聊天相关窗口",
+    "allWindows": "所有窗口",
+    "resetShortcuts": "恢复默认设置",
+    "pressKeys": "按下快捷键...",
+    "clearShortcut": "清除快捷键",
+    "enterKey": "回车键",
+    "cmdEnter": "Cmd+回车"
   },
   "about": {
     "title": "Viben",
@@ -905,7 +924,39 @@
     "noCommands": "暂无命令",
     "noCommandsDesc": "在 .claude/commands/ 文件夹中未找到命令文件。",
     "selectCommand": "选择一个命令查看",
-    "rootNamespace": "根目录"
+    "rootNamespace": "根目录",
+    "kanban": "任务看板",
+    "addTask": "添加任务",
+    "kanbanStatus": {
+      "todo": "待办",
+      "inProgress": "进行中",
+      "review": "审核中",
+      "done": "已完成"
+    },
+    "taskDetail": "任务详情",
+    "taskName": "任务名称",
+    "description": "描述",
+    "priority": "优先级",
+    "noPriority": "无优先级",
+    "tags": "标签",
+    "taskDueDate": "截止日期",
+    "editTask": "编辑任务",
+    "deleteTask": "删除任务",
+    "moveTask": "移动任务",
+    "noTasks": "暂无任务",
+    "noTasksDesc": "创建您的第一个任务开始使用",
+    "selectTaskToView": "选择一个任务查看详情",
+    "updated": "更新时间",
+    "sortBy": "排序方式",
+    "sort": {
+      "manual": "手动",
+      "priority": "优先级",
+      "created": "创建时间",
+      "updated": "更新时间",
+      "name": "名称"
+    },
+    "clearFilters": "清除",
+    "workspace": "工作区"
   },
   "sync": {
     "workspaceSync": "工作区同步",

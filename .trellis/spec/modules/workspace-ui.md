@@ -4,6 +4,27 @@
 
 ---
 
+## Important: Platform Distinction
+
+> **Warning**: There are TWO different "workspace" concepts in this project:
+>
+> ### 1. Desktop Workspaces (apps/desktop)
+> - **Definition**: Local filesystem folders containing agent configurations
+> - **Storage**: `~/.browsemcp/workspaces.json` + local `.claude/`, `.codex/` folders
+> - **Features**: MCP servers, Skills, Chat, Kanban, file system access
+> - **Persistence**: Local SQLite + filesystem
+> - **See**: `modules/workspace-management.md`
+>
+> ### 2. Web Workspaces (apps/web)
+> - **Definition**: Cloud-based collaborative spaces for organizing packages
+> - **Storage**: PostgreSQL database
+> - **Features**: Package organization, member management, settings
+> - **NO**: Chat, Kanban, local filesystem features
+>
+> **Do NOT** port desktop workspace features (Chat, Kanban) to web. They are fundamentally different systems.
+
+---
+
 ## Overview
 
 | Attribute | Value |

@@ -1,0 +1,1547 @@
+# CLI Application Specification
+
+> Bootstrap CLI for Viben - configure applications, manage services, and query status.
+
+---
+
+## Overview
+
+### Positioning
+
+CLI (`viben`) 是一个 **bootstrap 工具**，用于：
+
+1. **被人使用**：命令行配置应用、启动服务、查看状态
+2. **被 Agent 使用**：Agent 通过 Bash 工具调用 CLI 来配置复杂的 agent、mcp、skills
+
+### Design Principles
+
+- **Simple & Focused**：不承担复杂交互任务，专注配置和状态管理
+- **Human + Machine Friendly**：默认人类可读输出，`--json` 输出结构化数据供 Agent 解析
+- **Scope Aware**：自动检测工作区，支持 `--global`/`--workspace` 覆盖
+
+---
+
+## Tech Stack
+
+| Component | Choice | Reason |
+|-----------|--------|--------|
+| Runtime | Node.js | 复用现有 TypeScript 代码和 packages |
+| Framework | Commander.js | 成熟稳定，生态丰富 |
+| Config | YAML | 人类可读，支持注释 |
+| Output | Chalk + JSON | 彩色终端 + 结构化输出 |
+
+---
+
+## Configuration
+
+### File Locations
+
+```
+~/.viben/                                    # State directory (VIBEN_STATE_DIR)
+├── config.yaml                              # 全局配置 (VIBEN_CONFIG_PATH)
+├── agents/                                  # Agent 实例目录
+│   └── <agent-id>/                          # 单个 agent 实例
+│       ├── config.yaml                      # Agent 配置
+│       ├── mcp_servers.json                 # MCP servers 配置
+│       ├── skills/                          # Agent 专属 skills
+│       ├── memory/                          # Agent 记忆
+│       │   ├── MEMORY.md                    # 主记忆文件
+│       │   ├── 2024-01-15.md                # 日志 (append-only)
+│       │   ├── 2024-01-16.md                # 日志 (今天+昨天在会话启动时读取)
+│       │   └── ...                          # 其他记忆文件
+│       ├── .agentrc                         # Agent 启动配置
+│       ├── .agent_history                   # 命令历史
+│       └── .agent_sessions/                 # 会话存储
+│           └── <session-id>/                # 单个会话
+│               ├── config.yaml              # 会话配置
+│               └── messages.rollout.jsonl   # 消息历史 (JSONL)
+├── agent-templates/                         # Agent 模板目录
+│   └── <template-id>/                       # 模板结构同 agents/<id>/
+│       └── ...
+├── providers.yaml                           # API Providers 配置
+├── models.yaml                              # Models 配置 (aliases, fallbacks)
+├── mcp/                                     # 共享 MCP (所有 agents 可用)
+│   ├── installed.yaml                       # 已安装 MCP 列表
+│   └── <name>/                              # 各 MCP 的配置和数据
+└── skills/                                  # 共享 Skills (所有 agents 可用)
+    ├── installed.yaml                       # 已安装 Skills 列表
+    └── <name>/                              # 各 Skill 的配置和数据
+
+<project>/                                   # 项目工作区
+├── .viben/                                  # 工作区配置
+│   └── config.yaml                          # 工作区配置（覆盖全局）
+├── .claude/                                 # Claude Code 工作区配置 (运行时叠加)
+├── .cursor/                                 # Cursor 工作区配置 (运行时叠加)
+└── ...                                      # 其他 agent 类型的工作区配置
+```
+
+### Environment Variables
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VIBEN_STATE_DIR` | 状态目录 | `~/.viben` |
+| `VIBEN_CONFIG_PATH` | 配置文件路径 | `~/.viben/config.yaml` |
+| `VIBEN_AGENT` | 当前 agent ID | `main` |
+| `VIBEN_SCOPE` | 配置作用域 | 自动检测 |
+
+### Config Structure (YAML)
+
+```yaml
+# ~/.viben/config.yaml
+version: 1
+
+# 全局设置
+settings:
+  editor: code
+  pager: less
+  color: auto
+
+# Agent 配置引用
+agents:
+  - claude-code
+  - cursor
+
+# 默认 MCP 列表（全局启用）
+mcp:
+  enabled:
+    - filesystem
+    - git
+  disabled:
+    - browser
+
+# 默认 Skills 列表
+skills:
+  enabled:
+    - code-review
+    - commit
+```
+
+### Providers Configuration (providers.yaml)
+
+Provider 配置使用标准环境变量名称，用户可以：
+1. 直接设置环境变量（推荐，不在配置文件中存储密钥）
+2. 在配置文件中使用 `env:VAR_NAME` 引用环境变量
+3. 在配置文件中使用 `encrypted:xxx` 存储加密值
+
+```yaml
+# ~/.viben/providers.yaml
+version: 1
+
+# 默认 provider
+default: anthropic-main
+
+providers:
+  # ============================================================
+  # Anthropic (Claude)
+  # 环境变量: ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
+  # ============================================================
+  anthropic-main:
+    type: anthropic
+    # 方式1: 使用环境变量 (推荐，无需在此配置)
+    # 自动读取 ANTHROPIC_API_KEY
+
+    # 方式2: 显式引用环境变量
+    # ANTHROPIC_API_KEY: "env:ANTHROPIC_API_KEY"
+
+    # 方式3: 加密存储 (通过 viben provider create 生成)
+    # ANTHROPIC_API_KEY: "encrypted:xxx"
+
+    # 可选配置
+    # ANTHROPIC_BASE_URL: "https://api.anthropic.com"
+    # timeout: 120000
+    # max_retries: 3
+
+  # ============================================================
+  # OpenAI
+  # 环境变量: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID
+  # ============================================================
+  openai-main:
+    type: openai
+    # 自动读取 OPENAI_API_KEY, OPENAI_BASE_URL
+    # 可选配置
+    # OPENAI_ORG_ID: "org-xxxxx"
+
+  # ============================================================
+  # Azure OpenAI
+  # 环境变量: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
+  #          AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT
+  # ============================================================
+  azure-gpt4:
+    type: azure
+    AZURE_OPENAI_ENDPOINT: "https://my-resource.openai.azure.com"
+    AZURE_OPENAI_API_VERSION: "2024-02-15-preview"
+    AZURE_OPENAI_DEPLOYMENT: "gpt-4-turbo"
+    # AZURE_OPENAI_API_KEY 从环境变量读取
+
+  # ============================================================
+  # Google AI (Gemini)
+  # 环境变量: GOOGLE_API_KEY, GOOGLE_PROJECT_ID, GOOGLE_LOCATION
+  # ============================================================
+  google-gemini:
+    type: google
+    # 自动读取 GOOGLE_API_KEY
+    # 可选配置
+    # GOOGLE_PROJECT_ID: "my-project"
+    # GOOGLE_LOCATION: "us-central1"
+
+  # ============================================================
+  # OpenRouter
+  # 环境变量: OPENROUTER_API_KEY
+  # ============================================================
+  openrouter:
+    type: openrouter
+    # 自动读取 OPENROUTER_API_KEY
+    # 可选配置
+    # site_url: "https://myapp.com"
+    # app_name: "My App"
+
+  # ============================================================
+  # Ollama (本地模型)
+  # 环境变量: OLLAMA_HOST
+  # ============================================================
+  local-ollama:
+    type: ollama
+    OLLAMA_HOST: "http://localhost:11434"
+    # 无需 API Key
+
+  # ============================================================
+  # 自定义 OpenAI 兼容 API
+  # 环境变量: CUSTOM_API_KEY, CUSTOM_BASE_URL
+  # ============================================================
+  custom-api:
+    type: custom
+    OPENAI_BASE_URL: "https://api.example.com/v1"
+    # OPENAI_API_KEY 从环境变量读取
+    # 可选: 自定义请求头
+    # headers:
+    #   X-Custom-Header: "value"
+
+  # ============================================================
+  # DeepSeek
+  # 环境变量: DEEPSEEK_API_KEY
+  # ============================================================
+  deepseek:
+    type: custom
+    OPENAI_BASE_URL: "https://api.deepseek.com/v1"
+    # 使用 DEEPSEEK_API_KEY 或 OPENAI_API_KEY
+
+  # ============================================================
+  # Groq
+  # 环境变量: GROQ_API_KEY
+  # ============================================================
+  groq:
+    type: custom
+    OPENAI_BASE_URL: "https://api.groq.com/openai/v1"
+    # 使用 GROQ_API_KEY 或 OPENAI_API_KEY
+
+  # ============================================================
+  # Together AI
+  # 环境变量: TOGETHER_API_KEY
+  # ============================================================
+  together:
+    type: custom
+    OPENAI_BASE_URL: "https://api.together.xyz/v1"
+    # 使用 TOGETHER_API_KEY 或 OPENAI_API_KEY
+
+  # ============================================================
+  # Fireworks AI
+  # 环境变量: FIREWORKS_API_KEY
+  # ============================================================
+  fireworks:
+    type: custom
+    OPENAI_BASE_URL: "https://api.fireworks.ai/inference/v1"
+    # 使用 FIREWORKS_API_KEY 或 OPENAI_API_KEY
+```
+
+#### 环境变量优先级
+
+Provider 配置读取顺序：
+1. 命令行参数 (`--api-key`)
+2. 配置文件中的显式值
+3. Provider 特定环境变量 (如 `ANTHROPIC_API_KEY`)
+4. 通用环境变量 (如 `OPENAI_API_KEY` for custom type)
+
+#### 支持的环境变量
+
+| Provider | API Key | Base URL | 其他 |
+|----------|---------|----------|------|
+| `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | - |
+| `openai` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_ORG_ID` |
+| `azure` | `AZURE_OPENAI_API_KEY` | `AZURE_OPENAI_ENDPOINT` | `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT` |
+| `google` | `GOOGLE_API_KEY` | - | `GOOGLE_PROJECT_ID`, `GOOGLE_LOCATION` |
+| `openrouter` | `OPENROUTER_API_KEY` | - | - |
+| `ollama` | - | `OLLAMA_HOST` | - |
+| `custom` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | - |
+
+#### 快速配置示例
+
+```bash
+# 只需设置环境变量，无需编辑配置文件
+export ANTHROPIC_API_KEY="sk-ant-xxx"
+export OPENAI_API_KEY="sk-xxx"
+
+# 创建 provider (自动使用环境变量)
+viben provider create -t anthropic
+viben provider create -t openai
+
+# 或显式指定 (会加密存储)
+viben provider create -t anthropic --api-key "sk-ant-xxx"
+```
+
+### Models Configuration (models.yaml)
+
+```yaml
+# ~/.viben/models.yaml
+version: 1
+
+# 默认模型
+default: claude-sonnet-4-20250514
+
+# ============================================================
+# 模型别名 (Aliases)
+# 使用短名称引用常用模型
+# ============================================================
+aliases:
+  # 速度优先
+  fast: claude-3-5-haiku-latest
+  quick: gpt-4o-mini
+
+  # 智能优先
+  smart: claude-sonnet-4-20250514
+  balanced: gpt-4o
+
+  # 最强能力
+  best: claude-opus-4-20250514
+  powerful: gpt-4-turbo
+
+  # 特定用途
+  code: claude-sonnet-4-20250514
+  chat: claude-3-5-haiku-latest
+  reasoning: o1-preview
+
+  # Provider 特定
+  gpt: gpt-4-turbo
+  claude: claude-sonnet-4-20250514
+  gemini: gemini-1.5-pro
+
+# ============================================================
+# 回退链 (Fallbacks)
+# 当首选模型不可用时，按顺序尝试
+# ============================================================
+fallbacks:
+  - claude-sonnet-4-20250514      # 首选
+  - gpt-4-turbo                    # 第一备选
+  - claude-3-5-haiku-latest        # 第二备选
+  - gpt-4o-mini                    # 最后备选
+
+# ============================================================
+# 模型特定配置 (Model Config)
+# 覆盖模型的默认参数
+# ============================================================
+model_config:
+  # Claude Sonnet 4
+  claude-sonnet-4-20250514:
+    provider: anthropic-main        # 使用哪个 provider
+    max_tokens: 8192                # 最大输出 tokens
+    temperature: 0.7                # 温度
+    # 可选参数
+    # top_p: 0.9
+    # top_k: 40
+    # stop_sequences: ["\n\nHuman:"]
+
+  # Claude Opus 4
+  claude-opus-4-20250514:
+    provider: anthropic-main
+    max_tokens: 4096
+    temperature: 0.5                # 更保守的温度
+
+  # Claude Haiku
+  claude-3-5-haiku-latest:
+    provider: anthropic-main
+    max_tokens: 4096
+    temperature: 0.8
+
+  # GPT-4 Turbo
+  gpt-4-turbo:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.7
+
+  # GPT-4o
+  gpt-4o:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.7
+
+  # GPT-4o Mini
+  gpt-4o-mini:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.8
+
+  # Azure GPT-4
+  azure-gpt-4:
+    provider: azure-gpt4            # 使用 Azure provider
+    max_tokens: 4096
+    temperature: 0.7
+
+  # Gemini 1.5 Pro
+  gemini-1.5-pro:
+    provider: google-gemini
+    max_tokens: 8192
+    temperature: 0.7
+
+  # 本地 Ollama 模型
+  llama3:
+    provider: local-ollama
+    max_tokens: 4096
+    temperature: 0.8
+
+  # DeepSeek
+  deepseek-chat:
+    provider: deepseek
+    max_tokens: 4096
+    temperature: 0.7
+
+  # Groq (LLaMA)
+  llama-3.1-70b-versatile:
+    provider: groq
+    max_tokens: 4096
+    temperature: 0.7
+
+# ============================================================
+# 模型能力标签 (用于智能选择)
+# ============================================================
+model_capabilities:
+  claude-sonnet-4-20250514:
+    context_window: 200000
+    supports_vision: true
+    supports_tools: true
+    supports_streaming: true
+    cost_per_1k_input: 0.003
+    cost_per_1k_output: 0.015
+
+  claude-opus-4-20250514:
+    context_window: 200000
+    supports_vision: true
+    supports_tools: true
+    supports_streaming: true
+    cost_per_1k_input: 0.015
+    cost_per_1k_output: 0.075
+
+  gpt-4-turbo:
+    context_window: 128000
+    supports_vision: true
+    supports_tools: true
+    supports_streaming: true
+    cost_per_1k_input: 0.01
+    cost_per_1k_output: 0.03
+
+  gpt-4o-mini:
+    context_window: 128000
+    supports_vision: true
+    supports_tools: true
+    supports_streaming: true
+    cost_per_1k_input: 0.00015
+    cost_per_1k_output: 0.0006
+```
+
+### Scope Resolution
+
+```
+优先级（高到低）：
+1. 命令行 flag (--global / --workspace)
+2. 环境变量 VIBEN_SCOPE
+3. 自动检测：
+   - 当前目录或祖先目录存在 .viben/ → workspace
+   - 否则 → global
+```
+
+---
+
+## Command Structure
+
+### Overview
+
+```
+viben <command> [subcommand] [options]
+
+Commands:
+  init          Initialize workspace in current directory
+  config        Configuration management (git-style)
+  service       Manage background services
+  agent         Manage agent instances and templates
+  provider      Manage API providers (OpenAI, Anthropic, etc.)
+  model         Manage models, aliases, and fallbacks
+  mcp           Manage MCP servers
+  skill         Manage skills
+  workspace     Workspace operations
+  version       Show version info
+  help          Show help
+```
+
+### Global Options
+
+```
+--json              Output as JSON (for Agent parsing)
+--global, -g        Use global config
+--workspace         Use workspace config (current directory)
+-n, --name <id>     Specify agent name/ID (default: current or 'main')
+--verbose, -v       Verbose output
+--quiet, -q         Suppress non-essential output
+--help, -h          Show help
+```
+
+---
+
+## Commands Detail
+
+### 1. `viben init`
+
+Initialize a workspace in the current directory.
+
+```bash
+viben init                    # 创建 .viben/config.yaml
+viben init --from <template>  # 从模板初始化
+```
+
+**Output (Human)**:
+```
+✓ Initialized Viben workspace in /path/to/project
+  Created .viben/config.yaml
+
+Next steps:
+  viben mcp install <name>    # Install MCP servers
+  viben skill install <name>  # Install skills
+```
+
+**Output (JSON)**:
+```json
+{
+  "success": true,
+  "path": "/path/to/project/.viben",
+  "files": ["config.yaml"]
+}
+```
+
+---
+
+### 2. `viben config` (Git-style)
+
+Configuration management following git config conventions.
+
+```bash
+# 读取配置
+viben config get <key>
+viben config get settings.editor
+viben config get --global mcp.enabled
+
+# 设置配置
+viben config set <key> <value>
+viben config set settings.editor vim
+viben config set --global settings.pager less
+
+# 列出配置
+viben config list
+viben config list --global
+viben config list --show-origin    # 显示配置来源
+
+# 编辑配置
+viben config edit                  # 打开默认编辑器
+viben config edit --global
+
+# 删除配置
+viben config unset <key>
+```
+
+**Key Format**: Dot notation, e.g., `settings.editor`, `mcp.enabled[0]`
+
+---
+
+### 3. `viben service`
+
+Manage background services.
+
+```bash
+# 服务状态
+viben service status              # 所有服务状态
+viben service status <name>       # 单个服务状态
+
+# 启动/停止
+viben service start <name>        # 启动服务
+viben service stop <name>         # 停止服务
+viben service restart <name>      # 重启服务
+
+# 日志
+viben service logs <name>         # 查看服务日志
+viben service logs <name> -f      # 实时跟踪日志
+```
+
+**Managed Services**:
+
+| Service | Description |
+|---------|-------------|
+| `mcp:<name>` | MCP Server 进程 |
+| `viben:sync` | 配置同步服务 |
+| `viben:index` | 本地索引服务 |
+
+**Output (Human)**:
+```
+Services:
+  mcp:filesystem    running   pid:12345  uptime:2h
+  mcp:git           running   pid:12346  uptime:2h
+  viben:sync        stopped   -          -
+```
+
+**Output (JSON)**:
+```json
+{
+  "services": [
+    {
+      "name": "mcp:filesystem",
+      "status": "running",
+      "pid": 12345,
+      "uptime": "2h"
+    }
+  ]
+}
+```
+
+---
+
+### 4. `viben agent`
+
+Manage agent instances and templates.
+
+---
+
+#### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Viben CLI                            │
+├─────────────────────────────────────────────────────────────┤
+│  Agent Template (可复用的 agent 配置模板)                    │
+│    └── Agent Instance (独立的 agent 实例)                   │
+│          ├── config.yaml (agent 配置)                       │
+│          ├── mcp_servers.json (MCP 配置)                    │
+│          ├── skills/ (agent 专属 skills)                    │
+│          ├── memory/ (agent 记忆)                           │
+│          │   ├── MEMORY.md (主记忆)                         │
+│          │   └── YYYY-MM-DD.md (每日日志, append-only)      │
+│          ├── .agentrc (启动配置)                            │
+│          ├── .agent_history (命令历史)                      │
+│          └── .agent_sessions/<session_id>/ (会话存储)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### Key Concepts
+
+| 概念 | 说明 |
+|------|------|
+| **Agent** | 独立的智能体实例，拥有自己的配置、记忆、会话 |
+| **Template** | 可复用的 agent 配置模板 |
+| **Memory** | Agent 的长期记忆 (MEMORY.md + 每日日志) |
+| **Session** | Agent 的会话存储 (对话历史、状态) |
+| **Workspace Config** | 项目工作区的 agent 类型配置 (如 `.claude/`) |
+
+---
+
+#### Runtime Config Merging
+
+Agent 实际运行时，配置按以下顺序叠加：
+
+```
+1. ~/.viben/agents/<id>/config.yaml     # Agent 基础配置
+2. <project>/.claude/ (或其他 agent 类型)  # 工作区 agent 类型配置
+3. 命令行参数                              # 运行时覆盖
+```
+
+例如：在 `/projects/my-app` 目录下运行 agent `main`，会先加载 `~/.viben/agents/main/config.yaml`，再叠加 `/projects/my-app/.claude/` 的配置。
+
+---
+
+#### Agent Paths (Quick Map)
+
+```
+~/.viben/agents/<agent-id>/
+├── config.yaml              # Agent 配置
+├── mcp_servers.json         # MCP servers 配置
+├── skills/                  # Agent 专属 skills
+├── memory/                  # Agent 记忆
+│   ├── MEMORY.md            # 主记忆文件 (结构化知识)
+│   ├── 2024-01-15.md        # 每日日志 (append-only)
+│   ├── 2024-01-16.md        # 会话启动时读取 today + yesterday
+│   └── ...
+├── .agentrc                 # Agent 启动配置
+├── .agent_history           # 命令历史
+└── .agent_sessions/         # 会话存储
+    └── <session_id>/
+        ├── config.yaml              # 会话配置
+        └── messages.rollout.jsonl   # 消息历史 (JSONL)
+```
+
+---
+
+#### Memory System
+
+Agent 记忆系统设计：
+
+| 文件 | 说明 | 读取时机 |
+|------|------|----------|
+| `memory/MEMORY.md` | 主记忆文件，结构化知识 | 每次会话启动 |
+| `memory/YYYY-MM-DD.md` | 每日日志，append-only | 今天 + 昨天在会话启动时读取 |
+
+**每日日志格式**:
+```markdown
+# 2024-01-16
+
+## 10:30 - Session started
+- Working on feature X
+- Discovered issue with Y
+
+## 14:15 - Completed task
+- Fixed bug in Z
+- Updated documentation
+
+## 17:00 - Session ended
+- Next steps: review PR, deploy to staging
+```
+
+---
+
+#### Commands
+
+```bash
+# ============================================================
+# Agent 管理
+# ============================================================
+
+# 列出所有 agents
+viben agent list
+viben agent list --json
+
+# 创建新 agent
+viben agent create -n <id>
+viben agent create -n my-agent
+viben agent create -n my-agent -f <template-id>              # 从模板创建
+viben agent create -n my-agent -f /path/to/config.yaml       # 从配置文件创建
+viben agent create -n my-agent --clone <existing-agent-id>   # 克隆现有 agent
+
+# 查看 agent 详情
+viben agent show -n <id>
+viben agent show -n my-agent
+
+# 删除 agent
+viben agent remove -n <id>
+viben agent remove -n my-agent
+viben agent remove -n my-agent --force                       # 强制删除
+
+# 配置 agent
+viben agent config -n <id>                                   # 查看配置
+viben agent config -n <id> set <key> <value>                 # 设置配置
+viben agent config -n my-agent set model gpt-4
+viben agent config -n my-agent set plan true
+viben agent config -n my-agent set mcp.enabled "[\"filesystem\",\"git\"]"
+
+# 设置默认 agent
+viben agent set-default -n <id>
+viben agent set-default -n my-agent
+
+# 查看 agent 状态
+viben agent status
+viben agent status -n <id>
+
+# ============================================================
+# Agent Template 管理
+# ============================================================
+
+# 列出所有模板
+viben agent template list
+viben agent template list --json
+
+# 创建模板 (从现有 agent)
+viben agent template create -n <template-id> --clone <agent-id>
+viben agent template create -n coding-assistant --clone my-agent
+
+# 查看模板详情
+viben agent template show -n <template-id>
+
+# 删除模板
+viben agent template remove -n <template-id>
+
+# ============================================================
+# Session 管理
+# ============================================================
+
+# 列出 agent 的会话
+viben agent session list -n <agent-id>
+viben agent session list -n my-agent
+
+# 查看会话详情
+viben agent session show -n <agent-id> -s <session-id>
+
+# 创建新会话
+viben agent session create -n <agent-id> [session-name]
+viben agent session create -n my-agent "feature-auth"
+
+# 删除会话
+viben agent session remove -n <agent-id> -s <session-id>
+
+# 清空会话历史
+viben agent session clear -n <agent-id> -s <session-id>
+
+# ============================================================
+# Memory 管理
+# ============================================================
+
+# 查看 agent 记忆
+viben agent memory show -n <agent-id>
+viben agent memory show -n my-agent --date 2024-01-16        # 查看特定日期
+
+# 追加记忆 (到今日日志)
+viben agent memory append -n <agent-id> "content to append"
+
+# 编辑主记忆
+viben agent memory edit -n <agent-id>                        # 打开编辑器
+```
+
+---
+
+#### Agent Configuration File
+
+```yaml
+# ~/.viben/agents/my-agent/config.yaml
+version: 1
+
+# Agent 元数据
+id: my-agent
+name: "My Coding Assistant"
+description: "A helpful coding assistant"
+created: 2024-01-15T10:30:00Z
+
+# Agent 类型 (决定运行时行为)
+type: claude-code  # claude-code | cursor | gemini | codex | ...
+
+# 类型特定配置
+type_config:
+  plan: true
+  dangerously_skip_permissions: false
+  append_prompt: "You are a helpful coding assistant."
+
+# MCP 配置 (也可以在 mcp_servers.json 中)
+mcp:
+  enabled:
+    - filesystem
+    - git
+  disabled:
+    - browser
+
+# Skills 配置
+skills:
+  enabled:
+    - code-review
+    - commit
+```
+
+---
+
+#### MCP Servers Configuration
+
+```json
+// ~/.viben/agents/my-agent/mcp_servers.json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-filesystem"],
+      "env": {
+        "ROOT": "/path/to/workspace"
+      }
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-git"]
+    }
+  }
+}
+```
+
+---
+
+#### Agent RC File
+
+```bash
+# ~/.viben/agents/my-agent/.agentrc
+# Agent 启动时执行的配置
+
+# 环境变量
+export ANTHROPIC_API_KEY="sk-ant-xxx"
+export OPENAI_API_KEY="sk-xxx"
+
+# 默认会话
+DEFAULT_SESSION="main"
+
+# 启动时读取的记忆文件
+MEMORY_FILES="MEMORY.md"
+DAILY_LOG_DAYS=2  # 读取今天+昨天
+```
+
+---
+
+#### Output Examples
+
+**`viben agent list` (Human)**:
+```
+Agents:
+  main*         claude-code   3 sessions   ~/.viben/agents/main/
+  my-agent      claude-code   1 session    ~/.viben/agents/my-agent/
+  research-bot  gemini        0 sessions   ~/.viben/agents/research-bot/
+
+* = current agent
+```
+
+**`viben agent show -n my-agent` (Human)**:
+```
+Agent: my-agent
+Name: My Coding Assistant
+Type: claude-code
+Created: 2024-01-15
+
+Paths:
+  Config:   ~/.viben/agents/my-agent/config.yaml
+  Memory:   ~/.viben/agents/my-agent/memory/
+  Sessions: ~/.viben/agents/my-agent/.agent_sessions/
+
+Memory:
+  MEMORY.md     2.3 KB    last modified 2h ago
+  2024-01-16.md 1.1 KB    today
+  2024-01-15.md 3.2 KB    yesterday
+
+Sessions (1):
+  main   "Feature development"   2h ago   42 messages
+
+MCP: filesystem, git (2 enabled)
+Skills: code-review, commit (2 enabled)
+```
+
+**`viben agent template list` (Human)**:
+```
+Agent Templates:
+  coding-assistant    claude-code   "General coding assistant"
+  researcher          gemini        "Research and analysis"
+  code-reviewer       claude-code   "Code review specialist"
+```
+
+**`viben agent list --json`**:
+```json
+{
+  "success": true,
+  "data": {
+    "current": "main",
+    "agents": [
+      {
+        "id": "main",
+        "name": "Main Agent",
+        "type": "claude-code",
+        "path": "~/.viben/agents/main/",
+        "session_count": 3,
+        "memory_size": "5.6 KB"
+      },
+      {
+        "id": "my-agent",
+        "name": "My Coding Assistant",
+        "type": "claude-code",
+        "path": "~/.viben/agents/my-agent/",
+        "session_count": 1,
+        "memory_size": "3.4 KB"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 5. `viben provider`
+
+Manage API providers (OpenAI, Anthropic, Google, etc.).
+
+---
+
+#### Provider Types
+
+| Type | Description | Auth Methods |
+|------|-------------|--------------|
+| `openai` | OpenAI API | API Key |
+| `anthropic` | Anthropic API | API Key |
+| `google` | Google AI (Gemini) | API Key, OAuth |
+| `azure` | Azure OpenAI | API Key, Azure AD |
+| `openrouter` | OpenRouter | API Key |
+| `ollama` | Ollama (local) | None |
+| `custom` | Custom OpenAI-compatible | API Key |
+
+---
+
+#### Commands
+
+```bash
+# ============================================================
+# Provider 管理
+# ============================================================
+
+# 列出所有 providers
+viben provider list
+viben provider list --json
+
+# 创建 provider
+viben provider create -n <name> -t <type> -c <config-file>
+viben provider create -n <name> -t <type> --auth <auth-method>
+viben provider create -n <name> -t <type> --api-key <key>
+viben provider create -n <name> -t <type> --api-key <key> --base-url <url>
+
+# 简写 (自动生成名称)
+viben provider create -t openai --api-key <key>
+viben provider create -t anthropic --api-key <key>
+viben provider create -t custom --api-key <key> --base-url https://api.example.com/v1
+
+# 删除 provider
+viben provider remove -n <name>
+
+# 设置默认 provider
+viben provider set-default -n <name>
+
+# 查看 provider 状态 (连通性检查)
+viben provider status
+viben provider status -n <name>
+```
+
+---
+
+#### Provider Configuration
+
+```yaml
+# ~/.viben/providers.yaml
+version: 1
+
+default: anthropic-main
+
+providers:
+  anthropic-main:
+    type: anthropic
+    api_key: "encrypted:sk-ant-xxx"
+
+  openai-main:
+    type: openai
+    api_key: "encrypted:sk-xxx"
+
+  azure-gpt4:
+    type: azure
+    api_key: "encrypted:xxx"
+    base_url: "https://my-resource.openai.azure.com"
+    api_version: "2024-02-15-preview"
+    deployment: "gpt-4-turbo"
+
+  local-ollama:
+    type: ollama
+    base_url: "http://localhost:11434"
+
+  custom-api:
+    type: custom
+    api_key: "encrypted:xxx"
+    base_url: "https://api.example.com/v1"
+```
+
+---
+
+#### Output Examples
+
+**`viben provider list` (Human)**:
+```
+Providers:
+  anthropic-main*   anthropic   ✓ connected
+  openai-main       openai      ✓ connected
+  azure-gpt4        azure       ✓ connected
+  local-ollama      ollama      ○ not running
+  custom-api        custom      ✓ connected
+
+* = default provider
+```
+
+**`viben provider status` (Human)**:
+```
+Provider Status:
+  anthropic-main   anthropic   ✓ connected   latency: 120ms
+  openai-main      openai      ✓ connected   latency: 85ms
+  azure-gpt4       azure       ✓ connected   latency: 150ms
+  local-ollama     ollama      ✗ error       connection refused
+  custom-api       custom      ✓ connected   latency: 200ms
+```
+
+---
+
+### 6. `viben model`
+
+Manage models, aliases, and fallbacks.
+
+---
+
+#### Commands
+
+```bash
+# ============================================================
+# Model 管理
+# ============================================================
+
+# 列出可用 models
+viben model list
+viben model list --provider <provider-name>
+viben model list --json
+
+# 查看 model 状态
+viben model status
+viben model status -n <model>
+
+# 设置默认 model
+viben model set-default -n <model>
+
+# ============================================================
+# Model Aliases (别名)
+# ============================================================
+
+# 列出别名
+viben model aliases list
+
+# 创建别名
+viben model aliases create -n <alias> -f <model>
+viben model aliases create -n fast -f claude-3-5-haiku-latest
+viben model aliases create -n smart -f claude-sonnet-4-20250514
+viben model aliases create -n best -f claude-opus-4-20250514
+
+# 删除别名
+viben model aliases remove -n <alias>
+
+# ============================================================
+# Model Fallbacks (回退链)
+# ============================================================
+
+# 列出回退链
+viben model fallbacks list
+
+# 添加到回退链
+viben model fallbacks create -n <model>
+viben model fallbacks create -n claude-sonnet-4-20250514
+viben model fallbacks create -n gpt-4-turbo
+viben model fallbacks create -n claude-3-5-haiku-latest
+
+# 从回退链移除
+viben model fallbacks remove -n <model>
+
+# 清空回退链
+viben model fallbacks clear
+```
+
+---
+
+#### Model Configuration
+
+```yaml
+# ~/.viben/models.yaml
+version: 1
+
+default: claude-sonnet-4-20250514
+
+# 模型别名
+aliases:
+  fast: claude-3-5-haiku-latest
+  smart: claude-sonnet-4-20250514
+  best: claude-opus-4-20250514
+  gpt: gpt-4-turbo
+
+# 回退链 (按顺序尝试)
+fallbacks:
+  - claude-sonnet-4-20250514
+  - gpt-4-turbo
+  - claude-3-5-haiku-latest
+
+# 模型特定配置
+model_config:
+  claude-sonnet-4-20250514:
+    provider: anthropic-main
+    max_tokens: 8192
+    temperature: 0.7
+
+  gpt-4-turbo:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.7
+```
+
+---
+
+#### Output Examples
+
+**`viben model list` (Human)**:
+```
+Available Models:
+  Provider: anthropic-main
+    claude-opus-4-20250514        200K context   $15/$75
+    claude-sonnet-4-20250514*     200K context   $3/$15
+    claude-3-5-haiku-latest       200K context   $0.25/$1.25
+
+  Provider: openai-main
+    gpt-4-turbo                   128K context   $10/$30
+    gpt-4o                        128K context   $2.5/$10
+    gpt-4o-mini                   128K context   $0.15/$0.6
+
+* = default model
+```
+
+**`viben model aliases list` (Human)**:
+```
+Model Aliases:
+  fast   → claude-3-5-haiku-latest
+  smart  → claude-sonnet-4-20250514
+  best   → claude-opus-4-20250514
+  gpt    → gpt-4-turbo
+```
+
+**`viben model fallbacks list` (Human)**:
+```
+Fallback Chain:
+  1. claude-sonnet-4-20250514   (anthropic-main)
+  2. gpt-4-turbo                (openai-main)
+  3. claude-3-5-haiku-latest    (anthropic-main)
+```
+
+**`viben model status` (Human)**:
+```
+Model Status:
+  Default: claude-sonnet-4-20250514
+
+  claude-sonnet-4-20250514   anthropic-main   ✓ available
+  gpt-4-turbo                openai-main      ✓ available
+  claude-3-5-haiku-latest    anthropic-main   ✓ available
+  local-llama                local-ollama     ✗ provider offline
+```
+
+---
+
+### 7. `viben mcp`
+
+Manage MCP servers.
+
+```bash
+# 安装/卸载
+viben mcp install <name>          # 从 marketplace 安装
+viben mcp install <name>@<version>
+viben mcp uninstall <name>
+
+# 列表
+viben mcp list                    # 列出已安装的 MCP
+viben mcp list --available        # 列出可安装的 MCP
+
+# 启用/禁用
+viben mcp enable <name>           # 启用 MCP
+viben mcp disable <name>          # 禁用 MCP
+
+# 配置单个 MCP
+viben mcp config <name>           # 查看 MCP 配置
+viben mcp config <name> set <key> <value>
+viben mcp config filesystem set root /path/to/dir
+```
+
+**Output (Human)**:
+```
+Installed MCP Servers:
+  filesystem    v1.2.0    enabled    Local filesystem access
+  git           v2.0.1    enabled    Git operations
+  browser       v1.0.0    disabled   Browser automation
+```
+
+---
+
+### 8. `viben skill`
+
+Manage skills.
+
+```bash
+# 安装/卸载
+viben skill install <name>
+viben skill install <name>@<version>
+viben skill uninstall <name>
+
+# 列表
+viben skill list                  # 列出已安装的 skills
+viben skill list --available      # 列出可安装的 skills
+```
+
+**Output (Human)**:
+```
+Installed Skills:
+  code-review     v1.0.0    Code review assistance
+  commit          v1.2.0    Smart commit messages
+  test-runner     v0.9.0    Test execution helper
+```
+
+---
+
+### 9. `viben workspace`
+
+Workspace operations.
+
+```bash
+# 列出工作区
+viben workspace list              # 列出所有已知工作区
+
+# 当前工作区
+viben workspace current           # 显示当前工作区信息
+```
+
+**Output (Human)**:
+```
+Current Workspace:
+  Path: /Users/xxx/projects/viben
+  MCP:  filesystem, git (2 enabled)
+  Skills: code-review, commit (2 enabled)
+```
+
+---
+
+## Agent Integration
+
+### JSON Output for Agents
+
+所有命令支持 `--json` flag，输出结构化 JSON 供 Agent 解析。
+
+**Response Schema**:
+
+```typescript
+interface CLIResponse {
+  success: boolean;
+  data?: any;
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+```
+
+### Agent Usage Examples
+
+Agent 可以通过 Bash 工具调用 CLI：
+
+```bash
+# 获取当前配置
+viben config list --json
+
+# 为工作区安装 MCP
+viben mcp install filesystem --workspace --json
+
+# 配置 Claude Code 的 MCP
+viben agent config claude-code mcp add filesystem --json
+
+# 同步到 agent
+viben agent sync claude-code --json
+```
+
+### Error Handling
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "MCP_NOT_FOUND",
+    "message": "MCP server 'unknown-mcp' not found in marketplace"
+  }
+}
+```
+
+---
+
+## Implementation Plan
+
+### Phase 1: Foundation
+
+1. 项目结构搭建 (`apps/cli/`)
+2. 基础命令框架 (Commander.js)
+3. 配置文件读写 (YAML)
+4. 全局选项处理 (`--json`, `--global`, etc.)
+
+### Phase 2: Core Commands
+
+1. `viben init`
+2. `viben config` (git-style)
+3. `viben workspace list/current`
+
+### Phase 3: MCP & Skills
+
+1. `viben mcp install/uninstall/list/enable/disable/config`
+2. `viben skill install/uninstall/list`
+
+### Phase 4: Service & Agent
+
+1. `viben service status/start/stop/restart/logs`
+2. `viben agent list/config/sync`
+
+---
+
+## Directory Structure
+
+```
+apps/cli/
+├── package.json
+├── tsconfig.json
+├── src/
+│   ├── index.ts              # Entry point
+│   ├── cli.ts                # Commander setup
+│   ├── commands/
+│   │   ├── init.ts
+│   │   ├── config.ts
+│   │   ├── service.ts
+│   │   ├── agent/
+│   │   │   ├── index.ts      # viben agent
+│   │   │   ├── list.ts       # viben agent list
+│   │   │   ├── create.ts     # viben agent create
+│   │   │   ├── remove.ts     # viben agent remove
+│   │   │   ├── show.ts       # viben agent show
+│   │   │   ├── config.ts     # viben agent config
+│   │   │   ├── status.ts     # viben agent status
+│   │   │   ├── set-default.ts # viben agent set-default
+│   │   │   ├── template.ts   # viben agent template
+│   │   │   ├── session.ts    # viben agent session
+│   │   │   └── memory.ts     # viben agent memory
+│   │   ├── provider/
+│   │   │   ├── index.ts      # viben provider
+│   │   │   ├── list.ts       # viben provider list
+│   │   │   ├── create.ts     # viben provider create
+│   │   │   ├── remove.ts     # viben provider remove
+│   │   │   ├── status.ts     # viben provider status
+│   │   │   └── set-default.ts # viben provider set-default
+│   │   ├── model/
+│   │   │   ├── index.ts      # viben model
+│   │   │   ├── list.ts       # viben model list
+│   │   │   ├── status.ts     # viben model status
+│   │   │   ├── set-default.ts # viben model set-default
+│   │   │   ├── aliases.ts    # viben model aliases
+│   │   │   └── fallbacks.ts  # viben model fallbacks
+│   │   ├── mcp.ts
+│   │   ├── skill.ts
+│   │   └── workspace.ts
+│   ├── lib/
+│   │   ├── config.ts         # Config file operations
+│   │   ├── scope.ts          # Scope detection
+│   │   ├── output.ts         # Human/JSON output
+│   │   ├── agents.ts         # Agent management
+│   │   ├── templates.ts      # Template management
+│   │   ├── providers.ts      # Provider management
+│   │   ├── models.ts         # Model management
+│   │   ├── sessions.ts       # Session management
+│   │   ├── memory.ts         # Memory management
+│   │   └── adapters/         # Agent type adapters
+│   │       ├── base.ts       # Base adapter interface
+│   │       ├── claude-code.ts
+│   │       ├── cursor.ts
+│   │       ├── gemini.ts
+│   │       ├── codex.ts
+│   │       ├── windsurf.ts
+│   │       ├── amp.ts
+│   │       ├── opencode.ts
+│   │       ├── qwen-code.ts
+│   │       ├── droid.ts
+│   │       └── index.ts      # Adapter registry
+│   └── types/
+│       ├── index.ts
+│       ├── config.ts         # Config types
+│       ├── agent.ts          # Agent types
+│       ├── template.ts       # Template types
+│       ├── provider.ts       # Provider types
+│       ├── model.ts          # Model types
+│       ├── session.ts        # Session types
+│       └── memory.ts         # Memory types
+└── bin/
+    └── viben                 # Executable entry
+```
+
+---
+
+## Acceptance Criteria
+
+### Core
+- [ ] `viben --help` 显示所有命令
+- [ ] `viben config` 支持 git 风格的配置管理
+- [ ] `--json` flag 在所有命令中生效
+- [ ] 自动检测工作区 scope
+- [ ] 配置文件格式为 YAML
+- [ ] 全局配置和工作区配置正确合并
+- [ ] 环境变量 `VIBEN_STATE_DIR`, `VIBEN_AGENT` 等正确工作
+
+### Agent Management
+- [ ] `viben agent list` 列出所有 agents
+- [ ] `viben agent create -n <id>` 创建新 agent
+- [ ] `viben agent create -n <id> -f <template>` 从模板创建
+- [ ] `viben agent create -n <id> --clone <existing>` 克隆现有 agent
+- [ ] `viben agent show -n <id>` 显示 agent 详情
+- [ ] `viben agent remove -n <id>` 删除 agent
+- [ ] `viben agent config -n <id> set <key> <value>` 配置 agent
+- [ ] `viben agent set-default -n <id>` 设置默认 agent
+- [ ] `viben agent status` 显示 agent 状态
+
+### Agent Templates
+- [ ] `viben agent template list` 列出所有模板
+- [ ] `viben agent template create -n <id> --clone <agent>` 从 agent 创建模板
+- [ ] `viben agent template show -n <id>` 显示模板详情
+- [ ] `viben agent template remove -n <id>` 删除模板
+
+### Provider Management
+- [ ] `viben provider list` 列出所有 providers
+- [ ] `viben provider create -n <name> -t <type>` 创建 provider
+- [ ] `viben provider create -t <type> --api-key <key>` 快速创建
+- [ ] `viben provider remove -n <name>` 删除 provider
+- [ ] `viben provider set-default -n <name>` 设置默认 provider
+- [ ] `viben provider status` 检查 provider 连通性
+- [ ] 支持 provider 类型: openai, anthropic, google, azure, openrouter, ollama, custom
+
+### Model Management
+- [ ] `viben model list` 列出可用 models
+- [ ] `viben model status` 显示 model 状态
+- [ ] `viben model set-default -n <model>` 设置默认 model
+- [ ] `viben model aliases list/create/remove` 管理别名
+- [ ] `viben model fallbacks list/create/remove/clear` 管理回退链
+
+### Memory System
+- [ ] `memory/MEMORY.md` 作为主记忆文件
+- [ ] `memory/YYYY-MM-DD.md` 作为每日日志 (append-only)
+- [ ] 会话启动时读取 today + yesterday 日志
+- [ ] `viben agent memory show/append/edit` 管理记忆
+
+### Sessions
+- [ ] `viben agent session list/create/remove/clear` 管理会话
+- [ ] Sessions 存储在 `.agent_sessions/<session_id>/`
+- [ ] 会话包含 `config.yaml` 和 `messages.rollout.jsonl`
+
+### Runtime Config Merging
+- [ ] Agent 基础配置 (`~/.viben/agents/<id>/config.yaml`) 正确加载
+- [ ] 工作区配置 (`.claude/` 等) 正确叠加
+- [ ] 配置按优先级正确合并
+
+### Skills & MCP Scoping
+- [ ] 共享 skills (`~/.viben/skills/`) 所有 agents 可用
+- [ ] Agent 专属 skills (`agents/<id>/skills/`) 仅该 agent 可用
+- [ ] `viben skill install -n <agent-id>` 安装到特定 agent
+- [ ] MCP 配置支持 `mcp_servers.json` 格式
+
+### Agent Integration
+- [ ] Agent 可通过 Bash 工具成功调用 CLI
+- [ ] JSON 输出格式一致，便于 Agent 解析
+- [ ] 错误信息结构化，包含 error code
+
+---
+
+## Related Documents
+
+- [Workspace Management](./workspace-management.md) - 工作区管理规范
+- [MCP API](./mcp-api.md) - MCP 市场 API
+- [Skills API](./skills-api.md) - Skills 市场 API
