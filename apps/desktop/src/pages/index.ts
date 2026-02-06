@@ -7,6 +7,7 @@ export { AboutPage } from "./about";
 export { InspectorPage } from "./inspector";
 export { TrayPopupPage } from "./tray-popup";
 export { WorkspaceDetailPage } from "./workspace-detail";
+export { WorkspaceChatPage } from "./workspace-chat";
 export { AgentDetailPage } from "./agent-detail";
 export { WorkspaceSkillDetailPage } from "./workspace-skill-detail";
 export { HomeRedirect } from "./home-redirect";
