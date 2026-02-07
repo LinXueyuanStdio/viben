@@ -1006,7 +1006,6 @@ export function AgentDetailPage() {
                     ? t("chat.waitingForInput")
                     : t("settingsAgents.sendMessage")
               }
-              variant="compact"
               autoFocus
             />
             <p className="text-xs text-muted-foreground mt-2 text-center">

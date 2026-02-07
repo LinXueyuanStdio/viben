@@ -151,9 +151,9 @@ export class FeishuChannel extends BaseChannel {
 
   private async importLarkSDK(): Promise<LarkModule> {
     try {
-      // @ts-expect-error - Dynamic import
-      const lark = await import('@larksuiteoapi/node-sdk');
-      return lark;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const lark = await import('@larksuiteoapi/node-sdk') as any;
+      return lark as LarkModule;
     } catch {
       throw new Error(
         '@larksuiteoapi/node-sdk is not installed. Run: npm install @larksuiteoapi/node-sdk'

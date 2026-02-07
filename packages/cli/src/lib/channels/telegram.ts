@@ -57,8 +57,7 @@ interface TelegramBotSendOptions {
   parse_mode?: 'HTML' | 'Markdown' | 'MarkdownV2';
 }
 
-interface TelegramBotApi {
-  new (token: string, options?: TelegramBotOptions): TelegramBotApi;
+interface TelegramBotInstance {
   getMe(): Promise<TelegramBotUser>;
   stopPolling(): Promise<void>;
   sendMessage(
@@ -70,6 +69,10 @@ interface TelegramBotApi {
   on(event: 'polling_error', callback: (error: TelegramBotPollingError) => void): void;
 }
 
+interface TelegramBotConstructor {
+  new (token: string, options?: TelegramBotOptions): TelegramBotInstance;
+}
+
 /**
  * Telegram channel using long polling
  */
@@ -77,7 +80,7 @@ export class TelegramChannel extends BaseChannel {
   readonly type: ChannelType = 'telegram';
   declare readonly config: TelegramConfig;
 
-  private bot: TelegramBotApi | null = null;
+  private bot: TelegramBotInstance | null = null;
   private botInfo?: TelegramBotUser;
 
   constructor(id: string, config: TelegramConfig) {
@@ -172,10 +175,10 @@ export class TelegramChannel extends BaseChannel {
     };
   }
 
-  private async importTelegramBot(): Promise<new (token: string, options?: TelegramBotOptions) => TelegramBotApi> {
+  private async importTelegramBot(): Promise<TelegramBotConstructor> {
     try {
-      // @ts-expect-error - Dynamic import
-      const module = await import('node-telegram-bot-api');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const module = await import('node-telegram-bot-api') as any;
       return module.default || module;
     } catch {
       throw new Error(

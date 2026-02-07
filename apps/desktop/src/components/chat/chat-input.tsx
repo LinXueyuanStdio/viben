@@ -1,14 +1,19 @@
 /**
  * Unified Chat Input Component
  *
- * A flexible chat input that supports multiple configurations:
- * - Basic input (default)
- * - Compact reply style (variant="compact")
- * - Full workspace mode with top toolbar + bottom config bar
+ * A flexible chat input that supports multiple configurations via props.
+ * All scenarios use the same base input with feature props controlling extras.
+ *
+ * Base functionality (always present):
+ * - Auto-resizing textarea (40-200px)
+ * - Attachment preview area
+ * - Bottom action bar with add button and send button
+ * - IME composition handling
+ * - Paste image support
  *
  * Features controlled by props:
- * - showTopToolbar: Emoji, File, Screenshot, Expand buttons
- * - showConfigBar: Agent, Model, Tools, Skills, Context selectors
+ * - showTopToolbar: Emoji, File, Screenshot, Expand buttons above textarea
+ * - showConfigBar: Agent, Model, Tools, Skills, Context selectors (replaces basic bottom bar)
  * - showResizeHandle: Draggable height adjustment
  * - enableWritingMode: Fullscreen writing mode
  */
@@ -78,6 +83,14 @@ import type { MessageAttachment, BaseCodingAgent, AgentTypeInfo } from "@/types"
 // Types
 // ============================================================================
 
+// Slash command type
+export interface SlashCommand {
+  id: string;
+  name: string;
+  description: string;
+  icon?: React.ReactNode;
+}
+
 export interface ChatInputProps {
   // Basic Props
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
@@ -89,8 +102,6 @@ export interface ChatInputProps {
   autoFocus?: boolean;
 
   // Layout Control
-  /** Variant: 'default' for standard style, 'compact' for reply style */
-  variant?: "default" | "compact";
   /** Show top toolbar (emoji, file, screenshot, expand) */
   showTopToolbar?: boolean;
   /** Show bottom config bar (agent, model, tools, skills, context) */
@@ -108,6 +119,12 @@ export interface ChatInputProps {
    * Props override can still be used for flexibility.
    */
   useGlobalConfig?: boolean;
+
+  // Selector Visibility Override
+  /** Force hide agent selector even if showConfigBar is true */
+  hideAgentSelector?: boolean;
+  /** Force hide model selector even if showConfigBar is true */
+  hideModelSelector?: boolean;
 
   // Agent/Model Selection (for config bar)
   /** Override agents list (takes precedence over global config) */
@@ -145,6 +162,12 @@ export interface ChatInputProps {
 
   // Screenshot (for top toolbar)
   onScreenshot?: (hideWindow?: boolean) => void;
+
+  // Slash Commands
+  /** Available slash commands */
+  slashCommands?: SlashCommand[];
+  /** Callback when a command is selected */
+  onSlashCommand?: (command: SlashCommand) => void;
 }
 
 // Check if file is an image (by MIME type or file extension)
@@ -176,12 +199,13 @@ export function ChatInput({
   placeholder,
   className,
   autoFocus = false,
-  variant = "default",
   showTopToolbar = false,
   showConfigBar = false,
   showResizeHandle = false,
   enableWritingMode = false,
   useGlobalConfig = false,
+  hideAgentSelector = false,
+  hideModelSelector = false,
   agents: propAgents,
   selectedAgentId: propSelectedAgentId,
   onAgentChange: propOnAgentChange,
@@ -203,6 +227,8 @@ export function ChatInput({
   onContextClick,
   contextBreakdown,
   onScreenshot,
+  slashCommands = [],
+  onSlashCommand,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
@@ -225,12 +251,17 @@ export function ChatInput({
 
   // Determine if selectors should be shown based on global config visibility
   // Only apply visibility rules when useGlobalConfig is true and no prop override
-  const shouldShowAgentSelector = useGlobalConfig && !propAgents
-    ? chatConfig.visibility.showAgentSelector
-    : true;
-  const shouldShowModelSelector = useGlobalConfig && !propModels
-    ? chatConfig.visibility.showModelSelector
-    : true;
+  // Also respect explicit hideAgentSelector/hideModelSelector props
+  const shouldShowAgentSelector = !hideAgentSelector && (
+    useGlobalConfig && !propAgents
+      ? chatConfig.visibility.showAgentSelector
+      : true
+  );
+  const shouldShowModelSelector = !hideModelSelector && (
+    useGlobalConfig && !propModels
+      ? chatConfig.visibility.showModelSelector
+      : true
+  );
   const [content, setContent] = React.useState("");
   const [attachments, setAttachments] = React.useState<MessageAttachment[]>([]);
   const [isWritingMode, setIsWritingMode] = React.useState(false);
@@ -239,10 +270,15 @@ export function ChatInput({
   const [isToolsOpen, setIsToolsOpen] = React.useState(false);
   const [isSkillsOpen, setIsSkillsOpen] = React.useState(false);
   const [isContextOpen, setIsContextOpen] = React.useState(false);
+  // Slash command state
+  const [isSlashMenuOpen, setIsSlashMenuOpen] = React.useState(false);
+  const [slashQuery, setSlashQuery] = React.useState("");
+  const [slashSelectedIndex, setSlashSelectedIndex] = React.useState(0);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const slashMenuRef = React.useRef<HTMLDivElement>(null);
   // Track IME composition state to prevent send on Enter during composition
   const isComposingRef = React.useRef(false);
   // Track previous isLoading state for auto-focus
@@ -252,7 +288,7 @@ export function ChatInput({
   const startYRef = React.useRef(0);
   const startHeightRef = React.useRef(0);
 
-  const isCompact = variant === "compact";
+  // Determine if we have toolbar/config bar features enabled
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
 
   // Internal screenshot handler using Tauri command
@@ -277,6 +313,51 @@ export function ChatInput({
       }
     },
     [onScreenshot, takeScreenshot]
+  );
+
+  // Filter slash commands based on query
+  const filteredSlashCommands = React.useMemo(() => {
+    if (!slashQuery) return slashCommands;
+    const query = slashQuery.toLowerCase();
+    return slashCommands.filter(
+      (cmd) =>
+        cmd.name.toLowerCase().includes(query) ||
+        cmd.description.toLowerCase().includes(query)
+    );
+  }, [slashCommands, slashQuery]);
+
+  // Handle content change with slash command detection
+  const handleContentChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newContent = e.target.value;
+      setContent(newContent);
+
+      // Detect slash command (only at start of input)
+      if (slashCommands.length > 0 && onSlashCommand) {
+        if (newContent.startsWith("/")) {
+          const query = newContent.slice(1).split(/\s/)[0]; // Get text after / until first space
+          setSlashQuery(query);
+          setIsSlashMenuOpen(true);
+          setSlashSelectedIndex(0);
+        } else {
+          setIsSlashMenuOpen(false);
+          setSlashQuery("");
+        }
+      }
+    },
+    [slashCommands.length, onSlashCommand]
+  );
+
+  // Handle slash command selection
+  const handleSlashCommandSelect = React.useCallback(
+    (command: SlashCommand) => {
+      setContent("");
+      setIsSlashMenuOpen(false);
+      setSlashQuery("");
+      onSlashCommand?.(command);
+      textareaRef.current?.focus();
+    },
+    [onSlashCommand]
   );
 
   // Load saved height from localStorage (only when resize handle is shown)
@@ -316,16 +397,16 @@ export function ChatInput({
     // Reset height to auto to get the correct scrollHeight
     textarea.style.height = "auto";
 
-    // Calculate the new height
-    const maxHeight = isCompact ? 120 : 200;
-    const minHeight = isCompact ? 20 : 40;
+    // Calculate the new height (min 40px, max 200px)
+    const maxHeight = 200;
+    const minHeight = 40;
     const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
 
     textarea.style.height = `${newHeight}px`;
 
     // Enable/disable overflow based on content height
     textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-  }, [content, isCompact, hasToolbar, isWritingMode]);
+  }, [content, hasToolbar, isWritingMode]);
 
   // Handle resize drag
   const handleResizeStart = React.useCallback(
@@ -561,151 +642,7 @@ export function ChatInput({
   const selectedAgent = agents.find((a) => a.id === selectedAgentId);
   const selectedModel = models.find((m) => m.id === selectedModelId);
 
-  // Render compact variant (simple reply style)
-  if (isCompact) {
-    return (
-      <div
-        className={cn(
-          "w-full border-border/60 bg-background rounded-xl border p-3 shadow-sm",
-          className
-        )}
-      >
-        {/* Hidden file inputs */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
-          onChange={handleFileChange}
-          className="hidden"
-        />
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={handleImageChange}
-          multiple
-        />
-
-        {/* Attachment Preview */}
-        {attachments.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <div
-                key={attachment.id}
-                className="group border-border/50 bg-muted/50 relative flex items-center gap-2 rounded-lg border px-3 py-2"
-              >
-                {attachment.isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                ) : attachment.type === "image" && attachment.data ? (
-                  <img
-                    src={attachment.data}
-                    alt={attachment.name}
-                    className="h-10 w-10 rounded object-cover"
-                  />
-                ) : (
-                  <div className="bg-muted flex h-10 w-10 items-center justify-center rounded">
-                    <FileText className="text-muted-foreground h-5 w-5" />
-                  </div>
-                )}
-                <span className="text-foreground max-w-[120px] truncate text-sm">
-                  {attachment.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(attachment.id)}
-                  className="bg-foreground text-background absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
-          onPaste={handlePaste}
-          placeholder={placeholder || t("chat.inputPlaceholder")}
-          className="text-foreground placeholder:text-muted-foreground w-full resize-none border-0 bg-transparent px-1 text-sm focus:outline-none"
-          style={{
-            minHeight: "20px",
-            maxHeight: "120px",
-            overflowY: "hidden",
-          }}
-          rows={1}
-          disabled={isLoading || disabled}
-        />
-
-        {/* Bottom Actions */}
-        <div className="mt-2 flex items-center justify-between">
-          {/* Add Button with Dropdown */}
-          <div className="flex items-center gap-1">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                disabled={isLoading || disabled}
-                className="text-muted-foreground hover:bg-accent hover:text-foreground flex size-7 items-center justify-center rounded-md transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus className="size-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" sideOffset={8} className="z-50 w-56">
-                <DropdownMenuItem
-                  onSelect={() => imageInputRef.current?.click()}
-                  className="cursor-pointer gap-3 py-2.5"
-                >
-                  <Image className="size-4" />
-                  <span>{t("chat.attachImage")}</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={() => fileInputRef.current?.click()}
-                  className="cursor-pointer gap-3 py-2.5"
-                >
-                  <Paperclip className="size-4" />
-                  <span>{t("chat.attachFile")}</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Submit/Stop Button */}
-          <div className="flex items-center gap-1">
-            {isLoading ? (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 flex size-7 items-center justify-center rounded-full transition-colors"
-              >
-                <Square className="size-3" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!canSubmit}
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-full transition-all",
-                  canSubmit
-                    ? "bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                )}
-              >
-                <Send className="size-3" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Render full variant (with optional toolbar/config bar)
+  // Render unified input (with optional toolbar/config bar)
   return (
     <div
       ref={containerRef}
@@ -893,7 +830,7 @@ export function ChatInput({
       <div
         className={cn("px-3", !hasToolbar && "py-3")}
         style={
-          hasToolbar && !isCompact
+          hasToolbar
             ? { height: isWritingMode && enableWritingMode ? "calc(100% - 140px)" : inputHeight }
             : undefined
         }

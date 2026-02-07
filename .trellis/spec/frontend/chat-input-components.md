@@ -13,7 +13,6 @@
 | 配置 | 用途 | 主要 Props |
 |------|------|-----------|
 | 基础模式 | 简单对话输入 | (默认) |
-| 紧凑模式 | 回复消息 | `variant="compact"` |
 | 工作空间模式 | 完整功能 | `showTopToolbar` `showConfigBar` `showResizeHandle` `enableWritingMode` |
 
 ## Props 接口
@@ -30,8 +29,6 @@ export interface ChatInputProps {
   autoFocus?: boolean;
 
   // 布局控制
-  /** 变体: 'default' 标准样式, 'compact' 紧凑回复样式 */
-  variant?: "default" | "compact";
   /** 显示顶部工具栏 (表情、文件、截图、展开) */
   showTopToolbar?: boolean;
   /** 显示底部配置栏 (智能体、模型、工具、技能、上下文) */
@@ -102,25 +99,19 @@ export interface ChatInputProps {
 
 ### 基础模式 (默认)
 
-```
-┌─────────────────────────────────────┐
-│ [附件预览区]                         │
-├─────────────────────────────────────┤
-│                                     │
-│ [文本输入区]                         │
-│                                     │
-├─────────────────────────────────────┤
-│ [+添加] ←──────────────────→ [发送] │
-└─────────────────────────────────────┘
-```
-
-### 紧凑模式 (variant="compact")
+所有场景使用统一的基础输入样式：
+- 自动调整高度的 textarea (40-200px)
+- 附件预览区
+- 底部操作栏：添加按钮 + 发送按钮
+- 无圆角边框和阴影（填充父容器）
 
 ```
 ┌─────────────────────────────────────┐
 │ [附件预览区]                         │
 ├─────────────────────────────────────┤
-│ [文本输入区] (更小的尺寸)             │
+│                                     │
+│ [文本输入区] (自动调整高度)            │
+│                                     │
 ├─────────────────────────────────────┤
 │ [+添加] ←──────────────────→ [发送] │
 └─────────────────────────────────────┘
@@ -151,18 +142,17 @@ export interface ChatInputProps {
 
 **无卡片样式**: 当启用 `showTopToolbar` 或 `showConfigBar` 时，组件不显示圆角边框和阴影，填满父容器
 
-## 变体差异
+## 样式说明
 
-| 属性 | default | compact | workspace模式 |
-|------|---------|---------|---------------|
-| 边框圆角 | rounded-2xl | rounded-xl | 无 |
-| 边框阴影 | 有 | 有 | 无 |
-| 内边距 | p-4 | p-3 | - |
-| 最小高度 | 40px | 20px | - |
-| 最大高度 | 200px | 120px | 可调 (80-400px) |
+| 属性 | 基础模式 | workspace模式 |
+|------|---------|---------------|
+| 边框圆角 | rounded-2xl | 无 |
+| 边框阴影 | 有 | 无 |
+| 最小高度 | 40px | 80px (可调) |
+| 最大高度 | 200px | 400px (可调) |
+| 按钮大小 | size-8 | size-8 |
 
 **注**: workspace模式指启用 `showTopToolbar` 或 `showConfigBar` 的情况
-| 按钮大小 | size-8 | size-7 |
 
 ## 高度调整 (showResizeHandle)
 
@@ -188,7 +178,7 @@ export interface ChatInputProps {
 
 | 场景 | Props 配置 |
 |------|-----------|
-| 简单消息回复 | `variant="compact"` |
+| 简单消息回复 | (默认，无额外 props) |
 | 基础对话框 | (默认) |
 | 工作空间对话 | `showTopToolbar showConfigBar showResizeHandle enableWritingMode` |
 | 带配置的对话 | `showConfigBar` + agent/model props |
@@ -205,14 +195,14 @@ export interface ChatInputProps {
 />
 ```
 
-#### 紧凑回复框
+#### 简单回复框
 
 ```tsx
 <ChatInput
-  variant="compact"
   onSend={handleReply}
   onCancel={handleCancel}
   isLoading={isSending}
+  autoFocus={false}
 />
 ```
 
@@ -527,6 +517,12 @@ interface ContextDetailsPopoverProps {
 
 ## 更新日志
 
+- **2026-02-08**: 移除 variant prop，统一基础样式
+  - 移除 `variant="compact"` 选项
+  - 所有场景使用统一基础样式
+  - 功能完全由 props 控制 (showTopToolbar, showConfigBar 等)
+  - 更新所有使用处：task-detail-panel, debug-chat-panel, agent-detail, workspace-chat
+
 - **2026-02-08**: 优化按钮样式和容器样式
   - 移除 workspace 模式下的卡片样式（无圆角、边框、阴影）
   - Tools/Skills 按钮改为仅显示 icon + 角标数字
@@ -549,5 +545,4 @@ interface ContextDetailsPopoverProps {
 - **2026-02-08**: 合并 ChatInput, AgentChatInput, WorkspaceChatInput 为统一组件
   - 使用 Props 控制功能显隐
   - 删除 agent-chat-input.tsx 和 workspace-chat-input.tsx
-  - 保留 variant="compact" 紧凑模式
   - 添加 showTopToolbar, showConfigBar, showResizeHandle, enableWritingMode props

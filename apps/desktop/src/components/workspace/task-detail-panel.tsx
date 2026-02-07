@@ -922,7 +922,6 @@ export function TaskDetailPanel({
                     ? t("chat.waitingForInput")
                     : t("workspace.agentChatPlaceholder", "Ask about this task...")
               }
-              variant="compact"
               autoFocus={false}
             />
           </div>

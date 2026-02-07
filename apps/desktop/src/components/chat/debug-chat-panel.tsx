@@ -38,7 +38,28 @@ import type {
   AgentPhase,
   TaskPlan,
   PendingQuestion,
+  ToolUsage,
 } from "@/types";
+
+/**
+ * Gateway event types from SSE stream
+ */
+interface GatewayEvent {
+  type: string;
+  data: {
+    agent_id?: string;
+    session_id?: string;
+    success?: boolean;
+    task_id?: string;
+    old_status?: string;
+    new_status?: string;
+    content?: string;
+    role?: string;
+    log_type?: string;
+    message?: string;
+    code?: string;
+  };
+}
 
 // Default debug workdir
 const DEBUG_WORKDIR = "/tmp/viben-debug";
@@ -71,6 +92,7 @@ export function DebugChatPanel({
   const [pendingQuestions, setPendingQuestions] = React.useState<PendingQuestion | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const [toolUsages, setToolUsages] = React.useState<ToolUsage[]>([]);
 
   // Gateway state
   const [gatewayConnected, setGatewayConnected] = React.useState<boolean | null>(null);
@@ -81,6 +103,9 @@ export function DebugChatPanel({
   const [showSettings, setShowSettings] = React.useState(false);
   const [gatewayUrlInput, setGatewayUrlInput] = React.useState(getGatewayUrl());
   const [workdirInput, setWorkdirInput] = React.useState(DEBUG_WORKDIR);
+
+  // SSE event source ref
+  const eventSourceRef = React.useRef<EventSource | null>(null);
 
   // Check gateway connection on open
   React.useEffect(() => {
@@ -95,6 +120,16 @@ export function DebugChatPanel({
       checkAgentAvailability();
     }
   }, [open, gatewayConnected, agentType]);
+
+  // Cleanup SSE on unmount or close
+  React.useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   const checkGateway = async () => {
     try {
@@ -129,6 +164,221 @@ export function DebugChatPanel({
     checkGateway();
   };
 
+  /**
+   * Subscribe to SSE events for a session
+   * Returns a promise that resolves when the connection is open
+   */
+  const subscribeToEvents = React.useCallback((targetSessionId: string): Promise<EventSource> => {
+    return new Promise((resolve, reject) => {
+      // Close existing connection
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      const sseUrl = `${getGatewayUrl()}/api/events`;
+      console.log("[DebugChatPanel] Connecting to SSE:", sseUrl);
+      const eventSource = new EventSource(sseUrl);
+      eventSourceRef.current = eventSource;
+
+      // Wait for connection to open before resolving
+      eventSource.onopen = () => {
+        console.log("[DebugChatPanel] SSE connection opened for session:", targetSessionId);
+        resolve(eventSource);
+      };
+
+      // Handle agent_spawned event
+      eventSource.addEventListener("agent_spawned", (e) => {
+        try {
+          const event: GatewayEvent = JSON.parse(e.data);
+          console.log("[DebugChatPanel] agent_spawned event:", event);
+          if (event.data.session_id !== targetSessionId) return;
+          console.log("[DebugChatPanel] Agent spawned confirmed for session:", targetSessionId);
+        } catch (err) {
+          console.error("[DebugChatPanel] Failed to parse agent_spawned:", err);
+        }
+      });
+
+      // Handle different event types
+      eventSource.addEventListener("session_message", (e) => {
+        try {
+          const event: GatewayEvent = JSON.parse(e.data);
+          console.log("[DebugChatPanel] session_message event:", event);
+          if (event.data.session_id !== targetSessionId) return;
+
+          const msg: AgentMessage = {
+            id: crypto.randomUUID(),
+            type: event.data.role === "user" ? "user" : "text",
+            content: event.data.content || "",
+          };
+          setMessages((prev) => [...prev, msg]);
+        } catch (err) {
+          console.error("[DebugChatPanel] Failed to parse session_message:", err);
+        }
+      });
+
+      eventSource.addEventListener("execution_log", (e) => {
+        try {
+          const event: GatewayEvent = JSON.parse(e.data);
+          console.log("[DebugChatPanel] execution_log event:", event);
+          if (event.data.session_id !== targetSessionId) return;
+
+          // Handle different log types
+          const logType = event.data.log_type;
+          const content = event.data.content || "";
+
+          if (logType === "tool_use") {
+            // Parse tool use from log
+            try {
+              const toolData = JSON.parse(content);
+              const toolId = crypto.randomUUID();
+              const toolMsg: AgentMessage = {
+                id: toolId,
+                type: "tool_use",
+                name: toolData.name || "unknown",
+                input: toolData.input || {},
+              };
+              setMessages((prev) => [...prev, toolMsg]);
+
+              const toolUsage: ToolUsage = {
+                id: toolId,
+                name: toolData.name || "unknown",
+                displayName: toolData.name || "Unknown Tool",
+                input: toolData.input || {},
+                timestamp: Date.now(),
+              };
+              setToolUsages((prev) => [...prev, toolUsage]);
+            } catch {
+              // If not JSON, just add as text
+              const textMsg: AgentMessage = {
+                id: crypto.randomUUID(),
+                type: "text",
+                content,
+              };
+              setMessages((prev) => [...prev, textMsg]);
+            }
+          } else if (logType === "tool_result") {
+            try {
+              const resultData = JSON.parse(content);
+              const resultMsg: AgentMessage = {
+                id: crypto.randomUUID(),
+                type: "tool_result",
+                toolUseId: resultData.tool_use_id || "",
+                output: resultData.output || content,
+                isError: resultData.is_error,
+              };
+              setMessages((prev) => [...prev, resultMsg]);
+
+              // Update tool usage with result
+              if (resultData.tool_use_id) {
+                setToolUsages((prev) =>
+                  prev.map((t) =>
+                    t.id === resultData.tool_use_id
+                      ? { ...t, output: resultData.output }
+                      : t
+                  )
+                );
+              }
+            } catch {
+              const textMsg: AgentMessage = {
+                id: crypto.randomUUID(),
+                type: "text",
+                content,
+              };
+              setMessages((prev) => [...prev, textMsg]);
+            }
+          } else if (logType === "thinking" || logType === "assistant") {
+            const textMsg: AgentMessage = {
+              id: crypto.randomUUID(),
+              type: "text",
+              content,
+            };
+            setMessages((prev) => [...prev, textMsg]);
+          } else {
+            // Other log types - just add as text if non-empty
+            if (content.trim()) {
+              const textMsg: AgentMessage = {
+                id: crypto.randomUUID(),
+                type: "text",
+                content,
+              };
+              setMessages((prev) => [...prev, textMsg]);
+            }
+          }
+        } catch (err) {
+          console.error("[DebugChatPanel] Failed to parse execution_log:", err);
+        }
+      });
+
+      eventSource.addEventListener("agent_completed", (e) => {
+        try {
+          const event: GatewayEvent = JSON.parse(e.data);
+          console.log("[DebugChatPanel] agent_completed event:", event);
+          if (event.data.session_id !== targetSessionId) return;
+
+          setIsStreaming(false);
+          if (event.data.success) {
+            setPhase("completed");
+            const resultMsg: AgentMessage = {
+              id: crypto.randomUUID(),
+              type: "result",
+              content: "Agent completed successfully.",
+            };
+            setMessages((prev) => [...prev, resultMsg]);
+          } else {
+            setPhase("error");
+            const errMsg: AgentMessage = {
+              id: crypto.randomUUID(),
+              type: "error",
+              message: "Agent execution failed.",
+              isError: true,
+            };
+            setMessages((prev) => [...prev, errMsg]);
+          }
+        } catch (err) {
+          console.error("[DebugChatPanel] Failed to parse agent_completed:", err);
+        }
+      });
+
+      eventSource.addEventListener("error", (e) => {
+        console.log("[DebugChatPanel] SSE error event:", e);
+        try {
+          const event: GatewayEvent = JSON.parse((e as MessageEvent).data || "{}");
+          setError(event.data.message || "Unknown error");
+          const errMsg: AgentMessage = {
+            id: crypto.randomUUID(),
+            type: "error",
+            message: event.data.message || "Unknown error",
+            isError: true,
+          };
+          setMessages((prev) => [...prev, errMsg]);
+          setPhase("error");
+          setIsStreaming(false);
+        } catch {
+          // Connection error, not a data event
+          console.warn("[DebugChatPanel] SSE connection error (not data event)");
+        }
+      });
+
+      eventSource.onerror = (e) => {
+        console.warn("[DebugChatPanel] SSE onerror:", e);
+        // Only reject if we haven't connected yet
+        if (eventSource.readyState === EventSource.CONNECTING) {
+          // Still connecting, wait
+        } else if (eventSource.readyState === EventSource.CLOSED) {
+          reject(new Error("SSE connection failed"));
+        }
+      };
+
+      // Timeout if connection doesn't open within 5 seconds
+      setTimeout(() => {
+        if (eventSource.readyState === EventSource.CONNECTING) {
+          eventSource.close();
+          reject(new Error("SSE connection timeout"));
+        }
+      }, 5000);
+    });
+  }, []);
+
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
 
@@ -144,28 +394,47 @@ export function DebugChatPanel({
     };
     setMessages((prev) => [...prev, userMessage]);
 
+    // Generate session ID upfront so we can subscribe before spawning
+    const newSessionId = sessionId || crypto.randomUUID();
+
     try {
-      // Spawn or continue agent
+      // IMPORTANT: Subscribe to SSE BEFORE spawning agent to avoid race condition
+      // This ensures we don't miss any events that are broadcast immediately after spawn
+      console.log("[DebugChatPanel] Subscribing to SSE for session:", newSessionId);
+      await subscribeToEvents(newSessionId);
+      console.log("[DebugChatPanel] SSE connected, now spawning agent...");
+
+      // Add a system message indicating the agent is starting
+      const infoMessage: AgentMessage = {
+        id: crypto.randomUUID(),
+        type: "text",
+        content: `Connecting to ${agentType} agent...`,
+      };
+      setMessages((prev) => [...prev, infoMessage]);
+
+      // Spawn or continue agent with our pre-generated session ID
       const response = await client.spawnAgent(agentType, {
         prompt: content,
         workdir: workdirInput,
-        session_id: sessionId || undefined,
+        session_id: newSessionId,
         config: executorConfig?.config as Record<string, unknown>,
       });
 
+      console.log("[DebugChatPanel] Spawn response:", response);
       setSessionId(response.session_id);
 
-      // For now, add a mock response since Gateway doesn't have SSE streaming yet
-      // TODO: Replace with actual SSE streaming when Gateway supports it
-      const assistantMessage: AgentMessage = {
-        id: crypto.randomUUID(),
-        type: "text",
-        content: t("gateway.agentSpawned", {
-          defaultValue: `Agent ${agentType} spawned with session ${response.session_id}. Real-time streaming will be available when Gateway supports SSE.`,
-        }),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      setPhase("completed");
+      // Update message to show agent started
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIdx = updated.findIndex(m => m.content === `Connecting to ${agentType} agent...`);
+        if (lastIdx !== -1) {
+          updated[lastIdx] = {
+            ...updated[lastIdx],
+            content: `${agentType} agent started (session: ${response.session_id.slice(0, 8)}...)`,
+          };
+        }
+        return updated;
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setError(errorMessage);
@@ -179,12 +448,17 @@ export function DebugChatPanel({
         isError: true,
       };
       setMessages((prev) => [...prev, errMsg]);
-    } finally {
       setIsStreaming(false);
     }
   };
 
   const handleCancel = () => {
+    // Close SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     if (sessionId) {
       client.stopAgent(agentType, sessionId).catch(console.error);
     }
@@ -194,12 +468,19 @@ export function DebugChatPanel({
   };
 
   const handleClearMessages = () => {
+    // Close SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     setMessages([]);
     setSessionId(null);
     setPhase("idle");
     setError(null);
     setPendingPlan(null);
     setPendingQuestions(null);
+    setToolUsages([]);
   };
 
   const agentInfo = getAgentTypeInfo(agentType);
@@ -406,7 +687,6 @@ export function DebugChatPanel({
                   ? t("gateway.connectFirst", { defaultValue: "Connect to Gateway first..." })
                   : undefined
               }
-              variant="compact"
               autoFocus
             />
           </div>
