@@ -1174,7 +1174,10 @@
     "sidebar.noSkills": "暂无使用的技能",
     "sidebar.showLess": "收起",
     "sidebar.showMore": "显示更多",
-    "sidebar.noItems": "暂无项目"
+    "sidebar.noItems": "暂无项目",
+    "sidebar.mcpTools": "MCP 工具",
+    "sidebar.builtinTools": "内置工具",
+    "sidebar.calls": "次调用"
   },
   "creator": {
     "title": "创作者",
