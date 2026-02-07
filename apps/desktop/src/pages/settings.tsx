@@ -305,7 +305,11 @@ export function SettingsPage() {
       </motion.nav>
 
       {/* Right Content Area */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className={cn(
+        "flex-1 overflow-auto",
+        // Agents page needs full width, no padding, and no max-width
+        activeSection === "agents" ? "" : "p-6"
+      )}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeSection}
@@ -313,7 +317,10 @@ export function SettingsPage() {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="max-w-2xl"
+            className={cn(
+              // Agents page needs full width and height
+              activeSection === "agents" ? "h-full" : "max-w-2xl"
+            )}
           >
             {renderSectionContent()}
           </motion.div>

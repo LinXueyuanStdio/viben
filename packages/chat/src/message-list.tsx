@@ -22,6 +22,10 @@ export interface MessageListProps {
   welcomeTitle?: string;
   /** Custom welcome description (translation key or string) */
   welcomeDescription?: string;
+  /** Custom welcome content (replaces default welcome UI) */
+  welcomeContent?: React.ReactNode;
+  /** Enable auto-scroll to bottom on new messages (default: true when streaming) */
+  autoScroll?: boolean;
 }
 
 // Types for message grouping
@@ -445,6 +449,8 @@ export function MessageList({
   onLinkClick,
   welcomeTitle,
   welcomeDescription,
+  welcomeContent,
+  autoScroll,
 }: MessageListProps) {
   const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -496,11 +502,13 @@ export function MessageList({
   }, [isStreaming]);
 
   // Auto-scroll to bottom when new messages arrive (only if user hasn't scrolled up)
+  // Use autoScroll prop if provided, otherwise default to auto-scroll when streaming
+  const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
   React.useEffect(() => {
-    if (isStreaming && !userScrolledUpRef.current) {
+    if (shouldAutoScroll && !userScrolledUpRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isStreaming, pendingQuestions]);
+  }, [messages, shouldAutoScroll, pendingQuestions]);
 
   // Reset userScrolledUp when streaming stops
   React.useEffect(() => {
@@ -534,6 +542,16 @@ export function MessageList({
 
   // Empty state
   if (messages.length === 0) {
+    // Use custom welcome content if provided
+    if (welcomeContent) {
+      return (
+        <div className={cn("flex flex-1 items-center justify-center", className)}>
+          {welcomeContent}
+        </div>
+      );
+    }
+
+    // Default welcome UI
     return (
       <div className={cn("flex flex-1 items-center justify-center", className)}>
         <div className="text-center max-w-md px-4">

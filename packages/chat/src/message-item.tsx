@@ -17,6 +17,8 @@ export interface MessageItemProps {
   isPlanPending?: boolean;
   /** Custom link handler - if not provided, links open with window.open */
   onLinkClick?: (href: string) => void;
+  /** Additional CSS class name */
+  className?: string;
 }
 
 /**
@@ -299,26 +301,28 @@ export function MessageItem({
   onRejectPlan,
   isPlanPending,
   onLinkClick,
+  className,
 }: MessageItemProps) {
+  // Determine the content based on message type
+  let content: React.ReactNode;
+
   // User message
   if (message.type === "user") {
-    return (
+    content = (
       <UserMessage
         content={message.content || ""}
         attachments={message.attachments}
       />
     );
   }
-
   // Error message
-  if (message.type === "error") {
-    return <ErrorMessage errorMessage={message.message || ""} />;
+  else if (message.type === "error") {
+    content = <ErrorMessage errorMessage={message.message || ""} />;
   }
-
   // Tool use message - handled by task groups in MessageList
   // Only render standalone if not grouped
-  if (message.type === "tool_use") {
-    return (
+  else if (message.type === "tool_use") {
+    content = (
       <ToolExecutionItem
         name={message.name || "unknown"}
         input={message.input}
@@ -326,10 +330,9 @@ export function MessageItem({
       />
     );
   }
-
   // Tool result message - handled by task groups in MessageList
-  if (message.type === "tool_result") {
-    return (
+  else if (message.type === "tool_result") {
+    content = (
       <ToolExecutionItem
         name="Tool Result"
         output={message.output}
@@ -337,10 +340,9 @@ export function MessageItem({
       />
     );
   }
-
   // Plan message
-  if (message.type === "plan" && message.plan) {
-    return (
+  else if (message.type === "plan" && message.plan) {
+    content = (
       <PlanApproval
         plan={message.plan}
         onApprove={onApprovePlan}
@@ -349,14 +351,22 @@ export function MessageItem({
       />
     );
   }
-
   // Text/Result message from agent
-  return (
-    <AssistantMessage
-      content={message.content || ""}
-      isResult={message.type === "result"}
-      isStreaming={isStreaming}
-      onLinkClick={onLinkClick}
-    />
-  );
+  else {
+    content = (
+      <AssistantMessage
+        content={message.content || ""}
+        isResult={message.type === "result"}
+        isStreaming={isStreaming}
+        onLinkClick={onLinkClick}
+      />
+    );
+  }
+
+  // Wrap in div with className if provided
+  if (className) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return content;
 }

@@ -468,37 +468,43 @@ export function WorkspaceAgentsPage() {
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         {t("settingsAgents.executors")}
                       </span>
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 ml-auto">
+                        {filteredExecutors.length}
+                      </Badge>
                     </div>
                     {filteredExecutors.map((item) => (
                       <div
                         key={`executor-${item.id}`}
                         className={cn(
-                          "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                          "group relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
                           selectedItemId === item.id && selectedItemType === "executor"
-                            ? "bg-orange-500/10 border border-orange-500/30"
-                            : "hover:bg-muted/60"
+                            ? "bg-orange-500/10 border border-orange-500/30 shadow-sm"
+                            : "hover:bg-muted/60 border border-transparent"
                         )}
                         onClick={() => {
                           setSelectedItemId(item.id);
                           setSelectedItemType("executor");
                         }}
                       >
-                        <Avatar className="h-10 w-10 shrink-0">
+                        <Avatar className="h-11 w-11 shrink-0 ring-2 ring-orange-500/20">
                           <AvatarFallback
                             className={cn(
-                              "text-sm font-medium",
+                              "text-sm font-semibold",
                               selectedItemId === item.id && selectedItemType === "executor"
                                 ? "bg-orange-500/20 text-orange-600"
-                                : "bg-muted"
+                                : "bg-orange-500/10 text-orange-600/70"
                             )}
                           >
                             {item.name.slice(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{item.name}</span>
-                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-medium truncate text-sm">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-orange-500/30 text-orange-600">
+                              <Terminal className="h-2.5 w-2.5 mr-0.5" />
                               {item.executorType}
                             </Badge>
                           </div>
@@ -540,83 +546,136 @@ export function WorkspaceAgentsPage() {
                       <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         {t("settingsAgents.agents")}
                       </span>
+                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0 ml-auto">
+                        {filteredAgents.length}
+                      </Badge>
                     </div>
-                    {filteredAgents.map((item) => (
-                      <div
-                        key={`agent-${item.id}`}
-                        className={cn(
-                          "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
-                          selectedItemId === item.id && selectedItemType === "agent"
-                            ? "bg-primary/10 border border-primary/30"
-                            : "hover:bg-muted/60"
-                        )}
-                        onClick={() => {
-                          setSelectedItemId(item.id);
-                          setSelectedItemType("agent");
-                        }}
-                      >
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback
-                            className={cn(
-                              "text-sm font-medium",
-                              selectedItemId === item.id && selectedItemType === "agent"
-                                ? "bg-primary/20 text-primary"
-                                : "bg-muted"
+                    {filteredAgents.map((item) => {
+                      // Check if this agent is based on a template
+                      const template = AGENT_TEMPLATES.find(
+                        (t) => t.id !== "blank" && item.name.includes(t.name)
+                      );
+                      const isDefault = item.id === defaultAgentId;
+
+                      return (
+                        <div
+                          key={`agent-${item.id}`}
+                          className={cn(
+                            "group relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
+                            selectedItemId === item.id && selectedItemType === "agent"
+                              ? "bg-primary/10 border border-primary/30 shadow-sm"
+                              : "hover:bg-muted/60 border border-transparent"
+                          )}
+                          onClick={() => {
+                            setSelectedItemId(item.id);
+                            setSelectedItemType("agent");
+                          }}
+                        >
+                          {/* Default indicator */}
+                          {isDefault && (
+                            <div className="absolute -top-1 -right-1 z-10">
+                              <div className="bg-yellow-500 rounded-full p-0.5 shadow-sm">
+                                <Star className="h-2.5 w-2.5 text-white fill-white" />
+                              </div>
+                            </div>
+                          )}
+
+                          <Avatar className="h-11 w-11 shrink-0 ring-2 ring-primary/20">
+                            <AvatarFallback
+                              className={cn(
+                                "text-sm font-semibold",
+                                selectedItemId === item.id && selectedItemType === "agent"
+                                  ? "bg-primary/20 text-primary"
+                                  : "bg-primary/10 text-primary/70"
+                              )}
+                            >
+                              {item.name.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium truncate text-sm">{item.name}</span>
+                            </div>
+                            {item.description ? (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {item.description}
+                              </p>
+                            ) : (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {isDefault && (
+                                  <Badge className="text-[9px] px-1.5 py-0 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                                    {t("common.default")}
+                                  </Badge>
+                                )}
+                                {template && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                    <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                                    {t("settingsAgents.templates")}
+                                  </Badge>
+                                )}
+                                {item.model && (
+                                  <Badge variant="secondary" className="text-[9px] px-1.5 py-0">
+                                    {item.model.split("/").pop() || item.model}
+                                  </Badge>
+                                )}
+                              </div>
                             )}
-                          >
-                            {item.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{item.name}</span>
-                            {item.id === defaultAgentId && (
-                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
+                            {item.description && (
+                              <div className="flex items-center gap-1.5 mt-1">
+                                {isDefault && (
+                                  <Badge className="text-[9px] px-1.5 py-0 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                                    {t("common.default")}
+                                  </Badge>
+                                )}
+                                {template && (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                                    <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                                    {t("settingsAgents.templates")}
+                                  </Badge>
+                                )}
+                              </div>
                             )}
                           </div>
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {item.description}
-                            </p>
-                          )}
+                          {/* Actions on hover */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditItem(item.id, "agent")}>
+                                <Settings2 className="h-4 w-4 mr-2" />
+                                {t("settingsAgents.configuration")}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCopyAgent(item.id, item.name)}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                {t("common.copy")}
+                              </DropdownMenuItem>
+                              {!isDefault && (
+                                <DropdownMenuItem onClick={() => setDefaultAgent(item.id)}>
+                                  <Star className="h-4 w-4 mr-2" />
+                                  {t("agents.setDefault")}
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteAgent(item.id, item.name)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                {t("common.delete")}
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
-                        {/* Actions on hover */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditItem(item.id, "agent")}>
-                              <Settings2 className="h-4 w-4 mr-2" />
-                              {t("settingsAgents.configuration")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCopyAgent(item.id, item.name)}>
-                              <Copy className="h-4 w-4 mr-2" />
-                              {t("common.copy")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDefaultAgent(item.id)}>
-                              <Star className="h-4 w-4 mr-2" />
-                              {t("agents.setDefault")}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDeleteAgent(item.id, item.name)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {t("common.delete")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </>
                 )}
               </div>

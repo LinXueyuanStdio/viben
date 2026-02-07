@@ -490,7 +490,10 @@
     "noPrompts": "暂无提示词配置",
     "noPromptsHint": "在 .claude/agents/ 目录下添加 Markdown 文件",
     "noCommands": "暂无指令配置",
-    "noCommandsHint": "在 .claude/commands/ 目录下添加指令文件"
+    "noCommandsHint": "在 .claude/commands/ 目录下添加指令文件",
+    "noClaudeMd": "暂无 CLAUDE.md 文件",
+    "noClaudeMdHint": "在工作空间根目录创建 CLAUDE.md 文件",
+    "tools": "工具"
   },
   "gateway": {
     "url": "网关地址",
