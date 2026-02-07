@@ -114,3 +114,22 @@ export type {
 export { useAgent } from "./use-agent";
 export { useVitePreview } from "./use-vite-preview";
 export type { PreviewStatus, PreviewState, UseVitePreviewReturn } from "./use-vite-preview";
+
+// Kanban Comments and Activities
+export {
+  useKanbanComments,
+  useAddKanbanComment,
+  useUpdateKanbanComment,
+  useDeleteKanbanComment,
+  useToggleCommentReaction,
+  kanbanCommentsKeys,
+} from "./use-kanban-comments";
+export type { KanbanComment } from "./use-kanban-comments";
+export {
+  useKanbanActivities,
+  useAddKanbanActivity,
+  useRecordTaskActivity,
+  useClearKanbanTaskData,
+  kanbanActivitiesKeys,
+} from "./use-kanban-activities";
+export type { KanbanActivity } from "./use-kanban-activities";

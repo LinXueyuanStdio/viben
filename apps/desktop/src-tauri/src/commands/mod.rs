@@ -27,3 +27,6 @@ pub mod viben_providers;
 
 // Live preview module
 pub mod vite_preview;
+
+// Kanban comments and activities module
+pub mod kanban_comments;
