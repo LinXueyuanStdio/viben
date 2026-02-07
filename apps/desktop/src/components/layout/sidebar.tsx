@@ -13,6 +13,7 @@ import {
   Upload,
   PackageSearch,
   BarChart3,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -244,6 +245,10 @@ export function Sidebar() {
               <Separator className="w-10 bg-sidebar-border" />
             </div>
             <NavItemComponent
+              item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
+              collapsed={collapsed}
+            />
+            <NavItemComponent
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
             />
@@ -279,6 +284,10 @@ export function Sidebar() {
             <McpStatusIndicator collapsed={collapsed} />
             <OfflineIndicator collapsed={collapsed} />
             <div className="mt-3 pt-3 border-t border-sidebar-border">
+              <NavItemComponent
+                item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}
+                collapsed={collapsed}
+              />
               <NavItemComponent
                 item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
                 collapsed={collapsed}
