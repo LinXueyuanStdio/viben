@@ -17,6 +17,7 @@ export { OnboardingPage } from "./onboarding";
 export { PublishPage } from "./publish";
 export { MyPackagesPage } from "./my-packages";
 export { AnalyticsPage } from "./analytics";
+export { DocumentsPage } from "./documents";
 // Note: MarketplacePage and SkillsMarketPage are lazy-loaded in App.tsx for code splitting
 // They should be imported directly from their modules when lazy loading
 // Note: AgentsPage has been removed - agent configuration is now integrated into WorkspaceDetailPage

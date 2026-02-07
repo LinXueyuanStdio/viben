@@ -64,6 +64,7 @@
     "dedicatedSearchServices": "专用搜索服务",
     "skillsMarket": "技能市场",
     "logs": "日志",
+    "documents": "文档",
     "settings": "设置",
     "about": "关于"
   },
@@ -148,7 +149,8 @@
       "languageAndTime": "语言与时间",
       "shortcuts": "快捷键",
       "providers": "提供商",
-      "models": "模型"
+      "models": "模型",
+      "agents": "智能体"
     },
     "generalDescription": "通用应用设置",
     "appearanceDescription": "自定义 Viben 在设备上的外观。",

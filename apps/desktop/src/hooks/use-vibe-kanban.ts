@@ -1,7 +1,9 @@
 /**
  * React Query hooks for vibe-kanban API
+ * With WebSocket integration for real-time task updates
  */
 
+import { useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getProjects,
@@ -11,11 +13,13 @@ import {
   deleteTask,
   updateTaskStatus,
   checkHealth,
+  useTasksWebSocket,
   type Task,
   type TaskWithAttemptStatus,
   type CreateTaskRequest,
   type UpdateTaskRequest,
   type TaskStatus,
+  type WebSocketState,
 } from "@/lib/vibe-kanban";
 
 // Query keys
@@ -50,16 +54,90 @@ export function useVibeKanbanProjects() {
 }
 
 /**
- * Fetch tasks for a project
+ * WebSocket connection state result
+ */
+export interface TasksWebSocketState {
+  connectionState: WebSocketState;
+  isInitialized: boolean;
+  wsError: Error | null;
+  reconnect: () => void;
+}
+
+/**
+ * Fetch tasks for a project with real-time WebSocket updates
+ *
+ * Uses WebSocket for real-time streaming with JSON Patch.
+ * Falls back to REST API for initial data and when WebSocket is unavailable.
+ * React Query cache is automatically updated with WebSocket data.
  */
 export function useVibeKanbanTasks(projectId: string | null) {
-  return useQuery({
+  const queryClient = useQueryClient();
+
+  // WebSocket connection for real-time updates
+  const {
+    data: wsData,
+    connectionState,
+    isInitialized,
+    error: wsError,
+    reconnect,
+  } = useTasksWebSocket(projectId);
+
+  // REST API query as fallback and for initial validation
+  const query = useQuery({
     queryKey: vibeKanbanKeys.tasks(projectId || ""),
-    queryFn: () => getTasks(projectId!),
+    queryFn: () => {
+      // Guard is ensured by `enabled`, but explicit check for type safety
+      if (!projectId) {
+        return Promise.resolve([]);
+      }
+      return getTasks(projectId);
+    },
     enabled: !!projectId,
-    staleTime: 30 * 1000, // 30 seconds
-    refetchInterval: 60 * 1000, // Refetch every minute
+    staleTime: 5 * 60 * 1000, // 5 minutes - rely on WebSocket for freshness
+    // No refetchInterval - WebSocket handles real-time updates
   });
+
+  // Update React Query cache when WebSocket data changes
+  useEffect(() => {
+    if (projectId && wsData && isInitialized) {
+      queryClient.setQueryData(vibeKanbanKeys.tasks(projectId), wsData);
+    }
+  }, [projectId, wsData, isInitialized, queryClient]);
+
+  // Combine data: prefer WebSocket data when initialized, else use REST data
+  const data = useMemo(() => {
+    if (isInitialized && wsData) {
+      return wsData;
+    }
+    return query.data;
+  }, [isInitialized, wsData, query.data]);
+
+  // Determine loading state
+  const isLoading = query.isLoading && !isInitialized;
+  const isFetching =
+    query.isFetching || (connectionState === "connecting" && !isInitialized);
+
+  // Combine errors
+  const error = query.error || wsError;
+
+  // WebSocket state for UI feedback
+  const websocketState: TasksWebSocketState = {
+    connectionState,
+    isInitialized,
+    wsError,
+    reconnect,
+  };
+
+  return {
+    // Standard React Query properties
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch: query.refetch,
+    // WebSocket-specific state
+    websocketState,
+  };
 }
 
 /**
