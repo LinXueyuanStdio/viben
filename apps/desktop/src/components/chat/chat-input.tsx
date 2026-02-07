@@ -986,8 +986,6 @@ export function ChatInput({
       ref={containerRef}
       className={cn(
         "w-full bg-background overflow-hidden",
-        // Only use card style when NOT in workspace mode (no toolbar/configbar)
-        !hasToolbar && "rounded-2xl border border-border/50 shadow-lg",
         className
       )}
     >
@@ -1208,7 +1206,7 @@ export function ChatInput({
 
         {/* No commands found message */}
         {isSlashMenuOpen && filteredSlashCommands.length === 0 && slashQuery && (
-          <div className="absolute left-3 right-3 bottom-full mb-1 z-50 rounded-lg border border-border bg-popover shadow-lg p-3">
+          <div className="absolute left-3 right-3 bottom-full mb-1 z-[100] rounded-lg border border-border bg-popover shadow-lg p-3">
             <div className="text-sm text-muted-foreground text-center">
               {t("chat.noCommandsFound", "No commands found")}
             </div>

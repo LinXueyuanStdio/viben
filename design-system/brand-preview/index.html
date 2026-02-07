@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Viben Logo - &lt;V&gt;</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #fff;
+    }
+    h1 { margin-bottom: 10px; font-weight: 300; font-size: 2rem; }
+    .subtitle { color: #888; margin-bottom: 40px; }
+    .main-preview {
+      background: rgba(255,255,255,0.05);
+      border-radius: 24px;
+      padding: 60px;
+      border: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 30px;
+    }
+    .timeline {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-top: 40px;
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+      font-size: 0.85rem;
+      color: #888;
+    }
+    .timeline-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .timeline-step .time { color: #FDB813; font-family: monospace; }
+    .timeline-arrow { color: #38B2AC; }
+    .replay-btn {
+      margin-top: 30px;
+      padding: 12px 32px;
+      background: linear-gradient(135deg, #FDB813 0%, #38B2AC 100%);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 500;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .replay-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(253,184,19,0.3);
+    }
+    .variants {
+      display: flex;
+      gap: 30px;
+      margin-top: 50px;
+    }
+    .variant-box {
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+    }
+    .variant-box.dark { background: #1a1a2e; }
+    .variant-box.light { background: #fff; }
+    .variant-label {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: #666;
+    }
+    .files {
+      margin-top: 50px;
+      text-align: center;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .files code {
+      background: rgba(255,255,255,0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>&lt;V&gt;</h1>
+  <p class="subtitle">Viben · Vibe Coding · 本地实现所有任务</p>
+
+  <div class="main-preview">
+    <svg id="mainAnim" width="200" height="200" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="viben-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#FDB813"/>
+          <stop offset="100%" style="stop-color:#38B2AC"/>
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- 整体容器，用于最后的扰动 -->
+      <g filter="url(#glow)">
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0;0,0;0,0;0,0;0,0;0,0;0,0;0,0;0,0;0,0;3,0;-3,0;2,-1;-2,1;1,0;-1,0;0,0"
+          keyTimes="0;0.55;0.6;0.65;0.7;0.75;0.8;0.82;0.85;0.88;0.9;0.92;0.94;0.96;0.98;0.99;1"
+          dur="1.8s" fill="freeze" begin="0s"/>
+
+        <!-- V 中间字母 - 首先出现 (0s - 0.5s) -->
+        <path d="M35 28 L50 72 L65 28" fill="none" stroke="url(#viben-grad)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"
+          stroke-dasharray="120" stroke-dashoffset="120">
+          <animate attributeName="stroke-dashoffset" values="120;0" dur="0.5s" fill="freeze" begin="0s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+        </path>
+
+        <!-- < 左尖括号 - 从外侧滑入合拢 + 渐现 (0.5s - 1.1s) -->
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="-20,0;0,0" dur="0.6s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+          <path d="M25 25 L8 50 L25 75" fill="none" stroke="#FDB813" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+            <animate attributeName="opacity" values="0;1" dur="0.3s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+          </path>
+        </g>
+
+        <!-- > 右尖括号 - 从外侧滑入合拢 + 渐现 (0.5s - 1.1s) -->
+        <g>
+          <animateTransform attributeName="transform" type="translate" values="20,0;0,0" dur="0.6s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+          <path d="M75 25 L92 50 L75 75" fill="none" stroke="#38B2AC" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" opacity="0">
+            <animate attributeName="opacity" values="0;1" dur="0.3s" fill="freeze" begin="0.5s" calcMode="spline" keySplines="0.25 0.1 0.25 1"/>
+          </path>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-step">
+      <span class="time">0s</span>
+      <span>V 绘制</span>
+    </div>
+    <span class="timeline-arrow">→</span>
+    <div class="timeline-step">
+      <span class="time">0.5s</span>
+      <span>&lt; &gt; 渐现合拢</span>
+    </div>
+    <span class="timeline-arrow">→</span>
+    <div class="timeline-step">
+      <span class="time">1.4s</span>
+      <span>扰动 vibe</span>
+    </div>
+    <span class="timeline-arrow">→</span>
+    <div class="timeline-step">
+      <span class="time">1.8s</span>
+      <span>定格</span>
+    </div>
+  </div>
+
+  <button class="replay-btn" onclick="replay()">重播动画</button>
+
+  <div class="variants">
+    <div class="variant-box dark">
+      <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#FDB813"/>
+            <stop offset="100%" style="stop-color:#38B2AC"/>
+          </linearGradient>
+        </defs>
+        <path d="M25 25 L8 50 L25 75" fill="none" stroke="#FDB813" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M35 28 L50 72 L65 28" fill="none" stroke="url(#g1)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M75 25 L92 50 L75 75" fill="none" stroke="#38B2AC" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="variant-label">深色背景</div>
+    </div>
+    <div class="variant-box light">
+      <svg width="64" height="64" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#FDB813"/>
+            <stop offset="100%" style="stop-color:#38B2AC"/>
+          </linearGradient>
+        </defs>
+        <path d="M25 25 L8 50 L25 75" fill="none" stroke="#FDB813" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M35 28 L50 72 L65 28" fill="none" stroke="url(#g2)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M75 25 L92 50 L75 75" fill="none" stroke="#38B2AC" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="variant-label">浅色背景</div>
+    </div>
+  </div>
+
+  <div class="files">
+    <p>导出文件:</p>
+    <p style="margin-top: 10px;">
+      <code>viben-logo.svg</code> 静态 ·
+      <code>viben-logo-animated.svg</code> 动画
+    </p>
+  </div>
+
+  <script>
+    function replay() {
+      const svg = document.getElementById('mainAnim');
+      const clone = svg.cloneNode(true);
+      svg.parentNode.replaceChild(clone, svg);
+    }
+  </script>
+</body>
+</html>

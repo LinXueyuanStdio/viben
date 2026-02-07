@@ -98,5 +98,8 @@ export type { TabsProps, TabsListProps, TabsTriggerProps, TabsContentProps } fro
 export { Textarea } from "./textarea";
 export type { TextareaProps } from "./textarea";
 
+// Popover
+export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./popover";
+
 // Tooltip
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "./tooltip";
