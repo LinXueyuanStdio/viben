@@ -1580,6 +1580,15 @@
     "copyToClipboard": "Copy to clipboard",
     "clearMessagesConfirmTitle": "Clear messages?",
     "clearMessagesConfirmDesc": "This action cannot be undone. All messages in this conversation will be permanently deleted.",
+    "noCommandsFound": "No commands found",
+    "slashCommands": {
+      "clear": "Clear",
+      "clearDesc": "Clear conversation history",
+      "help": "Help",
+      "helpDesc": "Show available commands",
+      "stop": "Stop",
+      "stopDesc": "Stop current execution"
+    },
     "agentInput": {
       "placeholder": "Start with any idea... Press ⌘ ↵ for newline...",
       "searchModels": "Search models...",

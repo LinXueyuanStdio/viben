@@ -7,7 +7,7 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Trash2, Loader2, AlertCircle, X, Settings2 } from "lucide-react";
+import { Bot, Trash2, Loader2, AlertCircle, X, Settings2, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +18,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { ChatInput } from "./chat-input";
+import { ChatInput, type SlashCommand } from "./chat-input";
 import { MessageList } from "./message-list";
 import { cn } from "@/lib/utils";
 import {
@@ -42,23 +42,44 @@ import type {
 } from "@/types";
 
 /**
- * Gateway event types from SSE stream
+ * Gateway event data structure
  */
-interface GatewayEvent {
-  type: string;
-  data: {
-    agent_id?: string;
-    session_id?: string;
-    success?: boolean;
-    task_id?: string;
-    old_status?: string;
-    new_status?: string;
-    content?: string;
-    role?: string;
-    log_type?: string;
-    message?: string;
-    code?: string;
+interface GatewayEventData {
+  agent_id?: string;
+  session_id?: string;
+  success?: boolean;
+  task_id?: string;
+  old_status?: string;
+  new_status?: string;
+  content?: string;
+  role?: string;
+  log_type?: string;
+  message?: string;
+  code?: string;
+}
+
+/**
+ * WebSocket message from server (matching Rust WsMessage::Event)
+ */
+interface WsServerMessage {
+  type: "Event" | "Pong" | "Subscribed" | "Error";
+  data?: {
+    channel?: string;
+    // The payload is the serialized GatewayEvent
+    payload?: {
+      type?: string;  // e.g., "SessionMessage", "ExecutionLog", "AgentCompleted"
+      data?: GatewayEventData;
+    };
   };
+}
+
+/**
+ * Get WebSocket URL from Gateway URL
+ */
+function getWebSocketUrl(): string {
+  const gatewayUrl = getGatewayUrl();
+  // Convert http(s):// to ws(s)://
+  return gatewayUrl.replace(/^http/, "ws") + "/ws";
 }
 
 // Default debug workdir
@@ -104,8 +125,8 @@ export function DebugChatPanel({
   const [gatewayUrlInput, setGatewayUrlInput] = React.useState(getGatewayUrl());
   const [workdirInput, setWorkdirInput] = React.useState(DEBUG_WORKDIR);
 
-  // SSE event source ref
-  const eventSourceRef = React.useRef<EventSource | null>(null);
+  // WebSocket ref
+  const wsRef = React.useRef<WebSocket | null>(null);
 
   // Check gateway connection on open
   React.useEffect(() => {
@@ -121,12 +142,12 @@ export function DebugChatPanel({
     }
   }, [open, gatewayConnected, agentType]);
 
-  // Cleanup SSE on unmount or close
+  // Cleanup WebSocket on unmount or close
   React.useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, []);
@@ -165,219 +186,189 @@ export function DebugChatPanel({
   };
 
   /**
-   * Subscribe to SSE events for a session
-   * Returns a promise that resolves when the connection is open
+   * Handle incoming WebSocket event
    */
-  const subscribeToEvents = React.useCallback((targetSessionId: string): Promise<EventSource> => {
-    return new Promise((resolve, reject) => {
-      // Close existing connection
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+  const handleWsEvent = React.useCallback((eventType: string, eventData: GatewayEventData, targetSessionId: string) => {
+    // Filter by session ID
+    if (eventData.session_id !== targetSessionId) {
+      console.log("[DebugChatPanel] Ignoring event for different session:", eventData.session_id);
+      return;
+    }
 
-      const sseUrl = `${getGatewayUrl()}/api/events`;
-      console.log("[DebugChatPanel] Connecting to SSE:", sseUrl);
-      const eventSource = new EventSource(sseUrl);
-      eventSourceRef.current = eventSource;
+    console.log("[DebugChatPanel] Processing event:", eventType, eventData);
 
-      // Wait for connection to open before resolving
-      eventSource.onopen = () => {
-        console.log("[DebugChatPanel] SSE connection opened for session:", targetSessionId);
-        resolve(eventSource);
-      };
+    switch (eventType) {
+      case "AgentSpawned":
+        console.log("[DebugChatPanel] Agent spawned confirmed for session:", targetSessionId);
+        break;
 
-      // Handle agent_spawned event
-      eventSource.addEventListener("agent_spawned", (e) => {
-        try {
-          const event: GatewayEvent = JSON.parse(e.data);
-          console.log("[DebugChatPanel] agent_spawned event:", event);
-          if (event.data.session_id !== targetSessionId) return;
-          console.log("[DebugChatPanel] Agent spawned confirmed for session:", targetSessionId);
-        } catch (err) {
-          console.error("[DebugChatPanel] Failed to parse agent_spawned:", err);
-        }
-      });
+      case "SessionMessage":
+        const msg: AgentMessage = {
+          id: crypto.randomUUID(),
+          type: eventData.role === "user" ? "user" : "text",
+          content: eventData.content || "",
+        };
+        setMessages((prev) => [...prev, msg]);
+        break;
 
-      // Handle different event types
-      eventSource.addEventListener("session_message", (e) => {
-        try {
-          const event: GatewayEvent = JSON.parse(e.data);
-          console.log("[DebugChatPanel] session_message event:", event);
-          if (event.data.session_id !== targetSessionId) return;
+      case "ExecutionLog": {
+        const logType = eventData.log_type;
+        const content = eventData.content || "";
 
-          const msg: AgentMessage = {
-            id: crypto.randomUUID(),
-            type: event.data.role === "user" ? "user" : "text",
-            content: event.data.content || "",
-          };
-          setMessages((prev) => [...prev, msg]);
-        } catch (err) {
-          console.error("[DebugChatPanel] Failed to parse session_message:", err);
-        }
-      });
+        if (logType === "tool_use") {
+          try {
+            const toolData = JSON.parse(content);
+            const toolId = crypto.randomUUID();
+            const toolMsg: AgentMessage = {
+              id: toolId,
+              type: "tool_use",
+              name: toolData.name || "unknown",
+              input: toolData.input || {},
+            };
+            setMessages((prev) => [...prev, toolMsg]);
 
-      eventSource.addEventListener("execution_log", (e) => {
-        try {
-          const event: GatewayEvent = JSON.parse(e.data);
-          console.log("[DebugChatPanel] execution_log event:", event);
-          if (event.data.session_id !== targetSessionId) return;
-
-          // Handle different log types
-          const logType = event.data.log_type;
-          const content = event.data.content || "";
-
-          if (logType === "tool_use") {
-            // Parse tool use from log
-            try {
-              const toolData = JSON.parse(content);
-              const toolId = crypto.randomUUID();
-              const toolMsg: AgentMessage = {
-                id: toolId,
-                type: "tool_use",
-                name: toolData.name || "unknown",
-                input: toolData.input || {},
-              };
-              setMessages((prev) => [...prev, toolMsg]);
-
-              const toolUsage: ToolUsage = {
-                id: toolId,
-                name: toolData.name || "unknown",
-                displayName: toolData.name || "Unknown Tool",
-                input: toolData.input || {},
-                timestamp: Date.now(),
-              };
-              setToolUsages((prev) => [...prev, toolUsage]);
-            } catch {
-              // If not JSON, just add as text
-              const textMsg: AgentMessage = {
-                id: crypto.randomUUID(),
-                type: "text",
-                content,
-              };
-              setMessages((prev) => [...prev, textMsg]);
-            }
-          } else if (logType === "tool_result") {
-            try {
-              const resultData = JSON.parse(content);
-              const resultMsg: AgentMessage = {
-                id: crypto.randomUUID(),
-                type: "tool_result",
-                toolUseId: resultData.tool_use_id || "",
-                output: resultData.output || content,
-                isError: resultData.is_error,
-              };
-              setMessages((prev) => [...prev, resultMsg]);
-
-              // Update tool usage with result
-              if (resultData.tool_use_id) {
-                setToolUsages((prev) =>
-                  prev.map((t) =>
-                    t.id === resultData.tool_use_id
-                      ? { ...t, output: resultData.output }
-                      : t
-                  )
-                );
-              }
-            } catch {
-              const textMsg: AgentMessage = {
-                id: crypto.randomUUID(),
-                type: "text",
-                content,
-              };
-              setMessages((prev) => [...prev, textMsg]);
-            }
-          } else if (logType === "thinking" || logType === "assistant") {
+            const toolUsage: ToolUsage = {
+              id: toolId,
+              name: toolData.name || "unknown",
+              displayName: toolData.name || "Unknown Tool",
+              input: toolData.input || {},
+              timestamp: Date.now(),
+            };
+            setToolUsages((prev) => [...prev, toolUsage]);
+          } catch {
             const textMsg: AgentMessage = {
               id: crypto.randomUUID(),
               type: "text",
               content,
             };
             setMessages((prev) => [...prev, textMsg]);
-          } else {
-            // Other log types - just add as text if non-empty
-            if (content.trim()) {
-              const textMsg: AgentMessage = {
-                id: crypto.randomUUID(),
-                type: "text",
-                content,
-              };
-              setMessages((prev) => [...prev, textMsg]);
-            }
           }
-        } catch (err) {
-          console.error("[DebugChatPanel] Failed to parse execution_log:", err);
-        }
-      });
-
-      eventSource.addEventListener("agent_completed", (e) => {
-        try {
-          const event: GatewayEvent = JSON.parse(e.data);
-          console.log("[DebugChatPanel] agent_completed event:", event);
-          if (event.data.session_id !== targetSessionId) return;
-
-          setIsStreaming(false);
-          if (event.data.success) {
-            setPhase("completed");
+        } else if (logType === "tool_result") {
+          try {
+            const resultData = JSON.parse(content);
             const resultMsg: AgentMessage = {
               id: crypto.randomUUID(),
-              type: "result",
-              content: "Agent completed successfully.",
+              type: "tool_result",
+              toolUseId: resultData.tool_use_id || "",
+              output: resultData.output || content,
+              isError: resultData.is_error,
             };
             setMessages((prev) => [...prev, resultMsg]);
-          } else {
-            setPhase("error");
-            const errMsg: AgentMessage = {
+          } catch {
+            const textMsg: AgentMessage = {
               id: crypto.randomUUID(),
-              type: "error",
-              message: "Agent execution failed.",
-              isError: true,
+              type: "text",
+              content,
             };
-            setMessages((prev) => [...prev, errMsg]);
+            setMessages((prev) => [...prev, textMsg]);
           }
-        } catch (err) {
-          console.error("[DebugChatPanel] Failed to parse agent_completed:", err);
+        } else if (content.trim()) {
+          const textMsg: AgentMessage = {
+            id: crypto.randomUUID(),
+            type: "text",
+            content,
+          };
+          setMessages((prev) => [...prev, textMsg]);
         }
-      });
+        break;
+      }
 
-      eventSource.addEventListener("error", (e) => {
-        console.log("[DebugChatPanel] SSE error event:", e);
-        try {
-          const event: GatewayEvent = JSON.parse((e as MessageEvent).data || "{}");
-          setError(event.data.message || "Unknown error");
+      case "AgentCompleted":
+        setIsStreaming(false);
+        if (eventData.success) {
+          setPhase("completed");
+          const resultMsg: AgentMessage = {
+            id: crypto.randomUUID(),
+            type: "result",
+            content: "Agent completed successfully.",
+          };
+          setMessages((prev) => [...prev, resultMsg]);
+        } else {
+          setPhase("error");
           const errMsg: AgentMessage = {
             id: crypto.randomUUID(),
             type: "error",
-            message: event.data.message || "Unknown error",
+            message: "Agent execution failed.",
             isError: true,
           };
           setMessages((prev) => [...prev, errMsg]);
-          setPhase("error");
-          setIsStreaming(false);
-        } catch {
-          // Connection error, not a data event
-          console.warn("[DebugChatPanel] SSE connection error (not data event)");
         }
-      });
+        break;
 
-      eventSource.onerror = (e) => {
-        console.warn("[DebugChatPanel] SSE onerror:", e);
-        // Only reject if we haven't connected yet
-        if (eventSource.readyState === EventSource.CONNECTING) {
-          // Still connecting, wait
-        } else if (eventSource.readyState === EventSource.CLOSED) {
-          reject(new Error("SSE connection failed"));
+      case "Error":
+        setError(eventData.message || "Unknown error");
+        const errMsg: AgentMessage = {
+          id: crypto.randomUUID(),
+          type: "error",
+          message: eventData.message || "Unknown error",
+          isError: true,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setPhase("error");
+        setIsStreaming(false);
+        break;
+    }
+  }, []);
+
+  /**
+   * Subscribe to WebSocket events for a session
+   * Returns a promise that resolves when the connection is open
+   */
+  const subscribeToEvents = React.useCallback((targetSessionId: string): Promise<WebSocket> => {
+    return new Promise((resolve, reject) => {
+      // Close existing connection
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+
+      const wsUrl = getWebSocketUrl();
+      console.log("[DebugChatPanel] Connecting to WebSocket:", wsUrl);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("[DebugChatPanel] WebSocket connection opened for session:", targetSessionId);
+        resolve(ws);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const message: WsServerMessage = JSON.parse(e.data);
+          console.log("[DebugChatPanel] WebSocket message:", message);
+
+          if (message.type === "Event" && message.data?.payload) {
+            const eventType = message.data.payload.type;
+            const eventData = message.data.payload.data;
+            if (eventType && eventData) {
+              handleWsEvent(eventType, eventData, targetSessionId);
+            }
+          }
+        } catch (err) {
+          console.error("[DebugChatPanel] Failed to parse WebSocket message:", err, e.data);
+        }
+      };
+
+      ws.onerror = (e) => {
+        console.error("[DebugChatPanel] WebSocket error:", e);
+      };
+
+      ws.onclose = (e) => {
+        console.log("[DebugChatPanel] WebSocket closed:", e.code, e.reason);
+        if (e.code !== 1000) {
+          // Abnormal close
+          reject(new Error(`WebSocket closed: ${e.reason || e.code}`));
         }
       };
 
       // Timeout if connection doesn't open within 5 seconds
       setTimeout(() => {
-        if (eventSource.readyState === EventSource.CONNECTING) {
-          eventSource.close();
-          reject(new Error("SSE connection timeout"));
+        if (ws.readyState === WebSocket.CONNECTING) {
+          ws.close();
+          reject(new Error("WebSocket connection timeout"));
         }
       }, 5000);
     });
-  }, []);
+  }, [handleWsEvent]);
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim()) return;
@@ -398,11 +389,11 @@ export function DebugChatPanel({
     const newSessionId = sessionId || crypto.randomUUID();
 
     try {
-      // IMPORTANT: Subscribe to SSE BEFORE spawning agent to avoid race condition
+      // IMPORTANT: Subscribe to WebSocket BEFORE spawning agent to avoid race condition
       // This ensures we don't miss any events that are broadcast immediately after spawn
-      console.log("[DebugChatPanel] Subscribing to SSE for session:", newSessionId);
+      console.log("[DebugChatPanel] Subscribing to WebSocket for session:", newSessionId);
       await subscribeToEvents(newSessionId);
-      console.log("[DebugChatPanel] SSE connected, now spawning agent...");
+      console.log("[DebugChatPanel] WebSocket connected, now spawning agent...");
 
       // Add a system message indicating the agent is starting
       const infoMessage: AgentMessage = {
@@ -453,10 +444,10 @@ export function DebugChatPanel({
   };
 
   const handleCancel = () => {
-    // Close SSE connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    // Close WebSocket connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     if (sessionId) {
@@ -468,10 +459,10 @@ export function DebugChatPanel({
   };
 
   const handleClearMessages = () => {
-    // Close SSE connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    // Close WebSocket connection
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
     setMessages([]);
@@ -485,6 +476,34 @@ export function DebugChatPanel({
 
   const agentInfo = getAgentTypeInfo(agentType);
   const availabilityStatus = availability ? getAvailabilityStatus(availability) : null;
+
+  // Slash commands for debug chat
+  const slashCommands = React.useMemo<SlashCommand[]>(() => [
+    {
+      id: "clear",
+      name: t("chat.slashCommands.clear", "clear"),
+      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
+      icon: <Trash2 className="h-4 w-4" />,
+    },
+    {
+      id: "help",
+      name: t("chat.slashCommands.help", "help"),
+      description: t("chat.slashCommands.helpDesc", "Show available commands"),
+      icon: <HelpCircle className="h-4 w-4" />,
+    },
+  ], [t]);
+
+  // Handle slash command execution
+  const handleSlashCommand = React.useCallback((command: SlashCommand) => {
+    switch (command.id) {
+      case "clear":
+        handleClearMessages();
+        break;
+      case "help":
+        // Could show a help modal or inject a help message
+        break;
+    }
+  }, [handleClearMessages]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -672,7 +691,7 @@ export function DebugChatPanel({
           />
 
           {/* Input */}
-          <div className="border-t border-border bg-background p-4">
+          <div className="border-t border-border bg-background">
             <ChatInput
               onSend={handleSendMessage}
               onCancel={handleCancel}
@@ -688,6 +707,14 @@ export function DebugChatPanel({
                   : undefined
               }
               autoFocus
+              showTopToolbar
+              showConfigBar
+              showResizeHandle
+              enableWritingMode
+              hideAgentSelector
+              hideModelSelector
+              slashCommands={slashCommands}
+              onSlashCommand={handleSlashCommand}
             />
           </div>
         </div>

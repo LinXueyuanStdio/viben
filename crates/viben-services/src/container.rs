@@ -73,6 +73,7 @@ impl ContainerService {
 
         // Broadcast event
         self.event_service.agent_spawned(&agent_type, session_id);
+        tracing::info!("[ContainerService] Agent spawned: {} session={}", agent_type, session_id);
 
         // Spawn a task to read stdout and forward to SSE
         let session_id_clone = session_id.to_string();
@@ -80,11 +81,14 @@ impl ContainerService {
         let agent_type_clone = agent_type.clone();
 
         if let Some(stdout) = child.child.inner().stdout.take() {
+            tracing::info!("[ContainerService] stdout captured for session={}", session_id);
             tokio::spawn(async move {
+                tracing::info!("[ContainerService] Starting stdout reader for session={}", session_id_clone);
                 let reader = BufReader::new(stdout);
                 let mut lines = reader.lines();
 
                 while let Ok(Some(line)) = lines.next_line().await {
+                    tracing::debug!("[ContainerService] stdout line: {}", &line[..line.len().min(200)]);
                     // Parse JSON line from claude code --output-format=stream-json
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
                         // Extract message type and content
@@ -151,8 +155,11 @@ impl ContainerService {
                 }
 
                 // Process completed
+                tracing::info!("[ContainerService] stdout EOF for session={}", session_id_clone);
                 event_service.agent_completed(&agent_type_clone, &session_id_clone, true);
             });
+        } else {
+            tracing::warn!("[ContainerService] No stdout available for session={}", session_id);
         }
 
         Ok(child)

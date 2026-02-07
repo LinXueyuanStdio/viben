@@ -1,5 +1,5 @@
 export { ChatInput } from "./chat-input";
-export type { ChatInputProps } from "./chat-input";
+export type { ChatInputProps, SlashCommand } from "./chat-input";
 export { MessageList } from "./message-list";
 export { MessageItem } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
