@@ -38,7 +38,7 @@ import {
   ListView,
   ListViewItem,
   BulkActionsBar,
-  SelectableCard,
+  // SelectableCard, // TODO: use in multi-select mode
   EditableCardTitle,
   SortModeSelect,
   StatsPanel,
@@ -307,11 +307,11 @@ export function WorkspaceKanbanPage() {
   const {
     selectedIds,
     selectedCount,
-    isSelecting,
-    toggleSelect,
+    isSelecting: _isSelecting,
+    toggleSelect: _toggleSelect,
     selectAll,
     clearSelection,
-    isSelected,
+    isSelected: _isSelected,
   } = useMultiSelect(sortedTasks);
 
   // Selected task
@@ -386,21 +386,20 @@ export function WorkspaceKanbanPage() {
   );
 
   // Quick add task (with title from QuickTaskInput)
-  const handleQuickAddTask = useCallback(
-    (columnId: string, title: string) => {
-      if (!vibeProject) return;
-
-      const status = COLUMN_TO_STATUS[columnId] ?? "todo";
-
-      createTask.mutate({
-        project_id: vibeProject.id,
-        title,
-        description: null,
-        status,
-      });
-    },
-    [vibeProject, createTask]
-  );
+  // TODO: Use this when QuickTaskInput is implemented
+  // const handleQuickAddTask = useCallback(
+  //   (columnId: string, title: string) => {
+  //     if (!vibeProject) return;
+  //     const status = COLUMN_TO_STATUS[columnId] ?? "todo";
+  //     createTask.mutate({
+  //       project_id: vibeProject.id,
+  //       title,
+  //       description: null,
+  //       status,
+  //     });
+  //   },
+  //   [vibeProject, createTask]
+  // );
 
   // Handle inline title edit
   const handleTitleChange = useCallback(
