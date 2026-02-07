@@ -470,11 +470,14 @@ Commands:
   init          Initialize workspace in current directory
   config        Configuration management (git-style)
   service       Manage background services
+  gateway       Start the gateway (message bus + agent loop)
   agent         Manage agent instances and templates
   provider      Manage API providers (OpenAI, Anthropic, etc.)
   model         Manage models, aliases, and fallbacks
   mcp           Manage MCP servers
   skill         Manage skills
+  channel       Manage chat channels (Telegram, Discord, WhatsApp, Feishu)
+  cron          Manage scheduled tasks
   workspace     Workspace operations
   version       Show version info
   help          Show help
