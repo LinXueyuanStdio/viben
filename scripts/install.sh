@@ -6,7 +6,7 @@
 # Usage:
 #   curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
 #
-# This script installs the browse-mcp Python package (Viben CLI).
+# This script installs the viben npm package globally.
 #
 
 set -euo pipefail
@@ -21,9 +21,9 @@ NC='\033[0m' # No Color
 BOLD='\033[1m'
 
 # Configuration
-PACKAGE_NAME="browse-mcp"
+NPM_PACKAGE="viben"
 BRAND_NAME="Viben"
-MIN_PYTHON_VERSION="3.10"
+MIN_NODE_VERSION="18"
 GITHUB_REPO="LinXueyuanStdio/viben"
 
 # -----------------------------------------------------------------------------
@@ -62,15 +62,10 @@ command_exists() {
     command -v "$1" &> /dev/null
 }
 
-# Compare version strings (returns 0 if $1 >= $2)
-version_ge() {
-    printf '%s\n%s\n' "$2" "$1" | sort -V -C
-}
-
-# Get Python version as comparable string
-get_python_version() {
-    local python_cmd="$1"
-    "$python_cmd" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "0.0"
+# Get Node.js version as major number
+get_node_version() {
+    local node_cmd="$1"
+    "$node_cmd" -v 2>/dev/null | sed 's/v//' | cut -d. -f1 || echo "0"
 }
 
 # Detect operating system
@@ -110,156 +105,178 @@ detect_arch() {
     echo "$arch"
 }
 
-# Find suitable Python command
-find_python() {
-    local python_cmd=""
+# Find suitable Node.js command
+find_node() {
+    local node_cmd=""
     local version=""
 
-    # Try python3 first, then python
-    for cmd in python3 python; do
-        if command_exists "$cmd"; then
-            version=$(get_python_version "$cmd")
-            if version_ge "$version" "$MIN_PYTHON_VERSION"; then
-                python_cmd="$cmd"
-                break
-            fi
+    if command_exists node; then
+        version=$(get_node_version "node")
+        if [ "$version" -ge "$MIN_NODE_VERSION" ]; then
+            node_cmd="node"
         fi
-    done
+    fi
 
-    echo "$python_cmd"
+    echo "$node_cmd"
 }
 
 # Show help message
 show_help() {
     echo "Usage: install.sh [OPTIONS]"
     echo ""
-    echo "${BRAND_NAME} CLI Installer - Installs the browse-mcp Python package."
+    echo "${BRAND_NAME} CLI Installer"
+    echo ""
+    echo "This script installs the viben npm package globally."
     echo ""
     echo "Options:"
-    echo "  -h, --help      Show this help message"
-    echo "  --no-confirm    Skip confirmation prompts"
-    echo "  --with-uv       Install uv first if not available"
+    echo "  -h, --help        Show this help message"
+    echo "  --no-confirm      Skip confirmation prompts"
     echo ""
     echo "Requirements:"
-    echo "  - Python ${MIN_PYTHON_VERSION} or higher"
-    echo "  - pip or uv package manager"
+    echo "  Node.js ${MIN_NODE_VERSION}+ with npm"
     echo ""
     echo "Examples:"
     echo "  # Default installation"
     echo "  curl -fsSL https://github.com/${GITHUB_REPO}/releases/latest/download/install.sh | bash"
     echo ""
-    echo "  # Install with uv (faster)"
-    echo "  curl -fsSL https://github.com/${GITHUB_REPO}/releases/latest/download/install.sh | bash -s -- --with-uv"
+    echo "  # Skip confirmation"
+    echo "  curl -fsSL https://github.com/${GITHUB_REPO}/releases/latest/download/install.sh | bash -s -- --no-confirm"
     echo ""
     echo "More information: https://github.com/${GITHUB_REPO}"
 }
 
-# Install uv package manager
-install_uv() {
-    info "Installing uv package manager..."
-    if curl -LsSf https://astral.sh/uv/install.sh | sh; then
-        success "uv installed successfully"
-        # Source the environment to make uv available
-        export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+# -----------------------------------------------------------------------------
+# npm installation
+# -----------------------------------------------------------------------------
+
+install_npm_package() {
+    info "Installing ${NPM_PACKAGE} using npm..."
+
+    # Try npm global install
+    if npm install -g "$NPM_PACKAGE" 2>/dev/null; then
         return 0
-    else
-        warn "Failed to install uv, will fall back to pip"
-        return 1
     fi
-}
 
-# Install the package using uv
-install_with_uv() {
-    info "Installing ${PACKAGE_NAME} using uv..."
-    if uv pip install --system "$PACKAGE_NAME"; then
+    # Try with sudo if permission denied
+    warn "Permission denied, trying with sudo..."
+    if sudo npm install -g "$NPM_PACKAGE" 2>/dev/null; then
         return 0
-    elif uv pip install "$PACKAGE_NAME"; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Install the package using pip
-install_with_pip() {
-    local python_cmd="$1"
-    info "Installing ${PACKAGE_NAME} using pip..."
-
-    # Try pip3 first, then pip, then python -m pip
-    if command_exists pip3; then
-        pip3 install "$PACKAGE_NAME" && return 0
-    fi
-
-    if command_exists pip; then
-        pip install "$PACKAGE_NAME" && return 0
-    fi
-
-    if [ -n "$python_cmd" ]; then
-        "$python_cmd" -m pip install "$PACKAGE_NAME" && return 0
     fi
 
     return 1
 }
 
-# Verify installation
+install_with_pnpm() {
+    info "Installing ${NPM_PACKAGE} using pnpm..."
+    if pnpm add -g "$NPM_PACKAGE"; then
+        return 0
+    fi
+    return 1
+}
+
+install_with_yarn() {
+    info "Installing ${NPM_PACKAGE} using yarn..."
+    if yarn global add "$NPM_PACKAGE"; then
+        return 0
+    fi
+    return 1
+}
+
+install_with_bun() {
+    info "Installing ${NPM_PACKAGE} using bun..."
+    if bun install -g "$NPM_PACKAGE"; then
+        return 0
+    fi
+    return 1
+}
+
+install_node_package() {
+    # Try different package managers in order of preference
+    if command_exists npm; then
+        if install_npm_package; then
+            return 0
+        fi
+    fi
+
+    if command_exists pnpm; then
+        if install_with_pnpm; then
+            return 0
+        fi
+    fi
+
+    if command_exists yarn; then
+        if install_with_yarn; then
+            return 0
+        fi
+    fi
+
+    if command_exists bun; then
+        if install_with_bun; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
 verify_installation() {
     info "Verifying installation..."
 
-    # Check if browse-mcp command is available
-    if command_exists browse-mcp; then
-        success "browse-mcp command is available"
+    # Check if viben command is available
+    if command_exists viben; then
+        success "viben command is available"
         return 0
     fi
 
-    # Check in common locations
-    for path in "$HOME/.local/bin/browse-mcp" "/usr/local/bin/browse-mcp"; do
+    # Check in common global npm locations
+    for path in "$HOME/.npm-global/bin/viben" "/usr/local/bin/viben" "$HOME/.local/share/pnpm/viben"; do
         if [ -x "$path" ]; then
-            success "browse-mcp installed at $path"
+            success "viben installed at $path"
             warn "You may need to add this directory to your PATH"
             return 0
         fi
     done
 
-    # Try importing the module
-    local python_cmd
-    python_cmd=$(find_python)
-    if [ -n "$python_cmd" ]; then
-        if "$python_cmd" -c "import browse_mcp" 2>/dev/null; then
-            success "browse_mcp module is installed"
-            warn "You can run it with: $python_cmd -m browse_mcp"
-            return 0
-        fi
-    fi
-
     return 1
 }
 
-# Print post-installation instructions
+# -----------------------------------------------------------------------------
+# Post-installation instructions
+# -----------------------------------------------------------------------------
+
 print_instructions() {
     echo ""
     echo -e "${GREEN}${BOLD}Installation complete!${NC}"
     echo ""
     echo "Quick start:"
     echo ""
-    echo "  # Run the MCP server"
-    echo "  browse-mcp"
+    echo "  # Initialize a workspace"
+    echo "  viben init"
     echo ""
-    echo "  # Or run as Python module"
-    echo "  python -m browse_mcp"
+    echo "  # List configuration"
+    echo "  viben config list"
     echo ""
-    echo "Configure your MCP client (Claude Desktop, Cursor, etc.):"
+    echo "  # Manage agents"
+    echo "  viben agent list"
     echo ""
-    echo "  Add to your MCP configuration:"
-    echo ""
-    echo '  {
-    "mcpServers": {
-      "browse-mcp": {
-        "command": "browse-mcp"
-      }
-    }
-  }'
+    echo "  # Start MCP server (auto-installs browse-mcp if needed)"
+    echo "  viben serve"
     echo ""
     echo "Documentation: https://github.com/${GITHUB_REPO}"
+    echo ""
+}
+
+print_path_instructions() {
+    local os="$1"
+
+    echo ""
+    warn "The viben command may not be in your PATH."
+    echo ""
+    echo "Add the npm global bin directory to your PATH:"
+    echo ""
+    echo '  export PATH="$(npm config get prefix)/bin:$PATH"'
+    echo ""
+    echo "Add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.)"
     echo ""
 }
 
@@ -269,7 +286,6 @@ print_instructions() {
 
 main() {
     local no_confirm=false
-    local with_uv=false
 
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -280,10 +296,6 @@ main() {
                 ;;
             --no-confirm)
                 no_confirm=true
-                shift
-                ;;
-            --with-uv)
-                with_uv=true
                 shift
                 ;;
             *)
@@ -311,68 +323,41 @@ main() {
         echo ""
     fi
 
-    # Find Python
-    local python_cmd
-    python_cmd=$(find_python)
-
-    if [ -z "$python_cmd" ]; then
-        error "Python ${MIN_PYTHON_VERSION}+ is required but not found."
+    # Check Node.js
+    local node_cmd
+    node_cmd=$(find_node)
+    if [ -z "$node_cmd" ]; then
+        error "Node.js ${MIN_NODE_VERSION}+ is required but not found."
         echo ""
-        echo "Please install Python ${MIN_PYTHON_VERSION} or higher:"
-        echo ""
+        echo "Please install Node.js:"
         case "$os" in
             macos)
-                echo "  brew install python@3.12"
-                echo "  # or download from https://www.python.org/downloads/"
+                echo "  brew install node"
+                echo "  # or download from https://nodejs.org/"
                 ;;
             linux)
                 echo "  # Ubuntu/Debian:"
-                echo "  sudo apt update && sudo apt install python3 python3-pip"
+                echo "  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -"
+                echo "  sudo apt-get install -y nodejs"
                 echo ""
-                echo "  # Fedora:"
-                echo "  sudo dnf install python3 python3-pip"
-                echo ""
-                echo "  # Arch:"
-                echo "  sudo pacman -S python python-pip"
+                echo "  # Or use nvm:"
+                echo "  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+                echo "  nvm install 20"
                 ;;
             *)
-                echo "  Download from https://www.python.org/downloads/"
+                echo "  Download from https://nodejs.org/"
                 ;;
         esac
         exit 1
     fi
 
-    local python_version
-    python_version=$(get_python_version "$python_cmd")
-    success "Found Python $python_version ($python_cmd)"
+    local node_version
+    node_version=$(get_node_version "$node_cmd")
+    success "Found Node.js v$node_version"
 
-    # Determine installation method
-    local install_method=""
-
-    if command_exists uv; then
-        install_method="uv"
-        success "Found uv package manager"
-    elif [ "$with_uv" = true ]; then
-        info "Will install uv package manager first"
-        install_method="install_uv"
-    elif command_exists pip3 || command_exists pip; then
-        install_method="pip"
-        success "Found pip package manager"
-    else
-        error "No package manager found (uv or pip required)"
-        echo ""
-        echo "Install uv (recommended):"
-        echo "  curl -LsSf https://astral.sh/uv/install.sh | sh"
-        echo ""
-        echo "Or install pip:"
-        case "$os" in
-            macos)
-                echo "  python3 -m ensurepip --upgrade"
-                ;;
-            linux)
-                echo "  sudo apt install python3-pip  # Debian/Ubuntu"
-                ;;
-        esac
+    # Check for package manager
+    if ! command_exists npm && ! command_exists pnpm && ! command_exists yarn && ! command_exists bun; then
+        error "No package manager found (npm, pnpm, yarn, or bun required)"
         exit 1
     fi
 
@@ -380,10 +365,7 @@ main() {
     if [ "$no_confirm" = false ]; then
         echo ""
         echo "This will install:"
-        echo "  - ${PACKAGE_NAME} (${BRAND_NAME} CLI)"
-        if [ "$install_method" = "install_uv" ]; then
-            echo "  - uv (package manager)"
-        fi
+        echo "  - ${NPM_PACKAGE} (npm package) - Viben CLI"
         echo ""
         read -r -p "Continue? [Y/n] " response
         case "$response" in
@@ -396,59 +378,25 @@ main() {
 
     echo ""
 
-    # Install uv if requested
-    if [ "$install_method" = "install_uv" ]; then
-        if install_uv; then
-            install_method="uv"
-        else
-            install_method="pip"
-        fi
-    fi
-
     # Install the package
-    local install_success=false
-
-    if [ "$install_method" = "uv" ]; then
-        if install_with_uv; then
-            install_success=true
-        else
-            warn "uv installation failed, trying pip..."
-            if install_with_pip "$python_cmd"; then
-                install_success=true
-            fi
-        fi
+    if install_node_package; then
+        success "Package installed successfully"
     else
-        if install_with_pip "$python_cmd"; then
-            install_success=true
-        fi
-    fi
-
-    if [ "$install_success" = false ]; then
         error "Installation failed"
         echo ""
         echo "Try manual installation:"
-        echo "  pip install ${PACKAGE_NAME}"
-        echo ""
-        echo "Or with uv:"
-        echo "  uv pip install ${PACKAGE_NAME}"
+        echo "  npm install -g ${NPM_PACKAGE}"
         exit 1
     fi
 
-    success "Package installed successfully"
+    echo ""
 
     # Verify installation
-    echo ""
     if verify_installation; then
         print_instructions
     else
         warn "Installation completed but verification failed"
-        echo ""
-        echo "The package was installed but the command may not be in your PATH."
-        echo "Try running:"
-        echo "  $python_cmd -m browse_mcp"
-        echo ""
-        echo "Or add ~/.local/bin to your PATH:"
-        echo '  export PATH="$HOME/.local/bin:$PATH"'
+        print_path_instructions "$os"
     fi
 }
 
