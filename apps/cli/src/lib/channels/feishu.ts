@@ -2,7 +2,8 @@
  * Feishu (Lark) Channel Implementation
  *
  * Uses @larksuiteoapi/node-sdk for Feishu/Lark Bot API integration.
- * Supports WebSocket long-polling for receiving messages.
+ * Note: WebSocket mode requires proper setup. This implementation
+ * provides the base structure for HTTP webhook mode.
  */
 
 import * as lark from "@larksuiteoapi/node-sdk";
@@ -34,9 +35,9 @@ export interface FeishuConfig extends ChannelConfig {
 }
 
 /**
- * Feishu message event data structure
+ * Feishu message event data structure (simplified)
  */
-interface FeishuMessageEvent {
+export interface FeishuMessageEvent {
   message: {
     message_id: string;
     root_id?: string;
@@ -49,18 +50,18 @@ interface FeishuMessageEvent {
     mentions?: Array<{
       key: string;
       id: {
-        union_id: string;
-        user_id: string;
-        open_id: string;
+        union_id?: string;
+        user_id?: string;
+        open_id?: string;
       };
       name: string;
     }>;
   };
   sender: {
     sender_id: {
-      union_id: string;
-      user_id: string;
-      open_id: string;
+      union_id?: string;
+      user_id?: string;
+      open_id?: string;
     };
     sender_type: string;
     tenant_key: string;
@@ -77,7 +78,7 @@ export class FeishuChannel extends BaseChannel {
   readonly config: FeishuConfig;
 
   private client: lark.Client | null = null;
-  private wsClient: lark.WSClient | null = null;
+  private eventDispatcher: lark.EventDispatcher | null = null;
 
   constructor(id: string, config: FeishuConfig) {
     super();
@@ -93,32 +94,24 @@ export class FeishuChannel extends BaseChannel {
         appSecret: this.config.appSecret,
       });
 
-      // Create event dispatcher
-      const eventDispatcher = new lark.EventDispatcher({
+      // Create event dispatcher for handling incoming events
+      this.eventDispatcher = new lark.EventDispatcher({
         encryptKey: this.config.encryptKey,
         verificationToken: this.config.verificationToken,
       });
 
       // Register message handler
-      eventDispatcher.register({
-        "im.message.receive_v1": (data: FeishuMessageEvent) => {
-          this.handleMessage(data);
-          return {}; // Return empty object to acknowledge
+      this.eventDispatcher.register({
+        "im.message.receive_v1": (data) => {
+          // Cast to our type and handle
+          this.handleMessage(data as unknown as FeishuMessageEvent);
+          return {};
         },
       });
 
-      // Create WebSocket client for long-polling
-      this.wsClient = new lark.WSClient({
-        appId: this.config.appId,
-        appSecret: this.config.appSecret,
-        eventDispatcher,
-      });
-
-      // Start WebSocket connection
-      await this.wsClient.start();
-
       this.connected = true;
-      console.log(`[Feishu ${this.id}] Connected via WebSocket`);
+      console.log(`[Feishu ${this.id}] Client initialized (app:${this.config.appId})`);
+      console.log(`[Feishu ${this.id}] Note: Use getEventHandler() for webhook integration`);
     } catch (error) {
       this.handleError(error, "Connection failed");
       throw error;
@@ -126,8 +119,7 @@ export class FeishuChannel extends BaseChannel {
   }
 
   async disconnect(): Promise<void> {
-    // WSClient doesn't have a stop method, just null it
-    this.wsClient = null;
+    this.eventDispatcher = null;
     this.client = null;
     this.connected = false;
     console.log(`[Feishu ${this.id}] Disconnected`);
@@ -198,6 +190,30 @@ export class FeishuChannel extends BaseChannel {
       lastError: this.lastError,
       lastMessageAt: this.lastMessageAt,
     };
+  }
+
+  /**
+   * Get the event dispatcher for webhook integration
+   * Use this with an HTTP server to receive Feishu events
+   *
+   * @example
+   * ```typescript
+   * import express from 'express';
+   * const app = express();
+   * const handler = feishuChannel.getEventHandler();
+   * app.post('/feishu/webhook', handler);
+   * ```
+   */
+  getEventHandler(): lark.EventDispatcher | null {
+    return this.eventDispatcher;
+  }
+
+  /**
+   * Manually process an incoming event
+   * Use this if you're handling the HTTP server yourself
+   */
+  processEvent(event: FeishuMessageEvent): void {
+    this.handleMessage(event);
   }
 
   // ============================================================================

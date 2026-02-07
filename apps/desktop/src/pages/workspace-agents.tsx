@@ -905,7 +905,7 @@ function AgentDetailPanel({
             </div>
             <Card>
               <CardContent className="p-4">
-                {agent.mcp_servers.length > 0 ? (
+                {agent.mcp_servers && agent.mcp_servers.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {agent.mcp_servers.map((server) => (
                       <span
@@ -940,7 +940,7 @@ function AgentDetailPanel({
             </div>
             <Card>
               <CardContent className="p-4">
-                {agent.skills.length > 0 ? (
+                {agent.skills && agent.skills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {agent.skills.map((skill) => (
                       <span
