@@ -97,6 +97,8 @@ export type KanbanCardProps = Pick<Feature, "id" | "name"> & {
   showMoreMenu?: boolean;
   /** Callback when more menu is clicked */
   onMoreClick?: (e: React.MouseEvent) => void;
+  /** Render prop for more menu content (dropdown menu) */
+  renderMoreMenu?: () => React.ReactNode;
 };
 
 export const KanbanCard = ({
@@ -115,6 +117,7 @@ export const KanbanCard = ({
   statusIndicator,
   showMoreMenu = false,
   onMoreClick,
+  renderMoreMenu,
 }: KanbanCardProps) => {
   const localRef = useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -178,24 +181,38 @@ export const KanbanCard = ({
     >
       {/* More menu button - top right corner, visible on hover */}
       {showMoreMenu && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "absolute top-2 right-2 h-6 w-6 rounded-md",
-            "opacity-0 group-hover:opacity-100 focus:opacity-100",
-            "transition-all duration-150",
-            "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            onMoreClick?.(e);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          aria-label="More actions"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
+        renderMoreMenu ? (
+          <div
+            className={cn(
+              "absolute top-2 right-2",
+              "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+              "transition-all duration-150"
+            )}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {renderMoreMenu()}
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute top-2 right-2 h-6 w-6 rounded-md",
+              "opacity-0 group-hover:opacity-100 focus:opacity-100",
+              "transition-all duration-150",
+              "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoreClick?.(e);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="More actions"
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        )
       )}
 
       {/* Card content */}

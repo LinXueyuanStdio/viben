@@ -105,6 +105,22 @@ This directory contains detailed specifications for implementing each module of 
 
 ---
 
+## Social Chat System
+
+> **新增**: Desktop 社交聊天功能，类微信设计
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [social-chat/](./social-chat/) | **社交聊天模块索引** | - |
+| [social-chat/chat-prd.md](./social-chat/chat-prd.md) | 聊天页面 PRD | ✅ Done |
+| [social-chat/contacts-prd.md](./social-chat/contacts-prd.md) | 联系人页面 PRD | ✅ Done |
+| [social-chat/agent-team-prd.md](./social-chat/agent-team-prd.md) | 智能体团队 PRD | ✅ Done |
+| social-chat/chat-spec.md | 聊天功能开发规范 | 📝 TODO |
+| social-chat/contacts-spec.md | 联系人功能开发规范 | 📝 TODO |
+| social-chat/data-model.md | 数据模型设计 | 📝 TODO |
+
+---
+
 ## Cross-Cutting Concerns
 
 | Module | Description | Effort | Status |

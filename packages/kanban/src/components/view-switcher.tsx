@@ -9,9 +9,14 @@ export interface ViewSwitcherProps {
   value: ViewMode;
   onChange: (mode: ViewMode) => void;
   className?: string;
+  /** Custom labels for i18n */
+  labels?: {
+    kanban?: string;
+    list?: string;
+  };
 }
 
-export function ViewSwitcher({ value, onChange, className }: ViewSwitcherProps) {
+export function ViewSwitcher({ value, onChange, className, labels }: ViewSwitcherProps) {
   return (
     <div
       className={cn(
@@ -34,7 +39,7 @@ export function ViewSwitcher({ value, onChange, className }: ViewSwitcherProps) 
         aria-pressed={value === "kanban"}
       >
         <LayoutGrid className="h-4 w-4" />
-        <span className="text-sm">Kanban</span>
+        <span className="text-sm">{labels?.kanban ?? "Kanban"}</span>
       </Button>
       <Button
         variant="ghost"
@@ -50,7 +55,7 @@ export function ViewSwitcher({ value, onChange, className }: ViewSwitcherProps) 
         aria-pressed={value === "list"}
       >
         <List className="h-4 w-4" />
-        <span className="text-sm">List</span>
+        <span className="text-sm">{labels?.list ?? "List"}</span>
       </Button>
     </div>
   );

@@ -573,6 +573,14 @@ export function TaskDetailPanel({
                       onValueChange={handlePriorityChange}
                       size="sm"
                       showLabel
+                      labels={{
+                        setPriority: t("workspace.setPriority", "Set priority"),
+                        urgent: t("workspace.priority.urgent", "Urgent"),
+                        high: t("workspace.priority.high", "High"),
+                        medium: t("workspace.priority.medium", "Medium"),
+                        low: t("workspace.priority.low", "Low"),
+                        none: t("workspace.priority.none", "None"),
+                      }}
                     />
                   ) : task.priority ? (
                     <PriorityIcon priority={task.priority} showLabel size="sm" />

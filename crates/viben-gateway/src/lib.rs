@@ -9,5 +9,8 @@ pub mod routes;
 pub mod state;
 pub mod ws;
 
+#[cfg(test)]
+mod tests;
+
 pub use error::GatewayError;
 pub use state::AppState;

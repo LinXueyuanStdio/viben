@@ -51,14 +51,14 @@ async fn auto_start_gateway(state: &GatewayState) {
         }
     }
 
-    // Find and start gateway binary
+    // Find and start gateway binary (prefer release over debug)
     let workspace_paths = [
-        dirs::home_dir()
-            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
         dirs::home_dir()
             .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/release/viben-gateway")),
         Some(std::path::PathBuf::from("/usr/local/bin/viben-gateway")),
         dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
+        dirs::home_dir()
+            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
     ];
 
     let binary_path = workspace_paths

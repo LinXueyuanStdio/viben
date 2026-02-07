@@ -11,13 +11,22 @@ export interface CommandPaletteProps {
   onOpenChange: (open: boolean) => void;
   commands: Command[];
   placeholder?: string;
+  /** Custom labels for i18n */
+  labels?: {
+    noResults?: string;
+    navigation?: string;
+    action?: string;
+    view?: string;
+    filter?: string;
+  };
 }
 
 export function CommandPalette({
   open,
   onOpenChange,
   commands,
-  placeholder = "搜索命令...",
+  placeholder = "Search commands...",
+  labels,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -120,13 +129,28 @@ export function CommandPalette({
         <div ref={listRef} className="max-h-[300px] overflow-y-auto p-2">
           {filteredCommands.length === 0 ? (
             <div className="py-6 text-center text-muted-foreground text-sm">
-              未找到匹配的命令
+              {labels?.noResults ?? "No matching commands"}
             </div>
           ) : (
-            Object.entries(groupedCommands).map(([category, cmds]) => (
+            Object.entries(groupedCommands).map(([category, cmds]) => {
+              // Get category label with i18n support
+              const getCategoryLabel = (cat: string): string => {
+                if (labels) {
+                  const labelMap: Record<string, string | undefined> = {
+                    navigation: labels.navigation,
+                    action: labels.action,
+                    view: labels.view,
+                    filter: labels.filter,
+                  };
+                  if (labelMap[cat]) return labelMap[cat]!;
+                }
+                return CATEGORY_LABELS[cat as CommandCategory] || cat;
+              };
+
+              return (
               <div key={category} className="mb-2">
-                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase">
-                  {CATEGORY_LABELS[category as CommandCategory] || category}
+                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  {getCategoryLabel(category)}
                 </div>
                 {cmds.map((cmd) => {
                   const index = flatIndex++;
@@ -136,18 +160,37 @@ export function CommandPalette({
                     <button
                       key={cmd.id}
                       className={cn(
-                        "w-full flex items-center gap-3 px-2 py-2 rounded-md",
-                        "text-left text-sm transition-colors",
-                        isSelected ? "bg-accent" : "hover:bg-muted"
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg",
+                        "text-left text-sm transition-all duration-150",
+                        isSelected
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-muted/80"
                       )}
                       onClick={() => executeCommand(cmd)}
                     >
                       {cmd.icon && (
-                        <span className="text-muted-foreground">{cmd.icon}</span>
+                        <span className={cn(
+                          "shrink-0",
+                          isSelected ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {cmd.icon}
+                        </span>
                       )}
-                      <span className="flex-1">{cmd.label}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{cmd.label}</div>
+                        {cmd.description && (
+                          <div className="text-xs text-muted-foreground truncate mt-0.5">
+                            {cmd.description}
+                          </div>
+                        )}
+                      </div>
                       {cmd.shortcut && (
-                        <kbd className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                        <kbd className={cn(
+                          "text-[10px] font-mono px-1.5 py-0.5 rounded border shrink-0",
+                          isSelected
+                            ? "bg-primary/20 border-primary/30 text-primary"
+                            : "bg-muted border-border text-muted-foreground"
+                        )}>
                           {cmd.shortcut}
                         </kbd>
                       )}
@@ -155,7 +198,7 @@ export function CommandPalette({
                   );
                 })}
               </div>
-            ))
+            );})
           )}
         </div>
       </DialogContent>

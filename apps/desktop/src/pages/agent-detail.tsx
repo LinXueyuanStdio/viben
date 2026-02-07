@@ -63,10 +63,14 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { useVibenAgents } from "@/hooks/use-viben-agents";
-import { useVibenModels } from "@/hooks/use-viben-models";
-import { useAgent } from "@/hooks/use-agent";
-import { useCloudSkillPackages } from "@/hooks/use-cloud-skills";
+import {
+  useVibenAgents,
+  useVibenModels,
+  useAgent,
+  useCloudSkillPackages,
+  useLocalWorkspaces,
+} from "@/hooks";
+import { homeDir } from "@tauri-apps/api/path";
 import { MessageList, ChatInput } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import {
@@ -154,6 +158,22 @@ export function AgentDetailPage() {
   const { models } = useVibenModels();
   const mcpServers = useAppStore((state) => state.mcpServers);
   const { packages: skillPackages } = useCloudSkillPackages();
+
+  // Get workspace info for workspace-scoped agents
+  const { workspaces } = useLocalWorkspaces();
+  const workspace = isWorkspaceScoped
+    ? workspaces.find((w) => w.id === workspaceId)
+    : null;
+
+  // Determine workdir: workspace path for workspace-scoped, ~/.viben for global
+  const [globalVibenDir, setGlobalVibenDir] = useState<string>("");
+  useEffect(() => {
+    if (!isWorkspaceScoped) {
+      homeDir().then((home) => {
+        setGlobalVibenDir(`${home}.viben`);
+      });
+    }
+  }, [isWorkspaceScoped]);
 
   // Find the current agent
   const agent = useMemo(
@@ -315,8 +335,11 @@ export function AgentDetailPage() {
   }, [models]);
 
   // Debug chat (using shared chat components)
-  // Use /tmp/viben-debug as a valid temporary working directory
-  const debugWorkdir = "/tmp/viben-debug";
+  // Workdir: workspace path for workspace-scoped agents, ~/.viben for global agents
+  const debugWorkdir = isWorkspaceScoped
+    ? workspace?.path || ""
+    : globalVibenDir;
+
   const {
     messages,
     phase,
