@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +41,7 @@ interface Workspace {
 }
 
 export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loading, setLoading] = useState(true);
@@ -142,7 +144,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
   if (!workspace) {
     return (
       <div className="rounded-lg border border-destructive p-4 text-center">
-        <p className="text-destructive">Failed to load workspace settings</p>
+        <p className="text-destructive">{t('workspaceSettings.failedToLoadWorkspace')}</p>
       </div>
     );
   }
@@ -153,9 +155,9 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
       <Card>
         <form onSubmit={handleSave}>
           <CardHeader>
-            <CardTitle>General Settings</CardTitle>
+            <CardTitle>{t('workspaceSettings.generalSettings')}</CardTitle>
             <CardDescription>
-              Update your workspace name and description
+              {t('workspaceSettings.generalDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -166,12 +168,12 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
             )}
             {success && (
               <div className="rounded-md bg-green-500/10 p-3 text-sm text-green-600">
-                Workspace updated successfully
+                {t('workspaceSettings.workspaceUpdated')}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('workspaceSettings.name')}</Label>
               <Input
                 id="name"
                 value={name}
@@ -183,7 +185,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">{t('workspaceSettings.description')}</Label>
               <Textarea
                 id="description"
                 value={description}
@@ -195,9 +197,9 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
 
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="isDefault">Default Workspace</Label>
+                <Label htmlFor="isDefault">{t('workspaceSettings.defaultWorkspace')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Set this as your default workspace
+                  {t('workspaceSettings.setAsDefault')}
                 </p>
               </div>
               <Switch
@@ -213,7 +215,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
               disabled={saving || !name.trim()}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+              {t('workspaceSettings.saveChanges')}
             </Button>
           </CardFooter>
         </form>
@@ -222,17 +224,17 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardTitle className="text-destructive">{t('workspaceSettings.dangerZone')}</CardTitle>
           <CardDescription>
-            Irreversible actions for this workspace
+            {t('workspaceSettings.dangerDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
             <div className="space-y-0.5">
-              <p className="font-medium">Delete Workspace</p>
+              <p className="font-medium">{t('workspaceSettings.deleteWorkspace')}</p>
               <p className="text-sm text-muted-foreground">
-                Permanently delete this workspace and all its configurations
+                {t('workspaceSettings.deleteDescription')}
               </p>
             </div>
             <AlertDialog>
@@ -243,25 +245,23 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
                   ) : (
                     <Trash2 className="mr-2 h-4 w-4" />
                   )}
-                  Delete
+                  {t('common.delete')}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Workspace</AlertDialogTitle>
+                  <AlertDialogTitle>{t('workspaceSettings.confirmDeleteTitle')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete &quot;{workspace.name}&quot;? This
-                    action cannot be undone. All package configurations will be
-                    permanently removed.
+                    {t('workspaceSettings.confirmDeleteMessage', { name: workspace.name })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleDelete}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Delete Workspace
+                    {t('workspaceSettings.deleteWorkspace')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
