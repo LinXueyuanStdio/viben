@@ -30,23 +30,42 @@ const generateId = () => crypto.randomUUID();
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Gateway event types from SSE stream
+ * Gateway event data structure
  */
-interface GatewayEvent {
-  type: string;
-  data: {
-    agent_id?: string;
-    session_id?: string;
-    success?: boolean;
-    task_id?: string;
-    old_status?: string;
-    new_status?: string;
-    content?: string;
-    role?: string;
-    log_type?: string;
-    message?: string;
-    code?: string;
+interface GatewayEventData {
+  agent_id?: string;
+  session_id?: string;
+  success?: boolean;
+  task_id?: string;
+  old_status?: string;
+  new_status?: string;
+  content?: string;
+  role?: string;
+  log_type?: string;
+  message?: string;
+  code?: string;
+}
+
+/**
+ * WebSocket message from server
+ */
+interface WsServerMessage {
+  type: "Event" | "Pong" | "Subscribed" | "Error";
+  data?: {
+    channel?: string;
+    payload?: {
+      type?: string;
+      data?: GatewayEventData;
+    };
   };
+}
+
+/**
+ * Get WebSocket URL from Gateway URL
+ */
+function getWebSocketUrl(): string {
+  const gatewayUrl = getGatewayUrl();
+  return gatewayUrl.replace(/^http/, "ws") + "/ws";
 }
 
 /**
@@ -84,7 +103,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const client = useMemo(() => getGatewayClient(), []);
 
   // Check Gateway connection on mount
@@ -97,8 +116,8 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.close();
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -121,45 +140,35 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   }, [client]);
 
   /**
-   * Subscribe to SSE events for a session
+   * Handle incoming WebSocket event
    */
-  const subscribeToEvents = useCallback((targetSessionId: string) => {
-    // Close existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+  const handleWsEvent = useCallback((eventType: string, eventData: GatewayEventData, targetSessionId: string) => {
+    if (eventData.session_id !== targetSessionId) {
+      return;
     }
 
-    const eventSource = new EventSource(`${getGatewayUrl()}/api/events`);
-    eventSourceRef.current = eventSource;
+    console.log("[useAgent] Processing event:", eventType, eventData);
 
-    // Handle different event types
-    eventSource.addEventListener("session_message", (e) => {
-      try {
-        const event: GatewayEvent = JSON.parse(e.data);
-        if (event.data.session_id !== targetSessionId) return;
+    switch (eventType) {
+      case "AgentSpawned":
+        console.log("[useAgent] Agent spawned confirmed for session:", targetSessionId);
+        break;
 
+      case "SessionMessage": {
         const msg: AgentMessage = {
           id: generateId(),
-          type: event.data.role === "user" ? "user" : "text",
-          content: event.data.content || "",
+          type: eventData.role === "user" ? "user" : "text",
+          content: eventData.content || "",
         };
         setMessages((prev) => [...prev, msg]);
-      } catch (err) {
-        console.error("[useAgent] Failed to parse session_message:", err);
+        break;
       }
-    });
 
-    eventSource.addEventListener("execution_log", (e) => {
-      try {
-        const event: GatewayEvent = JSON.parse(e.data);
-        if (event.data.session_id !== targetSessionId) return;
-
-        // Handle different log types
-        const logType = event.data.log_type;
-        const content = event.data.content || "";
+      case "ExecutionLog": {
+        const logType = eventData.log_type;
+        const content = eventData.content || "";
 
         if (logType === "tool_use") {
-          // Parse tool use from log
           try {
             const toolData = JSON.parse(content);
             const toolId = generateId();
@@ -180,7 +189,6 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
             };
             setToolUsages((prev) => [...prev, toolUsage]);
           } catch {
-            // If not JSON, just add as text
             const textMsg: AgentMessage = {
               id: generateId(),
               type: "text",
@@ -199,17 +207,6 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
               isError: resultData.is_error,
             };
             setMessages((prev) => [...prev, resultMsg]);
-
-            // Update tool usage with result
-            if (resultData.tool_use_id) {
-              setToolUsages((prev) =>
-                prev.map((t) =>
-                  t.id === resultData.tool_use_id
-                    ? { ...t, output: resultData.output }
-                    : t
-                )
-              );
-            }
           } catch {
             const textMsg: AgentMessage = {
               id: generateId(),
@@ -218,36 +215,20 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
             };
             setMessages((prev) => [...prev, textMsg]);
           }
-        } else if (logType === "thinking" || logType === "assistant") {
+        } else if (content.trim()) {
           const textMsg: AgentMessage = {
             id: generateId(),
             type: "text",
             content,
           };
           setMessages((prev) => [...prev, textMsg]);
-        } else {
-          // Other log types - just add as text if non-empty
-          if (content.trim()) {
-            const textMsg: AgentMessage = {
-              id: generateId(),
-              type: "text",
-              content,
-            };
-            setMessages((prev) => [...prev, textMsg]);
-          }
         }
-      } catch (err) {
-        console.error("[useAgent] Failed to parse execution_log:", err);
+        break;
       }
-    });
 
-    eventSource.addEventListener("agent_completed", (e) => {
-      try {
-        const event: GatewayEvent = JSON.parse(e.data);
-        if (event.data.session_id !== targetSessionId) return;
-
+      case "AgentCompleted":
         setIsStreaming(false);
-        if (event.data.success) {
+        if (eventData.success) {
           setPhase("completed");
           const resultMsg: AgentMessage = {
             id: generateId(),
@@ -265,36 +246,68 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
           };
           setMessages((prev) => [...prev, errMsg]);
         }
-      } catch (err) {
-        console.error("[useAgent] Failed to parse agent_completed:", err);
-      }
-    });
+        break;
 
-    eventSource.addEventListener("error", (e) => {
-      try {
-        const event: GatewayEvent = JSON.parse((e as MessageEvent).data || "{}");
-        setError(event.data.message || "Unknown error");
+      case "Error":
+        setError(eventData.message || "Unknown error");
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: event.data.message || "Unknown error",
+          message: eventData.message || "Unknown error",
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
         setPhase("error");
         setIsStreaming(false);
-      } catch {
-        // Connection error, not a data event
-        console.warn("[useAgent] SSE connection error");
-      }
-    });
+        break;
+    }
+  }, []);
 
-    eventSource.onerror = () => {
-      console.warn("[useAgent] SSE connection lost, will retry...");
+  /**
+   * Subscribe to WebSocket events for a session
+   */
+  const subscribeToEvents = useCallback((targetSessionId: string) => {
+    // Close existing connection
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const wsUrl = getWebSocketUrl();
+    console.log("[useAgent] Connecting to WebSocket:", wsUrl);
+    const ws = new WebSocket(wsUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      console.log("[useAgent] WebSocket connection opened for session:", targetSessionId);
     };
 
-    return eventSource;
-  }, []);
+    ws.onmessage = (e) => {
+      try {
+        const message: WsServerMessage = JSON.parse(e.data);
+        console.log("[useAgent] WebSocket message:", message);
+
+        if (message.type === "Event" && message.data?.payload) {
+          const eventType = message.data.payload.type;
+          const eventData = message.data.payload.data;
+          if (eventType && eventData) {
+            handleWsEvent(eventType, eventData, targetSessionId);
+          }
+        }
+      } catch (err) {
+        console.error("[useAgent] Failed to parse WebSocket message:", err, e.data);
+      }
+    };
+
+    ws.onerror = (e) => {
+      console.error("[useAgent] WebSocket error:", e);
+    };
+
+    ws.onclose = (e) => {
+      console.log("[useAgent] WebSocket closed:", e.code, e.reason);
+    };
+
+    return ws;
+  }, [handleWsEvent]);
 
   /**
    * Send a message to the agent (real Gateway implementation)

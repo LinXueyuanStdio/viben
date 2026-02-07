@@ -16,6 +16,8 @@ import {
   Activity,
   Loader2,
   Bot,
+  Trash2,
+  HelpCircle,
 } from "lucide-react";
 import {
   Button,
@@ -63,7 +65,7 @@ import {
   useToggleCommentReaction,
   useKanbanActivities,
 } from "@/hooks";
-import { ChatInput, MessageList } from "@/components/chat";
+import { ChatInput, MessageList, type SlashCommand } from "@/components/chat";
 import { useTaskAgent } from "@/hooks";
 
 // Editable Title Component
@@ -372,7 +374,36 @@ export function TaskDetailPanel({
     rejectPlan: agentRejectPlan,
     answerQuestions: agentAnswerQuestions,
     cancel: agentCancel,
+    clearMessages: agentClearMessages,
   } = useTaskAgent(task?.id || "", taskContext);
+
+  // Slash commands for agent chat
+  const agentSlashCommands = useMemo<SlashCommand[]>(() => [
+    {
+      id: "clear",
+      name: t("chat.slashCommands.clear", "clear"),
+      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
+      icon: <Trash2 className="h-4 w-4" />,
+    },
+    {
+      id: "help",
+      name: t("chat.slashCommands.help", "help"),
+      description: t("chat.slashCommands.helpDesc", "Show available commands"),
+      icon: <HelpCircle className="h-4 w-4" />,
+    },
+  ], [t]);
+
+  // Handle slash command execution
+  const handleSlashCommand = useCallback((command: SlashCommand) => {
+    switch (command.id) {
+      case "clear":
+        agentClearMessages?.();
+        break;
+      case "help":
+        // Could show a help modal or inject a help message
+        break;
+    }
+  }, [agentClearMessages]);
 
   if (!task) {
     return (
@@ -909,7 +940,7 @@ export function TaskDetailPanel({
           )}
 
           {/* Input */}
-          <div className="border-t border-border p-3">
+          <div className="border-t border-border">
             <ChatInput
               onSend={agentSendMessage}
               onCancel={agentCancel}
@@ -923,6 +954,15 @@ export function TaskDetailPanel({
                     : t("workspace.agentChatPlaceholder", "Ask about this task...")
               }
               autoFocus={false}
+              showTopToolbar
+              showConfigBar
+              showResizeHandle
+              enableWritingMode
+              useGlobalConfig
+              hideAgentSelector
+              hideModelSelector
+              slashCommands={agentSlashCommands}
+              onSlashCommand={handleSlashCommand}
             />
           </div>
         </TabsContent>

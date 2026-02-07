@@ -77,6 +77,18 @@ export interface ChatInputProps {
 
   // 截图 (用于顶部工具栏)
   onScreenshot?: (hideWindow?: boolean) => void;
+
+  // 选择器显隐覆盖
+  /** 强制隐藏智能体选择器 */
+  hideAgentSelector?: boolean;
+  /** 强制隐藏模型选择器 */
+  hideModelSelector?: boolean;
+
+  // 斜杠命令
+  /** 可用斜杠命令列表 */
+  slashCommands?: SlashCommand[];
+  /** 命令选择回调 */
+  onSlashCommand?: (command: SlashCommand) => void;
 }
 ```
 

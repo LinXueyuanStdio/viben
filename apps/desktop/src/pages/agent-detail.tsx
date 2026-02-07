@@ -33,6 +33,7 @@ import {
   Globe,
   FolderOpen,
   Trash2,
+  HelpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +72,7 @@ import {
   useLocalWorkspaces,
 } from "@/hooks";
 import { homeDir } from "@tauri-apps/api/path";
-import { MessageList, ChatInput } from "@/components/chat";
+import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import {
   type BaseCodingAgent,
@@ -374,6 +375,34 @@ export function AgentDetailPage() {
       navigate("/settings/agents");
     }
   }, [navigate, isWorkspaceScoped, workspaceId]);
+
+  // Slash commands for agent debug chat
+  const slashCommands = useMemo<SlashCommand[]>(() => [
+    {
+      id: "clear",
+      name: t("chat.slashCommands.clear", "clear"),
+      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
+      icon: <Trash2 className="h-4 w-4" />,
+    },
+    {
+      id: "help",
+      name: t("chat.slashCommands.help", "help"),
+      description: t("chat.slashCommands.helpDesc", "Show available commands"),
+      icon: <HelpCircle className="h-4 w-4" />,
+    },
+  ], [t]);
+
+  // Handle slash command execution
+  const handleSlashCommand = useCallback((command: SlashCommand) => {
+    switch (command.id) {
+      case "clear":
+        clearMessages();
+        break;
+      case "help":
+        // Could show a help modal or inject a help message
+        break;
+    }
+  }, [clearMessages]);
 
   if (agentsLoading) {
     return (
@@ -993,7 +1022,7 @@ export function AgentDetailPage() {
           />
 
           {/* Chat Input - using shared ChatInput component */}
-          <div className="border-t border-border bg-background p-4">
+          <div className="border-t border-border bg-background">
             <ChatInput
               onSend={sendMessage}
               onCancel={cancel}
@@ -1007,8 +1036,16 @@ export function AgentDetailPage() {
                     : t("settingsAgents.sendMessage")
               }
               autoFocus
+              showTopToolbar
+              showConfigBar
+              showResizeHandle
+              enableWritingMode
+              hideAgentSelector
+              hideModelSelector
+              slashCommands={slashCommands}
+              onSlashCommand={handleSlashCommand}
             />
-            <p className="text-xs text-muted-foreground mt-2 text-center">
+            <p className="text-xs text-muted-foreground py-2 text-center">
               {t("settingsAgents.aiDisclaimer")}
             </p>
           </div>

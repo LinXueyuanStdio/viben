@@ -1583,6 +1583,15 @@
     "copyToClipboard": "复制到剪贴板",
     "clearMessagesConfirmTitle": "清空消息？",
     "clearMessagesConfirmDesc": "此操作无法撤销。当前对话中的所有消息将被永久删除。",
+    "noCommandsFound": "未找到命令",
+    "slashCommands": {
+      "clear": "清空",
+      "clearDesc": "清空对话历史",
+      "help": "帮助",
+      "helpDesc": "显示可用命令",
+      "stop": "停止",
+      "stopDesc": "停止当前执行"
+    },
     "agentInput": {
       "placeholder": "从任何想法开始... 按 ⌘ ↵ 换行...",
       "searchModels": "搜索模型...",

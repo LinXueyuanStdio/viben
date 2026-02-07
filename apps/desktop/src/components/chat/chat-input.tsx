@@ -32,7 +32,6 @@ import {
   Smile,
   Camera,
   Maximize2,
-  Minimize2,
   Bot,
   Cpu,
   Wrench,
@@ -571,6 +570,40 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Handle slash command navigation
+    if (isSlashMenuOpen && filteredSlashCommands.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) =>
+          prev < filteredSlashCommands.length - 1 ? prev + 1 : 0
+        );
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashSelectedIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredSlashCommands.length - 1
+        );
+        return;
+      }
+      if (e.key === "Enter" && !e.shiftKey && !isComposingRef.current) {
+        e.preventDefault();
+        handleSlashCommandSelect(filteredSlashCommands[slashSelectedIndex]);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsSlashMenuOpen(false);
+        setSlashQuery("");
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        handleSlashCommandSelect(filteredSlashCommands[slashSelectedIndex]);
+        return;
+      }
+    }
+
     // Don't send on Enter during IME composition
     if (e.key === "Enter" && !e.shiftKey && !isComposingRef.current) {
       e.preventDefault();
@@ -642,6 +675,311 @@ export function ChatInput({
   const selectedAgent = agents.find((a) => a.id === selectedAgentId);
   const selectedModel = models.find((m) => m.id === selectedModelId);
 
+  // Render fullscreen writing mode
+  if (isWritingMode && enableWritingMode) {
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40"
+          onClick={() => setIsWritingMode(false)}
+        />
+        {/* Writing mode container */}
+        <div
+          ref={containerRef}
+          className={cn(
+            "fixed inset-4 z-50 flex flex-col bg-background rounded-xl border border-border shadow-2xl",
+            className
+          )}
+        >
+          {/* Hidden file inputs */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt,.md,.json,.csv,.xlsx,.xls,.pptx,.ppt"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange}
+            multiple
+          />
+
+          {/* Top: Toolbar + Close button */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+            <div className="flex items-center gap-1">
+              {/* Emoji */}
+              <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 w-9 p-0"
+                          disabled={isLoading || disabled}
+                        >
+                          <Smile className="h-5 w-5" />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <PopoverContent className="w-auto p-2" align="start">
+                  <EmojiPicker onSelect={insertEmoji} />
+                </PopoverContent>
+              </Popover>
+
+              {/* File */}
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0"
+                      disabled={isLoading || disabled}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("chat.attachFile", "Attach File")}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              {/* Screenshot */}
+              <DropdownMenu>
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-9 px-2 gap-1"
+                          disabled={isLoading || disabled || isScreenshotCapturing}
+                        >
+                          {isScreenshotCapturing ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Camera className="h-5 w-5" />
+                          )}
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("chat.screenshot", "Screenshot")}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => handleScreenshot()}>
+                    <Camera className="h-4 w-4 mr-2" />
+                    {t("chat.screenshotDirect", "Direct Screenshot")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleScreenshot(true)}>
+                    <EyeOff className="h-4 w-4 mr-2" />
+                    {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Close button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 w-9 p-0"
+              onClick={() => setIsWritingMode(false)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Attachment Preview */}
+          {attachments.length > 0 && (
+            <div className="px-4 py-3 border-b border-border/30 flex flex-wrap gap-2">
+              {attachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="group relative flex items-center gap-2 rounded-lg border border-border/50 bg-muted/50 px-3 py-2"
+                >
+                  {attachment.isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : attachment.type === "image" && attachment.data ? (
+                    <img
+                      src={attachment.data}
+                      alt={attachment.name}
+                      className="h-10 w-10 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
+                      <FileText className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="max-w-[120px] truncate text-sm text-foreground">
+                    {attachment.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(attachment.id)}
+                    className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-foreground text-background opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Middle: Large textarea */}
+          <div className="flex-1 p-4 min-h-0">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleContentChange}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={handleCompositionStart}
+              onCompositionEnd={handleCompositionEnd}
+              onPaste={handlePaste}
+              placeholder={placeholder || t("chat.inputPlaceholder")}
+              className="w-full h-full resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none text-lg leading-relaxed"
+              disabled={isLoading || disabled}
+              autoFocus
+            />
+          </div>
+
+          {/* Bottom: Config bar or simple send button */}
+          {showConfigBar ? (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border/50 bg-muted/30">
+              <div className="flex items-center gap-2">
+                {/* Agent Selector */}
+                {shouldShowAgentSelector && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-3 gap-1.5"
+                        disabled={isLoading || disabled}
+                      >
+                        <Bot className="h-4 w-4" />
+                        <span className="max-w-[100px] truncate">
+                          {selectedAgent?.name || t("chat.selectAgent", "Agent")}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-1" align="start">
+                      {agents.length === 0 ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          {t("chat.noAgents", "No agents")}
+                        </div>
+                      ) : (
+                        agents.map((agent) => (
+                          <Button
+                            key={agent.id}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start gap-2 h-8"
+                            onClick={() => onAgentChange?.(agent.id)}
+                          >
+                            {agent.id === selectedAgentId && <Check className="h-3.5 w-3.5" />}
+                            <span className={agent.id !== selectedAgentId ? "ml-5" : ""}>
+                              {agent.name}
+                            </span>
+                          </Button>
+                        ))
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
+
+                {/* Model Selector */}
+                {shouldShowModelSelector && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 px-3 gap-1.5"
+                        disabled={isLoading || disabled}
+                      >
+                        <Cpu className="h-4 w-4" />
+                        <span className="max-w-[100px] truncate">
+                          {selectedModel?.name || t("chat.selectModel", "Model")}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56 p-1" align="start">
+                      {models.length === 0 ? (
+                        <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                          {t("chat.noModels", "No models")}
+                        </div>
+                      ) : (
+                        models.map((model) => (
+                          <Button
+                            key={model.id}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start gap-2 h-8"
+                            onClick={() => onModelChange?.(model.id)}
+                          >
+                            {model.id === selectedModelId && <Check className="h-3.5 w-3.5" />}
+                            <span className={model.id !== selectedModelId ? "ml-5" : ""}>
+                              {model.name}
+                            </span>
+                          </Button>
+                        ))
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                )}
+              </div>
+
+              {/* Send/Stop Button */}
+              <div className="flex items-center gap-2">
+                {isLoading ? (
+                  <Button size="sm" variant="destructive" className="h-9 px-4" onClick={onCancel}>
+                    <Square className="h-4 w-4 mr-2" />
+                    {t("common.stop", "Stop")}
+                  </Button>
+                ) : (
+                  <Button size="sm" className="h-9 px-4" disabled={!canSubmit} onClick={handleSend}>
+                    <Send className="h-4 w-4 mr-2" />
+                    {t("chat.send", "Send")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-end px-4 py-3 border-t border-border/50">
+              {isLoading ? (
+                <Button size="sm" variant="destructive" className="h-9 px-4" onClick={onCancel}>
+                  <Square className="h-4 w-4 mr-2" />
+                  {t("common.stop", "Stop")}
+                </Button>
+              ) : (
+                <Button size="sm" className="h-9 px-4" disabled={!canSubmit} onClick={handleSend}>
+                  <Send className="h-4 w-4 mr-2" />
+                  {t("chat.send", "Send")}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
   // Render unified input (with optional toolbar/config bar)
   return (
     <div
@@ -650,7 +988,6 @@ export function ChatInput({
         "w-full bg-background overflow-hidden",
         // Only use card style when NOT in workspace mode (no toolbar/configbar)
         !hasToolbar && "rounded-2xl border border-border/50 shadow-lg",
-        isWritingMode && enableWritingMode && "fixed inset-4 z-50 rounded-xl border shadow-lg",
         className
       )}
     >
@@ -673,7 +1010,7 @@ export function ChatInput({
       />
 
       {/* Resize handle */}
-      {showResizeHandle && !isWritingMode && (
+      {showResizeHandle && (
         <div
           className="h-1 cursor-ns-resize hover:bg-primary/20 transition-colors"
           onMouseDown={handleResizeStart}
@@ -772,18 +1109,12 @@ export function ChatInput({
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    onClick={() => setIsWritingMode(!isWritingMode)}
+                    onClick={() => setIsWritingMode(true)}
                   >
-                    {isWritingMode ? (
-                      <Minimize2 className="h-4 w-4" />
-                    ) : (
-                      <Maximize2 className="h-4 w-4" />
-                    )}
+                    <Maximize2 className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  {isWritingMode ? t("chat.collapse", "Collapse") : t("chat.expand", "Expand")}
-                </TooltipContent>
+                <TooltipContent>{t("chat.expand", "Expand")}</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
@@ -826,19 +1157,68 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Textarea */}
+      {/* Textarea with Slash Command Menu */}
       <div
-        className={cn("px-3", !hasToolbar && "py-3")}
-        style={
-          hasToolbar
-            ? { height: isWritingMode && enableWritingMode ? "calc(100% - 140px)" : inputHeight }
-            : undefined
-        }
+        className={cn("px-3 relative", !hasToolbar && "py-3")}
+        style={hasToolbar ? { height: inputHeight } : undefined}
       >
+        {/* Slash Command Menu */}
+        {isSlashMenuOpen && filteredSlashCommands.length > 0 && (
+          <div
+            ref={slashMenuRef}
+            className="absolute left-3 right-3 bottom-full mb-1 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden"
+          >
+            <div className="py-1 max-h-64 overflow-y-auto">
+              {filteredSlashCommands.map((command, index) => (
+                <button
+                  key={command.id}
+                  type="button"
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 text-left text-sm transition-colors",
+                    index === slashSelectedIndex
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-muted/50"
+                  )}
+                  onClick={() => handleSlashCommandSelect(command)}
+                  onMouseEnter={() => setSlashSelectedIndex(index)}
+                >
+                  {command.icon && (
+                    <span className="shrink-0 text-muted-foreground">
+                      {command.icon}
+                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium">
+                      /{command.name}
+                      {slashQuery && (
+                        <span className="text-muted-foreground font-normal">
+                          {/* Highlight matching text */}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {command.description}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* No commands found message */}
+        {isSlashMenuOpen && filteredSlashCommands.length === 0 && slashQuery && (
+          <div className="absolute left-3 right-3 bottom-full mb-1 z-50 rounded-lg border border-border bg-popover shadow-lg p-3">
+            <div className="text-sm text-muted-foreground text-center">
+              {t("chat.noCommandsFound", "No commands found")}
+            </div>
+          </div>
+        )}
+
         <textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={handleContentChange}
           onKeyDown={handleKeyDown}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
