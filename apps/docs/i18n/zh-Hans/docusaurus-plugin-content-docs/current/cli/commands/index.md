@@ -18,15 +18,15 @@ viben <命令> [子命令] [选项]
 
 | 命令 | 描述 |
 |------|------|
-| [`init`](./init) | 在当前目录初始化工作区 |
-| [`config`](./config) | 配置管理 (git 风格) |
-| [`service`](./service) | 管理后台服务 |
-| [`agent`](./agent) | 管理智能体实例和模板 |
-| [`provider`](./provider) | 管理 API 提供商 (OpenAI、Anthropic 等) |
-| [`model`](./model) | 管理模型、别名和回退链 |
-| [`mcp`](./mcp) | 管理 MCP 服务器 |
-| [`skill`](./skill) | 管理技能 |
-| [`workspace`](./workspace) | 工作区操作 |
+| [`init`](init) | 在当前目录初始化工作区 |
+| [`config`](config) | 配置管理 (git 风格) |
+| [`service`](service) | 管理后台服务 |
+| [`agent`](agent) | 管理智能体实例和模板 |
+| [`provider`](provider) | 管理 API 提供商 (OpenAI、Anthropic 等) |
+| [`model`](model) | 管理模型、别名和回退链 |
+| [`mcp`](mcp) | 管理 MCP 服务器 |
+| [`skill`](skill) | 管理技能 |
+| [`workspace`](workspace) | 工作区操作 |
 | `version` | 显示版本信息 |
 | `help` | 显示帮助 |
 
@@ -159,7 +159,7 @@ viben agent sync claude-code --json
 
 ## 下一步
 
-- [viben init](./init) - 初始化工作区
-- [viben config](./config) - 管理配置
-- [viben agent](./agent) - 管理智能体
-- [viben mcp](./mcp) - 管理 MCP 服务器
+- [viben init](init) - 初始化工作区
+- [viben config](config) - 管理配置
+- [viben agent](agent) - 管理智能体
+- [viben mcp](mcp) - 管理 MCP 服务器

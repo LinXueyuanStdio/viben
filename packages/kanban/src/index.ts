@@ -90,8 +90,62 @@ export {
   type RelationshipListProps,
   RelationshipAdd,
   type RelationshipAddProps,
+  // Grouped list system
+  type ListGroup,
+  ListDragHandle,
+  type ListDragHandleProps,
+  GroupedListSection,
+  type GroupedListSectionProps,
+  GroupedListView,
+  type GroupedListViewProps,
+  type DragItemProps,
+  // Drag preview
+  DragPreview,
+  type DragPreviewProps,
+  MultiDragOverlay,
+  type MultiDragOverlayProps,
+  // Comment system
+  type Comment,
+  type CommentAuthor,
+  type CommentReaction,
+  REACTION_EMOJIS,
+  formatRelativeTime,
+  CommentInput,
+  type CommentInputProps,
+  CommentItem,
+  type CommentItemProps,
+  CommentList,
+  type CommentListProps,
+  // Activity feed system
+  type ActivityType,
+  type ActivityActor,
+  type ActivityEvent,
+  ACTIVITY_LABELS,
+  ActivityItem,
+  type ActivityItemProps,
+  ActivityFeed,
+  type ActivityFeedProps,
+  // Board settings
+  type ColumnConfig,
+  COLUMN_COLORS,
+  BoardSettingsDialog,
+  type BoardSettingsDialogProps,
+  ColumnSettingsPanel,
+  type ColumnSettingsPanelProps,
 } from "./components";
 
 // Hooks
 export { useFilteredItems } from "./hooks/use-filtered-items";
 export { useMultiSelect, type MultiSelectState } from "./hooks/use-multi-select";
+export {
+  useGroupedList,
+  useGroupedListWithItems,
+  groupItemsByKey,
+  type UseGroupedListOptions,
+  type UseGroupedListReturn,
+} from "./hooks/use-grouped-list";
+export {
+  useDragPreview,
+  type UseDragPreviewOptions,
+  type UseDragPreviewReturn,
+} from "./hooks/use-drag-preview";

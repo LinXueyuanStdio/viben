@@ -147,3 +147,9 @@ export type {
   AgentMemory,
   UseVibenAgentsReturn,
 } from "./use-viben-agents";
+export { useVitePreview } from "./use-vite-preview";
+export type {
+  PreviewStatus,
+  PreviewState,
+  UseVitePreviewReturn,
+} from "./use-vite-preview";

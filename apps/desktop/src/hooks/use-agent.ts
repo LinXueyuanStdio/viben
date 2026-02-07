@@ -108,7 +108,17 @@ export function useAgent(workspaceId: string) {
           setPendingQuestions(questions);
           setPhase("awaiting_input");
         } else if (content.toLowerCase().includes("tool")) {
-          // Simulate tool use
+          // Simulate tool use with task grouping
+          // First add a text message describing what we're doing
+          const thinkingMessage: AgentMessage = {
+            id: generateId(),
+            type: "text",
+            content: "I'll search for documents matching your query.",
+          };
+          setMessages((prev) => [...prev, thinkingMessage]);
+          await mockDelay(300);
+
+          // Then add tool use
           const toolMessageId = generateId();
           const toolUseMessage: AgentMessage = {
             id: toolMessageId,
@@ -157,12 +167,14 @@ export function useAgent(workspaceId: string) {
             )
           );
 
-          // Add text response
+          await mockDelay(300);
+
+          // Add final text response
           const textMessage: AgentMessage = {
             id: generateId(),
             type: "text",
             content:
-              "I found 2 relevant documents based on your query. Would you like me to elaborate on any of them?",
+              "I found **2 relevant documents** based on your query.\n\n- Document 1: This is a sample document...\n- Document 2: Another relevant document...\n\nWould you like me to elaborate on any of them?",
           };
           setMessages((prev) => [...prev, textMessage]);
           setPhase("completed");
@@ -180,7 +192,16 @@ This is a mock response from the agent. In a real implementation, this would be 
 3. **Generate plans** - Break down complex tasks
 4. **Ask clarifying questions** - When more information is needed
 
-The workspace ID for this session is: \`${workspaceId}\``;
+The workspace ID for this session is: \`${workspaceId}\`
+
+### Code Example
+
+\`\`\`typescript
+const greeting = "Hello, World!";
+console.log(greeting);
+\`\`\`
+
+> Try typing "plan", "question", "tool", or "error" to see different mock responses.`;
 
           // Simulate streaming by adding characters progressively
           let currentContent = "";
