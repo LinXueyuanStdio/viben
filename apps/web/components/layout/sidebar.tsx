@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,17 +38,17 @@ import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
 
 const navigation = [
-  { name: 'MCP Marketplace', href: '/mcp', icon: Package },
-  { name: 'Skills', href: '/skills', icon: Sparkles },
-  { name: 'Collections', href: '/collections', icon: Layers },
-  { name: 'Workspaces', href: '/workspaces', icon: FolderKanban },
-  { name: 'Organizations', href: '/orgs', icon: Building2 },
+  { nameKey: 'nav.mcpMarketplace', href: '/mcp', icon: Package },
+  { nameKey: 'nav.skills', href: '/skills', icon: Sparkles },
+  { nameKey: 'nav.collections', href: '/collections', icon: Layers },
+  { nameKey: 'workspace.workspaces', href: '/workspaces', icon: FolderKanban },
+  { nameKey: 'nav.organizations', href: '/orgs', icon: Building2 },
 ];
 
 const creatorNavigation = [
-  { name: 'Publish', href: '/publish', icon: Upload },
-  { name: 'My Packages', href: '/my-packages', icon: PackageSearch },
-  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { nameKey: 'nav.publish', href: '/publish', icon: Upload },
+  { nameKey: 'nav.myPackages', href: '/my-packages', icon: PackageSearch },
+  { nameKey: 'nav.analytics', href: '/analytics', icon: BarChart3 },
 ];
 
 interface AdminNavItem {
@@ -92,28 +93,29 @@ export function Sidebar({
   pendingPackagesCount = 0,
   pendingReportsCount = 0,
 }: SidebarProps) {
+  const { t } = useTranslation();
   const pathname = usePathname();
 
   const isLoggedIn = Boolean(userRole);
   const showAdmin = userRole && isAdminRole(userRole);
 
   const adminNavigation: AdminNavItem[] = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: t('nav.dashboard'), href: '/admin', icon: LayoutDashboard },
     {
-      name: 'Packages',
+      name: t('nav.packages'),
       href: '/admin/packages',
       icon: Package,
       permission: 'packages.review',
       badgeCount: pendingPackagesCount,
     },
     {
-      name: 'Content',
+      name: t('nav.content'),
       href: '/admin/content',
       icon: MessageSquare,
       permission: 'content.moderate',
     },
     {
-      name: 'Reports',
+      name: t('nav.reports'),
       href: '/admin/reports',
       icon: Flag,
       permission: 'reports.view',
@@ -137,7 +139,7 @@ export function Sidebar({
           const isActive = pathname.startsWith(item.href);
           return (
             <Link
-              key={item.name}
+              key={item.href}
               href={item.href}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -147,7 +149,7 @@ export function Sidebar({
               )}
             >
               <item.icon className="h-4 w-4" />
-              {item.name}
+              {t(item.nameKey)}
             </Link>
           );
         })}
@@ -158,14 +160,14 @@ export function Sidebar({
             <div className="my-4 border-t" />
             <div className="px-3 py-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Creator
+                {t('nav.creator')}
               </span>
             </div>
             {creatorNavigation.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
                 <Link
-                  key={item.name}
+                  key={item.href}
                   href={item.href}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -175,7 +177,7 @@ export function Sidebar({
                   )}
                 >
                   <item.icon className="h-4 w-4" />
-                  {item.name}
+                  {t(item.nameKey)}
                 </Link>
               );
             })}
@@ -188,7 +190,7 @@ export function Sidebar({
             <div className="my-4 border-t" />
             <div className="px-3 py-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Admin
+                {t('nav.admin')}
               </span>
             </div>
             {adminNavigation.map((item) => {
@@ -204,7 +206,7 @@ export function Sidebar({
 
               return (
                 <Link
-                  key={item.name}
+                  key={item.href}
                   href={item.href}
                   className={cn(
                     'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
@@ -243,7 +245,7 @@ export function Sidebar({
               )}
             >
               <Settings className="h-4 w-4" />
-              Settings
+              {t('common.settings')}
             </Link>
 
             <Separator className="my-3" />
@@ -287,13 +289,13 @@ export function Sidebar({
               <DropdownMenuItem asChild>
                 <Link href="/profile" className="flex cursor-pointer items-center">
                   <User className="mr-2 h-4 w-4" />
-                  Profile
+                  {t('auth.profile')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/profile/settings" className="flex cursor-pointer items-center">
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('common.settings')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -303,7 +305,7 @@ export function Sidebar({
                   className="flex cursor-pointer items-center text-destructive focus:text-destructive"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
+                  {t('auth.signOut')}
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -313,7 +315,7 @@ export function Sidebar({
           <Button asChild variant="outline" className="w-full">
             <Link href="/login">
               <LogIn className="mr-2 h-4 w-4" />
-              Sign In
+              {t('auth.signIn')}
             </Link>
           </Button>
         )}
