@@ -110,6 +110,12 @@ export type {
   OfficialPackageRegistryType,
 } from "./use-official-registry";
 
+// Viben-core Agents and Models
+export { useVibenAgents } from "./use-viben-agents";
+export type { Agent, CreateAgentOptions, AgentUpdate, AgentTemplate, AgentSession, AgentMemory, UseVibenAgentsReturn } from "./use-viben-agents";
+export { useVibenModels } from "./use-viben-models";
+export type { Model, CreateModelOptions, ModelUpdate, DiscoveredModel, UseVibenModelsReturn } from "./use-viben-models";
+
 // Workspace Chat
 export { useAgent } from "./use-agent";
 export { useTaskAgent } from "./use-task-agent";
