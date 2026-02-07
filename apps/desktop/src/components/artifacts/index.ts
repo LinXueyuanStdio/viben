@@ -27,6 +27,11 @@ export { AudioPreview } from "./audio-preview";
 export { VideoPreview } from "./video-preview";
 export { PdfPreview } from "./pdf-preview";
 export { WebSearchPreview } from "./websearch-preview";
+export { FontPreview } from "./font-preview";
+export { DocxPreview } from "./docx-preview";
+export { XlsxPreview } from "./xlsx-preview";
+export { PptxPreview } from "./pptx-preview";
+export { FileTooLarge } from "./file-too-large";
 
 // Types
 export type {

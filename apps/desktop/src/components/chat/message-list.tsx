@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Loader2, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageItem } from "./message-item";
@@ -439,8 +439,13 @@ export function MessageList({
   className,
 }: MessageListProps) {
   const { t } = useTranslation();
-  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  // Scroll management state
+  const [showScrollButton, setShowScrollButton] = React.useState(false);
+  const userScrolledUpRef = React.useRef(false);
+  const lastScrollTopRef = React.useRef(0);
 
   // Group messages for display - must be called before any conditional returns
   const groups = React.useMemo(
@@ -448,10 +453,76 @@ export function MessageList({
     [messages, isStreaming]
   );
 
-  // Auto-scroll to bottom when new messages arrive
-  React.useEffect(() => {
+  // Scroll to bottom function
+  const scrollToBottom = React.useCallback(() => {
+    userScrolledUpRef.current = false;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, pendingQuestions]);
+  }, []);
+
+  // Check scroll position to show/hide scroll button and detect manual scroll
+  const checkScrollPosition = React.useCallback(() => {
+    const container = viewportRef.current;
+    if (!container) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    // Detect if user scrolled up (scroll position decreased)
+    if (
+      isStreaming &&
+      scrollTop < lastScrollTopRef.current &&
+      distanceFromBottom > 100
+    ) {
+      userScrolledUpRef.current = true;
+    }
+
+    // If user scrolled to near bottom, re-enable auto-scroll
+    if (distanceFromBottom < 50) {
+      userScrolledUpRef.current = false;
+    }
+
+    lastScrollTopRef.current = scrollTop;
+
+    // Show button if more than 200px from bottom
+    setShowScrollButton(distanceFromBottom > 200);
+  }, [isStreaming]);
+
+  // Auto-scroll to bottom when new messages arrive (only if user hasn't scrolled up)
+  React.useEffect(() => {
+    if (isStreaming && !userScrolledUpRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isStreaming, pendingQuestions]);
+
+  // Reset userScrolledUp when streaming stops
+  React.useEffect(() => {
+    if (!isStreaming) {
+      userScrolledUpRef.current = false;
+    }
+  }, [isStreaming]);
+
+  // Add scroll listener to viewport
+  React.useEffect(() => {
+    const container = viewportRef.current;
+    if (!container) return;
+
+    container.addEventListener("scroll", checkScrollPosition);
+    // Initial check
+    checkScrollPosition();
+
+    return () => {
+      container.removeEventListener("scroll", checkScrollPosition);
+    };
+  }, [checkScrollPosition]);
+
+  // Re-check scroll position when messages load
+  React.useEffect(() => {
+    if (messages.length > 0) {
+      requestAnimationFrame(() => {
+        checkScrollPosition();
+      });
+    }
+  }, [messages.length, checkScrollPosition]);
 
   // Empty state
   if (messages.length === 0) {
@@ -475,55 +546,74 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea className={cn("flex-1", className)}>
-      <div ref={scrollRef} className="space-y-4 p-4 pb-8">
-        {groups.map((group, index) => {
-          if (group.type === "task") {
+    <div className={cn("relative flex-1", className)}>
+      <ScrollArea className="h-full" viewportRef={viewportRef}>
+        <div className="space-y-4 p-4 pb-8">
+          {groups.map((group, index) => {
+            if (group.type === "task") {
+              return (
+                <TaskGroupComponent
+                  key={index}
+                  title={group.title}
+                  description={group.description}
+                  tools={group.tools}
+                  isCompleted={group.isCompleted}
+                  isRunning={isStreaming || false}
+                />
+              );
+            }
+
+            const message = group.message;
+            const isPlanMessage = message.type === "plan" && message.plan;
+
             return (
-              <TaskGroupComponent
-                key={index}
-                title={group.title}
-                description={group.description}
-                tools={group.tools}
-                isCompleted={group.isCompleted}
-                isRunning={isStreaming || false}
+              <MessageItem
+                key={message.id || index}
+                message={message}
+                isStreaming={
+                  index === groups.length - 1 &&
+                  isStreaming &&
+                  message.type === "text"
+                }
+                onApprovePlan={onApprovePlan}
+                onRejectPlan={onRejectPlan}
+                isPlanPending={isPlanMessage && pendingPlan !== null}
               />
             );
-          }
+          })}
 
-          const message = group.message;
-          const isPlanMessage = message.type === "plan" && message.plan;
+          {/* Running indicator */}
+          {isStreaming && <RunningIndicator messages={messages} />}
 
-          return (
-            <MessageItem
-              key={message.id || index}
-              message={message}
-              isStreaming={
-                index === groups.length - 1 &&
-                isStreaming &&
-                message.type === "text"
-              }
-              onApprovePlan={onApprovePlan}
-              onRejectPlan={onRejectPlan}
-              isPlanPending={isPlanMessage && pendingPlan !== null}
+          {/* Pending questions */}
+          {pendingQuestions && onAnswerQuestions && (
+            <QuestionInput
+              questions={pendingQuestions}
+              onSubmit={onAnswerQuestions}
             />
-          );
-        })}
+          )}
 
-        {/* Running indicator */}
-        {isStreaming && <RunningIndicator messages={messages} />}
+          {/* Scroll anchor */}
+          <div ref={bottomRef} />
+        </div>
+      </ScrollArea>
 
-        {/* Pending questions */}
-        {pendingQuestions && onAnswerQuestions && (
-          <QuestionInput
-            questions={pendingQuestions}
-            onSubmit={onAnswerQuestions}
-          />
-        )}
-
-        {/* Scroll anchor */}
-        <div ref={bottomRef} />
-      </div>
-    </ScrollArea>
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className={cn(
+            "absolute bottom-4 left-1/2 z-10 -translate-x-1/2",
+            "flex items-center justify-center p-2",
+            "bg-background border border-border rounded-full shadow-lg",
+            "hover:bg-accent transition-all cursor-pointer",
+            "animate-in fade-in slide-in-from-bottom-2 duration-200"
+          )}
+          title={t("chat.scrollToBottom", { defaultValue: "Scroll to bottom" })}
+        >
+          <ArrowDown className="size-4" />
+        </button>
+      )}
+    </div>
   );
 }
