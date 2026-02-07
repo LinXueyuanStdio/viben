@@ -1171,7 +1171,10 @@
     "sidebar.noSkills": "No skills used",
     "sidebar.showLess": "Show less",
     "sidebar.showMore": "Show more",
-    "sidebar.noItems": "No items"
+    "sidebar.noItems": "No items",
+    "sidebar.mcpTools": "MCP Tools",
+    "sidebar.builtinTools": "Built-in Tools",
+    "sidebar.calls": "calls"
   },
   "creator": {
     "title": "Creator",
