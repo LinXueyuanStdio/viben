@@ -25,10 +25,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
 } from "@viben/ui";
 import { ToolsConfigPopover } from "../tools-config-popover";
 import { SkillsConfigPopover } from "../skills-config-popover";
@@ -142,7 +138,7 @@ export function ChatInputConfigBar({
       )}
     >
       <div className="flex items-center gap-1">
-        {/* Agent Selector */}
+        {/* 智能体 (Agent Selector) */}
         {showAgentSelector && (
           <Popover>
             <PopoverTrigger asChild>
@@ -154,7 +150,7 @@ export function ChatInputConfigBar({
               >
                 <Bot className="h-3.5 w-3.5" />
                 <span className="max-w-[80px] truncate">
-                  {selectedAgent?.name || t("chat.selectAgent", "Agent")}
+                  {selectedAgent?.name || t("chat.agent", "智能体")}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -162,7 +158,7 @@ export function ChatInputConfigBar({
             <PopoverContent className="w-48 p-1" align="start">
               {agents.length === 0 ? (
                 <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                  {t("chat.noAgents", "No agents")}
+                  {t("chat.noAgents", "暂无智能体")}
                 </div>
               ) : (
                 agents.map((agent) => (
@@ -186,7 +182,7 @@ export function ChatInputConfigBar({
           </Popover>
         )}
 
-        {/* Model Selector */}
+        {/* 模型 (Model Selector) */}
         {showModelSelector && (
           <Popover>
             <PopoverTrigger asChild>
@@ -198,7 +194,7 @@ export function ChatInputConfigBar({
               >
                 <Cpu className="h-3.5 w-3.5" />
                 <span className="max-w-[80px] truncate">
-                  {selectedModel?.name || t("chat.selectModel", "Model")}
+                  {selectedModel?.name || t("chat.model", "模型")}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -206,7 +202,7 @@ export function ChatInputConfigBar({
             <PopoverContent className="w-56 p-1" align="start">
               {models.length === 0 ? (
                 <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                  {t("chat.noModels", "No models")}
+                  {t("chat.noModels", "暂无模型")}
                 </div>
               ) : (
                 models.map((model) => (
@@ -235,7 +231,75 @@ export function ChatInputConfigBar({
           </Popover>
         )}
 
-        {/* Executor Selector */}
+        {/* 工具 (Tools) - with label */}
+        {tools.length > 0 && onToggleTool ? (
+          <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1.5 text-xs"
+                disabled={isLoading || disabled}
+              >
+                <Wrench className="h-3.5 w-3.5" />
+                <span>{t("chat.tools", "工具")}</span>
+                {actualToolsCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="h-4 min-w-4 px-1 text-[10px]"
+                  >
+                    {actualToolsCount}
+                  </Badge>
+                )}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="start">
+              <ToolsConfigPopover tools={tools} onToggleTool={onToggleTool} />
+            </PopoverContent>
+          </Popover>
+        ) : onToolsClick ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 gap-1.5 text-xs"
+            disabled={isLoading || disabled}
+            onClick={onToolsClick}
+          >
+            <Wrench className="h-3.5 w-3.5" />
+            <span>{t("chat.tools", "工具")}</span>
+            {actualToolsCount > 0 && (
+              <Badge
+                variant="secondary"
+                className="h-4 min-w-4 px-1 text-[10px]"
+              >
+                {actualToolsCount}
+              </Badge>
+            )}
+          </Button>
+        ) : null}
+
+        {/* 用量统计 (Context/Usage Stats) */}
+        <Popover open={isContextOpen} onOpenChange={setIsContextOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 gap-1.5 text-xs"
+              disabled={isLoading || disabled}
+              onClick={onContextClick ? () => onContextClick() : undefined}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>{t("chat.usage", "用量统计")}</span>
+              <span className="text-muted-foreground">{formatTokens(contextTokens)}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3" align="start">
+            <ContextDetailsPopover breakdown={defaultContextBreakdown} />
+          </PopoverContent>
+        </Popover>
+
+        {/* Executor Selector - hidden by default, only show when explicitly enabled */}
         {showExecutorSelector && executors.length > 0 && onExecutorChange && (
           <Popover>
             <PopoverTrigger asChild>
@@ -248,7 +312,7 @@ export function ChatInputConfigBar({
                 <Terminal className="h-3.5 w-3.5" />
                 <span className="max-w-[80px] truncate">
                   {executors.find((e) => e.id === selectedExecutor)?.name ||
-                    t("chat.selectExecutor", "Executor")}
+                    t("chat.executor", "执行器")}
                 </span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
@@ -274,159 +338,53 @@ export function ChatInputConfigBar({
           </Popover>
         )}
 
-        {/* Tools - icon only with badge */}
-        {tools.length > 0 && onToggleTool ? (
-          <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 relative"
-                      disabled={isLoading || disabled}
-                    >
-                      <Wrench className="h-4 w-4" />
-                      {actualToolsCount > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
-                        >
-                          {actualToolsCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("chat.configureTools", "Configure tools")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <PopoverContent className="w-auto p-3" align="start">
-              <ToolsConfigPopover tools={tools} onToggleTool={onToggleTool} />
-            </PopoverContent>
-          </Popover>
-        ) : onToolsClick ? (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 relative"
-                  disabled={isLoading || disabled}
-                  onClick={onToolsClick}
-                >
-                  <Wrench className="h-4 w-4" />
-                  {actualToolsCount > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
-                    >
-                      {actualToolsCount}
-                    </Badge>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {t("chat.configureTools", "Configure tools")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        ) : null}
-
-        {/* Skills - icon only with badge */}
+        {/* Skills - hidden by default, only show when explicitly provided */}
         {skills.length > 0 && onToggleSkill ? (
           <Popover open={isSkillsOpen} onOpenChange={setIsSkillsOpen}>
-            <TooltipProvider delayDuration={300}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 relative"
-                      disabled={isLoading || disabled}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      {actualSkillsCount > 0 && (
-                        <Badge
-                          variant="secondary"
-                          className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
-                        >
-                          {actualSkillsCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("chat.configureSkills", "Configure skills")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1.5 text-xs"
+                disabled={isLoading || disabled}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{t("chat.skills", "技能")}</span>
+                {actualSkillsCount > 0 && (
+                  <Badge
+                    variant="secondary"
+                    className="h-4 min-w-4 px-1 text-[10px]"
+                  >
+                    {actualSkillsCount}
+                  </Badge>
+                )}
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
             <PopoverContent className="w-auto p-3" align="start">
               <SkillsConfigPopover skills={skills} onToggleSkill={onToggleSkill} />
             </PopoverContent>
           </Popover>
         ) : onSkillsClick ? (
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 relative"
-                  disabled={isLoading || disabled}
-                  onClick={onSkillsClick}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {actualSkillsCount > 0 && (
-                    <Badge
-                      variant="secondary"
-                      className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
-                    >
-                      {actualSkillsCount}
-                    </Badge>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {t("chat.configureSkills", "Configure skills")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 gap-1.5 text-xs"
+            disabled={isLoading || disabled}
+            onClick={onSkillsClick}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{t("chat.skills", "技能")}</span>
+            {actualSkillsCount > 0 && (
+              <Badge
+                variant="secondary"
+                className="h-4 min-w-4 px-1 text-[10px]"
+              >
+                {actualSkillsCount}
+              </Badge>
+            )}
+          </Button>
         ) : null}
-
-        {/* Context Tokens - icon + number only */}
-        <Popover open={isContextOpen} onOpenChange={setIsContextOpen}>
-          <TooltipProvider delayDuration={300}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 gap-1 text-xs"
-                    disabled={isLoading || disabled}
-                    onClick={onContextClick ? () => onContextClick() : undefined}
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span>{formatTokens(contextTokens)}</span>
-                  </Button>
-                </PopoverTrigger>
-              </TooltipTrigger>
-              <TooltipContent>
-                {t("chat.contextDetails", "Context details")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <PopoverContent className="w-auto p-3" align="start">
-            <ContextDetailsPopover breakdown={defaultContextBreakdown} />
-          </PopoverContent>
-        </Popover>
       </div>
 
       {/* Send/Stop Button */}

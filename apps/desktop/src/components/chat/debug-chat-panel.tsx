@@ -18,8 +18,9 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { ChatInput, type SlashCommand } from "./chat-input";
-import { MessageList } from "./message-list";
+import { DesktopChatInput } from "./desktop-chat-input";
+import { DesktopMessageList } from "./desktop-message-list";
+import type { SlashCommand } from "@viben/chat";
 import { cn } from "@/lib/utils";
 import {
   type BaseCodingAgent,
@@ -674,7 +675,7 @@ export function DebugChatPanel({
           )}
 
           {/* Messages */}
-          <MessageList
+          <DesktopMessageList
             messages={messages}
             isStreaming={isStreaming}
             pendingPlan={pendingPlan}
@@ -696,7 +697,7 @@ export function DebugChatPanel({
 
           {/* Input */}
           <div className="border-t border-border bg-background">
-            <ChatInput
+            <DesktopChatInput
               onSend={handleSendMessage}
               onCancel={handleCancel}
               isLoading={isStreaming}

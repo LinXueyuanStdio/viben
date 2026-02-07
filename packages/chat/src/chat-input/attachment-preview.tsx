@@ -4,7 +4,6 @@
  * Displays a preview of attached files/images with remove buttons.
  */
 
-import * as React from "react";
 import { Loader2, FileText, X } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { MessageAttachment } from "../types";

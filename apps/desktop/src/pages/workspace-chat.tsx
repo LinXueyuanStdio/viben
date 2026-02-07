@@ -53,8 +53,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ChatInput,
-  MessageList,
+  DesktopChatInput,
+  DesktopMessageList,
   RightSidebar,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
@@ -929,7 +929,7 @@ export function WorkspaceChatPage() {
               </div>
 
               {/* Messages */}
-              <MessageList
+              <DesktopMessageList
                 messages={messages}
                 isStreaming={isStreaming}
                 pendingPlan={pendingPlan}
@@ -949,7 +949,7 @@ export function WorkspaceChatPage() {
 
               {/* Input */}
               <div className="border-t border-border">
-                <ChatInput
+                <DesktopChatInput
                   onSend={handleSendMessage}
                   onCancel={cancel}
                   isLoading={isStreaming}

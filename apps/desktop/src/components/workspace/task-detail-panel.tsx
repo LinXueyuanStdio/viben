@@ -65,7 +65,7 @@ import {
   useToggleCommentReaction,
   useKanbanActivities,
 } from "@/hooks";
-import { ChatInput, MessageList, type SlashCommand } from "@/components/chat";
+import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { useTaskAgent } from "@/hooks";
 
 // Editable Title Component
@@ -921,7 +921,7 @@ export function TaskDetailPanel({
         {/* Agent Chat Tab */}
         <TabsContent value="agent-chat" className="flex-1 min-h-0 flex flex-col">
           {/* Messages */}
-          <MessageList
+          <DesktopMessageList
             messages={agentMessages}
             isStreaming={agentIsStreaming}
             pendingPlan={agentPendingPlan}
@@ -941,7 +941,7 @@ export function TaskDetailPanel({
 
           {/* Input */}
           <div className="border-t border-border">
-            <ChatInput
+            <DesktopChatInput
               onSend={agentSendMessage}
               onCancel={agentCancel}
               isLoading={agentIsStreaming}

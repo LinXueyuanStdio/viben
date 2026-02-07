@@ -1,12 +1,40 @@
 # 聊天输入组件规格
 
-本文档定义了 viben desktop 应用中统一的聊天输入组件 `ChatInput`。
+本文档定义了 viben 应用中统一的聊天输入组件 `ChatInput` 和消息列表组件 `MessageList`。
+
+## 架构概览
+
+```
+@viben/chat (packages/chat/)          # 跨平台共享包
+├── src/
+│   ├── chat-input/                   # ChatInput 组件目录
+│   │   ├── index.tsx                 # 主组件
+│   │   ├── types.ts                  # 类型定义
+│   │   ├── hooks.ts                  # 可复用 hooks
+│   │   ├── toolbar.tsx               # 顶部工具栏
+│   │   ├── config-bar.tsx            # 底部配置栏
+│   │   ├── writing-mode.tsx          # 全屏写作模式
+│   │   ├── attachment-preview.tsx    # 附件预览
+│   │   └── slash-command-menu.tsx    # Slash 命令菜单
+│   ├── message-list.tsx              # 消息列表
+│   ├── message-item.tsx              # 消息项
+│   └── index.ts                      # 导出入口
+
+apps/desktop/src/components/chat/     # Desktop 平台适配
+├── desktop-chat-input.tsx            # Tauri 封装 (截图、文件对话框)
+├── desktop-message-list.tsx          # Tauri 封装 (链接打开)
+└── index.ts                          # 导出
+```
 
 ## 组件概览
 
-| 组件 | 用途 | 文件 |
-|------|------|------|
-| `ChatInput` | 统一聊天输入组件 | `chat-input.tsx` |
+| 组件 | 包 | 用途 |
+|------|-----|------|
+| `ChatInput` | `@viben/chat` | 跨平台聊天输入组件 |
+| `MessageList` | `@viben/chat` | 跨平台消息列表组件 |
+| `MessageItem` | `@viben/chat` | 跨平台消息项组件 |
+| `DesktopChatInput` | desktop | Tauri 特定封装 |
+| `DesktopMessageList` | desktop | Tauri 特定封装 |
 
 通过 Props 控制不同的布局和功能：
 
@@ -203,6 +231,55 @@ export interface ChatInputProps {
 ---
 
 ## 使用指南
+
+### Desktop App 使用
+
+**必须使用 Desktop* 封装组件**，它们自动注入 Tauri 特定功能：
+
+```tsx
+import { DesktopChatInput, DesktopMessageList } from "@/components/chat";
+
+function WorkspaceChat() {
+  return (
+    <div className="flex flex-col h-full">
+      <DesktopMessageList
+        messages={messages}
+        isStreaming={isStreaming}
+      />
+      <DesktopChatInput
+        onSend={handleSend}
+        showTopToolbar
+        showConfigBar
+        useGlobalConfig
+      />
+    </div>
+  );
+}
+```
+
+### Web App 使用
+
+直接使用 `@viben/chat` 包，传入回调处理平台功能：
+
+```tsx
+import { ChatInput, MessageList } from "@viben/chat";
+
+function WebChat() {
+  return (
+    <div className="flex flex-col h-full">
+      <MessageList
+        messages={messages}
+        onLinkClick={(url) => window.open(url, "_blank")}
+      />
+      <ChatInput
+        onSend={handleSend}
+        showConfigBar
+        // 不传 onScreenshot，按钮自动隐藏
+      />
+    </div>
+  );
+}
+```
 
 ### 场景与配置
 
@@ -657,6 +734,13 @@ const slashCommands: SlashCommand[] = [
   - 新增 SkillsConfigPopover 技能配置弹窗
   - 新增 ContextDetailsPopover 上下文详情弹窗
   - ChatInput 集成所有弹窗组件
+
+- **2026-02-08**: 迁移到 @viben/chat 包，实现跨平台复用
+  - ChatInput 迁移到 `packages/chat/src/chat-input/`，拆分为模块化子组件
+  - MessageList/MessageItem 统一到 package，使用回调 props 支持平台特定功能
+  - 创建 Desktop 适配层：`DesktopChatInput` 和 `DesktopMessageList`
+  - 平台特定功能通过回调注入：`onScreenshot`, `onOpenFile`, `onLinkClick`
+  - 所有消费者迁移到使用 Desktop* 组件
 
 - **2026-02-08**: 合并 ChatInput, AgentChatInput, WorkspaceChatInput 为统一组件
   - 使用 Props 控制功能显隐

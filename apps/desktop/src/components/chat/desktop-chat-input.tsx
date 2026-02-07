@@ -6,6 +6,7 @@
  * - Screenshot capture via Tauri invoke
  * - File dialog via @tauri-apps/plugin-dialog
  * - Paste handling (uses default browser handling)
+ * - Global config mode (via useChatConfig hook)
  *
  * Usage:
  * ```tsx
@@ -16,6 +17,13 @@
  *   showConfigBar
  *   // ... other props from ChatInput
  * />
+ *
+ * // With global config mode (auto-loads agents/models from store)
+ * <DesktopChatInput
+ *   onSend={handleSend}
+ *   showConfigBar
+ *   useGlobalConfig
+ * />
  * ```
  */
 
@@ -23,6 +31,7 @@ import * as React from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ChatInput, type ChatInputProps, type MessageAttachment } from "@viben/chat";
+import { useChatConfig } from "@/hooks";
 
 // ============================================================================
 // Types
@@ -42,12 +51,21 @@ interface ScreenshotResult {
 
 /**
  * Props for DesktopChatInput
+ * Extends ChatInputProps with desktop-specific features:
+ * - useGlobalConfig: Automatically loads agents/models from global store
  * Omits platform-specific callbacks as they are implemented internally
  */
-export type DesktopChatInputProps = Omit<
+export interface DesktopChatInputProps extends Omit<
   ChatInputProps,
   "onScreenshot" | "onOpenFile" | "onPaste"
->;
+> {
+  /**
+   * Use global config mode.
+   * When true, agents/models are automatically loaded from the global store
+   * via useChatConfig hook. Props can still override the global values.
+   */
+  useGlobalConfig?: boolean;
+}
 
 // ============================================================================
 // Component
@@ -59,8 +77,54 @@ export type DesktopChatInputProps = Omit<
  * Provides Tauri implementations for:
  * - Screenshot capture (via invoke("take_screenshot"))
  * - File dialog (via @tauri-apps/plugin-dialog)
+ * - Global config mode (via useChatConfig hook)
  */
-export function DesktopChatInput(props: DesktopChatInputProps) {
+export function DesktopChatInput({
+  useGlobalConfig = false,
+  // Agent/Model props that can be overridden
+  agents: propAgents,
+  selectedAgentId: propSelectedAgentId,
+  onAgentChange: propOnAgentChange,
+  models: propModels,
+  selectedModelId: propSelectedModelId,
+  onModelChange: propOnModelChange,
+  executors: propExecutors,
+  selectedExecutor: propSelectedExecutor,
+  onExecutorChange: propOnExecutorChange,
+  // Visibility overrides
+  hideAgentSelector: propHideAgentSelector,
+  hideModelSelector: propHideModelSelector,
+  ...props
+}: DesktopChatInputProps) {
+  // Get global config if enabled
+  const chatConfig = useChatConfig();
+
+  // Merge props with global config (props take precedence)
+  const agents = propAgents ?? (useGlobalConfig ? chatConfig.agents : []);
+  const models = propModels ?? (useGlobalConfig ? chatConfig.models : []);
+  const executors = propExecutors ?? (useGlobalConfig ? chatConfig.executors : []);
+  const selectedAgentId = propSelectedAgentId ?? (useGlobalConfig ? chatConfig.selectedAgentId : null);
+  const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
+  const selectedExecutor = propSelectedExecutor ?? (useGlobalConfig ? chatConfig.selectedExecutor : "CLAUDE_CODE");
+  const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
+  const onModelChange = propOnModelChange ?? (useGlobalConfig ? chatConfig.setSelectedModelId : undefined);
+  const onExecutorChange = propOnExecutorChange ?? (useGlobalConfig ? chatConfig.setSelectedExecutor : undefined);
+
+  // Determine selector visibility (props override global config visibility)
+  // Only apply visibility rules when useGlobalConfig is true and no prop override
+  const hideAgentSelector =
+    propHideAgentSelector !== undefined
+      ? propHideAgentSelector
+      : useGlobalConfig && !propAgents
+        ? !chatConfig.visibility.showAgentSelector
+        : false;
+  const hideModelSelector =
+    propHideModelSelector !== undefined
+      ? propHideModelSelector
+      : useGlobalConfig && !propModels
+        ? !chatConfig.visibility.showModelSelector
+        : false;
+
   /**
    * Take a screenshot using Tauri backend
    *
@@ -188,6 +252,17 @@ export function DesktopChatInput(props: DesktopChatInputProps) {
   return (
     <ChatInput
       {...props}
+      agents={agents}
+      selectedAgentId={selectedAgentId}
+      onAgentChange={onAgentChange}
+      models={models}
+      selectedModelId={selectedModelId}
+      onModelChange={onModelChange}
+      executors={executors}
+      selectedExecutor={selectedExecutor}
+      onExecutorChange={onExecutorChange}
+      hideAgentSelector={hideAgentSelector}
+      hideModelSelector={hideModelSelector}
       onScreenshot={handleScreenshot}
       onOpenFile={handleOpenFile}
     />
