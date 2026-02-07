@@ -1,0 +1,39 @@
+[package]
+name = "viben-executors"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Viben AI agent executors - ClaudeCode, Gemini, Codex, Cursor, and more"
+
+[dependencies]
+viben-utils = { path = "../viben-utils" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+enum_dispatch = { workspace = true }
+command-group = { workspace = true }
+futures = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+ts-rs = { workspace = true }
+schemars = { workspace = true }
+regex = { workspace = true }
+
+# Process I/O
+bytes = "1.0"
+
+# Strum for enum utilities
+strum = "0.26"
+strum_macros = "0.26"
+
+# Derivative for custom derive implementations
+derivative = "2.2"
+
+# Command finding
+which = "6.0"
