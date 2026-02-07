@@ -505,6 +505,9 @@ commands::workspace::write_skill_file,
             commands::gateway::get_gateway_config,
             commands::gateway::set_gateway_config,
             commands::gateway::check_gateway_binary,
+            // Screenshot commands
+            commands::screenshot::take_screenshot,
+            commands::screenshot::take_screenshot_region,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

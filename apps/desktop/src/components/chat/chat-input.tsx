@@ -69,6 +69,8 @@ import {
   ContextDetailsPopover,
   type ContextTokenBreakdown,
 } from "./context-details-popover";
+import { useScreenshot } from "@/hooks/use-screenshot";
+import { useChatConfig } from "@/hooks/use-chat-config";
 import type { MessageAttachment } from "@/types";
 
 // ============================================================================
@@ -97,10 +99,21 @@ export interface ChatInputProps {
   /** Enable fullscreen writing mode */
   enableWritingMode?: boolean;
 
+  // Global Config Mode
+  /**
+   * Use global chat config from useChatConfig hook.
+   * When true, agents/models are loaded from global store and
+   * visibility is determined by current route context.
+   * Props override can still be used for flexibility.
+   */
+  useGlobalConfig?: boolean;
+
   // Agent/Model Selection (for config bar)
+  /** Override agents list (takes precedence over global config) */
   agents?: Array<{ id: string; name: string }>;
   selectedAgentId?: string | null;
   onAgentChange?: (agentId: string) => void;
+  /** Override models list (takes precedence over global config) */
   models?: Array<{ id: string; name: string; provider?: string }>;
   selectedModelId?: string | null;
   onModelChange?: (modelId: string) => void;
@@ -163,12 +176,13 @@ export function ChatInput({
   showConfigBar = false,
   showResizeHandle = false,
   enableWritingMode = false,
-  agents = [],
-  selectedAgentId,
-  onAgentChange,
-  models = [],
-  selectedModelId,
-  onModelChange,
+  useGlobalConfig = false,
+  agents: propAgents,
+  selectedAgentId: propSelectedAgentId,
+  onAgentChange: propOnAgentChange,
+  models: propModels,
+  selectedModelId: propSelectedModelId,
+  onModelChange: propOnModelChange,
   enabledToolsCount = 0,
   enabledSkillsCount = 0,
   onToolsClick,
@@ -183,6 +197,27 @@ export function ChatInput({
   onScreenshot,
 }: ChatInputProps) {
   const { t } = useTranslation();
+
+  // Use global chat config hook when enabled
+  const chatConfig = useChatConfig();
+
+  // Determine effective agents/models based on props vs global config
+  // Props take precedence if provided, otherwise use global config
+  const agents = propAgents ?? (useGlobalConfig ? chatConfig.agents : []);
+  const models = propModels ?? (useGlobalConfig ? chatConfig.models : []);
+  const selectedAgentId = propSelectedAgentId ?? (useGlobalConfig ? chatConfig.selectedAgentId : null);
+  const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
+  const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
+  const onModelChange = propOnModelChange ?? (useGlobalConfig ? chatConfig.setSelectedModelId : undefined);
+
+  // Determine if selectors should be shown based on global config visibility
+  // Only apply visibility rules when useGlobalConfig is true and no prop override
+  const shouldShowAgentSelector = useGlobalConfig && !propAgents
+    ? chatConfig.visibility.showAgentSelector
+    : true;
+  const shouldShowModelSelector = useGlobalConfig && !propModels
+    ? chatConfig.visibility.showModelSelector
+    : true;
   const [content, setContent] = React.useState("");
   const [attachments, setAttachments] = React.useState<MessageAttachment[]>([]);
   const [isWritingMode, setIsWritingMode] = React.useState(false);
@@ -206,6 +241,30 @@ export function ChatInput({
 
   const isCompact = variant === "compact";
   const hasToolbar = showTopToolbar || showConfigBar || showResizeHandle;
+
+  // Internal screenshot handler using Tauri command
+  const { takeScreenshot, isCapturing: isScreenshotCapturing } = useScreenshot({
+    onSuccess: (attachment) => {
+      setAttachments((prev) => [...prev, attachment]);
+    },
+    onError: (error) => {
+      console.error("[ChatInput] Screenshot failed:", error);
+    },
+  });
+
+  // Screenshot handler - uses prop if provided, otherwise uses internal handler
+  const handleScreenshot = React.useCallback(
+    async (hideWindow?: boolean) => {
+      if (onScreenshot) {
+        // Use external handler if provided
+        onScreenshot(hideWindow);
+      } else {
+        // Use internal Tauri screenshot handler
+        await takeScreenshot(hideWindow);
+      }
+    },
+    [onScreenshot, takeScreenshot]
+  );
 
   // Load saved height from localStorage (only when resize handle is shown)
   React.useEffect(() => {
@@ -716,38 +775,40 @@ export function ChatInput({
             </TooltipProvider>
 
             {/* Screenshot with dropdown */}
-            {onScreenshot && (
-              <DropdownMenu>
-                <TooltipProvider delayDuration={300}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 gap-1"
-                          disabled={isLoading || disabled}
-                        >
+            <DropdownMenu>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 gap-1"
+                        disabled={isLoading || disabled || isScreenshotCapturing}
+                      >
+                        {isScreenshotCapturing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
                           <Camera className="h-4 w-4" />
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("chat.screenshot", "Screenshot")}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => onScreenshot()}>
-                    <Camera className="h-4 w-4 mr-2" />
-                    {t("chat.screenshotDirect", "Direct Screenshot")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onScreenshot(true)}>
-                    <EyeOff className="h-4 w-4 mr-2" />
-                    {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                        )}
+                        <ChevronDown className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>{t("chat.screenshot", "Screenshot")}</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => handleScreenshot()}>
+                  <Camera className="h-4 w-4 mr-2" />
+                  {t("chat.screenshotDirect", "Direct Screenshot")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleScreenshot(true)}>
+                  <EyeOff className="h-4 w-4 mr-2" />
+                  {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Expand button */}
@@ -853,88 +914,92 @@ export function ChatInput({
       {showConfigBar && (
         <div className="flex items-center justify-between px-3 py-2 border-t border-border/30 bg-muted/30">
           <div className="flex items-center gap-1">
-            {/* Agent Selector */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 gap-1.5 text-xs"
-                  disabled={isLoading || disabled}
-                >
-                  <Bot className="h-3.5 w-3.5" />
-                  <span className="max-w-[80px] truncate">
-                    {selectedAgent?.name || t("chat.selectAgent", "Agent")}
-                  </span>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-1" align="start">
-                {agents.length === 0 ? (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    {t("chat.noAgents", "No agents")}
-                  </div>
-                ) : (
-                  agents.map((agent) => (
-                    <Button
-                      key={agent.id}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-8"
-                      onClick={() => onAgentChange?.(agent.id)}
-                    >
-                      {agent.id === selectedAgentId && <Check className="h-3.5 w-3.5" />}
-                      <span className={agent.id !== selectedAgentId ? "ml-5" : ""}>
-                        {agent.name}
-                      </span>
-                    </Button>
-                  ))
-                )}
-              </PopoverContent>
-            </Popover>
+            {/* Agent Selector - conditionally shown based on visibility */}
+            {shouldShowAgentSelector && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 gap-1.5 text-xs"
+                    disabled={isLoading || disabled}
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    <span className="max-w-[80px] truncate">
+                      {selectedAgent?.name || t("chat.selectAgent", "Agent")}
+                    </span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-1" align="start">
+                  {agents.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                      {t("chat.noAgents", "No agents")}
+                    </div>
+                  ) : (
+                    agents.map((agent) => (
+                      <Button
+                        key={agent.id}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 h-8"
+                        onClick={() => onAgentChange?.(agent.id)}
+                      >
+                        {agent.id === selectedAgentId && <Check className="h-3.5 w-3.5" />}
+                        <span className={agent.id !== selectedAgentId ? "ml-5" : ""}>
+                          {agent.name}
+                        </span>
+                      </Button>
+                    ))
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
 
-            {/* Model Selector */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 gap-1.5 text-xs"
-                  disabled={isLoading || disabled}
-                >
-                  <Cpu className="h-3.5 w-3.5" />
-                  <span className="max-w-[80px] truncate">
-                    {selectedModel?.name || t("chat.selectModel", "Model")}
-                  </span>
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-56 p-1" align="start">
-                {models.length === 0 ? (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    {t("chat.noModels", "No models")}
-                  </div>
-                ) : (
-                  models.map((model) => (
-                    <Button
-                      key={model.id}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-8"
-                      onClick={() => onModelChange?.(model.id)}
-                    >
-                      {model.id === selectedModelId && <Check className="h-3.5 w-3.5" />}
-                      <span className={model.id !== selectedModelId ? "ml-5" : ""}>
-                        {model.name}
-                        {model.provider && (
-                          <span className="text-muted-foreground ml-1">({model.provider})</span>
-                        )}
-                      </span>
-                    </Button>
-                  ))
-                )}
-              </PopoverContent>
-            </Popover>
+            {/* Model Selector - conditionally shown based on visibility */}
+            {shouldShowModelSelector && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 gap-1.5 text-xs"
+                    disabled={isLoading || disabled}
+                  >
+                    <Cpu className="h-3.5 w-3.5" />
+                    <span className="max-w-[80px] truncate">
+                      {selectedModel?.name || t("chat.selectModel", "Model")}
+                    </span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-1" align="start">
+                  {models.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                      {t("chat.noModels", "No models")}
+                    </div>
+                  ) : (
+                    models.map((model) => (
+                      <Button
+                        key={model.id}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 h-8"
+                        onClick={() => onModelChange?.(model.id)}
+                      >
+                        {model.id === selectedModelId && <Check className="h-3.5 w-3.5" />}
+                        <span className={model.id !== selectedModelId ? "ml-5" : ""}>
+                          {model.name}
+                          {model.provider && (
+                            <span className="text-muted-foreground ml-1">({model.provider})</span>
+                          )}
+                        </span>
+                      </Button>
+                    ))
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
 
             {/* Tools */}
             {tools.length > 0 && onToggleTool ? (

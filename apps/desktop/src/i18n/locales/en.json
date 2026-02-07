@@ -58,7 +58,9 @@
     "search": "Search...",
     "selectAll": "Select all",
     "selected": "selected",
-    "noResults": "No results found"
+    "noResults": "No results found",
+    "rename": "Rename",
+    "yesterday": "Yesterday"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -385,6 +387,9 @@
     "temperatureHint": "Lower values are more focused, higher values more creative",
     "maxTokensHint": "Maximum number of tokens in the response",
     "deleteConfirm": "Delete agent \"{{name}}\"? This cannot be undone.",
+    "delete": "Delete Agent",
+    "deleteWarning": "This action cannot be undone. All related configuration will be permanently deleted.",
+    "selectAgent": "Select an agent",
     "createFromTemplate": "Create from Template",
     "createFromTemplateDescription": "Create a new agent based on an existing template",
     "selectTemplate": "Select Template",
@@ -1540,6 +1545,15 @@
     "sidebar.mcpTools": "MCP Tools",
     "sidebar.builtinTools": "Built-in Tools",
     "sidebar.calls": "calls",
+    "newConversation": "New conversation",
+    "searchConversations": "Search conversations...",
+    "noConversations": "No conversations",
+    "startConversation": "Start a conversation",
+    "defaultAgent": "Default Agent",
+    "noAgentSelected": "No agent selected",
+    "agentSettings": "Agent Settings",
+    "fullSettings": "Full Settings",
+    "defaultModel": "Default Model",
     "agentInput": {
       "placeholder": "Start with any idea... Press ⌘ ↵ for newline...",
       "searchModels": "Search models...",

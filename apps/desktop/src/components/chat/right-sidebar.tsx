@@ -31,16 +31,83 @@ import {
   Layers,
   Code2,
   FileEdit,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+// Tabs and Button removed - using custom VS Code style tabs
 import type { Artifact, ArtifactType, WorkingFile, ToolUsage, AgentMessage } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 
 // Default number of items to show before "show more"
 const DEFAULT_VISIBLE_COUNT = 10;
+
+/**
+ * Resize handle component for sidebar
+ */
+function ResizeHandle({
+  onResize,
+}: {
+  onResize: (delta: number) => void;
+}) {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startXRef = React.useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startXRef.current - moveEvent.clientX;
+      startXRef.current = moveEvent.clientX;
+      onResize(delta);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  return (
+    <div
+      className={cn(
+        "group absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
+        "flex items-center justify-center",
+        isDragging && "bg-primary/30"
+      )}
+      onMouseDown={handleMouseDown}
+    >
+      {/* Hover/drag indicator line */}
+      <div
+        className={cn(
+          "absolute inset-y-0 w-0.5 transition-colors",
+          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
+        )}
+      />
+      {/* Grip handle */}
+      <div
+        className={cn(
+          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
+          isDragging
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </div>
+  );
+}
 
 // Tab types for the sidebar
 type SidebarTab = "workspace" | "artifacts" | "tools" | "skills";
@@ -63,6 +130,10 @@ interface RightSidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
   className?: string;
+  /** Custom width in pixels */
+  width?: number;
+  /** Callback when resize handle is dragged */
+  onResize?: (delta: number) => void;
 }
 
 /**
@@ -523,16 +594,98 @@ function EmptyState({
 }
 
 /**
- * Tool Preview Modal Component
+ * VS Code style tab trigger with icon and badge
  */
-function ToolPreviewModal({
+function VSCodeTabTrigger({
+  icon: Icon,
+  label,
+  count,
+  isActive,
+  onClick,
+}: {
+  value: SidebarTab;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  count?: number;
+  isActive: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative flex items-center gap-1.5 px-3 py-2 text-xs transition-colors border-b-2",
+        isActive
+          ? "border-primary text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+      )}
+      title={label}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="hidden lg:inline truncate max-w-20">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span
+          className={cn(
+            "ml-0.5 min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] font-medium text-center",
+            isActive ? "bg-primary/20 text-primary" : "bg-muted"
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Preview panel for artifacts, tools, etc.
+ */
+function PreviewPanel({
+  type,
+  artifact,
   tool,
   onClose,
 }: {
-  tool: ToolUsage;
+  type: "artifact" | "tool" | null;
+  artifact?: Artifact | null;
+  tool?: ToolUsage | null;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [previewHeight, setPreviewHeight] = React.useState(200);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startYRef = React.useRef(0);
+  const startHeightRef = React.useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    startYRef.current = e.clientY;
+    startHeightRef.current = previewHeight;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startYRef.current - moveEvent.clientY;
+      setPreviewHeight(Math.min(400, Math.max(100, startHeightRef.current + delta)));
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "row-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  if (!type || (!artifact && !tool)) {
+    return null;
+  }
 
   const formatInput = (input: unknown): string => {
     if (!input) return "No input";
@@ -552,95 +705,107 @@ function ToolPreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative flex max-h-[80vh] w-[600px] max-w-[90vw] flex-col rounded-lg border border-border bg-background shadow-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div className="flex items-center gap-2">
-            {(() => {
-              const IconComponent = getToolIcon(tool.name);
-              return <IconComponent className="h-4 w-4 text-muted-foreground" />;
-            })()}
-            <span className="font-medium">{tool.displayName}</span>
-            {isMcpTool(tool.name) && (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
-                MCP
-              </span>
-            )}
-            {tool.isError && (
-              <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-500">
-                {t("chat.error")}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 hover:bg-accent transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 space-y-4 overflow-auto p-4">
-          {/* Input Section */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              {t("chat.toolInput")}
-            </h3>
-            <pre className="bg-muted/50 max-h-[200px] overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap break-words">
-              {formatInput(tool.input)}
-            </pre>
-          </div>
-
-          {/* Output Section */}
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              {t("chat.toolOutput")}
-            </h3>
-            <pre
-              className={cn(
-                "max-h-[300px] overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap break-words",
-                tool.isError ? "bg-red-500/10 text-red-400" : "bg-muted/50"
-              )}
-            >
-              {formatOutput(tool.output)}
-            </pre>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Tab trigger with icon and badge
- */
-function TabTriggerWithBadge({
-  value,
-  icon: Icon,
-  label,
-  count,
-}: {
-  value: SidebarTab;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  count?: number;
-}) {
-  return (
-    <TabsTrigger
-      value={value}
-      className="flex items-center gap-1.5 px-2 py-1.5 text-xs data-[state=active]:bg-accent"
+    <div
+      className="border-t border-border bg-muted/30 flex flex-col shrink-0"
+      style={{ height: previewHeight }}
     >
-      <Icon className="h-3.5 w-3.5" />
-      <span className="hidden sm:inline">{label}</span>
-      {count !== undefined && count > 0 && (
-        <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
-          {count}
-        </span>
-      )}
-    </TabsTrigger>
+      {/* Resize handle */}
+      <div
+        className={cn(
+          "h-1 cursor-row-resize flex items-center justify-center group",
+          isDragging && "bg-primary/30"
+        )}
+        onMouseDown={handleMouseDown}
+      >
+        <div
+          className={cn(
+            "w-12 h-1 rounded-full transition-colors",
+            isDragging ? "bg-primary" : "bg-border group-hover:bg-muted-foreground/50"
+          )}
+        />
+      </div>
+
+      {/* Preview header */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
+        <div className="flex items-center gap-2 text-xs">
+          {type === "artifact" && artifact && (
+            <>
+              {(() => {
+                const IconComponent = getArtifactIcon(artifact.type);
+                return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />;
+              })()}
+              <span className="font-medium truncate max-w-40">{artifact.name}</span>
+            </>
+          )}
+          {type === "tool" && tool && (
+            <>
+              {(() => {
+                const IconComponent = getToolIcon(tool.name);
+                return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />;
+              })()}
+              <span className="font-medium">{tool.displayName}</span>
+              {isMcpTool(tool.name) && (
+                <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
+                  MCP
+                </span>
+              )}
+              {tool.isError && (
+                <span className="rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-500">
+                  {t("chat.error")}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1 rounded hover:bg-accent transition-colors"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* Preview content */}
+      <ScrollArea className="flex-1">
+        <div className="p-3 text-xs">
+          {type === "artifact" && artifact && (
+            <div className="space-y-2">
+              <div className="text-muted-foreground">
+                Type: <span className="text-foreground">{artifact.type}</span>
+              </div>
+              {artifact.content && (
+                <pre className="bg-background rounded-md p-2 overflow-auto max-h-[200px] whitespace-pre-wrap break-words">
+                  {artifact.content.length > 2000
+                    ? artifact.content.slice(0, 2000) + "\n\n... (truncated)"
+                    : artifact.content}
+                </pre>
+              )}
+            </div>
+          )}
+          {type === "tool" && tool && (
+            <div className="space-y-3">
+              <div>
+                <div className="text-muted-foreground mb-1">{t("chat.toolInput")}</div>
+                <pre className="bg-background rounded-md p-2 overflow-auto max-h-[80px] whitespace-pre-wrap break-words">
+                  {formatInput(tool.input)}
+                </pre>
+              </div>
+              <div>
+                <div className="text-muted-foreground mb-1">{t("chat.toolOutput")}</div>
+                <pre
+                  className={cn(
+                    "rounded-md p-2 overflow-auto max-h-[100px] whitespace-pre-wrap break-words",
+                    tool.isError ? "bg-red-500/10 text-red-400" : "bg-background"
+                  )}
+                >
+                  {formatOutput(tool.output)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
   );
 }
 
@@ -1063,6 +1228,8 @@ export function RightSidebar({
   isOpen = true,
   onClose,
   className,
+  width,
+  onResize,
 }: RightSidebarProps) {
   const { t } = useTranslation();
   const [selectedTool, setSelectedTool] = React.useState<ToolUsage | null>(null);
@@ -1135,6 +1302,31 @@ export function RightSidebar({
     onToolSelect?.(tool);
   };
 
+  // Preview state
+  const [previewType, setPreviewType] = React.useState<"artifact" | "tool" | null>(null);
+  const [previewArtifact, setPreviewArtifact] = React.useState<Artifact | null>(null);
+
+  // Handle artifact selection with preview
+  const handleArtifactSelectWithPreview = (artifact: Artifact) => {
+    setPreviewType("artifact");
+    setPreviewArtifact(artifact);
+    onArtifactSelect?.(artifact);
+  };
+
+  // Handle tool selection with preview
+  const handleToolSelectWithPreview = (tool: ToolUsage) => {
+    setPreviewType("tool");
+    setSelectedTool(tool);
+    onToolSelect?.(tool);
+  };
+
+  // Close preview
+  const closePreview = () => {
+    setPreviewType(null);
+    setPreviewArtifact(null);
+    setSelectedTool(null);
+  };
+
   if (!isOpen) {
     return null;
   }
@@ -1142,99 +1334,101 @@ export function RightSidebar({
   return (
     <div
       className={cn(
-        "flex h-full w-80 flex-col border-l border-border bg-background overflow-hidden",
+        "relative flex h-full flex-col border-l border-border bg-background overflow-hidden shrink-0",
         className
       )}
+      style={{ width: width ?? 320 }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
-        <h3 className="font-serif font-semibold text-foreground text-sm">
-          {t("chat.sidebar")}
-        </h3>
+      {/* Resize handle */}
+      {onResize && <ResizeHandle onResize={onResize} />}
+
+      {/* VS Code style tabs */}
+      <div className="flex items-center border-b border-border shrink-0 bg-muted/30">
+        <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
+          <VSCodeTabTrigger
+            value="workspace"
+            icon={Folder}
+            label={t("chat.sidebar.workspace", "Workspace")}
+            count={workspaceCount}
+            isActive={activeTab === "workspace"}
+            onClick={() => setActiveTab("workspace")}
+          />
+          <VSCodeTabTrigger
+            value="artifacts"
+            icon={Package}
+            label={t("chat.artifacts")}
+            count={artifactsCount}
+            isActive={activeTab === "artifacts"}
+            onClick={() => setActiveTab("artifacts")}
+          />
+          <VSCodeTabTrigger
+            value="tools"
+            icon={Wrench}
+            label={t("chat.tools")}
+            count={toolsCount}
+            isActive={activeTab === "tools"}
+            onClick={() => setActiveTab("tools")}
+          />
+          <VSCodeTabTrigger
+            value="skills"
+            icon={Sparkles}
+            label={t("chat.sidebar.skills", "Skills")}
+            count={skillsCount}
+            isActive={activeTab === "skills"}
+            onClick={() => setActiveTab("skills")}
+          />
+        </div>
         {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+          <button
+            onClick={onClose}
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+          >
             <X className="h-4 w-4" />
-            <span className="sr-only">{t("common.close")}</span>
-          </Button>
+          </button>
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(value) => setActiveTab(value as SidebarTab)}
-        className="flex-1 flex flex-col overflow-hidden"
-      >
-        <div className="border-b border-border px-2 py-1.5 shrink-0">
-          <TabsList className="w-full justify-start gap-0.5 border-0 bg-transparent p-0">
-            <TabTriggerWithBadge
-              value="workspace"
-              icon={Folder}
-              label={t("chat.sidebar.workspace", "Workspace")}
-              count={workspaceCount}
+      {/* Tab content */}
+      <ScrollArea className="flex-1">
+        <div className="p-3">
+          {activeTab === "workspace" && (
+            <WorkspaceTabContent
+              workingDir={workingDir}
+              workingFiles={displayWorkingFiles}
+              externalFolders={externalFolders}
+              isLoadingFiles={isLoadingFiles}
+              onFileSelect={onFileSelect}
             />
-            <TabTriggerWithBadge
-              value="artifacts"
-              icon={Package}
-              label={t("chat.artifacts")}
-              count={artifactsCount}
+          )}
+
+          {activeTab === "artifacts" && (
+            <ArtifactsTabContent
+              artifacts={artifacts}
+              selectedArtifact={previewArtifact}
+              onArtifactSelect={handleArtifactSelectWithPreview}
             />
-            <TabTriggerWithBadge
-              value="tools"
-              icon={Wrench}
-              label={t("chat.tools")}
-              count={toolsCount}
+          )}
+
+          {activeTab === "tools" && (
+            <ToolsTabContent
+              tools={allTools}
+              onToolSelect={handleToolSelectWithPreview}
             />
-            <TabTriggerWithBadge
-              value="skills"
-              icon={Sparkles}
-              label={t("chat.sidebar.skills", "Skills")}
-              count={skillsCount}
-            />
-          </TabsList>
+          )}
+
+          {activeTab === "skills" && (
+            <SkillsTabContent skills={usedSkills} />
+          )}
         </div>
+      </ScrollArea>
 
-        <ScrollArea className="flex-1">
-          <div className="p-3">
-            <TabsContent value="workspace" className="mt-0">
-              <WorkspaceTabContent
-                workingDir={workingDir}
-                workingFiles={displayWorkingFiles}
-                externalFolders={externalFolders}
-                isLoadingFiles={isLoadingFiles}
-                onFileSelect={onFileSelect}
-              />
-            </TabsContent>
-
-            <TabsContent value="artifacts" className="mt-0">
-              <ArtifactsTabContent
-                artifacts={artifacts}
-                selectedArtifact={selectedArtifact}
-                onArtifactSelect={onArtifactSelect}
-              />
-            </TabsContent>
-
-            <TabsContent value="tools" className="mt-0">
-              <ToolsTabContent
-                tools={allTools}
-                onToolSelect={handleToolSelect}
-              />
-            </TabsContent>
-
-            <TabsContent value="skills" className="mt-0">
-              <SkillsTabContent skills={usedSkills} />
-            </TabsContent>
-          </div>
-        </ScrollArea>
-      </Tabs>
-
-      {/* Tool Preview Modal */}
-      {selectedTool && (
-        <ToolPreviewModal
-          tool={selectedTool}
-          onClose={() => setSelectedTool(null)}
-        />
-      )}
+      {/* Integrated preview panel */}
+      <PreviewPanel
+        type={previewType}
+        artifact={previewArtifact}
+        tool={selectedTool}
+        onClose={closePreview}
+      />
     </div>
   );
 }

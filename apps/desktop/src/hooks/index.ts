@@ -157,3 +157,14 @@ export type {
 // Channel Management
 export { useChannels } from "./use-channels";
 export type { UseChannelsReturn } from "./use-channels";
+
+// Screenshot
+export { useScreenshot } from "./use-screenshot";
+export type {
+  UseScreenshotOptions,
+  UseScreenshotReturn,
+} from "./use-screenshot";
+
+// Chat Config
+export { useChatConfig } from "./use-chat-config";
+export type { UseChatConfigReturn } from "./use-chat-config";

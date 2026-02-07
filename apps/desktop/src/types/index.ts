@@ -363,3 +363,6 @@ export * from "./agent";
 
 // Re-export channel types
 export * from "./channel";
+
+// Re-export chat config types
+export * from "./chat-config";

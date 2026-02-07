@@ -31,3 +31,5 @@ chrono = "0.4"
 reqwest = { version = "0.12", features = ["json"] }
 urlencoding = "2"
 viben-core = { path = "../../../crates/viben-core" }
+screenshots = "0.8"
+base64 = "0.22"

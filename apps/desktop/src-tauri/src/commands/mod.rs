@@ -14,6 +14,7 @@ pub mod offline_cache;
 pub mod official_registry;
 pub mod package_install;
 pub mod python;
+pub mod screenshot;
 pub mod service_keys;
 pub mod store_sync;
 pub mod tray;
