@@ -665,7 +665,7 @@ function WorkspaceTabContent({
   const [externalExpanded, setExternalExpanded] = React.useState(true);
 
   // Get folder name from path
-  const getFolderName = (path: string) => path.split("/").pop() || path;
+  const getFolderName = (path: string) => path.split(/[\\/]/).pop() || path;
 
   // Handle opening folder in system file manager
   const handleOpenFolder = async (folderPath: string) => {
