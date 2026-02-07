@@ -35,11 +35,15 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import type { Artifact, ArtifactType, WorkingFile, ToolUsage, AgentMessage } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 
 // Default number of items to show before "show more"
 const DEFAULT_VISIBLE_COUNT = 10;
+
+// Tab types for the sidebar
+type SidebarTab = "workspace" | "artifacts" | "tools" | "skills";
 
 interface RightSidebarProps {
   artifacts: Artifact[];
@@ -51,6 +55,11 @@ interface RightSidebarProps {
   onToolSelect?: (tool: ToolUsage) => void;
   selectedArtifact?: Artifact | null;
   workingDir?: string;
+  /** @deprecated Reserved for future use */
+  sessionFolder?: string;
+  filesVersion?: number;
+  /** @deprecated Reserved for future use */
+  isRunning?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
   className?: string;
@@ -137,7 +146,12 @@ function getFileIconByExt(ext?: string) {
  * Get tool icon based on tool name
  */
 function getToolIcon(toolName: string) {
-  switch (toolName) {
+  // Handle MCP tools (mcp__server__tool format)
+  const baseName = toolName.startsWith("mcp__")
+    ? toolName.split("__")[2] || toolName
+    : toolName;
+
+  switch (baseName) {
     case "Bash":
       return Terminal;
     case "Read":
@@ -171,6 +185,27 @@ function isMcpTool(toolName: string): boolean {
 }
 
 /**
+ * Check if a tool is a built-in tool
+ */
+function isBuiltinTool(toolName: string): boolean {
+  const builtinTools = [
+    "Bash",
+    "Read",
+    "Write",
+    "Edit",
+    "Grep",
+    "Glob",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "Task",
+    "LSP",
+    "Skill",
+  ];
+  return builtinTools.includes(toolName);
+}
+
+/**
  * Check if a tool is a Skill invocation
  */
 function isSkillTool(toolName: string): boolean {
@@ -194,12 +229,12 @@ function getMcpToolInfo(toolName: string): { name: string; server: string } {
 }
 
 /**
- * Extract MCP tools from messages
+ * Extract all tools from messages (both built-in and MCP)
  */
-function extractMcpTools(messages: AgentMessage[]): ToolUsage[] {
+function extractAllTools(messages: AgentMessage[]): ToolUsage[] {
   const tools: ToolUsage[] = [];
   const toolUseMessages = messages.filter(
-    (m) => m.type === "tool_use" && isMcpTool(m.name || "")
+    (m) => m.type === "tool_use" && m.name && !isSkillTool(m.name)
   );
   const toolResultMessages = messages.filter((m) => m.type === "tool_result");
 
@@ -223,7 +258,7 @@ function extractMcpTools(messages: AgentMessage[]): ToolUsage[] {
     tools.push({
       id: toolId,
       name: toolName,
-      displayName: info.name,
+      displayName: isMcpTool(toolName) ? info.name : toolName,
       input: msg.input,
       output: result?.output,
       isError: result?.isError,
@@ -235,10 +270,16 @@ function extractMcpTools(messages: AgentMessage[]): ToolUsage[] {
 }
 
 /**
- * Extract used skill names from messages
+ * Extract used skill info from messages
  */
-function extractUsedSkillNames(messages: AgentMessage[]): string[] {
-  const skillNames = new Set<string>();
+interface SkillInfo {
+  name: string;
+  folder?: string;
+  callCount: number;
+}
+
+function extractUsedSkills(messages: AgentMessage[]): SkillInfo[] {
+  const skillMap = new Map<string, SkillInfo>();
   const toolUseMessages = messages.filter(
     (m) => m.type === "tool_use" && isSkillTool(m.name || "")
   );
@@ -247,11 +288,40 @@ function extractUsedSkillNames(messages: AgentMessage[]): string[] {
     const input = msg.input as Record<string, unknown> | undefined;
     const skillName = input?.skill as string;
     if (skillName) {
-      skillNames.add(skillName);
+      const existing = skillMap.get(skillName);
+      if (existing) {
+        existing.callCount++;
+      } else {
+        // Try to extract folder from skill name (format: folder/skill or just skill)
+        const parts = skillName.split("/");
+        const folder = parts.length > 1 ? parts[0] : undefined;
+        const name = parts.length > 1 ? parts.slice(1).join("/") : skillName;
+        skillMap.set(skillName, {
+          name,
+          folder,
+          callCount: 1,
+        });
+      }
     }
   });
 
-  return Array.from(skillNames);
+  return Array.from(skillMap.values());
+}
+
+/**
+ * Group skills by folder
+ */
+function groupSkillsByFolder(skills: SkillInfo[]): Map<string, SkillInfo[]> {
+  const grouped = new Map<string, SkillInfo[]>();
+
+  skills.forEach((skill) => {
+    const folder = skill.folder || "root";
+    const existing = grouped.get(folder) || [];
+    existing.push(skill);
+    grouped.set(folder, existing);
+  });
+
+  return grouped;
 }
 
 /**
@@ -433,62 +503,6 @@ function FileTreeItem({
 }
 
 /**
- * Collapsible section component
- */
-function CollapsibleSection({
-  title,
-  icon: Icon,
-  children,
-  defaultExpanded = true,
-  itemCount,
-}: {
-  title: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-  defaultExpanded?: boolean;
-  itemCount?: number;
-}) {
-  const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
-
-  return (
-    <div className="border-b border-border/50">
-      <button
-        type="button"
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex w-full items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">{title}</span>
-          {itemCount !== undefined && itemCount > 0 && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              {itemCount}
-            </span>
-          )}
-        </div>
-        <span className="text-muted-foreground p-0.5">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4" />
-          ) : (
-            <ChevronRight className="h-4 w-4" />
-          )}
-        </span>
-      </button>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-300",
-          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="px-4 pb-3">{children}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Empty state component
  */
 function EmptyState({
@@ -499,11 +513,11 @@ function EmptyState({
   description: string;
 }) {
   return (
-    <div className="flex items-center gap-2 py-2">
-      <div className="bg-muted/30 rounded p-1.5">
-        <Icon className="h-3.5 w-3.5 text-muted-foreground/40" />
+    <div className="flex flex-col items-center justify-center py-8 text-center">
+      <div className="bg-muted/30 rounded-full p-3 mb-3">
+        <Icon className="h-5 w-5 text-muted-foreground/40" />
       </div>
-      <p className="text-xs text-muted-foreground/60">{description}</p>
+      <p className="text-sm text-muted-foreground/60">{description}</p>
     </div>
   );
 }
@@ -549,6 +563,11 @@ function ToolPreviewModal({
               return <IconComponent className="h-4 w-4 text-muted-foreground" />;
             })()}
             <span className="font-medium">{tool.displayName}</span>
+            {isMcpTool(tool.name) && (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+                MCP
+              </span>
+            )}
             {tool.isError && (
               <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs text-red-500">
                 {t("chat.error")}
@@ -595,6 +614,441 @@ function ToolPreviewModal({
   );
 }
 
+/**
+ * Tab trigger with icon and badge
+ */
+function TabTriggerWithBadge({
+  value,
+  icon: Icon,
+  label,
+  count,
+}: {
+  value: SidebarTab;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <TabsTrigger
+      value={value}
+      className="flex items-center gap-1.5 px-2 py-1.5 text-xs data-[state=active]:bg-accent"
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span className="hidden sm:inline">{label}</span>
+      {count !== undefined && count > 0 && (
+        <span className="ml-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+          {count}
+        </span>
+      )}
+    </TabsTrigger>
+  );
+}
+
+/**
+ * Workspace tab content
+ */
+function WorkspaceTabContent({
+  workingDir,
+  workingFiles,
+  externalFolders,
+  isLoadingFiles,
+  onFileSelect,
+}: {
+  workingDir?: string;
+  workingFiles: WorkingFile[];
+  externalFolders: string[];
+  isLoadingFiles: boolean;
+  onFileSelect?: (file: WorkingFile) => void;
+}) {
+  const { t } = useTranslation();
+  const [outputExpanded, setOutputExpanded] = React.useState(true);
+  const [externalExpanded, setExternalExpanded] = React.useState(true);
+
+  // Get folder name from path
+  const getFolderName = (path: string) => path.split("/").pop() || path;
+
+  // Handle opening folder in system file manager
+  const handleOpenFolder = async (folderPath: string) => {
+    try {
+      await invoke("open_path_in_file_manager", { path: folderPath });
+    } catch (error) {
+      console.error("Failed to open folder:", error);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Output folder subsection */}
+      <div>
+        <div className="mb-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setOutputExpanded(!outputExpanded)}
+            className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {outputExpanded ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            <span className="text-xs font-medium">
+              {t("chat.sidebar.outputFolder", "Output Folder")}
+            </span>
+          </button>
+          {workingDir && (
+            <button
+              type="button"
+              onClick={() => handleOpenFolder(workingDir)}
+              className="ml-auto p-1 text-muted-foreground hover:text-foreground transition-colors rounded hover:bg-accent"
+              title={t("workspace.openInFinder")}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {outputExpanded && (
+          <>
+            {!workingDir ? (
+              <EmptyState
+                icon={Folder}
+                description={t("chat.sidebar.noWorkingDir", "No working directory")}
+              />
+            ) : isLoadingFiles ? (
+              <div className="flex items-center justify-center gap-2 py-4 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">{t("common.loading")}</span>
+              </div>
+            ) : workingFiles.length === 0 ? (
+              <div className="rounded-md border border-dashed border-border/50 py-4">
+                <EmptyState
+                  icon={Folder}
+                  description={t("chat.sidebar.emptyFolder", "Folder is empty")}
+                />
+              </div>
+            ) : (
+              <div className="max-h-[300px] space-y-0.5 overflow-y-auto rounded-md border border-border/30 bg-muted/20 p-2">
+                {workingFiles.map((file, idx) => (
+                  <FileTreeItem
+                    key={`${file.path}-${idx}`}
+                    file={file}
+                    onSelect={onFileSelect}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* External folders subsection */}
+      {externalFolders.length > 0 && (
+        <div>
+          <div className="mb-2 flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setExternalExpanded(!externalExpanded)}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {externalExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+              <span className="text-xs font-medium">
+                {t("chat.sidebar.externalFolders", "External Folders")}
+              </span>
+            </button>
+          </div>
+          {externalExpanded && (
+            <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2">
+              {externalFolders.map((folder) => (
+                <button
+                  key={folder}
+                  type="button"
+                  onClick={() => handleOpenFolder(folder)}
+                  className="flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-left hover:bg-accent/50 transition-colors group"
+                >
+                  <FolderOpen className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  <span className="truncate text-sm text-foreground/80 flex-1">
+                    {getFolderName(folder)}
+                  </span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Artifacts tab content
+ */
+function ArtifactsTabContent({
+  artifacts,
+  selectedArtifact,
+  onArtifactSelect,
+}: {
+  artifacts: Artifact[];
+  selectedArtifact?: Artifact | null;
+  onArtifactSelect?: (artifact: Artifact) => void;
+}) {
+  const { t } = useTranslation();
+  const [showAll, setShowAll] = React.useState(false);
+
+  const visibleArtifacts = showAll
+    ? artifacts
+    : artifacts.slice(0, DEFAULT_VISIBLE_COUNT);
+  const hasMore = artifacts.length > DEFAULT_VISIBLE_COUNT;
+
+  if (artifacts.length === 0) {
+    return <EmptyState icon={Package} description={t("chat.noArtifacts")} />;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        className={cn(
+          "space-y-1 rounded-md border border-border/30 bg-muted/20 p-2",
+          showAll && "max-h-[400px] overflow-y-auto"
+        )}
+      >
+        {visibleArtifacts.map((artifact) => {
+          const IconComponent = getArtifactIcon(artifact.type);
+          const isSelected = selectedArtifact?.id === artifact.id;
+
+          return (
+            <button
+              key={artifact.id}
+              type="button"
+              onClick={() => onArtifactSelect?.(artifact)}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                isSelected
+                  ? "bg-primary/10 border border-primary/20"
+                  : "hover:bg-accent/50"
+              )}
+            >
+              <IconComponent
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isSelected
+                    ? "text-primary"
+                    : "text-muted-foreground/60"
+                )}
+              />
+              <span
+                className={cn(
+                  "truncate text-sm flex-1",
+                  isSelected ? "text-foreground font-medium" : "text-foreground/80"
+                )}
+              >
+                {artifact.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setShowAll(!showAll)}
+          className="w-full py-1.5 text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showAll
+            ? t("chat.sidebar.showLess", "Show less")
+            : t("chat.sidebar.showMore", `Show ${artifacts.length - DEFAULT_VISIBLE_COUNT} more`)}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Tools tab content
+ */
+function ToolsTabContent({
+  tools,
+  onToolSelect,
+}: {
+  tools: ToolUsage[];
+  onToolSelect?: (tool: ToolUsage) => void;
+}) {
+  const { t } = useTranslation();
+
+  // Group tools by type (MCP vs Built-in)
+  const mcpTools = tools.filter((t) => isMcpTool(t.name));
+  const builtinTools = tools.filter((t) => isBuiltinTool(t.name));
+
+  if (tools.length === 0) {
+    return <EmptyState icon={Wrench} description={t("chat.noTools")} />;
+  }
+
+  // Count tools by name for display
+  const toolCounts = tools.reduce((acc, tool) => {
+    const key = tool.displayName;
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="space-y-3">
+      {/* MCP Tools Section */}
+      {mcpTools.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">MCP</span>
+            <span>{mcpTools.length} calls</span>
+          </div>
+          <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2 max-h-[250px] overflow-y-auto">
+            {Array.from(new Map(mcpTools.map((t) => [t.displayName, t])).values()).map((tool) => {
+              const IconComponent = getToolIcon(tool.name);
+              const count = toolCounts[tool.displayName];
+              const info = getMcpToolInfo(tool.name);
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => onToolSelect?.(tool)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-left transition-colors",
+                    "hover:bg-accent/50",
+                    tool.isError && "text-red-400"
+                  )}
+                >
+                  <IconComponent
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      tool.isError ? "text-red-400" : "text-muted-foreground/60"
+                    )}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <span className="truncate text-sm text-foreground/80 block">
+                      {tool.displayName}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60">
+                      {info.server}
+                    </span>
+                  </div>
+                  {count > 1 && (
+                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      x{count}
+                    </span>
+                  )}
+                  {tool.isError && (
+                    <span className="shrink-0 rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-500">
+                      {t("chat.error")}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Built-in Tools Section */}
+      {builtinTools.length > 0 && (
+        <div>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <span className="rounded bg-muted px-1.5 py-0.5">Built-in</span>
+            <span>{builtinTools.length} calls</span>
+          </div>
+          <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2 max-h-[250px] overflow-y-auto">
+            {Array.from(new Map(builtinTools.map((t) => [t.displayName, t])).values()).map((tool) => {
+              const IconComponent = getToolIcon(tool.name);
+              const count = toolCounts[tool.displayName];
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => onToolSelect?.(tool)}
+                  className={cn(
+                    "flex w-full items-center gap-2 rounded-md py-1.5 px-2 text-left transition-colors",
+                    "hover:bg-accent/50",
+                    tool.isError && "text-red-400"
+                  )}
+                >
+                  <IconComponent
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0",
+                      tool.isError ? "text-red-400" : "text-muted-foreground/60"
+                    )}
+                  />
+                  <span className="truncate text-sm text-foreground/80 flex-1">
+                    {tool.displayName}
+                  </span>
+                  {count > 1 && (
+                    <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      x{count}
+                    </span>
+                  )}
+                  {tool.isError && (
+                    <span className="shrink-0 rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-500">
+                      {t("chat.error")}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Skills tab content
+ */
+function SkillsTabContent({ skills }: { skills: SkillInfo[] }) {
+  const { t } = useTranslation();
+
+  if (skills.length === 0) {
+    return (
+      <EmptyState
+        icon={Sparkles}
+        description={t("chat.sidebar.noSkills", "No skills used")}
+      />
+    );
+  }
+
+  const groupedSkills = groupSkillsByFolder(skills);
+
+  return (
+    <div className="space-y-3">
+      {Array.from(groupedSkills.entries()).map(([folder, folderSkills]) => (
+        <div key={folder}>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Folder className="h-3 w-3" />
+            <span>{folder === "root" ? "Root" : folder}</span>
+          </div>
+          <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2">
+            {folderSkills.map((skill, idx) => (
+              <div
+                key={`${skill.name}-${idx}`}
+                className="flex items-center gap-2 rounded-md py-1.5 px-2"
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                <span className="truncate text-sm text-foreground/80 flex-1">
+                  {skill.name}
+                </span>
+                {skill.callCount > 1 && (
+                  <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    x{skill.callCount}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function RightSidebar({
   artifacts,
   workingFiles = [],
@@ -605,18 +1059,16 @@ export function RightSidebar({
   onToolSelect,
   selectedArtifact,
   workingDir,
+  filesVersion,
   isOpen = true,
   onClose,
   className,
 }: RightSidebarProps) {
   const { t } = useTranslation();
   const [selectedTool, setSelectedTool] = React.useState<ToolUsage | null>(null);
-  const [showAllArtifacts, setShowAllArtifacts] = React.useState(false);
-  const [showAllTools, setShowAllTools] = React.useState(false);
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
-  const [outputExpanded, setOutputExpanded] = React.useState(true);
-  const [externalExpanded, setExternalExpanded] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState<SidebarTab>("workspace");
 
   // Load working directory files via Tauri command
   React.useEffect(() => {
@@ -642,19 +1094,19 @@ export function RightSidebar({
     }
 
     loadWorkingDirFiles();
-  }, [workingDir]);
+  }, [workingDir, filesVersion]);
 
   // Use provided workingFiles or loaded ones
   const displayWorkingFiles = workingFiles.length > 0 ? workingFiles : loadedWorkingFiles;
 
-  // Extract MCP tools from messages or use provided toolUsages
-  const mcpTools = messages.length > 0
-    ? extractMcpTools(messages)
-    : toolUsages.filter(t => isMcpTool(t.name));
+  // Extract all tools from messages
+  const allTools = messages.length > 0
+    ? extractAllTools(messages)
+    : toolUsages;
 
   // Extract used skills from messages
   const usedSkills = messages.length > 0
-    ? extractUsedSkillNames(messages)
+    ? extractUsedSkills(messages)
     : [];
 
   // Extract external folders accessed
@@ -662,28 +1114,25 @@ export function RightSidebar({
     ? extractExternalFolders(messages, workingDir)
     : [];
 
-  // Artifacts with show more/less
-  const visibleArtifacts = showAllArtifacts
-    ? artifacts
-    : artifacts.slice(0, DEFAULT_VISIBLE_COUNT);
-  const hasMoreArtifacts = artifacts.length > DEFAULT_VISIBLE_COUNT;
+  // Count items for badges
+  const workspaceCount = displayWorkingFiles.length + externalFolders.length;
+  const artifactsCount = artifacts.length;
+  const toolsCount = allTools.length;
+  const skillsCount = usedSkills.length;
 
-  // MCP tools with show more/less
-  const visibleTools = showAllTools
-    ? mcpTools
-    : mcpTools.slice(0, DEFAULT_VISIBLE_COUNT);
-  const hasMoreTools = mcpTools.length > DEFAULT_VISIBLE_COUNT;
-
-  // Get folder name from path
-  const getFolderName = (path: string) => path.split("/").pop() || path;
-
-  // Handle opening folder in system file manager
-  const handleOpenFolder = async (folderPath: string) => {
-    try {
-      await invoke("open_path_in_file_manager", { path: folderPath });
-    } catch (error) {
-      console.error("Failed to open folder:", error);
+  // Auto-expand sidebar if there's content and switch to relevant tab
+  React.useEffect(() => {
+    if (artifactsCount > 0 && activeTab === "workspace" && workspaceCount === 0) {
+      setActiveTab("artifacts");
+    } else if (toolsCount > 0 && activeTab === "workspace" && workspaceCount === 0 && artifactsCount === 0) {
+      setActiveTab("tools");
     }
+  }, [artifactsCount, toolsCount, workspaceCount, activeTab]);
+
+  // Handle tool selection
+  const handleToolSelect = (tool: ToolUsage) => {
+    setSelectedTool(tool);
+    onToolSelect?.(tool);
   };
 
   if (!isOpen) {
@@ -698,290 +1147,86 @@ export function RightSidebar({
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3 shrink-0">
-        <h3 className="font-serif font-semibold text-foreground">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2.5 shrink-0">
+        <h3 className="font-serif font-semibold text-foreground text-sm">
           {t("chat.sidebar")}
         </h3>
         {onClose && (
-          <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8">
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
             <X className="h-4 w-4" />
             <span className="sr-only">{t("common.close")}</span>
           </Button>
         )}
       </div>
 
-      {/* Scrollable content */}
-      <ScrollArea className="flex-1">
-        {/* 1. Workspace Section */}
-        <CollapsibleSection
-          title={t("chat.sidebar.workspace", "Workspace")}
-          icon={Folder}
-          defaultExpanded={true}
-          itemCount={displayWorkingFiles.length + externalFolders.length}
-        >
-          {/* Output folder subsection */}
-          <div className="mb-3">
-            <div className="mb-1 flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setOutputExpanded(!outputExpanded)}
-                className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {outputExpanded ? (
-                  <ChevronDown className="h-3 w-3" />
-                ) : (
-                  <ChevronRight className="h-3 w-3" />
-                )}
-                <span className="text-xs font-medium">
-                  {t("chat.sidebar.outputFolder", "Output Folder")}
-                </span>
-              </button>
-              {workingDir && (
-                <button
-                  type="button"
-                  onClick={() => handleOpenFolder(workingDir)}
-                  className="ml-auto p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-                  title={t("workspace.openInFinder")}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-            {outputExpanded && (
-              <>
-                {!workingDir ? (
-                  <EmptyState
-                    icon={Folder}
-                    description={t("chat.sidebar.noWorkingDir", "No working directory")}
-                  />
-                ) : isLoadingFiles ? (
-                  <div className="flex items-center gap-2 py-1 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm">{t("common.loading")}</span>
-                  </div>
-                ) : displayWorkingFiles.length === 0 ? (
-                  <EmptyState
-                    icon={Folder}
-                    description={t("chat.sidebar.emptyFolder", "Folder is empty")}
-                  />
-                ) : (
-                  <div className="max-h-[200px] space-y-0.5 overflow-y-auto">
-                    {displayWorkingFiles.map((file, idx) => (
-                      <FileTreeItem
-                        key={`${file.path}-${idx}`}
-                        file={file}
-                        onSelect={onFileSelect}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* External folders subsection */}
-          {externalFolders.length > 0 && (
-            <div>
-              <div className="mb-1 flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setExternalExpanded(!externalExpanded)}
-                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {externalExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                  <span className="text-xs font-medium">
-                    {t("chat.sidebar.externalFolders", "External Folders")}
-                  </span>
-                </button>
-              </div>
-              {externalExpanded && (
-                <div className="space-y-0.5">
-                  {externalFolders.map((folder) => (
-                    <button
-                      key={folder}
-                      type="button"
-                      onClick={() => handleOpenFolder(folder)}
-                      className="flex w-full items-center gap-1.5 rounded-md py-1 pl-2 text-left hover:bg-accent/50 transition-colors"
-                    >
-                      <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                      <span className="truncate text-sm text-foreground/80">
-                        {getFolderName(folder)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </CollapsibleSection>
-
-        {/* 2. Artifacts Section */}
-        <CollapsibleSection
-          title={t("chat.artifacts")}
-          icon={Package}
-          defaultExpanded={true}
-          itemCount={artifacts.length}
-        >
-          {artifacts.length === 0 ? (
-            <EmptyState icon={Package} description={t("chat.noArtifacts")} />
-          ) : (
-            <>
-              <div
-                className={cn(
-                  "space-y-1",
-                  showAllArtifacts && "max-h-[300px] overflow-y-auto"
-                )}
-              >
-                {visibleArtifacts.map((artifact) => {
-                  const IconComponent = getArtifactIcon(artifact.type);
-                  const isSelected = selectedArtifact?.id === artifact.id;
-
-                  return (
-                    <button
-                      key={artifact.id}
-                      type="button"
-                      onClick={() => onArtifactSelect?.(artifact)}
-                      className={cn(
-                        "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors",
-                        isSelected ? "bg-accent/60" : "hover:bg-accent/30"
-                      )}
-                    >
-                      <IconComponent
-                        className={cn(
-                          "h-3.5 w-3.5 shrink-0",
-                          isSelected
-                            ? "text-foreground/70"
-                            : "text-muted-foreground/60"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "truncate text-sm",
-                          isSelected ? "text-foreground" : "text-foreground/80"
-                        )}
-                      >
-                        {artifact.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {hasMoreArtifacts && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllArtifacts(!showAllArtifacts)}
-                  className="w-full py-2 text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showAllArtifacts
-                    ? t("chat.sidebar.showLess", "Show less")
-                    : t("chat.sidebar.showMore", `Show ${artifacts.length - DEFAULT_VISIBLE_COUNT} more`)}
-                </button>
-              )}
-            </>
-          )}
-        </CollapsibleSection>
-
-        {/* 3. Tools Section (MCP) */}
-        <CollapsibleSection
-          title={t("chat.tools")}
-          icon={Wrench}
-          defaultExpanded={false}
-          itemCount={mcpTools.length}
-        >
-          {mcpTools.length === 0 ? (
-            <EmptyState icon={Wrench} description={t("chat.noTools")} />
-          ) : (
-            <>
-              <div
-                className={cn(
-                  "space-y-1",
-                  showAllTools && "max-h-[300px] overflow-y-auto"
-                )}
-              >
-                {visibleTools.map((tool) => {
-                  const IconComponent = getToolIcon(tool.name);
-                  return (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTool(tool);
-                        onToolSelect?.(tool);
-                      }}
-                      className={cn(
-                        "flex w-full items-center gap-1.5 rounded-md py-1 text-left transition-colors",
-                        "hover:bg-accent/50",
-                        tool.isError && "text-red-400"
-                      )}
-                    >
-                      <IconComponent
-                        className={cn(
-                          "h-3.5 w-3.5 shrink-0",
-                          tool.isError
-                            ? "text-red-400"
-                            : "text-muted-foreground/60"
-                        )}
-                      />
-                      <span className="truncate text-sm text-foreground/80">
-                        {tool.displayName}
-                      </span>
-                      {tool.isError && (
-                        <span className="shrink-0 rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-500">
-                          {t("chat.error")}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              {hasMoreTools && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllTools(!showAllTools)}
-                  className="w-full py-2 text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showAllTools
-                    ? t("chat.sidebar.showLess", "Show less")
-                    : t("chat.sidebar.showMore", `Show ${mcpTools.length - DEFAULT_VISIBLE_COUNT} more`)}
-                </button>
-              )}
-            </>
-          )}
-        </CollapsibleSection>
-
-        {/* 4. Skills Section */}
-        <CollapsibleSection
-          title={t("chat.sidebar.skills", "Skills")}
-          icon={Sparkles}
-          defaultExpanded={false}
-          itemCount={usedSkills.length}
-        >
-          {usedSkills.length === 0 ? (
-            <EmptyState
-              icon={Sparkles}
-              description={t("chat.sidebar.noSkills", "No skills used")}
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as SidebarTab)}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
+        <div className="border-b border-border px-2 py-1.5 shrink-0">
+          <TabsList className="w-full justify-start gap-0.5 border-0 bg-transparent p-0">
+            <TabTriggerWithBadge
+              value="workspace"
+              icon={Folder}
+              label={t("chat.sidebar.workspace", "Workspace")}
+              count={workspaceCount}
             />
-          ) : (
-            <div className="max-h-[300px] space-y-1 overflow-y-auto">
-              {usedSkills.map((skillName) => (
-                <div
-                  key={skillName}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />
-                  <span className="truncate text-sm text-foreground/80">
-                    {skillName}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CollapsibleSection>
-      </ScrollArea>
+            <TabTriggerWithBadge
+              value="artifacts"
+              icon={Package}
+              label={t("chat.artifacts")}
+              count={artifactsCount}
+            />
+            <TabTriggerWithBadge
+              value="tools"
+              icon={Wrench}
+              label={t("chat.tools")}
+              count={toolsCount}
+            />
+            <TabTriggerWithBadge
+              value="skills"
+              icon={Sparkles}
+              label={t("chat.sidebar.skills", "Skills")}
+              count={skillsCount}
+            />
+          </TabsList>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-3">
+            <TabsContent value="workspace" className="mt-0">
+              <WorkspaceTabContent
+                workingDir={workingDir}
+                workingFiles={displayWorkingFiles}
+                externalFolders={externalFolders}
+                isLoadingFiles={isLoadingFiles}
+                onFileSelect={onFileSelect}
+              />
+            </TabsContent>
+
+            <TabsContent value="artifacts" className="mt-0">
+              <ArtifactsTabContent
+                artifacts={artifacts}
+                selectedArtifact={selectedArtifact}
+                onArtifactSelect={onArtifactSelect}
+              />
+            </TabsContent>
+
+            <TabsContent value="tools" className="mt-0">
+              <ToolsTabContent
+                tools={allTools}
+                onToolSelect={handleToolSelect}
+              />
+            </TabsContent>
+
+            <TabsContent value="skills" className="mt-0">
+              <SkillsTabContent skills={usedSkills} />
+            </TabsContent>
+          </div>
+        </ScrollArea>
+      </Tabs>
 
       {/* Tool Preview Modal */}
       {selectedTool && (
