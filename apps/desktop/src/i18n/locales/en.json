@@ -1091,7 +1091,9 @@
       "name": "Name"
     },
     "clearFilters": "Clear",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "agentChat": "Agent Chat",
+    "agentChatPlaceholder": "Ask about this task..."
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
