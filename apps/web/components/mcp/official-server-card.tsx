@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Package, GitBranch, Globe, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,8 @@ export function OfficialServerCard({
   server,
   className,
 }: OfficialServerCardProps) {
+  const { t } = useTranslation();
+
   const handleOpenRepo = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -117,7 +120,7 @@ export function OfficialServerCard({
                     variant="outline"
                     className="text-[10px] shrink-0 text-amber-500 border-amber-500/50"
                   >
-                    Deprecated
+                    {t('marketplace.deprecated')}
                   </Badge>
                 )}
               </div>
@@ -132,7 +135,7 @@ export function OfficialServerCard({
 
         {/* Description */}
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
-          {server.description || 'No description'}
+          {server.description || t('marketplace.noDescription')}
         </p>
 
         {/* Server ID */}
@@ -155,7 +158,7 @@ export function OfficialServerCard({
             ))}
             {server.hasRemotes && (
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                Remote
+                {t('marketplace.remoteAvailable')}
               </Badge>
             )}
           </div>
@@ -169,10 +172,10 @@ export function OfficialServerCard({
               size="icon"
               className="h-8 w-8"
               onClick={handleOpenRepo}
-              title="View Repository"
+              title={t('marketplace.viewRepository')}
             >
               <GitBranch className="h-4 w-4" />
-              <span className="sr-only">View Repository</span>
+              <span className="sr-only">{t('marketplace.viewRepository')}</span>
             </Button>
           )}
           {server.websiteUrl && (
@@ -181,10 +184,10 @@ export function OfficialServerCard({
               size="icon"
               className="h-8 w-8"
               onClick={handleOpenWebsite}
-              title="View Website"
+              title={t('marketplace.viewWebsite')}
             >
               <Globe className="h-4 w-4" />
-              <span className="sr-only">View Website</span>
+              <span className="sr-only">{t('marketplace.viewWebsite')}</span>
             </Button>
           )}
           <div className="flex-1" />
@@ -196,7 +199,7 @@ export function OfficialServerCard({
             asChild
           >
             <span>
-              View Details
+              {t('marketplace.viewDetails')}
               <ExternalLink className="h-3 w-3" />
             </span>
           </Button>

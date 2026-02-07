@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import {
   Package,
   GitBranch,
@@ -74,6 +75,7 @@ function CopyButton({ text, className }: { text: string; className?: string }) {
  * Package option card
  */
 function PackageOption({ pkg }: { pkg: OfficialPackage }) {
+  const { t } = useTranslation();
   const installCommand = getInstallCommand(pkg);
 
   return (
@@ -105,7 +107,7 @@ function PackageOption({ pkg }: { pkg: OfficialPackage }) {
       {pkg.environmentVariables && pkg.environmentVariables.length > 0 && (
         <div className="space-y-1.5">
           <span className="text-xs font-medium text-muted-foreground">
-            Environment Variables:
+            {t('marketplace.envVars')}:
           </span>
           <div className="flex flex-wrap gap-1.5">
             {pkg.environmentVariables.map((env) => (
@@ -132,6 +134,7 @@ interface OfficialServerHeaderProps {
 }
 
 export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
+  const { t } = useTranslation();
   const packages = server._original?.server?.packages || [];
   const remotes = server._original?.server?.remotes || [];
 
@@ -143,7 +146,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
         className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Marketplace
+        {t('marketplace.backToMarketplace')}
       </Link>
 
       {/* Header */}
@@ -173,12 +176,12 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
                     variant="outline"
                     className="text-amber-500 border-amber-500/50"
                   >
-                    Deprecated
+                    {t('marketplace.deprecated')}
                   </Badge>
                 )}
               </div>
               <p className="mt-2 text-lg text-muted-foreground">
-                {server.description || 'No description'}
+                {server.description || t('marketplace.noDescription')}
               </p>
             </div>
           </div>
@@ -190,7 +193,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
 
         {/* Server ID */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-medium">Server ID:</span>
+          <span className="font-medium">{t('marketplace.serverId')}:</span>
           <code className="bg-muted px-2 py-1 rounded font-mono text-xs">
             {server.id}
           </code>
@@ -206,7 +209,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
               onClick={() => window.open(server.repositoryUrl!, '_blank')}
             >
               <GitBranch className="h-4 w-4 mr-2" />
-              Repository
+              {t('marketplace.repository')}
               <ExternalLink className="h-3 w-3 ml-2" />
             </Button>
           )}
@@ -217,7 +220,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
               onClick={() => window.open(server.websiteUrl!, '_blank')}
             >
               <Globe className="h-4 w-4 mr-2" />
-              Website
+              {t('marketplace.website')}
               <ExternalLink className="h-3 w-3 ml-2" />
             </Button>
           )}
@@ -230,7 +233,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Terminal className="h-5 w-5" />
-              Installation Options ({packages.length})
+              {t('marketplace.installationOptions')} ({packages.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -250,7 +253,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
-              Remote Endpoints ({remotes.length})
+              {t('marketplace.remoteEndpoints')} ({remotes.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -282,7 +285,7 @@ export function OfficialServerHeader({ server }: OfficialServerHeaderProps) {
             <div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground">
               <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">
-                No installation options available for this server.
+                {t('marketplace.noInstallationOptions')}
               </p>
             </div>
           </CardContent>

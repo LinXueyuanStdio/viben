@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 
 export function RegisterForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,14 +35,14 @@ export function RegisterForm() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'Something went wrong');
+        setError(data.error || t('auth.somethingWentWrong'));
         return;
       }
 
       router.push('/mcp');
       router.refresh();
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('auth.somethingWentWrong'));
     } finally {
       setIsLoading(false);
     }
@@ -55,46 +57,46 @@ export function RegisterForm() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('auth.email')}</Label>
         <Input
           id="email"
           name="email"
           type="email"
-          placeholder="you@example.com"
+          placeholder={t('auth.emailPlaceholder')}
           required
           disabled={isLoading}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="username">{t('auth.username')}</Label>
         <Input
           id="username"
           name="username"
           type="text"
-          placeholder="johndoe"
+          placeholder={t('auth.usernamePlaceholder')}
           required
           disabled={isLoading}
         />
         <p className="text-xs text-muted-foreground">
-          Only letters, numbers, underscores, and hyphens.
+          {t('auth.usernameHint')}
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="displayName">Display Name</Label>
+        <Label htmlFor="displayName">{t('auth.displayName')}</Label>
         <Input
           id="displayName"
           name="displayName"
           type="text"
-          placeholder="John Doe"
+          placeholder={t('auth.displayNamePlaceholder')}
           required
           disabled={isLoading}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password">{t('auth.password')}</Label>
         <Input
           id="password"
           name="password"
@@ -104,13 +106,13 @@ export function RegisterForm() {
           disabled={isLoading}
         />
         <p className="text-xs text-muted-foreground">
-          Must be at least 8 characters.
+          {t('auth.passwordMinLength')}
         </p>
       </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Create account
+        {t('auth.createAccount')}
       </Button>
     </form>
   );
