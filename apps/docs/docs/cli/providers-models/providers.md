@@ -59,6 +59,9 @@ viben provider create -n <name> -t <type> --api-key <key>
 # With custom base URL
 viben provider create -n <name> -t <type> --api-key <key> --base-url <url>
 
+# With config file
+viben provider create -n <name> -t <type> -c <config-file>
+
 # Shorthand (auto-generates name based on type)
 viben provider create -t <type> --api-key <key>
 ```
@@ -138,29 +141,90 @@ version: 1
 default: anthropic-main
 
 providers:
+  # ============================================================
+  # Anthropic (Claude)
+  # Environment: ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
+  # ============================================================
   anthropic-main:
     type: anthropic
-    api_key: "encrypted:sk-ant-xxx"
+    # Option 1: Use environment variable (recommended)
+    # Automatically reads ANTHROPIC_API_KEY
 
+    # Option 2: Explicit environment variable reference
+    # ANTHROPIC_API_KEY: "env:ANTHROPIC_API_KEY"
+
+    # Option 3: Encrypted storage (via viben provider create)
+    # ANTHROPIC_API_KEY: "encrypted:xxx"
+
+    # Optional settings
+    # ANTHROPIC_BASE_URL: "https://api.anthropic.com"
+    # timeout: 120000
+    # max_retries: 3
+
+  # ============================================================
+  # OpenAI
+  # Environment: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID
+  # ============================================================
   openai-main:
     type: openai
-    api_key: "encrypted:sk-xxx"
+    # Automatically reads OPENAI_API_KEY, OPENAI_BASE_URL
+    # Optional:
+    # OPENAI_ORG_ID: "org-xxxxx"
 
+  # ============================================================
+  # Azure OpenAI
+  # Environment: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
+  #              AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT
+  # ============================================================
   azure-gpt4:
     type: azure
-    api_key: "encrypted:xxx"
-    base_url: "https://my-resource.openai.azure.com"
-    api_version: "2024-02-15-preview"
-    deployment: "gpt-4-turbo"
+    AZURE_OPENAI_ENDPOINT: "https://my-resource.openai.azure.com"
+    AZURE_OPENAI_API_VERSION: "2024-02-15-preview"
+    AZURE_OPENAI_DEPLOYMENT: "gpt-4-turbo"
+    # AZURE_OPENAI_API_KEY read from environment
 
+  # ============================================================
+  # Google AI (Gemini)
+  # Environment: GOOGLE_API_KEY, GOOGLE_PROJECT_ID, GOOGLE_LOCATION
+  # ============================================================
+  google-gemini:
+    type: google
+    # Automatically reads GOOGLE_API_KEY
+    # Optional:
+    # GOOGLE_PROJECT_ID: "my-project"
+    # GOOGLE_LOCATION: "us-central1"
+
+  # ============================================================
+  # OpenRouter
+  # Environment: OPENROUTER_API_KEY
+  # ============================================================
+  openrouter:
+    type: openrouter
+    # Automatically reads OPENROUTER_API_KEY
+    # Optional:
+    # site_url: "https://myapp.com"
+    # app_name: "My App"
+
+  # ============================================================
+  # Ollama (Local Models)
+  # Environment: OLLAMA_HOST
+  # ============================================================
   local-ollama:
     type: ollama
-    base_url: "http://localhost:11434"
+    OLLAMA_HOST: "http://localhost:11434"
+    # No API key required
 
+  # ============================================================
+  # Custom OpenAI-compatible API
+  # Environment: OPENAI_API_KEY, OPENAI_BASE_URL
+  # ============================================================
   custom-api:
     type: custom
-    api_key: "encrypted:xxx"
-    base_url: "https://api.example.com/v1"
+    OPENAI_BASE_URL: "https://api.example.com/v1"
+    # OPENAI_API_KEY read from environment
+    # Optional: custom headers
+    # headers:
+    #   X-Custom-Header: "value"
 ```
 
 ## Environment Variables
@@ -196,6 +260,9 @@ export OPENAI_API_KEY="sk-xxx"
 # Create providers (automatically uses environment variables)
 viben provider create -t anthropic
 viben provider create -t openai
+
+# Or explicitly specify (will be encrypted in storage)
+viben provider create -t anthropic --api-key "sk-ant-xxx"
 ```
 
 ## Provider Type Details
@@ -258,6 +325,17 @@ Environment variables:
 - `GOOGLE_PROJECT_ID` (optional)
 - `GOOGLE_LOCATION` (optional)
 
+### OpenRouter
+
+For accessing multiple models through OpenRouter:
+
+```bash
+viben provider create -t openrouter --api-key "xxx"
+```
+
+Environment variables:
+- `OPENROUTER_API_KEY` (required)
+
 ### Ollama (Local)
 
 For locally-running Ollama:
@@ -286,12 +364,40 @@ viben provider create -n deepseek -t custom \
 
 Common custom providers:
 
-| Provider | Base URL |
-|----------|----------|
-| DeepSeek | `https://api.deepseek.com/v1` |
-| Groq | `https://api.groq.com/openai/v1` |
-| Together AI | `https://api.together.xyz/v1` |
-| Fireworks AI | `https://api.fireworks.ai/inference/v1` |
+| Provider | Base URL | API Key Variable |
+|----------|----------|------------------|
+| DeepSeek | `https://api.deepseek.com/v1` | `DEEPSEEK_API_KEY` |
+| Groq | `https://api.groq.com/openai/v1` | `GROQ_API_KEY` |
+| Together AI | `https://api.together.xyz/v1` | `TOGETHER_API_KEY` |
+| Fireworks AI | `https://api.fireworks.ai/inference/v1` | `FIREWORKS_API_KEY` |
+
+**Configuration examples for popular providers:**
+
+```yaml
+# DeepSeek
+deepseek:
+  type: custom
+  OPENAI_BASE_URL: "https://api.deepseek.com/v1"
+  # Uses DEEPSEEK_API_KEY or OPENAI_API_KEY
+
+# Groq
+groq:
+  type: custom
+  OPENAI_BASE_URL: "https://api.groq.com/openai/v1"
+  # Uses GROQ_API_KEY or OPENAI_API_KEY
+
+# Together AI
+together:
+  type: custom
+  OPENAI_BASE_URL: "https://api.together.xyz/v1"
+  # Uses TOGETHER_API_KEY or OPENAI_API_KEY
+
+# Fireworks AI
+fireworks:
+  type: custom
+  OPENAI_BASE_URL: "https://api.fireworks.ai/inference/v1"
+  # Uses FIREWORKS_API_KEY or OPENAI_API_KEY
+```
 
 ## Security
 
@@ -330,6 +436,18 @@ viben provider list --json
         "status": "connected"
       }
     ]
+  }
+}
+```
+
+Error responses follow the standard format:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PROVIDER_NOT_FOUND",
+    "message": "Provider 'unknown-provider' not found"
   }
 }
 ```
