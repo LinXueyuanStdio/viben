@@ -39,6 +39,7 @@ import {
   ListViewItem,
   BulkActionsBar,
   SelectableCard,
+  EditableCardTitle,
   SortModeSelect,
   StatsPanel,
   CommandPalette,
@@ -784,12 +785,12 @@ export function WorkspaceKanbanPage() {
         </div>
       ) : (
         /* Main Content with Resizable Panels */
-        <Group orientation="horizontal" className="flex-1 min-h-0">
+        <Group orientation="horizontal" className="flex-1 min-w-0 h-full">
           {/* Board/List Panel */}
           <Panel
             id="kanban-board"
-            defaultSize={isPanelOpen ? 55 : 100}
-            minSize={35}
+            minSize="20%"
+            className="min-w-0 h-full overflow-hidden"
           >
             {viewMode === "kanban" ? (
               /* Kanban View - matching vibe-kanban layout exactly */
@@ -875,7 +876,12 @@ export function WorkspaceKanbanPage() {
 
           {/* Task Detail Panel */}
           {isPanelOpen && (
-            <Panel id="task-detail" defaultSize={45} minSize={30} maxSize={65}>
+            <Panel
+              id="task-detail"
+              minSize="400px"
+              maxSize="800px"
+              className="min-w-0 h-full overflow-hidden"
+            >
               <div className="h-full border-l bg-background overflow-y-auto">
                 <TaskDetailPanel
                   task={selectedTask}
