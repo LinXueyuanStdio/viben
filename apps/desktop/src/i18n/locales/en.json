@@ -64,6 +64,7 @@
     "dedicatedSearchServices": "Dedicated Search Services",
     "skillsMarket": "Skills Market",
     "logs": "Logs",
+    "documents": "Documents",
     "settings": "Settings",
     "about": "About"
   },
@@ -148,7 +149,8 @@
       "languageAndTime": "Language & Time",
       "shortcuts": "Shortcuts",
       "providers": "Providers",
-      "models": "Models"
+      "models": "Models",
+      "agents": "Agents"
     },
     "generalDescription": "General application settings",
     "appearanceDescription": "Customize Viben's appearance on your device.",
@@ -1089,7 +1091,9 @@
       "name": "Name"
     },
     "clearFilters": "Clear",
-    "workspace": "Workspace"
+    "workspace": "Workspace",
+    "agentChat": "Agent Chat",
+    "agentChatPlaceholder": "Ask about this task..."
   },
   "sync": {
     "workspaceSync": "Workspace Sync",

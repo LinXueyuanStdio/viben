@@ -16,6 +16,7 @@ import {
   MessageSquare,
   Activity,
   Loader2,
+  Bot,
 } from "lucide-react";
 import {
   Button,
@@ -63,6 +64,8 @@ import {
   useToggleCommentReaction,
   useKanbanActivities,
 } from "@/hooks";
+import { ChatInput, MessageList } from "@/components/chat";
+import { useTaskAgent } from "@/hooks";
 
 // Editable Title Component
 function EditableTitle({
@@ -345,6 +348,33 @@ export function TaskDetailPanel({
     );
   }, [task, persistedActivities]);
 
+  // Task context for agent chat
+  const taskContext = useMemo(() => {
+    if (!task) return null;
+    return {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      tags: task.tags,
+    };
+  }, [task]);
+
+  // Agent chat hook - must be called unconditionally
+  const {
+    messages: agentMessages,
+    phase: agentPhase,
+    isStreaming: agentIsStreaming,
+    pendingPlan: agentPendingPlan,
+    pendingQuestions: agentPendingQuestions,
+    error: agentError,
+    sendMessage: agentSendMessage,
+    approvePlan: agentApprovePlan,
+    rejectPlan: agentRejectPlan,
+    answerQuestions: agentAnswerQuestions,
+    cancel: agentCancel,
+  } = useTaskAgent(task?.id || "", taskContext);
+
   if (!task) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -461,6 +491,10 @@ export function TaskDetailPanel({
           <TabsTrigger value="activity" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             {t("workspace.activity", "Activity")}
+          </TabsTrigger>
+          <TabsTrigger value="agent-chat" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            {t("workspace.agentChat", "Agent Chat")}
           </TabsTrigger>
         </TabsList>
 
@@ -781,6 +815,47 @@ export function TaskDetailPanel({
               )}
             </div>
           </ScrollArea>
+        </TabsContent>
+
+        {/* Agent Chat Tab */}
+        <TabsContent value="agent-chat" className="flex-1 min-h-0 flex flex-col">
+          {/* Messages */}
+          <MessageList
+            messages={agentMessages}
+            isStreaming={agentIsStreaming}
+            pendingPlan={agentPendingPlan}
+            pendingQuestions={agentPendingQuestions}
+            onApprovePlan={agentApprovePlan}
+            onRejectPlan={agentRejectPlan}
+            onAnswerQuestions={agentAnswerQuestions}
+            className="flex-1"
+          />
+
+          {/* Error display */}
+          {agentError && (
+            <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
+              <p className="text-sm text-destructive">{agentError}</p>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="border-t border-border p-3">
+            <ChatInput
+              onSend={agentSendMessage}
+              onCancel={agentCancel}
+              isLoading={agentIsStreaming}
+              disabled={agentPhase === "awaiting_approval" || agentPhase === "awaiting_input"}
+              placeholder={
+                agentPhase === "awaiting_approval"
+                  ? t("chat.waitingForApproval")
+                  : agentPhase === "awaiting_input"
+                    ? t("chat.waitingForInput")
+                    : t("workspace.agentChatPlaceholder", "Ask about this task...")
+              }
+              variant="compact"
+              autoFocus={false}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>

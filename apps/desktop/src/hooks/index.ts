@@ -112,6 +112,8 @@ export type {
 
 // Workspace Chat
 export { useAgent } from "./use-agent";
+export { useTaskAgent } from "./use-task-agent";
+export type { TaskContext } from "./use-task-agent";
 export { useVitePreview } from "./use-vite-preview";
 export type { PreviewStatus, PreviewState, UseVitePreviewReturn } from "./use-vite-preview";
 

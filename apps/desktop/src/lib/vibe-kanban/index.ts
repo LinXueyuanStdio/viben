@@ -28,3 +28,22 @@ export {
   VibeKanbanApiError,
   API_BASE_URL,
 } from "./api";
+
+// WebSocket types
+export type {
+  WebSocketState,
+  JsonPatchMessage,
+  StreamFinishedMessage,
+  WebSocketMessage,
+  WebSocketOptions,
+  UseWebSocketReturn,
+} from "./websocket-types";
+
+export {
+  isJsonPatchMessage,
+  isStreamFinishedMessage,
+  buildTasksWebSocketUrl,
+} from "./websocket-types";
+
+// WebSocket hook
+export { useTasksWebSocket } from "./use-tasks-websocket";
