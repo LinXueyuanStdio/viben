@@ -1,0 +1,191 @@
+/**
+ * ChatInput Toolbar Component
+ *
+ * Top toolbar with emoji picker, file attachment, screenshot, and expand buttons.
+ */
+
+import * as React from "react";
+import { useTranslation } from "react-i18next";
+import {
+  Smile,
+  Paperclip,
+  Camera,
+  Maximize2,
+  ChevronDown,
+  EyeOff,
+  Loader2,
+} from "lucide-react";
+import {
+  cn,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@viben/ui";
+import { EmojiPicker } from "../emoji-picker";
+
+export interface ChatInputToolbarProps {
+  /** Callback when emoji is selected */
+  onEmojiSelect: (emoji: string) => void;
+  /** Callback when file button is clicked */
+  onFileClick: () => void;
+  /** Callback when screenshot is requested. If undefined, screenshot button is hidden */
+  onScreenshot?: (hideWindow?: boolean) => void;
+  /** Callback when expand button is clicked */
+  onExpandClick?: () => void;
+  /** Whether the chat is loading */
+  isLoading?: boolean;
+  /** Whether the input is disabled */
+  disabled?: boolean;
+  /** Whether screenshot is currently being captured */
+  isScreenshotCapturing?: boolean;
+  /** Whether to show the expand button */
+  showExpand?: boolean;
+  /** Additional CSS class */
+  className?: string;
+}
+
+export function ChatInputToolbar({
+  onEmojiSelect,
+  onFileClick,
+  onScreenshot,
+  onExpandClick,
+  isLoading,
+  disabled,
+  isScreenshotCapturing,
+  showExpand,
+  className,
+}: ChatInputToolbarProps) {
+  const { t } = useTranslation();
+  const [isEmojiOpen, setIsEmojiOpen] = React.useState(false);
+
+  const handleEmojiSelect = React.useCallback(
+    (emoji: string) => {
+      onEmojiSelect(emoji);
+      setIsEmojiOpen(false);
+    },
+    [onEmojiSelect]
+  );
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between px-3 py-2 border-b border-border/30 bg-muted/30",
+        className
+      )}
+    >
+      <div className="flex items-center gap-1">
+        {/* Emoji Picker */}
+        <Popover open={isEmojiOpen} onOpenChange={setIsEmojiOpen}>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={isLoading || disabled}
+                  >
+                    <Smile className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{t("chat.emoji", "Emoji")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <PopoverContent className="w-auto p-2" align="start">
+            <EmojiPicker onSelect={handleEmojiSelect} />
+          </PopoverContent>
+        </Popover>
+
+        {/* File Attachment */}
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                disabled={isLoading || disabled}
+                onClick={onFileClick}
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {t("chat.attachFile", "Attach File")}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Screenshot - only shown if onScreenshot is provided */}
+        {onScreenshot && (
+          <DropdownMenu>
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-2 gap-1"
+                      disabled={isLoading || disabled || isScreenshotCapturing}
+                    >
+                      {isScreenshotCapturing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                      <ChevronDown className="h-3 w-3" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {t("chat.screenshot", "Screenshot")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => onScreenshot(false)}>
+                <Camera className="h-4 w-4 mr-2" />
+                {t("chat.screenshotDirect", "Direct Screenshot")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onScreenshot(true)}>
+                <EyeOff className="h-4 w-4 mr-2" />
+                {t("chat.screenshotHideWindow", "Hide Window & Screenshot")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
+      {/* Expand Button */}
+      {showExpand && onExpandClick && (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={onExpandClick}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t("chat.expand", "Expand")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </div>
+  );
+}

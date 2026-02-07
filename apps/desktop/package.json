@@ -34,6 +34,7 @@
     "@tauri-apps/plugin-shell": "^2.3.4",
     "@tauri-apps/plugin-sql": "^2",
     "@viben/api-client": "workspace:*",
+    "@viben/chat": "workspace:*",
     "@viben/core": "workspace:*",
     "@viben/kanban": "workspace:*",
     "@viben/ui": "workspace:*",

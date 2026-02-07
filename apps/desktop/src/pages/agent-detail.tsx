@@ -36,7 +36,6 @@ import {
   HelpCircle,
   Terminal,
   Server,
-  Wrench,
   Command,
   MessageSquare,
 } from "lucide-react";
@@ -59,8 +58,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -923,6 +920,38 @@ export function AgentDetailPage() {
                     )}
                   </div>
                 </CollapsibleSection>
+
+                {/* Prompts Section */}
+                <CollapsibleSection
+                  title={t("settingsAgents.prompts")}
+                  icon={<MessageSquare className="h-4 w-4" />}
+                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
+                >
+                  <div className="py-2 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {t("settingsAgents.noPrompts")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {t("settingsAgents.noPromptsHint")}
+                    </p>
+                  </div>
+                </CollapsibleSection>
+
+                {/* Commands Section */}
+                <CollapsibleSection
+                  title={t("settingsAgents.commands")}
+                  icon={<Command className="h-4 w-4" />}
+                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
+                >
+                  <div className="py-2 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      {t("settingsAgents.noCommands")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {t("settingsAgents.noCommandsHint")}
+                    </p>
+                  </div>
+                </CollapsibleSection>
               </div>
 
               {/* Memory Section */}
@@ -1119,7 +1148,7 @@ export function AgentDetailPage() {
 }
 
 // ============================================================================
-// Executor Detail View Component
+// Executor Detail View Component (Three-Column Layout)
 // ============================================================================
 
 interface ExecutorDetailViewProps {
@@ -1141,35 +1170,130 @@ function ExecutorDetailView({
   onNavigateBack,
 }: ExecutorDetailViewProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState("overview");
+
+  // Get workspace path for chat and CLAUDE.md
+  const { workspaces } = useLocalWorkspaces();
+  const workspace = workspaces.find((w) => w.id === workspaceId);
+  const workspacePath = workspace?.path || "";
+
+  // State for CLAUDE.md content
+  const [claudeMdContent, setClaudeMdContent] = useState<string>("");
+  const [claudeMdLoading, setClaudeMdLoading] = useState(true);
+  const [claudeMdError, setClaudeMdError] = useState<string | null>(null);
+
+  // Load CLAUDE.md content
+  useEffect(() => {
+    async function loadClaudeMd() {
+      if (!workspacePath) {
+        setClaudeMdLoading(false);
+        return;
+      }
+
+      setClaudeMdLoading(true);
+      setClaudeMdError(null);
+
+      try {
+        // Try different possible locations for CLAUDE.md
+        const possiblePaths = [
+          `${workspacePath}/CLAUDE.md`,
+          `${workspacePath}/.claude/CLAUDE.md`,
+          `${workspacePath}/claude.md`,
+        ];
+
+        let content = "";
+        for (const path of possiblePaths) {
+          try {
+            const { readTextFile } = await import("@tauri-apps/plugin-fs");
+            content = await readTextFile(path);
+            if (content) break;
+          } catch {
+            // File doesn't exist, try next path
+          }
+        }
+
+        setClaudeMdContent(content);
+      } catch (err) {
+        setClaudeMdError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setClaudeMdLoading(false);
+      }
+    }
+
+    loadClaudeMd();
+  }, [workspacePath]);
 
   // Load MCP servers for this executor
   const {
     servers: mcpServers,
     loading: mcpLoading,
-    error: mcpError,
   } = useWorkspaceMcpServers(workspaceId, executor.id);
 
   // Load skills for this executor
   const {
     skills,
     loading: skillsLoading,
-    error: skillsError,
   } = useWorkspaceSkills(workspaceId, executor.id);
 
   // Load agent configs (prompts) for this executor
   const {
     configs: agentConfigs,
     loading: configsLoading,
-    error: configsError,
   } = useWorkspaceAgentConfigs(workspaceId, executor.id);
 
   // Load commands for this executor
   const {
     commands,
     loading: commandsLoading,
-    error: commandsError,
   } = useWorkspaceCommands(workspaceId, executor.id);
+
+  // Chat functionality - map executor type to agent type
+  // Only CLAUDE_CODE and CODEX have corresponding BaseCodingAgent types
+  const agentType = useMemo((): BaseCodingAgent => {
+    if (executor.type === "claude-code") return "CLAUDE_CODE";
+    if (executor.type === "codex") return "CODEX";
+    // All other executor types default to CLAUDE_CODE for chat
+    return "CLAUDE_CODE";
+  }, [executor.type]);
+
+  const {
+    messages,
+    phase,
+    isStreaming,
+    pendingPlan,
+    pendingQuestions,
+    sendMessage,
+    approvePlan,
+    rejectPlan,
+    answerQuestions,
+    cancel,
+    clearMessages,
+  } = useAgent(workspacePath, {
+    agentType,
+    executorConfig: agentType === "CLAUDE_CODE" ? {
+      type: "CLAUDE_CODE",
+      config: {
+        plan: false,
+        approvals: false,
+      },
+    } : undefined,
+  });
+
+  // Slash commands for executor chat
+  const slashCommands = useMemo<SlashCommand[]>(() => [
+    {
+      id: "clear",
+      name: t("chat.slashCommands.clear", "clear"),
+      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
+      icon: <Trash2 className="h-4 w-4" />,
+    },
+  ], [t]);
+
+  // Handle slash command execution
+  const handleSlashCommand = useCallback((command: SlashCommand) => {
+    if (command.id === "clear") {
+      clearMessages();
+    }
+  }, [clearMessages]);
 
   return (
     <div className="h-full flex flex-col">
@@ -1195,355 +1319,357 @@ function ExecutorDetailView({
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b px-4">
-          <TabsList className="h-10 bg-transparent">
-            <TabsTrigger value="overview" className="text-xs">
-              <Info className="h-3.5 w-3.5 mr-1.5" />
-              {t("common.overview")}
-            </TabsTrigger>
-            <TabsTrigger value="mcp" className="text-xs">
-              <Server className="h-3.5 w-3.5 mr-1.5" />
-              MCP
-              {mcpServers.length > 0 && (
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {mcpServers.length}
-                </Badge>
+      {/* Three Column Layout */}
+      <div className="flex-1 flex min-h-0">
+        {/* ================================================================
+            LEFT COLUMN: CLAUDE.md Content (System Prompt)
+            ================================================================ */}
+        <div className="w-72 border-r flex flex-col">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold text-sm">{t("settingsAgents.systemPrompt")}</h3>
+            <p className="text-xs text-muted-foreground mt-1">CLAUDE.md</p>
+          </div>
+
+          <ScrollArea className="flex-1">
+            <div className="p-4">
+              {claudeMdLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : claudeMdError ? (
+                <div className="text-xs text-destructive">
+                  {claudeMdError}
+                </div>
+              ) : claudeMdContent ? (
+                <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                  {claudeMdContent}
+                </pre>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noClaudeMd")}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    {t("settingsAgents.noClaudeMdHint")}
+                  </p>
+                </div>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="skills" className="text-xs">
-              <Wrench className="h-3.5 w-3.5 mr-1.5" />
-              {t("chat.skills")}
-              {skills.length > 0 && (
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {skills.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="prompts" className="text-xs">
-              <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
-              {t("settingsAgents.prompts", "提示词")}
-              {agentConfigs.length > 0 && (
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {agentConfigs.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="commands" className="text-xs">
-              <Command className="h-3.5 w-3.5 mr-1.5" />
-              {t("settingsAgents.commands", "指令")}
-              {commands.length > 0 && (
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                  {commands.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+            </div>
+          </ScrollArea>
         </div>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="flex-1 m-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-6 max-w-2xl">
-              {/* Description */}
-              <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
-                <p className="text-sm text-muted-foreground">
-                  {t("settingsAgents.executorsDesc")}
-                </p>
+        {/* ================================================================
+            MIDDLE COLUMN: Configuration & Capabilities
+            ================================================================ */}
+        <div className="flex-1 flex flex-col min-w-0 border-r">
+          <div className="p-4 border-b">
+            <h3 className="font-semibold text-sm">{t("settingsAgents.capabilities")}</h3>
+          </div>
+
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-1">
+              {/* Config Section */}
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                  {t("workspace.configuration")}
+                </h4>
+
+                <CollapsibleSection
+                  title={t("workspace.configPath")}
+                  icon={<Terminal className="h-4 w-4" />}
+                  defaultOpen
+                >
+                  <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                    {executor.config_path}
+                  </code>
+                </CollapsibleSection>
               </div>
 
-              {/* Config Path */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("workspace.configPath")}</Label>
-                <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                  {executor.config_path}
-                </code>
-              </div>
+              {/* Capabilities Section */}
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                  {t("settingsAgents.tools")}
+                </h4>
 
-              {/* MCP Config */}
-              {executor.mcp_config_file && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">MCP {t("workspace.configuration")}</Label>
-                  <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                    {executor.mcp_config_file}
-                  </code>
-                </div>
-              )}
-
-              {/* Skills Config */}
-              {executor.skills_config_file && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">{t("chat.skills")} {t("workspace.configuration")}</Label>
-                  <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                    {executor.skills_config_file}
-                  </code>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* MCP Tab */}
-        <TabsContent value="mcp" className="flex-1 m-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {mcpLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : mcpError ? (
-                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {mcpError}
-                </div>
-              ) : mcpServers.length === 0 ? (
-                <div className="p-6 rounded-xl border border-dashed text-center">
-                  <Server className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {t("settingsAgents.noMcp")}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {mcpServers.map((server) => (
-                    <Card key={server.name} className={cn(server.disabled && "opacity-60")}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                              <Server className="h-5 w-5 text-orange-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium flex items-center gap-2">
-                                {server.name}
-                                {server.disabled && (
-                                  <Badge variant="secondary" className="text-[10px]">
-                                    {t("common.disabled")}
-                                  </Badge>
-                                )}
-                              </h4>
-                              {server.command && (
-                                <p className="text-xs text-muted-foreground font-mono">
-                                  {server.command}
-                                </p>
-                              )}
-                              {server.url && (
-                                <p className="text-xs text-muted-foreground font-mono">
-                                  {server.url}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {server.transport && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {server.transport}
-                            </Badge>
-                          )}
-                        </div>
-                        {server.args && server.args.length > 0 && (
-                          <div className="mt-3 text-xs text-muted-foreground">
-                            <span className="font-medium">Args:</span>{" "}
-                            <code className="bg-muted px-1 py-0.5 rounded">
-                              {server.args.join(" ")}
-                            </code>
-                          </div>
+                {/* MCP Section */}
+                <CollapsibleSection
+                  title="MCP"
+                  icon={<Database className="h-4 w-4" />}
+                  badge={
+                    mcpLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{mcpServers.length}</Badge>
+                    )
+                  }
+                  defaultOpen
+                >
+                  <div className="py-2 space-y-2">
+                    {mcpServers.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noMcp")}
+                        </p>
+                        {executor.mcp_config_file && (
+                          <code className="block text-[10px] bg-muted px-2 py-1 rounded font-mono break-all text-muted-foreground">
+                            {executor.mcp_config_file}
+                          </code>
                         )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
-
-        {/* Skills Tab */}
-        <TabsContent value="skills" className="flex-1 m-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {skillsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : skillsError ? (
-                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {skillsError}
-                </div>
-              ) : skills.length === 0 ? (
-                <div className="p-6 rounded-xl border border-dashed text-center">
-                  <Wrench className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {t("settingsAgents.noSkills")}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {skills.map((skill) => (
-                    <Card key={skill.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Sparkles className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{skill.name}</h4>
-                              {skill.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {skill.description}
-                                </p>
-                              )}
-                              {skill.path && (
-                                <p className="text-[10px] text-muted-foreground font-mono mt-1">
-                                  {skill.path}
-                                </p>
-                              )}
-                            </div>
+                      </>
+                    ) : (
+                      <div className="space-y-1">
+                        {mcpServers.map((server) => (
+                          <div
+                            key={server.name}
+                            className={cn(
+                              "flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50",
+                              server.disabled && "opacity-60"
+                            )}
+                          >
+                            <Server className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate">{server.name}</span>
+                            {server.transport && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                                {server.transport}
+                              </Badge>
+                            )}
+                            {server.disabled && (
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
+                                {t("common.disabled")}
+                              </Badge>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-[10px]">
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleSection>
+
+                {/* Skills Section */}
+                <CollapsibleSection
+                  title={t("chat.skills")}
+                  icon={<Sparkles className="h-4 w-4" />}
+                  badge={
+                    skillsLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{skills.length}</Badge>
+                    )
+                  }
+                >
+                  <div className="py-2 space-y-2">
+                    {skills.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noSkills")}
+                        </p>
+                        {executor.skills_config_file && (
+                          <code className="block text-[10px] bg-muted px-2 py-1 rounded font-mono break-all text-muted-foreground">
+                            {executor.skills_config_file}
+                          </code>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-1">
+                        {skills.map((skill) => (
+                          <div
+                            key={skill.id}
+                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                          >
+                            <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate">{skill.name}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
                               v{skill.version}
                             </Badge>
-                            <Badge variant="secondary" className="text-[10px]">
-                              {skill.source}
-                            </Badge>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleSection>
 
-        {/* Prompts Tab (Agent Configs) */}
-        <TabsContent value="prompts" className="flex-1 m-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {configsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : configsError ? (
-                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {configsError}
-                </div>
-              ) : agentConfigs.length === 0 ? (
-                <div className="p-6 rounded-xl border border-dashed text-center">
-                  <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {t("settingsAgents.noPrompts", "暂无提示词配置")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settingsAgents.noPromptsHint", "在 .claude/agents/ 目录下添加 Markdown 文件")}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {agentConfigs.map((config) => (
-                    <Card key={config.id}>
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                              <FileText className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <CardTitle className="text-sm font-medium">{config.name}</CardTitle>
-                              {config.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {config.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {config.model && (
-                            <Badge variant="outline" className="text-[10px]">
-                              {config.model}
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-2">
-                        {config.tools && config.tools.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-2">
-                            {config.tools.map((tool) => (
-                              <Badge key={tool} variant="secondary" className="text-[10px]">
-                                {tool}
+                {/* Prompts Section */}
+                <CollapsibleSection
+                  title={t("settingsAgents.prompts")}
+                  icon={<MessageSquare className="h-4 w-4" />}
+                  badge={
+                    configsLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
+                    )
+                  }
+                >
+                  <div className="py-2 space-y-2">
+                    {agentConfigs.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noPrompts")}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70">
+                          {t("settingsAgents.noPromptsHint")}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="space-y-1">
+                        {agentConfigs.map((config) => (
+                          <div
+                            key={config.id}
+                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                          >
+                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate">{config.name}</span>
+                            {config.model && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                                {config.model}
                               </Badge>
-                            ))}
+                            )}
                           </div>
-                        )}
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          {config.path}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </TabsContent>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleSection>
 
-        {/* Commands Tab */}
-        <TabsContent value="commands" className="flex-1 m-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-4">
-              {commandsLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : commandsError ? (
-                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  {commandsError}
-                </div>
-              ) : commands.length === 0 ? (
-                <div className="p-6 rounded-xl border border-dashed text-center">
-                  <Command className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {t("settingsAgents.noCommands", "暂无指令配置")}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t("settingsAgents.noCommandsHint", "在 .claude/commands/ 目录下添加指令文件")}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-3">
-                  {commands.map((command) => (
-                    <Card key={command.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                              <Command className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium font-mono text-sm">/{command.id}</h4>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {command.namespace}/{command.name}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-mono mt-2">
-                          {command.path}
+                {/* Commands Section */}
+                <CollapsibleSection
+                  title={t("settingsAgents.commands")}
+                  icon={<Command className="h-4 w-4" />}
+                  badge={
+                    commandsLoading ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Badge variant="secondary" className="text-xs">{commands.length}</Badge>
+                    )
+                  }
+                >
+                  <div className="py-2 space-y-2">
+                    {commands.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noCommands")}
                         </p>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        <p className="text-[10px] text-muted-foreground/70">
+                          {t("settingsAgents.noCommandsHint")}
+                        </p>
+                      </>
+                    ) : (
+                      <div className="space-y-1">
+                        {commands.map((command) => (
+                          <div
+                            key={command.id}
+                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                          >
+                            <Command className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="truncate font-mono">/{command.id}</span>
+                            <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+                              {command.namespace}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleSection>
+              </div>
+
+              {/* Info Section */}
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                  {t("common.overview")}
+                </h4>
+
+                <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.executorsDesc")}
+                  </p>
                 </div>
-              )}
+              </div>
             </div>
           </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        </div>
+
+        {/* ================================================================
+            RIGHT COLUMN: Chat Preview
+            ================================================================ */}
+        <div className="w-80 flex flex-col bg-muted/30">
+          {/* Header with actions */}
+          <div className="p-4 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-orange-500/20 text-orange-600 text-xs">
+                  {executor.name.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-sm">{executor.name}</h3>
+                <p className="text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={clearMessages}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("settingsAgents.clearChat")}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
+          </div>
+
+          {/* Chat Messages */}
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            pendingPlan={pendingPlan}
+            pendingQuestions={pendingQuestions}
+            onApprovePlan={approvePlan}
+            onRejectPlan={rejectPlan}
+            onAnswerQuestions={answerQuestions}
+            className="flex-1"
+          />
+
+          {/* Chat Input */}
+          <div className="border-t border-border bg-background">
+            <ChatInput
+              onSend={sendMessage}
+              onCancel={cancel}
+              isLoading={isStreaming}
+              disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
+              placeholder={
+                phase === "awaiting_approval"
+                  ? t("chat.waitingForApproval")
+                  : phase === "awaiting_input"
+                    ? t("chat.waitingForInput")
+                    : t("settingsAgents.sendMessage")
+              }
+              autoFocus
+              showTopToolbar
+              showConfigBar
+              showResizeHandle
+              enableWritingMode
+              hideAgentSelector
+              hideModelSelector
+              slashCommands={slashCommands}
+              onSlashCommand={handleSlashCommand}
+            />
+            <p className="text-xs text-muted-foreground py-2 text-center">
+              {t("settingsAgents.aiDisclaimer")}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
