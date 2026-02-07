@@ -1292,6 +1292,7 @@
     "confirmDeleteTitle": "删除工作区",
     "confirmDeleteMessage": "确定要删除「{{name}}」吗？此操作无法撤销。所有包配置将被永久删除。",
     "failedToLoadWorkspace": "加载工作区设置失败"
+  },
   "analytics": {
     "title": "数据分析",
     "titleWithName": "{{name}} 分析",

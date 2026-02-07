@@ -1289,6 +1289,7 @@
     "confirmDeleteTitle": "Delete Workspace",
     "confirmDeleteMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone. All package configurations will be permanently removed.",
     "failedToLoadWorkspace": "Failed to load workspace settings"
+  },
   "analytics": {
     "title": "Analytics",
     "titleWithName": "{{name}} Analytics",
