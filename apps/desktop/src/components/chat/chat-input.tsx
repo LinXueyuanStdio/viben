@@ -43,6 +43,8 @@ export function ChatInput({
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const imageInputRef = React.useRef<HTMLInputElement>(null);
+  // Track IME composition state to prevent send on Enter during composition
+  const isComposingRef = React.useRef(false);
 
   // Auto-resize textarea
   React.useEffect(() => {
@@ -161,10 +163,22 @@ export function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Don't send on Enter during IME composition (e.g., typing Chinese/Japanese)
+    if (e.key === "Enter" && !e.shiftKey && !isComposingRef.current) {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const handleCompositionStart = () => {
+    isComposingRef.current = true;
+  };
+
+  const handleCompositionEnd = () => {
+    // Delay reset to handle composition end event order
+    setTimeout(() => {
+      isComposingRef.current = false;
+    }, 10);
   };
 
   return (
@@ -255,6 +269,8 @@ export function ChatInput({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={handleCompositionStart}
+          onCompositionEnd={handleCompositionEnd}
           placeholder={placeholder || t("chat.inputPlaceholder")}
           disabled={disabled || isLoading}
           className="min-h-[40px] max-h-[200px] flex-1 resize-none border-0 bg-transparent p-2 shadow-none focus-visible:ring-0"

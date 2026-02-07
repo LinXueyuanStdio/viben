@@ -1,6 +1,8 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { User, Bot, AlertCircle, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgentMessage, MessageAttachment } from "@/types";
@@ -16,126 +18,138 @@ interface MessageItemProps {
 }
 
 /**
- * Render markdown content with basic formatting
- * For production, consider using react-markdown with remark-gfm
+ * Markdown components for react-markdown customization
  */
-function renderContent(content: string) {
-  // Split content into lines for processing
-  const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
-  let inCodeBlock = false;
-  let codeBlockContent: string[] = [];
-  let codeBlockLang = "";
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Check for code block start/end
-    if (line.startsWith("```")) {
-      if (!inCodeBlock) {
-        inCodeBlock = true;
-        codeBlockLang = line.slice(3).trim();
-        codeBlockContent = [];
-      } else {
-        // End of code block
-        inCodeBlock = false;
-        elements.push(
-          <pre
-            key={`code-${i}`}
-            className="my-2 overflow-x-auto rounded-lg bg-muted p-4 text-sm"
-          >
-            <code className={codeBlockLang ? `language-${codeBlockLang}` : ""}>
-              {codeBlockContent.join("\n")}
-            </code>
-          </pre>
-        );
-      }
-      continue;
-    }
-
-    if (inCodeBlock) {
-      codeBlockContent.push(line);
-      continue;
-    }
-
-    // Process inline formatting
-    let processedLine: React.ReactNode = line;
-
-    // Bold: **text**
-    if (line.includes("**")) {
-      const parts = line.split(/\*\*(.*?)\*\*/g);
-      processedLine = parts.map((part, idx) =>
-        idx % 2 === 1 ? <strong key={idx}>{part}</strong> : part
+const markdownComponents = {
+  // Code blocks
+  pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
+    <pre
+      className="bg-muted my-2 max-w-full overflow-x-auto rounded-lg p-4"
+      {...props}
+    >
+      {children}
+    </pre>
+  ),
+  // Inline code
+  code: ({
+    className,
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLElement> & { className?: string }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code
+          className="bg-muted rounded px-1.5 py-0.5 font-mono text-sm"
+          {...props}
+        >
+          {children}
+        </code>
       );
     }
-
-    // Inline code: `code`
-    if (typeof processedLine === "string" && processedLine.includes("`")) {
-      const parts = processedLine.split(/`([^`]+)`/g);
-      processedLine = parts.map((part, idx) =>
-        idx % 2 === 1 ? (
-          <code
-            key={idx}
-            className="rounded bg-muted px-1.5 py-0.5 text-sm font-mono"
-          >
-            {part}
-          </code>
-        ) : (
-          part
-        )
-      );
-    }
-
-    // Headers
-    if (line.startsWith("# ")) {
-      elements.push(
-        <h1 key={i} className="text-xl font-bold mt-4 mb-2">
-          {line.slice(2)}
-        </h1>
-      );
-    } else if (line.startsWith("## ")) {
-      elements.push(
-        <h2 key={i} className="text-lg font-semibold mt-3 mb-2">
-          {line.slice(3)}
-        </h2>
-      );
-    } else if (line.startsWith("### ")) {
-      elements.push(
-        <h3 key={i} className="text-base font-semibold mt-2 mb-1">
-          {line.slice(4)}
-        </h3>
-      );
-    }
-    // List items
-    else if (line.match(/^\d+\.\s/)) {
-      elements.push(
-        <li key={i} className="ml-4 list-decimal">
-          {processedLine}
-        </li>
-      );
-    } else if (line.startsWith("- ") || line.startsWith("* ")) {
-      elements.push(
-        <li key={i} className="ml-4 list-disc">
-          {typeof processedLine === "string" ? processedLine.slice(2) : processedLine}
-        </li>
-      );
-    }
-    // Empty lines
-    else if (line.trim() === "") {
-      elements.push(<br key={i} />);
-    }
-    // Regular paragraph
-    else {
-      elements.push(
-        <p key={i} className="my-1">
-          {processedLine}
-        </p>
-      );
-    }
-  }
-
-  return elements;
-}
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+  // Links - open in external browser
+  a: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a
+      href={href}
+      onClick={async (e) => {
+        e.preventDefault();
+        if (href) {
+          try {
+            const { open } = await import("@tauri-apps/plugin-shell");
+            await open(href);
+          } catch {
+            window.open(href, "_blank");
+          }
+        }
+      }}
+      className="text-primary cursor-pointer hover:underline"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  // Tables
+  table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => (
+    <div className="my-2 overflow-x-auto">
+      <table className="border-border w-full border-collapse border" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+    <th
+      className="border-border bg-muted border px-3 py-2 text-left text-sm font-semibold"
+      {...props}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+    <td className="border-border border px-3 py-2 text-sm" {...props}>
+      {children}
+    </td>
+  ),
+  // Paragraphs
+  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <p className="my-1 leading-relaxed" {...props}>
+      {children}
+    </p>
+  ),
+  // Headers
+  h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h1 className="mb-2 mt-4 text-xl font-bold" {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h2 className="mb-2 mt-3 text-lg font-semibold" {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 className="mb-1 mt-2 text-base font-semibold" {...props}>
+      {children}
+    </h3>
+  ),
+  // Lists
+  ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
+    <ul className="my-2 ml-4 list-disc space-y-1" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => (
+    <ol className="my-2 ml-4 list-decimal space-y-1" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: React.LiHTMLAttributes<HTMLLIElement>) => (
+    <li className="text-sm" {...props}>
+      {children}
+    </li>
+  ),
+  // Blockquote
+  blockquote: ({
+    children,
+    ...props
+  }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
+    <blockquote
+      className="border-primary/30 text-muted-foreground my-2 border-l-4 pl-4 italic"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+};
 
 /**
  * Render attachments in user message
@@ -266,18 +280,23 @@ export function MessageItem({
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
         <Bot className="h-4 w-4 text-secondary-foreground" />
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <div
           className={cn(
-            "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3",
+            "border-border bg-card rounded-2xl rounded-tl-md border px-4 py-3",
             message.type === "result" && "border-primary/30 bg-primary/5"
           )}
         >
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            {renderContent(message.content || "")}
+          <div className="prose prose-sm dark:prose-invert text-foreground max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {message.content || ""}
+            </ReactMarkdown>
           </div>
           {isStreaming && (
-            <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
+            <span className="bg-primary ml-1 inline-block h-4 w-1 animate-pulse" />
           )}
         </div>
       </div>
