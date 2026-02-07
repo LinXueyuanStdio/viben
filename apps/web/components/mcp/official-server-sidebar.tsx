@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Package, Tag, Server, Globe, CheckCircle } from 'lucide-react';
@@ -19,6 +22,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
+  const { t } = useTranslation();
   const packages = server._original?.server?.packages || [];
 
   return (
@@ -26,13 +30,13 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {/* Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Status</CardTitle>
+          <CardTitle className="text-sm">{t('marketplace.status')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <CheckCircle className="h-4 w-4" />
-              Status
+              {t('marketplace.status')}
             </span>
             <Badge
               variant={server.status === 'active' ? 'default' : 'secondary'}
@@ -50,10 +54,10 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-2 text-muted-foreground">
                 <Tag className="h-4 w-4" />
-                Latest
+                {t('marketplace.latest')}
               </span>
               <Badge variant="outline" className="text-green-600 border-green-500/20">
-                Yes
+                {t('common.yes')}
               </Badge>
             </div>
           )}
@@ -63,13 +67,13 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {/* Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Details</CardTitle>
+          <CardTitle className="text-sm">{t('marketplace.details')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Package className="h-4 w-4" />
-              Version
+              {t('marketplace.version')}
             </span>
             <Badge variant="secondary">{server.version}</Badge>
           </div>
@@ -77,7 +81,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              Published
+              {t('marketplace.published')}
             </span>
             <span className="text-xs">{formatDate(server.publishedAt)}</span>
           </div>
@@ -85,7 +89,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="h-4 w-4" />
-              Updated
+              {t('marketplace.updated')}
             </span>
             <span className="text-xs">{formatDate(server.updatedAt)}</span>
           </div>
@@ -96,7 +100,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {server.packageTypes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Available Packages</CardTitle>
+            <CardTitle className="text-sm">{t('marketplace.availablePackages')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -114,7 +118,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {packages.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Transports</CardTitle>
+            <CardTitle className="text-sm">{t('marketplace.transports')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -129,7 +133,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
               {server.hasRemotes && (
                 <Badge variant="outline" className="text-xs">
                   <Globe className="h-3 w-3 mr-1" />
-                  REMOTE
+                  {t('marketplace.remoteAvailable')}
                 </Badge>
               )}
             </div>
@@ -141,7 +145,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {server.repositoryUrl && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Repository</CardTitle>
+            <CardTitle className="text-sm">{t('marketplace.repository')}</CardTitle>
           </CardHeader>
           <CardContent>
             <a
@@ -160,7 +164,7 @@ export function OfficialServerSidebar({ server }: OfficialServerSidebarProps) {
       {server.websiteUrl && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Website</CardTitle>
+            <CardTitle className="text-sm">{t('marketplace.website')}</CardTitle>
           </CardHeader>
           <CardContent>
             <a

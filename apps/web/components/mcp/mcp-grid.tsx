@@ -1,7 +1,7 @@
 import { db, mcpPackages, users } from '@/lib/db';
 import { eq, desc, ilike, or, and, count } from 'drizzle-orm';
-import { Package } from 'lucide-react';
 import { McpCard } from './mcp-card';
+import { McpEmptyState } from './mcp-empty-state';
 import { AnimatedGrid } from '@/components/shared/animated-grid';
 import { Pagination } from '@/components/shared/pagination';
 
@@ -75,17 +75,7 @@ export async function McpGrid({ searchParams }: McpGridProps) {
   const totalPages = Math.ceil(total / limit);
 
   if (packages.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-        <Package className="h-12 w-12 mb-4 opacity-50" />
-        <h3 className="text-lg font-medium">No packages found</h3>
-        {q && (
-          <p className="text-sm mt-1">
-            Try adjusting your search or filters
-          </p>
-        )}
-      </div>
-    );
+    return <McpEmptyState hasSearch={!!q} />;
   }
 
   return (

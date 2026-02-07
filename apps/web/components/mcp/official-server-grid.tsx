@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Package, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +26,7 @@ export function OfficialServerGrid({
   searchQuery = '',
   className,
 }: OfficialServerGridProps) {
+  const { t } = useTranslation();
   const {
     displayServers,
     isLoading,
@@ -83,10 +85,10 @@ export function OfficialServerGrid({
       <Alert variant="destructive" className={className}>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription className="flex items-center justify-between">
-          <span>Failed to load official registry: {error}</span>
+          <span>{t('marketplace.failedToLoad')}: {error}</span>
           <Button variant="outline" size="sm" onClick={refreshServers}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Retry
+            {t('marketplace.retry')}
           </Button>
         </AlertDescription>
       </Alert>
@@ -103,9 +105,9 @@ export function OfficialServerGrid({
         )}
       >
         <Package className="h-12 w-12 mb-4 opacity-50" />
-        <h3 className="text-lg font-medium">No servers found</h3>
+        <h3 className="text-lg font-medium">{t('marketplace.noServers')}</h3>
         {isSearching && (
-          <p className="text-sm mt-1">Try adjusting your search query</p>
+          <p className="text-sm mt-1">{t('marketplace.tryAdjustingQuery')}</p>
         )}
       </div>
     );
@@ -133,8 +135,8 @@ export function OfficialServerGrid({
       <div className="flex items-center justify-between text-sm text-muted-foreground">
         <span>
           {isSearching
-            ? `Found ${displayServers.length} results`
-            : `Showing ${displayServers.length} of ${totalCount} servers`}
+            ? t('marketplace.foundResults', { count: displayServers.length })
+            : t('marketplace.showingOfServers', { count: displayServers.length, total: totalCount })}
         </span>
         <Button
           variant="ghost"
@@ -144,7 +146,7 @@ export function OfficialServerGrid({
           className="gap-2"
         >
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
-          Refresh
+          {t('common.refresh')}
         </Button>
       </div>
 
@@ -165,7 +167,7 @@ export function OfficialServerGrid({
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : (
             <Button variant="outline" onClick={loadMore}>
-              Load more
+              {t('marketplace.loadMore')}
             </Button>
           )}
         </div>
@@ -176,9 +178,9 @@ export function OfficialServerGrid({
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            <span>Error loading more: {error}</span>
+            <span>{t('marketplace.errorLoadingMore')}: {error}</span>
             <Button variant="outline" size="sm" onClick={loadMore}>
-              Retry
+              {t('marketplace.retry')}
             </Button>
           </AlertDescription>
         </Alert>

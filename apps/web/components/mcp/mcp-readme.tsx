@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface McpReadmeProps {
@@ -5,14 +8,16 @@ interface McpReadmeProps {
 }
 
 export function McpReadme({ content }: McpReadmeProps) {
+  const { t } = useTranslation();
+
   if (!content) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>README</CardTitle>
+          <CardTitle>{t('marketplace.readme')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No documentation available.</p>
+          <p className="text-muted-foreground">{t('marketplace.noDocumentation')}</p>
         </CardContent>
       </Card>
     );
@@ -21,7 +26,7 @@ export function McpReadme({ content }: McpReadmeProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>README</CardTitle>
+        <CardTitle>{t('marketplace.readme')}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="prose prose-sm max-w-none dark:prose-invert">

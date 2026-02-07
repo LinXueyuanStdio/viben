@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Globe, Users } from 'lucide-react';
@@ -22,6 +23,7 @@ interface SourceTabsProps {
  * Updates URL search params to persist state
  */
 export function SourceTabs({ source = 'official', className }: SourceTabsProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -43,11 +45,11 @@ export function SourceTabs({ source = 'official', className }: SourceTabsProps) 
       <TabsList className="grid w-full max-w-[400px] grid-cols-2">
         <TabsTrigger value="official" className="flex items-center gap-2">
           <Globe className="h-4 w-4" />
-          <span>Official</span>
+          <span>{t('marketplace.sourceOfficial')}</span>
         </TabsTrigger>
         <TabsTrigger value="community" className="flex items-center gap-2">
           <Users className="h-4 w-4" />
-          <span>Community</span>
+          <span>{t('marketplace.sourceCommunity')}</span>
         </TabsTrigger>
       </TabsList>
     </Tabs>
@@ -63,6 +65,8 @@ interface SourceBadgeProps {
 }
 
 export function SourceBadge({ source, className }: SourceBadgeProps) {
+  const { t } = useTranslation();
+
   return (
     <Badge
       variant={source === 'official' ? 'default' : 'secondary'}
@@ -73,7 +77,7 @@ export function SourceBadge({ source, className }: SourceBadgeProps) {
         className
       )}
     >
-      {source === 'official' ? 'Official' : 'Community'}
+      {source === 'official' ? t('marketplace.badgeOfficial') : t('marketplace.badgeCommunity')}
     </Badge>
   );
 }
