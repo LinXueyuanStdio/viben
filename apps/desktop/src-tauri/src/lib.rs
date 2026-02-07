@@ -9,6 +9,7 @@ use commands::offline_cache::OfflineCacheState;
 use commands::official_registry::OfficialRegistryState;
 use commands::package_install::InstalledPackagesState;
 use commands::usage::UsageState;
+use commands::vite_preview::VitePreviewState;
 use commands::workspace_sync::WorkspaceSyncState;
 
 use tauri::{
@@ -181,6 +182,7 @@ pub fn run() {
         .manage(InstalledPackagesState::default())
         .manage(WorkspaceSyncState::default())
         .manage(OfficialRegistryState::default())
+        .manage(VitePreviewState::default())
         .invoke_handler(tauri::generate_handler![
             // API Client commands
             commands::api_client::api_request,
@@ -391,6 +393,12 @@ commands::workspace::write_skill_file,
             commands::viben_models::viben_get_default_model,
             commands::viben_models::viben_enable_model,
             commands::viben_models::viben_disable_model,
+            // Vite Preview commands
+            commands::vite_preview::check_node_available,
+            commands::vite_preview::start_vite_preview,
+            commands::vite_preview::stop_vite_preview,
+            commands::vite_preview::get_vite_preview_status,
+            commands::vite_preview::stop_all_vite_previews,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
