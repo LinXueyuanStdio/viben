@@ -36,9 +36,11 @@ export default defineConfig(async () => ({
     },
     proxy: {
       // Proxy vibe-kanban API to avoid CORS issues in development
+      // Also enables WebSocket proxy for real-time task streaming
       "/vibe-kanban-api": {
         target: "http://127.0.0.1:60964",
         changeOrigin: true,
+        ws: true, // Enable WebSocket proxy
         rewrite: (path) => path.replace(/^\/vibe-kanban-api/, "/api"),
       },
     },
