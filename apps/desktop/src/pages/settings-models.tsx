@@ -1,22 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+/**
+ * Settings Models Page
+ *
+ * Manages AI Models using viben-core backend.
+ */
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
-  Box,
   Plus,
   Trash2,
   Star,
-  GripVertical,
-  ChevronDown,
-  ChevronUp,
   Loader2,
   RefreshCw,
   AlertCircle,
   Check,
   Cpu,
-  Sparkles,
+  ToggleLeft,
+  ToggleRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -24,14 +28,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import {
-  KNOWN_MODELS,
-  DEFAULT_ALIASES,
-  type KnownModel,
-} from "@viben/core/browser";
+import { useVibenModels, type CreateModelOptions } from "@/hooks/use-viben-models";
+import { type ProviderType, PROVIDER_TYPE_LABELS } from "@/hooks/use-viben-providers";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -68,143 +77,130 @@ const itemVariants = {
   },
 };
 
-// Section header component
-interface SectionHeaderProps {
-  title: string;
-  description?: string;
-}
-
-function SectionHeader({ title, description }: SectionHeaderProps) {
-  return (
-    <div className="mb-4">
-      <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      {description && (
-        <p className="text-sm text-muted-foreground mt-1">{description}</p>
-      )}
-    </div>
-  );
-}
+// Provider types for selection
+const PROVIDER_TYPES: ProviderType[] = [
+  "openai",
+  "anthropic",
+  "azure",
+  "ollama",
+  "openrouter",
+  "custom",
+];
 
 export function SettingsModelsPage() {
   const { t } = useTranslation();
+  const {
+    models,
+    defaultModelId,
+    loading,
+    error,
+    refresh,
+    createModel,
+    removeModel,
+    setDefaultModel,
+    enableModel,
+    disableModel,
+  } = useVibenModels();
 
-  // State - using local state for now (will be replaced with Tauri backend calls)
-  const [defaultModel, setDefaultModel] = useState<string>("");
-  const [aliases, setAliases] = useState<Record<string, string>>({});
-  const [fallbacks, setFallbacks] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Dialog states
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
-  // New alias form state
-  const [newAliasName, setNewAliasName] = useState("");
-  const [newAliasModel, setNewAliasModel] = useState("");
-  const [newFallbackModel, setNewFallbackModel] = useState("");
+  // Form states
+  const [formId, setFormId] = useState("");
+  const [formName, setFormName] = useState("");
+  const [formProvider, setFormProvider] = useState<ProviderType>("openai");
+  const [formDescription, setFormDescription] = useState("");
+  const [formContextWindow, setFormContextWindow] = useState(128000);
+  const [formMaxOutputTokens, setFormMaxOutputTokens] = useState(4096);
+  const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Filter state
+  const [providerFilter, setProviderFilter] = useState<string>("all");
 
   // Group models by provider
   const modelsByProvider = useMemo(() => {
-    const grouped: Record<string, KnownModel[]> = {};
-    for (const model of KNOWN_MODELS) {
-      if (!grouped[model.provider]) {
-        grouped[model.provider] = [];
+    const grouped: Record<string, typeof models> = {};
+    const filteredModels = providerFilter === "all"
+      ? models
+      : models.filter((m) => m.provider === providerFilter);
+
+    for (const model of filteredModels) {
+      const provider = model.provider || "unknown";
+      if (!grouped[provider]) {
+        grouped[provider] = [];
       }
-      grouped[model.provider].push(model);
+      grouped[provider].push(model);
     }
     return grouped;
-  }, []);
+  }, [models, providerFilter]);
 
-  // Load data on mount
-  // TODO: Replace with Tauri backend calls when available
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Get unique providers from models
+  const availableProviders = useMemo(() => {
+    const providers = new Set(models.map((m) => m.provider));
+    return Array.from(providers);
+  }, [models]);
 
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
+  // Reset form
+  const resetForm = () => {
+    setFormId("");
+    setFormName("");
+    setFormProvider("openai");
+    setFormDescription("");
+    setFormContextWindow(128000);
+    setFormMaxOutputTokens(4096);
+  };
+
+  // Open add dialog
+  const openAddDialog = () => {
+    resetForm();
+    setShowAddDialog(true);
+  };
+
+  // Handle form submit
+  const handleSubmit = async () => {
+    if (!formId.trim() || !formName.trim()) return;
+
+    setFormSubmitting(true);
     try {
-      // For now, use default values since backend is not available
-      // In production, this would call Tauri invoke commands
-      setAliases({ ...DEFAULT_ALIASES });
-      setFallbacks([]);
-      setDefaultModel(KNOWN_MODELS[0]?.id || "");
+      const options: CreateModelOptions = {
+        id: formId.trim(),
+        name: formName.trim(),
+        provider: formProvider,
+        description: formDescription.trim() || undefined,
+        context_window: formContextWindow || undefined,
+        max_output_tokens: formMaxOutputTokens || undefined,
+        set_as_default: models.length === 0,
+      };
+      await createModel(options);
+      setShowAddDialog(false);
+      resetForm();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load models");
+      console.error("Failed to create model:", err);
     } finally {
-      setLoading(false);
+      setFormSubmitting(false);
     }
   };
 
-  const handleSetDefaultModel = async (modelId: string) => {
+  // Handle delete
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(t("settingsModels.deleteConfirm", { name }))) return;
     try {
-      // TODO: Call Tauri backend
-      setDefaultModel(modelId);
+      await removeModel(id);
     } catch (err) {
-      console.error("Failed to set default model:", err);
+      console.error("Failed to delete model:", err);
     }
   };
 
-  const handleAddAlias = async () => {
-    if (!newAliasName.trim() || !newAliasModel) return;
+  // Handle toggle enabled
+  const handleToggleEnabled = async (id: string, enabled: boolean) => {
     try {
-      // TODO: Call Tauri backend
-      setAliases((prev) => ({
-        ...prev,
-        [newAliasName.trim()]: newAliasModel,
-      }));
-      setNewAliasName("");
-      setNewAliasModel("");
+      if (enabled) {
+        await enableModel(id);
+      } else {
+        await disableModel(id);
+      }
     } catch (err) {
-      console.error("Failed to add alias:", err);
-    }
-  };
-
-  const handleRemoveAlias = async (alias: string) => {
-    try {
-      // TODO: Call Tauri backend
-      setAliases((prev) => {
-        const next = { ...prev };
-        delete next[alias];
-        return next;
-      });
-    } catch (err) {
-      console.error("Failed to remove alias:", err);
-    }
-  };
-
-  const handleAddFallback = async () => {
-    if (!newFallbackModel || fallbacks.includes(newFallbackModel)) return;
-    try {
-      // TODO: Call Tauri backend
-      setFallbacks((prev) => [...prev, newFallbackModel]);
-      setNewFallbackModel("");
-    } catch (err) {
-      console.error("Failed to add fallback:", err);
-    }
-  };
-
-  const handleRemoveFallback = async (model: string) => {
-    try {
-      // TODO: Call Tauri backend
-      setFallbacks((prev) => prev.filter((m) => m !== model));
-    } catch (err) {
-      console.error("Failed to remove fallback:", err);
-    }
-  };
-
-  const handleMoveFallback = async (index: number, direction: "up" | "down") => {
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= fallbacks.length) return;
-
-    try {
-      // TODO: Call Tauri backend
-      const newFallbacks = [...fallbacks];
-      [newFallbacks[index], newFallbacks[newIndex]] = [
-        newFallbacks[newIndex],
-        newFallbacks[index],
-      ];
-      setFallbacks(newFallbacks);
-    } catch (err) {
-      console.error("Failed to reorder fallbacks:", err);
+      console.error("Failed to toggle model:", err);
     }
   };
 
@@ -216,246 +212,284 @@ export function SettingsModelsPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertCircle className="h-8 w-8 text-destructive" />
-        <p className="text-sm text-muted-foreground">{error}</p>
-        <Button variant="outline" size="sm" onClick={loadData}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          {t("common.retry")}
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <ScrollArea className="h-full">
+    <motion.div
+      className="space-y-6"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants}>
+        <h2 className="text-xl font-semibold font-serif mb-1">
+          {t("settingsModels.title")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("settingsModels.description")}
+        </p>
+      </motion.div>
+
+      {/* Error Banner */}
+      {error && (
+        <motion.div
+          variants={itemVariants}
+          className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2"
+        >
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </motion.div>
+      )}
+
+      {/* Filter & Actions Bar */}
       <motion.div
-        className="p-6 space-y-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
+        variants={itemVariants}
+        className="flex items-center justify-between"
       >
-        {/* Available Models Section */}
-        <motion.section variants={itemVariants}>
-          <SectionHeader
-            title={t("settingsModels.availableModels")}
-            description={t("settingsModels.availableModelsDesc")}
-          />
-          <div className="space-y-4">
-            {Object.entries(modelsByProvider).map(([provider, models]) => (
-              <div key={provider} className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground capitalize">
-                  {provider}
-                </h4>
-                <div className="grid gap-2">
-                  {models.map((model) => (
+        <div className="flex items-center gap-2">
+          <Select value={providerFilter} onValueChange={setProviderFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={t("settingsModels.filterByProvider")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("settingsModels.allProviders")}</SelectItem>
+              {availableProviders.map((provider) => (
+                <SelectItem key={provider} value={provider}>
+                  {PROVIDER_TYPE_LABELS[provider as ProviderType] || provider}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={refresh} title={t("common.refresh")}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={openAddDialog}>
+            <Plus className="h-4 w-4 mr-2" />
+            {t("settingsModels.addCustomModel")}
+          </Button>
+        </div>
+      </motion.div>
+
+      {/* Models List */}
+      <ScrollArea className="h-[calc(100vh-280px)]">
+        <motion.div variants={itemVariants} className="space-y-6 pr-4">
+          {Object.entries(modelsByProvider).length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Cpu className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p>{t("settingsModels.noModels")}</p>
+            </div>
+          ) : (
+            Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+              <div
+                key={provider}
+                className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+              >
+                <h3 className="text-sm font-semibold text-muted-foreground capitalize flex items-center gap-2">
+                  {PROVIDER_TYPE_LABELS[provider as ProviderType] || provider}
+                  <Badge variant="secondary" className="font-normal">
+                    {providerModels.length}
+                  </Badge>
+                </h3>
+                <div className="space-y-2">
+                  {providerModels.map((model) => (
                     <div
                       key={model.id}
                       className={cn(
-                        "flex items-center justify-between p-3 rounded-lg border",
-                        defaultModel === model.id
+                        "flex items-center justify-between p-3 rounded-lg border transition-all duration-200",
+                        model.id === defaultModelId
                           ? "border-primary bg-primary/5"
-                          : "border-border hover:bg-accent/50"
+                          : model.enabled
+                          ? "border-transparent bg-muted/50 hover:bg-muted"
+                          : "border-transparent bg-muted/30 opacity-60"
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <Cpu className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <div className="font-medium text-sm">{model.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{model.name}</span>
+                            {model.id === defaultModelId && (
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                            )}
+                            {!model.enabled && (
+                              <Badge variant="secondary" className="text-xs">
+                                {t("common.disabled")}
+                              </Badge>
+                            )}
+                            {model.created_at && (
+                              <Badge variant="outline" className="text-xs">
+                                {t("settingsModels.custom")}
+                              </Badge>
+                            )}
+                          </div>
                           <div className="text-xs text-muted-foreground">
-                            {model.contextLength?.toLocaleString()} tokens
-                            {model.inputPrice && model.outputPrice && (
-                              <span className="ml-2">
-                                ${model.inputPrice}/${model.outputPrice} per 1M
-                              </span>
+                            {model.context_window?.toLocaleString()} {t("settingsModels.tokens")}
+                            {model.description && (
+                              <span className="ml-2">- {model.description}</span>
                             )}
                           </div>
                         </div>
                       </div>
-                      <Button
-                        variant={defaultModel === model.id ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleSetDefaultModel(model.id)}
-                      >
-                        {defaultModel === model.id ? (
-                          <>
-                            <Check className="h-3 w-3 mr-1" />
-                            {t("common.default")}
-                          </>
-                        ) : (
-                          <>
+                      <div className="flex items-center gap-1">
+                        {/* Toggle enabled */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleToggleEnabled(model.id, !model.enabled)}
+                          title={model.enabled ? t("common.disable") : t("common.enable")}
+                        >
+                          {model.enabled ? (
+                            <ToggleRight className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+
+                        {/* Set default */}
+                        {model.enabled && model.id !== defaultModelId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDefaultModel(model.id)}
+                          >
                             <Star className="h-3 w-3 mr-1" />
                             {t("settingsModels.setDefault")}
-                          </>
+                          </Button>
                         )}
-                      </Button>
+                        {model.id === defaultModelId && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            <Check className="h-3 w-3 mr-1" />
+                            {t("common.default")}
+                          </Badge>
+                        )}
+
+                        {/* Delete custom model */}
+                        {model.created_at && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(model.id, model.name)}
+                            title={t("common.delete")}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </motion.section>
+            ))
+          )}
+        </motion.div>
+      </ScrollArea>
 
-        {/* Aliases Section */}
-        <motion.section variants={itemVariants}>
-          <SectionHeader
-            title={t("settingsModels.aliases")}
-            description={t("settingsModels.aliasesDesc")}
-          />
-          <div className="space-y-3">
-            {/* Add new alias */}
-            <div className="flex gap-2">
+      {/* Add Custom Model Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("settingsModels.addCustomModel")}</DialogTitle>
+            <DialogDescription>
+              {t("settingsModels.addCustomModelDescription")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Model ID */}
+            <div className="space-y-2">
+              <Label htmlFor="model-id">{t("settingsModels.modelId")} *</Label>
               <Input
-                placeholder={t("settingsModels.aliasName")}
-                value={newAliasName}
-                onChange={(e) => setNewAliasName(e.target.value)}
-                className="flex-1"
+                id="model-id"
+                value={formId}
+                onChange={(e) => setFormId(e.target.value)}
+                placeholder={t("settingsModels.modelIdPlaceholder")}
               />
-              <Select value={newAliasModel} onValueChange={setNewAliasModel}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder={t("settingsModels.selectModel")} />
+              <p className="text-xs text-muted-foreground">
+                {t("settingsModels.modelIdHint")}
+              </p>
+            </div>
+
+            {/* Model Name */}
+            <div className="space-y-2">
+              <Label htmlFor="model-name">{t("settingsModels.modelName")} *</Label>
+              <Input
+                id="model-name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder={t("settingsModels.modelNamePlaceholder")}
+              />
+            </div>
+
+            {/* Provider */}
+            <div className="space-y-2">
+              <Label htmlFor="model-provider">{t("settingsModels.provider")}</Label>
+              <Select value={formProvider} onValueChange={(v) => setFormProvider(v as ProviderType)}>
+                <SelectTrigger>
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {KNOWN_MODELS.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      {model.name}
+                  {PROVIDER_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {PROVIDER_TYPE_LABELS[type]}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                size="sm"
-                onClick={handleAddAlias}
-                disabled={!newAliasName.trim() || !newAliasModel}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
             </div>
 
-            {/* Existing aliases */}
-            {Object.entries(aliases).length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t("settingsModels.noAliases")}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {Object.entries(aliases).map(([alias, model]) => (
-                  <div
-                    key={alias}
-                    className="flex items-center justify-between p-2 rounded-md bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-amber-500" />
-                      <code className="text-sm font-mono">{alias}</code>
-                      <span className="text-muted-foreground">→</span>
-                      <span className="text-sm">{model}</span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveAlias(alias)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </motion.section>
-
-        {/* Fallback Chain Section */}
-        <motion.section variants={itemVariants}>
-          <SectionHeader
-            title={t("settingsModels.fallbackChain")}
-            description={t("settingsModels.fallbackChainDesc")}
-          />
-          <div className="space-y-3">
-            {/* Add to fallback */}
-            <div className="flex gap-2">
-              <Select value={newFallbackModel} onValueChange={setNewFallbackModel}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder={t("settingsModels.selectModel")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {KNOWN_MODELS.filter((m) => !fallbacks.includes(m.id)).map(
-                    (model) => (
-                      <SelectItem key={model.id} value={model.id}>
-                        {model.name}
-                      </SelectItem>
-                    )
-                  )}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={handleAddFallback}
-                disabled={!newFallbackModel}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                {t("settingsModels.addFallback")}
-              </Button>
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="model-description">{t("settingsModels.descriptionLabel")}</Label>
+              <Input
+                id="model-description"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                placeholder={t("settingsModels.descriptionPlaceholder")}
+              />
             </div>
 
-            {/* Fallback list */}
-            {fallbacks.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                {t("settingsModels.noFallbacks")}
-              </p>
-            ) : (
+            {/* Context Window & Max Output Row */}
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {fallbacks.map((modelId, index) => {
-                  const model = KNOWN_MODELS.find((m) => m.id === modelId);
-                  return (
-                    <div
-                      key={modelId}
-                      className="flex items-center justify-between p-2 rounded-md bg-muted/50"
-                    >
-                      <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium w-6 text-center">
-                          {index + 1}
-                        </span>
-                        <span className="text-sm">
-                          {model?.name || modelId}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMoveFallback(index, "up")}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMoveFallback(index, "down")}
-                          disabled={index === fallbacks.length - 1}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveFallback(modelId)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                <Label htmlFor="model-context-window">{t("settingsModels.contextWindow")}</Label>
+                <Input
+                  id="model-context-window"
+                  type="number"
+                  value={formContextWindow}
+                  onChange={(e) => setFormContextWindow(parseInt(e.target.value) || 0)}
+                  min={0}
+                />
               </div>
-            )}
+              <div className="space-y-2">
+                <Label htmlFor="model-max-output">{t("settingsModels.maxOutputTokens")}</Label>
+                <Input
+                  id="model-max-output"
+                  type="number"
+                  value={formMaxOutputTokens}
+                  onChange={(e) => setFormMaxOutputTokens(parseInt(e.target.value) || 0)}
+                  min={0}
+                />
+              </div>
+            </div>
           </div>
-        </motion.section>
-      </motion.div>
-    </ScrollArea>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={!formId.trim() || !formName.trim() || formSubmitting}
+            >
+              {formSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              {t("common.add")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
   );
 }

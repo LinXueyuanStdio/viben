@@ -22,12 +22,7 @@ import {
   X,
   Cpu,
   Server,
-  Plus,
-  Star,
-  Trash2,
-  Pencil,
-  Eye,
-  EyeOff,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -41,22 +36,6 @@ import {
 import { ThemeSwitcher } from "@/components/settings/theme-switcher";
 import { CacheManager } from "@/components/offline/cache-manager";
 import { usePython } from "@/hooks/use-python";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  type Provider,
-  type ProviderType,
-  type ProviderStatus,
-} from "@viben/core/browser";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n/languages";
@@ -66,9 +45,11 @@ import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import { SettingsModelsPage } from "./settings-models";
+import { SettingsProvidersPage } from "./settings-providers";
+import { SettingsAgentsPage } from "./settings-agents";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "providers" | "models" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "providers" | "models" | "agents" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -82,6 +63,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
   { id: "providers", labelKey: "settings.sections.providers", icon: Server },
   { id: "models", labelKey: "settings.sections.models", icon: Cpu },
+  { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -211,9 +193,11 @@ export function SettingsPage() {
       case "shortcuts":
         return <ShortcutsSection key="shortcuts" />;
       case "providers":
-        return <ProvidersSection key="providers" />;
+        return <SettingsProvidersPage key="providers" />;
       case "models":
         return <SettingsModelsPage key="models" />;
+      case "agents":
+        return <SettingsAgentsPage key="agents" />;
       case "environment":
         return <EnvironmentSection key="environment" />;
       case "storage":
@@ -731,458 +715,6 @@ function ShortcutsSection() {
   );
 }
 
-/* -----------------------------------------------------------------------------
- * Providers Section
- * -------------------------------------------------------------------------- */
-
-// Provider type options for select dropdown
-const PROVIDER_TYPES: { value: ProviderType; label: string }[] = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic" },
-  { value: "azure", label: "Azure OpenAI" },
-  { value: "ollama", label: "Ollama" },
-  { value: "openrouter", label: "OpenRouter" },
-  { value: "custom", label: "Custom" },
-];
-
-// Default base URLs for provider types
-const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
-  openai: "https://api.openai.com/v1",
-  anthropic: "https://api.anthropic.com/v1",
-  azure: "",
-  ollama: "http://localhost:11434",
-  openrouter: "https://openrouter.ai/api/v1",
-  custom: "",
-};
-
-function ProvidersSection() {
-  const { t } = useTranslation();
-  // Using local state for now - will be replaced with Tauri backend calls
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
-  const [loading, setLoading] = useState(true);
-  const [checkingStatus, setCheckingStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Dialog states
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
-
-  // Form states
-  const [formName, setFormName] = useState("");
-  const [formType, setFormType] = useState<ProviderType>("openai");
-  const [formApiKey, setFormApiKey] = useState("");
-  const [formBaseUrl, setFormBaseUrl] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [formSubmitting, setFormSubmitting] = useState(false);
-
-  // Load providers on mount
-  // TODO: Replace with Tauri backend calls when available
-  useEffect(() => {
-    loadProviders();
-  }, []);
-
-  const loadProviders = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // For now, use empty list since backend is not available
-      // In production, this would call Tauri invoke commands
-      setProviders([]);
-      setStatuses({});
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load providers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCheckStatus = async (id: string) => {
-    setCheckingStatus(id);
-    try {
-      // TODO: Call Tauri backend
-      const now = new Date().toISOString();
-      const provider = providers.find((p) => p.id === id);
-      const needsApiKey = ["openai", "anthropic", "azure", "openrouter"].includes(provider?.type || "");
-      const status: ProviderStatus = {
-        id,
-        connected: !needsApiKey || !!provider?.apiKey,
-        checkedAt: now,
-      };
-      setStatuses((prev) => ({ ...prev, [id]: status }));
-    } finally {
-      setCheckingStatus(null);
-    }
-  };
-
-  const handleSetDefault = async (id: string) => {
-    try {
-      // TODO: Call Tauri backend
-      setProviders((prev) =>
-        prev.map((p) => ({ ...p, isDefault: p.id === id }))
-      );
-    } catch (err) {
-      console.error("Failed to set default provider:", err);
-    }
-  };
-
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(t("settingsProviders.deleteConfirm", { name }))) return;
-    try {
-      // TODO: Call Tauri backend
-      setProviders((prev) => prev.filter((p) => p.id !== id));
-      setStatuses((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-    } catch (err) {
-      console.error("Failed to delete provider:", err);
-    }
-  };
-
-  const handleToggleEnabled = async (id: string, enabled: boolean) => {
-    try {
-      // TODO: Call Tauri backend
-      setProviders((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, enabled } : p))
-      );
-    } catch (err) {
-      console.error("Failed to toggle provider:", err);
-    }
-  };
-
-  const openAddDialog = () => {
-    setFormName("");
-    setFormType("openai");
-    setFormApiKey("");
-    setFormBaseUrl(DEFAULT_BASE_URLS["openai"]);
-    setShowApiKey(false);
-    setEditingProvider(null);
-    setShowAddDialog(true);
-  };
-
-  const openEditDialog = (provider: Provider) => {
-    setFormName(provider.name);
-    setFormType(provider.type);
-    setFormApiKey(provider.apiKey || "");
-    setFormBaseUrl(provider.baseUrl || DEFAULT_BASE_URLS[provider.type]);
-    setShowApiKey(false);
-    setEditingProvider(provider);
-    setShowAddDialog(true);
-  };
-
-  const handleTypeChange = (type: ProviderType) => {
-    setFormType(type);
-    // Auto-fill base URL if not editing
-    if (!editingProvider) {
-      setFormBaseUrl(DEFAULT_BASE_URLS[type]);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!formName.trim()) return;
-
-    setFormSubmitting(true);
-    try {
-      const now = new Date().toISOString();
-      if (editingProvider) {
-        // Update existing provider
-        // TODO: Call Tauri backend
-        setProviders((prev) =>
-          prev.map((p) =>
-            p.id === editingProvider.id
-              ? {
-                  ...p,
-                  name: formName.trim(),
-                  type: formType,
-                  apiKey: formApiKey || undefined,
-                  baseUrl: formBaseUrl || undefined,
-                  updatedAt: now,
-                }
-              : p
-          )
-        );
-      } else {
-        // Create new provider
-        // TODO: Call Tauri backend
-        const id = formName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
-        const isFirst = providers.length === 0;
-        const newProvider: Provider = {
-          id,
-          type: formType,
-          name: formName.trim(),
-          apiKey: formApiKey || undefined,
-          baseUrl: formBaseUrl || DEFAULT_BASE_URLS[formType],
-          isDefault: isFirst,
-          enabled: true,
-          createdAt: now,
-          updatedAt: now,
-        };
-        setProviders((prev) => [...prev, newProvider]);
-      }
-      setShowAddDialog(false);
-    } catch (err) {
-      console.error("Failed to save provider:", err);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  const getStatusBadge = (provider: Provider) => {
-    const status = statuses[provider.id];
-    if (!provider.enabled) {
-      return <Badge variant="secondary">{t("common.disabled")}</Badge>;
-    }
-    if (!status) {
-      return <Badge variant="outline">{t("settingsProviders.unknown")}</Badge>;
-    }
-    if (status.connected) {
-      return <Badge variant="success">{t("settingsProviders.connected")}</Badge>;
-    }
-    return (
-      <Badge variant="destructive" title={status.error}>
-        {t("settingsProviders.error")}
-      </Badge>
-    );
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold font-serif mb-1">
-          {t("settingsProviders.title")}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t("settingsProviders.description")}
-        </p>
-      </div>
-
-      {error && (
-        <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Provider List */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">{t("settingsProviders.list")}</h3>
-          <Button variant="outline" size="sm" onClick={openAddDialog}>
-            <Plus className="h-4 w-4 mr-2" />
-            {t("settingsProviders.add")}
-          </Button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : providers.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Server className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>{t("settingsProviders.noProviders")}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={openAddDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("settingsProviders.addFirst")}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {providers.map((provider) => (
-              <div
-                key={provider.id}
-                className={cn(
-                  "p-4 rounded-xl border transition-all duration-200",
-                  provider.isDefault
-                    ? "border-primary bg-primary/5"
-                    : "border-transparent bg-muted/50 hover:bg-muted"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{provider.name}</span>
-                        {provider.isDefault && (
-                          <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {PROVIDER_TYPES.find((p) => p.value === provider.type)?.label || provider.type}
-                        {provider.baseUrl && ` - ${provider.baseUrl}`}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(provider)}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleCheckStatus(provider.id)}
-                      disabled={checkingStatus === provider.id}
-                      title={t("settingsProviders.checkStatus")}
-                    >
-                      {checkingStatus === provider.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                  <Switch
-                    checked={provider.enabled}
-                    onCheckedChange={(checked) => handleToggleEnabled(provider.id, checked)}
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {provider.enabled ? t("settingsProviders.enabled") : t("common.disabled")}
-                  </span>
-                  <div className="flex-1" />
-                  {!provider.isDefault && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSetDefault(provider.id)}
-                    >
-                      <Star className="h-4 w-4 mr-1" />
-                      {t("settingsProviders.setDefault")}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEditDialog(provider)}
-                    title={t("common.edit")}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(provider.id, provider.name)}
-                    title={t("common.delete")}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add/Edit Provider Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingProvider
-                ? t("settingsProviders.editProvider")
-                : t("settingsProviders.addProvider")}
-            </DialogTitle>
-            <DialogDescription>
-              {editingProvider
-                ? t("settingsProviders.editDescription")
-                : t("settingsProviders.addDescription")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Provider Name */}
-            <div className="space-y-2">
-              <Label htmlFor="provider-name">{t("settingsProviders.name")}</Label>
-              <Input
-                id="provider-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder={t("settingsProviders.namePlaceholder")}
-              />
-            </div>
-
-            {/* Provider Type */}
-            <div className="space-y-2">
-              <Label htmlFor="provider-type">{t("settingsProviders.type")}</Label>
-              <Select value={formType} onValueChange={(v) => handleTypeChange(v as ProviderType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROVIDER_TYPES.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* API Key */}
-            <div className="space-y-2">
-              <Label htmlFor="provider-api-key">{t("settingsProviders.apiKey")}</Label>
-              <div className="relative">
-                <Input
-                  id="provider-api-key"
-                  type={showApiKey ? "text" : "password"}
-                  value={formApiKey}
-                  onChange={(e) => setFormApiKey(e.target.value)}
-                  placeholder={t("settingsProviders.apiKeyPlaceholder")}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                >
-                  {showApiKey ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              {formType !== "ollama" && (
-                <p className="text-xs text-muted-foreground">
-                  {t("settingsProviders.apiKeyHint")}
-                </p>
-              )}
-            </div>
-
-            {/* Base URL */}
-            <div className="space-y-2">
-              <Label htmlFor="provider-base-url">{t("settingsProviders.baseUrl")}</Label>
-              <Input
-                id="provider-base-url"
-                value={formBaseUrl}
-                onChange={(e) => setFormBaseUrl(e.target.value)}
-                placeholder={DEFAULT_BASE_URLS[formType] || t("settingsProviders.baseUrlPlaceholder")}
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("settingsProviders.baseUrlHint")}
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleSubmit} disabled={!formName.trim() || formSubmitting}>
-              {formSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              {editingProvider ? t("common.save") : t("common.add")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
 
 /* -----------------------------------------------------------------------------
  * Environment Section
