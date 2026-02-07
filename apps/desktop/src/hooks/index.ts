@@ -135,3 +135,15 @@ export {
   kanbanActivitiesKeys,
 } from "./use-kanban-activities";
 export type { KanbanActivity } from "./use-kanban-activities";
+
+// Gateway Status
+export { useGatewayStatus } from "./use-gateway-status";
+export type { GatewayStatus, UseGatewayStatusReturn } from "./use-gateway-status";
+
+// Gateway Management
+export { useGateway } from "./use-gateway";
+export type {
+  GatewayStatus as GatewayStatusInfo,
+  GatewayConfig,
+  UseGatewayReturn,
+} from "./use-gateway";

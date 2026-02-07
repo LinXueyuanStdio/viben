@@ -255,31 +255,24 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     <div
       className={cn(
         "sticky top-0 z-20 flex shrink-0 items-center gap-2.5 px-3 py-2.5",
-        "backdrop-blur-sm border-b border-border/40",
+        "bg-background/95 backdrop-blur-sm border-b border-border/40",
         props.className
       )}
       style={{
-        backgroundColor: `hsl(var(${props.color}) / 0.08)`,
-        backgroundImage: `linear-gradient(to bottom, hsl(var(${props.color}) / 0.12), hsl(var(${props.color}) / 0.06))`,
+        backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.05), hsl(var(${props.color}) / 0.02))`,
       }}
     >
       <span className="flex-1 flex items-center gap-2.5 min-w-0">
         <div
-          className="h-2.5 w-2.5 rounded-full shrink-0"
+          className="h-2 w-2 rounded-full shrink-0 shadow-sm"
           style={{
             backgroundColor: `hsl(var(${props.color}))`,
-            boxShadow: `0 0 0 3px hsl(var(${props.color}) / 0.25)`,
+            boxShadow: `0 0 0 2px hsl(var(${props.color}) / 0.2)`,
           }}
         />
-        <p className="m-0 text-sm font-medium truncate">{props.name}</p>
+        <p className="m-0 text-sm font-medium truncate text-foreground/90">{props.name}</p>
         {taskCount !== undefined && (
-          <span
-            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-md tabular-nums"
-            style={{
-              backgroundColor: `hsl(var(${props.color}) / 0.15)`,
-              color: `hsl(var(${props.color}))`,
-            }}
-          >
+          <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-md bg-muted/60 text-muted-foreground tabular-nums">
             {taskCount}
           </span>
         )}
@@ -387,8 +380,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          "inline-grid grid-flow-col auto-cols-[280px] gap-0 items-stretch min-h-full",
-          "divide-x divide-border/30",
+          "inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full",
           className
         )}
       >

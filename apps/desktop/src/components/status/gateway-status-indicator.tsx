@@ -1,0 +1,196 @@
+import * as React from "react";
+import { useNavigate } from "react-router-dom";
+import { Activity, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useGatewayStatus } from "@/hooks/use-gateway-status";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useTranslation } from "react-i18next";
+
+type StatusVariant = "success" | "warning" | "error" | "neutral";
+
+interface GatewayStatusIndicatorProps {
+  collapsed?: boolean;
+  className?: string;
+}
+
+/**
+ * Gateway Status Indicator
+ *
+ * Shows the connection status to viben-gateway in the sidebar.
+ * - Green: Connected
+ * - Yellow: Connecting
+ * - Red: Disconnected or error
+ *
+ * Clicking navigates to settings where users can configure the gateway URL.
+ */
+export function GatewayStatusIndicator({
+  collapsed = false,
+  className,
+}: GatewayStatusIndicatorProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { status, isChecking, error, checkConnection } =
+    useGatewayStatus();
+
+  // Determine variant based on status
+  const variant: StatusVariant = React.useMemo(() => {
+    switch (status) {
+      case "connected":
+        return "success";
+      case "connecting":
+        return "neutral";
+      case "disconnected":
+        return "warning";
+      case "error":
+        return "error";
+      default:
+        return "neutral";
+    }
+  }, [status]);
+
+  // Get icon based on status
+  const Icon = React.useMemo(() => {
+    switch (status) {
+      case "connected":
+        return CheckCircle2;
+      case "connecting":
+        return Loader2;
+      case "disconnected":
+        return Activity;
+      case "error":
+        return AlertCircle;
+      default:
+        return Activity;
+    }
+  }, [status]);
+
+  // Handle click - either retry or navigate to settings
+  const handleClick = async () => {
+    if (status === "disconnected" || status === "error") {
+      // Try to reconnect first
+      const connected = await checkConnection();
+      if (!connected) {
+        // If still not connected, navigate to settings
+        navigate("/settings");
+      }
+    } else {
+      navigate("/settings");
+    }
+  };
+
+  // Get display text
+  const displayText = React.useMemo(() => {
+    switch (status) {
+      case "connected":
+        return t("gateway.connected", "网关已连接");
+      case "connecting":
+        return t("gateway.connecting", "正在连接...");
+      case "disconnected":
+        return t("gateway.disconnected", "网关未连接");
+      case "error":
+        return t("gateway.error", "连接错误");
+      default:
+        return "";
+    }
+  }, [status, t]);
+
+  // Get tooltip content
+  const tooltipContent = React.useMemo(() => {
+    switch (status) {
+      case "connected":
+        return t("gateway.connectedTooltip", "网关服务运行正常");
+      case "connecting":
+        return t("gateway.connectingTooltip", "正在检查网关连接状态...");
+      case "disconnected":
+        return t(
+          "gateway.disconnectedTooltip",
+          "网关服务未启动，点击重试或配置"
+        );
+      case "error":
+        return error || t("gateway.errorTooltip", "连接网关时出错");
+      default:
+        return "";
+    }
+  }, [status, error, t]);
+
+  // Collapsed view - just icon with tooltip
+  if (collapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={handleClick}
+              className={cn(
+                "flex items-center justify-center h-10 w-10 rounded-lg transition-colors",
+                "hover:bg-sidebar-accent",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                className
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-4 w-4",
+                  isChecking && "animate-spin",
+                  variant === "success" && "text-green-500",
+                  variant === "warning" && "text-yellow-500",
+                  variant === "error" && "text-red-500",
+                  variant === "neutral" && "text-muted-foreground"
+                )}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {tooltipContent}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Expanded view - full indicator
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={handleClick}
+            className={cn(
+              "w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs",
+              "transition-colors duration-200",
+              "hover:bg-sidebar-accent",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              className
+            )}
+          >
+            <Icon
+              className={cn(
+                "h-3.5 w-3.5 shrink-0",
+                isChecking && "animate-spin",
+                variant === "success" && "text-green-500",
+                variant === "warning" && "text-yellow-500",
+                variant === "error" && "text-red-500",
+                variant === "neutral" && "text-muted-foreground"
+              )}
+            />
+            <span className="text-sidebar-foreground/70 truncate">
+              {displayText}
+            </span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="font-medium">
+          {tooltipContent}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+GatewayStatusIndicator.displayName = "GatewayStatusIndicator";

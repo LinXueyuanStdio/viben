@@ -25,7 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
-import { OfflineIndicator } from "@/components/offline/offline-indicator";
+import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -236,10 +236,10 @@ export function Sidebar() {
               <Separator className="w-10 bg-sidebar-border" />
             </div>
             <div className="grid place-items-center w-full">
-              <McpStatusIndicator collapsed={collapsed} />
+              <GatewayStatusIndicator collapsed={collapsed} />
             </div>
             <div className="grid place-items-center w-full">
-              <OfflineIndicator collapsed={collapsed} />
+              <McpStatusIndicator collapsed={collapsed} />
             </div>
             <div className="grid place-items-center w-full py-2">
               <Separator className="w-10 bg-sidebar-border" />
@@ -281,8 +281,8 @@ export function Sidebar() {
           // Expanded: full layout
           <div className="pb-4 px-2">
             <Separator className="mb-4 bg-sidebar-border" />
+            <GatewayStatusIndicator collapsed={collapsed} />
             <McpStatusIndicator collapsed={collapsed} />
-            <OfflineIndicator collapsed={collapsed} />
             <div className="mt-3 pt-3 border-t border-sidebar-border">
               <NavItemComponent
                 item={{ titleKey: "nav.documents", href: "/documents", icon: FileText }}

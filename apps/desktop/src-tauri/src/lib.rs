@@ -2,6 +2,7 @@ mod commands;
 
 use commands::api_client::ApiClientState;
 use commands::auth::AuthState;
+use commands::gateway::GatewayState;
 use commands::logs::LogsState;
 use commands::mcp::McpProcessState;
 use commands::mcp_proxy::McpProxyState;
@@ -23,6 +24,79 @@ use tauri_plugin_deep_link::DeepLinkExt;
 async fn initialize_viben_core() -> Result<(), Box<dyn std::error::Error>> {
     viben_core::initialize().await?;
     Ok(())
+}
+
+/// Auto-start gateway on app startup
+async fn auto_start_gateway(state: &GatewayState) {
+    // Check config for auto_start
+    let config = state.config.read().await.clone();
+    if !config.auto_start {
+        eprintln!("[Gateway] Auto-start disabled");
+        return;
+    }
+
+    eprintln!("[Gateway] Auto-starting on port {}...", config.port);
+
+    // Try to ping existing gateway first
+    let url = format!("http://{}:{}/health", config.host, config.port);
+    if let Ok(resp) = reqwest::Client::new()
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(2))
+        .send()
+        .await
+    {
+        if resp.status().is_success() {
+            eprintln!("[Gateway] Already running on port {}", config.port);
+            return;
+        }
+    }
+
+    // Find and start gateway binary
+    let workspace_paths = [
+        dirs::home_dir()
+            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
+        dirs::home_dir()
+            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/release/viben-gateway")),
+        Some(std::path::PathBuf::from("/usr/local/bin/viben-gateway")),
+        dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
+    ];
+
+    let binary_path = workspace_paths
+        .into_iter()
+        .flatten()
+        .find(|p| p.exists());
+
+    let Some(binary_path) = binary_path else {
+        eprintln!("[Gateway] Binary not found, skipping auto-start");
+        return;
+    };
+
+    // Start the gateway
+    match tokio::process::Command::new(&binary_path)
+        .arg("--port")
+        .arg(config.port.to_string())
+        .arg("--host")
+        .arg(&config.host)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+    {
+        Ok(child) => {
+            let pid = child.id().unwrap_or(0);
+            eprintln!("[Gateway] Started with PID {}", pid);
+
+            // Store in state
+            *state.process.write().await = Some(commands::gateway::GatewayProcess {
+                child,
+                pid,
+                port: config.port,
+            });
+        }
+        Err(e) => {
+            eprintln!("[Gateway] Failed to start: {}", e);
+        }
+    }
 }
 
 fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -136,6 +210,16 @@ pub fn run() {
                 }
             });
 
+            // Auto-start gateway in background
+            let gateway_state = app.state::<GatewayState>();
+            let gateway_state_clone = GatewayState {
+                process: gateway_state.process.clone(),
+                config: gateway_state.config.clone(),
+            };
+            tauri::async_runtime::spawn(async move {
+                auto_start_gateway(&gateway_state_clone).await;
+            });
+
             // Set up blur handler for popup window
             if let Some(popup) = app.get_webview_window("tray-popup") {
                 let popup_clone = popup.clone();
@@ -183,6 +267,7 @@ pub fn run() {
         .manage(WorkspaceSyncState::default())
         .manage(OfficialRegistryState::default())
         .manage(VitePreviewState::default())
+        .manage(GatewayState::default())
         .invoke_handler(tauri::generate_handler![
             // API Client commands
             commands::api_client::api_request,
@@ -412,6 +497,14 @@ commands::workspace::write_skill_file,
             commands::kanban_comments::get_kanban_activities,
             commands::kanban_comments::add_kanban_activity,
             commands::kanban_comments::clear_kanban_task_data,
+            // Gateway commands
+            commands::gateway::start_gateway,
+            commands::gateway::stop_gateway,
+            commands::gateway::get_gateway_status,
+            commands::gateway::restart_gateway,
+            commands::gateway::get_gateway_config,
+            commands::gateway::set_gateway_config,
+            commands::gateway::check_gateway_binary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

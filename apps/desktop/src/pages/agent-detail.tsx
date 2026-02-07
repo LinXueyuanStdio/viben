@@ -29,12 +29,10 @@ import {
   RefreshCw,
   CheckCircle2,
   XCircle,
-  Send,
-  PlusCircle,
-  List,
   Info,
   Globe,
   FolderOpen,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +66,8 @@ import { cn } from "@/lib/utils";
 import { useVibenAgents } from "@/hooks/use-viben-agents";
 import { useVibenModels } from "@/hooks/use-viben-models";
 import { useAgent } from "@/hooks/use-agent";
+import { MessageList, ChatInput } from "@/components/chat";
+import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import {
   type BaseCodingAgent,
   AGENT_TYPES,
@@ -176,8 +176,14 @@ export function AgentDetailPage() {
   const [availability, setAvailability] = useState<AvailabilityInfo | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
-  // Debug chat state
-  const [debugMessage, setDebugMessage] = useState("");
+  // Dialog states
+  const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
+  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
+  const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
+
+  // MCP and Skills selection
+  const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Load form from agent
   useEffect(() => {
@@ -192,6 +198,25 @@ export function AgentDetailPage() {
       setIsDirty(false);
     }
   }, [agent]);
+
+  // Auto-check availability when executor type changes
+  useEffect(() => {
+    checkAvailability();
+  }, [formExecutorType]);
+
+  // Keyboard shortcut: Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (isDirty && !saving) {
+          handleSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDirty, saving]);
 
   // Mark as dirty when form changes
   useEffect(() => {
@@ -255,11 +280,18 @@ export function AgentDetailPage() {
     return grouped;
   }, [models]);
 
-  // Debug chat
+  // Debug chat (using shared chat components)
   const {
     messages,
+    phase,
     isStreaming,
+    pendingPlan,
+    pendingQuestions,
     sendMessage,
+    approvePlan,
+    rejectPlan,
+    answerQuestions,
+    cancel,
     clearMessages,
   } = useAgent("debug-workspace", {
     agentType: formExecutorType,
@@ -274,12 +306,15 @@ export function AgentDetailPage() {
     } : undefined,
   });
 
-  const handleSendDebugMessage = async () => {
-    if (!debugMessage.trim() || isStreaming) return;
-    const msg = debugMessage;
-    setDebugMessage("");
-    await sendMessage(msg);
-  };
+  // Navigate back to appropriate location based on scope
+  // Must be before early returns to maintain hooks order
+  const handleNavigateBack = useCallback(() => {
+    if (isWorkspaceScoped) {
+      navigate(`/workspace/${workspaceId}/agents`);
+    } else {
+      navigate("/settings/agents");
+    }
+  }, [navigate, isWorkspaceScoped, workspaceId]);
 
   if (agentsLoading) {
     return (
@@ -288,15 +323,6 @@ export function AgentDetailPage() {
       </div>
     );
   }
-
-  // Navigate back to appropriate location based on scope
-  const handleNavigateBack = useCallback(() => {
-    if (isWorkspaceScoped) {
-      navigate(`/workspace/${workspaceId}/agents`);
-    } else {
-      navigate("/settings/agents");
-    }
-  }, [navigate, isWorkspaceScoped, workspaceId]);
 
   if (!agent) {
     return (
@@ -418,9 +444,14 @@ export function AgentDetailPage() {
             <div className="p-4 space-y-4">
               {/* System Prompt */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("settingsAgents.systemPrompt")}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("settingsAgents.systemPrompt")}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formSystemPrompt.length.toLocaleString()}
+                  </span>
+                </div>
                 <Textarea
                   value={formSystemPrompt}
                   onChange={(e) => setFormSystemPrompt(e.target.value)}
@@ -432,9 +463,14 @@ export function AgentDetailPage() {
 
               {/* Append Prompt */}
               <div className="space-y-2">
-                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {t("settingsAgents.appendPrompt")}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t("settingsAgents.appendPrompt")}
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {formAppendPrompt.length.toLocaleString()}
+                  </span>
+                </div>
                 <Textarea
                   value={formAppendPrompt}
                   onChange={(e) => setFormAppendPrompt(e.target.value)}
@@ -565,9 +601,31 @@ export function AgentDetailPage() {
                     </Button>
 
                     {availability && (
-                      <p className="text-xs text-muted-foreground">
-                        {getAvailabilityStatus(availability).label}
-                      </p>
+                      <div
+                        className={cn(
+                          "p-2 rounded-md text-xs",
+                          availability.type === "LOGIN_DETECTED" && "bg-green-500/10 text-green-700 dark:text-green-400",
+                          availability.type === "INSTALLATION_FOUND" && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+                          availability.type === "NOT_FOUND" && "bg-red-500/10 text-red-700 dark:text-red-400"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          {availability.type === "LOGIN_DETECTED" && <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {availability.type === "INSTALLATION_FOUND" && <AlertCircle className="h-3.5 w-3.5" />}
+                          {availability.type === "NOT_FOUND" && <XCircle className="h-3.5 w-3.5" />}
+                          <span className="font-medium">{getAvailabilityStatus(availability).label}</span>
+                        </div>
+                        {availability.type === "NOT_FOUND" && (
+                          <p className="mt-1 opacity-80">
+                            {t("settingsAgents.executorNotFoundHint")}
+                          </p>
+                        )}
+                        {availability.type === "INSTALLATION_FOUND" && (
+                          <p className="mt-1 opacity-80">
+                            {t("settingsAgents.executorNotLoggedInHint")}
+                          </p>
+                        )}
+                      </div>
                     )}
 
                     {formExecutorType === "CLAUDE_CODE" && (
@@ -595,31 +653,105 @@ export function AgentDetailPage() {
                 <CollapsibleSection
                   title="MCP"
                   icon={<Database className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
+                  badge={<Badge variant="secondary" className="text-xs">{selectedMcpServers.length}</Badge>}
                   action={
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMcpDialogOpen(true);
+                      }}
+                    >
                       <Plus className="h-3 w-3" />
                     </Button>
                   }
                 >
-                  <p className="text-xs text-muted-foreground py-2">
-                    {t("settingsAgents.noMcp")}
-                  </p>
+                  <div className="py-2 space-y-2">
+                    {selectedMcpServers.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noMcp")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs h-7"
+                          onClick={() => setMcpDialogOpen(true)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {t("settingsAgents.addMcp")}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedMcpServers.length} {t("searchService.sources", { defaultValue: "server(s)" })} {t("common.configured")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs h-7"
+                          onClick={() => setMcpDialogOpen(true)}
+                        >
+                          {t("common.configure")}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CollapsibleSection>
 
                 <CollapsibleSection
                   title={t("settingsAgents.skills")}
                   icon={<Sparkles className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
+                  badge={<Badge variant="secondary" className="text-xs">{selectedSkills.length}</Badge>}
                   action={
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSkillsDialogOpen(true);
+                      }}
+                    >
                       <Plus className="h-3 w-3" />
                     </Button>
                   }
                 >
-                  <p className="text-xs text-muted-foreground py-2">
-                    {t("settingsAgents.noSkills")}
-                  </p>
+                  <div className="py-2 space-y-2">
+                    {selectedSkills.length === 0 ? (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {t("settingsAgents.noSkills")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs h-7"
+                          onClick={() => setSkillsDialogOpen(true)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          {t("settingsAgents.addSkill")}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs text-muted-foreground">
+                          {selectedSkills.length} {t("settingsAgents.skills").toLowerCase()} {t("common.configured")}
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-xs h-7"
+                          onClick={() => setSkillsDialogOpen(true)}
+                        >
+                          {t("common.configure")}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </CollapsibleSection>
               </div>
 
@@ -633,7 +765,15 @@ export function AgentDetailPage() {
                   title="MEMORY.md"
                   icon={<Brain className="h-4 w-4" />}
                   action={
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMemoryDialogOpen(true);
+                      }}
+                    >
                       {t("common.edit")}
                     </Button>
                   }
@@ -648,7 +788,15 @@ export function AgentDetailPage() {
                   title={t("settingsAgents.todayLog")}
                   icon={<FileText className="h-4 w-4" />}
                   action={
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMemoryDialogOpen(true);
+                      }}
+                    >
                       {t("common.view")}
                     </Button>
                   }
@@ -662,7 +810,15 @@ export function AgentDetailPage() {
                   title={t("settingsAgents.yesterdayLog")}
                   icon={<FileText className="h-4 w-4" />}
                   action={
-                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMemoryDialogOpen(true);
+                      }}
+                    >
                       {t("common.view")}
                     </Button>
                   }
@@ -677,38 +833,40 @@ export function AgentDetailPage() {
         </div>
 
         {/* ================================================================
-            RIGHT COLUMN: Preview & Debug
+            RIGHT COLUMN: Preview & Debug (reusing workspace chat components)
             ================================================================ */}
         <div className="w-80 flex flex-col bg-muted/30">
           {/* Header with actions */}
           <div className="p-4 border-b flex items-center justify-between">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.previewDebug")}</h3>
+            <div className="flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                  {formName.slice(0, 2).toUpperCase() || "AG"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-semibold text-sm">{formName || t("settingsAgents.unnamed")}</h3>
+                <p className="text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</p>
+              </div>
+            </div>
             <div className="flex items-center gap-1">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2"
-                      onClick={clearMessages}
-                    >
-                      {t("settingsAgents.clear")}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("settingsAgents.clearChat")}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                      <List className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t("settingsAgents.messages")}</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {messages.length > 0 && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={clearMessages}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t("settingsAgents.clearChat")}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -722,96 +880,69 @@ export function AgentDetailPage() {
             </div>
           </div>
 
-          {/* Agent Preview */}
-          <div className="flex-1 flex flex-col p-4">
-            {/* Avatar and name */}
-            <div className="flex flex-col items-center mb-4">
-              <Avatar className="h-16 w-16 mb-2">
-                <AvatarFallback className="bg-primary/20 text-primary text-xl">
-                  {formName.slice(0, 2).toUpperCase() || "AG"}
-                </AvatarFallback>
-              </Avatar>
-              <h4 className="font-medium">{formName || t("settingsAgents.unnamed")}</h4>
-              {formDescription && (
-                <p className="text-xs text-muted-foreground text-center mt-1">
-                  {formDescription}
-                </p>
-              )}
-            </div>
+          {/* Chat Messages - using shared MessageList component */}
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            pendingPlan={pendingPlan}
+            pendingQuestions={pendingQuestions}
+            onApprovePlan={approvePlan}
+            onRejectPlan={rejectPlan}
+            onAnswerQuestions={answerQuestions}
+            className="flex-1"
+          />
 
-            {/* Chat Messages */}
-            <ScrollArea className="flex-1">
-              <div className="space-y-3">
-                {messages.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-8">
-                    {t("settingsAgents.noMessages")}
-                  </p>
-                ) : (
-                  messages.slice(-10).map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={cn(
-                        "p-2.5 rounded-lg text-sm",
-                        msg.type === "user"
-                          ? "bg-primary text-primary-foreground ml-6"
-                          : "bg-card border mr-6"
-                      )}
-                    >
-                      {msg.content}
-                    </div>
-                  ))
-                )}
-                {isStreaming && (
-                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    {t("settingsAgents.thinking")}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-
-          {/* Chat Input */}
-          <div className="p-4 border-t">
-            <div className="relative">
-              <Input
-                value={debugMessage}
-                onChange={(e) => setDebugMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendDebugMessage();
-                  }
-                }}
-                placeholder={t("settingsAgents.sendMessage")}
-                disabled={isStreaming}
-                className="pr-20"
-              />
-              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <PlusCircle className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleSendDebugMessage}
-                  disabled={!debugMessage.trim() || isStreaming}
-                >
-                  {isStreaming ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+          {/* Chat Input - using shared ChatInput component */}
+          <div className="border-t border-border bg-background p-4">
+            <ChatInput
+              onSend={sendMessage}
+              onCancel={cancel}
+              isLoading={isStreaming}
+              disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
+              placeholder={
+                phase === "awaiting_approval"
+                  ? t("chat.waitingForApproval")
+                  : phase === "awaiting_input"
+                    ? t("chat.waitingForInput")
+                    : t("settingsAgents.sendMessage")
+              }
+              variant="compact"
+              autoFocus
+            />
             <p className="text-xs text-muted-foreground mt-2 text-center">
               {t("settingsAgents.aiDisclaimer")}
             </p>
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AgentMcpDialog
+        open={mcpDialogOpen}
+        onOpenChange={setMcpDialogOpen}
+        selectedServerIds={selectedMcpServers}
+        onServersChange={(serverIds) => {
+          setSelectedMcpServers(serverIds);
+          setIsDirty(true);
+        }}
+      />
+
+      <AgentSkillsDialog
+        open={skillsDialogOpen}
+        onOpenChange={setSkillsDialogOpen}
+        selectedSkillIds={selectedSkills}
+        onSkillsChange={(skillIds) => {
+          setSelectedSkills(skillIds);
+          setIsDirty(true);
+        }}
+      />
+
+      <AgentMemoryDialog
+        open={memoryDialogOpen}
+        onOpenChange={setMemoryDialogOpen}
+        agentId={agentId || ""}
+        agentName={formName || t("settingsAgents.unnamed")}
+      />
     </div>
   );
 }

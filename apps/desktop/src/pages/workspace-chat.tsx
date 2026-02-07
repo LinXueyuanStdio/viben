@@ -8,6 +8,7 @@ import {
   PanelRightClose,
   Trash2,
   Loader2,
+  Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,7 +30,7 @@ export function WorkspaceChatPage() {
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
-  // Agent hook
+  // Agent hook - use workspace path as workdir for the agent
   const {
     messages,
     phase,
@@ -39,13 +40,14 @@ export function WorkspaceChatPage() {
     artifacts,
     toolUsages,
     error,
+    gatewayConnected,
     sendMessage,
     approvePlan,
     rejectPlan,
     answerQuestions,
     cancel,
     clearMessages,
-  } = useAgent(workspaceId || "");
+  } = useAgent(workspace?.path || "");
 
   // Navigate back if workspace not found after loading
   React.useEffect(() => {
@@ -83,6 +85,25 @@ export function WorkspaceChatPage() {
         showRemove={false}
         rightContent={
           <>
+            {/* Gateway connection status */}
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-xs">
+              <Activity
+                className={`h-3 w-3 ${
+                  gatewayConnected === true
+                    ? "text-green-500"
+                    : gatewayConnected === false
+                      ? "text-red-500"
+                      : "text-yellow-500"
+                }`}
+              />
+              <span className="hidden sm:inline text-muted-foreground">
+                {gatewayConnected === true
+                  ? t("gateway.connected")
+                  : gatewayConnected === false
+                    ? t("gateway.disconnected")
+                    : t("gateway.connecting")}
+              </span>
+            </div>
             {messages.length > 0 && (
               <Button
                 variant="ghost"
