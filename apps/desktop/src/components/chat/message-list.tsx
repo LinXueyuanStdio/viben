@@ -442,6 +442,12 @@ export function MessageList({
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
+  // Group messages for display - must be called before any conditional returns
+  const groups = React.useMemo(
+    () => groupMessages(messages, isStreaming || false),
+    [messages, isStreaming]
+  );
+
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -467,12 +473,6 @@ export function MessageList({
       </div>
     );
   }
-
-  // Group messages for display
-  const groups = React.useMemo(
-    () => groupMessages(messages, isStreaming || false),
-    [messages, isStreaming]
-  );
 
   return (
     <ScrollArea className={cn("flex-1", className)}>
