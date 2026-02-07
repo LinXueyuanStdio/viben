@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, skillPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql, inArray } from 'drizzle-orm';
+import { AnalyticsPageHeader } from '@/components/analytics/analytics-page-header';
 import { AnalyticsOverview } from '@/components/analytics/analytics-overview';
 import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
 import { TopPackages } from '@/components/analytics/top-packages';
@@ -110,12 +111,7 @@ export default async function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Analytics</h1>
-        <p className="mt-2 text-muted-foreground">
-          Track your packages&apos; performance
-        </p>
-      </div>
+      <AnalyticsPageHeader />
 
       <AnalyticsOverview
         totalPackages={mcps.length + skills.length}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   LineChart,
@@ -19,18 +20,19 @@ interface AnalyticsChartsProps {
 }
 
 export function AnalyticsCharts({ data }: AnalyticsChartsProps) {
+  const { t } = useTranslation();
   // Fill in missing dates with 0
   const filledData = fillMissingDates(data);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Downloads Over Time</CardTitle>
+        <CardTitle>{t('dashboard.analytics.downloadsOverTime')}</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
           <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-            No download data yet
+            {t('dashboard.analytics.noDownloadData')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>

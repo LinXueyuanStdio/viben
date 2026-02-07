@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { QueueItem } from '@/lib/admin/stats';
@@ -10,33 +13,32 @@ interface PendingQueuePreviewProps {
 
 const typeConfig: Record<
   QueueItem['type'],
-  { icon: typeof Package; label: string; color: string; href: string }
+  { icon: typeof Package; color: string; href: string }
 > = {
   mcp: {
     icon: Package,
-    label: 'MCP',
     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
     href: '/admin/packages/mcp',
   },
   skill: {
     icon: Sparkles,
-    label: 'Skill',
     color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     href: '/admin/packages/skills',
   },
   report: {
     icon: Flag,
-    label: 'Report',
     color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     href: '/admin/reports',
   },
 };
 
 export function PendingQueuePreview({ items }: PendingQueuePreviewProps) {
+  const { t } = useTranslation();
+
   if (items.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
-        No pending items
+        {t('dashboard.admin.noPendingItems')}
       </div>
     );
   }
@@ -63,12 +65,12 @@ export function PendingQueuePreview({ items }: PendingQueuePreviewProps) {
                     variant="secondary"
                     className={cn('text-xs', config.color)}
                   >
-                    {config.label}
+                    {t(`dashboard.admin.entityTypes.${item.type}`, { defaultValue: item.type })}
                   </Badge>
                 </div>
                 <p className="text-sm font-medium">{item.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  by @{item.author}
+                  {t('dashboard.admin.byAuthor', { author: item.author })}
                 </p>
               </div>
             </div>
