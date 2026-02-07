@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --prod=false",
   "functions": {
     "app/api/packages/upload/route.ts": {
       "maxDuration": 300
