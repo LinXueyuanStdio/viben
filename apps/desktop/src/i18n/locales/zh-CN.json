@@ -1094,7 +1094,9 @@
       "name": "名称"
     },
     "clearFilters": "清除",
-    "workspace": "工作区"
+    "workspace": "工作区",
+    "agentChat": "智能体对话",
+    "agentChatPlaceholder": "询问关于此任务的问题..."
   },
   "sync": {
     "workspaceSync": "工作区同步",
