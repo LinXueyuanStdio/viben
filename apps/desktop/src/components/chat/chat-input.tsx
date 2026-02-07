@@ -11,7 +11,6 @@ import {
   Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -375,7 +374,7 @@ export function ChatInput({
       <div className={cn("flex items-center justify-between", isCompact ? "mt-2" : "mt-3")}>
         {/* Add Button with Dropdown */}
         <div className="flex items-center gap-1">
-          <DropdownMenu modal={false}>
+          <DropdownMenu>
             <DropdownMenuTrigger
               disabled={isLoading || disabled}
               className={cn(
