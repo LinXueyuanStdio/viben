@@ -1,9 +1,8 @@
-import Link from 'next/link';
 import { getSession } from '@/lib/auth/cookies';
 import { UserMenu } from '@/components/layout/user-menu';
 import { ThemeToggle } from '@/components/layout/theme-toggle';
 import { LanguageSwitcher } from '@/components/layout/language-switcher';
-import { Button } from '@/components/ui/button';
+import { HeaderAuthButtons } from '@/components/layout/header-auth-buttons';
 
 export async function Header() {
   const session = await getSession();
@@ -18,14 +17,7 @@ export async function Header() {
         {session ? (
           <UserMenu session={session} />
         ) : (
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/register">Sign up</Link>
-            </Button>
-          </div>
+          <HeaderAuthButtons />
         )}
       </div>
     </header>

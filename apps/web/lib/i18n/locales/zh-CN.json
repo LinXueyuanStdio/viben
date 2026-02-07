@@ -60,9 +60,20 @@
     "mcpServices": "MCP 服务",
     "dedicatedSearchServices": "专用搜索服务",
     "skillsMarket": "技能市场",
+    "skills": "技能",
     "logs": "日志",
     "settings": "设置",
-    "about": "关于"
+    "about": "关于",
+    "collections": "集合",
+    "organizations": "组织",
+    "creator": "创作者",
+    "publish": "发布",
+    "myPackages": "我的包",
+    "analytics": "分析",
+    "admin": "管理员",
+    "packages": "包",
+    "content": "内容",
+    "reports": "报告"
   },
   "sidebar": {
     "setupComplete": "设置完成",
@@ -205,7 +216,8 @@
     "pressKeys": "按下快捷键...",
     "clearShortcut": "清除快捷键",
     "enterKey": "回车键",
-    "cmdEnter": "Cmd+回车"
+    "cmdEnter": "Cmd+回车",
+    "toggleTheme": "切换主题"
   },
   "about": {
     "title": "Viben",

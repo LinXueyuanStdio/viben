@@ -56,13 +56,24 @@
     "dataSources": "Data Sources",
     "searchService": "Search Service",
     "inspector": "Inspector",
-    "mcpMarketplace": "MCP Store",
+    "mcpMarketplace": "MCP Marketplace",
     "mcpServices": "MCP Services",
     "dedicatedSearchServices": "Dedicated Search Services",
     "skillsMarket": "Skills Market",
+    "skills": "Skills",
     "logs": "Logs",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "collections": "Collections",
+    "organizations": "Organizations",
+    "creator": "Creator",
+    "publish": "Publish",
+    "myPackages": "My Packages",
+    "analytics": "Analytics",
+    "admin": "Admin",
+    "packages": "Packages",
+    "content": "Content",
+    "reports": "Reports"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
@@ -205,7 +216,8 @@
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",
     "enterKey": "Enter",
-    "cmdEnter": "Cmd+Enter"
+    "cmdEnter": "Cmd+Enter",
+    "toggleTheme": "Toggle theme"
   },
   "about": {
     "title": "Viben",
