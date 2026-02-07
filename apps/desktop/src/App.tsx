@@ -99,6 +99,9 @@ function App() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />
 
+          {/* Agent detail page from settings */}
+          <Route path="agents/:agentId" element={<AgentDetailPage />} />
+
           {/* Creator routes (require authentication, handled in sidebar visibility) */}
           <Route path="publish" element={<PublishPage />} />
           <Route path="my-packages" element={<MyPackagesPage />} />

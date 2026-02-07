@@ -37,3 +37,28 @@ When translating to Chinese (zh-CN):
 | English | Chinese | Notes |
 |---------|---------|-------|
 | agent | 智能体 | Not "代理" |
+
+## UI Components
+
+### AI Model Icons
+
+Use `@lobehub/icons` for AI model branding icons. See: https://github.com/lobehub/lobe-icons
+
+```tsx
+import Claude from "@lobehub/icons/es/Claude";
+import Gemini from "@lobehub/icons/es/Gemini";
+import OpenAI from "@lobehub/icons/es/OpenAI";
+
+// Usage
+<Claude.Color size={20} />  // Color variant (if available)
+<OpenAI size={20} />        // Default Mono variant
+```
+
+Available icons with `.Color` variant: Claude, Gemini, Mistral, Meta, DeepSeek, Qwen, Cohere, HuggingFace
+
+Icons without `.Color` (use default): OpenAI, Ollama, Groq, Anthropic
+
+### Chat Input Components
+
+- `ChatInput` - Simple chat input with attachment support (used in task panels, debug panels)
+- `AgentChatInput` - Full-featured agent chat input with model selector, parameters, token usage (used in workspace chat)

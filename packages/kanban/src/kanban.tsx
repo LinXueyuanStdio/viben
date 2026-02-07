@@ -1,10 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useEffect, useRef } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Button, cn } from "@viben/ui";
 import type { DragEndEvent, Modifier } from "@dnd-kit/core";
 import {
   DndContext,
+  DragOverlay,
   PointerSensor,
   rectIntersection,
   useDraggable,
@@ -55,8 +57,8 @@ export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
   return (
     <div
       className={cn(
-        "flex min-h-40 flex-col",
-        isOver ? "outline-primary" : "outline-black",
+        "flex min-h-40 flex-col transition-all duration-200",
+        isOver && "bg-accent/20 ring-1 ring-inset ring-primary/20",
         className
       )}
       ref={setNodeRef}
@@ -102,6 +104,7 @@ export const KanbanCard = ({
   showMoreMenu = false,
   onMoreClick,
 }: KanbanCardProps) => {
+  const localRef = useRef<HTMLDivElement | null>(null);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
@@ -109,7 +112,21 @@ export const KanbanCard = ({
       disabled: dragDisabled,
     });
 
+  // Smooth scroll into view when selected
+  useEffect(() => {
+    if (!isOpen || !localRef.current) return;
+    const el = localRef.current;
+    requestAnimationFrame(() => {
+      el.scrollIntoView({
+        block: "center",
+        inline: "nearest",
+        behavior: "smooth",
+      });
+    });
+  }, [isOpen]);
+
   const combinedRef = (node: HTMLDivElement | null) => {
+    localRef.current = node;
     setNodeRef(node);
     if (typeof forwardedRef === "function") {
       forwardedRef(node);
@@ -122,12 +139,13 @@ export const KanbanCard = ({
   return (
     <div
       className={cn(
-        "group relative p-3 outline-none flex flex-col space-y-2",
-        "bg-card rounded-lg border border-border",
-        "transition-all duration-200 ease-out cursor-grab",
-        isDragging && "cursor-grabbing opacity-90 rotate-1 scale-[1.02] shadow-lg z-50",
-        isOpen && "ring-2 ring-secondary-foreground ring-inset",
-        !isDragging && !isOpen && "hover:bg-card/80",
+        "group relative p-3 outline-none flex flex-col gap-2",
+        "bg-card rounded-lg border border-border/60",
+        "transition-all duration-200 ease-out",
+        !dragDisabled && "cursor-grab active:cursor-grabbing",
+        isDragging && "shadow-2xl scale-[1.02] rotate-1 border-border bg-card z-50",
+        isOpen && "ring-2 ring-primary/60 border-primary/30 bg-accent/40",
+        !isDragging && !isOpen && "hover:border-border hover:shadow-sm hover:bg-accent/20",
         className
       )}
       {...listeners}
@@ -139,8 +157,11 @@ export const KanbanCard = ({
       style={{
         zIndex: isDragging ? 1000 : 1,
         transform: transform
-          ? `translateX(${transform.x}px) translateY(${transform.y}px)`
-          : "none",
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
+        transition: isDragging
+          ? "box-shadow 200ms, transform 0ms"
+          : "all 200ms cubic-bezier(0.2, 0, 0, 1)",
       }}
     >
       {/* More menu button - top right corner, visible on hover */}
@@ -149,9 +170,10 @@ export const KanbanCard = ({
           variant="ghost"
           size="icon"
           className={cn(
-            "absolute top-1.5 right-1.5 h-6 w-6",
-            "opacity-0 group-hover:opacity-100 transition-opacity",
-            "hover:bg-muted"
+            "absolute top-2 right-2 h-6 w-6 rounded-md",
+            "opacity-0 group-hover:opacity-100 focus:opacity-100",
+            "transition-all duration-150",
+            "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
           )}
           onClick={(e) => {
             e.stopPropagation();
@@ -160,12 +182,12 @@ export const KanbanCard = ({
           onPointerDown={(e) => e.stopPropagation()}
           aria-label="More actions"
         >
-          <MoreHorizontal className="h-3.5 w-3.5" />
+          <MoreHorizontal className="h-4 w-4" />
         </Button>
       )}
 
       {/* Card content */}
-      {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+      {children ?? <p className="m-0 text-sm leading-snug">{name}</p>}
     </div>
   );
 };
@@ -189,14 +211,14 @@ export const KanbanCards = ({
   const isEmpty = React.Children.count(children) === 0;
 
   return (
-    <div className={cn("flex flex-1 flex-col", className)}>
+    <div className={cn("flex flex-1 flex-col gap-2 p-2", className)}>
       {isEmpty ? (
-        <div className="flex flex-col items-center justify-center h-32 text-center px-4">
-          <ClipboardList className="h-8 w-8 text-muted-foreground/30 mb-2" />
-          <p className="text-sm text-muted-foreground/70 font-medium">
+        <div className="flex flex-col items-center justify-center h-32 text-center px-4 rounded-lg border border-dashed border-border/40">
+          <ClipboardList className="h-6 w-6 text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground/60">
             {emptyMessage}
           </p>
-          <p className="text-xs text-muted-foreground/50 mt-1">
+          <p className="text-xs text-muted-foreground/40 mt-0.5">
             {emptyHint}
           </p>
         </div>
@@ -232,22 +254,32 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3",
-        "bg-background border-b border-dashed border-border",
+        "sticky top-0 z-20 flex shrink-0 items-center gap-2.5 px-3 py-2.5",
+        "backdrop-blur-sm border-b border-border/40",
         props.className
       )}
       style={{
-        backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
+        backgroundColor: `hsl(var(${props.color}) / 0.08)`,
+        backgroundImage: `linear-gradient(to bottom, hsl(var(${props.color}) / 0.12), hsl(var(${props.color}) / 0.06))`,
       }}
     >
-      <span className="flex-1 flex items-center gap-2">
+      <span className="flex-1 flex items-center gap-2.5 min-w-0">
         <div
-          className="h-2 w-2 rounded-full shrink-0"
-          style={{ backgroundColor: `hsl(var(${props.color}))` }}
+          className="h-2.5 w-2.5 rounded-full shrink-0"
+          style={{
+            backgroundColor: `hsl(var(${props.color}))`,
+            boxShadow: `0 0 0 3px hsl(var(${props.color}) / 0.25)`,
+          }}
         />
-        <p className="m-0 text-sm font-medium">{props.name}</p>
+        <p className="m-0 text-sm font-medium truncate">{props.name}</p>
         {taskCount !== undefined && (
-          <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-xs font-medium rounded bg-muted text-muted-foreground">
+          <span
+            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-md tabular-nums"
+            style={{
+              backgroundColor: `hsl(var(${props.color}) / 0.15)`,
+              color: `hsl(var(${props.color}))`,
+            }}
+          >
             {taskCount}
           </span>
         )}
@@ -258,14 +290,14 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-foreground/50 hover:text-foreground hover:bg-muted"
+              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors"
               onClick={props.onAddTask}
               aria-label={addTaskLabel}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3.5 w-3.5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">{addTaskLabel}</TooltipContent>
+          <TooltipContent side="top" className="text-xs">{addTaskLabel}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </div>
@@ -323,13 +355,18 @@ export type KanbanProviderProps = {
   children: React.ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
   className?: string;
+  /** Render function for drag overlay */
+  renderDragOverlay?: (activeId: string | null) => React.ReactNode;
 };
 
 export const KanbanProvider = ({
   children,
   onDragEnd,
   className,
+  renderDragOverlay,
 }: KanbanProviderProps) => {
+  const [activeId, setActiveId] = React.useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -339,18 +376,34 @@ export const KanbanProvider = ({
   return (
     <DndContext
       collisionDetection={rectIntersection}
-      onDragEnd={onDragEnd}
+      onDragStart={(event) => setActiveId(String(event.active.id))}
+      onDragEnd={(event) => {
+        setActiveId(null);
+        onDragEnd(event);
+      }}
+      onDragCancel={() => setActiveId(null)}
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
         className={cn(
-          "inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full",
+          "inline-grid grid-flow-col auto-cols-[280px] gap-0 items-stretch min-h-full",
+          "divide-x divide-border/30",
           className
         )}
       >
         {children}
       </div>
+      {renderDragOverlay && (
+        <DragOverlay
+          dropAnimation={{
+            duration: 200,
+            easing: "cubic-bezier(0.2, 0, 0, 1)",
+          }}
+        >
+          {activeId ? renderDragOverlay(activeId) : null}
+        </DragOverlay>
+      )}
     </DndContext>
   );
 };

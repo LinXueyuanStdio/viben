@@ -48,57 +48,21 @@ function AuxRouter({ mode, aux }: { mode: LayoutMode; aux: ReactNode }) {
 }
 
 /**
- * ResizeSeparator - Visual handle for panel resizing
+ * SeparatorHandle - Visual grip handle for panel resizing (vibe-kanban style)
+ * The handle is centered vertically/horizontally within the separator
  */
-function ResizeSeparator({
-  isCollapsed,
-  orientation = "horizontal",
-}: {
-  isCollapsed?: boolean;
-  orientation?: "horizontal" | "vertical";
-}) {
-  const isVertical = orientation === "vertical";
-
+function SeparatorHandle({ isCollapsed: _isCollapsed }: { isCollapsed?: boolean }) {
   return (
-    <div
-      className={cn(
-        "relative z-30 bg-border cursor-col-resize group touch-none",
-        "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
-        "focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-        "transition-all hover:bg-primary/20",
-        isVertical
-          ? isCollapsed
-            ? "h-6"
-            : "h-1"
-          : isCollapsed
-            ? "w-6"
-            : "w-1"
-      )}
-      aria-label="Resize panels"
-    >
+    <>
       {/* Center line */}
-      <div
-        className={cn(
-          "pointer-events-none absolute",
-          isVertical
-            ? "inset-x-0 top-1/2 -translate-y-1/2 h-px bg-border"
-            : "inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border"
-        )}
-      />
-      {/* Grip indicator */}
-      <div
-        className={cn(
-          "pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-          "flex items-center gap-1 bg-muted/90 border border-border rounded-full",
-          "opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm",
-          isVertical ? "flex-row px-3 py-1.5" : "flex-col px-1.5 py-3"
-        )}
-      >
+      <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-border" />
+      {/* Grip indicator - vertically centered */}
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 bg-muted/90 border border-border rounded-full px-1.5 py-3 opacity-70 group-hover:opacity-100 group-focus:opacity-100 transition-opacity shadow-sm">
         <span className="w-1 h-1 rounded-full bg-muted-foreground" />
         <span className="w-1 h-1 rounded-full bg-muted-foreground" />
         <span className="w-1 h-1 rounded-full bg-muted-foreground" />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -152,9 +116,16 @@ function RightWorkArea({
 
             <Separator
               id="handle-task-aux"
-              className="w-1"
+              className={cn(
+                "relative z-30 bg-border cursor-col-resize group touch-none",
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+                "focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+                "transition-all",
+                isTaskPanelCollapsed ? "w-6" : "w-1"
+              )}
+              aria-label="Resize panels"
             >
-              <ResizeSeparator isCollapsed={isTaskPanelCollapsed} />
+              <SeparatorHandle isCollapsed={isTaskPanelCollapsed} />
             </Separator>
 
             <Panel
@@ -228,9 +199,16 @@ function DesktopLayout({
 
       <Separator
         id="handle-kanban-right"
-        className="w-1"
+        className={cn(
+          "relative z-30 bg-border cursor-col-resize group touch-none",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+          "focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+          "transition-all",
+          isKanbanCollapsed ? "w-6" : "w-1"
+        )}
+        aria-label="Resize panels"
       >
-        <ResizeSeparator isCollapsed={isKanbanCollapsed} />
+        <SeparatorHandle isCollapsed={isKanbanCollapsed} />
       </Separator>
 
       <Panel

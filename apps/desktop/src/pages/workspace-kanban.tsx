@@ -65,6 +65,8 @@ import {
   TaskDetailPanel,
   TasksLayout,
   useKanbanNavigation,
+  CreateTaskDialog,
+  type CreateTaskData,
 } from "@/components/workspace";
 import { useLocalWorkspaces } from "@/hooks";
 import {
@@ -118,27 +120,33 @@ function TaskCardContent({
   task: EnhancedTask;
   onTitleChange?: (title: string) => void;
 }) {
+  const hasMeta = task.assignee || task.dueDate || task.has_in_progress_attempt || task.last_attempt_failed;
+
   return (
-    <div className="flex flex-col gap-1.5 min-w-0">
-      {/* Row 1: Priority + Title (inline editable) */}
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 min-w-0">
+      {/* Row 1: Title with optional priority indicator */}
+      <div className="flex items-start gap-2">
         {task.priority && task.priority !== "none" && (
-          <PriorityIcon priority={task.priority} size="sm" />
+          <div className="shrink-0 mt-0.5">
+            <PriorityIcon priority={task.priority} size="sm" />
+          </div>
         )}
-        {onTitleChange ? (
-          <EditableCardTitle
-            value={task.title}
-            onChange={onTitleChange}
-            className="text-sm font-medium flex-1"
-          />
-        ) : (
-          <span className="text-sm font-medium truncate flex-1">{task.title}</span>
-        )}
+        <div className="flex-1 min-w-0">
+          {onTitleChange ? (
+            <EditableCardTitle
+              value={task.title}
+              onChange={onTitleChange}
+              className="text-sm leading-snug"
+            />
+          ) : (
+            <span className="text-sm leading-snug line-clamp-2">{task.title}</span>
+          )}
+        </div>
       </div>
 
       {/* Row 2: Description (truncated) */}
       {task.description && (
-        <p className="text-xs text-muted-foreground m-0 line-clamp-2">
+        <p className="text-xs text-muted-foreground/80 m-0 line-clamp-2 leading-relaxed">
           {task.description}
         </p>
       )}
@@ -150,7 +158,7 @@ function TaskCardContent({
             <TagBadge key={tag.id} tag={tag} size="sm" />
           ))}
           {task.tags.length > 3 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-[10px] text-muted-foreground/60 ml-0.5">
               +{task.tags.length - 3}
             </span>
           )}
@@ -158,34 +166,36 @@ function TaskCardContent({
       )}
 
       {/* Row 4: Bottom row - Assignee, Due Date, Execution Status */}
-      <div className="flex items-center gap-2 mt-1">
-        {/* Assignee */}
-        {task.assignee && (
-          <AssigneeAvatar assignee={task.assignee} size="sm" />
-        )}
+      {hasMeta && (
+        <div className="flex items-center gap-1.5 pt-1 border-t border-border/30">
+          {/* Assignee */}
+          {task.assignee && (
+            <AssigneeAvatar assignee={task.assignee} size="sm" />
+          )}
 
-        {/* Due Date */}
-        {task.dueDate && (
-          <DueDateBadge dueDate={task.dueDate} />
-        )}
+          {/* Due Date */}
+          {task.dueDate && (
+            <DueDateBadge dueDate={task.dueDate} />
+          )}
 
-        {/* Spacer */}
-        <div className="flex-1" />
+          {/* Spacer */}
+          <div className="flex-1" />
 
-        {/* Execution Status (preserved from original) */}
-        {task.has_in_progress_attempt && (
-          <Badge variant="secondary" className="text-xs px-1.5 py-0 gap-1">
-            <Play className="h-3 w-3" />
-            Running
-          </Badge>
-        )}
-        {task.last_attempt_failed && !task.has_in_progress_attempt && (
-          <Badge variant="destructive" className="text-xs px-1.5 py-0 gap-1">
-            <XCircle className="h-3 w-3" />
-            Failed
-          </Badge>
-        )}
-      </div>
+          {/* Execution Status (preserved from original) */}
+          {task.has_in_progress_attempt && (
+            <Badge variant="secondary" className="h-5 text-[10px] px-1.5 py-0 gap-1 rounded">
+              <Play className="h-2.5 w-2.5" />
+              Running
+            </Badge>
+          )}
+          {task.last_attempt_failed && !task.has_in_progress_attempt && (
+            <Badge variant="destructive" className="h-5 text-[10px] px-1.5 py-0 gap-1 rounded">
+              <XCircle className="h-2.5 w-2.5" />
+              Failed
+            </Badge>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -257,6 +267,10 @@ export function WorkspaceKanbanPage() {
   const [filter, setFilter] = useState<KanbanFilter>({});
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showStats, setShowStats] = useState(false);
+
+  // Create task dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogColumnId, setCreateDialogColumnId] = useState<string>("todo");
 
   // Command palette state
   const { isOpen: isCommandPaletteOpen, setIsOpen: setIsCommandPaletteOpen } =
@@ -377,21 +391,30 @@ export function WorkspaceKanbanPage() {
     [vibeProject, updateTaskStatus]
   );
 
-  // Add new task (for header button)
+  // Open create task dialog
   const handleAddTask = useCallback(
     (columnId: string) => {
+      setCreateDialogColumnId(columnId);
+      setCreateDialogOpen(true);
+    },
+    []
+  );
+
+  // Handle create task submission
+  const handleCreateTaskSubmit = useCallback(
+    async (data: CreateTaskData) => {
       if (!vibeProject) return;
 
-      const status = COLUMN_TO_STATUS[columnId] ?? "todo";
+      const status = COLUMN_TO_STATUS[createDialogColumnId] ?? "todo";
 
-      createTask.mutate({
+      await createTask.mutateAsync({
         project_id: vibeProject.id,
-        title: "New Task",
-        description: null,
+        title: data.title,
+        description: data.description ?? null,
         status,
       });
     },
-    [vibeProject, createTask]
+    [vibeProject, createTask, createDialogColumnId]
   );
 
   // Quick add task (with title from QuickTaskInput)
@@ -851,7 +874,7 @@ export function WorkspaceKanbanPage() {
               /* Kanban View - horizontal scroll when columns exceed width */
               <div
                 ref={keyboardContainerRef}
-                className="h-full overflow-x-auto p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="h-full overflow-x-auto px-3 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 tabIndex={0}
                 onKeyDown={handleKanbanKeyDown}
                 role="application"
@@ -859,7 +882,16 @@ export function WorkspaceKanbanPage() {
               >
                 <KanbanProvider
                   onDragEnd={handleDragEnd}
-                  className="inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full"
+                  renderDragOverlay={(activeId) => {
+                    if (!activeId) return null;
+                    const task = sortedTasks.find((t) => t.id === activeId);
+                    if (!task) return null;
+                    return (
+                      <div className="p-3 bg-card rounded-lg border border-border shadow-2xl rotate-2 scale-105">
+                        <TaskCardContent task={task} />
+                      </div>
+                    );
+                  }}
                 >
                   {columnStatuses.map((column) => {
                     const columnTasks = tasksByColumn[column.id] ?? [];
@@ -874,7 +906,7 @@ export function WorkspaceKanbanPage() {
                           taskCount={columnTasks.length}
                         />
                         <KanbanCards
-                          className="flex-1 flex-col p-2 gap-2"
+                          className="flex-1 overflow-y-auto"
                           emptyMessage={t("workspace.noTasks", "No tasks")}
                           emptyHint={t("workspace.emptyColumnHint", "Drag tasks here or click + to create")}
                         >
@@ -986,6 +1018,15 @@ export function WorkspaceKanbanPage() {
         onOpenChange={setIsCommandPaletteOpen}
         commands={commands}
         placeholder={t("workspace.commandPalette.placeholder", "Search commands...")}
+      />
+
+      {/* Create Task Dialog */}
+      <CreateTaskDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onSubmit={handleCreateTaskSubmit}
+        defaultColumnId={createDialogColumnId}
+        isSubmitting={createTask.isPending}
       />
     </PageWrapper>
   );
