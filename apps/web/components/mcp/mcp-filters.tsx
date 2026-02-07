@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import {
   Select,
   SelectContent,
@@ -9,31 +10,32 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-const MCP_CATEGORIES = [
-  { value: 'all', label: 'All Categories' },
-  { value: 'database', label: 'Database' },
-  { value: 'api', label: 'API Integration' },
-  { value: 'file-system', label: 'File System' },
-  { value: 'browser', label: 'Browser Automation' },
-  { value: 'ai', label: 'AI/ML' },
-  { value: 'productivity', label: 'Productivity' },
-  { value: 'other', label: 'Other' },
-];
-
-const SORT_OPTIONS = [
-  { value: 'latest', label: 'Latest' },
-  { value: 'popular', label: 'Most Popular' },
-  { value: 'downloads', label: 'Most Downloads' },
-];
-
 interface McpFiltersProps {
   category?: string;
   sort?: string;
 }
 
 export function McpFilters({ category, sort }: McpFiltersProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const MCP_CATEGORIES = [
+    { value: 'all', label: t('marketplace.allCategories') },
+    { value: 'database', label: t('marketplace.categoryDatabase') },
+    { value: 'api', label: t('marketplace.categoryApi') },
+    { value: 'file-system', label: t('marketplace.categoryFileSystem') },
+    { value: 'browser', label: t('marketplace.categoryBrowser') },
+    { value: 'ai', label: t('marketplace.categoryAi') },
+    { value: 'productivity', label: t('marketplace.categoryProductivity') },
+    { value: 'other', label: t('marketplace.categoryOther') },
+  ];
+
+  const SORT_OPTIONS = [
+    { value: 'latest', label: t('marketplace.sortLatest') },
+    { value: 'popular', label: t('marketplace.sortPopular') },
+    { value: 'downloads', label: t('marketplace.sortDownloads') },
+  ];
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,7 +55,7 @@ export function McpFilters({ category, sort }: McpFiltersProps) {
         onValueChange={(v) => updateFilter('category', v)}
       >
         <SelectTrigger className="w-[150px]">
-          <SelectValue placeholder="Category" />
+          <SelectValue placeholder={t('marketplace.category')} />
         </SelectTrigger>
         <SelectContent>
           {MCP_CATEGORIES.map((cat) => (
@@ -69,7 +71,7 @@ export function McpFilters({ category, sort }: McpFiltersProps) {
         onValueChange={(v) => updateFilter('sort', v)}
       >
         <SelectTrigger className="w-[150px]">
-          <SelectValue placeholder="Sort by" />
+          <SelectValue placeholder={t('marketplace.sortBy')} />
         </SelectTrigger>
         <SelectContent>
           {SORT_OPTIONS.map((opt) => (

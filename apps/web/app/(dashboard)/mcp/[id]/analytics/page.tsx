@@ -2,11 +2,8 @@ import { redirect, notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { db, mcpPackages, downloadRecords } from '@/lib/db';
 import { eq, and, gte, sql } from 'drizzle-orm';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AnalyticsCharts } from '@/components/analytics/analytics-charts';
-import { Download, Heart, Star, Calendar, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { McpAnalyticsHeader } from '@/components/mcp/mcp-analytics-header';
 
 interface PackageAnalyticsPageProps {
   params: Promise<{ id: string }>;
@@ -71,74 +68,16 @@ export default async function PackageAnalyticsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={`/mcp/${id}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">{pkg.name} Analytics</h1>
-          <p className="text-muted-foreground">
-            Detailed statistics for your package
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Downloads
-            </CardTitle>
-            <Download className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {pkg.downloadsCount.toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">This Week</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{lastWeek}</div>
-            <p className="text-xs text-muted-foreground">
-              {weekChange >= 0 ? '+' : ''}
-              {weekChange}% from last week
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Favorites</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pkg.favoritesCount}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Rating</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {pkg.ratingAvg > 0 ? pkg.ratingAvg.toFixed(1) : '-'}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {pkg.ratingCount} ratings
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <McpAnalyticsHeader
+        packageId={id}
+        packageName={pkg.name}
+        downloadsCount={pkg.downloadsCount}
+        weekDownloads={lastWeek}
+        weekChange={weekChange}
+        favoritesCount={pkg.favoritesCount}
+        ratingAvg={pkg.ratingAvg}
+        ratingCount={pkg.ratingCount}
+      />
 
       <AnalyticsCharts data={downloadsOverTime} />
     </div>

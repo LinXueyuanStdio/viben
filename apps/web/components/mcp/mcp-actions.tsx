@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Download, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { FavoriteButton } from '@/components/social';
@@ -17,6 +18,8 @@ export function McpActions({
   repositoryUrl,
   isAuthenticated,
 }: McpActionsProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center gap-2">
       <FavoriteButton
@@ -27,13 +30,13 @@ export function McpActions({
       />
       <Button>
         <Download className="mr-2 h-4 w-4" />
-        Install
+        {t('marketplace.install')}
       </Button>
       {repositoryUrl && (
         <Button variant="outline" asChild>
           <a href={repositoryUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink className="mr-2 h-4 w-4" />
-            Repository
+            {t('marketplace.repository')}
           </a>
         </Button>
       )}
