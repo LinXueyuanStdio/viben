@@ -1043,6 +1043,101 @@
       "finish": "Get Started"
     }
   },
+  "profile": {
+    "settings": {
+      "title": "Profile Settings",
+      "description": "Manage your account settings and preferences",
+      "backToProfile": "Back to Profile"
+    },
+    "form": {
+      "username": "Username",
+      "usernameCannotChange": "Username cannot be changed",
+      "email": "Email",
+      "emailManagedByOAuth": "Email is managed through your OAuth provider",
+      "displayName": "Display Name",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell us about yourself...",
+      "saveChanges": "Save Changes"
+    },
+    "validation": {
+      "displayNameRequired": "Display name is required",
+      "displayNameMax": "Display name must be at most 100 characters",
+      "bioMax": "Bio must be at most 500 characters"
+    },
+    "toast": {
+      "profileUpdated": "Profile updated",
+      "failedToUpdateProfile": "Failed to update profile"
+    },
+    "header": {
+      "memberSince": "Member since {{date}}",
+      "roleAdmin": "Admin",
+      "roleDeveloper": "Developer"
+    },
+    "tabs": {
+      "myPackages": "My Packages",
+      "favorites": "Favorites",
+      "apiKeys": "API Keys"
+    },
+    "packages": {
+      "noPackagesYet": "You haven't published any packages yet",
+      "publishPackage": "Publish a Package",
+      "mcpPackages": "MCP Packages",
+      "skills": "Skills"
+    },
+    "favorites": {
+      "noFavorites": "You haven't favorited any packages yet",
+      "browseMarketplace": "Browse the marketplace to find packages you love",
+      "failedToLoad": "Failed to load favorites",
+      "tryAgain": "Try again",
+      "favoritedTime": "Favorited {{time}}",
+      "noDescription": "No description"
+    },
+    "apiKeys": {
+      "title": "API Keys",
+      "description": "Manage API keys for programmatic access",
+      "createApiKey": "Create API Key",
+      "apiKeyCreated": "API Key Created",
+      "copyKeyNow": "Copy this key now. You won't be able to see it again.",
+      "giveKeyName": "Give your API key a descriptive name.",
+      "keyName": "Key Name",
+      "keyNamePlaceholder": "My API Key",
+      "createKey": "Create Key",
+      "done": "Done",
+      "noApiKeysYet": "No API keys yet",
+      "tableName": "Name",
+      "tableKey": "Key",
+      "tableScopes": "Scopes",
+      "tableLastUsed": "Last Used",
+      "tableCreated": "Created",
+      "never": "Never",
+      "toast": {
+        "created": "API key created",
+        "copied": "API key copied to clipboard",
+        "deleted": "API key deleted",
+        "failedToLoad": "Failed to load API keys",
+        "failedToCreate": "Failed to create API key",
+        "failedToDelete": "Failed to delete API key"
+      }
+    }
+  },
+  "workspaceSettings": {
+    "title": "Workspace Settings",
+    "generalSettings": "General Settings",
+    "generalDescription": "Update your workspace name and description",
+    "name": "Name",
+    "description": "Description",
+    "defaultWorkspace": "Default Workspace",
+    "setAsDefault": "Set this as your default workspace",
+    "saveChanges": "Save Changes",
+    "workspaceUpdated": "Workspace updated successfully",
+    "dangerZone": "Danger Zone",
+    "dangerDescription": "Irreversible actions for this workspace",
+    "deleteWorkspace": "Delete Workspace",
+    "deleteDescription": "Permanently delete this workspace and all its configurations",
+    "confirmDeleteTitle": "Delete Workspace",
+    "confirmDeleteMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone. All package configurations will be permanently removed.",
+    "failedToLoadWorkspace": "Failed to load workspace settings"
+  },
   "chat": {
     "title": "Chat",
     "chatButton": "Chat",

@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +21,8 @@ interface ProfileHeaderProps {
 }
 
 export function ProfileHeader({ user }: ProfileHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-start justify-between">
       <div className="flex items-center gap-4">
@@ -31,10 +36,10 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold">{user.displayName}</h1>
             {user.role === 'admin' && (
-              <Badge variant="secondary">Admin</Badge>
+              <Badge variant="secondary">{t('profile.header.roleAdmin')}</Badge>
             )}
             {user.role === 'developer' && (
-              <Badge variant="outline">Developer</Badge>
+              <Badge variant="outline">{t('profile.header.roleDeveloper')}</Badge>
             )}
           </div>
           <p className="text-muted-foreground">@{user.username}</p>
@@ -42,14 +47,14 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
             <p className="mt-2 max-w-md text-sm">{user.bio}</p>
           )}
           <p className="mt-1 text-xs text-muted-foreground">
-            Member since {user.createdAt.toLocaleDateString()}
+            {t('profile.header.memberSince', { date: user.createdAt.toLocaleDateString() })}
           </p>
         </div>
       </div>
       <Button variant="outline" asChild>
         <Link href="/profile/settings">
           <Settings className="mr-2 h-4 w-4" />
-          Settings
+          {t('common.settings')}
         </Link>
       </Button>
     </div>

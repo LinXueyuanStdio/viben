@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Heart, Zap, Server } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -28,15 +29,12 @@ interface FavoritePackage {
 }
 
 export function ProfileFavorites() {
+  const { t } = useTranslation();
   const [favorites, setFavorites] = React.useState<FavoritePackage[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    fetchFavorites();
-  }, []);
-
-  async function fetchFavorites() {
+  const fetchFavorites = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -45,15 +43,18 @@ export function ProfileFavorites() {
         const data = await response.json();
         setFavorites(data.favorites);
       } else {
-        setError('Failed to load favorites');
+        setError(t('profile.favorites.failedToLoad'));
       }
-    } catch (err) {
-      setError('Failed to load favorites');
-      console.error('Failed to fetch favorites:', err);
+    } catch {
+      setError(t('profile.favorites.failedToLoad'));
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [t]);
+
+  React.useEffect(() => {
+    fetchFavorites();
+  }, [fetchFavorites]);
 
   if (isLoading) {
     return (
@@ -83,7 +84,7 @@ export function ProfileFavorites() {
           onClick={fetchFavorites}
           className="mt-2 text-sm text-primary hover:underline"
         >
-          Try again
+          {t('profile.favorites.tryAgain')}
         </button>
       </div>
     );
@@ -94,10 +95,10 @@ export function ProfileFavorites() {
       <div className="flex flex-col items-center justify-center py-12">
         <Heart className="h-12 w-12 text-muted-foreground/30" />
         <p className="mt-4 text-lg text-muted-foreground">
-          You haven&apos;t favorited any packages yet
+          {t('profile.favorites.noFavorites')}
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Browse the marketplace to find packages you love
+          {t('profile.favorites.browseMarketplace')}
         </p>
       </div>
     );
@@ -113,6 +114,7 @@ export function ProfileFavorites() {
 }
 
 function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
+  const { t } = useTranslation();
   const href = pkg.type === 'mcp' ? `/mcp/${pkg.id}` : `/skills/${pkg.id}`;
 
   return (
@@ -140,7 +142,7 @@ function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
           </div>
 
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-            {pkg.description || 'No description'}
+            {pkg.description || t('profile.favorites.noDescription')}
           </p>
 
           <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
@@ -160,7 +162,7 @@ function FavoriteCard({ package: pkg }: { package: FavoritePackage }) {
               {pkg.favoritesCount}
             </span>
             <span className="text-muted-foreground/60">
-              Favorited {formatRelativeTime(pkg.favoritedAt)}
+              {t('profile.favorites.favoritedTime', { time: formatRelativeTime(pkg.favoritedAt) })}
             </span>
           </div>
         </div>
