@@ -69,17 +69,17 @@ export function GatewayStatusIndicator({
     }
   }, [status]);
 
-  // Handle click - either retry or navigate to settings
+  // Handle click - either retry or navigate to gateway settings
   const handleClick = async () => {
     if (status === "disconnected" || status === "error") {
       // Try to reconnect first
       const connected = await checkConnection();
       if (!connected) {
-        // If still not connected, navigate to settings
-        navigate("/settings");
+        // If still not connected, navigate to gateway settings
+        navigate("/settings/gateway");
       }
     } else {
-      navigate("/settings");
+      navigate("/settings/gateway");
     }
   };
 

@@ -100,7 +100,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/tasks", get(list_tasks))
         .route("/api/tasks", post(create_task))
-        .route("/api/tasks/{id}", get(get_task))
-        .route("/api/tasks/{id}", patch(update_task))
-        .route("/api/tasks/{id}", delete(delete_task))
+        .route("/api/tasks/:id", get(get_task))
+        .route("/api/tasks/:id", patch(update_task))
+        .route("/api/tasks/:id", delete(delete_task))
 }

@@ -23,6 +23,8 @@ import {
   Cpu,
   Bot,
   Network,
+  MessageSquare,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -44,12 +46,15 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SettingsModelPage } from "./settings-model";
 import { SettingsAgentsPage } from "./settings-agents";
 import { SettingsGatewayPage } from "./settings-gateway";
+import { SettingsChannelsPage } from "./settings-channels";
+import { SettingsExecutorsPage } from "./settings-executors";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "gateway" | "model" | "agents" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "gateway" | "channels" | "executors" | "model" | "agents" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -62,6 +67,8 @@ const SECTIONS: SectionConfig[] = [
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
   { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
   { id: "gateway", labelKey: "settings.sections.gateway", icon: Network },
+  { id: "channels", labelKey: "settings.sections.channels", icon: MessageSquare },
+  { id: "executors", labelKey: "settings.sections.executors", icon: Play },
   { id: "model", labelKey: "settings.sections.model", icon: Cpu },
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
@@ -133,10 +140,39 @@ function SectionHeader({ title }: SectionHeaderProps) {
   );
 }
 
+// Valid sections for nested routes
+const VALID_SECTIONS: SettingsSection[] = ["general", "shortcuts", "gateway", "channels", "executors", "model", "agents", "environment", "storage", "about"];
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
-  const [activeSection, setActiveSection] = useState<SettingsSection>("general");
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Get section from URL path (e.g., /settings/agents -> "agents")
+  const getSectionFromPath = (): SettingsSection => {
+    const pathSection = location.pathname.split("/settings/")[1];
+    if (pathSection && VALID_SECTIONS.includes(pathSection as SettingsSection)) {
+      return pathSection as SettingsSection;
+    }
+    return "general";
+  };
+
+  const [activeSection, setActiveSection] = useState<SettingsSection>(getSectionFromPath);
+
+  // Sync URL with active section (used in sidebar navigation)
+  const handleSectionChange = useCallback((section: SettingsSection) => {
+    setActiveSection(section);
+    navigate(`/settings/${section}`, { replace: true });
+  }, [navigate]);
+
+  // Update active section when URL changes
+  useEffect(() => {
+    const sectionFromPath = getSectionFromPath();
+    if (sectionFromPath !== activeSection) {
+      setActiveSection(sectionFromPath);
+    }
+  }, [location.pathname]);
 
   // Animation variants for content transitions
   const tabContentVariants = {
@@ -194,6 +230,10 @@ export function SettingsPage() {
         return <ShortcutsSection key="shortcuts" />;
       case "gateway":
         return <SettingsGatewayPage key="gateway" />;
+      case "channels":
+        return <SettingsChannelsPage key="channels" />;
+      case "executors":
+        return <SettingsExecutorsPage key="executors" />;
       case "model":
         return <SettingsModelPage key="model" />;
       case "agents":
@@ -232,7 +272,7 @@ export function SettingsPage() {
             return (
               <li key={section.id}>
                 <button
-                  onClick={() => setActiveSection(section.id)}
+                  onClick={() => handleSectionChange(section.id)}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm",
                     "transition-all duration-200",

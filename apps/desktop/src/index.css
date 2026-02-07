@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Scan workspace packages for Tailwind classes */
+@source "../node_modules/@viben/kanban/src/**/*.tsx";
+@source "../node_modules/@viben/ui/src/**/*.tsx";
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

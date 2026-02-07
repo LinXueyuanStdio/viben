@@ -317,12 +317,15 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
 
       try {
         // Spawn agent through Gateway
-        const response = await client.spawnAgent(agentType, {
+        const request = {
           prompt: content,
           workdir: workspaceId, // Use workspace path as workdir
           session_id: sessionId || undefined,
           config: executorConfig?.config as Record<string, unknown>,
-        });
+        };
+        console.log("[useAgent] Spawning agent:", { agentType, request });
+        const response = await client.spawnAgent(agentType, request);
+        console.log("[useAgent] Spawn response:", response);
 
         const newSessionId = response.session_id;
         setSessionId(newSessionId);

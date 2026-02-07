@@ -8,12 +8,14 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   rectIntersection,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Plus, MoreHorizontal, ClipboardList } from "lucide-react";
 import type { ClientRect } from "@dnd-kit/core";
 import type { Transform } from "@dnd-kit/utilities";
@@ -49,18 +51,28 @@ export type KanbanBoardProps = {
   id: Status["id"];
   children: React.ReactNode;
   className?: string;
+  /** Column background color (CSS variable name like "--primary") */
+  backgroundColor?: string;
 };
 
-export const KanbanBoard = ({ id, children, className }: KanbanBoardProps) => {
+export const KanbanBoard = ({ id, children, className, backgroundColor }: KanbanBoardProps) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
     <div
       className={cn(
         "flex min-h-40 flex-col transition-all duration-200",
-        isOver && "bg-accent/20 ring-1 ring-inset ring-primary/20",
+        isOver && "ring-2 ring-inset ring-primary/40",
         className
       )}
+      style={{
+        backgroundColor: backgroundColor
+          ? `hsl(var(${backgroundColor}) / 0.03)`
+          : undefined,
+        ...(isOver && backgroundColor ? {
+          backgroundColor: `hsl(var(${backgroundColor}) / 0.08)`,
+        } : {}),
+      }}
       ref={setNodeRef}
     >
       {children}
@@ -143,7 +155,7 @@ export const KanbanCard = ({
         "bg-card rounded-lg border border-border/60",
         "transition-all duration-200 ease-out",
         !dragDisabled && "cursor-grab active:cursor-grabbing",
-        isDragging && "shadow-2xl scale-[1.02] rotate-1 border-border bg-card z-50",
+        isDragging && "opacity-50 scale-[0.98] border-primary/50 bg-accent/30",
         isOpen && "ring-2 ring-primary/60 border-primary/30 bg-accent/40",
         !isDragging && !isOpen && "hover:border-border hover:shadow-sm hover:bg-accent/20",
         className
@@ -160,7 +172,7 @@ export const KanbanCard = ({
           ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
           : undefined,
         transition: isDragging
-          ? "box-shadow 200ms, transform 0ms"
+          ? "opacity 150ms, transform 0ms"
           : "all 200ms cubic-bezier(0.2, 0, 0, 1)",
       }}
     >
@@ -255,24 +267,31 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
     <div
       className={cn(
         "sticky top-0 z-20 flex shrink-0 items-center gap-2.5 px-3 py-2.5",
-        "bg-background/95 backdrop-blur-sm border-b border-border/40",
+        "backdrop-blur-sm border-b",
         props.className
       )}
       style={{
-        backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.05), hsl(var(${props.color}) / 0.02))`,
+        backgroundColor: `hsl(var(${props.color}) / 0.08)`,
+        borderColor: `hsl(var(${props.color}) / 0.15)`,
       }}
     >
       <span className="flex-1 flex items-center gap-2.5 min-w-0">
         <div
-          className="h-2 w-2 rounded-full shrink-0 shadow-sm"
+          className="h-2.5 w-2.5 rounded-full shrink-0"
           style={{
             backgroundColor: `hsl(var(${props.color}))`,
-            boxShadow: `0 0 0 2px hsl(var(${props.color}) / 0.2)`,
+            boxShadow: `0 0 0 3px hsl(var(${props.color}) / 0.25)`,
           }}
         />
-        <p className="m-0 text-sm font-medium truncate text-foreground/90">{props.name}</p>
+        <p className="m-0 text-sm font-semibold truncate" style={{ color: `hsl(var(${props.color}))` }}>{props.name}</p>
         {taskCount !== undefined && (
-          <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-md bg-muted/60 text-muted-foreground tabular-nums">
+          <span
+            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
+            style={{
+              backgroundColor: `hsl(var(${props.color}) / 0.15)`,
+              color: `hsl(var(${props.color}))`,
+            }}
+          >
             {taskCount}
           </span>
         )}
@@ -283,7 +302,10 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/80 transition-colors"
+              className="h-6 w-6 rounded-md transition-colors"
+              style={{
+                color: `hsl(var(${props.color}) / 0.7)`,
+              }}
               onClick={props.onAddTask}
               aria-label={addTaskLabel}
             >
@@ -363,6 +385,9 @@ export const KanbanProvider = ({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -389,9 +414,10 @@ export const KanbanProvider = ({
       {renderDragOverlay && (
         <DragOverlay
           dropAnimation={{
-            duration: 200,
-            easing: "cubic-bezier(0.2, 0, 0, 1)",
+            duration: 250,
+            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)", // Spring-like easing
           }}
+          className="cursor-grabbing"
         >
           {activeId ? renderDragOverlay(activeId) : null}
         </DragOverlay>

@@ -124,6 +124,43 @@
     "binaryNotFound": "Gateway binary not found",
     "buildHint": "Build gateway first: cd crates && cargo build --release -p viben-gateway"
   },
+  "channels": {
+    "telegram": {
+      "description": "Receive messages via Telegram Bot",
+      "token": "Bot Token",
+      "tokenDescription": "Get from @BotFather",
+      "proxy": "Proxy (optional)",
+      "proxyDescription": "Support HTTP/SOCKS5 proxy",
+      "allowFrom": "Allowed Users (optional)",
+      "allowFromDescription": "Leave empty to allow all users, separate with comma"
+    },
+    "discord": {
+      "description": "Receive messages via Discord Bot",
+      "token": "Bot Token",
+      "tokenDescription": "Get from Discord Developer Portal",
+      "allowFrom": "Allowed Users (optional)",
+      "allowFromDescription": "Leave empty to allow all users"
+    },
+    "feishu": {
+      "name": "Feishu",
+      "description": "Receive messages via Feishu/Lark Bot",
+      "appId": "App ID",
+      "appIdDescription": "Get from Feishu Open Platform",
+      "appSecret": "App Secret",
+      "encryptKey": "Encrypt Key (optional)",
+      "encryptKeyDescription": "For event subscription encryption",
+      "verificationToken": "Verification Token (optional)",
+      "allowFrom": "Allowed Users (optional)",
+      "allowFromDescription": "User open_id, leave empty to allow all users"
+    },
+    "whatsapp": {
+      "description": "Receive messages via WhatsApp Bridge",
+      "bridgeUrl": "Bridge URL",
+      "bridgeDescription": "WhatsApp Web Bridge WebSocket address",
+      "allowFrom": "Allowed Phone Numbers (optional)",
+      "allowFromDescription": "Leave empty to allow all users"
+    }
+  },
   "dashboard": {
     "title": "Dashboard",
     "setupRequired": "Setup Required",
@@ -182,13 +219,18 @@
       "models": "Models",
       "model": "Models",
       "agents": "Agents",
-      "gateway": "Gateway"
+      "gateway": "Gateway",
+      "channels": "Channels",
+      "executors": "Executors"
     },
     "generalDescription": "General application settings",
     "appearanceDescription": "Customize Viben's appearance on your device.",
     "environmentDescription": "Python and package configuration",
     "storageDescription": "Manage downloads and cache",
     "aboutDescription": "App information and updates",
+    "channelsDescription": "Configure AI agent communication channels",
+    "resetChannels": "Reset Channel Configuration",
+    "executorsDescription": "Check AI coding agent executor installation status",
     "pythonEnvironment": "Python Environment",
     "detect": "Detect",
     "detectedInstallations": "Detected Python Installations",
@@ -299,10 +341,23 @@
     "setDefault": "Set as Default",
     "checkStatus": "Check Status"
   },
+  "settingsExecutors": {
+    "checking": "Checking...",
+    "unknown": "Not checked",
+    "loggedIn": "Logged in",
+    "installed": "Installed",
+    "notFound": "Not found",
+    "refresh": "Refresh",
+    "gatewayRequired": "Gateway connection required to check executor status. Please start the gateway service first.",
+    "summary": "Executor Status",
+    "summaryText": "{{installed}}/{{total}} executors available",
+    "installHint": "Install command:"
+  },
   "settingsAgents": {
     "title": "AI Agents",
     "description": "Manage your AI agents and their configurations",
     "list": "Agent List",
+    "myAgents": "My Agents",
     "add": "Add Agent",
     "addFirst": "Add Your First Agent",
     "noAgents": "No agents configured",
@@ -414,7 +469,8 @@
     "memoryPlaceholder": "# Agent Memory\\n\\nWrite persistent information about the user and context here...",
     "editableMemory": "Editable persistent memory",
     "noMcpServersHint": "Create MCP servers to provide tools for your agent",
-    "noSkillsHint": "Install skills from the marketplace to extend your agent"
+    "noSkillsHint": "Install skills from the marketplace to extend your agent",
+    "gatewayNotRunningHint": "Gateway service is not running. Please start Gateway in Settings first."
   },
   "gateway": {
     "url": "Gateway URL",
@@ -1247,6 +1303,21 @@
     "agentChat": "Agent Chat",
     "agentChatPlaceholder": "Ask about this task...",
     "emptyColumnHint": "Drag tasks here or click + to create",
+    "taskMenu": "Task Menu",
+    "editTask": "Edit Task",
+    "duplicateTask": "Duplicate Task",
+    "moveToColumn": "Move to",
+    "deleteTask": "Delete Task",
+    "deleteTaskConfirm": "Are you sure you want to delete this task?",
+    "setPriority": "Set Priority",
+    "priority": {
+      "label": "Priority",
+      "urgent": "Urgent",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "none": "None"
+    },
     "runAgent": "Run",
     "running": "Running",
     "failed": "Failed",

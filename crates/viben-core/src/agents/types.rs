@@ -17,9 +17,29 @@ pub struct Agent {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
+    /// Executor type (e.g., CLAUDE_CODE, AMP, GEMINI)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_type: Option<String>,
+    /// Executor-specific configuration as JSON
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_config: Option<serde_json::Value>,
+    /// List of MCP server IDs this agent can use
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mcp_servers: Vec<String>,
+    /// List of skill IDs this agent can use
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<String>,
+    /// Whether plan mode is enabled (for Claude Code)
+    #[serde(default)]
+    pub plan_mode: bool,
+    /// Whether approvals are required (for Claude Code)
+    #[serde(default)]
+    pub approvals: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -37,9 +57,23 @@ pub struct AgentConfigFile {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_config: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mcp_servers: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<String>,
+    #[serde(default)]
+    pub plan_mode: bool,
+    #[serde(default)]
+    pub approvals: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -53,8 +87,15 @@ impl From<AgentConfigFile> for Agent {
             model: config.model,
             provider: config.provider,
             system_prompt: config.system_prompt,
+            append_prompt: config.append_prompt,
             temperature: config.temperature,
             max_tokens: config.max_tokens,
+            executor_type: config.executor_type,
+            executor_config: config.executor_config,
+            mcp_servers: config.mcp_servers,
+            skills: config.skills,
+            plan_mode: config.plan_mode,
+            approvals: config.approvals,
             created_at: config.created_at,
             updated_at: config.updated_at,
         }
@@ -97,9 +138,23 @@ pub struct AgentUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_prompt: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub temperature: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_config: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_servers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skills: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approvals: Option<bool>,
 }
 
 /// Agent template

@@ -142,8 +142,8 @@ fn create_agent_by_type(agent_type: &str) -> Result<CodingAgent, GatewayError> {
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/agents", get(list_agents))
-        .route("/api/agents/{id}", get(get_agent))
-        .route("/api/agents/{id}/availability", get(check_availability))
-        .route("/api/agents/{id}/spawn", post(spawn_agent))
-        .route("/api/agents/{id}/stop", post(stop_agent))
+        .route("/api/agents/:id", get(get_agent))
+        .route("/api/agents/:id/availability", get(check_availability))
+        .route("/api/agents/:id/spawn", post(spawn_agent))
+        .route("/api/agents/:id/stop", post(stop_agent))
 }

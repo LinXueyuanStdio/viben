@@ -15,8 +15,15 @@ export interface Agent {
   model?: string;
   provider?: string;
   system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
   max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  mcp_servers: string[];
+  skills: string[];
+  plan_mode: boolean;
+  approvals: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -39,8 +46,15 @@ export interface AgentUpdate {
   model?: string;
   provider?: string;
   system_prompt?: string;
+  append_prompt?: string;
   temperature?: number;
   max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  mcp_servers?: string[];
+  skills?: string[];
+  plan_mode?: boolean;
+  approvals?: boolean;
 }
 
 export interface AgentTemplate {

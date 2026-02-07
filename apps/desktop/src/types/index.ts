@@ -360,3 +360,6 @@ export * from "./chat";
 
 // Re-export agent/executor types
 export * from "./agent";
+
+// Re-export channel types
+export * from "./channel";
