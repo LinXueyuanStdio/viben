@@ -10,13 +10,15 @@ export type { DesktopChatInputProps } from "./desktop-chat-input";
 export { DesktopMessageList } from "./desktop-message-list";
 export type { DesktopMessageListProps } from "./desktop-message-list";
 
+// Re-export types from @viben/chat for convenience
+export type { SlashCommand, ChatInputProps, MessageListProps } from "@viben/chat";
+
 // ============================================================================
 // Legacy exports (for backward compatibility)
 // ============================================================================
 
 // Old ChatInput - will be deprecated after migration
 export { ChatInput } from "./chat-input";
-export type { ChatInputProps, SlashCommand } from "./chat-input";
 
 // Old MessageList/MessageItem - will be deprecated after migration
 export { MessageList } from "./message-list";

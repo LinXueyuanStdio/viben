@@ -6,11 +6,11 @@
     </linearGradient>
   </defs>
 
-  <!-- 圆角背景 - macOS squircle 风格，透明外围 -->
+  <!-- 圆角背景 -->
   <rect x="0" y="0" width="1024" height="1024" rx="228" ry="228" fill="url(#bg-grad)"/>
 
-  <!-- <V> 符号 -->
-  <g transform="translate(256, 307) scale(5.1)">
+  <!-- <V> 符号 - 放大到 80% -->
+  <g transform="translate(180, 262) scale(6.6)">
     <path d="M25 25 L8 50 L25 75" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M35 28 L50 72 L65 28" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M75 25 L92 50 L75 75" fill="none" stroke="#FFFFFF" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>

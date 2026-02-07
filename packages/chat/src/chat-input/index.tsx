@@ -29,7 +29,6 @@ import {
 } from "lucide-react";
 import {
   cn,
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -474,7 +473,7 @@ export function ChatInput({
           commands={filteredCommands}
           selectedIndex={slashSelectedIndex}
           onSelect={handleSlashSelect}
-          onHover={(index) => {
+          onHover={() => {
             // Update selected index on hover - handled internally by slash command hook
           }}
           isOpen={isSlashMenuOpen}

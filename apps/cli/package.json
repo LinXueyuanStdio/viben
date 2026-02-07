@@ -22,9 +22,12 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.0",
     "@types/node": "^22.19.0",
     "@types/node-telegram-bot-api": "^0.64.7",
-    "typescript": "^5.7.0"
+    "eslint": "^9.39.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.33.0"
   },
   "engines": {
     "node": ">=20.0.0"

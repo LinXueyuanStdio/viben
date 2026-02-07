@@ -25,18 +25,21 @@ import {
   Workflow,
   Code2,
   ChevronDown,
+  ChevronRight,
   MoreHorizontal,
   Server,
-  Wrench,
   Save,
   X,
   Check,
   Pencil,
   Terminal,
+  Database,
+  FileText,
+  Command,
+  Brain,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -64,14 +67,67 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useVibenAgents, useVibenModels, useWorkspaceAgents } from "@/hooks";
+import {
+  useWorkspaceMcpServers,
+  useWorkspaceSkills,
+} from "@/hooks/use-workspaces";
+import {
+  useWorkspaceAgentConfigs,
+  useWorkspaceCommands,
+} from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { WorkspaceAgent } from "@/types";
+
+// ============================================================================
+// Collapsible Section Component
+// ============================================================================
+
+interface CollapsibleSectionProps {
+  title: string;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}
+
+function CollapsibleSection({
+  title,
+  icon,
+  badge,
+  children,
+  defaultOpen = false,
+}: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b last:border-b-0">
+      <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-1 hover:bg-muted/50 rounded-lg transition-colors">
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          <span className="text-sm font-medium">{title}</span>
+          {badge}
+        </div>
+        {isOpen ? (
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-1 pb-3">{children}</CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 // ============================================================================
 // Agent Templates
@@ -778,6 +834,7 @@ export function WorkspaceAgentsPage() {
 
 // ============================================================================
 // Executor Detail Panel (Auto-discovered from Workspace - Read Only)
+// Same style as settings-agents.tsx DetailPanel for executors
 // ============================================================================
 
 interface ExecutorDetailPanelProps {
@@ -788,10 +845,28 @@ interface ExecutorDetailPanelProps {
 
 function ExecutorDetailPanel({
   executor,
-  workspaceId: _workspaceId,
+  workspaceId,
   onNavigateToEdit,
 }: ExecutorDetailPanelProps) {
   const { t } = useTranslation();
+
+  // Load data for executor
+  const { servers: mcpServers, loading: mcpLoading } = useWorkspaceMcpServers(
+    workspaceId,
+    executor.id
+  );
+  const { skills, loading: skillsLoading } = useWorkspaceSkills(
+    workspaceId,
+    executor.id
+  );
+  const { configs: agentConfigs, loading: configsLoading } = useWorkspaceAgentConfigs(
+    workspaceId,
+    executor.id
+  );
+  const { commands, loading: commandsLoading } = useWorkspaceCommands(
+    workspaceId,
+    executor.id
+  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -817,7 +892,7 @@ function ExecutorDetailPanel({
               </p>
             </div>
           </div>
-          <Button size="sm" onClick={onNavigateToEdit}>
+          <Button onClick={onNavigateToEdit}>
             <Settings2 className="h-4 w-4 mr-2" />
             {t("settingsAgents.configuration")}
           </Button>
@@ -826,75 +901,191 @@ function ExecutorDetailPanel({
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          {/* Config Path */}
-          <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Terminal className="h-4 w-4" />
-              {t("workspace.configPath")}
-            </h3>
-            <Card>
-              <CardContent className="p-4">
-                <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
-                  {executor.config_path}
-                </code>
-              </CardContent>
-            </Card>
-          </section>
+        <div className="p-6 space-y-1">
+          {/* Config Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("workspace.configuration")}
+            </h4>
 
-          {/* MCP Config */}
-          {executor.mcp_config_file && (
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Server className="h-4 w-4" />
-                MCP {t("workspace.configuration")}
-              </h3>
-              <Card>
-                <CardContent className="p-4">
-                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
-                    {executor.mcp_config_file}
-                  </code>
-                </CardContent>
-              </Card>
-            </section>
-          )}
+            <CollapsibleSection
+              title={t("workspace.configPath")}
+              icon={<Terminal className="h-4 w-4" />}
+              defaultOpen
+            >
+              <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                {executor.config_path || "-"}
+              </code>
+            </CollapsibleSection>
+          </div>
 
-          {/* Skills Config */}
-          {executor.skills_config_file && (
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                {t("chat.skills")} {t("workspace.configuration")}
-              </h3>
-              <Card>
-                <CardContent className="p-4">
-                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
-                    {executor.skills_config_file}
-                  </code>
-                </CardContent>
-              </Card>
-            </section>
-          )}
+          {/* Capabilities Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("settingsAgents.capabilities")}
+            </h4>
 
-          {/* Description */}
-          <section>
-            <Card className="border-orange-500/30 bg-orange-500/5">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
-                  {t("settingsAgents.executorsDesc")}
-                </p>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="px-0 mt-2"
-                  onClick={onNavigateToEdit}
-                >
-                  {t("settingsAgents.configuration")}
-                  <Settings2 className="h-3 w-3 ml-1" />
-                </Button>
-              </CardContent>
-            </Card>
-          </section>
+            {/* MCP */}
+            <CollapsibleSection
+              title="MCP"
+              icon={<Database className="h-4 w-4" />}
+              badge={
+                mcpLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Badge variant="secondary" className="text-xs">{mcpServers.length}</Badge>
+                )
+              }
+              defaultOpen
+            >
+              <div className="py-2 space-y-1">
+                {mcpServers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noMcp")}
+                  </p>
+                ) : (
+                  mcpServers.map((server) => (
+                    <div
+                      key={server.name}
+                      className={cn(
+                        "flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50",
+                        server.disabled && "opacity-60"
+                      )}
+                    >
+                      <Server className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{server.name}</span>
+                      {server.transport && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                          {server.transport}
+                        </Badge>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CollapsibleSection>
+
+            {/* Skills */}
+            <CollapsibleSection
+              title={t("chat.skills")}
+              icon={<Sparkles className="h-4 w-4" />}
+              badge={
+                skillsLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Badge variant="secondary" className="text-xs">{skills.length}</Badge>
+                )
+              }
+            >
+              <div className="py-2 space-y-1">
+                {skills.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noSkills")}
+                  </p>
+                ) : (
+                  skills.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                    >
+                      <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{skill.name}</span>
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                        v{skill.version}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CollapsibleSection>
+
+            {/* Prompts */}
+            <CollapsibleSection
+              title={t("settingsAgents.prompts")}
+              icon={<MessageSquare className="h-4 w-4" />}
+              badge={
+                configsLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
+                )
+              }
+            >
+              <div className="py-2 space-y-1">
+                {agentConfigs.length === 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {t("settingsAgents.noPrompts")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {t("settingsAgents.noPromptsHint")}
+                    </p>
+                  </>
+                ) : (
+                  agentConfigs.map((config) => (
+                    <div
+                      key={config.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                    >
+                      <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate">{config.name}</span>
+                      {config.model && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                          {config.model}
+                        </Badge>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CollapsibleSection>
+
+            {/* Commands */}
+            <CollapsibleSection
+              title={t("settingsAgents.commands")}
+              icon={<Command className="h-4 w-4" />}
+              badge={
+                commandsLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Badge variant="secondary" className="text-xs">{commands.length}</Badge>
+                )
+              }
+            >
+              <div className="py-2 space-y-1">
+                {commands.length === 0 ? (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      {t("settingsAgents.noCommands")}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground/70">
+                      {t("settingsAgents.noCommandsHint")}
+                    </p>
+                  </>
+                ) : (
+                  commands.map((command) => (
+                    <div
+                      key={command.id}
+                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                    >
+                      <Command className="h-3 w-3 text-muted-foreground shrink-0" />
+                      <span className="truncate font-mono">/{command.id}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
+                        {command.namespace}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CollapsibleSection>
+          </div>
+
+          {/* Info */}
+          <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
+            <p className="text-xs text-muted-foreground">
+              {t("settingsAgents.executorsDesc")}
+            </p>
+          </div>
         </div>
       </ScrollArea>
     </div>
@@ -903,6 +1094,7 @@ function ExecutorDetailPanel({
 
 // ============================================================================
 // Agent Detail Panel with Inline Editing (Sub Agent / Viben Agent)
+// Same style as settings-agents.tsx DetailPanel for agents with collapsible sections
 // ============================================================================
 
 interface AgentDetailPanelProps {
@@ -945,7 +1137,6 @@ function AgentDetailPanel({
   const [editDescription, setEditDescription] = useState(agent.description || "");
   const [editSystemPrompt, setEditSystemPrompt] = useState(agent.system_prompt || "");
   const [editTemperature, setEditTemperature] = useState(agent.temperature ?? 0.7);
-  const [editMaxTokens, setEditMaxTokens] = useState(agent.max_tokens?.toString() || "");
   const [saving, setSaving] = useState(false);
 
   // Reset edit states when agent changes
@@ -954,7 +1145,6 @@ function AgentDetailPanel({
     setEditDescription(agent.description || "");
     setEditSystemPrompt(agent.system_prompt || "");
     setEditTemperature(agent.temperature ?? 0.7);
-    setEditMaxTokens(agent.max_tokens?.toString() || "");
     setEditingField(null);
   }, [agent.id]);
 
@@ -1029,6 +1219,10 @@ function AgentDetailPanel({
                       {t("common.default")}
                     </span>
                   )}
+                  <Badge variant="outline" className="text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {t("settingsAgents.agents")}
+                  </Badge>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -1089,40 +1283,40 @@ function AgentDetailPanel({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {!isDefault && (
-              <Button variant="outline" size="sm" onClick={onSetDefault}>
-                <Star className="h-4 w-4 mr-2" />
-                {t("agents.setDefault")}
-              </Button>
-            )}
-            <Button size="sm" onClick={onNavigateToEdit}>
-              <Settings2 className="h-4 w-4 mr-2" />
-              {t("settingsAgents.configuration")}
-            </Button>
-          </div>
+          <Button onClick={onNavigateToEdit}>
+            <Settings2 className="h-4 w-4 mr-2" />
+            {t("settingsAgents.configuration")}
+          </Button>
         </div>
       </div>
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-6 space-y-6">
-          {/* Model Selection */}
-          <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              {t("workspace.createTaskDialog.model")}
-            </h3>
-            <Card>
-              <CardContent className="p-4">
+        <div className="p-6 space-y-1">
+          {/* Model Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("settingsAgents.modelSettings")}
+            </h4>
+
+            <CollapsibleSection
+              title={t("workspace.createTaskDialog.model")}
+              icon={<Sparkles className="h-4 w-4" />}
+              badge={
+                agentModel && (
+                  <Badge variant="secondary" className="text-xs">
+                    {agentModel.name.split("/").pop() || agentModel.name}
+                  </Badge>
+                )
+              }
+              defaultOpen
+            >
+              <div className="py-2">
                 <Select value={agent.model || ""} onValueChange={handleModelChange}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full h-9">
                     <SelectValue placeholder={t("settingsAgents.selectModel")}>
                       {agentModel ? (
                         <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
-                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                          </div>
                           <span>{agentModel.name}</span>
                           <span className="text-xs text-muted-foreground">({agentModel.provider})</span>
                         </div>
@@ -1148,30 +1342,55 @@ function AgentDetailPanel({
                     )}
                   </SelectContent>
                 </Select>
-              </CardContent>
-            </Card>
-          </section>
+                {agent.provider && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Provider: {agent.provider}
+                  </p>
+                )}
+              </div>
+            </CollapsibleSection>
 
-          {/* System Prompt */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                {t("settingsAgents.systemPrompt")}
-              </h3>
-              {editingField !== "system_prompt" && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditingField("system_prompt")}
-                >
-                  <Pencil className="h-3 w-3 mr-1" />
-                  {t("common.edit")}
-                </Button>
-              )}
-            </div>
-            <Card>
-              <CardContent className="p-4">
+            <CollapsibleSection
+              title={t("settingsAgents.temperature")}
+              icon={<Settings2 className="h-4 w-4" />}
+              badge={
+                <Badge variant="secondary" className="text-xs">
+                  {(agent.temperature ?? 0.7).toFixed(2)}
+                </Badge>
+              }
+            >
+              <div className="py-2 space-y-3">
+                <Slider
+                  value={[editingField === "temperature" ? editTemperature : (agent.temperature ?? 0.7)]}
+                  min={0}
+                  max={2}
+                  step={0.01}
+                  onValueChange={([val]) => {
+                    setEditTemperature(val);
+                    setEditingField("temperature");
+                  }}
+                  onValueCommit={([val]) => handleSave("temperature", val)}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("settingsAgents.temperatureHint")}
+                </p>
+              </div>
+            </CollapsibleSection>
+          </div>
+
+          {/* System Prompt Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("settingsAgents.persona")}
+            </h4>
+
+            <CollapsibleSection
+              title={t("settingsAgents.systemPrompt")}
+              icon={<MessageSquare className="h-4 w-4" />}
+              defaultOpen
+            >
+              <div className="py-2">
                 {editingField === "system_prompt" ? (
                   <div className="space-y-3">
                     <Textarea
@@ -1200,187 +1419,146 @@ function AgentDetailPanel({
                       </Button>
                     </div>
                   </div>
-                ) : agent.system_prompt ? (
-                  <pre className="text-sm whitespace-pre-wrap font-mono bg-muted/50 p-3 rounded-lg max-h-48 overflow-auto">
-                    {agent.system_prompt}
-                  </pre>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {t("settingsAgents.systemPromptPlaceholder")}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          </section>
-
-          {/* Parameters */}
-          <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Settings2 className="h-4 w-4" />
-              {t("inspector.parameters")}
-            </h3>
-            <Card>
-              <CardContent className="p-4 space-y-4">
-                {/* Temperature */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">Temperature</Label>
-                    <span className="text-sm font-mono text-muted-foreground">
-                      {editingField === "temperature" ? editTemperature.toFixed(2) : (agent.temperature ?? 0.7).toFixed(2)}
-                    </span>
+                  <div className="group">
+                    {agent.system_prompt ? (
+                      <pre className="text-xs whitespace-pre-wrap font-mono bg-muted/50 p-3 rounded-lg max-h-48 overflow-auto">
+                        {agent.system_prompt}
+                      </pre>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        {t("settingsAgents.systemPromptPlaceholder")}
+                      </p>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-7"
+                      onClick={() => setEditingField("system_prompt")}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      {t("common.edit")}
+                    </Button>
                   </div>
-                  <Slider
-                    value={[editingField === "temperature" ? editTemperature : (agent.temperature ?? 0.7)]}
-                    min={0}
-                    max={2}
-                    step={0.01}
-                    onValueChange={([val]) => {
-                      setEditTemperature(val);
-                      setEditingField("temperature");
-                    }}
-                    onValueCommit={([val]) => handleSave("temperature", val)}
-                    className="cursor-pointer"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.temperatureHint")}
-                  </p>
-                </div>
+                )}
+              </div>
+            </CollapsibleSection>
+          </div>
 
-                {/* Max Tokens */}
-                <div className="space-y-2">
-                  <Label className="text-sm">Max Tokens</Label>
-                  <Input
-                    type="number"
-                    value={editMaxTokens}
-                    onChange={(e) => setEditMaxTokens(e.target.value)}
-                    onBlur={() => {
-                      const val = editMaxTokens ? parseInt(editMaxTokens, 10) : null;
-                      if (val !== agent.max_tokens) {
-                        handleSave("max_tokens", val);
-                      }
-                    }}
-                    placeholder="Auto"
-                    className="h-9"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.maxTokensHint")}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          {/* Capabilities Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("settingsAgents.capabilities")}
+            </h4>
 
-          {/* MCP Servers */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Server className="h-4 w-4" />
-                MCP Servers
-              </h3>
-              <Button variant="ghost" size="sm" onClick={onNavigateToEdit}>
-                <Plus className="h-3 w-3 mr-1" />
-                {t("common.configure")}
-              </Button>
-            </div>
-            <Card>
-              <CardContent className="p-4">
+            <CollapsibleSection
+              title="MCP"
+              icon={<Database className="h-4 w-4" />}
+              badge={
+                <Badge variant="secondary" className="text-xs">
+                  {agent.mcp_servers?.length || 0}
+                </Badge>
+              }
+            >
+              <div className="py-2">
                 {agent.mcp_servers && agent.mcp_servers.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-1">
                     {agent.mcp_servers.map((server) => (
-                      <span
+                      <div
                         key={server}
-                        className="text-sm bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                        className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
                       >
-                        <Server className="h-3 w-3" />
-                        {server}
-                      </span>
+                        <Server className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{server}</span>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {t("common.notConfigured")}
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noMcp")}
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          </section>
+              </div>
+            </CollapsibleSection>
 
-          {/* Skills */}
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                <Wrench className="h-4 w-4" />
-                {t("chat.skills")}
-              </h3>
-              <Button variant="ghost" size="sm" onClick={onNavigateToEdit}>
-                <Plus className="h-3 w-3 mr-1" />
-                {t("common.configure")}
-              </Button>
-            </div>
-            <Card>
-              <CardContent className="p-4">
+            <CollapsibleSection
+              title={t("chat.skills")}
+              icon={<Sparkles className="h-4 w-4" />}
+              badge={
+                <Badge variant="secondary" className="text-xs">
+                  {agent.skills?.length || 0}
+                </Badge>
+              }
+            >
+              <div className="py-2">
                 {agent.skills && agent.skills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="space-y-1">
                     {agent.skills.map((skill) => (
-                      <span
+                      <div
                         key={skill}
-                        className="text-sm bg-primary/10 text-primary px-2.5 py-1 rounded-full flex items-center gap-1.5"
+                        className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
                       >
-                        <Wrench className="h-3 w-3" />
-                        {skill}
-                      </span>
+                        <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{skill}</span>
+                      </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground italic">
-                    {t("common.notConfigured")}
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noSkills")}
                   </p>
                 )}
-              </CardContent>
-            </Card>
-          </section>
+              </div>
+            </CollapsibleSection>
+          </div>
+
+          {/* Memory Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("settingsAgents.memory")}
+            </h4>
+
+            <CollapsibleSection
+              title="MEMORY.md"
+              icon={<Brain className="h-4 w-4" />}
+            >
+              <p className="text-xs text-muted-foreground py-2">
+                {t("settingsAgents.memoryDesc")}
+              </p>
+            </CollapsibleSection>
+          </div>
 
           {/* Timestamps */}
-          <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-              {t("workspace.timestamps")}
-            </h3>
-            <Card>
-              <CardContent className="p-4 grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("common.created")}</p>
-                  <p>{new Date(agent.created_at).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{t("workspace.updated")}</p>
-                  <p>{new Date(agent.updated_at).toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          {(agent.created_at || agent.updated_at) && (
+            <div className="pt-4 border-t text-xs text-muted-foreground space-y-1">
+              {agent.created_at && (
+                <p>
+                  {t("common.created")}: {new Date(agent.created_at).toLocaleString()}
+                </p>
+              )}
+              {agent.updated_at && (
+                <p>
+                  {t("workspace.updated")}: {new Date(agent.updated_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
 
-          {/* Danger Zone */}
-          <section>
-            <h3 className="text-sm font-semibold text-destructive uppercase tracking-wider mb-3">
-              {t("settings.dangerZone")}
-            </h3>
-            <Card className="border-destructive/30">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{t("settingsAgents.delete")}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t("settingsAgents.deleteWarning")}
-                    </p>
-                  </div>
-                  <Button variant="destructive" size="sm" onClick={onDelete}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {t("common.delete")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
+          {/* Danger Zone - kept at bottom */}
+          <div className="pt-4 mt-4 border-t">
+            <div className="flex items-center justify-between">
+              {!isDefault && (
+                <Button variant="outline" size="sm" onClick={onSetDefault}>
+                  <Star className="h-4 w-4 mr-2" />
+                  {t("agents.setDefault")}
+                </Button>
+              )}
+              <Button variant="destructive" size="sm" onClick={onDelete} className="ml-auto">
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("common.delete")}
+              </Button>
+            </div>
+          </div>
         </div>
       </ScrollArea>
     </div>
