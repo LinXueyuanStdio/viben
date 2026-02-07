@@ -162,10 +162,26 @@ impl ClaudeCode {
         // Combine prompt with append_prompt
         let full_prompt = self.append_prompt.combine_prompt(prompt);
 
-        // Build the command
-        let mut cmd = Command::new(&command_parts.program);
-        cmd.args(&command_parts.args);
-        cmd.arg(&full_prompt);
+        // Build the full command string for shell execution
+        // This ensures nvm and other shell configurations are loaded
+        let mut full_command = command_parts.program.clone();
+        for arg in &command_parts.args {
+            // Escape single quotes in arguments
+            let escaped = arg.replace('\'', "'\\''");
+            full_command.push_str(&format!(" '{}'", escaped));
+        }
+        // Add the prompt as the final argument
+        let escaped_prompt = full_prompt.replace('\'', "'\\''");
+        full_command.push_str(&format!(" '{}'", escaped_prompt));
+
+        tracing::debug!("[ClaudeCode] Spawning command via shell: {}", &full_command[..full_command.len().min(200)]);
+
+        // Use shell to execute the command (loads user's shell config including nvm)
+        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
+        let mut cmd = Command::new(&shell);
+        cmd.arg("-l"); // Login shell to load profile
+        cmd.arg("-c");
+        cmd.arg(&full_command);
         cmd.current_dir(current_dir);
 
         // Apply environment variables

@@ -106,6 +106,8 @@ export interface ChatInputProps {
 | 底部配置栏 | ✅ | 智能体、模型、工具等选择器 (showConfigBar) |
 | 可调高度 | ✅ | 拖拽调整，保存到 localStorage (showResizeHandle) |
 | 写作模式 | ✅ | 全屏展开模式 (enableWritingMode) |
+| 斜杠命令 | ✅ | 输入 "/" 显示命令菜单 (slashCommands) |
+| 选择器隐藏 | ✅ | 可强制隐藏智能体/模型选择器 (hideAgentSelector, hideModelSelector) |
 
 ## 布局结构
 
@@ -350,6 +352,13 @@ const handlePaste = async (e: React.ClipboardEvent) => {
 | `chat.configureTools` | 配置工具 |
 | `chat.configureSkills` | 配置技能 |
 | `chat.contextDetails` | 上下文明细 |
+| `chat.noCommandsFound` | 未找到命令 |
+| `chat.slashCommands.clear` | 清空 |
+| `chat.slashCommands.clearDesc` | 清空对话历史 |
+| `chat.slashCommands.help` | 帮助 |
+| `chat.slashCommands.helpDesc` | 显示可用命令 |
+| `chat.slashCommands.stop` | 停止 |
+| `chat.slashCommands.stopDesc` | 停止当前执行 |
 
 ---
 
@@ -527,7 +536,80 @@ interface ContextDetailsPopoverProps {
 
 ---
 
+## 斜杠命令
+
+### SlashCommand 类型
+
+```typescript
+interface SlashCommand {
+  id: string;
+  name: string;           // e.g., "clear"
+  description: string;    // e.g., "Clear conversation"
+  icon?: React.ReactNode; // Optional icon
+}
+```
+
+### 行为
+
+- 用户输入 "/" 时在输入框上方显示命令菜单
+- 继续输入过滤命令列表 (e.g., "/cl" 匹配 "clear")
+- 方向键导航，Enter/Tab 选择，Escape 关闭
+- 选择后调用 `onSlashCommand` 回调并清空斜杠输入
+- 无匹配时显示 "No commands found"
+
+### 使用示例
+
+```tsx
+const slashCommands: SlashCommand[] = [
+  {
+    id: "clear",
+    name: "clear",
+    description: "Clear conversation history",
+    icon: <Trash2 className="h-4 w-4" />,
+  },
+  {
+    id: "help",
+    name: "help",
+    description: "Show available commands",
+    icon: <HelpCircle className="h-4 w-4" />,
+  },
+];
+
+<ChatInput
+  onSend={handleSend}
+  slashCommands={slashCommands}
+  onSlashCommand={(cmd) => {
+    if (cmd.id === "clear") clearMessages();
+  }}
+/>
+```
+
+---
+
+## 选择器隐藏
+
+当在特定上下文中（如智能体调试页）时，可能不需要显示智能体/模型选择器。使用以下 props 强制隐藏：
+
+```tsx
+<ChatInput
+  showConfigBar
+  hideAgentSelector  // 隐藏智能体选择器
+  hideModelSelector  // 隐藏模型选择器
+  // ... other props
+/>
+```
+
+这些 props 优先级高于 `useGlobalConfig` 的自动检测。
+
+---
+
 ## 更新日志
+
+- **2026-02-08**: 添加斜杠命令和选择器隐藏功能
+  - 新增 `slashCommands` 和 `onSlashCommand` props
+  - 新增 `hideAgentSelector` 和 `hideModelSelector` props
+  - 简化写作模式布局（独立渲染）
+  - 统一所有使用场景配置
 
 - **2026-02-08**: 移除 variant prop，统一基础样式
   - 移除 `variant="compact"` 选项
