@@ -785,16 +785,19 @@ export function WorkspaceKanbanPage() {
       ) : (
         /* Main Content with Resizable Panels */
         <Group orientation="horizontal" className="flex-1 min-w-0 h-full">
-          {/* Board/List Panel */}
+          {/* Board/List Panel - fills remaining space */}
           <Panel
             id="kanban-board"
             minSize="20%"
             className="min-w-0 h-full overflow-hidden"
           >
             {viewMode === "kanban" ? (
-              /* Kanban View - matching vibe-kanban layout exactly */
-              <div className="h-full overflow-x-auto overflow-y-auto p-4">
-                <KanbanProvider onDragEnd={handleDragEnd}>
+              /* Kanban View - horizontal scroll when columns exceed width */
+              <div className="h-full overflow-x-auto p-4">
+                <KanbanProvider
+                  onDragEnd={handleDragEnd}
+                  className="inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full"
+                >
                   {columnStatuses.map((column) => {
                     const columnTasks = tasksByColumn[column.id] ?? [];
 
@@ -873,7 +876,7 @@ export function WorkspaceKanbanPage() {
             />
           )}
 
-          {/* Task Detail Panel */}
+          {/* Task Detail Panel - fixed pixel constraints, priority sizing */}
           {isPanelOpen && (
             <Panel
               id="task-detail"
