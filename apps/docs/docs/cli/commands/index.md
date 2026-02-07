@@ -159,7 +159,7 @@ viben agent sync claude-code --json
 
 ## Next Steps
 
-- [viben init](/docs/cli/commands/init) - Initialize a workspace
-- [viben config](/docs/cli/commands/config) - Manage configuration
-- [viben agent](/docs/cli/commands/agent) - Manage agents
-- [viben mcp](/docs/cli/commands/mcp) - Manage MCP servers
+- [viben init](init) - Initialize a workspace
+- [viben config](config) - Manage configuration
+- [viben agent](agent) - Manage agents
+- [viben mcp](mcp) - Manage MCP servers
