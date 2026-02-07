@@ -39,6 +39,16 @@ export interface ModelUpdate {
   max_output_tokens?: number;
 }
 
+export interface DiscoveredModel {
+  id: string;
+  name: string;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  owned_by?: string;
+  created?: number;
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
@@ -62,6 +72,12 @@ export interface UseVibenModelsReturn {
   setDefaultModel: (id: string) => Promise<void>;
   enableModel: (id: string) => Promise<void>;
   disableModel: (id: string) => Promise<void>;
+
+  // Provider-specific model management
+  discoverProviderModels: (providerId: string) => Promise<DiscoveredModel[]>;
+  listProviderEnabledModels: (providerId: string) => Promise<string[]>;
+  enableModelForProvider: (providerId: string, modelId: string) => Promise<void>;
+  disableModelForProvider: (providerId: string, modelId: string) => Promise<void>;
 }
 
 export function useVibenModels(): UseVibenModelsReturn {
@@ -207,6 +223,52 @@ export function useVibenModels(): UseVibenModelsReturn {
     }
   }, []);
 
+  // Discover models available from a provider via API
+  const discoverProviderModels = useCallback(async (providerId: string): Promise<DiscoveredModel[]> => {
+    try {
+      return await invoke<DiscoveredModel[]>("viben_discover_provider_models", { providerId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
+  // List models enabled for a specific provider
+  const listProviderEnabledModels = useCallback(async (providerId: string): Promise<string[]> => {
+    try {
+      return await invoke<string[]>("viben_list_provider_enabled_models", { providerId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
+  // Enable a model for a specific provider
+  const enableModelForProvider = useCallback(async (providerId: string, modelId: string): Promise<void> => {
+    setError(null);
+    try {
+      await invoke("viben_enable_model_for_provider", { providerId, modelId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
+  // Disable a model for a specific provider
+  const disableModelForProvider = useCallback(async (providerId: string, modelId: string): Promise<void> => {
+    setError(null);
+    try {
+      await invoke("viben_disable_model_for_provider", { providerId, modelId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     refresh();
@@ -226,5 +288,9 @@ export function useVibenModels(): UseVibenModelsReturn {
     setDefaultModel,
     enableModel,
     disableModel,
+    discoverProviderModels,
+    listProviderEnabledModels,
+    enableModelForProvider,
+    disableModelForProvider,
   };
 }

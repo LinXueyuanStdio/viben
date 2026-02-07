@@ -1,15 +1,18 @@
 //! Model management for Viben
 
+pub mod discovery;
 pub mod known;
 pub mod types;
 
 use crate::config::{
-    ensure_dir, file_exists, get_models_path, get_state_dir, read_yaml, write_yaml, ConfigManager,
+    ensure_dir, file_exists, get_models_path, get_provider_models_path, get_state_dir, read_yaml,
+    write_yaml, ConfigManager,
 };
 use crate::error::{Error, Result};
-use crate::providers::ProviderType;
+use crate::providers::{ProviderManager, ProviderType};
 use chrono::Utc;
 
+pub use discovery::discover_models;
 pub use known::*;
 pub use types::*;
 
@@ -281,6 +284,54 @@ impl ModelManager {
     }
 
     // ========================================================================
+    // Provider-specific model management
+    // ========================================================================
+
+    /// Discover models available from a provider via API
+    pub async fn discover_provider_models(provider_id: &str) -> Result<Vec<DiscoveredModel>> {
+        let provider = ProviderManager::get_provider(provider_id)
+            .await?
+            .ok_or_else(|| Error::ProviderNotFound(provider_id.to_string()))?;
+
+        discover_models(&provider).await
+    }
+
+    /// List models enabled for a specific provider
+    pub async fn list_provider_enabled_models(provider_id: &str) -> Result<Vec<String>> {
+        let config = Self::load_provider_models_config(provider_id).await?;
+        Ok(config.enabled_models)
+    }
+
+    /// Enable a model for a specific provider
+    pub async fn enable_model_for_provider(provider_id: &str, model_id: &str) -> Result<()> {
+        // Verify provider exists
+        ProviderManager::get_provider(provider_id)
+            .await?
+            .ok_or_else(|| Error::ProviderNotFound(provider_id.to_string()))?;
+
+        let mut config = Self::load_provider_models_config(provider_id).await?;
+
+        if !config.enabled_models.contains(&model_id.to_string()) {
+            config.enabled_models.push(model_id.to_string());
+        }
+
+        Self::save_provider_models_config(provider_id, &config).await
+    }
+
+    /// Disable a model for a specific provider
+    pub async fn disable_model_for_provider(provider_id: &str, model_id: &str) -> Result<()> {
+        // Verify provider exists
+        ProviderManager::get_provider(provider_id)
+            .await?
+            .ok_or_else(|| Error::ProviderNotFound(provider_id.to_string()))?;
+
+        let mut config = Self::load_provider_models_config(provider_id).await?;
+        config.enabled_models.retain(|m| m != model_id);
+
+        Self::save_provider_models_config(provider_id, &config).await
+    }
+
+    // ========================================================================
     // Helpers
     // ========================================================================
 
@@ -296,5 +347,22 @@ impl ModelManager {
     async fn save_file(file: &ModelsFile) -> Result<()> {
         let models_path = get_models_path();
         write_yaml(&models_path, file).await
+    }
+
+    /// Load the provider-specific models config
+    async fn load_provider_models_config(provider_id: &str) -> Result<ProviderModelsConfig> {
+        let config_path = get_provider_models_path(provider_id);
+        read_yaml(&config_path)
+            .await
+            .map(|opt| opt.unwrap_or_default())
+    }
+
+    /// Save the provider-specific models config
+    async fn save_provider_models_config(
+        provider_id: &str,
+        config: &ProviderModelsConfig,
+    ) -> Result<()> {
+        let config_path = get_provider_models_path(provider_id);
+        write_yaml(&config_path, config).await
     }
 }

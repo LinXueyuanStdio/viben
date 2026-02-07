@@ -17,7 +17,8 @@ pub use agents::{
 pub use config::{ConfigManager, GlobalConfig};
 pub use error::{Error, Result};
 pub use models::{
-    CreateModelOptions, KnownModel, Model, ModelEntry, ModelManager, ModelUpdate, ModelsFile,
+    CreateModelOptions, DiscoveredModel, KnownModel, Model, ModelEntry, ModelManager, ModelUpdate,
+    ModelsFile, ProviderModelsConfig,
 };
 pub use providers::{
     CreateProviderOptions, Provider, ProviderEntry, ProviderManager, ProviderStatus, ProviderType,

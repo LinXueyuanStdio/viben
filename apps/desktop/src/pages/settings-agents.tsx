@@ -1,9 +1,12 @@
 /**
  * Settings Agents Page
  *
- * Manages AI Agents using viben-core backend.
+ * Three-column layout for AI agent configuration:
+ * - Left: Agent list / Profile settings
+ * - Middle: Configuration (collapsible sections)
+ * - Right: Preview & Debug chat
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -12,14 +15,23 @@ import {
   Loader2,
   RefreshCw,
   AlertCircle,
-  Pencil,
-  Copy,
   Bot,
   FileText,
-  Thermometer,
-  Hash,
+  ChevronRight,
   ChevronDown,
-  ChevronUp,
+  Cpu,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  Settings2,
+  Brain,
+  MessageSquare,
+  Database,
+  Workflow,
+  Image,
+  Send,
+  Mic,
+  PlusCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -35,18 +48,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -55,16 +62,26 @@ import {
 } from "@/hooks/use-viben-agents";
 import { useVibenProviders } from "@/hooks/use-viben-providers";
 import { useVibenModels } from "@/hooks/use-viben-models";
+import { useAgent } from "@/hooks/use-agent";
+import {
+  type BaseCodingAgent,
+  type ClaudeCodeConfig,
+  AGENT_TYPES,
+  getDefaultConfig,
+} from "@/types";
+import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
+import type { AvailabilityInfo } from "@/lib/gateway";
 
-// Check if user prefers reduced motion
+// ============================================================================
+// Animation Variants
+// ============================================================================
+
 const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-// Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
 
-// Animation variants
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -77,19 +94,107 @@ const containerVariants = {
 };
 
 const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 12,
-  },
+  hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 12 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.3,
-      ease: easeOutExpo,
-    },
+    transition: { duration: prefersReducedMotion ? 0 : 0.3, ease: easeOutExpo },
   },
 };
+
+// ============================================================================
+// Collapsible Section Component
+// ============================================================================
+
+interface CollapsibleSectionProps {
+  title: string;
+  icon?: React.ReactNode;
+  badge?: React.ReactNode;
+  action?: React.ReactNode;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}
+
+function CollapsibleSection({
+  title,
+  icon,
+  badge,
+  action,
+  defaultOpen = false,
+  children,
+}: CollapsibleSectionProps) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <button
+          className={cn(
+            "w-full flex items-center gap-2 py-2.5 px-1 text-sm hover:bg-muted/50 rounded-lg transition-colors",
+            isOpen && "text-foreground",
+            !isOpen && "text-muted-foreground"
+          )}
+        >
+          {isOpen ? (
+            <ChevronDown className="h-4 w-4 shrink-0" />
+          ) : (
+            <ChevronRight className="h-4 w-4 shrink-0" />
+          )}
+          {icon && <span className="shrink-0">{icon}</span>}
+          <span className="font-medium">{title}</span>
+          {badge && <span className="ml-auto mr-2">{badge}</span>}
+          {action && (
+            <span
+              className="ml-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {action}
+            </span>
+          )}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="pl-6 pr-1 pb-2">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ============================================================================
+// Agent Templates
+// ============================================================================
+
+interface AgentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const AGENT_TEMPLATES: AgentTemplate[] = [
+  {
+    id: "general",
+    name: "通用结构",
+    description: "适用于多种场景的提示词结构，可以根据具体需求增删对应模块",
+    icon: <Sparkles className="h-5 w-5" />,
+  },
+  {
+    id: "task",
+    name: "任务执行",
+    description: "适用于有明确的工作步骤的任务执行场景，通过明确每一步骤的工作要求...",
+    icon: <Workflow className="h-5 w-5" />,
+  },
+  {
+    id: "roleplay",
+    name: "角色扮演",
+    description: "适用于聊天乐场景，塑造个性化人设...",
+    icon: <MessageSquare className="h-5 w-5" />,
+  },
+];
+
+// ============================================================================
+// Main Component
+// ============================================================================
 
 export function SettingsAgentsPage() {
   const { t } = useTranslation();
@@ -104,38 +209,76 @@ export function SettingsAgentsPage() {
     updateAgent,
     removeAgent,
     setDefaultAgent,
-    createTemplate,
-    createFromTemplate,
-    refreshTemplates,
   } = useVibenAgents();
 
   const { providers } = useVibenProviders();
   const { models } = useVibenModels();
 
-  // Dialog states
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
-  const [showSaveTemplateDialog, setShowSaveTemplateDialog] = useState(false);
-  const [editingAgent, setEditingAgent] = useState<string | null>(null);
-  const [savingAgentId, setSavingAgentId] = useState<string | null>(null);
-  const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
+  // Selected agent state
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const selectedAgent = useMemo(
+    () => agents.find((a) => a.id === selectedAgentId) || null,
+    [agents, selectedAgentId]
+  );
 
-  // Form states
+  // Auto-select first agent
+  useEffect(() => {
+    if (!selectedAgentId && agents.length > 0) {
+      setSelectedAgentId(agents[0].id);
+    }
+  }, [agents, selectedAgentId]);
+
+  // Form state for editing
   const [formName, setFormName] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formProvider, setFormProvider] = useState("");
-  const [formModel, setFormModel] = useState("");
   const [formSystemPrompt, setFormSystemPrompt] = useState("");
   const [formTemperature, setFormTemperature] = useState(0.7);
   const [formMaxTokens, setFormMaxTokens] = useState(4096);
-  const [formSubmitting, setFormSubmitting] = useState(false);
+  const [formExecutorType, setFormExecutorType] = useState<BaseCodingAgent>("CLAUDE_CODE");
+  const [formProvider, setFormProvider] = useState("");
+  const [formModel, setFormModel] = useState("");
 
-  // Template form states
-  const [templateId, setTemplateId] = useState("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
-  const [newAgentId, setNewAgentId] = useState("");
+  // Executor-specific config
+  const [formPlanMode, setFormPlanMode] = useState(false);
+  const [formApprovals, setFormApprovals] = useState(false);
+  const [formAppendPrompt, setFormAppendPrompt] = useState("");
 
-  // Grouped models by provider
+  // Availability state
+  const [availability, setAvailability] = useState<AvailabilityInfo | null>(null);
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+
+  // Debug chat state
+  const [debugMessage, setDebugMessage] = useState("");
+
+  // Load form from selected agent
+  useEffect(() => {
+    if (selectedAgent) {
+      setFormName(selectedAgent.name);
+      setFormDescription(selectedAgent.description || "");
+      setFormSystemPrompt(selectedAgent.system_prompt || "");
+      setFormTemperature(selectedAgent.temperature ?? 0.7);
+      setFormMaxTokens(selectedAgent.max_tokens ?? 4096);
+      setFormProvider(selectedAgent.provider || "");
+      setFormModel(selectedAgent.model || "");
+      // TODO: Load executor type and config from agent
+    }
+  }, [selectedAgent]);
+
+  // Check availability
+  const checkAvailability = useCallback(async () => {
+    setCheckingAvailability(true);
+    try {
+      const client = getGatewayClient();
+      const result = await client.checkAvailability(formExecutorType);
+      setAvailability(result);
+    } catch {
+      setAvailability({ type: "NOT_FOUND" });
+    } finally {
+      setCheckingAvailability(false);
+    }
+  }, [formExecutorType]);
+
+  // Group models by provider
   const modelsByProvider = useMemo(() => {
     const grouped: Record<string, typeof models> = {};
     for (const model of models) {
@@ -147,129 +290,70 @@ export function SettingsAgentsPage() {
     return grouped;
   }, [models]);
 
-  // Reset form
-  const resetForm = () => {
-    setFormName("");
-    setFormDescription("");
-    setFormProvider("");
-    setFormModel("");
-    setFormSystemPrompt("");
-    setFormTemperature(0.7);
-    setFormMaxTokens(4096);
-    setEditingAgent(null);
-  };
-
-  // Open add dialog
-  const openAddDialog = () => {
-    resetForm();
-    setShowAddDialog(true);
-  };
-
-  // Open edit dialog
-  const openEditDialog = (agentId: string) => {
-    const agent = agents.find((a) => a.id === agentId);
-    if (!agent) return;
-
-    setFormName(agent.name);
-    setFormDescription(agent.description || "");
-    setFormProvider(agent.provider || "");
-    setFormModel(agent.model || "");
-    setFormSystemPrompt(agent.system_prompt || "");
-    setFormTemperature(agent.temperature ?? 0.7);
-    setFormMaxTokens(agent.max_tokens ?? 4096);
-    setEditingAgent(agentId);
-    setShowAddDialog(true);
-  };
-
-  // Handle form submit
-  const handleSubmit = async () => {
-    if (!formName.trim()) return;
-
-    setFormSubmitting(true);
+  // Create new agent
+  const handleCreateAgent = async () => {
     try {
-      if (editingAgent) {
-        await updateAgent(editingAgent, {
-          name: formName.trim(),
-          description: formDescription.trim() || undefined,
-          provider: formProvider || undefined,
-          model: formModel || undefined,
-          system_prompt: formSystemPrompt.trim() || undefined,
-          temperature: formTemperature,
-          max_tokens: formMaxTokens,
-        });
-      } else {
-        const options: CreateAgentOptions = {
-          name: formName.trim(),
-          description: formDescription.trim() || undefined,
-          provider: formProvider || undefined,
-          model: formModel || undefined,
-          system_prompt: formSystemPrompt.trim() || undefined,
-          temperature: formTemperature,
-          max_tokens: formMaxTokens,
-        };
-        await createAgent(options);
-      }
-      setShowAddDialog(false);
-      resetForm();
+      const newAgent = await createAgent({
+        name: "新智能体",
+        description: "",
+      });
+      setSelectedAgentId(newAgent.id);
     } catch (err) {
-      console.error("Failed to save agent:", err);
-    } finally {
-      setFormSubmitting(false);
+      console.error("Failed to create agent:", err);
     }
   };
 
-  // Handle delete
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(t("settingsAgents.deleteConfirm", { name }))) return;
+  // Save current agent
+  const handleSaveAgent = async () => {
+    if (!selectedAgentId) return;
     try {
-      await removeAgent(id);
+      await updateAgent(selectedAgentId, {
+        name: formName,
+        description: formDescription || undefined,
+        system_prompt: formSystemPrompt || undefined,
+        temperature: formTemperature,
+        max_tokens: formMaxTokens,
+        provider: formProvider || undefined,
+        model: formModel || undefined,
+      });
+    } catch (err) {
+      console.error("Failed to save agent:", err);
+    }
+  };
+
+  // Delete agent
+  const handleDeleteAgent = async () => {
+    if (!selectedAgentId || !selectedAgent) return;
+    if (!confirm(t("settingsAgents.deleteConfirm", { name: selectedAgent.name }))) return;
+    try {
+      await removeAgent(selectedAgentId);
+      setSelectedAgentId(agents.length > 1 ? agents[0].id : null);
     } catch (err) {
       console.error("Failed to delete agent:", err);
     }
   };
 
-  // Handle save as template
-  const handleSaveTemplate = async () => {
-    if (!savingAgentId || !templateId.trim()) return;
+  // Debug chat - use agent hook
+  const {
+    messages,
+    isRunning,
+    sendMessage,
+    stopAgent,
+  } = useAgent("debug-workspace", {
+    agentType: formExecutorType,
+    config: {
+      plan: formPlanMode,
+      approvals: formApprovals,
+      append_prompt: formAppendPrompt || undefined,
+      model: formModel || undefined,
+    } as ClaudeCodeConfig,
+  });
 
-    setFormSubmitting(true);
-    try {
-      await createTemplate(savingAgentId, templateId.trim());
-      setShowSaveTemplateDialog(false);
-      setTemplateId("");
-      setSavingAgentId(null);
-    } catch (err) {
-      console.error("Failed to save template:", err);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  // Handle create from template
-  const handleCreateFromTemplate = async () => {
-    if (!selectedTemplateId || !newAgentId.trim()) return;
-
-    setFormSubmitting(true);
-    try {
-      await createFromTemplate(selectedTemplateId, newAgentId.trim());
-      setShowTemplateDialog(false);
-      setSelectedTemplateId("");
-      setNewAgentId("");
-    } catch (err) {
-      console.error("Failed to create from template:", err);
-    } finally {
-      setFormSubmitting(false);
-    }
-  };
-
-  // Format date
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  const handleSendDebugMessage = async () => {
+    if (!debugMessage.trim() || isRunning) return;
+    const msg = debugMessage;
+    setDebugMessage("");
+    await sendMessage(msg);
   };
 
   if (loading) {
@@ -282,481 +366,526 @@ export function SettingsAgentsPage() {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="h-full flex flex-col"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
-      {/* Header */}
-      <motion.div variants={itemVariants}>
-        <h2 className="text-xl font-semibold font-serif mb-1">
-          {t("settingsAgents.title")}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t("settingsAgents.description")}
-        </p>
-      </motion.div>
-
       {/* Error Banner */}
       {error && (
         <motion.div
           variants={itemVariants}
-          className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2"
+          className="mx-4 mt-4 p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2"
         >
           <AlertCircle className="h-4 w-4" />
           {error}
         </motion.div>
       )}
 
-      {/* Agent List Card */}
-      <motion.div
-        variants={itemVariants}
-        className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
-      >
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold">{t("settingsAgents.list")}</h3>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={refresh} title={t("common.refresh")}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
+      {/* Three Column Layout */}
+      <motion.div variants={itemVariants} className="flex-1 flex min-h-0">
+        {/* ================================================================
+            LEFT COLUMN: Agent List
+            ================================================================ */}
+        <div className="w-56 border-r flex flex-col">
+          {/* Header */}
+          <div className="p-3 border-b flex items-center justify-between">
+            <h2 className="text-sm font-semibold">{t("settingsAgents.title")}</h2>
             <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                refreshTemplates();
-                setShowTemplateDialog(true);
-              }}
-              disabled={templates.length === 0}
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handleCreateAgent}
             >
-              <FileText className="h-4 w-4 mr-2" />
-              {t("settingsAgents.fromTemplate")}
+              <Plus className="h-4 w-4" />
             </Button>
-            <Button variant="outline" size="sm" onClick={openAddDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("settingsAgents.add")}
-            </Button>
+          </div>
+
+          {/* Agent List */}
+          <ScrollArea className="flex-1">
+            <div className="p-2 space-y-1">
+              {agents.map((agent) => (
+                <button
+                  key={agent.id}
+                  onClick={() => setSelectedAgentId(agent.id)}
+                  className={cn(
+                    "w-full flex items-center gap-2 p-2 rounded-lg text-left transition-all",
+                    "hover:bg-muted/80",
+                    selectedAgentId === agent.id
+                      ? "bg-primary/10 border border-primary/30"
+                      : "border border-transparent"
+                  )}
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                      {agent.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium truncate">
+                        {agent.name}
+                      </span>
+                      {agent.id === defaultAgentId && (
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
+                      )}
+                    </div>
+                    {agent.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {agent.description}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              ))}
+
+              {agents.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bot className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">{t("settingsAgents.noAgents")}</p>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+
+          {/* Template Section */}
+          <div className="border-t p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-muted-foreground">{t("settingsAgents.templates")}</span>
+            </div>
+            <div className="space-y-1">
+              {AGENT_TEMPLATES.slice(0, 2).map((template) => (
+                <button
+                  key={template.id}
+                  className="w-full p-2 rounded-lg border border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{template.icon}</span>
+                    <span className="text-xs font-medium">{template.name}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {agents.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>{t("settingsAgents.noAgents")}</p>
-            <Button variant="outline" size="sm" className="mt-4" onClick={openAddDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("settingsAgents.addFirst")}
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {agents.map((agent) => (
-              <Collapsible
-                key={agent.id}
-                open={expandedAgentId === agent.id}
-                onOpenChange={(open: boolean) => setExpandedAgentId(open ? agent.id : null)}
-              >
-                <div
-                  className={cn(
-                    "rounded-xl border transition-all duration-200",
-                    agent.id === defaultAgentId
-                      ? "border-primary bg-primary/5"
-                      : "border-transparent bg-muted/50 hover:bg-muted"
-                  )}
-                >
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Bot className="h-5 w-5 text-muted-foreground" />
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{agent.name}</span>
-                            {agent.id === defaultAgentId && (
-                              <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                            )}
-                          </div>
-                          {agent.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">
-                              {agent.description}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {agent.model && (
-                          <Badge variant="secondary">{agent.model}</Badge>
-                        )}
-                        <CollapsibleTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            {expandedAgentId === agent.id ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <ChevronDown className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </CollapsibleTrigger>
-                      </div>
-                    </div>
+        {/* ================================================================
+            MIDDLE COLUMN: Configuration
+            ================================================================ */}
+        <div className="flex-1 flex flex-col min-w-0 border-r">
+          {selectedAgent ? (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b flex items-center justify-between">
+                <h3 className="font-semibold">{t("settingsAgents.configuration")}</h3>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDefaultAgent(selectedAgentId!)}
+                    disabled={selectedAgentId === defaultAgentId}
+                  >
+                    <Star className="h-4 w-4 mr-1" />
+                    {t("settingsAgents.setDefault")}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    onClick={handleDeleteAgent}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
 
-                    {/* Action buttons always visible */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
-                      <span className="text-xs text-muted-foreground">
-                        {t("settingsAgents.created")}: {formatDate(agent.created_at)}
-                      </span>
-                      <div className="flex-1" />
-                      {agent.id !== defaultAgentId && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setDefaultAgent(agent.id)}
-                        >
-                          <Star className="h-4 w-4 mr-1" />
-                          {t("settingsAgents.setDefault")}
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSavingAgentId(agent.id);
-                          setTemplateId(agent.name.toLowerCase().replace(/\s+/g, "-"));
-                          setShowSaveTemplateDialog(true);
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-1" />
-                        {t("settingsAgents.saveAsTemplate")}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditDialog(agent.id)}
-                        title={t("common.edit")}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(agent.id, agent.name)}
-                        title={t("common.delete")}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+              {/* Configuration Sections */}
+              <ScrollArea className="flex-1">
+                <div className="p-4 space-y-1">
+                  {/* Basic Info */}
+                  <div className="mb-4 space-y-3">
+                    <div className="space-y-2">
+                      <Label>{t("settingsAgents.name")}</Label>
+                      <Input
+                        value={formName}
+                        onChange={(e) => setFormName(e.target.value)}
+                        placeholder={t("settingsAgents.namePlaceholder")}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("settingsAgents.descriptionLabel")}</Label>
+                      <Input
+                        value={formDescription}
+                        onChange={(e) => setFormDescription(e.target.value)}
+                        placeholder={t("settingsAgents.descriptionPlaceholder")}
+                      />
                     </div>
                   </div>
 
-                  {/* Expanded details */}
-                  <CollapsibleContent>
-                    <div className="px-4 pb-4 pt-0 space-y-3 border-t border-border mt-0">
-                      <div className="pt-3 grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">{t("settingsAgents.provider")}:</span>
-                          <span className="ml-2">{agent.provider || "-"}</span>
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      {t("settingsAgents.modelSettings")}
+                    </h4>
+
+                    {/* Model Selection */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.model")}
+                      icon={<Cpu className="h-4 w-4" />}
+                      badge={
+                        formModel && (
+                          <Badge variant="secondary" className="text-xs">
+                            {formModel.split("/").pop()}
+                          </Badge>
+                        )
+                      }
+                      defaultOpen
+                    >
+                      <div className="space-y-3">
+                        <Select value={formModel} onValueChange={setFormModel}>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t("settingsAgents.selectModel")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
+                              <div key={provider}>
+                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                                  {provider}
+                                </div>
+                                {providerModels.filter((m) => m.enabled).map((model) => (
+                                  <SelectItem key={model.id} value={model.id}>
+                                    {model.name}
+                                  </SelectItem>
+                                ))}
+                              </div>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs">{t("settingsAgents.temperature")}</Label>
+                          <span className="text-xs text-muted-foreground">{formTemperature.toFixed(2)}</span>
                         </div>
-                        <div>
-                          <span className="text-muted-foreground">{t("settingsAgents.model")}:</span>
-                          <span className="ml-2">{agent.model || "-"}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Thermometer className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{t("settingsAgents.temperature")}:</span>
-                          <span className="ml-1">{agent.temperature ?? 0.7}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Hash className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">{t("settingsAgents.maxTokens")}:</span>
-                          <span className="ml-1">{agent.max_tokens ?? 4096}</span>
-                        </div>
+                        <Slider
+                          value={[formTemperature]}
+                          onValueChange={([v]) => setFormTemperature(v)}
+                          min={0}
+                          max={2}
+                          step={0.01}
+                        />
                       </div>
-                      {agent.system_prompt && (
-                        <div>
-                          <span className="text-sm text-muted-foreground">{t("settingsAgents.systemPrompt")}:</span>
-                          <p className="mt-1 text-sm bg-muted/50 p-2 rounded-lg whitespace-pre-wrap line-clamp-3">
-                            {agent.system_prompt}
+                    </CollapsibleSection>
+
+                    {/* Executor Type */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.executorType")}
+                      icon={<Settings2 className="h-4 w-4" />}
+                      badge={
+                        <div className="flex items-center gap-1">
+                          {availability?.type === "LOGIN_DETECTED" && (
+                            <CheckCircle2 className="h-3 w-3 text-green-500" />
+                          )}
+                          {availability?.type === "NOT_FOUND" && (
+                            <XCircle className="h-3 w-3 text-red-500" />
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {AGENT_TYPES.find((t) => t.id === formExecutorType)?.name}
+                          </Badge>
+                        </div>
+                      }
+                    >
+                      <div className="space-y-3">
+                        <Select
+                          value={formExecutorType}
+                          onValueChange={(v) => setFormExecutorType(v as BaseCodingAgent)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AGENT_TYPES.map((type) => (
+                              <SelectItem key={type.id} value={type.id}>
+                                <div className="flex items-center gap-2">
+                                  <span>{type.name}</span>
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={checkAvailability}
+                          disabled={checkingAvailability}
+                          className="w-full"
+                        >
+                          {checkingAvailability ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                          )}
+                          {t("settingsAgents.checkAvailability")}
+                        </Button>
+
+                        {availability && (
+                          <p className="text-xs text-muted-foreground">
+                            {getAvailabilityStatus(availability)}
                           </p>
-                        </div>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </div>
-              </Collapsible>
-            ))}
-          </div>
-        )}
-      </motion.div>
+                        )}
 
-      {/* Templates Section */}
-      {templates.length > 0 && (
-        <motion.div
-          variants={itemVariants}
-          className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">{t("settingsAgents.templates")}</h3>
-            <Button variant="ghost" size="icon" onClick={refreshTemplates} title={t("common.refresh")}>
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="grid gap-2">
-            {templates.map((template) => (
-              <div
-                key={template.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-              >
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">{template.name}</span>
-                  {template.description && (
-                    <span className="text-xs text-muted-foreground">- {template.description}</span>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {formatDate(template.created_at)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* Add/Edit Agent Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingAgent
-                ? t("settingsAgents.editAgent")
-                : t("settingsAgents.addAgent")}
-            </DialogTitle>
-            <DialogDescription>
-              {editingAgent
-                ? t("settingsAgents.editDescription")
-                : t("settingsAgents.addDescription")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label htmlFor="agent-name">{t("settingsAgents.name")} *</Label>
-              <Input
-                id="agent-name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder={t("settingsAgents.namePlaceholder")}
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-2">
-              <Label htmlFor="agent-description">{t("settingsAgents.descriptionLabel")}</Label>
-              <Input
-                id="agent-description"
-                value={formDescription}
-                onChange={(e) => setFormDescription(e.target.value)}
-                placeholder={t("settingsAgents.descriptionPlaceholder")}
-              />
-            </div>
-
-            {/* Provider & Model Row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="agent-provider">{t("settingsAgents.provider")}</Label>
-                <Select value={formProvider} onValueChange={setFormProvider}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settingsAgents.selectProvider")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {providers.filter((p) => p.enabled).map((provider) => (
-                      <SelectItem key={provider.id} value={provider.id}>
-                        {provider.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="agent-model">{t("settingsAgents.model")}</Label>
-                <Select value={formModel} onValueChange={setFormModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("settingsAgents.selectModel")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                      <div key={provider}>
-                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase">
-                          {provider}
-                        </div>
-                        {providerModels.filter((m) => m.enabled).map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name}
-                          </SelectItem>
-                        ))}
+                        {/* ClaudeCode specific options */}
+                        {formExecutorType === "CLAUDE_CODE" && (
+                          <div className="space-y-2 pt-2 border-t">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">{t("settingsAgents.planMode")}</Label>
+                              <Switch
+                                checked={formPlanMode}
+                                onCheckedChange={setFormPlanMode}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">{t("settingsAgents.approvals")}</Label>
+                              <Switch
+                                checked={formApprovals}
+                                onCheckedChange={setFormApprovals}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                    </CollapsibleSection>
+                  </div>
 
-            {/* System Prompt */}
-            <div className="space-y-2">
-              <Label htmlFor="agent-system-prompt">{t("settingsAgents.systemPrompt")}</Label>
-              <Textarea
-                id="agent-system-prompt"
-                value={formSystemPrompt}
-                onChange={(e) => setFormSystemPrompt(e.target.value)}
-                placeholder={t("settingsAgents.systemPromptPlaceholder")}
-                rows={4}
-                className="resize-none"
-              />
-            </div>
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      {t("settingsAgents.skills")}
+                    </h4>
 
-            {/* Temperature & Max Tokens Row */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="agent-temperature">{t("settingsAgents.temperature")}</Label>
-                  <span className="text-sm text-muted-foreground">{formTemperature.toFixed(2)}</span>
+                    {/* Plugins */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.plugins")}
+                      icon={<Sparkles className="h-4 w-4" />}
+                      action={
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      }
+                    >
+                      <p className="text-xs text-muted-foreground py-2">
+                        {t("settingsAgents.noPlugins")}
+                      </p>
+                    </CollapsibleSection>
+
+                    {/* Workflow */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.workflow")}
+                      icon={<Workflow className="h-4 w-4" />}
+                      action={
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      }
+                    >
+                      <p className="text-xs text-muted-foreground py-2">
+                        {t("settingsAgents.noWorkflow")}
+                      </p>
+                    </CollapsibleSection>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      {t("settingsAgents.knowledge")}
+                    </h4>
+
+                    {/* Knowledge Base */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.knowledgeBase")}
+                      icon={<Database className="h-4 w-4" />}
+                      action={
+                        <Button variant="ghost" size="icon" className="h-6 w-6">
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      }
+                    >
+                      <p className="text-xs text-muted-foreground py-2">
+                        {t("settingsAgents.noKnowledge")}
+                      </p>
+                    </CollapsibleSection>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      {t("settingsAgents.memory")}
+                    </h4>
+
+                    {/* Long-term Memory */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.longTermMemory")}
+                      icon={<Brain className="h-4 w-4" />}
+                      defaultOpen
+                    >
+                      <p className="text-xs text-muted-foreground py-2">
+                        {t("settingsAgents.longTermMemoryDesc")}
+                      </p>
+                    </CollapsibleSection>
+                  </div>
+
+                  <div className="border-t pt-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                      {t("settingsAgents.dialogue")}
+                    </h4>
+
+                    {/* System Prompt */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.systemPrompt")}
+                      icon={<MessageSquare className="h-4 w-4" />}
+                      defaultOpen
+                    >
+                      <Textarea
+                        value={formSystemPrompt}
+                        onChange={(e) => setFormSystemPrompt(e.target.value)}
+                        placeholder={t("settingsAgents.systemPromptPlaceholder")}
+                        rows={4}
+                        className="resize-none text-sm"
+                      />
+                    </CollapsibleSection>
+
+                    {/* Append Prompt */}
+                    <CollapsibleSection
+                      title={t("settingsAgents.appendPrompt")}
+                      icon={<FileText className="h-4 w-4" />}
+                    >
+                      <Textarea
+                        value={formAppendPrompt}
+                        onChange={(e) => setFormAppendPrompt(e.target.value)}
+                        placeholder={t("settingsAgents.appendPromptPlaceholder")}
+                        rows={2}
+                        className="resize-none text-sm"
+                      />
+                    </CollapsibleSection>
+                  </div>
                 </div>
-                <Slider
-                  id="agent-temperature"
-                  value={[formTemperature]}
-                  onValueChange={([value]: number[]) => setFormTemperature(value)}
-                  min={0}
-                  max={2}
-                  step={0.01}
-                  className="py-2"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("settingsAgents.temperatureHint")}
-                </p>
-              </div>
+              </ScrollArea>
 
-              <div className="space-y-2">
-                <Label htmlFor="agent-max-tokens">{t("settingsAgents.maxTokens")}</Label>
-                <Input
-                  id="agent-max-tokens"
-                  type="number"
-                  value={formMaxTokens}
-                  onChange={(e) => setFormMaxTokens(parseInt(e.target.value) || 4096)}
-                  min={1}
-                  max={128000}
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t("settingsAgents.maxTokensHint")}
-                </p>
+              {/* Save Button */}
+              <div className="p-4 border-t">
+                <Button onClick={handleSaveAgent} className="w-full">
+                  {t("common.save")}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>{t("settingsAgents.selectAgent")}</p>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* ================================================================
+            RIGHT COLUMN: Preview & Debug
+            ================================================================ */}
+        <div className="w-80 flex flex-col bg-muted/30">
+          {/* Header */}
+          <div className="p-4 border-b flex items-center justify-between">
+            <h3 className="font-semibold">{t("settingsAgents.previewDebug")}</h3>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleSubmit} disabled={!formName.trim() || formSubmitting}>
-              {formSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              {editingAgent ? t("common.save") : t("common.add")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* Agent Preview */}
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            {selectedAgent ? (
+              <>
+                <Avatar className="h-20 w-20 mb-3">
+                  <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                    {formName.slice(0, 2).toUpperCase() || "AG"}
+                  </AvatarFallback>
+                </Avatar>
+                <h4 className="font-medium text-lg">{formName || t("settingsAgents.unnamed")}</h4>
+                {formDescription && (
+                  <p className="text-sm text-muted-foreground mt-1 text-center">
+                    {formDescription}
+                  </p>
+                )}
 
-      {/* Create from Template Dialog */}
-      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("settingsAgents.createFromTemplate")}</DialogTitle>
-            <DialogDescription>
-              {t("settingsAgents.createFromTemplateDescription")}
-            </DialogDescription>
-          </DialogHeader>
+                {/* Chat Messages */}
+                {messages.length > 0 && (
+                  <ScrollArea className="w-full mt-4 max-h-60">
+                    <div className="space-y-2">
+                      {messages.slice(-5).map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={cn(
+                            "p-2 rounded-lg text-sm",
+                            msg.type === "user"
+                              ? "bg-primary text-primary-foreground ml-8"
+                              : "bg-muted mr-8"
+                          )}
+                        >
+                          {msg.content}
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="h-20 w-20 rounded-xl bg-primary/10 flex items-center justify-center mb-3">
+                  <Bot className="h-10 w-10 text-primary/50" />
+                </div>
+                <p className="text-muted-foreground">{t("settingsAgents.noAgentSelected")}</p>
+              </>
+            )}
+          </div>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>{t("settingsAgents.selectTemplate")}</Label>
-              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                <SelectTrigger>
-                  <SelectValue placeholder={t("settingsAgents.selectTemplatePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={template.id}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="new-agent-id">{t("settingsAgents.newAgentId")}</Label>
+          {/* Chat Input */}
+          <div className="p-4 border-t">
+            <div className="relative">
               <Input
-                id="new-agent-id"
-                value={newAgentId}
-                onChange={(e) => setNewAgentId(e.target.value)}
-                placeholder={t("settingsAgents.newAgentIdPlaceholder")}
+                value={debugMessage}
+                onChange={(e) => setDebugMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendDebugMessage();
+                  }
+                }}
+                placeholder={t("settingsAgents.sendMessage")}
+                disabled={!selectedAgent || isRunning}
+                className="pr-20"
               />
+              <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  disabled={!selectedAgent}
+                >
+                  <PlusCircle className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleSendDebugMessage}
+                  disabled={!selectedAgent || !debugMessage.trim() || isRunning}
+                >
+                  {isRunning ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              {t("settingsAgents.aiDisclaimer")}
+            </p>
           </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button
-              onClick={handleCreateFromTemplate}
-              disabled={!selectedTemplateId || !newAgentId.trim() || formSubmitting}
-            >
-              {formSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              {t("common.create")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Save as Template Dialog */}
-      <Dialog open={showSaveTemplateDialog} onOpenChange={setShowSaveTemplateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t("settingsAgents.saveAsTemplate")}</DialogTitle>
-            <DialogDescription>
-              {t("settingsAgents.saveAsTemplateDescription")}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="template-id">{t("settingsAgents.templateId")}</Label>
-              <Input
-                id="template-id"
-                value={templateId}
-                onChange={(e) => setTemplateId(e.target.value)}
-                placeholder={t("settingsAgents.templateIdPlaceholder")}
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("settingsAgents.templateIdHint")}
-              </p>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSaveTemplateDialog(false)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={handleSaveTemplate} disabled={!templateId.trim() || formSubmitting}>
-              {formSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              {t("common.save")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }

@@ -4,6 +4,7 @@ export {
   KanbanCard,
   KanbanCards,
   KanbanHeader,
+  STATUS_INDICATOR_COLORS,
   type KanbanProviderProps,
   type KanbanBoardProps,
   type KanbanCardProps,
@@ -11,6 +12,7 @@ export {
   type KanbanHeaderProps,
   type Status,
   type Feature,
+  type StatusIndicator,
   type DragEndEvent,
 } from "./kanban";
 

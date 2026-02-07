@@ -10,7 +10,6 @@ import {
   Calendar,
   Clock,
   Play,
-  XCircle,
   GitBranch,
   ListChecks,
   MessageSquare,
@@ -190,7 +189,7 @@ function EditableDescription({
   );
 }
 
-// Property Row Component
+// Property Row Component - Compact layout
 function PropertyRow({
   label,
   icon: Icon,
@@ -201,9 +200,9 @@ function PropertyRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 py-2">
-      <div className="flex items-center gap-2 w-28 text-sm text-muted-foreground shrink-0">
-        <Icon className="h-4 w-4" />
+    <div className="flex items-center gap-2 py-1.5">
+      <div className="flex items-center gap-1.5 w-24 text-xs text-muted-foreground shrink-0">
+        <Icon className="h-3.5 w-3.5" />
         <span>{label}</span>
       </div>
       <div className="flex-1 min-w-0">{children}</div>
@@ -451,21 +450,56 @@ export function TaskDetailPanel({
 
   const selectedTagIds = task.tagIds || task.tags?.map((t) => t.id) || [];
 
+  // Get status color for pill badge
+  const getStatusColor = (status: string): string => {
+    const statusColors: Record<string, string> = {
+      todo: "bg-muted text-muted-foreground",
+      "in-progress": "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+      review: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      done: "bg-green-500/10 text-green-600 dark:text-green-400",
+      blocked: "bg-red-500/10 text-red-600 dark:text-red-400",
+    };
+    return statusColors[status.toLowerCase()] ?? statusColors.todo;
+  };
+
+  // Format status label
+  const getStatusLabel = (status: string): string => {
+    const statusLabels: Record<string, string> = {
+      todo: t("workspace.kanbanStatus.todo", "To Do"),
+      "in-progress": t("workspace.kanbanStatus.inProgress", "In Progress"),
+      review: t("workspace.kanbanStatus.review", "Review"),
+      done: t("workspace.kanbanStatus.done", "Done"),
+    };
+    return statusLabels[status.toLowerCase()] ?? status;
+  };
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b shrink-0">
-        <span className="font-mono text-sm text-muted-foreground truncate flex-1">
-          {task.id.slice(0, 8)}...
-        </span>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+      {/* Header with Title and Close */}
+      <div className="flex items-start justify-between p-4 border-b shrink-0">
+        <div className="flex-1 min-w-0 pr-2">
+          {/* Title - Editable */}
+          <EditableTitle value={task.title} onChange={handleTitleChange} />
+          {/* ID + Status on second line */}
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="font-mono text-xs text-muted-foreground">
+              #{task.id.slice(0, 7)}
+            </span>
+            <span className="text-muted-foreground/30">•</span>
+            <Badge
+              variant="secondary"
+              className={cn(
+                "text-xs font-normal px-2 py-0.5 rounded-full",
+                getStatusColor(task.status)
+              )}
+            >
+              {getStatusLabel(task.status)}
+            </Badge>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
           <X className="h-4 w-4" />
         </Button>
-      </div>
-
-      {/* Title */}
-      <div className="px-4 pt-4">
-        <EditableTitle value={task.title} onChange={handleTitleChange} />
       </div>
 
       {/* Tabs for Details / Comments / Activity */}
@@ -474,7 +508,7 @@ export function TaskDetailPanel({
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0"
       >
-        <TabsList className="mx-4 mt-4 shrink-0">
+        <TabsList className="mx-4 mt-2 shrink-0">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             {t("workspace.taskDetail", "Details")}
@@ -622,27 +656,55 @@ export function TaskDetailPanel({
                 task.last_attempt_failed !== undefined ||
                 task.executor) && (
                 <div className="border-t pt-4">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3">
-                    {t("workspace.execution", "Execution")}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {task.has_in_progress_attempt ? (
-                      <Badge variant="secondary" className="gap-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-muted-foreground">
+                      {t("workspace.execution", "Execution")}
+                    </h3>
+                    {!task.has_in_progress_attempt && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 gap-1.5"
+                        onClick={() => setActiveTab("agent-chat")}
+                      >
                         <Play className="h-3 w-3" />
-                        {t("workspace.running", "Running")}
-                      </Badge>
-                    ) : task.last_attempt_failed ? (
-                      <Badge variant="destructive" className="gap-1">
-                        <XCircle className="h-3 w-3" />
-                        {t("workspace.lastAttemptFailed", "Last attempt failed")}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline">
-                        {t("workspace.idle", "Idle")}
-                      </Badge>
+                        {t("workspace.runAgent", "Run")}
+                      </Button>
                     )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {/* Status indicator with colored dot */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        {t("workspace.status", "Status")}:
+                      </span>
+                      {task.has_in_progress_attempt ? (
+                        <Badge variant="secondary" className="gap-1.5 pl-1.5">
+                          <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+                          {t("workspace.running", "Running")}
+                        </Badge>
+                      ) : task.last_attempt_failed ? (
+                        <Badge variant="destructive" className="gap-1.5 pl-1.5">
+                          <span className="h-2 w-2 rounded-full bg-red-500" />
+                          {t("workspace.failed", "Failed")}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1.5 pl-1.5">
+                          <span className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                          {t("workspace.idle", "Idle")}
+                        </Badge>
+                      )}
+                    </div>
+                    {/* Executor/Agent info */}
                     {task.executor && task.executor !== "unknown" && (
-                      <Badge variant="outline">{task.executor}</Badge>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">
+                          {t("workspace.agent", "Agent")}:
+                        </span>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {task.executor}
+                        </Badge>
+                      </div>
                     )}
                   </div>
                 </div>

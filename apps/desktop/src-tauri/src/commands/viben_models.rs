@@ -3,7 +3,7 @@
 //! These commands wrap the viben_core::ModelManager functionality
 //! for use in the Tauri desktop application.
 
-use viben_core::{CreateModelOptions, Model, ModelManager, ModelUpdate, ProviderType};
+use viben_core::{CreateModelOptions, DiscoveredModel, Model, ModelManager, ModelUpdate, ProviderType};
 
 /// List all available models (built-in + custom)
 #[tauri::command]
@@ -81,6 +81,48 @@ pub async fn viben_enable_model(id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn viben_disable_model(id: String) -> Result<(), String> {
     ModelManager::disable_model(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Discover models available from a provider via API
+#[tauri::command]
+pub async fn viben_discover_provider_models(
+    provider_id: String,
+) -> Result<Vec<DiscoveredModel>, String> {
+    ModelManager::discover_provider_models(&provider_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// List models enabled for a specific provider
+#[tauri::command]
+pub async fn viben_list_provider_enabled_models(
+    provider_id: String,
+) -> Result<Vec<String>, String> {
+    ModelManager::list_provider_enabled_models(&provider_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Enable a model for a specific provider
+#[tauri::command]
+pub async fn viben_enable_model_for_provider(
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    ModelManager::enable_model_for_provider(&provider_id, &model_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Disable a model for a specific provider
+#[tauri::command]
+pub async fn viben_disable_model_for_provider(
+    provider_id: String,
+    model_id: String,
+) -> Result<(), String> {
+    ModelManager::disable_model_for_provider(&provider_id, &model_id)
         .await
         .map_err(|e| e.to_string())
 }

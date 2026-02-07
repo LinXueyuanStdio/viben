@@ -357,3 +357,6 @@ export * from "./official-registry";
 
 // Re-export chat types
 export * from "./chat";
+
+// Re-export agent/executor types
+export * from "./agent";

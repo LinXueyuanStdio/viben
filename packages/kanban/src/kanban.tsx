@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Card, Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Button, cn } from "@viben/ui";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger, Button, cn } from "@viben/ui";
 import type { DragEndEvent, Modifier } from "@dnd-kit/core";
 import {
   DndContext,
@@ -12,7 +12,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { Plus, MoreHorizontal, ClipboardList } from "lucide-react";
 import type { ClientRect } from "@dnd-kit/core";
 import type { Transform } from "@dnd-kit/utilities";
 
@@ -30,6 +30,17 @@ export type Feature = {
   startAt: Date;
   endAt: Date;
   status: Status;
+};
+
+// Status indicator color mapping
+export type StatusIndicator = "todo" | "in-progress" | "review" | "done" | "blocked";
+
+export const STATUS_INDICATOR_COLORS: Record<StatusIndicator, string> = {
+  todo: "bg-muted-foreground/40",
+  "in-progress": "bg-blue-500",
+  review: "bg-amber-500",
+  done: "bg-green-500",
+  blocked: "bg-red-500",
 };
 
 export type KanbanBoardProps = {
@@ -66,6 +77,12 @@ export type KanbanCardProps = Pick<Feature, "id" | "name"> & {
   onKeyDown?: (e: React.KeyboardEvent) => void;
   isOpen?: boolean;
   dragDisabled?: boolean;
+  /** Status indicator color (defaults to parent-based color) */
+  statusIndicator?: StatusIndicator;
+  /** Show more menu button on hover */
+  showMoreMenu?: boolean;
+  /** Callback when more menu is clicked */
+  onMoreClick?: (e: React.MouseEvent) => void;
 };
 
 export const KanbanCard = ({
@@ -81,6 +98,9 @@ export const KanbanCard = ({
   onKeyDown,
   isOpen,
   dragDisabled = false,
+  statusIndicator,
+  showMoreMenu = false,
+  onMoreClick,
 }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -100,14 +120,16 @@ export const KanbanCard = ({
   };
 
   return (
-    <Card
+    <div
       className={cn(
-        "p-3 outline-none border-b flex-col space-y-2",
-        isDragging && "cursor-grabbing",
+        "group relative p-3 outline-none flex flex-col space-y-2",
+        "bg-card rounded-lg border border-border",
+        "transition-all duration-200 ease-out cursor-grab",
+        isDragging && "cursor-grabbing opacity-90 rotate-1 scale-[1.02] shadow-lg z-50",
         isOpen && "ring-2 ring-secondary-foreground ring-inset",
+        !isDragging && !isOpen && "hover:bg-card/80",
         className
       )}
-      interactive={false}
       {...listeners}
       {...attributes}
       ref={combinedRef}
@@ -121,19 +143,69 @@ export const KanbanCard = ({
           : "none",
       }}
     >
+      {/* More menu button - top right corner, visible on hover */}
+      {showMoreMenu && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "absolute top-1.5 right-1.5 h-6 w-6",
+            "opacity-0 group-hover:opacity-100 transition-opacity",
+            "hover:bg-muted"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onMoreClick?.(e);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="More actions"
+        >
+          <MoreHorizontal className="h-3.5 w-3.5" />
+        </Button>
+      )}
+
+      {/* Card content */}
       {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
-    </Card>
+    </div>
   );
 };
 
 export type KanbanCardsProps = {
   children: React.ReactNode;
   className?: string;
+  /** Show empty state when no children */
+  emptyMessage?: string;
+  /** Secondary empty state message */
+  emptyHint?: string;
 };
 
-export const KanbanCards = ({ children, className }: KanbanCardsProps) => (
-  <div className={cn("flex flex-1 flex-col", className)}>{children}</div>
-);
+export const KanbanCards = ({
+  children,
+  className,
+  emptyMessage = "No tasks",
+  emptyHint = "Drag tasks here or click + to create",
+}: KanbanCardsProps) => {
+  // Check if children is empty (no actual tasks)
+  const isEmpty = React.Children.count(children) === 0;
+
+  return (
+    <div className={cn("flex flex-1 flex-col", className)}>
+      {isEmpty ? (
+        <div className="flex flex-col items-center justify-center h-32 text-center px-4">
+          <ClipboardList className="h-8 w-8 text-muted-foreground/30 mb-2" />
+          <p className="text-sm text-muted-foreground/70 font-medium">
+            {emptyMessage}
+          </p>
+          <p className="text-xs text-muted-foreground/50 mt-1">
+            {emptyHint}
+          </p>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
+  );
+};
 
 export type KanbanHeaderProps =
   | {
@@ -145,6 +217,8 @@ export type KanbanHeaderProps =
       className?: string;
       onAddTask?: () => void;
       addTaskLabel?: string;
+      /** Number of tasks in this column */
+      taskCount?: number;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -153,32 +227,38 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
   }
 
   const addTaskLabel = props.addTaskLabel ?? "Add task";
+  const taskCount = props.taskCount;
 
   return (
-    <Card
+    <div
       className={cn(
-        "sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3 border-b border-dashed flex gap-2",
-        "bg-background",
+        "sticky top-0 z-20 flex shrink-0 items-center gap-2 p-3",
+        "bg-background border-b border-dashed border-border",
         props.className
       )}
-      interactive={false}
       style={{
         backgroundImage: `linear-gradient(hsl(var(${props.color}) / 0.03), hsl(var(${props.color}) / 0.03))`,
       }}
     >
       <span className="flex-1 flex items-center gap-2">
         <div
-          className="h-2 w-2 rounded-full"
+          className="h-2 w-2 rounded-full shrink-0"
           style={{ backgroundColor: `hsl(var(${props.color}))` }}
         />
-        <p className="m-0 text-sm">{props.name}</p>
+        <p className="m-0 text-sm font-medium">{props.name}</p>
+        {taskCount !== undefined && (
+          <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-xs font-medium rounded bg-muted text-muted-foreground">
+            {taskCount}
+          </span>
+        )}
       </span>
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
-              className="m-0 p-0 h-0 text-foreground/50 hover:text-foreground"
+              size="icon"
+              className="h-6 w-6 text-foreground/50 hover:text-foreground hover:bg-muted"
               onClick={props.onAddTask}
               aria-label={addTaskLabel}
             >
@@ -188,7 +268,7 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
           <TooltipContent side="top">{addTaskLabel}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
-    </Card>
+    </div>
   );
 };
 
