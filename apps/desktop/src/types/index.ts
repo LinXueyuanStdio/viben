@@ -280,8 +280,8 @@ export interface Workspace {
   last_accessed: string;
 }
 
-/** Agent type identifier for workspace agents */
-export type WorkspaceAgentType =
+/** Executor type identifier (auto-discovered backend) */
+export type ExecutorType =
   | "claude-code"
   | "codex"
   | "cursor"
@@ -291,16 +291,22 @@ export type WorkspaceAgentType =
   | "zed"
   | "unknown";
 
-/** Agent detected within a workspace */
-export interface WorkspaceAgent {
+/** @deprecated Use ExecutorType instead */
+export type WorkspaceAgentType = ExecutorType;
+
+/** Executor detected within a workspace (auto-discovered backend) */
+export interface Executor {
   id: string;
   workspace_id: string;
   name: string;
-  type: WorkspaceAgentType;
+  type: ExecutorType;
   config_path: string;
   mcp_config_file: string | null;
   skills_config_file: string | null;
 }
+
+/** @deprecated Use Executor instead */
+export type WorkspaceAgent = Executor;
 
 /** MCP Server configuration from workspace agent config */
 export interface WorkspaceMcpServer {
@@ -366,3 +372,6 @@ export * from "./channel";
 
 // Re-export chat config types
 export * from "./chat-config";
+
+// Re-export unified agent types
+export * from "./unified-agent";

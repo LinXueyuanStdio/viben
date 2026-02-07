@@ -34,6 +34,11 @@ import {
   FolderOpen,
   Trash2,
   HelpCircle,
+  Terminal,
+  Server,
+  Wrench,
+  Command,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +59,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -70,6 +77,11 @@ import {
   useAgent,
   useCloudSkillPackages,
   useLocalWorkspaces,
+  useWorkspaceAgents,
+  useWorkspaceMcpServers,
+  useWorkspaceSkills,
+  useWorkspaceAgentConfigs,
+  useWorkspaceCommands,
 } from "@/hooks";
 import { homeDir } from "@tauri-apps/api/path";
 import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
@@ -150,11 +162,17 @@ export function AgentDetailPage() {
   const isWorkspaceScoped = Boolean(workspaceId);
 
   const {
-    agents,
+    agents: vibenAgents,
     loading: agentsLoading,
     error: agentsError,
     updateAgent,
   } = useVibenAgents();
+
+  // Workspace executors (auto-discovered)
+  const {
+    agents: workspaceExecutors,
+    loading: executorsLoading,
+  } = useWorkspaceAgents(workspaceId || null);
 
   const { models } = useVibenModels();
   const mcpServers = useAppStore((state) => state.mcpServers);
@@ -176,11 +194,23 @@ export function AgentDetailPage() {
     }
   }, [isWorkspaceScoped]);
 
-  // Find the current agent
-  const agent = useMemo(
-    () => agents.find((a) => a.id === agentId) || null,
-    [agents, agentId]
+  // Find the current agent or executor
+  // First try to find in Viben Agents (global storage)
+  const vibenAgent = useMemo(
+    () => vibenAgents.find((a) => a.id === agentId) || null,
+    [vibenAgents, agentId]
   );
+
+  // Then try to find in workspace executors (auto-discovered)
+  const workspaceExecutor = useMemo(
+    () => workspaceExecutors.find((a) => a.id === agentId) || null,
+    [workspaceExecutors, agentId]
+  );
+
+  // Determine if we're viewing an executor or an agent
+  const isExecutor = Boolean(workspaceExecutor && !vibenAgent);
+  const agent = vibenAgent;
+  const executor = workspaceExecutor;
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -404,11 +434,22 @@ export function AgentDetailPage() {
     }
   }, [clearMessages]);
 
-  if (agentsLoading) {
+  if (agentsLoading || executorsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    );
+  }
+
+  // If we found an executor, show a read-only executor detail view with tabs
+  if (isExecutor && executor) {
+    return (
+      <ExecutorDetailView
+        executor={executor}
+        workspaceId={workspaceId || ""}
+        onNavigateBack={handleNavigateBack}
+      />
     );
   }
 
@@ -1073,6 +1114,436 @@ export function AgentDetailPage() {
         agentId={agentId || ""}
         agentName={formName || t("settingsAgents.unnamed")}
       />
+    </div>
+  );
+}
+
+// ============================================================================
+// Executor Detail View Component
+// ============================================================================
+
+interface ExecutorDetailViewProps {
+  executor: {
+    id: string;
+    name: string;
+    type: string;
+    config_path: string;
+    mcp_config_file: string | null;
+    skills_config_file: string | null;
+  };
+  workspaceId: string;
+  onNavigateBack: () => void;
+}
+
+function ExecutorDetailView({
+  executor,
+  workspaceId,
+  onNavigateBack,
+}: ExecutorDetailViewProps) {
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState("overview");
+
+  // Load MCP servers for this executor
+  const {
+    servers: mcpServers,
+    loading: mcpLoading,
+    error: mcpError,
+  } = useWorkspaceMcpServers(workspaceId, executor.id);
+
+  // Load skills for this executor
+  const {
+    skills,
+    loading: skillsLoading,
+    error: skillsError,
+  } = useWorkspaceSkills(workspaceId, executor.id);
+
+  // Load agent configs (prompts) for this executor
+  const {
+    configs: agentConfigs,
+    loading: configsLoading,
+    error: configsError,
+  } = useWorkspaceAgentConfigs(workspaceId, executor.id);
+
+  // Load commands for this executor
+  const {
+    commands,
+    loading: commandsLoading,
+    error: commandsError,
+  } = useWorkspaceCommands(workspaceId, executor.id);
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b bg-orange-500/5">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={onNavigateBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <Avatar className="h-8 w-8">
+            <AvatarFallback className="bg-orange-500/20 text-orange-600 text-xs">
+              {executor.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="font-semibold">{executor.name}</h1>
+            <p className="text-xs text-muted-foreground">{executor.type}</p>
+          </div>
+          <Badge variant="outline" className="border-orange-500/30 text-orange-600">
+            <Terminal className="h-3 w-3 mr-1" />
+            {t("settingsAgents.executors")}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <div className="border-b px-4">
+          <TabsList className="h-10 bg-transparent">
+            <TabsTrigger value="overview" className="text-xs">
+              <Info className="h-3.5 w-3.5 mr-1.5" />
+              {t("common.overview")}
+            </TabsTrigger>
+            <TabsTrigger value="mcp" className="text-xs">
+              <Server className="h-3.5 w-3.5 mr-1.5" />
+              MCP
+              {mcpServers.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {mcpServers.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="skills" className="text-xs">
+              <Wrench className="h-3.5 w-3.5 mr-1.5" />
+              {t("chat.skills")}
+              {skills.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {skills.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="prompts" className="text-xs">
+              <MessageSquare className="h-3.5 w-3.5 mr-1.5" />
+              {t("settingsAgents.prompts", "提示词")}
+              {agentConfigs.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {agentConfigs.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="commands" className="text-xs">
+              <Command className="h-3.5 w-3.5 mr-1.5" />
+              {t("settingsAgents.commands", "指令")}
+              {commands.length > 0 && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
+                  {commands.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="flex-1 m-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-6 max-w-2xl">
+              {/* Description */}
+              <div className="p-4 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                <p className="text-sm text-muted-foreground">
+                  {t("settingsAgents.executorsDesc")}
+                </p>
+              </div>
+
+              {/* Config Path */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">{t("workspace.configPath")}</Label>
+                <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
+                  {executor.config_path}
+                </code>
+              </div>
+
+              {/* MCP Config */}
+              {executor.mcp_config_file && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">MCP {t("workspace.configuration")}</Label>
+                  <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
+                    {executor.mcp_config_file}
+                  </code>
+                </div>
+              )}
+
+              {/* Skills Config */}
+              {executor.skills_config_file && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">{t("chat.skills")} {t("workspace.configuration")}</Label>
+                  <code className="block text-sm bg-muted px-3 py-2 rounded-lg font-mono break-all">
+                    {executor.skills_config_file}
+                  </code>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* MCP Tab */}
+        <TabsContent value="mcp" className="flex-1 m-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {mcpLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : mcpError ? (
+                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {mcpError}
+                </div>
+              ) : mcpServers.length === 0 ? (
+                <div className="p-6 rounded-xl border border-dashed text-center">
+                  <Server className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("settingsAgents.noMcp")}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {mcpServers.map((server) => (
+                    <Card key={server.name} className={cn(server.disabled && "opacity-60")}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                              <Server className="h-5 w-5 text-orange-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium flex items-center gap-2">
+                                {server.name}
+                                {server.disabled && (
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    {t("common.disabled")}
+                                  </Badge>
+                                )}
+                              </h4>
+                              {server.command && (
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {server.command}
+                                </p>
+                              )}
+                              {server.url && (
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {server.url}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {server.transport && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {server.transport}
+                            </Badge>
+                          )}
+                        </div>
+                        {server.args && server.args.length > 0 && (
+                          <div className="mt-3 text-xs text-muted-foreground">
+                            <span className="font-medium">Args:</span>{" "}
+                            <code className="bg-muted px-1 py-0.5 rounded">
+                              {server.args.join(" ")}
+                            </code>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Skills Tab */}
+        <TabsContent value="skills" className="flex-1 m-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {skillsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : skillsError ? (
+                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {skillsError}
+                </div>
+              ) : skills.length === 0 ? (
+                <div className="p-6 rounded-xl border border-dashed text-center">
+                  <Wrench className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("settingsAgents.noSkills")}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {skills.map((skill) => (
+                    <Card key={skill.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Sparkles className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium">{skill.name}</h4>
+                              {skill.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {skill.description}
+                                </p>
+                              )}
+                              {skill.path && (
+                                <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                                  {skill.path}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px]">
+                              v{skill.version}
+                            </Badge>
+                            <Badge variant="secondary" className="text-[10px]">
+                              {skill.source}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Prompts Tab (Agent Configs) */}
+        <TabsContent value="prompts" className="flex-1 m-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {configsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : configsError ? (
+                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {configsError}
+                </div>
+              ) : agentConfigs.length === 0 ? (
+                <div className="p-6 rounded-xl border border-dashed text-center">
+                  <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("settingsAgents.noPrompts", "暂无提示词配置")}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("settingsAgents.noPromptsHint", "在 .claude/agents/ 目录下添加 Markdown 文件")}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {agentConfigs.map((config) => (
+                    <Card key={config.id}>
+                      <CardHeader className="p-4 pb-2">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                              <FileText className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-sm font-medium">{config.name}</CardTitle>
+                              {config.description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {config.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {config.model && (
+                            <Badge variant="outline" className="text-[10px]">
+                              {config.model}
+                            </Badge>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-2">
+                        {config.tools && config.tools.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {config.tools.map((tool) => (
+                              <Badge key={tool} variant="secondary" className="text-[10px]">
+                                {tool}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        <p className="text-[10px] text-muted-foreground font-mono">
+                          {config.path}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+
+        {/* Commands Tab */}
+        <TabsContent value="commands" className="flex-1 m-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-4">
+              {commandsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : commandsError ? (
+                <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {commandsError}
+                </div>
+              ) : commands.length === 0 ? (
+                <div className="p-6 rounded-xl border border-dashed text-center">
+                  <Command className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("settingsAgents.noCommands", "暂无指令配置")}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("settingsAgents.noCommandsHint", "在 .claude/commands/ 目录下添加指令文件")}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {commands.map((command) => (
+                    <Card key={command.id}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                              <Command className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                              <h4 className="font-medium font-mono text-sm">/{command.id}</h4>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {command.namespace}/{command.name}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-mono mt-2">
+                          {command.path}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

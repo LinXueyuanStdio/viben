@@ -6,6 +6,7 @@ import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { StepPython } from "./step-python";
 import { StepClaude } from "./step-claude";
 import { StepLogin } from "./step-login";
+import { VibenLogo } from "@/components/ui/viben-logo";
 
 export function OnboardingWizard() {
   const { t } = useTranslation();
@@ -49,12 +50,7 @@ export function OnboardingWizard() {
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header with logo */}
       <header className="flex items-center justify-center border-b py-4">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-            V
-          </div>
-          <span className="text-lg font-semibold">Viben</span>
-        </div>
+        <VibenLogo size="md" showText />
       </header>
 
       {/* Progress indicator */}

@@ -116,6 +116,10 @@ export type { Agent, CreateAgentOptions, AgentUpdate, AgentTemplate, AgentSessio
 export { useVibenModels } from "./use-viben-models";
 export type { Model, CreateModelOptions, ModelUpdate, DiscoveredModel, UseVibenModelsReturn } from "./use-viben-models";
 
+// Unified Agents (combines executors and agents)
+export { useUnifiedAgents, useVibenAgentsOnly, useWorkspaceExecutors } from "./use-unified-agents";
+export type { UseUnifiedAgentsOptions, UseUnifiedAgentsReturn } from "./use-unified-agents";
+
 // Workspace Chat
 export { useAgent } from "./use-agent";
 export { useTaskAgent } from "./use-task-agent";

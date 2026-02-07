@@ -2,11 +2,11 @@
  * Unified Agent Types
  *
  * 统一的智能体类型定义，支持：
- * - 主智能体 (Primary Agent) - 来自工作空间配置文件
- * - 子智能体 (Sub Agent) - 来自 ~/.viben/agents/
+ * - 执行器 (Executor) - 来自工作空间自动发现（.claude/, CLAUDE.md 等），是运行后端
+ * - 智能体 (Agent) - 来自 ~/.viben/agents/，Viben Agent 会使用某个执行器作为运行后端
  */
 
-import type { WorkspaceAgent, WorkspaceAgentType } from "./index";
+import type { Executor, ExecutorType } from "./index";
 import type { Agent } from "@/hooks/use-viben-agents";
 
 // ============================================================================
@@ -14,16 +14,18 @@ import type { Agent } from "@/hooks/use-viben-agents";
 // ============================================================================
 
 /**
- * 智能体来源类型
+ * 来源类型
+ * - workspace: 工作空间自动发现（执行器）
+ * - global: 全局存储（智能体）
  */
 export type AgentSource = "workspace" | "global";
 
 /**
- * 智能体角色类型
- * - primary: 主智能体，来自工作空间配置
- * - sub: 子智能体，来自全局存储
+ * 角色类型
+ * - executor: 执行器，来自工作空间自动发现配置，是运行后端
+ * - agent: 智能体，来自全局存储，使用执行器作为运行后端
  */
-export type AgentRole = "primary" | "sub";
+export type AgentRole = "executor" | "agent";
 
 // ============================================================================
 // Unified Agent Interface
@@ -48,8 +50,8 @@ export interface UnifiedAgent {
   workspaceId?: string;
   /** 工作空间路径 (仅工作空间智能体) */
   workspacePath?: string;
-  /** 智能体类型 (仅工作空间智能体) */
-  agentType?: WorkspaceAgentType;
+  /** 执行器类型 (仅执行器) */
+  executorType?: ExecutorType;
   /** 配置路径 */
   configPath?: string;
   /** MCP 配置文件路径 */
@@ -80,8 +82,8 @@ export interface UnifiedAgent {
   createdAt?: string;
   /** 更新时间 */
   updatedAt?: string;
-  /** 原始数据 - 工作空间智能体 */
-  rawWorkspaceAgent?: WorkspaceAgent;
+  /** 原始数据 - 执行器 */
+  rawExecutor?: Executor;
   /** 原始数据 - 全局智能体 */
   rawVibenAgent?: Agent;
 }
@@ -91,30 +93,33 @@ export interface UnifiedAgent {
 // ============================================================================
 
 /**
- * 将工作空间智能体转换为统一智能体
+ * 将工作空间自动发现的配置转换为执行器
  */
-export function workspaceAgentToUnified(
-  agent: WorkspaceAgent,
+export function executorToUnified(
+  executor: Executor,
   workspacePath?: string
 ): UnifiedAgent {
   return {
-    id: agent.id,
-    name: agent.name,
+    id: executor.id,
+    name: executor.name,
     description: undefined,
     source: "workspace",
-    role: "primary",
-    workspaceId: agent.workspace_id,
+    role: "executor",
+    workspaceId: executor.workspace_id,
     workspacePath,
-    agentType: agent.type,
-    configPath: agent.config_path,
-    mcpConfigFile: agent.mcp_config_file,
-    skillsConfigFile: agent.skills_config_file,
-    rawWorkspaceAgent: agent,
+    executorType: executor.type,
+    configPath: executor.config_path,
+    mcpConfigFile: executor.mcp_config_file,
+    skillsConfigFile: executor.skills_config_file,
+    rawExecutor: executor,
   };
 }
 
+/** @deprecated Use executorToUnified instead */
+export const workspaceAgentToExecutor = executorToUnified;
+
 /**
- * 将全局智能体转换为统一智能体
+ * 将 Viben Agent 转换为统一智能体
  */
 export function vibenAgentToUnified(agent: Agent): UnifiedAgent {
   return {
@@ -122,7 +127,7 @@ export function vibenAgentToUnified(agent: Agent): UnifiedAgent {
     name: agent.name,
     description: agent.description,
     source: "global",
-    role: "sub",
+    role: "agent",
     model: agent.model,
     provider: agent.provider,
     systemPrompt: agent.system_prompt,
@@ -144,64 +149,64 @@ export function vibenAgentToUnified(agent: Agent): UnifiedAgent {
 // ============================================================================
 
 /**
- * 检查是否为主智能体
+ * 检查是否为执行器
  */
-export function isPrimaryAgent(agent: UnifiedAgent): boolean {
-  return agent.role === "primary";
+export function isExecutor(agent: UnifiedAgent): boolean {
+  return agent.role === "executor";
 }
 
 /**
- * 检查是否为子智能体
+ * 检查是否为智能体
  */
-export function isSubAgent(agent: UnifiedAgent): boolean {
-  return agent.role === "sub";
+export function isAgent(agent: UnifiedAgent): boolean {
+  return agent.role === "agent";
 }
 
 /**
- * 检查是否为工作空间智能体
+ * 检查是否来自工作空间（执行器）
  */
-export function isWorkspaceAgent(agent: UnifiedAgent): boolean {
+export function isWorkspaceExecutor(agent: UnifiedAgent): boolean {
   return agent.source === "workspace";
 }
 
 /**
- * 检查是否为全局智能体
+ * 检查是否来自全局存储（智能体）
  */
 export function isGlobalAgent(agent: UnifiedAgent): boolean {
   return agent.source === "global";
 }
 
 // ============================================================================
-// Agent Display Helpers
+// Display Helpers
 // ============================================================================
 
 /**
- * 获取智能体来源标签
+ * 获取来源标签
  */
 export function getAgentSourceLabel(agent: UnifiedAgent): string {
   return agent.source === "workspace" ? "工作空间" : "全局";
 }
 
 /**
- * 获取智能体角色标签
+ * 获取角色标签
  */
 export function getAgentRoleLabel(agent: UnifiedAgent): string {
-  return agent.role === "primary" ? "主智能体" : "子智能体";
+  return agent.role === "executor" ? "执行器" : "智能体";
 }
 
 /**
- * 获取智能体显示的简短名称
+ * 获取显示的简短名称
  */
 export function getAgentDisplayName(agent: UnifiedAgent): string {
-  return agent.name || "未命名智能体";
+  return agent.name || (agent.role === "executor" ? "未命名执行器" : "未命名智能体");
 }
 
 /**
- * 获取智能体图标颜色类
+ * 获取图标颜色类
  */
 export function getAgentColorClass(agent: UnifiedAgent): string {
-  if (agent.role === "primary") {
-    return "bg-primary/20 text-primary";
+  if (agent.role === "executor") {
+    return "bg-orange-500/20 text-orange-600";
   }
-  return "bg-muted text-muted-foreground";
+  return "bg-primary/20 text-primary";
 }
