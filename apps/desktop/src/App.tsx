@@ -22,6 +22,7 @@ import {
   PublishPage,
   MyPackagesPage,
   AnalyticsPage,
+  DocumentsPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -93,7 +94,8 @@ function App() {
             }
           />
 
-          {/* Settings and About */}
+          {/* Documents, Settings and About */}
+          <Route path="documents" element={<DocumentsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="about" element={<AboutPage />} />
 
