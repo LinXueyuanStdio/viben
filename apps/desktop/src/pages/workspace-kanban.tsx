@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Loader2,
@@ -11,12 +11,17 @@ import {
   XCircle,
   ArrowLeft,
   BarChart3,
+  Keyboard,
 } from "lucide-react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Badge,
   cn,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from "@viben/ui";
 import {
   KanbanProvider,
@@ -55,7 +60,12 @@ import {
   type Command,
 } from "@viben/kanban";
 import { PageWrapper } from "@/components/layout";
-import { WorkspaceHeader, TaskDetailPanel } from "@/components/workspace";
+import {
+  WorkspaceHeader,
+  TaskDetailPanel,
+  TasksLayout,
+  useKanbanNavigation,
+} from "@/components/workspace";
 import { useLocalWorkspaces } from "@/hooks";
 import {
   useVibeKanbanTasks,
@@ -344,7 +354,6 @@ export function WorkspaceKanbanPage() {
     return grouped;
   }, [sortedTasks, columnStatuses]);
 
-
   // Handle drag end - move task to new status
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -424,6 +433,27 @@ export function WorkspaceKanbanPage() {
   const handleClosePanel = useCallback(() => {
     setSelectedTaskId(null);
   }, []);
+
+  // Keyboard navigation
+  const {
+    handleKeyDown: handleKanbanKeyDown,
+    containerRef: keyboardContainerRef,
+  } = useKanbanNavigation({
+    tasksByColumn,
+    columnIds: columnStatuses.map((c) => c.id),
+    selectedTaskId,
+    onSelectTask: setSelectedTaskId,
+    onOpenTask: (task) => setSelectedTaskId(task.id),
+    onClosePanel: handleClosePanel,
+    enabled: viewMode === "kanban",
+  });
+
+  // Focus kanban container when a task is selected via click
+  useEffect(() => {
+    if (selectedTaskId && keyboardContainerRef.current) {
+      keyboardContainerRef.current.focus();
+    }
+  }, [selectedTaskId, keyboardContainerRef]);
 
   // Sort change
   const handleSortChange = useCallback(
@@ -754,6 +784,37 @@ export function WorkspaceKanbanPage() {
             {t("workspace.stats", "Stats")}
           </Button>
 
+          {/* Keyboard Shortcuts Help */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setIsCommandPaletteOpen(true)}
+                >
+                  <Keyboard className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs">
+                <div className="text-xs space-y-1">
+                  <p className="font-medium">{t("workspace.keyboardShortcuts", "Keyboard Shortcuts")}</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+                    <span>Arrow keys</span>
+                    <span>{t("workspace.shortcut.navigate", "Navigate")}</span>
+                    <span>Enter</span>
+                    <span>{t("workspace.shortcut.open", "Open task")}</span>
+                    <span>Escape</span>
+                    <span>{t("workspace.shortcut.close", "Close panel")}</span>
+                    <span>Cmd/Ctrl + K</span>
+                    <span>{t("workspace.shortcut.command", "Commands")}</span>
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           {/* Refresh Button */}
           <Button
             variant="ghost"
@@ -782,17 +843,20 @@ export function WorkspaceKanbanPage() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        /* Main Content with Resizable Panels */
-        <Group orientation="horizontal" className="flex-1 min-w-0 h-full">
-          {/* Board/List Panel - fills remaining space */}
-          <Panel
-            id="kanban-board"
-            minSize="20%"
-            className="min-w-0 h-full overflow-hidden"
-          >
-            {viewMode === "kanban" ? (
+        /* Main Content with TasksLayout for proper three-column responsive layout */
+        <TasksLayout
+          isPanelOpen={isPanelOpen}
+          kanban={
+            viewMode === "kanban" ? (
               /* Kanban View - horizontal scroll when columns exceed width */
-              <div className="h-full overflow-x-auto p-4">
+              <div
+                ref={keyboardContainerRef}
+                className="h-full overflow-x-auto p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                tabIndex={0}
+                onKeyDown={handleKanbanKeyDown}
+                role="application"
+                aria-label={t("workspace.kanban", "Kanban board")}
+              >
                 <KanbanProvider
                   onDragEnd={handleDragEnd}
                   className="inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full"
@@ -809,24 +873,38 @@ export function WorkspaceKanbanPage() {
                           addTaskLabel={t("workspace.addTask", "Add Task")}
                         />
                         <KanbanCards className="flex-1 flex-col p-2 gap-2">
-                          {columnTasks.map((task, index) => (
-                            <KanbanCard
-                              key={task.id}
-                              id={task.id}
-                              name={task.title}
-                              index={index}
-                              parent={column.id}
-                              onClick={() => handleCardClick(task.id)}
-                              isOpen={selectedTaskId === task.id}
-                            >
-                              <TaskCardContent
-                                task={task}
-                                onTitleChange={(title) =>
-                                  handleTitleChange(task.id, title)
-                                }
-                              />
-                            </KanbanCard>
-                          ))}
+                          <AnimatePresence initial={false}>
+                            {columnTasks.map((task, index) => (
+                              <motion.div
+                                key={task.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95 }}
+                                transition={{
+                                  duration: 0.2,
+                                  ease: [0.2, 0, 0, 1],
+                                  delay: index * 0.02,
+                                }}
+                              >
+                                <KanbanCard
+                                  id={task.id}
+                                  name={task.title}
+                                  index={index}
+                                  parent={column.id}
+                                  onClick={() => handleCardClick(task.id)}
+                                  isOpen={selectedTaskId === task.id}
+                                  tabIndex={selectedTaskId === task.id ? 0 : -1}
+                                >
+                                  <TaskCardContent
+                                    task={task}
+                                    onTitleChange={(title) =>
+                                      handleTitleChange(task.id, title)
+                                    }
+                                  />
+                                </KanbanCard>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
                         </KanbanCards>
                       </KanbanBoard>
                     );
@@ -864,36 +942,25 @@ export function WorkspaceKanbanPage() {
                   )}
                 />
               </div>
-            )}
-          </Panel>
-
-          {/* Resize Handle */}
-          {isPanelOpen && (
-            <Separator
-              id="kanban-separator"
-              className="w-1 bg-border hover:bg-primary/50 transition-colors"
-            />
-          )}
-
-          {/* Task Detail Panel - fixed pixel constraints, priority sizing */}
-          {isPanelOpen && (
-            <Panel
-              id="task-detail"
-              minSize="400px"
-              maxSize="800px"
-              className="min-w-0 h-full overflow-hidden"
+            )
+          }
+          taskPanel={
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+              className="h-full border-l bg-background overflow-y-auto"
             >
-              <div className="h-full border-l bg-background overflow-y-auto">
-                <TaskDetailPanel
-                  task={selectedTask}
-                  onClose={handleClosePanel}
-                  availableTasks={availableTasks}
-                  onNavigateToTask={handleNavigateToTask}
-                />
-              </div>
-            </Panel>
-          )}
-        </Group>
+              <TaskDetailPanel
+                task={selectedTask}
+                onClose={handleClosePanel}
+                availableTasks={availableTasks}
+                onNavigateToTask={handleNavigateToTask}
+              />
+            </motion.div>
+          }
+        />
       )}
 
       {/* Bulk Actions Bar */}
