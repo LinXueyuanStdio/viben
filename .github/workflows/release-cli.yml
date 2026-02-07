@@ -14,6 +14,10 @@ on:
         description: 'Publish to npm'
         type: boolean
         default: true
+      update_homebrew:
+        description: 'Update Homebrew formula'
+        type: boolean
+        default: true
 
 # Ensure only one release workflow runs at a time
 concurrency:
@@ -91,29 +95,28 @@ jobs:
             curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash
             ```
 
-            #### 2. npx (Node.js)
+            #### 2. npx (Node.js 18+)
             ```bash
             npx viben
             ```
 
-            #### 3. npm Global
+            #### 3. npm Global Install
             ```bash
             npm install -g viben
             viben
             ```
 
-            #### 4. pip (Direct Python)
+            #### 4. Homebrew (macOS/Linux)
             ```bash
-            pip install browse-mcp
+            brew tap LinXueyuanStdio/viben
+            brew install viben
             ```
 
             ### Requirements
-            - Python 3.10+
-            - pip or uv (for Python package installation)
+            - Node.js 18+
 
             ### Links
             - [Documentation](https://github.com/LinXueyuanStdio/viben)
-            - [PyPI Package](https://pypi.org/project/browse-mcp/)
             - [npm Package](https://www.npmjs.com/package/viben)
           files: |
             release-assets/install.sh
@@ -126,6 +129,8 @@ jobs:
     needs: [prepare, release]
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' || inputs.publish_npm == true }}
+    outputs:
+      sha256: ${{ steps.get-sha256.outputs.sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -150,3 +155,87 @@ jobs:
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Wait for npm propagation
+        run: sleep 30
+
+      - name: Get package SHA256
+        id: get-sha256
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SHA256=$(curl -sL "https://registry.npmjs.org/viben/-/viben-${VERSION}.tgz" | shasum -a 256 | cut -d' ' -f1)
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          echo "Package SHA256: ${SHA256}"
+
+  update-homebrew:
+    needs: [prepare, publish-npm]
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'push' || inputs.update_homebrew == true) && needs.publish-npm.outputs.sha256 != '' }}
+    steps:
+      - name: Checkout homebrew-viben
+        uses: actions/checkout@v4
+        with:
+          repository: LinXueyuanStdio/homebrew-viben
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-viben
+        continue-on-error: true
+
+      - name: Check if tap exists
+        id: check-tap
+        run: |
+          if [ -d "homebrew-viben" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "::warning::Homebrew tap repository not found. Skipping formula update."
+          fi
+
+      - name: Update formula
+        if: steps.check-tap.outputs.exists == 'true'
+        run: |
+          VERSION="${{ needs.prepare.outputs.version }}"
+          SHA256="${{ needs.publish-npm.outputs.sha256 }}"
+
+          cd homebrew-viben
+
+          # Create Formula directory if it doesn't exist
+          mkdir -p Formula
+
+          # Generate the formula
+          cat > Formula/viben.rb << 'EOF'
+          class Viben < Formula
+            desc "Orchestrate AI agent clusters in your local workspace"
+            homepage "https://github.com/LinXueyuanStdio/viben"
+            url "https://registry.npmjs.org/viben/-/viben-VERSION_PLACEHOLDER.tgz"
+            sha256 "SHA256_PLACEHOLDER"
+            license "MIT"
+
+            depends_on "node@20"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+            end
+
+            test do
+              assert_match "Viben CLI", shell_output("#{bin}/viben --help")
+            end
+          end
+          EOF
+
+          # Replace placeholders
+          sed -i "s/VERSION_PLACEHOLDER/${VERSION}/g" Formula/viben.rb
+          sed -i "s/SHA256_PLACEHOLDER/${SHA256}/g" Formula/viben.rb
+
+          echo "Updated formula:"
+          cat Formula/viben.rb
+
+      - name: Commit and push
+        if: steps.check-tap.outputs.exists == 'true'
+        run: |
+          cd homebrew-viben
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/viben.rb
+          git diff --cached --quiet || git commit -m "Update viben to ${{ needs.prepare.outputs.version }}"
+          git push
