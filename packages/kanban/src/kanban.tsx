@@ -264,14 +264,10 @@ export const KanbanProvider = ({
       modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
-        className={cn("divide-x border-x", className)}
-        style={{
-          display: "inline-grid",
-          gridAutoFlow: "column",
-          gridAutoColumns: "minmax(200px, 400px)",
-          alignItems: "stretch",
-          minHeight: "100%",
-        }}
+        className={cn(
+          "inline-grid grid-flow-col auto-cols-[minmax(200px,400px)] divide-x border-x items-stretch min-h-full",
+          className
+        )}
       >
         {children}
       </div>
