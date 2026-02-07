@@ -97,7 +97,7 @@ Located at `apps/web/vercel.json`:
 {
   "framework": "nextjs",
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --prod=false",
   "functions": {
     "app/api/packages/upload/route.ts": {
       "maxDuration": 300
@@ -441,6 +441,41 @@ outputFileTracingRoot: path.resolve(__dirname, '../..'),
   "installCommand": "pnpm install"
 }
 ```
+
+#### Error: `ERR_PNPM_INCLUDED_DEPS_CONFLICT` / `ESLint must be installed` / `Could not find declaration file for module 'bcrypt'`
+
+**Error Messages**:
+```
+ERR_PNPM_INCLUDED_DEPS_CONFLICT  modules directory (at "/vercel/path0") was installed with optionalDependencies, dependencies. Current install wants optionalDependencies, dependencies, devDependencies.
+
+ESLint must be installed in order to run during builds: pnpm install --save-dev eslint
+
+Type error: Could not find a declaration file for module 'bcrypt'.
+```
+
+**Cause**: 这是 pnpm monorepo 在 Vercel 上的已知问题。Vercel 默认在根目录运行 `pnpm install`（不安装 devDependencies），但 Next.js 构建时需要 `typescript`、`eslint`、`@types/*` 等 devDependencies。当 Next.js 尝试自动安装这些依赖时，会与已安装的 `node_modules` 结构冲突。
+
+**Fix**: 在 `vercel.json` 中使用 `--prod=false` 强制安装 devDependencies：
+
+```json
+{
+  "installCommand": "pnpm install --prod=false"
+}
+```
+
+**⚠️ 重要警告 - 请勿修改**:
+
+`--prod=false` 是正确的解决方案，**不要**将 `typescript`、`eslint`、`@types/bcrypt` 等移到 `dependencies`，原因：
+
+1. **语义不正确** - 这些是构建时工具，不是运行时依赖
+2. **增加生产包体积** - 生产服务器不需要 TypeScript 编译器
+3. **违反社区惯例** - 所有 Next.js 项目都将这些放在 devDeps
+
+**相关 commit**: `792d6ee` - fix(vercel): install devDependencies to fix build conflict
+
+**参考**:
+- https://github.com/vercel/vercel/issues/10176
+- https://pnpm.io/cli/install#--prod--p
 
 ### Runtime Errors
 
