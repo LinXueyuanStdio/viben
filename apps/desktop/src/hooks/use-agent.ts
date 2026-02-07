@@ -17,7 +17,7 @@ import type {
   BaseCodingAgent,
   ExecutorConfig,
 } from "@/types";
-import { getGatewayClient } from "@/lib/gateway";
+import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
 
 /**
  * Generate a unique ID
@@ -28,6 +28,26 @@ const generateId = () => crypto.randomUUID();
  * Mock delay for fallback implementation
  */
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Gateway event types from SSE stream
+ */
+interface GatewayEvent {
+  type: string;
+  data: {
+    agent_id?: string;
+    session_id?: string;
+    success?: boolean;
+    task_id?: string;
+    old_status?: string;
+    new_status?: string;
+    content?: string;
+    role?: string;
+    log_type?: string;
+    message?: string;
+    code?: string;
+  };
+}
 
 /**
  * Agent hook options
@@ -64,6 +84,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const client = useMemo(() => getGatewayClient(), []);
 
   // Check Gateway connection on mount
@@ -72,6 +93,18 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       checkGatewayConnection();
     }
   }, [mockMode]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   /**
    * Check Gateway connection
@@ -87,8 +120,181 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
     }
   }, [client]);
 
-  // Note: SSE event processing will be implemented when Gateway supports streaming
-  // The sseEventToAgentMessage utility is available in @/lib/gateway
+  /**
+   * Subscribe to SSE events for a session
+   */
+  const subscribeToEvents = useCallback((targetSessionId: string) => {
+    // Close existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const eventSource = new EventSource(`${getGatewayUrl()}/api/events`);
+    eventSourceRef.current = eventSource;
+
+    // Handle different event types
+    eventSource.addEventListener("session_message", (e) => {
+      try {
+        const event: GatewayEvent = JSON.parse(e.data);
+        if (event.data.session_id !== targetSessionId) return;
+
+        const msg: AgentMessage = {
+          id: generateId(),
+          type: event.data.role === "user" ? "user" : "text",
+          content: event.data.content || "",
+        };
+        setMessages((prev) => [...prev, msg]);
+      } catch (err) {
+        console.error("[useAgent] Failed to parse session_message:", err);
+      }
+    });
+
+    eventSource.addEventListener("execution_log", (e) => {
+      try {
+        const event: GatewayEvent = JSON.parse(e.data);
+        if (event.data.session_id !== targetSessionId) return;
+
+        // Handle different log types
+        const logType = event.data.log_type;
+        const content = event.data.content || "";
+
+        if (logType === "tool_use") {
+          // Parse tool use from log
+          try {
+            const toolData = JSON.parse(content);
+            const toolId = generateId();
+            const toolMsg: AgentMessage = {
+              id: toolId,
+              type: "tool_use",
+              name: toolData.name || "unknown",
+              input: toolData.input || {},
+            };
+            setMessages((prev) => [...prev, toolMsg]);
+
+            const toolUsage: ToolUsage = {
+              id: toolId,
+              name: toolData.name || "unknown",
+              displayName: toolData.name || "Unknown Tool",
+              input: toolData.input || {},
+              timestamp: Date.now(),
+            };
+            setToolUsages((prev) => [...prev, toolUsage]);
+          } catch {
+            // If not JSON, just add as text
+            const textMsg: AgentMessage = {
+              id: generateId(),
+              type: "text",
+              content,
+            };
+            setMessages((prev) => [...prev, textMsg]);
+          }
+        } else if (logType === "tool_result") {
+          try {
+            const resultData = JSON.parse(content);
+            const resultMsg: AgentMessage = {
+              id: generateId(),
+              type: "tool_result",
+              toolUseId: resultData.tool_use_id || "",
+              output: resultData.output || content,
+              isError: resultData.is_error,
+            };
+            setMessages((prev) => [...prev, resultMsg]);
+
+            // Update tool usage with result
+            if (resultData.tool_use_id) {
+              setToolUsages((prev) =>
+                prev.map((t) =>
+                  t.id === resultData.tool_use_id
+                    ? { ...t, output: resultData.output }
+                    : t
+                )
+              );
+            }
+          } catch {
+            const textMsg: AgentMessage = {
+              id: generateId(),
+              type: "text",
+              content,
+            };
+            setMessages((prev) => [...prev, textMsg]);
+          }
+        } else if (logType === "thinking" || logType === "assistant") {
+          const textMsg: AgentMessage = {
+            id: generateId(),
+            type: "text",
+            content,
+          };
+          setMessages((prev) => [...prev, textMsg]);
+        } else {
+          // Other log types - just add as text if non-empty
+          if (content.trim()) {
+            const textMsg: AgentMessage = {
+              id: generateId(),
+              type: "text",
+              content,
+            };
+            setMessages((prev) => [...prev, textMsg]);
+          }
+        }
+      } catch (err) {
+        console.error("[useAgent] Failed to parse execution_log:", err);
+      }
+    });
+
+    eventSource.addEventListener("agent_completed", (e) => {
+      try {
+        const event: GatewayEvent = JSON.parse(e.data);
+        if (event.data.session_id !== targetSessionId) return;
+
+        setIsStreaming(false);
+        if (event.data.success) {
+          setPhase("completed");
+          const resultMsg: AgentMessage = {
+            id: generateId(),
+            type: "result",
+            content: "Agent completed successfully.",
+          };
+          setMessages((prev) => [...prev, resultMsg]);
+        } else {
+          setPhase("error");
+          const errMsg: AgentMessage = {
+            id: generateId(),
+            type: "error",
+            message: "Agent execution failed.",
+            isError: true,
+          };
+          setMessages((prev) => [...prev, errMsg]);
+        }
+      } catch (err) {
+        console.error("[useAgent] Failed to parse agent_completed:", err);
+      }
+    });
+
+    eventSource.addEventListener("error", (e) => {
+      try {
+        const event: GatewayEvent = JSON.parse((e as MessageEvent).data || "{}");
+        setError(event.data.message || "Unknown error");
+        const errMsg: AgentMessage = {
+          id: generateId(),
+          type: "error",
+          message: event.data.message || "Unknown error",
+          isError: true,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setPhase("error");
+        setIsStreaming(false);
+      } catch {
+        // Connection error, not a data event
+        console.warn("[useAgent] SSE connection error");
+      }
+    });
+
+    eventSource.onerror = () => {
+      console.warn("[useAgent] SSE connection lost, will retry...");
+    };
+
+    return eventSource;
+  }, []);
 
   /**
    * Send a message to the agent (real Gateway implementation)
@@ -118,17 +324,19 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
           config: executorConfig?.config as Record<string, unknown>,
         });
 
-        setSessionId(response.session_id);
+        const newSessionId = response.session_id;
+        setSessionId(newSessionId);
 
-        // Note: Real SSE streaming will be implemented when Gateway supports it
-        // For now, we show a confirmation message
+        // Subscribe to SSE events for this session
+        subscribeToEvents(newSessionId);
+
+        // Add a system message indicating the agent started
         const infoMessage: AgentMessage = {
           id: generateId(),
           type: "text",
-          content: `Agent ${agentType} started (session: ${response.session_id}). The agent is running in the background. Check the terminal for output.`,
+          content: `Starting ${agentType} agent...`,
         };
         setMessages((prev) => [...prev, infoMessage]);
-        setPhase("completed");
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         setError(errorMessage);
@@ -141,11 +349,10 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         };
         setMessages((prev) => [...prev, errMsg]);
         setPhase("error");
-      } finally {
         setIsStreaming(false);
       }
     },
-    [agentType, client, executorConfig, sessionId, workspaceId]
+    [agentType, client, executorConfig, sessionId, workspaceId, subscribeToEvents]
   );
 
   /**
@@ -290,7 +497,7 @@ This is a **mock response** (Gateway not connected). In a real implementation, t
 
 The workspace ID for this session is: \`${workspaceId}\`
 
-> Connect to Gateway at http://localhost:30100 for real agent execution.`;
+> Connect to Gateway at ${getGatewayUrl()} for real agent execution.`;
 
           const textMessage: AgentMessage = {
             id: generateId(),
@@ -470,6 +677,12 @@ The workspace ID for this session is: \`${workspaceId}\`
       abortControllerRef.current.abort();
     }
 
+    // Close SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     // Stop the agent through Gateway if we have a session
     if (sessionId && !mockMode && gatewayConnected) {
       try {
@@ -492,6 +705,12 @@ The workspace ID for this session is: \`${workspaceId}\`
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
+    // Close SSE connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
     setMessages([]);
     setArtifacts([]);
     setToolUsages([]);

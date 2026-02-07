@@ -22,6 +22,7 @@ import {
   X,
   Cpu,
   Bot,
+  Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -45,9 +46,10 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
 import { SettingsModelPage } from "./settings-model";
 import { SettingsAgentsPage } from "./settings-agents";
+import { SettingsGatewayPage } from "./settings-gateway";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "model" | "agents" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "gateway" | "model" | "agents" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -59,6 +61,7 @@ interface SectionConfig {
 const SECTIONS: SectionConfig[] = [
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
   { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
+  { id: "gateway", labelKey: "settings.sections.gateway", icon: Network },
   { id: "model", labelKey: "settings.sections.model", icon: Cpu },
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
@@ -189,6 +192,8 @@ export function SettingsPage() {
         return <GeneralSection key="general" />;
       case "shortcuts":
         return <ShortcutsSection key="shortcuts" />;
+      case "gateway":
+        return <SettingsGatewayPage key="gateway" />;
       case "model":
         return <SettingsModelPage key="model" />;
       case "agents":

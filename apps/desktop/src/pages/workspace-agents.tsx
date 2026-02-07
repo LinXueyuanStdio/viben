@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Bot,
   Plus,
   Trash2,
-  Edit,
   RefreshCw,
   Loader2,
   Star,
@@ -13,6 +12,8 @@ import {
   ArrowLeft,
   Cpu,
   MessageSquare,
+  Globe,
+  FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,7 @@ import {
 
 export function WorkspaceAgentsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
@@ -58,7 +60,6 @@ export function WorkspaceAgentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
@@ -84,7 +85,7 @@ export function WorkspaceAgentsPage() {
     loadData();
   }, [loadData]);
 
-  // Create agent
+  // Create agent and navigate to detail page
   // TODO: Replace with Tauri backend calls when available
   const handleCreateAgent = async (options: CreateAgentOptions) => {
     try {
@@ -107,22 +108,8 @@ export function WorkspaceAgentsPage() {
         setDefaultAgentId(id);
       }
       setCreateDialogOpen(false);
-    } catch (err) {
-      throw err;
-    }
-  };
-
-  // Update agent
-  // TODO: Replace with Tauri backend calls when available
-  const handleUpdateAgent = async (id: string, updates: Partial<Agent>) => {
-    try {
-      const now = new Date().toISOString();
-      setAgents((prev) =>
-        prev.map((a) =>
-          a.id === id ? { ...a, ...updates, updatedAt: now } : a
-        )
-      );
-      setEditingAgent(null);
+      // Navigate to the agent detail page
+      navigate(`/workspace/${workspaceId}/agent/${id}`);
     } catch (err) {
       throw err;
     }
@@ -298,8 +285,9 @@ export function WorkspaceAgentsPage() {
               <StaggerItem key={agent.id}>
                 <AgentCard
                   agent={agent}
+                  workspaceId={workspaceId!}
                   isDefault={agent.id === defaultAgentId}
-                  onEdit={() => setEditingAgent(agent)}
+                  isGlobal={false} // TODO: Determine from agent.scope property
                   onDelete={() => handleDeleteAgent(agent.id)}
                   onSetDefault={() => handleSetDefault(agent.id)}
                   onClone={() => handleCloneAgent(agent)}
@@ -346,16 +334,6 @@ export function WorkspaceAgentsPage() {
           </div>
         )}
       </div>
-
-      {/* Edit Dialog */}
-      {editingAgent && (
-        <EditAgentDialog
-          agent={editingAgent}
-          open={!!editingAgent}
-          onOpenChange={(open) => !open && setEditingAgent(null)}
-          onSave={(updates) => handleUpdateAgent(editingAgent.id, updates)}
-        />
-      )}
     </PageWrapper>
   );
 }
@@ -366,8 +344,9 @@ export function WorkspaceAgentsPage() {
 
 interface AgentCardProps {
   agent: Agent;
+  workspaceId: string;
   isDefault: boolean;
-  onEdit: () => void;
+  isGlobal?: boolean;
   onDelete: () => void;
   onSetDefault: () => void;
   onClone: () => void;
@@ -375,21 +354,28 @@ interface AgentCardProps {
 
 function AgentCard({
   agent,
+  workspaceId,
   isDefault,
-  onEdit,
+  isGlobal = false,
   onDelete,
   onSetDefault,
   onClone,
 }: AgentCardProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  const handleClick = () => {
+    navigate(`/workspace/${workspaceId}/agent/${agent.id}`);
+  };
 
   return (
     <Card
       className={cn(
-        "transition-all",
+        "transition-all cursor-pointer hover:shadow-md hover:border-primary/30",
         isDefault && "border-primary/50 bg-primary/5"
       )}
+      onClick={handleClick}
     >
       <CardContent className="p-4">
         <div className="flex items-start justify-between">
@@ -402,9 +388,30 @@ function AgentCard({
                 <h4 className="font-semibold truncate">{agent.name}</h4>
                 {isDefault && (
                   <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                    Default
+                    {t("common.default")}
                   </span>
                 )}
+                {/* Scope indicator */}
+                <span
+                  className={cn(
+                    "text-xs px-2 py-0.5 rounded-full flex items-center gap-1",
+                    isGlobal
+                      ? "bg-muted text-muted-foreground"
+                      : "bg-blue-500/10 text-blue-600"
+                  )}
+                >
+                  {isGlobal ? (
+                    <>
+                      <Globe className="h-3 w-3" />
+                      {t("settingsAgents.globalScoped")}
+                    </>
+                  ) : (
+                    <>
+                      <FolderOpen className="h-3 w-3" />
+                      {t("settingsAgents.workspaceScoped")}
+                    </>
+                  )}
+                </span>
               </div>
               {agent.description && (
                 <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -428,8 +435,8 @@ function AgentCard({
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center gap-1 ml-4">
+          {/* Actions - stop propagation to prevent card click */}
+          <div className="flex items-center gap-1 ml-4" onClick={(e) => e.stopPropagation()}>
             <Button
               variant="ghost"
               size="icon"
@@ -454,14 +461,6 @@ function AgentCard({
               title={t("agents.clone")}
             >
               <Copy className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onEdit}
-              className="h-8 w-8"
-            >
-              <Edit className="h-4 w-4" />
             </Button>
             <Dialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
               <DialogTrigger asChild>
@@ -675,137 +674,6 @@ function CreateAgentDialog({
           <Button onClick={handleCreate} disabled={isCreating || !name.trim()}>
             {isCreating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {t("common.create")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ============================================================================
-// Edit Agent Dialog
-// ============================================================================
-
-interface EditAgentDialogProps {
-  agent: Agent;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: (updates: Partial<Agent>) => Promise<void>;
-}
-
-function EditAgentDialog({
-  agent,
-  open,
-  onOpenChange,
-  onSave,
-}: EditAgentDialogProps) {
-  const { t } = useTranslation();
-  const [name, setName] = useState(agent.name);
-  const [description, setDescription] = useState(agent.description || "");
-  const [model, setModel] = useState(agent.model || "");
-  const [provider, setProvider] = useState(agent.provider || "");
-  const [systemPrompt, setSystemPrompt] = useState(agent.systemPrompt || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSave = async () => {
-    if (!name.trim()) {
-      setError("Name is required");
-      return;
-    }
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      await onSave({
-        name: name.trim(),
-        description: description.trim() || undefined,
-        model: model.trim() || undefined,
-        provider: provider.trim() || undefined,
-        systemPrompt: systemPrompt.trim() || undefined,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save agent");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>{t("common.edit")} {agent.name}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <Label htmlFor="edit-agent-name">{t("common.name")} *</Label>
-            <Input
-              id="edit-agent-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1.5"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="edit-agent-description">{t("workspace.description")}</Label>
-            <Textarea
-              id="edit-agent-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="mt-1.5"
-              rows={2}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="edit-agent-model">{t("inspector.model")}</Label>
-              <Input
-                id="edit-agent-model"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-agent-provider">Provider</Label>
-              <Input
-                id="edit-agent-provider"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-                className="mt-1.5"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="edit-agent-prompt">System Prompt</Label>
-            <Textarea
-              id="edit-agent-prompt"
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              className="mt-1.5"
-              rows={3}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("common.cancel")}
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
-            {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {t("common.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

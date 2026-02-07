@@ -54,7 +54,11 @@
     "enable": "Enable",
     "disable": "Disable",
     "back": "Back",
-    "view": "View"
+    "view": "View",
+    "search": "Search...",
+    "selectAll": "Select all",
+    "selected": "selected",
+    "noResults": "No results found"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -95,6 +99,30 @@
     "packageMissingTooltip": "browse-mcp package is not installed. Click to configure.",
     "serverNone": "No Servers",
     "serverNoneTooltip": "No MCP servers created. Click to create one."
+  },
+  "gateway": {
+    "connected": "Connected",
+    "connecting": "Connecting...",
+    "disconnected": "Disconnected",
+    "error": "Connection Error",
+    "connectedTooltip": "Gateway service is running normally",
+    "connectingTooltip": "Checking Gateway connection status...",
+    "disconnectedTooltip": "Gateway service not running. Click to retry or configure.",
+    "errorTooltip": "Error connecting to Gateway",
+    "running": "Running",
+    "stopped": "Stopped",
+    "start": "Start",
+    "stop": "Stop",
+    "restart": "Restart",
+    "url": "Gateway URL",
+    "autoStart": "Auto Start",
+    "autoStartDescription": "Automatically start gateway when the app launches",
+    "port": "Port",
+    "portDescription": "Gateway service listening port (requires restart)",
+    "host": "Host",
+    "hostDescription": "Gateway service bind address",
+    "binaryNotFound": "Gateway binary not found",
+    "buildHint": "Build gateway first: cd crates && cargo build --release -p viben-gateway"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -153,7 +181,8 @@
       "providers": "Providers",
       "models": "Models",
       "model": "Models",
-      "agents": "Agents"
+      "agents": "Agents",
+      "gateway": "Gateway"
     },
     "generalDescription": "General application settings",
     "appearanceDescription": "Customize Viben's appearance on your device.",
@@ -364,7 +393,28 @@
     "globalScoped": "Global",
     "workspaceScoped": "Workspace",
     "globalScopedDesc": "This agent is available across all workspaces",
-    "workspaceScopedDesc": "This agent is only available in the current workspace"
+    "workspaceScopedDesc": "This agent is only available in the current workspace",
+    "executorNotFoundHint": "Executor not found. Make sure Gateway is running and the executor is installed.",
+    "executorNotLoggedInHint": "Executor is installed but requires login. Please authenticate first.",
+    "addMcp": "Add MCP Server",
+    "addSkill": "Add Skill",
+    "debugChatHint": "Test your agent configuration",
+    "configureMcp": "Configure MCP Servers",
+    "configureMcpDesc": "Select MCP servers to enable for this agent. These servers provide additional tools and capabilities.",
+    "noMcpServersAvailable": "No MCP servers configured. Create one in Search Service first.",
+    "goToSearchService": "Go to Search Service",
+    "createNewServer": "Create Server",
+    "configureSkills": "Configure Skills",
+    "configureSkillsDesc": "Select skills to enable for this agent. Skills extend the agent's capabilities.",
+    "noSkillsAvailable": "No skills installed. Browse the marketplace to install skills.",
+    "browseMarketplace": "Browse Marketplace",
+    "browseMore": "Browse More",
+    "memoryTitle": "Agent Memory",
+    "memoryPath": "~/.viben/agents/{{id}}/memory/",
+    "memoryPlaceholder": "# Agent Memory\\n\\nWrite persistent information about the user and context here...",
+    "editableMemory": "Editable persistent memory",
+    "noMcpServersHint": "Create MCP servers to provide tools for your agent",
+    "noSkillsHint": "Install skills from the marketplace to extend your agent"
   },
   "gateway": {
     "url": "Gateway URL",

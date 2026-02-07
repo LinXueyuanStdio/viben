@@ -10,7 +10,7 @@ import type { AgentMessage } from "@/types";
 // Configuration
 // ============================================================================
 
-const DEFAULT_GATEWAY_URL = "http://localhost:30100";
+const DEFAULT_GATEWAY_URL = "http://localhost:18790";
 
 /**
  * Get the Gateway base URL from localStorage or use default

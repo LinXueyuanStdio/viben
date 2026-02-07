@@ -5,6 +5,7 @@ pub mod api_logs;
 pub mod auth;
 pub mod cloud_mcp;
 pub mod cloud_skills;
+pub mod gateway;
 pub mod logs;
 pub mod marketplace;
 pub mod mcp;
