@@ -511,3 +511,80 @@ async fn test_model_manager_disabled_known_model_in_list() {
     let gpt4 = models.iter().find(|m| m.id == "gpt-4").unwrap();
     assert!(!gpt4.enabled);
 }
+
+// =============================================================================
+// Edge Case Tests for 100% Coverage
+// =============================================================================
+
+#[tokio::test]
+async fn test_model_manager_update_max_output_tokens() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ModelManager::initialize().await.unwrap();
+
+    // Create custom model
+    let options = CreateModelOptions {
+        id: "update-tokens-model".to_string(),
+        name: "Update Tokens Model".to_string(),
+        provider: ProviderType::Custom,
+        description: None,
+        context_window: None,
+        max_output_tokens: None,
+        set_as_default: false,
+    };
+    ModelManager::create_model(options).await.unwrap();
+
+    // Update max_output_tokens
+    let updated = ModelManager::update_model(
+        "update-tokens-model",
+        ModelUpdate {
+            max_output_tokens: Some(8192),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(updated.max_output_tokens, Some(8192));
+}
+
+#[tokio::test]
+async fn test_model_manager_disable_nonexistent() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ModelManager::initialize().await.unwrap();
+
+    let result = ModelManager::disable_model("nonexistent-model").await;
+    assert!(result.is_err());
+}
+
+#[tokio::test]
+async fn test_model_manager_remove_default_model() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ModelManager::initialize().await.unwrap();
+    viben_core::ConfigManager::initialize().await.unwrap();
+
+    // Create custom model and set as default
+    let options = CreateModelOptions {
+        id: "default-to-remove".to_string(),
+        name: "Default To Remove".to_string(),
+        provider: ProviderType::Custom,
+        description: None,
+        context_window: None,
+        max_output_tokens: None,
+        set_as_default: true,
+    };
+    ModelManager::create_model(options).await.unwrap();
+
+    // Verify it's the default
+    let default = ModelManager::get_default().await.unwrap();
+    assert_eq!(default, Some("default-to-remove".to_string()));
+
+    // Remove the model
+    ModelManager::remove_model("default-to-remove").await.unwrap();
+
+    // Default should be cleared
+    let default_after = ModelManager::get_default().await.unwrap();
+    assert!(default_after.is_none());
+}

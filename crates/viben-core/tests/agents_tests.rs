@@ -863,3 +863,248 @@ async fn test_agent_manager_append_memory_multiple() {
     assert!(memory.content.contains("Entry 2"));
     assert!(memory.content.contains("Entry 3"));
 }
+
+// =============================================================================
+// Edge Case Tests for 100% Coverage
+// =============================================================================
+
+#[tokio::test]
+async fn test_agent_manager_list_agents_before_init() {
+    let _temp_dir = setup_temp_state_dir();
+    // Don't call initialize - agents dir doesn't exist
+    let agents = AgentManager::list_agents().await.unwrap();
+    assert!(agents.is_empty());
+}
+
+#[tokio::test]
+async fn test_agent_manager_list_templates_with_templates() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create an agent and two templates
+    let options = CreateAgentOptions {
+        id: Some("src-agent".to_string()),
+        name: "Source Agent".to_string(),
+        description: Some("Source".to_string()),
+        model: Some("gpt-4".to_string()),
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+    AgentManager::create_agent(options).await.unwrap();
+
+    AgentManager::create_template("src-agent", "template-1")
+        .await
+        .unwrap();
+    AgentManager::create_template("src-agent", "template-2")
+        .await
+        .unwrap();
+
+    // List templates should return both
+    let templates = AgentManager::list_templates().await.unwrap();
+    assert_eq!(templates.len(), 2);
+    assert!(templates.iter().any(|t| t.id == "template-1"));
+    assert!(templates.iter().any(|t| t.id == "template-2"));
+}
+
+#[tokio::test]
+async fn test_agent_manager_list_sessions_dir_not_exists() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create agent but don't create any sessions
+    // The sessions dir might not exist yet
+    let options = CreateAgentOptions {
+        id: Some("no-sessions-agent".to_string()),
+        name: "No Sessions".to_string(),
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+    AgentManager::create_agent(options).await.unwrap();
+
+    // Delete the sessions directory to test the "dir doesn't exist" branch
+    let sessions_dir = viben_core::config::get_agent_sessions_dir("no-sessions-agent");
+    if sessions_dir.exists() {
+        tokio::fs::remove_dir_all(&sessions_dir).await.unwrap();
+    }
+
+    let sessions = AgentManager::list_sessions("no-sessions-agent")
+        .await
+        .unwrap();
+    assert!(sessions.is_empty());
+}
+
+#[tokio::test]
+async fn test_agent_manager_create_agent_empty_name_generates_id() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create agent with a name that results in empty ID after processing
+    // e.g., all special characters
+    let options = CreateAgentOptions {
+        id: None,
+        name: "!!!".to_string(), // All special chars -> empty after processing
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+
+    let agent = AgentManager::create_agent(options).await.unwrap();
+
+    // Should have generated a fallback ID like "agent-{timestamp}"
+    assert!(agent.id.starts_with("agent-"));
+}
+
+#[tokio::test]
+async fn test_agent_manager_create_agent_very_long_name() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create agent with a very long name (>50 chars)
+    let long_name = "a".repeat(100);
+    let options = CreateAgentOptions {
+        id: None,
+        name: long_name,
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+
+    let agent = AgentManager::create_agent(options).await.unwrap();
+
+    // ID should be truncated to 50 chars
+    assert_eq!(agent.id.len(), 50);
+}
+
+#[tokio::test]
+async fn test_agent_manager_list_templates_before_init() {
+    let _temp_dir = setup_temp_state_dir();
+    // Don't call initialize - templates dir doesn't exist
+    let templates = AgentManager::list_templates().await.unwrap();
+    assert!(templates.is_empty());
+}
+
+// Test list_agents when agents directory contains non-directory entries
+#[tokio::test]
+async fn test_agent_manager_list_agents_with_non_dir_entries() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create a regular file in the agents directory (not a directory)
+    let agents_dir = viben_core::config::get_agents_dir();
+    let file_path = agents_dir.join("not-a-directory.txt");
+    tokio::fs::write(&file_path, "test content").await.unwrap();
+
+    // Create a real agent
+    let options = CreateAgentOptions {
+        id: Some("real-agent".to_string()),
+        name: "Real Agent".to_string(),
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+    AgentManager::create_agent(options).await.unwrap();
+
+    // List agents should skip the file and only return the real agent
+    let agents = AgentManager::list_agents().await.unwrap();
+    assert_eq!(agents.len(), 1);
+    assert_eq!(agents[0].id, "real-agent");
+}
+
+// Test list_templates when templates directory contains non-directory entries
+#[tokio::test]
+async fn test_agent_manager_list_templates_with_non_dir_entries() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create an agent and a template
+    let options = CreateAgentOptions {
+        id: Some("template-src".to_string()),
+        name: "Template Source".to_string(),
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+    AgentManager::create_agent(options).await.unwrap();
+    AgentManager::create_template("template-src", "real-template")
+        .await
+        .unwrap();
+
+    // Create a regular file in the templates directory (not a directory)
+    let templates_dir = viben_core::config::get_templates_dir();
+    let file_path = templates_dir.join("not-a-directory.txt");
+    tokio::fs::write(&file_path, "test content").await.unwrap();
+
+    // List templates should skip the file and only return the real template
+    let templates = AgentManager::list_templates().await.unwrap();
+    assert_eq!(templates.len(), 1);
+    assert_eq!(templates[0].id, "real-template");
+}
+
+// Test list_sessions when sessions directory contains non-directory entries
+#[tokio::test]
+async fn test_agent_manager_list_sessions_with_non_dir_entries() {
+    let _temp_dir = setup_temp_state_dir();
+
+    AgentManager::initialize().await.unwrap();
+
+    // Create an agent
+    let options = CreateAgentOptions {
+        id: Some("session-test-agent".to_string()),
+        name: "Session Test Agent".to_string(),
+        description: None,
+        model: None,
+        provider: None,
+        system_prompt: None,
+        temperature: None,
+        max_tokens: None,
+        from_template: None,
+    };
+    AgentManager::create_agent(options).await.unwrap();
+
+    // Create a real session
+    AgentManager::create_session("session-test-agent", Some("Test Session"))
+        .await
+        .unwrap();
+
+    // Create a regular file in the sessions directory (not a directory)
+    let sessions_dir = viben_core::config::get_agent_sessions_dir("session-test-agent");
+    let file_path = sessions_dir.join("not-a-directory.txt");
+    tokio::fs::write(&file_path, "test content").await.unwrap();
+
+    // List sessions should skip the file and only return the real session
+    let sessions = AgentManager::list_sessions("session-test-agent")
+        .await
+        .unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].name, Some("Test Session".to_string()));
+}
