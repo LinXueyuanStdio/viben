@@ -44,11 +44,11 @@ impl std::str::FromStr for ProviderType {
     }
 }
 
-/// Provider configuration
+/// Provider configuration (returned to frontend)
+/// Uses provider_type to match TypeScript interface
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Provider {
     pub id: String,
-    #[serde(rename = "type")]
     pub provider_type: ProviderType,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -61,10 +61,10 @@ pub struct Provider {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Provider entry in config file
+/// Provider entry in config file (YAML storage)
+/// Uses provider_type for consistency
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderEntry {
-    #[serde(rename = "type")]
     pub provider_type: ProviderType,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -85,10 +85,10 @@ pub struct ProvidersFile {
     pub providers: std::collections::HashMap<String, ProviderEntry>,
 }
 
-/// Options for creating a provider
+/// Options for creating a provider (received from frontend)
+/// Uses provider_type to match TypeScript interface
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateProviderOptions {
-    #[serde(rename = "type")]
     pub provider_type: ProviderType,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -104,7 +104,7 @@ pub struct CreateProviderOptions {
 pub struct ProviderUpdate {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub provider_type: Option<ProviderType>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,

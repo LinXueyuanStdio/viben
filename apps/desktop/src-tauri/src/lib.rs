@@ -129,8 +129,8 @@ pub fn run() {
         .setup(|app| {
             setup_tray(app)?;
 
-            // Initialize viben-core asynchronously
-            tauri::async_runtime::spawn(async {
+            // Initialize viben-core synchronously to ensure it's ready before Tauri commands
+            tauri::async_runtime::block_on(async {
                 if let Err(e) = initialize_viben_core().await {
                     eprintln!("Failed to initialize viben-core: {}", e);
                 }
