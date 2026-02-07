@@ -17,7 +17,7 @@ export {
   getKnownModel,
   getModelsByProvider,
 } from "./models/known-models";
-export type { KnownModel } from "./models/known-models";
+export type { KnownModel } from "./models/types";
 
 // Re-export provider types
 export type {
