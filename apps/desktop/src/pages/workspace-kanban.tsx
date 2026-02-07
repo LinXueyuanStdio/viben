@@ -871,8 +871,13 @@ export function WorkspaceKanbanPage() {
                           color={COLUMN_COLOR_VARS[column.id as ColumnId]}
                           onAddTask={() => handleAddTask(column.id)}
                           addTaskLabel={t("workspace.addTask", "Add Task")}
+                          taskCount={columnTasks.length}
                         />
-                        <KanbanCards className="flex-1 flex-col p-2 gap-2">
+                        <KanbanCards
+                          className="flex-1 flex-col p-2 gap-2"
+                          emptyMessage={t("workspace.noTasks", "No tasks")}
+                          emptyHint={t("workspace.emptyColumnHint", "Drag tasks here or click + to create")}
+                        >
                           <AnimatePresence initial={false}>
                             {columnTasks.map((task, index) => (
                               <motion.div
@@ -894,6 +899,7 @@ export function WorkspaceKanbanPage() {
                                   onClick={() => handleCardClick(task.id)}
                                   isOpen={selectedTaskId === task.id}
                                   tabIndex={selectedTaskId === task.id ? 0 : -1}
+                                  showMoreMenu
                                 >
                                   <TaskCardContent
                                     task={task}

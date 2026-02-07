@@ -1,4 +1,11 @@
-import { useCallback, useState, useRef } from "react";
+/**
+ * useAgent Hook - Real Gateway Integration
+ *
+ * Connects to viben-gateway for real AI agent execution.
+ * Falls back to mock implementation when Gateway is unavailable.
+ */
+
+import { useCallback, useState, useRef, useMemo, useEffect } from "react";
 import type {
   AgentMessage,
   AgentPhase,
@@ -7,12 +14,10 @@ import type {
   PendingQuestion,
   Artifact,
   ToolUsage,
+  BaseCodingAgent,
+  ExecutorConfig,
 } from "@/types";
-
-/**
- * Mock delay to simulate network latency
- */
-const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+import { getGatewayClient } from "@/lib/gateway";
 
 /**
  * Generate a unique ID
@@ -20,10 +25,33 @@ const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, m
 const generateId = () => crypto.randomUUID();
 
 /**
- * Mock agent hook for workspace chat
- * This is a mock implementation that will be replaced with real backend integration
+ * Mock delay for fallback implementation
  */
-export function useAgent(workspaceId: string) {
+const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Agent hook options
+ */
+interface UseAgentOptions {
+  /** Agent type to use (default: CLAUDE_CODE) */
+  agentType?: BaseCodingAgent;
+  /** Executor configuration */
+  executorConfig?: ExecutorConfig;
+  /** Enable mock mode (for testing) */
+  mockMode?: boolean;
+}
+
+/**
+ * Agent hook for workspace chat
+ * Connects to Gateway for real AI agent execution
+ */
+export function useAgent(workspaceId: string, options?: UseAgentOptions) {
+  const {
+    agentType = "CLAUDE_CODE",
+    executorConfig,
+    mockMode = false,
+  } = options || {};
+
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [phase, setPhase] = useState<AgentPhase>("idle");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -32,13 +60,98 @@ export function useAgent(workspaceId: string) {
   const [artifacts, setArtifacts] = useState<Artifact[]>([]);
   const [toolUsages, setToolUsages] = useState<ToolUsage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const client = useMemo(() => getGatewayClient(), []);
+
+  // Check Gateway connection on mount
+  useEffect(() => {
+    if (!mockMode) {
+      checkGatewayConnection();
+    }
+  }, [mockMode]);
 
   /**
-   * Send a message to the agent
+   * Check Gateway connection
    */
-  const sendMessage = useCallback(
+  const checkGatewayConnection = useCallback(async () => {
+    try {
+      const connected = await client.ping();
+      setGatewayConnected(connected);
+      return connected;
+    } catch {
+      setGatewayConnected(false);
+      return false;
+    }
+  }, [client]);
+
+  // Note: SSE event processing will be implemented when Gateway supports streaming
+  // The sseEventToAgentMessage utility is available in @/lib/gateway
+
+  /**
+   * Send a message to the agent (real Gateway implementation)
+   */
+  const sendMessageReal = useCallback(
+    async (content: string, _attachments?: MessageAttachment[]) => {
+      if (!content.trim()) return;
+
+      setError(null);
+      setPhase("running");
+      setIsStreaming(true);
+
+      // Add user message
+      const userMessage: AgentMessage = {
+        id: generateId(),
+        type: "user",
+        content,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      try {
+        // Spawn agent through Gateway
+        const response = await client.spawnAgent(agentType, {
+          prompt: content,
+          workdir: workspaceId, // Use workspace path as workdir
+          session_id: sessionId || undefined,
+          config: executorConfig?.config as Record<string, unknown>,
+        });
+
+        setSessionId(response.session_id);
+
+        // Note: Real SSE streaming will be implemented when Gateway supports it
+        // For now, we show a confirmation message
+        const infoMessage: AgentMessage = {
+          id: generateId(),
+          type: "text",
+          content: `Agent ${agentType} started (session: ${response.session_id}). The agent is running in the background. Check the terminal for output.`,
+        };
+        setMessages((prev) => [...prev, infoMessage]);
+        setPhase("completed");
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        setError(errorMessage);
+
+        const errMsg: AgentMessage = {
+          id: generateId(),
+          type: "error",
+          message: errorMessage,
+          isError: true,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setPhase("error");
+      } finally {
+        setIsStreaming(false);
+      }
+    },
+    [agentType, client, executorConfig, sessionId, workspaceId]
+  );
+
+  /**
+   * Send a message (mock implementation for fallback)
+   */
+  const sendMessageMock = useCallback(
     async (content: string, attachments?: MessageAttachment[]) => {
       if (!content.trim() && (!attachments || attachments.length === 0)) {
         return;
@@ -64,12 +177,10 @@ export function useAgent(workspaceId: string) {
       setMessages((prev) => [...prev, userMessage]);
 
       try {
-        // Mock streaming response
         await mockDelay(500);
 
         // Simulate different responses based on content
         if (content.toLowerCase().includes("plan")) {
-          // Simulate plan approval flow
           const plan: TaskPlan = {
             goal: `Execute task: ${content}`,
             steps: [
@@ -89,7 +200,6 @@ export function useAgent(workspaceId: string) {
           setPendingPlan(plan);
           setPhase("awaiting_approval");
         } else if (content.toLowerCase().includes("question")) {
-          // Simulate question flow
           const questions: PendingQuestion = {
             id: generateId(),
             questions: [
@@ -108,8 +218,6 @@ export function useAgent(workspaceId: string) {
           setPendingQuestions(questions);
           setPhase("awaiting_input");
         } else if (content.toLowerCase().includes("tool")) {
-          // Simulate tool use with task grouping
-          // First add a text message describing what we're doing
           const thinkingMessage: AgentMessage = {
             id: generateId(),
             type: "text",
@@ -118,7 +226,6 @@ export function useAgent(workspaceId: string) {
           setMessages((prev) => [...prev, thinkingMessage]);
           await mockDelay(300);
 
-          // Then add tool use
           const toolMessageId = generateId();
           const toolUseMessage: AgentMessage = {
             id: toolMessageId,
@@ -128,7 +235,6 @@ export function useAgent(workspaceId: string) {
           };
           setMessages((prev) => [...prev, toolUseMessage]);
 
-          // Add to tool usages
           const toolUsage: ToolUsage = {
             id: toolMessageId,
             name: "search_documents",
@@ -140,7 +246,6 @@ export function useAgent(workspaceId: string) {
 
           await mockDelay(1000);
 
-          // Add tool result
           const toolResultMessage: AgentMessage = {
             id: generateId(),
             type: "tool_result",
@@ -158,7 +263,6 @@ export function useAgent(workspaceId: string) {
           };
           setMessages((prev) => [...prev, toolResultMessage]);
 
-          // Update tool usage with output
           setToolUsages((prev) =>
             prev.map((t) =>
               t.id === toolUseMessage.id
@@ -169,7 +273,6 @@ export function useAgent(workspaceId: string) {
 
           await mockDelay(300);
 
-          // Add final text response
           const textMessage: AgentMessage = {
             id: generateId(),
             type: "text",
@@ -179,58 +282,22 @@ export function useAgent(workspaceId: string) {
           setMessages((prev) => [...prev, textMessage]);
           setPhase("completed");
         } else if (content.toLowerCase().includes("error")) {
-          // Simulate error
           throw new Error("This is a simulated error for testing purposes.");
         } else {
-          // Default text response with streaming simulation
           const responseContent = `I received your message: "${content}"
 
-This is a mock response from the agent. In a real implementation, this would be connected to an actual AI agent backend that can:
-
-1. **Process natural language** - Understand your requests
-2. **Execute tools** - Search documents, run code, etc.
-3. **Generate plans** - Break down complex tasks
-4. **Ask clarifying questions** - When more information is needed
+This is a **mock response** (Gateway not connected). In a real implementation, this would be connected to an actual AI agent backend.
 
 The workspace ID for this session is: \`${workspaceId}\`
 
-### Code Example
+> Connect to Gateway at http://localhost:30100 for real agent execution.`;
 
-\`\`\`typescript
-const greeting = "Hello, World!";
-console.log(greeting);
-\`\`\`
-
-> Try typing "plan", "question", "tool", or "error" to see different mock responses.`;
-
-          // Simulate streaming by adding characters progressively
-          let currentContent = "";
           const textMessage: AgentMessage = {
             id: generateId(),
             type: "text",
-            content: "",
+            content: responseContent,
           };
           setMessages((prev) => [...prev, textMessage]);
-
-          for (let i = 0; i < responseContent.length; i += 10) {
-            if (abortControllerRef.current?.signal.aborted) {
-              break;
-            }
-            currentContent = responseContent.slice(0, i + 10);
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === textMessage.id ? { ...m, content: currentContent } : m
-              )
-            );
-            await mockDelay(20);
-          }
-
-          // Ensure full content is shown
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === textMessage.id ? { ...m, content: responseContent } : m
-            )
-          );
           setPhase("completed");
         }
       } catch (err) {
@@ -251,6 +318,28 @@ console.log(greeting);
   );
 
   /**
+   * Send a message - decides between real and mock implementation
+   */
+  const sendMessage = useCallback(
+    async (content: string, attachments?: MessageAttachment[]) => {
+      if (mockMode) {
+        return sendMessageMock(content, attachments);
+      }
+
+      // Check Gateway connection
+      const connected = gatewayConnected ?? (await checkGatewayConnection());
+      if (connected) {
+        return sendMessageReal(content, attachments);
+      } else {
+        // Fall back to mock if Gateway is not available
+        console.warn("[useAgent] Gateway not connected, using mock implementation");
+        return sendMessageMock(content, attachments);
+      }
+    },
+    [mockMode, gatewayConnected, checkGatewayConnection, sendMessageReal, sendMessageMock]
+  );
+
+  /**
    * Approve a pending plan
    */
   const approvePlan = useCallback(async () => {
@@ -265,7 +354,6 @@ console.log(greeting);
       for (let i = 0; i < pendingPlan.steps.length; i++) {
         await mockDelay(1000);
 
-        // Update step status
         setMessages((prev) =>
           prev.map((m) => {
             if (m.type === "plan" && m.plan) {
@@ -285,7 +373,6 @@ console.log(greeting);
         );
       }
 
-      // Mark all steps as completed
       setMessages((prev) =>
         prev.map((m) => {
           if (m.type === "plan" && m.plan) {
@@ -299,7 +386,6 @@ console.log(greeting);
         })
       );
 
-      // Add result message
       const resultMessage: AgentMessage = {
         id: generateId(),
         type: "result",
@@ -321,7 +407,6 @@ console.log(greeting);
   const rejectPlan = useCallback(async () => {
     setPendingPlan(null);
 
-    // Mark plan as cancelled
     setMessages((prev) =>
       prev.map((m) => {
         if (m.type === "plan" && m.plan) {
@@ -379,15 +464,29 @@ console.log(greeting);
   /**
    * Cancel the current operation
    */
-  const cancel = useCallback(() => {
+  const cancel = useCallback(async () => {
+    // Cancel any ongoing fetch
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+
+    // Stop the agent through Gateway if we have a session
+    if (sessionId && !mockMode && gatewayConnected) {
+      try {
+        await client.stopAgent(agentType, sessionId);
+      } catch (err) {
+        console.error("[useAgent] Failed to stop agent:", err);
+      }
+    }
+
+    // Cancel any SSE stream
+    client.cancelStream();
+
     setPendingPlan(null);
     setPendingQuestions(null);
     setIsStreaming(false);
     setPhase("idle");
-  }, []);
+  }, [agentType, client, gatewayConnected, mockMode, sessionId]);
 
   /**
    * Clear all messages
@@ -398,9 +497,11 @@ console.log(greeting);
     setToolUsages([]);
     setError(null);
     setPhase("idle");
+    setSessionId(null);
   }, []);
 
   return {
+    // State
     messages,
     phase,
     isStreaming,
@@ -409,11 +510,16 @@ console.log(greeting);
     artifacts,
     toolUsages,
     error,
+    sessionId,
+    gatewayConnected,
+
+    // Actions
     sendMessage,
     approvePlan,
     rejectPlan,
     answerQuestions,
     cancel,
     clearMessages,
+    checkGatewayConnection,
   };
 }

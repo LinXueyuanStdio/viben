@@ -21,7 +21,6 @@ import {
   Keyboard,
   X,
   Cpu,
-  Server,
   Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,12 +43,11 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { platform } from "@tauri-apps/plugin-os";
-import { SettingsModelsPage } from "./settings-models";
-import { SettingsProvidersPage } from "./settings-providers";
+import { SettingsModelPage } from "./settings-model";
 import { SettingsAgentsPage } from "./settings-agents";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "providers" | "models" | "agents" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "model" | "agents" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -61,8 +59,7 @@ interface SectionConfig {
 const SECTIONS: SectionConfig[] = [
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
   { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
-  { id: "providers", labelKey: "settings.sections.providers", icon: Server },
-  { id: "models", labelKey: "settings.sections.models", icon: Cpu },
+  { id: "model", labelKey: "settings.sections.model", icon: Cpu },
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
@@ -192,10 +189,8 @@ export function SettingsPage() {
         return <GeneralSection key="general" />;
       case "shortcuts":
         return <ShortcutsSection key="shortcuts" />;
-      case "providers":
-        return <SettingsProvidersPage key="providers" />;
-      case "models":
-        return <SettingsModelsPage key="models" />;
+      case "model":
+        return <SettingsModelPage key="model" />;
       case "agents":
         return <SettingsAgentsPage key="agents" />;
       case "environment":
