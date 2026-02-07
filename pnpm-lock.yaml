@@ -275,7 +275,7 @@ importers:
         specifier: ^0.468.0
         version: 0.468.0(react@19.2.4)
       next:
-        specifier: ^15.1.0
+        specifier: ^15.5.11
         version: 15.5.11(@babel/core@7.29.0)(react-dom@19.2.4)(react@19.2.4)
       next-themes:
         specifier: ^0.4.6
@@ -348,7 +348,7 @@ importers:
         specifier: ^9.17.0
         version: 9.39.2
       eslint-config-next:
-        specifier: ^15.1.0
+        specifier: ^15.5.11
         version: 15.5.11(eslint@9.39.2)(typescript@5.8.3)
       jsdom:
         specifier: ^28.0.0
@@ -8168,7 +8168,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 7.3.1(@types/node@22.19.8)
+      vite: 7.3.1(@types/node@20.19.32)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
     dev: true
