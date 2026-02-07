@@ -1158,6 +1158,100 @@
       "finish": "开始使用"
     }
   },
+  "profile": {
+    "settings": {
+      "title": "个人资料设置",
+      "description": "管理您的账户设置和偏好",
+      "backToProfile": "返回个人资料"
+    },
+    "form": {
+      "username": "用户名",
+      "usernameCannotChange": "用户名无法更改",
+      "email": "邮箱",
+      "emailManagedByOAuth": "邮箱由您的 OAuth 提供商管理",
+      "displayName": "显示名称",
+      "bio": "个人简介",
+      "bioPlaceholder": "介绍一下你自己...",
+      "saveChanges": "保存更改"
+    },
+    "validation": {
+      "displayNameRequired": "显示名称为必填项",
+      "displayNameMax": "显示名称最多100个字符",
+      "bioMax": "个人简介最多500个字符"
+    },
+    "toast": {
+      "profileUpdated": "个人资料已更新",
+      "failedToUpdateProfile": "更新个人资料失败"
+    },
+    "header": {
+      "memberSince": "注册于 {{date}}",
+      "roleAdmin": "管理员",
+      "roleDeveloper": "开发者"
+    },
+    "tabs": {
+      "myPackages": "我的包",
+      "favorites": "收藏",
+      "apiKeys": "API 密钥"
+    },
+    "packages": {
+      "noPackagesYet": "您还没有发布任何包",
+      "publishPackage": "发布包",
+      "mcpPackages": "MCP 包",
+      "skills": "技能"
+    },
+    "favorites": {
+      "noFavorites": "您还没有收藏任何包",
+      "browseMarketplace": "浏览市场找到您喜欢的包",
+      "failedToLoad": "加载收藏失败",
+      "tryAgain": "重试",
+      "favoritedTime": "收藏于 {{time}}",
+      "noDescription": "暂无描述"
+    },
+    "apiKeys": {
+      "title": "API 密钥",
+      "description": "管理用于编程访问的 API 密钥",
+      "createApiKey": "创建 API 密钥",
+      "apiKeyCreated": "API 密钥已创建",
+      "copyKeyNow": "请立即复制此密钥。之后将无法再次查看。",
+      "giveKeyName": "为您的 API 密钥起一个描述性名称。",
+      "keyName": "密钥名称",
+      "keyNamePlaceholder": "我的 API 密钥",
+      "createKey": "创建密钥",
+      "done": "完成",
+      "noApiKeysYet": "暂无 API 密钥",
+      "tableName": "名称",
+      "tableKey": "密钥",
+      "tableScopes": "权限范围",
+      "tableLastUsed": "上次使用",
+      "tableCreated": "创建时间",
+      "never": "从未",
+      "toast": {
+        "created": "API 密钥已创建",
+        "copied": "API 密钥已复制到剪贴板",
+        "deleted": "API 密钥已删除",
+        "failedToLoad": "加载 API 密钥失败",
+        "failedToCreate": "创建 API 密钥失败",
+        "failedToDelete": "删除 API 密钥失败"
+      }
+    }
+  },
+  "workspaceSettings": {
+    "title": "工作区设置",
+    "generalSettings": "常规设置",
+    "generalDescription": "更新您的工作区名称和描述",
+    "name": "名称",
+    "description": "描述",
+    "defaultWorkspace": "默认工作区",
+    "setAsDefault": "将此设为默认工作区",
+    "saveChanges": "保存更改",
+    "workspaceUpdated": "工作区更新成功",
+    "dangerZone": "危险操作",
+    "dangerDescription": "此工作区的不可逆操作",
+    "deleteWorkspace": "删除工作区",
+    "deleteDescription": "永久删除此工作区及其所有配置",
+    "confirmDeleteTitle": "删除工作区",
+    "confirmDeleteMessage": "确定要删除「{{name}}」吗？此操作无法撤销。所有包配置将被永久删除。",
+    "failedToLoadWorkspace": "加载工作区设置失败"
   "analytics": {
     "title": "数据分析",
     "titleWithName": "{{name}} 分析",

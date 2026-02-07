@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ interface ApiKey {
 }
 
 export function ProfileApiKeys() {
+  const { t } = useTranslation();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -42,22 +44,22 @@ export function ProfileApiKeys() {
   const [newKeyValue, setNewKeyValue] = useState<string | null>(null);
   const [showDialog, setShowDialog] = useState(false);
 
-  useEffect(() => {
-    fetchKeys();
-  }, []);
-
-  async function fetchKeys() {
+  const fetchKeys = useCallback(async () => {
     try {
       const res = await fetch('/api/users/me/api-keys');
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setKeys(data.keys || []);
     } catch {
-      toast.error('Failed to load API keys');
+      toast.error(t('profile.apiKeys.toast.failedToLoad'));
     } finally {
       setLoading(false);
     }
-  }
+  }, [t]);
+
+  useEffect(() => {
+    fetchKeys();
+  }, [fetchKeys]);
 
   async function createKey() {
     if (!newKeyName.trim()) return;
@@ -76,9 +78,9 @@ export function ProfileApiKeys() {
       setNewKeyValue(data.key);
       setKeys((prev) => [data.apiKey, ...prev]);
       setNewKeyName('');
-      toast.success('API key created');
+      toast.success(t('profile.apiKeys.toast.created'));
     } catch {
-      toast.error('Failed to create API key');
+      toast.error(t('profile.apiKeys.toast.failedToCreate'));
     } finally {
       setCreating(false);
     }
@@ -91,16 +93,16 @@ export function ProfileApiKeys() {
       });
       if (!res.ok) throw new Error('Failed to delete');
       setKeys((prev) => prev.filter((k) => k.id !== keyId));
-      toast.success('API key deleted');
+      toast.success(t('profile.apiKeys.toast.deleted'));
     } catch {
-      toast.error('Failed to delete API key');
+      toast.error(t('profile.apiKeys.toast.failedToDelete'));
     }
   }
 
   function copyKey() {
     if (newKeyValue) {
       navigator.clipboard.writeText(newKeyValue);
-      toast.success('API key copied to clipboard');
+      toast.success(t('profile.apiKeys.toast.copied'));
     }
   }
 
@@ -116,27 +118,27 @@ export function ProfileApiKeys() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">API Keys</h3>
+          <h3 className="text-lg font-semibold">{t('profile.apiKeys.title')}</h3>
           <p className="text-sm text-muted-foreground">
-            Manage API keys for programmatic access
+            {t('profile.apiKeys.description')}
           </p>
         </div>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
           <DialogTrigger asChild>
             <Button onClick={() => setNewKeyValue(null)}>
               <Plus className="mr-2 h-4 w-4" />
-              Create API Key
+              {t('profile.apiKeys.createApiKey')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
-                {newKeyValue ? 'API Key Created' : 'Create API Key'}
+                {newKeyValue ? t('profile.apiKeys.apiKeyCreated') : t('profile.apiKeys.createApiKey')}
               </DialogTitle>
               <DialogDescription>
                 {newKeyValue
-                  ? "Copy this key now. You won't be able to see it again."
-                  : 'Give your API key a descriptive name.'}
+                  ? t('profile.apiKeys.copyKeyNow')
+                  : t('profile.apiKeys.giveKeyName')}
               </DialogDescription>
             </DialogHeader>
 
@@ -152,10 +154,10 @@ export function ProfileApiKeys() {
             ) : (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="keyName">Key Name</Label>
+                  <Label htmlFor="keyName">{t('profile.apiKeys.keyName')}</Label>
                   <Input
                     id="keyName"
-                    placeholder="My API Key"
+                    placeholder={t('profile.apiKeys.keyNamePlaceholder')}
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
                   />
@@ -165,11 +167,11 @@ export function ProfileApiKeys() {
 
             <DialogFooter>
               {newKeyValue ? (
-                <Button onClick={() => setShowDialog(false)}>Done</Button>
+                <Button onClick={() => setShowDialog(false)}>{t('profile.apiKeys.done')}</Button>
               ) : (
                 <Button onClick={createKey} disabled={creating || !newKeyName.trim()}>
                   {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create Key
+                  {t('profile.apiKeys.createKey')}
                 </Button>
               )}
             </DialogFooter>
@@ -179,17 +181,17 @@ export function ProfileApiKeys() {
 
       {keys.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No API keys yet</p>
+          <p className="text-muted-foreground">{t('profile.apiKeys.noApiKeysYet')}</p>
         </div>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Key</TableHead>
-              <TableHead>Scopes</TableHead>
-              <TableHead>Last Used</TableHead>
-              <TableHead>Created</TableHead>
+              <TableHead>{t('profile.apiKeys.tableName')}</TableHead>
+              <TableHead>{t('profile.apiKeys.tableKey')}</TableHead>
+              <TableHead>{t('profile.apiKeys.tableScopes')}</TableHead>
+              <TableHead>{t('profile.apiKeys.tableLastUsed')}</TableHead>
+              <TableHead>{t('profile.apiKeys.tableCreated')}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -204,7 +206,7 @@ export function ProfileApiKeys() {
                 <TableCell>
                   {key.lastUsedAt
                     ? new Date(key.lastUsedAt).toLocaleDateString()
-                    : 'Never'}
+                    : t('profile.apiKeys.never')}
                 </TableCell>
                 <TableCell>
                   {new Date(key.createdAt).toLocaleDateString()}
