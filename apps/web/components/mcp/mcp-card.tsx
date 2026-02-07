@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Download, Star } from 'lucide-react';
@@ -36,6 +39,7 @@ interface McpCardProps {
 }
 
 export function McpCard({ package: pkg }: McpCardProps) {
+  const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -54,7 +58,7 @@ export function McpCard({ package: pkg }: McpCardProps) {
         </div>
 
         <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
-          {pkg.description || 'No description'}
+          {pkg.description || t('marketplace.noDescription')}
         </p>
 
         <div className="mt-4 flex items-center justify-between">

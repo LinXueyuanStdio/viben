@@ -1,0 +1,32 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
+import { Store, Package } from 'lucide-react';
+import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+
+interface McpPageHeaderProps {
+  isAuthenticated: boolean;
+}
+
+export function McpPageHeader({ isAuthenticated }: McpPageHeaderProps) {
+  const { t } = useTranslation();
+
+  return (
+    <PageHeader
+      icon={Store}
+      title={t('marketplace.title')}
+      subtitle={t('marketplace.subtitle')}
+    >
+      {isAuthenticated && (
+        <Button variant="outline" asChild>
+          <Link href="/my-packages">
+            <Package className="mr-2 h-4 w-4" />
+            {t('marketplace.myMcp')}
+          </Link>
+        </Button>
+      )}
+    </PageHeader>
+  );
+}
