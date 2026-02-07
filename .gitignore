@@ -255,5 +255,19 @@ cython_debug/
 #.idea/
 
 # Claude Code local files
-**/CLAUDE.local.md.turbo/
-.turbo/packages/cli/coverage/
+**/CLAUDE.local.md
+
+# ===========================================
+# Build Tools & Caches
+# ===========================================
+# Turborepo cache
+.turbo/
+
+# Test coverage reports
+coverage/
+.nyc_output/
+
+# Temporary files
+*.bak
+*.tmp
+*.temp
