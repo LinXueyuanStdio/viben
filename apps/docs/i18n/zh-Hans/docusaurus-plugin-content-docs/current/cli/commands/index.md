@@ -159,7 +159,7 @@ viben agent sync claude-code --json
 
 ## 下一步
 
-- [viben init](/docs/cli/commands/init) - 初始化工作区
-- [viben config](/docs/cli/commands/config) - 管理配置
-- [viben agent](/docs/cli/commands/agent) - 管理智能体
-- [viben mcp](/docs/cli/commands/mcp) - 管理 MCP 服务器
+- [viben init](init) - 初始化工作区
+- [viben config](config) - 管理配置
+- [viben agent](agent) - 管理智能体
+- [viben mcp](mcp) - 管理 MCP 服务器
