@@ -399,6 +399,15 @@ commands::workspace::write_skill_file,
             commands::vite_preview::stop_vite_preview,
             commands::vite_preview::get_vite_preview_status,
             commands::vite_preview::stop_all_vite_previews,
+            // Kanban comments and activities commands
+            commands::kanban_comments::get_kanban_comments,
+            commands::kanban_comments::add_kanban_comment,
+            commands::kanban_comments::update_kanban_comment,
+            commands::kanban_comments::delete_kanban_comment,
+            commands::kanban_comments::toggle_comment_reaction,
+            commands::kanban_comments::get_kanban_activities,
+            commands::kanban_comments::add_kanban_activity,
+            commands::kanban_comments::clear_kanban_task_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

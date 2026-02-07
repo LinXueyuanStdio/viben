@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   X,
   Circle,
@@ -15,6 +15,7 @@ import {
   ListChecks,
   MessageSquare,
   Activity,
+  Loader2,
   Bot,
 } from "lucide-react";
 import {
@@ -53,9 +54,16 @@ import {
   type RelationshipType,
   type Comment,
   type ActivityEvent,
-  type CommentReaction,
 } from "@viben/kanban";
 import { useTranslation } from "react-i18next";
+import {
+  useKanbanComments,
+  useAddKanbanComment,
+  useUpdateKanbanComment,
+  useDeleteKanbanComment,
+  useToggleCommentReaction,
+  useKanbanActivities,
+} from "@/hooks";
 import { ChatInput, MessageList } from "@/components/chat";
 import { useTaskAgent } from "@/hooks";
 
@@ -236,9 +244,6 @@ export interface TaskForPanel {
   // Phase 2: Subtasks and Relationships
   subtasks?: Subtask[];
   relationships?: TaskRelationship[];
-  // Phase 4: Comments and Activity
-  comments?: Comment[];
-  activities?: ActivityEvent[];
 }
 
 // Available task for relationships
@@ -256,12 +261,9 @@ export interface TaskDetailPanelProps {
   availableUsers?: Assignee[];
   availableTasks?: AvailableTask[];
   onNavigateToTask?: (taskId: string) => void;
-  // Phase 4: Comment callbacks
+  // Current user for comments (defaults to "current-user")
   currentUserId?: string;
-  onAddComment?: (taskId: string, content: string) => void;
-  onEditComment?: (taskId: string, commentId: string, content: string) => void;
-  onDeleteComment?: (taskId: string, commentId: string) => void;
-  onToggleReaction?: (taskId: string, commentId: string, emoji: string) => void;
+  currentUserName?: string;
 }
 
 export function TaskDetailPanel({
@@ -273,21 +275,41 @@ export function TaskDetailPanel({
   availableTasks = [],
   onNavigateToTask,
   currentUserId = "current-user",
-  onAddComment,
-  onEditComment,
-  onDeleteComment,
-  onToggleReaction,
+  currentUserName = "You",
 }: TaskDetailPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("details");
 
-  // Generate mock activity from task data if not provided
+  // Persistent comments from Tauri backend
+  const {
+    data: persistedComments,
+    isLoading: isLoadingComments,
+  } = useKanbanComments(task?.id ?? null);
+
+  // Persistent activities from Tauri backend
+  const {
+    data: persistedActivities,
+    isLoading: isLoadingActivities,
+  } = useKanbanActivities(task?.id ?? null);
+
+  // Comment mutation hooks
+  const addCommentMutation = useAddKanbanComment();
+  const updateCommentMutation = useUpdateKanbanComment();
+  const deleteCommentMutation = useDeleteKanbanComment();
+  const toggleReactionMutation = useToggleCommentReaction();
+
+  // Use persisted data, with fallback to task data for backwards compatibility
+  const comments = useMemo<Comment[]>(() => {
+    return persistedComments ?? [];
+  }, [persistedComments]);
+
+  // Combine persisted activities with fallback generated events
   const activities = useMemo<ActivityEvent[]>(() => {
-    if (task?.activities && task.activities.length > 0) {
-      return task.activities;
+    if (persistedActivities && persistedActivities.length > 0) {
+      return persistedActivities;
     }
 
-    // Generate basic activity from task timestamps
+    // Generate basic activity from task timestamps if no persisted activities
     if (!task) return [];
 
     const events: ActivityEvent[] = [];
@@ -324,7 +346,7 @@ export function TaskDetailPanel({
     return events.sort(
       (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [task]);
+  }, [task, persistedActivities]);
 
   // Task context for agent chat
   const taskContext = useMemo(() => {
@@ -385,113 +407,47 @@ export function TaskDetailPanel({
     onUpdate?.({ dueDate });
   };
 
-  // Phase 4: Comment handlers
-  const handleAddComment = (content: string) => {
-    if (onAddComment) {
-      onAddComment(task.id, content);
-    } else if (onUpdate) {
-      // Fallback: manage comments in task state
-      const newComment: Comment = {
-        id: crypto.randomUUID(),
-        content,
-        author: {
-          id: currentUserId,
-          name: "You",
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        reactions: [],
-      };
-      onUpdate({
-        comments: [...(task.comments || []), newComment],
-      });
-    }
-  };
+  // Comment handlers using persistent storage hooks
+  const handleAddComment = useCallback((content: string) => {
+    addCommentMutation.mutate({
+      taskId: task.id,
+      content,
+      authorId: currentUserId,
+      authorName: currentUserName,
+    });
+  }, [task.id, currentUserId, currentUserName, addCommentMutation]);
 
-  const handleEditComment = (commentId: string, content: string) => {
-    if (onEditComment) {
-      onEditComment(task.id, commentId, content);
-    } else if (onUpdate) {
-      onUpdate({
-        comments: task.comments?.map((c) =>
-          c.id === commentId
-            ? { ...c, content, updatedAt: new Date().toISOString() }
-            : c
-        ),
-      });
-    }
-  };
+  const handleEditComment = useCallback((commentId: string, content: string) => {
+    updateCommentMutation.mutate({
+      taskId: task.id,
+      commentId,
+      content,
+    });
+  }, [task.id, updateCommentMutation]);
 
-  const handleDeleteComment = (commentId: string) => {
-    if (onDeleteComment) {
-      onDeleteComment(task.id, commentId);
-    } else if (onUpdate) {
-      onUpdate({
-        comments: task.comments?.filter((c) => c.id !== commentId),
-      });
-    }
-  };
+  const handleDeleteComment = useCallback((commentId: string) => {
+    deleteCommentMutation.mutate({
+      taskId: task.id,
+      commentId,
+    });
+  }, [task.id, deleteCommentMutation]);
 
-  const handleToggleReaction = (commentId: string, emoji: string) => {
-    if (onToggleReaction) {
-      onToggleReaction(task.id, commentId, emoji);
-    } else if (onUpdate) {
-      onUpdate({
-        comments: task.comments?.map((c: Comment) => {
-          if (c.id !== commentId) return c;
+  const handleToggleReaction = useCallback((commentId: string, emoji: string) => {
+    toggleReactionMutation.mutate({
+      taskId: task.id,
+      commentId,
+      emoji,
+      userId: currentUserId,
+      userName: currentUserName,
+    });
+  }, [task.id, currentUserId, currentUserName, toggleReactionMutation]);
 
-          const existingReaction = c.reactions.find(
-            (r: CommentReaction) => r.emoji === emoji && r.users.some((u: { id: string; name: string }) => u.id === currentUserId)
-          );
-
-          if (existingReaction) {
-            // Remove user from reaction
-            const updatedReactions = c.reactions
-              .map((r: CommentReaction) =>
-                r.emoji === emoji
-                  ? {
-                      ...r,
-                      count: r.count - 1,
-                      users: r.users.filter((u: { id: string; name: string }) => u.id !== currentUserId),
-                    }
-                  : r
-              )
-              .filter((r: CommentReaction) => r.count > 0);
-            return { ...c, reactions: updatedReactions };
-          } else {
-            // Add user to reaction
-            const existingEmoji = c.reactions.find((r: CommentReaction) => r.emoji === emoji);
-            if (existingEmoji) {
-              return {
-                ...c,
-                reactions: c.reactions.map((r: CommentReaction) =>
-                  r.emoji === emoji
-                    ? {
-                        ...r,
-                        count: r.count + 1,
-                        users: [...r.users, { id: currentUserId, name: "You" }],
-                      }
-                    : r
-                ),
-              };
-            } else {
-              return {
-                ...c,
-                reactions: [
-                  ...c.reactions,
-                  {
-                    emoji,
-                    count: 1,
-                    users: [{ id: currentUserId, name: "You" }],
-                  },
-                ],
-              };
-            }
-          }
-        }),
-      });
-    }
-  };
+  // Check if any comment mutation is pending
+  const isCommentPending =
+    addCommentMutation.isPending ||
+    updateCommentMutation.isPending ||
+    deleteCommentMutation.isPending ||
+    toggleReactionMutation.isPending;
 
   const selectedTagIds = task.tagIds || task.tags?.map((t) => t.id) || [];
 
@@ -526,9 +482,9 @@ export function TaskDetailPanel({
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             {t("chat.artifacts", "Comments")}
-            {task.comments && task.comments.length > 0 && (
+            {comments.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {task.comments.length}
+                {comments.length}
               </Badge>
             )}
           </TabsTrigger>
@@ -818,32 +774,45 @@ export function TaskDetailPanel({
           </ScrollArea>
         </TabsContent>
 
-        {/* Comments Tab - Phase 4 */}
+        {/* Comments Tab - Persisted to SQLite */}
         <TabsContent value="comments" className="flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-4">
-              <CommentList
-                comments={task.comments || []}
-                currentUserId={currentUserId}
-                onAdd={onUpdate || onAddComment ? handleAddComment : undefined}
-                onEdit={onUpdate || onEditComment ? handleEditComment : undefined}
-                onDelete={onUpdate || onDeleteComment ? handleDeleteComment : undefined}
-                onToggleReaction={onUpdate || onToggleReaction ? handleToggleReaction : undefined}
-                inputPlaceholder={t("chat.inputPlaceholder", "Add a comment...")}
-                emptyMessage={t("chat.noArtifacts", "No comments yet")}
-              />
+              {isLoadingComments ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <CommentList
+                  comments={comments}
+                  currentUserId={currentUserId}
+                  onAdd={handleAddComment}
+                  onEdit={handleEditComment}
+                  onDelete={handleDeleteComment}
+                  onToggleReaction={handleToggleReaction}
+                  disabled={isCommentPending}
+                  inputPlaceholder={t("chat.inputPlaceholder", "Add a comment...")}
+                  emptyMessage={t("chat.noArtifacts", "No comments yet")}
+                />
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
 
-        {/* Activity Tab - Phase 4 */}
+        {/* Activity Tab - Persisted to SQLite */}
         <TabsContent value="activity" className="flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-4">
-              <ActivityFeed
-                events={activities}
-                maxItems={50}
-              />
+              {isLoadingActivities ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <ActivityFeed
+                  events={activities}
+                  maxItems={50}
+                />
+              )}
             </div>
           </ScrollArea>
         </TabsContent>
