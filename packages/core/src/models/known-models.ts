@@ -2,6 +2,7 @@
  * Known model definitions for quick reference
  */
 import type { KnownModel } from "./types";
+export type { KnownModel } from "./types";
 
 export const KNOWN_MODELS: KnownModel[] = [
   // OpenAI Models
