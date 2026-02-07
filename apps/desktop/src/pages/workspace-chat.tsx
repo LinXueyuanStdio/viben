@@ -967,6 +967,7 @@ export function WorkspaceChatPage() {
                   showResizeHandle
                   enableWritingMode
                   useGlobalConfig
+                  hideExecutorSelector
                 />
               </div>
             </>
