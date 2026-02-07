@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { FolderKanban, Star, ArrowLeft } from 'lucide-react';
@@ -23,12 +24,14 @@ interface WorkspaceHeaderProps {
 }
 
 export function WorkspaceHeader({ workspace, isOwner }: WorkspaceHeaderProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Link href="/workspaces" className="flex items-center hover:text-foreground">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Workspaces
+          {t('workspace.workspaces')}
         </Link>
       </div>
 
@@ -43,10 +46,10 @@ export function WorkspaceHeader({ workspace, isOwner }: WorkspaceHeaderProps) {
               {workspace.isDefault && (
                 <Badge variant="secondary">
                   <Star className="mr-1 h-3 w-3" />
-                  Default
+                  {t('workspace.default')}
                 </Badge>
               )}
-              {isOwner && <Badge variant="outline">Owner</Badge>}
+              {isOwner && <Badge variant="outline">{t('workspace.owner')}</Badge>}
             </div>
             {workspace.description && (
               <p className="mt-1 max-w-xl text-muted-foreground">
@@ -62,7 +65,7 @@ export function WorkspaceHeader({ workspace, isOwner }: WorkspaceHeaderProps) {
               </Avatar>
               <span>{workspace.owner.displayName}</span>
               <span className="text-muted-foreground/50">|</span>
-              <span>Created {new Date(workspace.createdAt).toLocaleDateString()}</span>
+              <span>{t('workspace.created')} {new Date(workspace.createdAt).toLocaleDateString()}</span>
             </div>
           </div>
         </div>

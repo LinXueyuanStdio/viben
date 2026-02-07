@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,6 +23,7 @@ interface CreateWorkspaceDialogProps {
 }
 
 export function CreateWorkspaceDialog({ children }: CreateWorkspaceDialogProps) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,16 +71,16 @@ export function CreateWorkspaceDialog({ children }: CreateWorkspaceDialogProps) 
         {children || (
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Workspace
+            {t('workspace.newWorkspace')}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create Workspace</DialogTitle>
+            <DialogTitle>{t('workspace.createWorkspace')}</DialogTitle>
             <DialogDescription>
-              Create a new workspace to organize your packages and configurations.
+              {t('workspace.createWorkspaceDesc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -90,10 +92,10 @@ export function CreateWorkspaceDialog({ children }: CreateWorkspaceDialogProps) 
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">{t('common.name')}</Label>
               <Input
                 id="name"
-                placeholder="My Project"
+                placeholder={t('workspace.namePlaceholder')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -103,10 +105,10 @@ export function CreateWorkspaceDialog({ children }: CreateWorkspaceDialogProps) 
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
+              <Label htmlFor="description">{t('workspace.descriptionOptional')}</Label>
               <Textarea
                 id="description"
-                placeholder="What is this workspace for?"
+                placeholder={t('workspace.descriptionPlaceholder')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 maxLength={500}
@@ -122,11 +124,11 @@ export function CreateWorkspaceDialog({ children }: CreateWorkspaceDialogProps) 
               onClick={() => setOpen(false)}
               disabled={isLoading}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={isLoading || !name.trim()}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Workspace
+              {t('workspace.createWorkspace')}
             </Button>
           </DialogFooter>
         </form>
