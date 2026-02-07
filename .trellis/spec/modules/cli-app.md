@@ -39,6 +39,12 @@ CLI (`viben`) 是一个 **bootstrap 工具**，用于：
 ```
 ~/.viben/                                    # State directory (VIBEN_STATE_DIR)
 ├── config.yaml                              # 全局配置 (VIBEN_CONFIG_PATH)
+├── providers.yaml                           # API Providers 配置
+├── models.yaml                              # Models 配置 (aliases, fallbacks)
+├── channels.yaml                            # Chat Channels 配置 (Telegram, Discord, etc.)
+├── cron.yaml                                # Scheduled Jobs 配置
+├── sessions/                                # Session 存储 (JSONL format)
+│   └── <channel>_<chat_id>.jsonl            # 会话历史 (per channel:chat_id)
 ├── agents/                                  # Agent 实例目录
 │   └── <agent-id>/                          # 单个 agent 实例
 │       ├── config.yaml                      # Agent 配置
@@ -58,8 +64,6 @@ CLI (`viben`) 是一个 **bootstrap 工具**，用于：
 ├── agent-templates/                         # Agent 模板目录
 │   └── <template-id>/                       # 模板结构同 agents/<id>/
 │       └── ...
-├── providers.yaml                           # API Providers 配置
-├── models.yaml                              # Models 配置 (aliases, fallbacks)
 ├── mcp/                                     # 共享 MCP (所有 agents 可用)
 │   ├── installed.yaml                       # 已安装 MCP 列表
 │   └── <name>/                              # 各 MCP 的配置和数据
@@ -83,6 +87,18 @@ CLI (`viben`) 是一个 **bootstrap 工具**，用于：
 | `VIBEN_CONFIG_PATH` | 配置文件路径 | `~/.viben/config.yaml` |
 | `VIBEN_AGENT` | 当前 agent ID | `main` |
 | `VIBEN_SCOPE` | 配置作用域 | 自动检测 |
+| `VIBEN_GATEWAY_HOST` | Gateway 监听地址 | `0.0.0.0` |
+| `VIBEN_GATEWAY_PORT` | Gateway 监听端口 | `18790` |
+
+**Channel-specific Environment Variables** (alternative to config file):
+
+| 变量 | 说明 |
+|------|------|
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token |
+| `DISCORD_BOT_TOKEN` | Discord bot token |
+| `FEISHU_APP_ID` | Feishu app ID |
+| `FEISHU_APP_SECRET` | Feishu app secret |
+| `BRAVE_SEARCH_API_KEY` | Brave Search API key (for web search tool) |
 
 ### Config Structure (YAML)
 
@@ -612,7 +628,370 @@ Services:
 
 ---
 
-### 4. `viben agent`
+### 4. `viben gateway`
+
+Start the gateway - the core runtime that connects channels to the agent loop.
+
+```bash
+# Start gateway (foreground)
+viben gateway
+
+# Start gateway with specific agent
+viben gateway -n <agent-id>
+
+# Start gateway in background
+viben gateway --daemon
+
+# Stop background gateway
+viben gateway stop
+```
+
+**Architecture** (based on nanobot):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Gateway                               │
+├─────────────────────────────────────────────────────────────┤
+│  Channels (Input)                                            │
+│    ├── Telegram Bot                                          │
+│    ├── Discord Bot                                           │
+│    ├── WhatsApp (via bridge)                                 │
+│    ├── Feishu (WebSocket long connection)                    │
+│    └── CLI (direct input)                                    │
+│                                                              │
+│  Message Bus                                                 │
+│    ├── Inbound Queue (messages from channels)                │
+│    └── Outbound Queue (responses to channels)                │
+│                                                              │
+│  Agent Loop                                                  │
+│    ├── Context Builder (system prompt + memory + skills)     │
+│    ├── LLM Provider (API calls)                              │
+│    ├── Tool Registry (execute tool calls)                    │
+│    └── Subagent Manager (background tasks)                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Gateway Lifecycle**:
+
+1. Load configuration from `~/.viben/config.yaml`
+2. Initialize enabled channels (Telegram, Discord, etc.)
+3. Start message bus
+4. Start agent loop
+5. Process messages until shutdown
+
+**Output (Human)**:
+```
+Gateway starting...
+  Agent: main
+  Model: claude-sonnet-4-20250514
+  Channels:
+    ✓ telegram    connected   @my_bot
+    ✓ discord     connected   MyBot#1234
+    ○ whatsapp    disabled
+    ○ feishu      disabled
+
+Gateway running. Press Ctrl+C to stop.
+```
+
+**Output (JSON)**:
+```json
+{
+  "success": true,
+  "data": {
+    "status": "running",
+    "agent": "main",
+    "model": "claude-sonnet-4-20250514",
+    "channels": [
+      {"name": "telegram", "status": "connected", "identifier": "@my_bot"},
+      {"name": "discord", "status": "connected", "identifier": "MyBot#1234"}
+    ],
+    "pid": 12345
+  }
+}
+```
+
+---
+
+### 5. `viben channel`
+
+Manage chat channels for the gateway.
+
+---
+
+#### Supported Channel Types
+
+| Type | Description | Setup Difficulty |
+|------|-------------|------------------|
+| `telegram` | Telegram Bot API | Easy (just a token) |
+| `discord` | Discord Bot | Easy (bot token + intents) |
+| `whatsapp` | WhatsApp via bridge | Medium (scan QR) |
+| `feishu` | Feishu/Lark WebSocket | Medium (app credentials) |
+
+---
+
+#### Commands
+
+```bash
+# ============================================================
+# Channel Management
+# ============================================================
+
+# List all channels
+viben channel list
+viben channel list --json
+
+# Create a channel
+viben channel create -n <id> --type <type> [options]
+viben channel create -n my-telegram --type telegram --token "BOT_TOKEN"
+viben channel create -n my-discord --type discord --token "BOT_TOKEN"
+viben channel create -n my-feishu --type feishu --app-id "cli_xxx" --app-secret "xxx"
+
+# Remove a channel
+viben channel remove -n <id>
+
+# Enable/disable channel
+viben channel enable -n <id>
+viben channel disable -n <id>
+
+# Set default channel
+viben channel set-default -n <id>
+
+# View channel status
+viben channel status
+viben channel status -n <id>
+
+# ============================================================
+# Channel Configuration
+# ============================================================
+
+# Configure channel settings
+viben channel config -n <id>
+viben channel config -n my-telegram set allow_from "[\"123456789\"]"
+viben channel config -n my-telegram set proxy "http://127.0.0.1:7890"
+
+# ============================================================
+# WhatsApp-specific Commands
+# ============================================================
+
+# Link WhatsApp device (scan QR)
+viben channel login -n <whatsapp-id>
+```
+
+---
+
+#### Channel Configuration
+
+```yaml
+# ~/.viben/channels.yaml
+version: 1
+
+default: my-telegram
+
+channels:
+  my-telegram:
+    type: telegram
+    enabled: true
+    token: "encrypted:xxx"  # Bot token from @BotFather
+    allow_from:             # Whitelist of user IDs (empty = allow all)
+      - "123456789"
+    proxy: null             # HTTP/SOCKS5 proxy URL
+
+  my-discord:
+    type: discord
+    enabled: true
+    token: "encrypted:xxx"  # Bot token from Discord Developer Portal
+    allow_from: []          # Whitelist of user IDs
+    intents: 37377          # GUILDS + GUILD_MESSAGES + DIRECT_MESSAGES + MESSAGE_CONTENT
+
+  my-whatsapp:
+    type: whatsapp
+    enabled: false
+    bridge_url: "ws://localhost:3001"
+    allow_from: []          # Whitelist of phone numbers
+
+  my-feishu:
+    type: feishu
+    enabled: false
+    app_id: "cli_xxx"
+    app_secret: "encrypted:xxx"
+    encrypt_key: ""         # Optional for WebSocket mode
+    verification_token: ""  # Optional for WebSocket mode
+    allow_from: []          # Whitelist of user open_ids
+```
+
+---
+
+#### Output Examples
+
+**`viben channel list` (Human)**:
+```
+Channels:
+  my-telegram*   telegram   enabled    @my_bot
+  my-discord     discord    enabled    MyBot#1234
+  my-whatsapp    whatsapp   disabled   -
+  my-feishu      feishu     disabled   -
+
+* = default channel
+```
+
+**`viben channel status` (Human)**:
+```
+Channel Status:
+  my-telegram    telegram   ✓ connected    @my_bot
+  my-discord     discord    ✓ connected    MyBot#1234
+  my-whatsapp    whatsapp   ○ disabled     -
+  my-feishu      feishu     ○ disabled     -
+```
+
+---
+
+### 6. `viben cron`
+
+Manage scheduled tasks for the agent.
+
+---
+
+#### Commands
+
+```bash
+# ============================================================
+# Cron Job Management
+# ============================================================
+
+# List all cron jobs
+viben cron list
+viben cron list --json
+
+# Add a cron job (cron expression)
+viben cron add --name <name> --message "<message>" --cron "<cron-expr>"
+viben cron add --name "daily-greeting" --message "Good morning! What's on my schedule today?" --cron "0 9 * * *"
+viben cron add --name "weekly-review" --message "Summarize this week's accomplishments" --cron "0 17 * * 5"
+
+# Add a cron job (interval in seconds)
+viben cron add --name <name> --message "<message>" --every <seconds>
+viben cron add --name "hourly-check" --message "Check for any urgent tasks" --every 3600
+viben cron add --name "quick-poll" --message "Any updates?" --every 300
+
+# Remove a cron job
+viben cron remove <job_id>
+viben cron remove daily-greeting
+
+# Enable/disable a cron job
+viben cron enable <job_id>
+viben cron disable <job_id>
+
+# Show cron job details
+viben cron show <job_id>
+
+# ============================================================
+# Cron Execution
+# ============================================================
+
+# Run a cron job immediately (for testing)
+viben cron run <job_id>
+```
+
+---
+
+#### Cron Configuration
+
+```yaml
+# ~/.viben/cron.yaml
+version: 1
+
+jobs:
+  daily-greeting:
+    enabled: true
+    message: "Good morning! What's on my schedule today?"
+    cron: "0 9 * * *"        # 9:00 AM every day
+    channel: my-telegram     # Which channel to send response
+    agent: main              # Which agent to use
+
+  weekly-review:
+    enabled: true
+    message: "Summarize this week's accomplishments"
+    cron: "0 17 * * 5"       # 5:00 PM every Friday
+    channel: my-telegram
+    agent: main
+
+  hourly-check:
+    enabled: false
+    message: "Check for any urgent tasks"
+    every: 3600              # Every 3600 seconds (1 hour)
+    channel: null            # CLI only (no channel notification)
+    agent: main
+```
+
+---
+
+#### Cron Expression Format
+
+Standard cron format: `minute hour day-of-month month day-of-week`
+
+| Field | Values | Special Characters |
+|-------|--------|-------------------|
+| Minute | 0-59 | `*` `,` `-` `/` |
+| Hour | 0-23 | `*` `,` `-` `/` |
+| Day of Month | 1-31 | `*` `,` `-` `/` |
+| Month | 1-12 | `*` `,` `-` `/` |
+| Day of Week | 0-6 (Sun=0) | `*` `,` `-` `/` |
+
+**Examples**:
+- `0 9 * * *` - Every day at 9:00 AM
+- `30 8 * * 1-5` - Weekdays at 8:30 AM
+- `0 */2 * * *` - Every 2 hours
+- `0 0 1 * *` - First day of every month at midnight
+
+---
+
+#### Output Examples
+
+**`viben cron list` (Human)**:
+```
+Scheduled Jobs:
+  daily-greeting     enabled    "0 9 * * *"      next: 2024-01-17 09:00
+  weekly-review      enabled    "0 17 * * 5"     next: 2024-01-19 17:00
+  hourly-check       disabled   every 3600s      -
+```
+
+**`viben cron show daily-greeting` (Human)**:
+```
+Cron Job: daily-greeting
+  Status: enabled
+  Schedule: 0 9 * * * (Every day at 9:00 AM)
+  Message: "Good morning! What's on my schedule today?"
+  Channel: my-telegram
+  Agent: main
+
+  Last run: 2024-01-16 09:00:15 (success)
+  Next run: 2024-01-17 09:00:00
+```
+
+**`viben cron list --json`**:
+```json
+{
+  "success": true,
+  "data": {
+    "jobs": [
+      {
+        "id": "daily-greeting",
+        "enabled": true,
+        "message": "Good morning! What's on my schedule today?",
+        "cron": "0 9 * * *",
+        "channel": "my-telegram",
+        "agent": "main",
+        "next_run": "2024-01-17T09:00:00Z",
+        "last_run": "2024-01-16T09:00:15Z",
+        "last_status": "success"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 7. `viben agent`
 
 Manage agent instances and templates.
 
@@ -968,7 +1347,7 @@ Agent Templates:
 
 ---
 
-### 5. `viben provider`
+### 8. `viben provider`
 
 Manage API providers (OpenAI, Anthropic, Google, etc.).
 
@@ -1085,7 +1464,7 @@ Provider Status:
 
 ---
 
-### 6. `viben model`
+### 9. `viben model`
 
 Manage models, aliases, and fallbacks.
 
@@ -1232,7 +1611,7 @@ Model Status:
 
 ---
 
-### 7. `viben mcp`
+### 10. `viben mcp`
 
 Manage MCP servers.
 
@@ -1266,7 +1645,7 @@ Installed MCP Servers:
 
 ---
 
-### 8. `viben skill`
+### 11. `viben skill`
 
 Manage skills.
 
@@ -1291,7 +1670,7 @@ Installed Skills:
 
 ---
 
-### 9. `viben workspace`
+### 12. `viben workspace`
 
 Workspace operations.
 
@@ -1389,6 +1768,22 @@ viben agent sync claude-code --json
 1. `viben service status/start/stop/restart/logs`
 2. `viben agent list/config/sync`
 
+### Phase 5: Channels & Cron (nanobot-inspired)
+
+1. `viben channel list/create/remove/enable/disable/status/config`
+2. `viben channel login` (WhatsApp QR)
+3. `viben cron list/add/remove/enable/disable/show/run`
+4. Channel implementations: Telegram, Discord, WhatsApp, Feishu
+
+### Phase 6: Gateway Runtime (nanobot-inspired)
+
+1. Message Bus (inbound/outbound queues)
+2. Context Builder (system prompt + memory + skills)
+3. Agent Loop (LLM ↔ tool execution)
+4. Subagent Manager (background tasks)
+5. `viben gateway` command
+6. Integration with all channels
+
 ---
 
 ## Directory Structure
@@ -1404,6 +1799,7 @@ apps/cli/
 │   │   ├── init.ts
 │   │   ├── config.ts
 │   │   ├── service.ts
+│   │   ├── gateway.ts        # viben gateway
 │   │   ├── agent/
 │   │   │   ├── index.ts      # viben agent
 │   │   │   ├── list.ts       # viben agent list
@@ -1430,6 +1826,26 @@ apps/cli/
 │   │   │   ├── set-default.ts # viben model set-default
 │   │   │   ├── aliases.ts    # viben model aliases
 │   │   │   └── fallbacks.ts  # viben model fallbacks
+│   │   ├── channel/
+│   │   │   ├── index.ts      # viben channel
+│   │   │   ├── list.ts       # viben channel list
+│   │   │   ├── create.ts     # viben channel create
+│   │   │   ├── remove.ts     # viben channel remove
+│   │   │   ├── status.ts     # viben channel status
+│   │   │   ├── config.ts     # viben channel config
+│   │   │   ├── enable.ts     # viben channel enable
+│   │   │   ├── disable.ts    # viben channel disable
+│   │   │   ├── set-default.ts # viben channel set-default
+│   │   │   └── login.ts      # viben channel login (WhatsApp)
+│   │   ├── cron/
+│   │   │   ├── index.ts      # viben cron
+│   │   │   ├── list.ts       # viben cron list
+│   │   │   ├── add.ts        # viben cron add
+│   │   │   ├── remove.ts     # viben cron remove
+│   │   │   ├── show.ts       # viben cron show
+│   │   │   ├── enable.ts     # viben cron enable
+│   │   │   ├── disable.ts    # viben cron disable
+│   │   │   └── run.ts        # viben cron run
 │   │   ├── mcp.ts
 │   │   ├── skill.ts
 │   │   └── workspace.ts
@@ -1443,6 +1859,20 @@ apps/cli/
 │   │   ├── models.ts         # Model management
 │   │   ├── sessions.ts       # Session management
 │   │   ├── memory.ts         # Memory management
+│   │   ├── channels.ts       # Channel management
+│   │   ├── cron.ts           # Cron job management
+│   │   ├── gateway/          # Gateway runtime
+│   │   │   ├── index.ts      # Gateway entry
+│   │   │   ├── bus.ts        # Message bus
+│   │   │   ├── loop.ts       # Agent loop
+│   │   │   └── context.ts    # Context builder
+│   │   ├── channels/         # Channel implementations
+│   │   │   ├── base.ts       # Base channel interface
+│   │   │   ├── telegram.ts   # Telegram bot
+│   │   │   ├── discord.ts    # Discord bot
+│   │   │   ├── whatsapp.ts   # WhatsApp bridge
+│   │   │   ├── feishu.ts     # Feishu WebSocket
+│   │   │   └── index.ts      # Channel registry
 │   │   └── adapters/         # Agent type adapters
 │   │       ├── base.ts       # Base adapter interface
 │   │       ├── claude-code.ts
@@ -1463,7 +1893,10 @@ apps/cli/
 │       ├── provider.ts       # Provider types
 │       ├── model.ts          # Model types
 │       ├── session.ts        # Session types
-│       └── memory.ts         # Memory types
+│       ├── memory.ts         # Memory types
+│       ├── channel.ts        # Channel types
+│       ├── cron.ts           # Cron types
+│       └── gateway.ts        # Gateway types
 └── bin/
     └── viben                 # Executable entry
 ```
@@ -1540,6 +1973,44 @@ apps/cli/
 - [ ] Agent 可通过 Bash 工具成功调用 CLI
 - [ ] JSON 输出格式一致，便于 Agent 解析
 - [ ] 错误信息结构化，包含 error code
+
+### Gateway (Agent Runtime)
+- [ ] `viben gateway` 启动 gateway
+- [ ] `viben gateway -n <agent-id>` 指定 agent
+- [ ] `viben gateway --daemon` 后台运行
+- [ ] `viben gateway stop` 停止后台 gateway
+- [ ] Gateway 正确初始化 message bus
+- [ ] Gateway 正确启动 agent loop
+- [ ] Gateway 正确连接已启用的 channels
+
+### Channel Management
+- [ ] `viben channel list` 列出所有 channels
+- [ ] `viben channel create -n <id> --type telegram --token <token>` 创建 Telegram channel
+- [ ] `viben channel create -n <id> --type discord --token <token>` 创建 Discord channel
+- [ ] `viben channel create -n <id> --type feishu --app-id <id> --app-secret <secret>` 创建 Feishu channel
+- [ ] `viben channel remove -n <id>` 删除 channel
+- [ ] `viben channel enable -n <id>` 启用 channel
+- [ ] `viben channel disable -n <id>` 禁用 channel
+- [ ] `viben channel set-default -n <id>` 设置默认 channel
+- [ ] `viben channel status` 显示 channel 连接状态
+- [ ] `viben channel config -n <id> set <key> <value>` 配置 channel
+- [ ] `viben channel login -n <id>` WhatsApp QR 扫码登录
+- [ ] Channels 配置存储在 `~/.viben/channels.yaml`
+- [ ] 支持 channel 类型: telegram, discord, whatsapp, feishu
+
+### Cron Management
+- [ ] `viben cron list` 列出所有 cron jobs
+- [ ] `viben cron add --name <name> --message <msg> --cron "<expr>"` 添加 cron 任务
+- [ ] `viben cron add --name <name> --message <msg> --every <seconds>` 添加间隔任务
+- [ ] `viben cron remove <job_id>` 删除 cron job
+- [ ] `viben cron enable <job_id>` 启用 cron job
+- [ ] `viben cron disable <job_id>` 禁用 cron job
+- [ ] `viben cron show <job_id>` 显示 cron job 详情
+- [ ] `viben cron run <job_id>` 立即执行 cron job
+- [ ] Cron 配置存储在 `~/.viben/cron.yaml`
+- [ ] 支持标准 cron 表达式格式
+- [ ] 支持 `--every` 秒数间隔格式
+- [ ] Cron jobs 可指定目标 channel 和 agent
 
 ---
 
