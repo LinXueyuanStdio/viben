@@ -279,18 +279,17 @@ export function ChatInputConfigBar({
           </Button>
         ) : null}
 
-        {/* 用量统计 (Context/Usage Stats) */}
+        {/* 用量统计 (Context/Usage Stats) - icon only */}
         <Popover open={isContextOpen} onOpenChange={setIsContextOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 px-2 gap-1.5 text-xs"
+              className="h-8 px-2 gap-1 text-xs"
               disabled={isLoading || disabled}
               onClick={onContextClick ? () => onContextClick() : undefined}
             >
               <FileText className="h-3.5 w-3.5" />
-              <span>{t("chat.usage", "用量统计")}</span>
               <span className="text-muted-foreground">{formatTokens(contextTokens)}</span>
             </Button>
           </PopoverTrigger>

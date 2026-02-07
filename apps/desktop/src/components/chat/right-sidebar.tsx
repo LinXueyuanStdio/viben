@@ -1192,6 +1192,7 @@ export function RightSidebar({
   const [activeTab, setActiveTab] = React.useState<SidebarTab>("workspace");
 
   // Load working directory files via Tauri command
+  // Note: read_directory_tree command is not implemented yet, using fs API instead
   React.useEffect(() => {
     async function loadWorkingDirFiles() {
       if (!workingDir) {
@@ -1201,11 +1202,25 @@ export function RightSidebar({
 
       setIsLoadingFiles(true);
       try {
-        const files = await invoke<WorkingFile[]>("read_directory_tree", {
-          path: workingDir,
-          maxDepth: 3,
+        // Use Tauri fs plugin to read directory
+        const { readDir } = await import("@tauri-apps/plugin-fs");
+        const entries = await readDir(workingDir);
+
+        // Convert to WorkingFile format
+        const files: WorkingFile[] = entries.map((entry) => ({
+          name: entry.name,
+          path: `${workingDir}/${entry.name}`,
+          isDir: entry.isDirectory,
+        }));
+
+        // Sort: directories first, then files, alphabetically
+        files.sort((a, b) => {
+          if (a.isDir && !b.isDir) return -1;
+          if (!a.isDir && b.isDir) return 1;
+          return a.name.localeCompare(b.name);
         });
-        setLoadedWorkingFiles(files || []);
+
+        setLoadedWorkingFiles(files);
       } catch (error) {
         console.error("Failed to load working directory:", error);
         setLoadedWorkingFiles([]);
