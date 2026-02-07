@@ -124,6 +124,43 @@
     "binaryNotFound": "未找到网关程序",
     "buildHint": "请先构建网关: cd crates && cargo build --release -p viben-gateway"
   },
+  "channels": {
+    "telegram": {
+      "description": "通过 Telegram Bot 接收消息",
+      "token": "Bot Token",
+      "tokenDescription": "从 @BotFather 获取",
+      "proxy": "代理 (可选)",
+      "proxyDescription": "支持 HTTP/SOCKS5 代理",
+      "allowFrom": "允许的用户 (可选)",
+      "allowFromDescription": "留空允许所有用户，用逗号分隔"
+    },
+    "discord": {
+      "description": "通过 Discord Bot 接收消息",
+      "token": "Bot Token",
+      "tokenDescription": "从 Discord Developer Portal 获取",
+      "allowFrom": "允许的用户 (可选)",
+      "allowFromDescription": "留空允许所有用户"
+    },
+    "feishu": {
+      "name": "飞书",
+      "description": "通过飞书/Lark Bot 接收消息",
+      "appId": "App ID",
+      "appIdDescription": "从飞书开放平台获取",
+      "appSecret": "App Secret",
+      "encryptKey": "Encrypt Key (可选)",
+      "encryptKeyDescription": "用于事件订阅加密",
+      "verificationToken": "Verification Token (可选)",
+      "allowFrom": "允许的用户 (可选)",
+      "allowFromDescription": "用户 open_id，留空允许所有用户"
+    },
+    "whatsapp": {
+      "description": "通过 WhatsApp Bridge 接收消息",
+      "bridgeUrl": "Bridge URL",
+      "bridgeDescription": "WhatsApp Web Bridge WebSocket 地址",
+      "allowFrom": "允许的手机号 (可选)",
+      "allowFromDescription": "留空允许所有用户"
+    }
+  },
   "dashboard": {
     "title": "仪表盘",
     "setupRequired": "需要设置",
@@ -182,13 +219,18 @@
       "models": "模型",
       "model": "模型",
       "agents": "智能体",
-      "gateway": "网关"
+      "gateway": "网关",
+      "channels": "消息渠道",
+      "executors": "执行器"
     },
     "generalDescription": "通用应用设置",
     "appearanceDescription": "自定义 Viben 在设备上的外观。",
     "environmentDescription": "Python 和包配置",
     "storageDescription": "管理下载和缓存",
     "aboutDescription": "应用信息和更新",
+    "channelsDescription": "配置 AI 智能体的通信渠道",
+    "resetChannels": "重置渠道配置",
+    "executorsDescription": "检查 AI 编程智能体执行器的安装状态",
     "pythonEnvironment": "Python 环境",
     "detect": "检测",
     "detectedInstallations": "检测到的 Python 安装",
@@ -299,10 +341,23 @@
     "setDefault": "设为默认",
     "checkStatus": "检查状态"
   },
+  "settingsExecutors": {
+    "checking": "检测中...",
+    "unknown": "未检测",
+    "loggedIn": "已登录",
+    "installed": "已安装",
+    "notFound": "未找到",
+    "refresh": "刷新",
+    "gatewayRequired": "需要网关连接才能检测执行器状态。请先启动网关服务。",
+    "summary": "执行器状态",
+    "summaryText": "{{installed}}/{{total}} 个执行器可用",
+    "installHint": "安装命令:"
+  },
   "settingsAgents": {
     "title": "AI 智能体",
     "description": "管理您的 AI 智能体及其配置",
     "list": "智能体列表",
+    "myAgents": "智能体",
     "add": "添加智能体",
     "addFirst": "添加您的第一个智能体",
     "noAgents": "未配置智能体",
@@ -414,7 +469,8 @@
     "memoryPlaceholder": "# 智能体记忆\\n\\n在此写入关于用户和上下文的持久信息...",
     "editableMemory": "可编辑的持久记忆",
     "noMcpServersHint": "创建 MCP 服务器以为您的智能体提供工具",
-    "noSkillsHint": "从商店安装技能以扩展您的智能体"
+    "noSkillsHint": "从商店安装技能以扩展您的智能体",
+    "gatewayNotRunningHint": "Gateway 服务未运行。请先在设置中启动 Gateway。"
   },
   "gateway": {
     "url": "网关地址",
@@ -1250,6 +1306,21 @@
     "agentChat": "智能体对话",
     "agentChatPlaceholder": "询问关于此任务的问题...",
     "emptyColumnHint": "拖拽任务到此处或点击 + 创建",
+    "taskMenu": "任务菜单",
+    "editTask": "编辑任务",
+    "duplicateTask": "复制任务",
+    "moveToColumn": "移动到",
+    "deleteTask": "删除任务",
+    "deleteTaskConfirm": "确定要删除此任务吗？",
+    "setPriority": "设置优先级",
+    "priority": {
+      "label": "优先级",
+      "urgent": "紧急",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "none": "无"
+    },
     "runAgent": "运行",
     "running": "运行中",
     "failed": "失败",

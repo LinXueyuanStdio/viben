@@ -100,7 +100,7 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/api/sessions", get(list_sessions))
         .route("/api/sessions", post(create_session))
-        .route("/api/sessions/{id}", get(get_session))
-        .route("/api/sessions/{id}", delete(delete_session))
-        .route("/api/sessions/{id}/message", post(send_message))
+        .route("/api/sessions/:id", get(get_session))
+        .route("/api/sessions/:id", delete(delete_session))
+        .route("/api/sessions/:id/message", post(send_message))
 }

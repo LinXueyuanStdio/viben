@@ -282,7 +282,7 @@ export function TasksLayout({
   if (!isPanelOpen) {
     desktopNode = (
       <div
-        className="h-full min-h-0 min-w-0 overflow-hidden"
+        className="h-full min-h-0 min-w-0"
         role="region"
         aria-label="Kanban board"
       >

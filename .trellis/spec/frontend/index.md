@@ -18,6 +18,7 @@ This directory contains guidelines for frontend development. These specs ensure 
 | [Component Guidelines](./components.md) | React component patterns and best practices | ✅ Complete |
 | [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" and "Publish My Skill" wizard flows | ✅ Complete |
 | [Chat Integration](./chat-integration.md) | Workspace chat page integration from workany (**desktop only**) | ✅ Complete |
+| [Tailwind v4 Workspace Packages](./tailwind-v4-workspace-packages.md) | **Critical** - Configure Tailwind v4 to scan workspace packages | ✅ Complete |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | To fill |
 | [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | To fill |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | To fill |

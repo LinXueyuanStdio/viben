@@ -147,3 +147,7 @@ export type {
   GatewayConfig,
   UseGatewayReturn,
 } from "./use-gateway";
+
+// Channel Management
+export { useChannels } from "./use-channels";
+export type { UseChannelsReturn } from "./use-channels";

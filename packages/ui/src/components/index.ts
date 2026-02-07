@@ -47,6 +47,7 @@ export {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
+  DropdownMenuShortcut,
 } from "./dropdown-menu";
 
 // Input

@@ -255,6 +255,71 @@ export class GatewayClient {
   }
 
   /**
+   * Diagnose Gateway connectivity and available endpoints
+   * Returns diagnostic information about the Gateway
+   */
+  async diagnose(): Promise<{
+    reachable: boolean;
+    healthCheck: boolean;
+    agentsList: string[] | null;
+    version: string | null;
+    endpoints: { path: string; available: boolean }[];
+  }> {
+    const result = {
+      reachable: false,
+      healthCheck: false,
+      agentsList: null as string[] | null,
+      version: null as string | null,
+      endpoints: [] as { path: string; available: boolean }[],
+    };
+
+    // Test health endpoint
+    try {
+      const healthResponse = await fetch(`${this.baseUrl}/health`);
+      result.healthCheck = healthResponse.ok;
+      result.reachable = true;
+    } catch {
+      result.reachable = false;
+    }
+
+    // Test agents list
+    try {
+      const agentsResponse = await fetch(`${this.baseUrl}/api/agents`);
+      if (agentsResponse.ok) {
+        const data = await agentsResponse.json();
+        result.agentsList = data.agents || [];
+        result.reachable = true;
+      }
+    } catch {
+      // Ignore
+    }
+
+    // Test specific endpoints
+    const testEndpoints = [
+      "/api/agents",
+      "/api/agents/CLAUDE_CODE",
+      "/api/agents/CLAUDE_CODE/availability",
+      "/api/sessions",
+      "/api/tasks",
+      "/api/events",
+    ];
+
+    for (const path of testEndpoints) {
+      try {
+        const response = await fetch(`${this.baseUrl}${path}`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+        });
+        result.endpoints.push({ path, available: response.ok || response.status < 500 });
+      } catch {
+        result.endpoints.push({ path, available: false });
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * List all available agent types
    */
   async listAgents(): Promise<BaseCodingAgent[]> {
@@ -306,8 +371,15 @@ export class GatewayClient {
     );
 
     if (!response.ok) {
+      let errorMessage = response.statusText;
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody?.error?.message || errorBody?.message || JSON.stringify(errorBody);
+      } catch {
+        // Keep statusText as fallback
+      }
       throw new GatewayError(
-        `Failed to check availability: ${response.statusText}`,
+        `Failed to check availability: ${errorMessage}`,
         response.status
       );
     }
@@ -323,22 +395,44 @@ export class GatewayClient {
     agentType: BaseCodingAgent,
     request: SpawnAgentRequest
   ): Promise<SpawnAgentResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/spawn`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(request),
-      }
-    );
+    const url = `${this.baseUrl}/api/agents/${agentType}/spawn`;
+    console.log("[GatewayClient] Spawn request:", { url, agentType, request });
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    console.log("[GatewayClient] Spawn response:", {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+    });
 
     if (!response.ok) {
-      const error = await response.text();
+      let errorMessage = response.statusText;
+      try {
+        const errorBody = await response.json();
+        console.log("[GatewayClient] Error body:", errorBody);
+        errorMessage = errorBody?.error?.message || errorBody?.message || JSON.stringify(errorBody);
+      } catch {
+        // If JSON parsing fails, try reading as text
+        try {
+          const textError = await response.text();
+          console.log("[GatewayClient] Error text:", textError);
+          if (textError) {
+            errorMessage = textError;
+          }
+        } catch {
+          // Keep statusText as fallback
+        }
+      }
       throw new GatewayError(
-        `Failed to spawn agent: ${error || response.statusText}`,
+        `Failed to spawn agent: ${errorMessage}`,
         response.status
       );
     }
@@ -373,9 +467,22 @@ export class GatewayClient {
     );
 
     if (!response.ok) {
-      const error = await response.text();
+      let errorMessage = response.statusText;
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody?.error?.message || errorBody?.message || JSON.stringify(errorBody);
+      } catch {
+        try {
+          const textError = await response.text();
+          if (textError) {
+            errorMessage = textError;
+          }
+        } catch {
+          // Keep statusText as fallback
+        }
+      }
       throw new GatewayError(
-        `Failed to spawn agent: ${error || response.statusText}`,
+        `Failed to spawn agent: ${errorMessage}`,
         response.status
       );
     }

@@ -96,7 +96,19 @@ function App() {
 
           {/* Documents, Settings and About */}
           <Route path="documents" element={<DocumentsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route path="settings" element={<SettingsPage />}>
+            <Route index element={null} />
+            <Route path="general" element={null} />
+            <Route path="shortcuts" element={null} />
+            <Route path="gateway" element={null} />
+            <Route path="channels" element={null} />
+            <Route path="executors" element={null} />
+            <Route path="model" element={null} />
+            <Route path="agents" element={null} />
+            <Route path="environment" element={null} />
+            <Route path="storage" element={null} />
+            <Route path="about" element={null} />
+          </Route>
           <Route path="about" element={<AboutPage />} />
 
           {/* Agent detail page from settings */}

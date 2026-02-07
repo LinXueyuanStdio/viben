@@ -12,6 +12,10 @@ import {
   ArrowLeft,
   BarChart3,
   Keyboard,
+  Pencil,
+  Copy,
+  Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -22,6 +26,12 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@viben/ui";
 import {
   KanbanProvider,
@@ -523,6 +533,67 @@ export function WorkspaceKanbanPage() {
     clearSelection();
   }, [clearSelection]);
 
+  // More menu state
+  const [moreMenuTaskId, setMoreMenuTaskId] = useState<string | null>(null);
+  const [moreMenuPosition, setMoreMenuPosition] = useState<{ x: number; y: number } | null>(null);
+
+  // Handle more menu click
+  const handleMoreClick = useCallback((taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMoreMenuTaskId(taskId);
+    setMoreMenuPosition({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Close more menu
+  const closeMoreMenu = useCallback(() => {
+    setMoreMenuTaskId(null);
+    setMoreMenuPosition(null);
+  }, []);
+
+  // Handle move task to column
+  const handleMoveToColumn = useCallback(
+    (taskId: string, columnId: string) => {
+      if (!vibeProject) return;
+      const newStatus = COLUMN_TO_STATUS[columnId];
+      if (!newStatus) return;
+
+      updateTaskStatus.mutate({
+        taskId,
+        status: newStatus,
+        projectId: vibeProject.id,
+      });
+      closeMoreMenu();
+    },
+    [vibeProject, updateTaskStatus, closeMoreMenu]
+  );
+
+  // Handle duplicate task
+  const handleDuplicateTask = useCallback(
+    (taskId: string) => {
+      if (!vibeProject) return;
+      const task = sortedTasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      createTask.mutate({
+        project_id: vibeProject.id,
+        title: `${task.title} (copy)`,
+        description: task.description ?? null,
+        status: task.status,
+      });
+      closeMoreMenu();
+    },
+    [vibeProject, sortedTasks, createTask, closeMoreMenu]
+  );
+
+  // Handle delete task (placeholder)
+  const handleDeleteTask = useCallback(
+    (_taskId: string) => {
+      // TODO: Implement delete when API is available
+      closeMoreMenu();
+    },
+    [closeMoreMenu]
+  );
+
   // Command palette commands
   const commands: Command[] = useMemo(
     () => [
@@ -874,7 +945,7 @@ export function WorkspaceKanbanPage() {
               /* Kanban View - horizontal scroll when columns exceed width */
               <div
                 ref={keyboardContainerRef}
-                className="h-full overflow-x-auto px-3 py-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="h-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 tabIndex={0}
                 onKeyDown={handleKanbanKeyDown}
                 role="application"
@@ -887,7 +958,7 @@ export function WorkspaceKanbanPage() {
                     const task = sortedTasks.find((t) => t.id === activeId);
                     if (!task) return null;
                     return (
-                      <div className="p-3 bg-card rounded-lg border border-border shadow-2xl rotate-2 scale-105">
+                      <div className="p-3 bg-card rounded-lg border border-primary/40 shadow-2xl scale-[1.02]">
                         <TaskCardContent task={task} />
                       </div>
                     );
@@ -895,12 +966,13 @@ export function WorkspaceKanbanPage() {
                 >
                   {columnStatuses.map((column) => {
                     const columnTasks = tasksByColumn[column.id] ?? [];
+                    const colorVar = COLUMN_COLOR_VARS[column.id as ColumnId];
 
                     return (
-                      <KanbanBoard key={column.id} id={column.id}>
+                      <KanbanBoard key={column.id} id={column.id} backgroundColor={colorVar}>
                         <KanbanHeader
                           name={column.name}
-                          color={COLUMN_COLOR_VARS[column.id as ColumnId]}
+                          color={colorVar}
                           onAddTask={() => handleAddTask(column.id)}
                           addTaskLabel={t("workspace.addTask", "Add Task")}
                           taskCount={columnTasks.length}
@@ -932,6 +1004,7 @@ export function WorkspaceKanbanPage() {
                                   isOpen={selectedTaskId === task.id}
                                   tabIndex={selectedTaskId === task.id ? 0 : -1}
                                   showMoreMenu
+                                  onMoreClick={(e) => handleMoreClick(task.id, e)}
                                 >
                                   <TaskCardContent
                                     task={task}
@@ -1028,6 +1101,84 @@ export function WorkspaceKanbanPage() {
         defaultColumnId={createDialogColumnId}
         isSubmitting={createTask.isPending}
       />
+
+      {/* Task More Menu */}
+      {moreMenuTaskId && moreMenuPosition && (
+        <DropdownMenu open={true} onOpenChange={(open) => !open && closeMoreMenu()}>
+          <DropdownMenuTrigger asChild>
+            <div
+              style={{
+                position: "fixed",
+                left: moreMenuPosition.x,
+                top: moreMenuPosition.y,
+                width: 1,
+                height: 1,
+              }}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              {t("workspace.taskMenu", "Task Menu")}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedTaskId(moreMenuTaskId);
+                closeMoreMenu();
+              }}
+              className="gap-2"
+            >
+              <Pencil className="h-4 w-4" />
+              {t("workspace.editTask", "Edit Task")}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleDuplicateTask(moreMenuTaskId)}
+              className="gap-2"
+            >
+              <Copy className="h-4 w-4" />
+              {t("workspace.duplicateTask", "Duplicate Task")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              {t("workspace.moveToColumn", "Move to")}
+            </DropdownMenuLabel>
+            {columnStatuses.map((column) => {
+              const currentTask = sortedTasks.find((t) => t.id === moreMenuTaskId);
+              const currentColumn = currentTask ? STATUS_TO_COLUMN[currentTask.status] : null;
+              const isCurrentColumn = currentColumn === column.id;
+
+              return (
+                <DropdownMenuItem
+                  key={column.id}
+                  onClick={() => handleMoveToColumn(moreMenuTaskId, column.id)}
+                  disabled={isCurrentColumn}
+                  className="gap-2"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  <span
+                    className="w-2 h-2 rounded-full"
+                    style={{ backgroundColor: COLUMN_COLORS[column.id as ColumnId] }}
+                  />
+                  {column.name}
+                  {isCurrentColumn && (
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {t("common.default", "Current")}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              );
+            })}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => handleDeleteTask(moreMenuTaskId)}
+              className="gap-2 text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+              {t("workspace.deleteTask", "Delete Task")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </PageWrapper>
   );
 }

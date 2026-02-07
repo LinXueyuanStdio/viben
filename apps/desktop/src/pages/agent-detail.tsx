@@ -66,6 +66,7 @@ import { cn } from "@/lib/utils";
 import { useVibenAgents } from "@/hooks/use-viben-agents";
 import { useVibenModels } from "@/hooks/use-viben-models";
 import { useAgent } from "@/hooks/use-agent";
+import { useCloudSkillPackages } from "@/hooks/use-cloud-skills";
 import { MessageList, ChatInput } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import {
@@ -74,6 +75,7 @@ import {
 } from "@/types";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
 import type { AvailabilityInfo } from "@/lib/gateway";
+import { useAppStore } from "@/stores/app-store";
 
 // ============================================================================
 // Collapsible Section Component
@@ -150,6 +152,8 @@ export function AgentDetailPage() {
   } = useVibenAgents();
 
   const { models } = useVibenModels();
+  const mcpServers = useAppStore((state) => state.mcpServers);
+  const { packages: skillPackages } = useCloudSkillPackages();
 
   // Find the current agent
   const agent = useMemo(
@@ -191,10 +195,15 @@ export function AgentDetailPage() {
       setFormName(agent.name);
       setFormDescription(agent.description || "");
       setFormSystemPrompt(agent.system_prompt || "");
+      setFormAppendPrompt(agent.append_prompt || "");
       setFormTemperature(agent.temperature ?? 0.7);
       setFormMaxTokens(agent.max_tokens ?? 4096);
       setFormModel(agent.model || "");
-      // TODO: Load executor type and config from agent
+      setFormExecutorType((agent.executor_type as BaseCodingAgent) || "CLAUDE_CODE");
+      setFormPlanMode(agent.plan_mode ?? false);
+      setFormApprovals(agent.approvals ?? false);
+      setSelectedMcpServers(agent.mcp_servers || []);
+      setSelectedSkills(agent.skills || []);
       setIsDirty(false);
     }
   }, [agent]);
@@ -225,12 +234,18 @@ export function AgentDetailPage() {
         formName !== agent.name ||
         formDescription !== (agent.description || "") ||
         formSystemPrompt !== (agent.system_prompt || "") ||
+        formAppendPrompt !== (agent.append_prompt || "") ||
         formTemperature !== (agent.temperature ?? 0.7) ||
         formMaxTokens !== (agent.max_tokens ?? 4096) ||
-        formModel !== (agent.model || "");
+        formModel !== (agent.model || "") ||
+        formExecutorType !== (agent.executor_type || "CLAUDE_CODE") ||
+        formPlanMode !== (agent.plan_mode ?? false) ||
+        formApprovals !== (agent.approvals ?? false) ||
+        JSON.stringify(selectedMcpServers) !== JSON.stringify(agent.mcp_servers || []) ||
+        JSON.stringify(selectedSkills) !== JSON.stringify(agent.skills || []);
       setIsDirty(hasChanges);
     }
-  }, [agent, formName, formDescription, formSystemPrompt, formTemperature, formMaxTokens, formModel]);
+  }, [agent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills]);
 
   // Save agent
   const handleSave = async () => {
@@ -241,9 +256,15 @@ export function AgentDetailPage() {
         name: formName,
         description: formDescription || undefined,
         system_prompt: formSystemPrompt || undefined,
+        append_prompt: formAppendPrompt || undefined,
         temperature: formTemperature,
         max_tokens: formMaxTokens,
         model: formModel || undefined,
+        executor_type: formExecutorType,
+        plan_mode: formPlanMode,
+        approvals: formApprovals,
+        mcp_servers: selectedMcpServers,
+        skills: selectedSkills,
       });
       setIsDirty(false);
       setLastSaved(new Date());
@@ -254,15 +275,28 @@ export function AgentDetailPage() {
     }
   };
 
+  // Gateway connection state
+  const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
+
   // Check availability
   const checkAvailability = useCallback(async () => {
     setCheckingAvailability(true);
     try {
       const client = getGatewayClient();
+      // First check if gateway is reachable
+      const isConnected = await client.ping();
+      setGatewayConnected(isConnected);
+
+      if (!isConnected) {
+        setAvailability(null);
+        return;
+      }
+
       const result = await client.checkAvailability(formExecutorType);
       setAvailability(result);
     } catch {
-      setAvailability({ type: "NOT_FOUND" });
+      setGatewayConnected(false);
+      setAvailability(null);
     } finally {
       setCheckingAvailability(false);
     }
@@ -281,6 +315,8 @@ export function AgentDetailPage() {
   }, [models]);
 
   // Debug chat (using shared chat components)
+  // Use /tmp/viben-debug as a valid temporary working directory
+  const debugWorkdir = "/tmp/viben-debug";
   const {
     messages,
     phase,
@@ -293,7 +329,7 @@ export function AgentDetailPage() {
     answerQuestions,
     cancel,
     clearMessages,
-  } = useAgent("debug-workspace", {
+  } = useAgent(debugWorkdir, {
     agentType: formExecutorType,
     executorConfig: formExecutorType === "CLAUDE_CODE" ? {
       type: "CLAUDE_CODE",
@@ -600,7 +636,21 @@ export function AgentDetailPage() {
                       {t("settingsAgents.checkAvailability")}
                     </Button>
 
-                    {availability && (
+                    {/* Gateway disconnected */}
+                    {gatewayConnected === false && (
+                      <div className="p-2 rounded-md text-xs bg-orange-500/10 text-orange-700 dark:text-orange-400">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-3.5 w-3.5" />
+                          <span className="font-medium">{t("gateway.disconnected")}</span>
+                        </div>
+                        <p className="mt-1 opacity-80">
+                          {t("settingsAgents.gatewayNotRunningHint", { defaultValue: "Gateway 服务未运行。请先在设置中启动 Gateway。" })}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Gateway connected - show availability */}
+                    {gatewayConnected === true && availability && (
                       <div
                         className={cn(
                           "p-2 rounded-md text-xs",
@@ -686,13 +736,29 @@ export function AgentDetailPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedMcpServers.length} {t("searchService.sources", { defaultValue: "server(s)" })} {t("common.configured")}
-                        </p>
+                        <div className="space-y-1">
+                          {selectedMcpServers.map((serverId) => {
+                            const server = mcpServers.find((s) => s.id === serverId);
+                            return (
+                              <div
+                                key={serverId}
+                                className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                              >
+                                <Database className="h-3 w-3 text-muted-foreground" />
+                                <span className="truncate">{server?.name || serverId}</span>
+                                {server && (
+                                  <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
+                                    {server.transport.toUpperCase()}
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full text-xs h-7"
+                          className="w-full text-xs h-7 mt-2"
                           onClick={() => setMcpDialogOpen(true)}
                         >
                           {t("common.configure")}
@@ -738,13 +804,24 @@ export function AgentDetailPage() {
                       </>
                     ) : (
                       <>
-                        <p className="text-xs text-muted-foreground">
-                          {selectedSkills.length} {t("settingsAgents.skills").toLowerCase()} {t("common.configured")}
-                        </p>
+                        <div className="space-y-1">
+                          {selectedSkills.map((skillId) => {
+                            const skill = skillPackages.find((s) => s.id === skillId);
+                            return (
+                              <div
+                                key={skillId}
+                                className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
+                              >
+                                <Sparkles className="h-3 w-3 text-muted-foreground" />
+                                <span className="truncate">{skill?.name || skillId}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="w-full text-xs h-7"
+                          className="w-full text-xs h-7 mt-2"
                           onClick={() => setSkillsDialogOpen(true)}
                         >
                           {t("common.configure")}
@@ -921,20 +998,14 @@ export function AgentDetailPage() {
         open={mcpDialogOpen}
         onOpenChange={setMcpDialogOpen}
         selectedServerIds={selectedMcpServers}
-        onServersChange={(serverIds) => {
-          setSelectedMcpServers(serverIds);
-          setIsDirty(true);
-        }}
+        onServersChange={setSelectedMcpServers}
       />
 
       <AgentSkillsDialog
         open={skillsDialogOpen}
         onOpenChange={setSkillsDialogOpen}
         selectedSkillIds={selectedSkills}
-        onSkillsChange={(skillIds) => {
-          setSelectedSkills(skillIds);
-          setIsDirty(true);
-        }}
+        onSkillsChange={setSelectedSkills}
       />
 
       <AgentMemoryDialog
