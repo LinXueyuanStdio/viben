@@ -4,11 +4,13 @@
  * Zustand store for managing chat configuration state:
  * - Global agents and models lists (loaded from viben-core)
  * - Selection state for current agent and model
+ * - Executor selection for which coding agent to use (CLAUDE_CODE, CODEX, etc.)
  */
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatAgentConfig, ChatModelConfig } from "@/types/chat-config";
+import type { BaseCodingAgent } from "@/types/agent";
 
 // ============================================================================
 // Store Interface
@@ -23,6 +25,9 @@ interface ChatConfigState {
   selectedAgentId: string | null;
   selectedModelId: string | null;
 
+  // Executor selection (which coding agent to use: CLAUDE_CODE, CODEX, etc.)
+  selectedExecutor: BaseCodingAgent;
+
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -34,6 +39,7 @@ interface ChatConfigState {
   // Actions - Selection
   setSelectedAgentId: (id: string | null) => void;
   setSelectedModelId: (id: string | null) => void;
+  setSelectedExecutor: (executor: BaseCodingAgent) => void;
 
   // Actions - Loading state
   setLoading: (loading: boolean) => void;
@@ -56,6 +62,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
       globalModels: [],
       selectedAgentId: null,
       selectedModelId: null,
+      selectedExecutor: "CLAUDE_CODE" as BaseCodingAgent,
       isLoading: false,
       error: null,
 
@@ -81,6 +88,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
       // Selection
       setSelectedAgentId: (id) => set({ selectedAgentId: id }),
       setSelectedModelId: (id) => set({ selectedModelId: id }),
+      setSelectedExecutor: (executor) => set({ selectedExecutor: executor }),
 
       // Loading state
       setLoading: (loading) => set({ isLoading: loading }),
@@ -103,6 +111,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
         // Only persist selection state, not the lists
         selectedAgentId: state.selectedAgentId,
         selectedModelId: state.selectedModelId,
+        selectedExecutor: state.selectedExecutor,
       }),
     }
   )

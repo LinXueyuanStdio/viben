@@ -35,6 +35,7 @@ import {
   ChevronDown,
   Check,
   EyeOff,
+  Terminal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ import {
 } from "./context-details-popover";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks/use-chat-config";
-import type { MessageAttachment } from "@/types";
+import type { MessageAttachment, BaseCodingAgent, AgentTypeInfo } from "@/types";
 
 // ============================================================================
 // Types
@@ -117,6 +118,10 @@ export interface ChatInputProps {
   models?: Array<{ id: string; name: string; provider?: string }>;
   selectedModelId?: string | null;
   onModelChange?: (modelId: string) => void;
+  /** Executor selection (CLAUDE_CODE, CODEX, etc.) */
+  executors?: AgentTypeInfo[];
+  selectedExecutor?: BaseCodingAgent;
+  onExecutorChange?: (executor: BaseCodingAgent) => void;
 
   // Tools/Skills (for config bar)
   enabledToolsCount?: number;
@@ -183,6 +188,9 @@ export function ChatInput({
   models: propModels,
   selectedModelId: propSelectedModelId,
   onModelChange: propOnModelChange,
+  executors: _propExecutors,
+  selectedExecutor: _propSelectedExecutor,
+  onExecutorChange: _propOnExecutorChange,
   enabledToolsCount = 0,
   enabledSkillsCount = 0,
   onToolsClick,
@@ -209,6 +217,9 @@ export function ChatInput({
   const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
   const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
   const onModelChange = propOnModelChange ?? (useGlobalConfig ? chatConfig.setSelectedModelId : undefined);
+  const executors = _propExecutors ?? (useGlobalConfig ? chatConfig.executors : []);
+  const selectedExecutor = _propSelectedExecutor ?? (useGlobalConfig ? chatConfig.selectedExecutor : "CLAUDE_CODE");
+  const onExecutorChange = _propOnExecutorChange ?? (useGlobalConfig ? chatConfig.setSelectedExecutor : undefined);
 
   // Determine if selectors should be shown based on global config visibility
   // Only apply visibility rules when useGlobalConfig is true and no prop override
@@ -697,8 +708,10 @@ export function ChatInput({
     <div
       ref={containerRef}
       className={cn(
-        "w-full rounded-2xl border border-border/50 bg-background shadow-lg overflow-hidden",
-        isWritingMode && enableWritingMode && "fixed inset-4 z-50 rounded-xl",
+        "w-full bg-background overflow-hidden",
+        // Only use card style when NOT in workspace mode (no toolbar/configbar)
+        !hasToolbar && "rounded-2xl border border-border/50 shadow-lg",
+        isWritingMode && enableWritingMode && "fixed inset-4 z-50 rounded-xl border shadow-lg",
         className
       )}
     >
@@ -1001,7 +1014,43 @@ export function ChatInput({
               </Popover>
             )}
 
-            {/* Tools */}
+            {/* Executor Selector (CLAUDE_CODE, CODEX, etc.) */}
+            {executors.length > 0 && onExecutorChange && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 gap-1.5 text-xs"
+                    disabled={isLoading || disabled}
+                  >
+                    <Terminal className="h-3.5 w-3.5" />
+                    <span className="max-w-[80px] truncate">
+                      {executors.find((e) => e.id === selectedExecutor)?.name || t("chat.selectExecutor", "Executor")}
+                    </span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56 p-1" align="start">
+                  {executors.map((executor) => (
+                    <Button
+                      key={executor.id}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start gap-2 h-8"
+                      onClick={() => onExecutorChange(executor.id)}
+                    >
+                      {executor.id === selectedExecutor && <Check className="h-3.5 w-3.5" />}
+                      <span className={executor.id !== selectedExecutor ? "ml-5" : ""}>
+                        {executor.name}
+                      </span>
+                    </Button>
+                  ))}
+                </PopoverContent>
+              </Popover>
+            )}
+
+            {/* Tools - icon only with badge */}
             {tools.length > 0 && onToggleTool ? (
               <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
                 <TooltipProvider delayDuration={300}>
@@ -1011,13 +1060,15 @@ export function ChatInput({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 px-2 gap-1.5 text-xs"
+                          className="h-8 w-8 p-0 relative"
                           disabled={isLoading || disabled}
                         >
-                          <Wrench className="h-3.5 w-3.5" />
-                          <span>{t("chat.tools", "Tools")}</span>
+                          <Wrench className="h-4 w-4" />
                           {actualToolsCount > 0 && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                            <Badge
+                              variant="secondary"
+                              className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
+                            >
                               {actualToolsCount}
                             </Badge>
                           )}
@@ -1038,14 +1089,16 @@ export function ChatInput({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 gap-1.5 text-xs"
+                      className="h-8 w-8 p-0 relative"
                       disabled={isLoading || disabled}
                       onClick={onToolsClick}
                     >
-                      <Wrench className="h-3.5 w-3.5" />
-                      <span>{t("chat.tools", "Tools")}</span>
+                      <Wrench className="h-4 w-4" />
                       {actualToolsCount > 0 && (
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
+                        >
                           {actualToolsCount}
                         </Badge>
                       )}
@@ -1056,7 +1109,7 @@ export function ChatInput({
               </TooltipProvider>
             )}
 
-            {/* Skills */}
+            {/* Skills - icon only with badge */}
             {skills.length > 0 && onToggleSkill ? (
               <Popover open={isSkillsOpen} onOpenChange={setIsSkillsOpen}>
                 <TooltipProvider delayDuration={300}>
@@ -1066,13 +1119,15 @@ export function ChatInput({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 px-2 gap-1.5 text-xs"
+                          className="h-8 w-8 p-0 relative"
                           disabled={isLoading || disabled}
                         >
-                          <Sparkles className="h-3.5 w-3.5" />
-                          <span>{t("chat.skills", "Skills")}</span>
+                          <Sparkles className="h-4 w-4" />
                           {actualSkillsCount > 0 && (
-                            <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                            <Badge
+                              variant="secondary"
+                              className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
+                            >
                               {actualSkillsCount}
                             </Badge>
                           )}
@@ -1093,14 +1148,16 @@ export function ChatInput({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 px-2 gap-1.5 text-xs"
+                      className="h-8 w-8 p-0 relative"
                       disabled={isLoading || disabled}
                       onClick={onSkillsClick}
                     >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      <span>{t("chat.skills", "Skills")}</span>
+                      <Sparkles className="h-4 w-4" />
                       {actualSkillsCount > 0 && (
-                        <Badge variant="secondary" className="h-4 px-1 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[10px]"
+                        >
                           {actualSkillsCount}
                         </Badge>
                       )}
@@ -1111,7 +1168,7 @@ export function ChatInput({
               </TooltipProvider>
             )}
 
-            {/* Context Tokens */}
+            {/* Context Tokens - icon + number only */}
             <Popover open={isContextOpen} onOpenChange={setIsContextOpen}>
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -1120,12 +1177,12 @@ export function ChatInput({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 gap-1.5 text-xs"
+                        className="h-8 px-2 gap-1 text-xs"
                         disabled={isLoading || disabled}
                         onClick={onContextClick ? () => onContextClick() : undefined}
                       >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>{formatTokens(contextTokens)} tokens</span>
+                        <FileText className="h-4 w-4" />
+                        <span>{formatTokens(contextTokens)}</span>
                       </Button>
                     </PopoverTrigger>
                   </TooltipTrigger>

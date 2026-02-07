@@ -593,99 +593,115 @@ function EmptyState({
   );
 }
 
+// ============================================================================
+// Tab Types
+// ============================================================================
+
+interface OpenTab {
+  id: string;
+  type: "category" | "artifact" | "tool";
+  category?: SidebarTab;
+  artifact?: Artifact;
+  tool?: ToolUsage;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 /**
- * VS Code style tab trigger with icon and badge
+ * VS Code style tab component
  */
-function VSCodeTabTrigger({
-  icon: Icon,
-  label,
-  count,
+function EditorTab({
+  tab,
   isActive,
   onClick,
+  onClose,
+  count,
 }: {
-  value: SidebarTab;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  count?: number;
+  tab: OpenTab;
   isActive: boolean;
   onClick: () => void;
+  onClose?: () => void;
+  count?: number;
 }) {
+  const Icon = tab.icon;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       className={cn(
-        "relative flex items-center gap-1.5 px-3 py-2 text-xs transition-colors border-b-2",
+        "group relative flex items-center gap-1.5 pl-3 pr-1 py-1.5 text-xs transition-colors cursor-pointer border-r border-border/50",
         isActive
-          ? "border-primary text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          ? "bg-background text-foreground"
+          : "bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
       )}
-      title={label}
+      onClick={onClick}
     >
-      <Icon className="h-4 w-4" />
-      <span className="hidden lg:inline truncate max-w-20">{label}</span>
-      {count !== undefined && count > 0 && (
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate max-w-24">{tab.label}</span>
+      {count !== undefined && count > 0 && tab.type === "category" && (
         <span
           className={cn(
-            "ml-0.5 min-w-[18px] rounded-full px-1.5 py-0.5 text-[10px] font-medium text-center",
+            "ml-0.5 min-w-[16px] rounded-full px-1 py-0 text-[10px] font-medium text-center",
             isActive ? "bg-primary/20 text-primary" : "bg-muted"
           )}
         >
           {count}
         </span>
       )}
-    </button>
+      {tab.tool?.isError && (
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+      )}
+      {onClose && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className={cn(
+            "p-0.5 rounded hover:bg-accent transition-colors ml-1",
+            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          )}
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+      {/* Active indicator */}
+      {isActive && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+      )}
+    </div>
   );
 }
 
 /**
- * Preview panel for artifacts, tools, etc.
+ * Artifact preview content
  */
-function PreviewPanel({
-  type,
-  artifact,
-  tool,
-  onClose,
-}: {
-  type: "artifact" | "tool" | null;
-  artifact?: Artifact | null;
-  tool?: ToolUsage | null;
-  onClose: () => void;
-}) {
+function ArtifactPreview({ artifact }: { artifact: Artifact }) {
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        {(() => {
+          const IconComponent = getArtifactIcon(artifact.type);
+          return <IconComponent className="h-5 w-5 text-muted-foreground" />;
+        })()}
+        <div>
+          <h3 className="font-medium">{artifact.name}</h3>
+          <p className="text-xs text-muted-foreground">{artifact.type}</p>
+        </div>
+      </div>
+      {artifact.content && (
+        <pre className="bg-muted/50 rounded-lg p-3 text-xs overflow-auto max-h-[calc(100vh-300px)] whitespace-pre-wrap break-words font-mono">
+          {artifact.content}
+        </pre>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Tool preview content
+ */
+function ToolPreview({ tool }: { tool: ToolUsage }) {
   const { t } = useTranslation();
-  const [previewHeight, setPreviewHeight] = React.useState(200);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const startYRef = React.useRef(0);
-  const startHeightRef = React.useRef(0);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-    startYRef.current = e.clientY;
-    startHeightRef.current = previewHeight;
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startYRef.current - moveEvent.clientY;
-      setPreviewHeight(Math.min(400, Math.max(100, startHeightRef.current + delta)));
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    document.body.style.cursor = "row-resize";
-    document.body.style.userSelect = "none";
-  };
-
-  if (!type || (!artifact && !tool)) {
-    return null;
-  }
 
   const formatInput = (input: unknown): string => {
     if (!input) return "No input";
@@ -698,113 +714,53 @@ function PreviewPanel({
 
   const formatOutput = (output: string | undefined): string => {
     if (!output) return "No output";
-    if (output.length > 5000) {
-      return output.slice(0, 5000) + "\n\n... (truncated)";
+    if (output.length > 10000) {
+      return output.slice(0, 10000) + "\n\n... (truncated)";
     }
     return output;
   };
 
   return (
-    <div
-      className="border-t border-border bg-muted/30 flex flex-col shrink-0"
-      style={{ height: previewHeight }}
-    >
-      {/* Resize handle */}
-      <div
-        className={cn(
-          "h-1 cursor-row-resize flex items-center justify-center group",
-          isDragging && "bg-primary/30"
-        )}
-        onMouseDown={handleMouseDown}
-      >
-        <div
-          className={cn(
-            "w-12 h-1 rounded-full transition-colors",
-            isDragging ? "bg-primary" : "bg-border group-hover:bg-muted-foreground/50"
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        {(() => {
+          const IconComponent = getToolIcon(tool.name);
+          return <IconComponent className="h-5 w-5 text-muted-foreground" />;
+        })()}
+        <div className="flex items-center gap-2">
+          <h3 className="font-medium">{tool.displayName}</h3>
+          {isMcpTool(tool.name) && (
+            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary">
+              MCP
+            </span>
           )}
-        />
-      </div>
-
-      {/* Preview header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/50">
-        <div className="flex items-center gap-2 text-xs">
-          {type === "artifact" && artifact && (
-            <>
-              {(() => {
-                const IconComponent = getArtifactIcon(artifact.type);
-                return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />;
-              })()}
-              <span className="font-medium truncate max-w-40">{artifact.name}</span>
-            </>
-          )}
-          {type === "tool" && tool && (
-            <>
-              {(() => {
-                const IconComponent = getToolIcon(tool.name);
-                return <IconComponent className="h-3.5 w-3.5 text-muted-foreground" />;
-              })()}
-              <span className="font-medium">{tool.displayName}</span>
-              {isMcpTool(tool.name) && (
-                <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
-                  MCP
-                </span>
-              )}
-              {tool.isError && (
-                <span className="rounded bg-red-500/10 px-1 py-0.5 text-[10px] text-red-500">
-                  {t("chat.error")}
-                </span>
-              )}
-            </>
+          {tool.isError && (
+            <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-500">
+              {t("chat.error")}
+            </span>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded hover:bg-accent transition-colors"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
       </div>
 
-      {/* Preview content */}
-      <ScrollArea className="flex-1">
-        <div className="p-3 text-xs">
-          {type === "artifact" && artifact && (
-            <div className="space-y-2">
-              <div className="text-muted-foreground">
-                Type: <span className="text-foreground">{artifact.type}</span>
-              </div>
-              {artifact.content && (
-                <pre className="bg-background rounded-md p-2 overflow-auto max-h-[200px] whitespace-pre-wrap break-words">
-                  {artifact.content.length > 2000
-                    ? artifact.content.slice(0, 2000) + "\n\n... (truncated)"
-                    : artifact.content}
-                </pre>
-              )}
-            </div>
-          )}
-          {type === "tool" && tool && (
-            <div className="space-y-3">
-              <div>
-                <div className="text-muted-foreground mb-1">{t("chat.toolInput")}</div>
-                <pre className="bg-background rounded-md p-2 overflow-auto max-h-[80px] whitespace-pre-wrap break-words">
-                  {formatInput(tool.input)}
-                </pre>
-              </div>
-              <div>
-                <div className="text-muted-foreground mb-1">{t("chat.toolOutput")}</div>
-                <pre
-                  className={cn(
-                    "rounded-md p-2 overflow-auto max-h-[100px] whitespace-pre-wrap break-words",
-                    tool.isError ? "bg-red-500/10 text-red-400" : "bg-background"
-                  )}
-                >
-                  {formatOutput(tool.output)}
-                </pre>
-              </div>
-            </div>
-          )}
+      <div className="space-y-3">
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("chat.toolInput")}</h4>
+          <pre className="bg-muted/50 rounded-lg p-3 text-xs overflow-auto max-h-[200px] whitespace-pre-wrap break-words font-mono">
+            {formatInput(tool.input)}
+          </pre>
         </div>
-      </ScrollArea>
+        <div>
+          <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("chat.toolOutput")}</h4>
+          <pre
+            className={cn(
+              "bg-muted/50 rounded-lg p-3 text-xs overflow-auto max-h-[calc(100vh-400px)] whitespace-pre-wrap break-words font-mono",
+              tool.isError && "bg-red-500/10 text-red-400"
+            )}
+          >
+            {formatOutput(tool.output)}
+          </pre>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1222,7 +1178,6 @@ export function RightSidebar({
   onArtifactSelect,
   onFileSelect,
   onToolSelect,
-  selectedArtifact,
   workingDir,
   filesVersion,
   isOpen = true,
@@ -1232,7 +1187,6 @@ export function RightSidebar({
   onResize,
 }: RightSidebarProps) {
   const { t } = useTranslation();
-  const [selectedTool, setSelectedTool] = React.useState<ToolUsage | null>(null);
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<SidebarTab>("workspace");
@@ -1296,36 +1250,84 @@ export function RightSidebar({
     }
   }, [artifactsCount, toolsCount, workspaceCount, activeTab]);
 
-  // Handle tool selection
-  const handleToolSelect = (tool: ToolUsage) => {
-    setSelectedTool(tool);
-    onToolSelect?.(tool);
-  };
+  // Open tabs state - includes category tabs and opened preview tabs
+  const [openTabs, setOpenTabs] = React.useState<OpenTab[]>([]);
+  const [activeTabId, setActiveTabId] = React.useState<string>("workspace");
 
-  // Preview state
-  const [previewType, setPreviewType] = React.useState<"artifact" | "tool" | null>(null);
-  const [previewArtifact, setPreviewArtifact] = React.useState<Artifact | null>(null);
+  // Initialize category tabs
+  React.useEffect(() => {
+    setOpenTabs([
+      { id: "workspace", type: "category", category: "workspace", label: t("chat.sidebar.workspace", "Workspace"), icon: Folder },
+      { id: "artifacts", type: "category", category: "artifacts", label: t("chat.artifacts"), icon: Package },
+      { id: "tools", type: "category", category: "tools", label: t("chat.tools"), icon: Wrench },
+      { id: "skills", type: "category", category: "skills", label: t("chat.sidebar.skills", "Skills"), icon: Sparkles },
+    ]);
+  }, [t]);
 
-  // Handle artifact selection with preview
+  // Handle artifact selection - open as new tab
   const handleArtifactSelectWithPreview = (artifact: Artifact) => {
-    setPreviewType("artifact");
-    setPreviewArtifact(artifact);
+    const tabId = `artifact-${artifact.id}`;
+    const existingTab = openTabs.find((tab) => tab.id === tabId);
+
+    if (!existingTab) {
+      const newTab: OpenTab = {
+        id: tabId,
+        type: "artifact",
+        artifact,
+        label: artifact.name,
+        icon: getArtifactIcon(artifact.type),
+      };
+      setOpenTabs([...openTabs, newTab]);
+    }
+    setActiveTabId(tabId);
     onArtifactSelect?.(artifact);
   };
 
-  // Handle tool selection with preview
+  // Handle tool selection - open as new tab
   const handleToolSelectWithPreview = (tool: ToolUsage) => {
-    setPreviewType("tool");
-    setSelectedTool(tool);
+    const tabId = `tool-${tool.id}`;
+    const existingTab = openTabs.find((tab) => tab.id === tabId);
+
+    if (!existingTab) {
+      const newTab: OpenTab = {
+        id: tabId,
+        type: "tool",
+        tool,
+        label: tool.displayName,
+        icon: getToolIcon(tool.name),
+      };
+      setOpenTabs([...openTabs, newTab]);
+    }
+    setActiveTabId(tabId);
     onToolSelect?.(tool);
   };
 
-  // Close preview
-  const closePreview = () => {
-    setPreviewType(null);
-    setPreviewArtifact(null);
-    setSelectedTool(null);
+  // Close tab
+  const closeTab = (tabId: string) => {
+    const updatedTabs = openTabs.filter((tab) => tab.id !== tabId);
+    setOpenTabs(updatedTabs);
+
+    // If closing active tab, switch to the previous tab or workspace
+    if (activeTabId === tabId) {
+      const tabIndex = openTabs.findIndex((tab) => tab.id === tabId);
+      const newActiveTab = updatedTabs[Math.max(0, tabIndex - 1)] || updatedTabs[0];
+      setActiveTabId(newActiveTab?.id || "workspace");
+    }
   };
+
+  // Get count for category tabs
+  const getTabCount = (tabId: string): number | undefined => {
+    switch (tabId) {
+      case "workspace": return workspaceCount;
+      case "artifacts": return artifactsCount;
+      case "tools": return toolsCount;
+      case "skills": return skillsCount;
+      default: return undefined;
+    }
+  };
+
+  // Get current active tab
+  const currentTab = openTabs.find((tab) => tab.id === activeTabId);
 
   if (!isOpen) {
     return null;
@@ -1345,43 +1347,21 @@ export function RightSidebar({
       {/* VS Code style tabs */}
       <div className="flex items-center border-b border-border shrink-0 bg-muted/30">
         <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
-          <VSCodeTabTrigger
-            value="workspace"
-            icon={Folder}
-            label={t("chat.sidebar.workspace", "Workspace")}
-            count={workspaceCount}
-            isActive={activeTab === "workspace"}
-            onClick={() => setActiveTab("workspace")}
-          />
-          <VSCodeTabTrigger
-            value="artifacts"
-            icon={Package}
-            label={t("chat.artifacts")}
-            count={artifactsCount}
-            isActive={activeTab === "artifacts"}
-            onClick={() => setActiveTab("artifacts")}
-          />
-          <VSCodeTabTrigger
-            value="tools"
-            icon={Wrench}
-            label={t("chat.tools")}
-            count={toolsCount}
-            isActive={activeTab === "tools"}
-            onClick={() => setActiveTab("tools")}
-          />
-          <VSCodeTabTrigger
-            value="skills"
-            icon={Sparkles}
-            label={t("chat.sidebar.skills", "Skills")}
-            count={skillsCount}
-            isActive={activeTab === "skills"}
-            onClick={() => setActiveTab("skills")}
-          />
+          {openTabs.map((tab) => (
+            <EditorTab
+              key={tab.id}
+              tab={tab}
+              isActive={activeTabId === tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              onClose={tab.type !== "category" ? () => closeTab(tab.id) : undefined}
+              count={getTabCount(tab.id)}
+            />
+          ))}
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
           >
             <X className="h-4 w-4" />
           </button>
@@ -1390,8 +1370,8 @@ export function RightSidebar({
 
       {/* Tab content */}
       <ScrollArea className="flex-1">
-        <div className="p-3">
-          {activeTab === "workspace" && (
+        {currentTab?.type === "category" && currentTab.category === "workspace" && (
+          <div className="p-3">
             <WorkspaceTabContent
               workingDir={workingDir}
               workingFiles={displayWorkingFiles}
@@ -1399,36 +1379,42 @@ export function RightSidebar({
               isLoadingFiles={isLoadingFiles}
               onFileSelect={onFileSelect}
             />
-          )}
+          </div>
+        )}
 
-          {activeTab === "artifacts" && (
+        {currentTab?.type === "category" && currentTab.category === "artifacts" && (
+          <div className="p-3">
             <ArtifactsTabContent
               artifacts={artifacts}
-              selectedArtifact={previewArtifact}
+              selectedArtifact={null}
               onArtifactSelect={handleArtifactSelectWithPreview}
             />
-          )}
+          </div>
+        )}
 
-          {activeTab === "tools" && (
+        {currentTab?.type === "category" && currentTab.category === "tools" && (
+          <div className="p-3">
             <ToolsTabContent
               tools={allTools}
               onToolSelect={handleToolSelectWithPreview}
             />
-          )}
+          </div>
+        )}
 
-          {activeTab === "skills" && (
+        {currentTab?.type === "category" && currentTab.category === "skills" && (
+          <div className="p-3">
             <SkillsTabContent skills={usedSkills} />
-          )}
-        </div>
-      </ScrollArea>
+          </div>
+        )}
 
-      {/* Integrated preview panel */}
-      <PreviewPanel
-        type={previewType}
-        artifact={previewArtifact}
-        tool={selectedTool}
-        onClose={closePreview}
-      />
+        {currentTab?.type === "artifact" && currentTab.artifact && (
+          <ArtifactPreview artifact={currentTab.artifact} />
+        )}
+
+        {currentTab?.type === "tool" && currentTab.tool && (
+          <ToolPreview tool={currentTab.tool} />
+        )}
+      </ScrollArea>
     </div>
   );
 }

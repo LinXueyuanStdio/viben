@@ -40,8 +40,13 @@ import {
   RightSidebar,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
-import { useAgent, useVibenAgents, useVibenModels } from "@/hooks";
-import { useLocalWorkspaces } from "@/hooks";
+import {
+  useAgent,
+  useVibenAgents,
+  useVibenModels,
+  useLocalWorkspaces,
+  useChatConfig,
+} from "@/hooks";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -473,6 +478,9 @@ export function WorkspaceChatPage() {
   const { agents, defaultAgentId } = useVibenAgents();
   const { models } = useVibenModels();
 
+  // Get chat config for executor selection
+  const { selectedExecutor } = useChatConfig();
+
   // Get current conversation's agent
   const currentConversation = conversations.find(
     (c) => c.id === selectedConversationId
@@ -482,6 +490,7 @@ export function WorkspaceChatPage() {
   );
 
   // Agent hook - use workspace path as workdir for the agent
+  // Pass selected executor to connect with the correct coding agent
   const {
     messages,
     phase,
@@ -498,7 +507,7 @@ export function WorkspaceChatPage() {
     answerQuestions,
     cancel,
     clearMessages,
-  } = useAgent(workspace?.path || "");
+  } = useAgent(workspace?.path || "", { agentType: selectedExecutor });
 
   // Load conversations on mount
   React.useEffect(() => {

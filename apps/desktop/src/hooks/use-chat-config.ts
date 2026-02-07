@@ -13,7 +13,8 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useChatConfigStore } from "@/stores/chat-config-store";
-import { useVibenAgents, useVibenModels } from "@/hooks";
+import { useVibenAgents } from "./use-viben-agents";
+import { useVibenModels } from "./use-viben-models";
 import type {
   ChatAgentConfig,
   ChatModelConfig,
@@ -21,6 +22,8 @@ import type {
   ChatContextInfo,
   ChatSelectorVisibility,
 } from "@/types/chat-config";
+import type { BaseCodingAgent } from "@/types/agent";
+import { AGENT_TYPES } from "@/types/agent";
 
 // ============================================================================
 // Route Detection
@@ -73,16 +76,19 @@ export interface UseChatConfigReturn {
   // Filtered lists based on context
   agents: ChatAgentConfig[];
   models: ChatModelConfig[];
+  executors: typeof AGENT_TYPES;
 
   // Selection state
   selectedAgentId: string | null;
   selectedModelId: string | null;
   selectedAgent: ChatAgentConfig | undefined;
   selectedModel: ChatModelConfig | undefined;
+  selectedExecutor: BaseCodingAgent;
 
   // Actions
   setSelectedAgentId: (id: string) => void;
   setSelectedModelId: (id: string) => void;
+  setSelectedExecutor: (executor: BaseCodingAgent) => void;
 
   // Visibility control
   visibility: ChatSelectorVisibility;
@@ -109,12 +115,14 @@ export function useChatConfig(): UseChatConfigReturn {
     globalModels,
     selectedAgentId,
     selectedModelId,
+    selectedExecutor,
     isLoading: storeLoading,
     error,
     setGlobalAgents,
     setGlobalModels,
     setSelectedAgentId,
     setSelectedModelId,
+    setSelectedExecutor,
     setLoading,
     setError,
     getSelectedAgent,
@@ -242,6 +250,13 @@ export function useChatConfig(): UseChatConfigReturn {
     [setSelectedModelId]
   );
 
+  const handleSetExecutor = useCallback(
+    (executor: BaseCodingAgent) => {
+      setSelectedExecutor(executor);
+    },
+    [setSelectedExecutor]
+  );
+
   // Get current selections
   const selectedAgent = getSelectedAgent();
   const selectedModel = getSelectedModel();
@@ -250,16 +265,19 @@ export function useChatConfig(): UseChatConfigReturn {
     // Filtered lists
     agents: filteredAgents,
     models: filteredModels,
+    executors: AGENT_TYPES,
 
     // Selection state
     selectedAgentId,
     selectedModelId,
     selectedAgent,
     selectedModel,
+    selectedExecutor,
 
     // Actions
     setSelectedAgentId: handleSetAgentId,
     setSelectedModelId: handleSetModelId,
+    setSelectedExecutor: handleSetExecutor,
 
     // Visibility
     visibility,

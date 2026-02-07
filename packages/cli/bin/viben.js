@@ -12,8 +12,10 @@
  *   viben init                # Initialize workspace (TypeScript CLI)
  *   viben config list         # List config (TypeScript CLI)
  *   viben agent list          # List agents (TypeScript CLI)
+ *   viben channel list        # List channels (TypeScript CLI)
+ *   viben cron list           # List cron jobs (TypeScript CLI)
  *   viben serve               # Start MCP server (Python wrapper)
- *   viben mcp                  # Start MCP server (Python wrapper, alias)
+ *   viben mcp                 # Start MCP server (Python wrapper, alias)
  */
 
 import { createRequire } from 'module';
@@ -32,7 +34,7 @@ const MIN_PYTHON_VERSION = '3.10';
 const BRAND_NAME = 'Viben';
 
 // Commands that should be handled by the TypeScript CLI
-const TS_CLI_COMMANDS = ['init', 'config', 'agent'];
+const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron'];
 
 // Commands that should be handled by the Python wrapper
 const PYTHON_COMMANDS = ['serve', 'mcp'];
@@ -276,6 +278,8 @@ ${colors.bold}Workspace Commands:${colors.reset}
   init                  Initialize a Viben workspace
   config <subcommand>   Manage configuration (get, set, list, edit, unset)
   agent <subcommand>    Manage agents (list, create, show)
+  channel <subcommand>  Manage chat channels (list, create, remove, status)
+  cron <subcommand>     Manage scheduled tasks (list, add, remove, run)
 
 ${colors.bold}Server Commands:${colors.reset}
   serve                 Start the MCP server (browse-mcp)
