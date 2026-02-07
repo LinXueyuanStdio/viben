@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ export function AddPackageDialog({
   onAdded,
   existingPackageIds,
 }: AddPackageDialogProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<'mcp' | 'skill'>('mcp');
   const [mcpPackages, setMcpPackages] = useState<PackageItem[]>([]);
   const [skillPackages, setSkillPackages] = useState<PackageItem[]>([]);
@@ -110,9 +112,9 @@ export function AddPackageDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add Package</DialogTitle>
+          <DialogTitle>{t('workspace.addPackage')}</DialogTitle>
           <DialogDescription>
-            Select packages to add to your workspace
+            {t('workspace.addPackageDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -120,7 +122,7 @@ export function AddPackageDialog({
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search packages..."
+              placeholder={t('workspace.searchPackages')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -134,11 +136,11 @@ export function AddPackageDialog({
             <TabsList>
               <TabsTrigger value="mcp" className="gap-2">
                 <Server className="h-4 w-4" />
-                MCP Servers ({filteredMcp.length})
+                {t('workspace.mcpServers')} ({filteredMcp.length})
               </TabsTrigger>
               <TabsTrigger value="skill" className="gap-2">
                 <Zap className="h-4 w-4" />
-                Skills ({filteredSkills.length})
+                {t('workspace.skills')} ({filteredSkills.length})
               </TabsTrigger>
             </TabsList>
 
@@ -154,6 +156,7 @@ export function AddPackageDialog({
                   existingIds={existingPackageIds}
                   adding={adding}
                   onAdd={addPackage}
+                  t={t}
                 />
               )}
             </TabsContent>
@@ -170,6 +173,7 @@ export function AddPackageDialog({
                   existingIds={existingPackageIds}
                   adding={adding}
                   onAdd={addPackage}
+                  t={t}
                 />
               )}
             </TabsContent>
@@ -178,7 +182,7 @@ export function AddPackageDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Done
+            {t('workspace.done')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -192,6 +196,7 @@ interface PackageListProps {
   existingIds: string[];
   adding: string | null;
   onAdd: (entityType: 'mcp' | 'skill', entityId: string) => void;
+  t: (key: string) => string;
 }
 
 function PackageList({
@@ -200,11 +205,12 @@ function PackageList({
   existingIds,
   adding,
   onAdd,
+  t,
 }: PackageListProps) {
   if (packages.length === 0) {
     return (
       <div className="py-8 text-center text-muted-foreground">
-        No packages found
+        {t('workspace.noPackagesFound')}
       </div>
     );
   }
@@ -241,7 +247,7 @@ function PackageList({
             {isAdded ? (
               <Button variant="ghost" size="sm" disabled>
                 <Check className="mr-1 h-4 w-4 text-green-500" />
-                Added
+                {t('workspace.added')}
               </Button>
             ) : (
               <Button
@@ -255,7 +261,7 @@ function PackageList({
                 ) : (
                   <Plus className="mr-1 h-4 w-4" />
                 )}
-                Add
+                {t('common.add')}
               </Button>
             )}
           </div>

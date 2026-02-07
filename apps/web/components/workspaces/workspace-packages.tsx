@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -39,6 +40,7 @@ export function WorkspacePackages({
   workspaceId,
   isOwner,
 }: WorkspacePackagesProps) {
+  const { t } = useTranslation();
   const [packages, setPackages] = useState<WorkspacePackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -133,25 +135,25 @@ export function WorkspacePackages({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">Installed Packages</h3>
+          <h3 className="text-lg font-semibold">{t('workspace.installedPackages')}</h3>
           <p className="text-sm text-muted-foreground">
-            Manage MCP servers and skills in this workspace
+            {t('workspace.installedPackagesDesc')}
           </p>
         </div>
         {isOwner && (
           <Button onClick={() => setShowAdd(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Add Package
+            {t('workspace.addPackage')}
           </Button>
         )}
       </div>
 
       {packages.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center">
-          <p className="text-muted-foreground">No packages in this workspace</p>
+          <p className="text-muted-foreground">{t('workspace.noPackages')}</p>
           {isOwner && (
             <p className="mt-2 text-sm text-muted-foreground">
-              Add packages to get started
+              {t('workspace.noPackagesDesc')}
             </p>
           )}
         </div>
@@ -160,10 +162,10 @@ export function WorkspacePackages({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Package</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Version</TableHead>
-                <TableHead>Enabled</TableHead>
+                <TableHead>{t('workspace.package')}</TableHead>
+                <TableHead>{t('workspace.type')}</TableHead>
+                <TableHead>{t('common.version')}</TableHead>
+                <TableHead>{t('workspace.enabled')}</TableHead>
                 {isOwner && <TableHead className="w-[80px]"></TableHead>}
               </TableRow>
             </TableHeader>
@@ -183,7 +185,7 @@ export function WorkspacePackages({
                         )}
                         <div>
                           <span className="font-medium">
-                            {pkg.package?.name || 'Unknown'}
+                            {pkg.package?.name || t('workspace.unknown')}
                           </span>
                           {pkg.package?.description && (
                             <p className="text-xs text-muted-foreground line-clamp-1">
@@ -195,7 +197,7 @@ export function WorkspacePackages({
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
-                        {pkg.entityType === 'mcp' ? 'MCP' : 'Skill'}
+                        {pkg.entityType === 'mcp' ? t('workspace.mcp') : t('workspace.skill')}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
