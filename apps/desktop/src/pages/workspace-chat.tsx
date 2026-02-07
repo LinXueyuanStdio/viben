@@ -42,6 +42,25 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
   ChatInput,
   MessageList,
   RightSidebar,
@@ -498,6 +517,15 @@ export function WorkspaceChatPage() {
   const [isAgentSettingsOpen, setIsAgentSettingsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
+  // Dialog states
+  const [isSearchDialogOpen, setIsSearchDialogOpen] = React.useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = React.useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = React.useState(false);
+  const [isGroupDialogOpen, setIsGroupDialogOpen] = React.useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = React.useState(false);
+  const [conversationSearchQuery, setConversationSearchQuery] = React.useState("");
+
   // Resizable panel widths
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(320); // Default 320px (w-80)
   const [rightPanelWidth, setRightPanelWidth] = React.useState(320); // Default 320px (w-80)
@@ -681,7 +709,99 @@ export function WorkspaceChatPage() {
       setConversations(updated);
       saveConversations(workspaceId, updated);
     }
+    setIsClearDialogOpen(false);
   };
+
+  // Pin/Unpin conversation
+  const handlePinConversation = (id: string) => {
+    if (!workspaceId) return;
+
+    const updated = conversations.map((c) =>
+      c.id === id ? { ...c, isPinned: !c.isPinned, updatedAt: new Date().toISOString() } : c
+    );
+    // Sort: pinned first, then by updatedAt
+    updated.sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+    setConversations(updated);
+    saveConversations(workspaceId, updated);
+  };
+
+  // Mute/Unmute conversation
+  const handleMuteConversation = (id: string) => {
+    if (!workspaceId) return;
+
+    const updated = conversations.map((c) =>
+      c.id === id ? { ...c, isMuted: !c.isMuted } : c
+    );
+    setConversations(updated);
+    saveConversations(workspaceId, updated);
+  };
+
+  // Archive conversation
+  const handleArchiveConversation = () => {
+    if (!workspaceId || !selectedConversationId) return;
+
+    const updated = conversations.map((c) =>
+      c.id === selectedConversationId ? { ...c, isArchived: true } : c
+    );
+    setConversations(updated);
+    saveConversations(workspaceId, updated);
+
+    // Select next conversation
+    const remaining = updated.filter((c) => !c.isArchived);
+    setSelectedConversationId(remaining.length > 0 ? remaining[0].id : null);
+    clearMessages();
+  };
+
+  // Export conversation as JSON
+  const handleExportConversation = () => {
+    if (!currentConversation) return;
+
+    const exportData = {
+      title: currentConversation.title,
+      agent: currentAgent?.name || "Default Agent",
+      createdAt: currentConversation.createdAt,
+      messages: messages.map((m) => ({
+        type: m.type,
+        content: m.content,
+      })),
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${currentConversation.title.replace(/[^a-z0-9]/gi, "_")}_${new Date().toISOString().split("T")[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setIsExportDialogOpen(false);
+  };
+
+  // Share conversation (copy to clipboard)
+  const handleShareConversation = () => {
+    if (!currentConversation) return;
+
+    const shareText = messages
+      .map((m) => `${m.type === "user" ? t("chat.you") : currentAgent?.name || "Agent"}: ${m.content}`)
+      .join("\n\n");
+
+    navigator.clipboard.writeText(shareText);
+    setIsShareDialogOpen(false);
+  };
+
+  // Filter messages by search query
+  const filteredMessages = React.useMemo(() => {
+    if (!conversationSearchQuery.trim()) return messages;
+    const query = conversationSearchQuery.toLowerCase();
+    return messages.filter((m) => m.content?.toLowerCase().includes(query));
+  }, [messages, conversationSearchQuery]);
 
   // Navigate to full agent settings
   const handleNavigateToAgentSettings = () => {
@@ -742,7 +862,7 @@ export function WorkspaceChatPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleClearMessages}
+                onClick={() => setIsClearDialogOpen(true)}
                 className="h-8"
               >
                 <Trash2 className="h-4 w-4" />
@@ -828,6 +948,8 @@ export function WorkspaceChatPage() {
                     conversation={conversation}
                     isSelected={conversation.id === selectedConversationId}
                     agentName={agents.find((a) => a.id === conversation.agentId)?.name}
+                    isPinned={conversation.isPinned}
+                    isMuted={conversation.isMuted}
                     onSelect={() => {
                       setSelectedConversationId(conversation.id);
                       // TODO: Load conversation messages
@@ -836,6 +958,8 @@ export function WorkspaceChatPage() {
                       handleRenameConversation(conversation.id, newTitle)
                     }
                     onDelete={() => handleDeleteConversation(conversation.id)}
+                    onPin={() => handlePinConversation(conversation.id)}
+                    onMute={() => handleMuteConversation(conversation.id)}
                   />
                 ))
               )}
@@ -894,19 +1018,19 @@ export function WorkspaceChatPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       {/* Search */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsSearchDialogOpen(true)}>
                         <Search className="h-4 w-4 mr-3" />
                         {t("chat.searchInConversation")}
                       </DropdownMenuItem>
 
                       {/* View history */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsHistoryDialogOpen(true)}>
                         <History className="h-4 w-4 mr-3" />
                         {t("chat.viewHistory")}
                       </DropdownMenuItem>
 
                       {/* Export conversation */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsExportDialogOpen(true)}>
                         <FileText className="h-4 w-4 mr-3" />
                         {t("chat.exportConversation")}
                       </DropdownMenuItem>
@@ -914,13 +1038,13 @@ export function WorkspaceChatPage() {
                       <DropdownMenuSeparator />
 
                       {/* Invite to group */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsGroupDialogOpen(true)}>
                         <Users className="h-4 w-4 mr-3" />
                         {t("chat.inviteToGroup")}
                       </DropdownMenuItem>
 
                       {/* Share */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsShareDialogOpen(true)}>
                         <Share2 className="h-4 w-4 mr-3" />
                         {t("chat.shareConversation")}
                       </DropdownMenuItem>
@@ -936,14 +1060,14 @@ export function WorkspaceChatPage() {
                       <DropdownMenuSeparator />
 
                       {/* Archive */}
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleArchiveConversation}>
                         <Archive className="h-4 w-4 mr-3" />
                         {t("chat.archiveConversation")}
                       </DropdownMenuItem>
 
                       {/* Clear messages */}
                       <DropdownMenuItem
-                        onClick={handleClearMessages}
+                        onClick={() => setIsClearDialogOpen(true)}
                         className="text-destructive focus:text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-3" />
@@ -1038,6 +1162,210 @@ export function WorkspaceChatPage() {
           />
         </SheetContent>
       </Sheet>
+
+      {/* Search Dialog */}
+      <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              {t("chat.searchInConversation")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("chat.searchInConversationDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={t("chat.searchPlaceholder")}
+                value={conversationSearchQuery}
+                onChange={(e) => setConversationSearchQuery(e.target.value)}
+                className="pl-10"
+                autoFocus
+              />
+            </div>
+            {conversationSearchQuery && (
+              <div className="max-h-60 overflow-auto space-y-2">
+                {filteredMessages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {t("chat.noSearchResults")}
+                  </p>
+                ) : (
+                  filteredMessages.map((message, index) => (
+                    <div
+                      key={index}
+                      className="p-2 rounded-lg bg-muted/50 text-sm"
+                    >
+                      <span className="font-medium text-xs text-muted-foreground">
+                        {message.type === "user" ? t("chat.you") : currentAgent?.name}
+                      </span>
+                      <p className="truncate">{message.content}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              {t("chat.viewHistory")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("chat.viewHistoryDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[400px]">
+            <div className="space-y-3">
+              {messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {t("chat.noMessages")}
+                </p>
+              ) : (
+                messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "p-3 rounded-lg text-sm",
+                      message.type === "user"
+                        ? "bg-primary/10 ml-8"
+                        : "bg-muted/50 mr-8"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-medium text-xs">
+                        {message.type === "user" ? t("chat.you") : currentAgent?.name}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Dialog */}
+      <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {t("chat.exportConversation")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("chat.exportConversationDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="p-4 rounded-lg bg-muted/50">
+              <p className="text-sm font-medium mb-1">
+                {currentConversation?.title}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {messages.length} {t("chat.messagesCount")}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsExportDialogOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={handleExportConversation}>
+                <FileText className="h-4 w-4 mr-2" />
+                {t("chat.exportAsJson")}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Group Dialog */}
+      <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              {t("chat.inviteToGroup")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("chat.inviteToGroupDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {t("chat.groupFeatureComingSoon")}
+            </p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsGroupDialogOpen(false)}>
+                {t("common.close")}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Dialog */}
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              {t("chat.shareConversation")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("chat.shareConversationDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Textarea
+              readOnly
+              value={messages
+                .map((m) => `${m.type === "user" ? t("chat.you") : currentAgent?.name}: ${m.content}`)
+                .join("\n\n")}
+              className="h-40 text-xs"
+            />
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button onClick={handleShareConversation}>
+                <Share2 className="h-4 w-4 mr-2" />
+                {t("chat.copyToClipboard")}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear Messages Confirmation Dialog */}
+      <AlertDialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("chat.clearMessagesConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("chat.clearMessagesConfirmDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleClearMessages}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t("chat.clearMessages")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }
