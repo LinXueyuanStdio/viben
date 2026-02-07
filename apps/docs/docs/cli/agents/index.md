@@ -162,8 +162,8 @@ Agents:
 
 ## Next Steps
 
-- [Creating Agents](/docs/cli/agents/creating-agents) - Create and manage agents
-- [Agent Configuration](/docs/cli/agents/agent-configuration) - Configure agent settings
-- [Memory System](/docs/cli/agents/memory-system) - Understand agent memory
-- [Sessions](/docs/cli/agents/sessions) - Manage agent sessions
-- [Templates](/docs/cli/agents/templates) - Use agent templates
+- [Creating Agents](creating-agents) - Create and manage agents
+- [Agent Configuration](agent-configuration) - Configure agent settings
+- [Memory System](memory-system) - Understand agent memory
+- [Sessions](sessions) - Manage agent sessions
+- [Templates](templates) - Use agent templates
