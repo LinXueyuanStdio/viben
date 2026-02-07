@@ -18,15 +18,15 @@ viben <command> [subcommand] [options]
 
 | Command | Description |
 |---------|-------------|
-| [`init`](/docs/cli/commands/init) | Initialize workspace in current directory |
-| [`config`](/docs/cli/commands/config) | Configuration management (git-style) |
-| [`service`](/docs/cli/commands/service) | Manage background services |
-| [`agent`](/docs/cli/commands/agent) | Manage agent instances and templates |
-| [`provider`](/docs/cli/commands/provider) | Manage API providers (OpenAI, Anthropic, etc.) |
-| [`model`](/docs/cli/commands/model) | Manage models, aliases, and fallbacks |
-| [`mcp`](/docs/cli/commands/mcp) | Manage MCP servers |
-| [`skill`](/docs/cli/commands/skill) | Manage skills |
-| [`workspace`](/docs/cli/commands/workspace) | Workspace operations |
+| [`init`](init) | Initialize workspace in current directory |
+| [`config`](config) | Configuration management (git-style) |
+| [`service`](service) | Manage background services |
+| [`agent`](agent) | Manage agent instances and templates |
+| [`provider`](provider) | Manage API providers (OpenAI, Anthropic, etc.) |
+| [`model`](model) | Manage models, aliases, and fallbacks |
+| [`mcp`](mcp) | Manage MCP servers |
+| [`skill`](skill) | Manage skills |
+| [`workspace`](workspace) | Workspace operations |
 | `version` | Show version info |
 | `help` | Show help |
 
