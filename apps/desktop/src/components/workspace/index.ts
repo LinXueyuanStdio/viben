@@ -6,7 +6,10 @@ export { TaskDetailPanel, type TaskDetailPanelProps, type TaskForPanel } from ".
 export {
   TasksLayout,
   useKanbanNavigation,
+  CreateTaskDialog,
   type LayoutMode,
   type UseKanbanNavigationOptions,
   type UseKanbanNavigationReturn,
+  type CreateTaskDialogProps,
+  type CreateTaskData,
 } from "./kanban";

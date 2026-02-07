@@ -23,6 +23,10 @@ import {
   X,
   Loader2,
   FileText,
+  Bot,
+  GitBranch,
+  SlidersHorizontal,
+  ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
@@ -31,6 +35,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "@/components/ui/tooltip";
 import type { MessageAttachment } from "@/types";
 
@@ -77,6 +82,18 @@ interface ModelParameters {
   compressionEnabled: boolean;
 }
 
+interface AgentInfo {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+}
+
+interface BranchInfo {
+  name: string;
+  isDefault?: boolean;
+}
+
 interface AgentChatInputProps {
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
   onCancel?: () => void;
@@ -85,15 +102,25 @@ interface AgentChatInputProps {
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  // Agent-related props
+  agents?: AgentInfo[];
+  selectedAgent?: AgentInfo;
+  onAgentChange?: (agent: AgentInfo) => void;
   // Model-related props
   models?: ModelInfo[];
   selectedModel?: ModelInfo;
   onModelChange?: (model: ModelInfo) => void;
+  // Branch-related props
+  branches?: BranchInfo[];
+  selectedBranch?: BranchInfo;
+  onBranchChange?: (branch: BranchInfo) => void;
   // Parameters
   parameters?: ModelParameters;
   onParametersChange?: (params: ModelParameters) => void;
   // Token usage
   tokenUsage?: TokenUsage;
+  // Variant - 'default' for full toolbar, 'task' for task creation style
+  variant?: "default" | "task";
 }
 
 // ============================================================================
@@ -162,6 +189,19 @@ const DEFAULT_PARAMETERS: ModelParameters = {
   maxTokens: 4096,
   compressionEnabled: true,
 };
+
+const DEFAULT_AGENTS: AgentInfo[] = [
+  { id: "claude-code", name: "CLAUDE_CODE", description: "代码开发智能体" },
+  { id: "researcher", name: "RESEARCHER", description: "研究分析智能体" },
+  { id: "writer", name: "WRITER", description: "文档写作智能体" },
+  { id: "reviewer", name: "REVIEWER", description: "代码审查智能体" },
+];
+
+const DEFAULT_BRANCHES: BranchInfo[] = [
+  { name: "main", isDefault: true },
+  { name: "develop" },
+  { name: "feature/new-ui" },
+];
 
 // ============================================================================
 // Helper Components
@@ -765,6 +805,195 @@ function TokenUsagePopover({
   );
 }
 
+// Agent Selector Popover
+function AgentSelectorPopover({
+  open,
+  onOpenChange,
+  agents,
+  selectedAgent,
+  onAgentChange,
+  triggerRef,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  agents: AgentInfo[];
+  selectedAgent?: AgentInfo;
+  onAgentChange?: (agent: AgentInfo) => void;
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        contentRef.current &&
+        !contentRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        onOpenChange(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, onOpenChange, triggerRef]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={contentRef}
+      className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-[200px] rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in-0 zoom-in-95"
+    >
+      {agents.map((agent) => (
+        <button
+          key={agent.id}
+          onClick={() => {
+            onAgentChange?.(agent);
+            onOpenChange(false);
+          }}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+            "hover:bg-accent",
+            selectedAgent?.id === agent.id && "bg-accent"
+          )}
+        >
+          <Bot className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1">
+            <div className="font-medium">{agent.name}</div>
+            {agent.description && (
+              <div className="text-xs text-muted-foreground">{agent.description}</div>
+            )}
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Branch Selector Popover
+function BranchSelectorPopover({
+  open,
+  onOpenChange,
+  branches,
+  selectedBranch,
+  onBranchChange,
+  triggerRef,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  branches: BranchInfo[];
+  selectedBranch?: BranchInfo;
+  onBranchChange?: (branch: BranchInfo) => void;
+  triggerRef: React.RefObject<HTMLButtonElement | null>;
+}) {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        contentRef.current &&
+        !contentRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        onOpenChange(false);
+      }
+    };
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onOpenChange(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open, onOpenChange, triggerRef]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      ref={contentRef}
+      className="absolute bottom-full left-0 z-50 mb-2 w-full min-w-[180px] rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in-0 zoom-in-95"
+    >
+      {branches.map((branch) => (
+        <button
+          key={branch.name}
+          onClick={() => {
+            onBranchChange?.(branch);
+            onOpenChange(false);
+          }}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors",
+            "hover:bg-accent",
+            selectedBranch?.name === branch.name && "bg-accent"
+          )}
+        >
+          <GitBranch className="h-4 w-4 text-muted-foreground" />
+          <span>{branch.name}</span>
+          {branch.isDefault && (
+            <span className="ml-auto text-xs text-muted-foreground">默认</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Dropdown Selector Button - reusable component for task variant
+function SelectorButton({
+  icon: Icon,
+  label,
+  onClick,
+  isOpen,
+  buttonRef,
+  className,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+  isOpen?: boolean;
+  buttonRef?: React.RefObject<HTMLButtonElement | null>;
+  className?: string;
+}) {
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex flex-1 items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-left transition-colors",
+        "hover:bg-muted/50",
+        isOpen && "ring-1 ring-ring",
+        className
+      )}
+    >
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <span className="flex-1 truncate text-sm">{label}</span>
+      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
+
 // ============================================================================
 // Main Component
 // ============================================================================
@@ -777,12 +1006,19 @@ export function AgentChatInput({
   placeholder,
   className,
   autoFocus = false,
+  agents = DEFAULT_AGENTS,
+  selectedAgent,
+  onAgentChange,
   models = DEFAULT_MODELS,
   selectedModel,
   onModelChange,
+  branches = DEFAULT_BRANCHES,
+  selectedBranch,
+  onBranchChange,
   parameters = DEFAULT_PARAMETERS,
   onParametersChange,
   tokenUsage = DEFAULT_TOKEN_USAGE,
+  variant = "default",
 }: AgentChatInputProps) {
   useTranslation(); // Load translations context
   const [content, setContent] = React.useState("");
@@ -795,13 +1031,19 @@ export function AgentChatInput({
   const [modelSelectorOpen, setModelSelectorOpen] = React.useState(false);
   const [parametersOpen, setParametersOpen] = React.useState(false);
   const [tokenUsageOpen, setTokenUsageOpen] = React.useState(false);
+  const [agentSelectorOpen, setAgentSelectorOpen] = React.useState(false);
+  const [branchSelectorOpen, setBranchSelectorOpen] = React.useState(false);
 
   // Refs for popover triggers
   const modelTriggerRef = React.useRef<HTMLDivElement>(null);
   const paramsTriggerRef = React.useRef<HTMLButtonElement>(null);
   const tokenTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const agentTriggerRef = React.useRef<HTMLButtonElement>(null);
+  const branchTriggerRef = React.useRef<HTMLButtonElement>(null);
 
   const currentModel = selectedModel || models[0];
+  const currentAgent = selectedAgent || agents[0];
+  const currentBranch = selectedBranch || branches.find((b) => b.isDefault) || branches[0];
   const [localParams, setLocalParams] = React.useState(parameters);
 
   // Auto focus on mount
@@ -856,9 +1098,10 @@ export function AgentChatInput({
   };
 
   return (
-    <div className={cn("relative w-full", className)}>
-      {/* Main Input Container */}
-      <div className="rounded-2xl border border-border/50 bg-background p-3 shadow-lg">
+    <TooltipProvider>
+      <div className={cn("relative w-full", className)}>
+        {/* Main Input Container */}
+        <div className="rounded-2xl border border-border/50 bg-background p-3 shadow-lg">
         {/* Attachment Preview */}
         {attachments.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -1045,21 +1288,113 @@ export function AgentChatInput({
             </button>
           </div>
         </div>
+
+        {/* Selectors Row - Agent, Model, Branch */}
+        {variant === "task" && (
+          <div className="mt-4 grid grid-cols-3 gap-3">
+            {/* Agent Selector */}
+            <div className="relative">
+              <SelectorButton
+                icon={Bot}
+                label={currentAgent.name}
+                onClick={() => setAgentSelectorOpen(!agentSelectorOpen)}
+                isOpen={agentSelectorOpen}
+                buttonRef={agentTriggerRef}
+              />
+              <AgentSelectorPopover
+                open={agentSelectorOpen}
+                onOpenChange={setAgentSelectorOpen}
+                agents={agents}
+                selectedAgent={currentAgent}
+                onAgentChange={onAgentChange}
+                triggerRef={agentTriggerRef}
+              />
+            </div>
+
+            {/* Model Selector (Simplified) */}
+            <div className="relative">
+              <SelectorButton
+                icon={SlidersHorizontal}
+                label={currentModel.name.split(" ").pop() || currentModel.name}
+                onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
+                isOpen={modelSelectorOpen}
+                buttonRef={undefined}
+              />
+            </div>
+
+            {/* Branch Selector */}
+            <div className="relative">
+              <SelectorButton
+                icon={GitBranch}
+                label={currentBranch.name}
+                onClick={() => setBranchSelectorOpen(!branchSelectorOpen)}
+                isOpen={branchSelectorOpen}
+                buttonRef={branchTriggerRef}
+              />
+              <BranchSelectorPopover
+                open={branchSelectorOpen}
+                onOpenChange={setBranchSelectorOpen}
+                branches={branches}
+                selectedBranch={currentBranch}
+                onBranchChange={onBranchChange}
+                triggerRef={branchTriggerRef}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Task Mode Bottom Bar */}
+        {variant === "task" && (
+          <div className="mt-4 flex items-center justify-between">
+            {/* Image Upload */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-12 w-12 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <ImagePlus className="h-5 w-5" />
+            </button>
+
+            {/* Right side controls */}
+            <div className="flex items-center gap-4">
+              {/* Start Toggle */}
+              <div className="flex items-center gap-2">
+                <Switch />
+                <span className="text-sm text-muted-foreground">开始</span>
+              </div>
+
+              {/* Create Button */}
+              <button
+                type="button"
+                onClick={handleSend}
+                disabled={!canSubmit}
+                className={cn(
+                  "rounded-lg bg-muted px-6 py-3 text-sm font-medium transition-colors",
+                  "hover:bg-muted/80",
+                  !canSubmit && "cursor-not-allowed opacity-50"
+                )}
+              >
+                创建
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Hidden File Input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          if (e.target.files) {
-            // Handle file upload
-            e.target.value = "";
-          }
-        }}
-      />
-    </div>
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) {
+              // Handle file upload
+              e.target.value = "";
+            }
+          }}
+        />
+      </div>
+    </TooltipProvider>
   );
 }

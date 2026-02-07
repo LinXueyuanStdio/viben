@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  ChatInput,
+  AgentChatInput,
   MessageList,
   RightSidebar,
 } from "@/components/chat";
@@ -138,7 +138,7 @@ export function WorkspaceChatPage() {
 
           {/* Input */}
           <div className="border-t border-border bg-background p-4">
-            <ChatInput
+            <AgentChatInput
               onSend={sendMessage}
               onCancel={cancel}
               isLoading={isStreaming}
@@ -150,6 +150,7 @@ export function WorkspaceChatPage() {
                     ? t("chat.waitingForInput")
                     : undefined
               }
+              autoFocus
             />
           </div>
         </div>
