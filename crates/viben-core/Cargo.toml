@@ -15,6 +15,7 @@ dirs = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
 thiserror = { workspace = true }
+reqwest = { workspace = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

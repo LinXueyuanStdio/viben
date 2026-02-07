@@ -85,6 +85,21 @@ pub fn get_shared_skills_dir() -> PathBuf {
     get_state_dir().join("skills")
 }
 
+/// Get the providers directory path
+pub fn get_providers_dir() -> PathBuf {
+    get_state_dir().join("providers")
+}
+
+/// Get the path to a specific provider's directory
+pub fn get_provider_dir(provider_id: &str) -> PathBuf {
+    get_providers_dir().join(provider_id)
+}
+
+/// Get the path to a provider's models config file
+pub fn get_provider_models_path(provider_id: &str) -> PathBuf {
+    get_provider_dir(provider_id).join("models.yaml")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
