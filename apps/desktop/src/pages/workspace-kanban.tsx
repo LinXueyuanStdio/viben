@@ -5,26 +5,18 @@ import {
   FolderOpen,
   Plus,
   Circle,
-  ArrowUp,
-  ArrowDown,
-  ChevronDown,
   AlertCircle,
   RefreshCw,
   Play,
   XCircle,
   ArrowLeft,
+  BarChart3,
 } from "lucide-react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { Button } from "@/components/ui/button";
 import {
   Badge,
   cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
 } from "@viben/ui";
 import {
   KanbanProvider,
@@ -35,6 +27,10 @@ import {
   KanbanFilterBar,
   useFilteredItems,
   useMultiSelect,
+  useKanbanStats,
+  useColumnCollapse,
+  useCommandPalette,
+  useSortedItems,
   PriorityIcon,
   TagBadge,
   AssigneeAvatar,
@@ -44,6 +40,12 @@ import {
   ListViewItem,
   BulkActionsBar,
   SelectableCard,
+  QuickTaskInput,
+  EditableCardTitle,
+  CollapsibleColumn,
+  SortModeSelect,
+  StatsPanel,
+  CommandPalette,
   type DragEndEvent,
   type Status,
   type IssuePriority,
@@ -51,6 +53,9 @@ import {
   type Assignee,
   type KanbanFilter,
   type ViewMode,
+  type SortMode,
+  type SortDirection,
+  type Command,
 } from "@viben/kanban";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader, TaskDetailPanel } from "@/components/workspace";
@@ -59,6 +64,7 @@ import {
   useVibeKanbanTasks,
   useVibeKanbanProjects,
   useUpdateVibeKanbanTaskStatus,
+  useUpdateVibeKanbanTask,
   useCreateVibeKanbanTask,
 } from "@/hooks/use-vibe-kanban";
 import {
@@ -73,17 +79,21 @@ import { useTranslation } from "react-i18next";
 const COLUMN_IDS = ["todo", "in-progress", "review", "done"] as const;
 type ColumnId = (typeof COLUMN_IDS)[number];
 
-// Column colors mapping
+// Column colors mapping (CSS variable to hex for CollapsibleColumn)
 const COLUMN_COLORS: Record<ColumnId, string> = {
+  todo: "hsl(var(--muted))",
+  "in-progress": "hsl(var(--primary))",
+  review: "hsl(var(--warning))",
+  done: "hsl(var(--success))",
+};
+
+// Column color CSS variables for KanbanHeader
+const COLUMN_COLOR_VARS: Record<ColumnId, string> = {
   todo: "--muted",
   "in-progress": "--primary",
   review: "--warning",
   done: "--success",
 };
-
-// Sort options
-type SortField = "created" | "updated" | "title";
-type SortDirection = "asc" | "desc";
 
 // Extended task type to support new fields
 interface EnhancedTask extends TaskWithAttemptStatus {
@@ -94,15 +104,29 @@ interface EnhancedTask extends TaskWithAttemptStatus {
 }
 
 // Task Card Content Component - displays vibe-kanban task with enhanced fields
-function TaskCardContent({ task }: { task: EnhancedTask }) {
+function TaskCardContent({
+  task,
+  onTitleChange,
+}: {
+  task: EnhancedTask;
+  onTitleChange?: (title: string) => void;
+}) {
   return (
     <div className="flex flex-col gap-1.5 min-w-0">
-      {/* Row 1: Priority + Title */}
+      {/* Row 1: Priority + Title (inline editable) */}
       <div className="flex items-center gap-2">
         {task.priority && task.priority !== "none" && (
           <PriorityIcon priority={task.priority} size="sm" />
         )}
-        <span className="text-sm font-medium truncate flex-1">{task.title}</span>
+        {onTitleChange ? (
+          <EditableCardTitle
+            value={task.title}
+            onChange={onTitleChange}
+            className="text-sm font-medium flex-1"
+          />
+        ) : (
+          <span className="text-sm font-medium truncate flex-1">{task.title}</span>
+        )}
       </div>
 
       {/* Row 2: Description (truncated) */}
@@ -159,84 +183,6 @@ function TaskCardContent({ task }: { task: EnhancedTask }) {
   );
 }
 
-// Sort Bar Component
-function KanbanSortBar({
-  sortField,
-  sortDirection,
-  onSortChange,
-  onRefresh,
-  isRefreshing,
-}: {
-  sortField: SortField;
-  sortDirection: SortDirection;
-  onSortChange: (field: SortField, direction: SortDirection) => void;
-  onRefresh: () => void;
-  isRefreshing: boolean;
-}) {
-  const { t } = useTranslation();
-
-  const sortOptions: { value: SortField; label: string }[] = [
-    { value: "created", label: t("workspace.sort.created", "Created") },
-    { value: "updated", label: t("workspace.sort.updated", "Updated") },
-    { value: "title", label: t("workspace.sort.name", "Title") },
-  ];
-
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {/* Sort Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8">
-            {sortOptions.find((o) => o.value === sortField)?.label}
-            {sortDirection === "asc" ? (
-              <ArrowUp className="h-3 w-3 ml-1" />
-            ) : (
-              <ArrowDown className="h-3 w-3 ml-1" />
-            )}
-            <ChevronDown className="h-3 w-3 ml-1" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent>
-          <DropdownMenuLabel>{t("workspace.sortBy", "Sort by")}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          {sortOptions.map((option) => (
-            <DropdownMenuItem
-              key={option.value}
-              onClick={() =>
-                onSortChange(
-                  option.value,
-                  sortField === option.value && sortDirection === "asc"
-                    ? "desc"
-                    : "asc"
-                )
-              }
-            >
-              {option.label}
-              {sortField === option.value &&
-                (sortDirection === "asc" ? (
-                  <ArrowUp className="h-3 w-3 ml-auto" />
-                ) : (
-                  <ArrowDown className="h-3 w-3 ml-auto" />
-                ))}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Refresh Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-8"
-        onClick={onRefresh}
-        disabled={isRefreshing}
-      >
-        <RefreshCw className={cn("h-3 w-3 mr-1", isRefreshing && "animate-spin")} />
-        {t("common.refresh", "Refresh")}
-      </Button>
-    </div>
-  );
-}
 
 // Build column statuses with translations
 function useColumnStatuses(): Status[] {
@@ -299,10 +245,18 @@ export function WorkspaceKanbanPage() {
 
   // UI state
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [sortField, setSortField] = useState<SortField>("created");
+  const [sortMode, setSortMode] = useState<SortMode>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [filter, setFilter] = useState<KanbanFilter>({});
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [showStats, setShowStats] = useState(false);
+
+  // Column collapse state
+  const { toggleCollapse, isCollapsed } = useColumnCollapse();
+
+  // Command palette state
+  const { isOpen: isCommandPaletteOpen, setIsOpen: setIsCommandPaletteOpen } =
+    useCommandPalette();
 
   const columnStatuses = useColumnStatuses();
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
@@ -335,10 +289,25 @@ export function WorkspaceKanbanPage() {
 
   // Mutations
   const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
+  const updateTask = useUpdateVibeKanbanTask();
   const createTask = useCreateVibeKanbanTask();
 
   // Apply filtering to tasks
   const filteredTasks = useFilteredItems(tasks ?? [], filter);
+
+  // Apply sorting to filtered tasks
+  const sortedTasks = useSortedItems(
+    filteredTasks.map((t) => ({
+      ...t,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    })),
+    sortMode,
+    sortDirection
+  );
+
+  // Calculate stats
+  const stats = useKanbanStats(tasks ?? []);
 
   // Multi-select for bulk actions
   const {
@@ -349,7 +318,7 @@ export function WorkspaceKanbanPage() {
     selectAll,
     clearSelection,
     isSelected,
-  } = useMultiSelect(filteredTasks);
+  } = useMultiSelect(sortedTasks);
 
   // Selected task
   const selectedTask = useMemo(() => {
@@ -364,41 +333,23 @@ export function WorkspaceKanbanPage() {
 
   const isPanelOpen = selectedTaskId !== null;
 
-  // Sort and group tasks by column
+  // Group tasks by column (already sorted)
   const tasksByColumn = useMemo(() => {
-    const grouped: Record<string, TaskWithAttemptStatus[]> = {};
+    const grouped: Record<string, EnhancedTask[]> = {};
 
     for (const column of columnStatuses) {
       // Get tasks for this column (map vibe-kanban status to column id)
-      let columnTasks = (filteredTasks ?? []).filter((task) => {
+      const columnTasks = (sortedTasks ?? []).filter((task) => {
         const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
         return mappedColumn === column.id;
-      });
-
-      // Sort tasks
-      columnTasks = [...columnTasks].sort((a, b) => {
-        let comparison = 0;
-        switch (sortField) {
-          case "created":
-            comparison =
-              new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-            break;
-          case "updated":
-            comparison =
-              new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
-            break;
-          case "title":
-            comparison = a.title.localeCompare(b.title);
-            break;
-        }
-        return sortDirection === "desc" ? -comparison : comparison;
       });
 
       grouped[column.id] = columnTasks;
     }
 
     return grouped;
-  }, [filteredTasks, columnStatuses, sortField, sortDirection]);
+  }, [sortedTasks, columnStatuses]);
+
 
   // Handle drag end - move task to new status
   const handleDragEnd = useCallback(
@@ -423,7 +374,7 @@ export function WorkspaceKanbanPage() {
     [vibeProject, updateTaskStatus]
   );
 
-  // Add new task
+  // Add new task (for header button)
   const handleAddTask = useCallback(
     (columnId: string) => {
       if (!vibeProject) return;
@@ -440,6 +391,37 @@ export function WorkspaceKanbanPage() {
     [vibeProject, createTask]
   );
 
+  // Quick add task (with title from QuickTaskInput)
+  const handleQuickAddTask = useCallback(
+    (columnId: string, title: string) => {
+      if (!vibeProject) return;
+
+      const status = COLUMN_TO_STATUS[columnId] ?? "todo";
+
+      createTask.mutate({
+        project_id: vibeProject.id,
+        title,
+        description: null,
+        status,
+      });
+    },
+    [vibeProject, createTask]
+  );
+
+  // Handle inline title edit
+  const handleTitleChange = useCallback(
+    (taskId: string, newTitle: string) => {
+      if (!vibeProject) return;
+
+      updateTask.mutate({
+        taskId,
+        data: { title: newTitle },
+        projectId: vibeProject.id,
+      });
+    },
+    [vibeProject, updateTask]
+  );
+
   // Handle card click
   const handleCardClick = useCallback((taskId: string) => {
     setSelectedTaskId((prev) => (prev === taskId ? null : taskId));
@@ -452,8 +434,8 @@ export function WorkspaceKanbanPage() {
 
   // Sort change
   const handleSortChange = useCallback(
-    (field: SortField, direction: SortDirection) => {
-      setSortField(field);
+    (mode: SortMode, direction: SortDirection) => {
+      setSortMode(mode);
       setSortDirection(direction);
     },
     []
@@ -495,6 +477,98 @@ export function WorkspaceKanbanPage() {
     console.log("Bulk delete not yet implemented", Array.from(selectedIds));
     clearSelection();
   }, [selectedIds, clearSelection]);
+
+  // Command palette commands
+  const commands: Command[] = useMemo(
+    () => [
+      // Navigation
+      {
+        id: "goto-todo",
+        label: t("workspace.kanbanStatus.todo", "To Do"),
+        category: "navigation",
+        action: () => {
+          const todoTasks = tasksByColumn["todo"];
+          if (todoTasks && todoTasks.length > 0) {
+            setSelectedTaskId(todoTasks[0].id);
+          }
+        },
+      },
+      {
+        id: "goto-in-progress",
+        label: t("workspace.kanbanStatus.inProgress", "In Progress"),
+        category: "navigation",
+        action: () => {
+          const tasks = tasksByColumn["in-progress"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
+          }
+        },
+      },
+      // Actions
+      {
+        id: "new-task",
+        label: t("workspace.addTask", "Add Task"),
+        shortcut: "n",
+        category: "action",
+        action: () => handleAddTask("todo"),
+      },
+      {
+        id: "refresh",
+        label: t("common.refresh", "Refresh"),
+        shortcut: "r",
+        category: "action",
+        action: () => handleRefresh(),
+      },
+      {
+        id: "toggle-stats",
+        label: showStats
+          ? t("workspace.hideStats", "Hide Stats")
+          : t("workspace.showStats", "Show Stats"),
+        category: "view",
+        action: () => setShowStats((s) => !s),
+      },
+      // View
+      {
+        id: "view-kanban",
+        label: t("workspace.viewKanban", "Kanban View"),
+        category: "view",
+        action: () => setViewMode("kanban"),
+      },
+      {
+        id: "view-list",
+        label: t("workspace.viewList", "List View"),
+        category: "view",
+        action: () => setViewMode("list"),
+      },
+      // Sort
+      {
+        id: "sort-priority",
+        label: t("workspace.sort.priority", "Sort by Priority"),
+        category: "sort",
+        action: () => handleSortChange("priority", "desc"),
+      },
+      {
+        id: "sort-duedate",
+        label: t("workspace.sort.dueDate", "Sort by Due Date"),
+        category: "sort",
+        action: () => handleSortChange("dueDate", "asc"),
+      },
+      {
+        id: "sort-title",
+        label: t("workspace.sort.name", "Sort by Title"),
+        category: "sort",
+        action: () => handleSortChange("title", "asc"),
+      },
+    ],
+    [
+      t,
+      tasksByColumn,
+      handleAddTask,
+      handleRefresh,
+      showStats,
+      handleSortChange,
+    ]
+  );
 
   // Loading state for workspace
   if (isLoadingWorkspaces && !workspace) {
@@ -670,16 +744,45 @@ export function WorkspaceKanbanPage() {
           {/* Separator */}
           <div className="h-6 w-px bg-border" />
 
-          {/* Sort Controls */}
-          <KanbanSortBar
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSortChange={handleSortChange}
-            onRefresh={handleRefresh}
-            isRefreshing={isFetchingTasks}
+          {/* Sort Controls (Phase 3) */}
+          <SortModeSelect
+            value={sortMode}
+            direction={sortDirection}
+            onChange={handleSortChange}
           />
+
+          {/* Stats Toggle */}
+          <Button
+            variant={showStats ? "secondary" : "ghost"}
+            size="sm"
+            className="h-8"
+            onClick={() => setShowStats((s) => !s)}
+          >
+            <BarChart3 className="h-4 w-4 mr-1" />
+            {t("workspace.stats", "Stats")}
+          </Button>
+
+          {/* Refresh Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8"
+            onClick={handleRefresh}
+            disabled={isFetchingTasks}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", isFetchingTasks && "animate-spin")}
+            />
+          </Button>
         </div>
       </div>
+
+      {/* Stats Panel (Phase 3) */}
+      {showStats && (
+        <div className="px-4 py-3 border-b bg-muted/20">
+          <StatsPanel stats={stats} />
+        </div>
+      )}
 
       {/* Loading tasks */}
       {isLoadingTasks ? (
@@ -696,62 +799,100 @@ export function WorkspaceKanbanPage() {
             minSize={50}
           >
             {viewMode === "kanban" ? (
-              /* Kanban View */
+              /* Kanban View with CollapsibleColumn (Phase 3) */
               <div className="h-full overflow-x-auto overflow-y-auto p-4">
                 <KanbanProvider onDragEnd={handleDragEnd} className="h-full">
-                  {columnStatuses.map((column) => (
-                    <KanbanBoard key={column.id} id={column.id} className="h-full">
-                      <KanbanHeader
-                        name={column.name}
-                        color={column.color}
-                        onAddTask={() => handleAddTask(column.id)}
-                        addTaskLabel={t("workspace.addTask", "Add Task")}
-                      />
-                      <KanbanCards className="p-2 gap-2 overflow-y-auto">
-                        {tasksByColumn[column.id]?.map((task, index) =>
-                          isSelecting ? (
-                            <SelectableCard
-                              key={task.id}
-                              id={task.id}
-                              isSelected={isSelected(task.id)}
-                              isSelecting={isSelecting}
-                              onToggle={toggleSelect}
-                            >
-                              <KanbanCard
-                                id={task.id}
-                                name={task.title}
-                                index={index}
-                                parent={column.id}
-                                onClick={() => handleCardClick(task.id)}
-                                isOpen={selectedTaskId === task.id}
-                              >
-                                <TaskCardContent task={task} />
-                              </KanbanCard>
-                            </SelectableCard>
-                          ) : (
-                            <KanbanCard
-                              key={task.id}
-                              id={task.id}
-                              name={task.title}
-                              index={index}
-                              parent={column.id}
-                              onClick={() => handleCardClick(task.id)}
-                              isOpen={selectedTaskId === task.id}
-                            >
-                              <TaskCardContent task={task} />
-                            </KanbanCard>
-                          )
-                        )}
-                      </KanbanCards>
-                    </KanbanBoard>
-                  ))}
+                  {columnStatuses.map((column) => {
+                    const columnCollapsed = isCollapsed(column.id);
+                    const columnTasks = tasksByColumn[column.id] ?? [];
+
+                    return (
+                      <CollapsibleColumn
+                        key={column.id}
+                        id={column.id}
+                        title={column.name}
+                        color={COLUMN_COLORS[column.id as ColumnId]}
+                        count={columnTasks.length}
+                        collapsed={columnCollapsed}
+                        onToggleCollapse={(collapsed) =>
+                          toggleCollapse(column.id, collapsed)
+                        }
+                      >
+                        <KanbanBoard id={column.id} className="h-full">
+                          <KanbanHeader
+                            name={column.name}
+                            color={COLUMN_COLOR_VARS[column.id as ColumnId]}
+                            onAddTask={() => handleAddTask(column.id)}
+                            addTaskLabel={t("workspace.addTask", "Add Task")}
+                          />
+                          <KanbanCards className="p-2 gap-2 overflow-y-auto">
+                            {columnTasks.map((task, index) =>
+                              isSelecting ? (
+                                <SelectableCard
+                                  key={task.id}
+                                  id={task.id}
+                                  isSelected={isSelected(task.id)}
+                                  isSelecting={isSelecting}
+                                  onToggle={toggleSelect}
+                                >
+                                  <KanbanCard
+                                    id={task.id}
+                                    name={task.title}
+                                    index={index}
+                                    parent={column.id}
+                                    onClick={() => handleCardClick(task.id)}
+                                    isOpen={selectedTaskId === task.id}
+                                  >
+                                    <TaskCardContent
+                                      task={task}
+                                      onTitleChange={(title) =>
+                                        handleTitleChange(task.id, title)
+                                      }
+                                    />
+                                  </KanbanCard>
+                                </SelectableCard>
+                              ) : (
+                                <KanbanCard
+                                  key={task.id}
+                                  id={task.id}
+                                  name={task.title}
+                                  index={index}
+                                  parent={column.id}
+                                  onClick={() => handleCardClick(task.id)}
+                                  isOpen={selectedTaskId === task.id}
+                                >
+                                  <TaskCardContent
+                                    task={task}
+                                    onTitleChange={(title) =>
+                                      handleTitleChange(task.id, title)
+                                    }
+                                  />
+                                </KanbanCard>
+                              )
+                            )}
+                            {/* Quick Task Input at bottom of column (Phase 3) */}
+                            <QuickTaskInput
+                              onSubmit={(title) =>
+                                handleQuickAddTask(column.id, title)
+                              }
+                              placeholder={t(
+                                "workspace.quickTaskPlaceholder",
+                                "Enter task title..."
+                              )}
+                              buttonLabel={t("workspace.addTask", "Add Task")}
+                            />
+                          </KanbanCards>
+                        </KanbanBoard>
+                      </CollapsibleColumn>
+                    );
+                  })}
                 </KanbanProvider>
               </div>
             ) : (
               /* List View */
               <div className="h-full overflow-y-auto p-4">
                 <ListView
-                  items={filteredTasks}
+                  items={sortedTasks}
                   selectedId={selectedTaskId ?? undefined}
                   onItemClick={(item) => handleCardClick(item.id)}
                   emptyMessage={t("workspace.noTasks", "No tasks found")}
@@ -770,7 +911,10 @@ export function WorkspaceKanbanPage() {
                         );
                       }}
                     >
-                      <TaskCardContent task={item} />
+                      <TaskCardContent
+                        task={item}
+                        onTitleChange={(title) => handleTitleChange(item.id, title)}
+                      />
                     </ListViewItem>
                   )}
                 />
@@ -805,12 +949,20 @@ export function WorkspaceKanbanPage() {
       {/* Bulk Actions Bar */}
       <BulkActionsBar
         selectedCount={selectedCount}
-        totalCount={filteredTasks.length}
+        totalCount={sortedTasks.length}
         onSelectAll={selectAll}
         onClearSelection={clearSelection}
         onBulkStatusChange={handleBulkStatusChange}
         onBulkDelete={handleBulkDelete}
         statuses={columnStatuses.map((c) => ({ id: c.id, name: c.name, color: c.color }))}
+      />
+
+      {/* Command Palette (Cmd+K) (Phase 3) */}
+      <CommandPalette
+        open={isCommandPaletteOpen}
+        onOpenChange={setIsCommandPaletteOpen}
+        commands={commands}
+        placeholder={t("workspace.commandPalette.placeholder", "Search commands...")}
       />
     </PageWrapper>
   );

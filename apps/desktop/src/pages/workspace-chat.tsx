@@ -158,6 +158,8 @@ export function WorkspaceChatPage() {
         <RightSidebar
           artifacts={artifacts}
           toolUsages={toolUsages}
+          messages={messages}
+          workingDir={workspace.path}
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
         />
