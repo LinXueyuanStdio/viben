@@ -18,15 +18,15 @@ viben <command> [subcommand] [options]
 
 | Command | Description |
 |---------|-------------|
-| [`init`](./init) | Initialize workspace in current directory |
-| [`config`](./config) | Configuration management (git-style) |
-| [`service`](./service) | Manage background services |
-| [`agent`](./agent) | Manage agent instances and templates |
-| [`provider`](./provider) | Manage API providers (OpenAI, Anthropic, etc.) |
-| [`model`](./model) | Manage models, aliases, and fallbacks |
-| [`mcp`](./mcp) | Manage MCP servers |
-| [`skill`](./skill) | Manage skills |
-| [`workspace`](./workspace) | Workspace operations |
+| [`init`](init) | Initialize workspace in current directory |
+| [`config`](config) | Configuration management (git-style) |
+| [`service`](service) | Manage background services |
+| [`agent`](agent) | Manage agent instances and templates |
+| [`provider`](provider) | Manage API providers (OpenAI, Anthropic, etc.) |
+| [`model`](model) | Manage models, aliases, and fallbacks |
+| [`mcp`](mcp) | Manage MCP servers |
+| [`skill`](skill) | Manage skills |
+| [`workspace`](workspace) | Workspace operations |
 | `version` | Show version info |
 | `help` | Show help |
 
@@ -159,7 +159,7 @@ viben agent sync claude-code --json
 
 ## Next Steps
 
-- [viben init](./init) - Initialize a workspace
-- [viben config](./config) - Manage configuration
-- [viben agent](./agent) - Manage agents
-- [viben mcp](./mcp) - Manage MCP servers
+- [viben init](init) - Initialize a workspace
+- [viben config](config) - Manage configuration
+- [viben agent](agent) - Manage agents
+- [viben mcp](mcp) - Manage MCP servers
