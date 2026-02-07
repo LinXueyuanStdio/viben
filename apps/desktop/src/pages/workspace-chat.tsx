@@ -8,13 +8,11 @@ import {
   PanelRightClose,
   Trash2,
   Loader2,
-  Activity,
   Plus,
   MessageSquare,
   Search,
   MoreHorizontal,
   Bot,
-  ChevronRight,
   Pencil,
   GripVertical,
   Pin,
@@ -35,12 +33,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import {
   Dialog,
   DialogContent,
@@ -69,7 +61,6 @@ import { WorkspaceHeader } from "@/components/workspace";
 import {
   useAgent,
   useVibenAgents,
-  useVibenModels,
   useLocalWorkspaces,
   useChatConfig,
 } from "@/hooks";
@@ -406,107 +397,6 @@ function ConversationItem({
 }
 
 // ============================================================================
-// Agent Settings Panel (Simplified inline editor)
-// ============================================================================
-
-interface AgentSettingsPanelProps {
-  agent: {
-    id: string;
-    name: string;
-    description?: string;
-    model?: string;
-    temperature?: number;
-    system_prompt?: string;
-  } | null;
-  models: { id: string; name: string; provider: string; enabled: boolean }[];
-  onNavigateToFull: () => void;
-}
-
-function AgentSettingsPanel({
-  agent,
-  models,
-  onNavigateToFull,
-}: AgentSettingsPanelProps) {
-  const { t } = useTranslation();
-
-  if (!agent) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        <Bot className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p>{t("chat.noAgentSelected")}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 space-y-6">
-      {/* Quick Settings */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium">{t("chat.agentSettings")}</h4>
-          <Button variant="outline" size="sm" onClick={onNavigateToFull}>
-            {t("chat.fullSettings")}
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-
-        {/* Agent Name */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t("settingsAgents.name")}
-          </label>
-          <p className="text-sm font-medium">{agent.name}</p>
-        </div>
-
-        {/* Description */}
-        {agent.description && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t("settingsAgents.description")}
-            </label>
-            <p className="text-sm text-muted-foreground">{agent.description}</p>
-          </div>
-        )}
-
-        {/* Model */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t("settingsAgents.model")}
-          </label>
-          <p className="text-sm">
-            {models.find((m) => m.id === agent.model)?.name || agent.model || t("chat.defaultModel")}
-          </p>
-        </div>
-
-        {/* Temperature */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t("settingsAgents.temperature")}
-          </label>
-          <p className="text-sm">{agent.temperature?.toFixed(2) ?? "0.70"}</p>
-        </div>
-      </div>
-
-      {/* System Prompt Preview */}
-      {agent.system_prompt && (
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            {t("settingsAgents.systemPrompt")}
-          </label>
-          <div className="p-3 rounded-lg bg-muted/50 text-xs max-h-40 overflow-auto">
-            <pre className="whitespace-pre-wrap font-mono">
-              {agent.system_prompt.length > 500
-                ? agent.system_prompt.slice(0, 500) + "..."
-                : agent.system_prompt}
-            </pre>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -517,7 +407,6 @@ export function WorkspaceChatPage() {
 
   // UI State
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
-  const [isAgentSettingsOpen, setIsAgentSettingsOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog states
@@ -560,9 +449,8 @@ export function WorkspaceChatPage() {
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
-  // Agents and models
+  // Agents
   const { agents, defaultAgentId } = useVibenAgents();
-  const { models } = useVibenModels();
 
   // Get chat config for executor selection
   const { selectedExecutor } = useChatConfig();
@@ -586,7 +474,6 @@ export function WorkspaceChatPage() {
     artifacts,
     toolUsages,
     error,
-    gatewayConnected,
     sendMessage,
     approvePlan,
     rejectPlan,
@@ -841,58 +728,18 @@ export function WorkspaceChatPage() {
         showRefresh={false}
         showRemove={false}
         rightContent={
-          <>
-            {/* Gateway connection status */}
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-xs">
-              <Activity
-                className={`h-3 w-3 ${
-                  gatewayConnected === true
-                    ? "text-green-500"
-                    : gatewayConnected === false
-                      ? "text-red-500"
-                      : "text-yellow-500"
-                }`}
-              />
-              <span className="hidden sm:inline text-muted-foreground">
-                {gatewayConnected === true
-                  ? t("gateway.connected")
-                  : gatewayConnected === false
-                    ? t("gateway.disconnected")
-                    : t("gateway.connecting")}
-              </span>
-            </div>
-            {messages.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsClearDialogOpen(true)}
-                className="h-8"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span className="ml-2 hidden sm:inline">{t("chat.clearMessages")}</span>
-              </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="h-8"
+          >
+            {isSidebarOpen ? (
+              <PanelRightClose className="h-4 w-4" />
+            ) : (
+              <PanelRightOpen className="h-4 w-4" />
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="h-8"
-            >
-              {isSidebarOpen ? (
-                <PanelRightClose className="h-4 w-4" />
-              ) : (
-                <PanelRightOpen className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              onClick={() => setIsAgentSettingsOpen(true)}
-            >
-              <Settings className="h-4 w-4" />
-            </Button>
-          </>
+          </Button>
         }
       />
 
@@ -1054,8 +901,8 @@ export function WorkspaceChatPage() {
 
                       <DropdownMenuSeparator />
 
-                      {/* Agent settings */}
-                      <DropdownMenuItem onClick={() => setIsAgentSettingsOpen(true)}>
+                      {/* Agent settings - navigate to agent orchestration */}
+                      <DropdownMenuItem onClick={handleNavigateToAgentSettings}>
                         <Settings className="h-4 w-4 mr-3" />
                         {t("chat.agentSettings")}
                       </DropdownMenuItem>
@@ -1101,7 +948,7 @@ export function WorkspaceChatPage() {
               )}
 
               {/* Input */}
-              <div className="border-t border-border bg-background px-4 py-3">
+              <div className="border-t border-border">
                 <ChatInput
                   onSend={handleSendMessage}
                   onCancel={cancel}
@@ -1115,6 +962,11 @@ export function WorkspaceChatPage() {
                         : undefined
                   }
                   autoFocus
+                  showTopToolbar
+                  showConfigBar
+                  showResizeHandle
+                  enableWritingMode
+                  useGlobalConfig
                 />
               </div>
             </>
@@ -1148,23 +1000,6 @@ export function WorkspaceChatPage() {
           onResize={handleRightPanelResize}
         />
       </div>
-
-      {/* Agent Settings Sheet */}
-      <Sheet open={isAgentSettingsOpen} onOpenChange={setIsAgentSettingsOpen}>
-        <SheetContent side="right" className="w-96">
-          <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              {t("chat.agentSettings")}
-            </SheetTitle>
-          </SheetHeader>
-          <AgentSettingsPanel
-            agent={currentAgent || null}
-            models={models}
-            onNavigateToFull={handleNavigateToAgentSettings}
-          />
-        </SheetContent>
-      </Sheet>
 
       {/* Search Dialog */}
       <Dialog open={isSearchDialogOpen} onOpenChange={setIsSearchDialogOpen}>

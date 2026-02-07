@@ -158,15 +158,31 @@ export interface ChatInputProps {
 
 ## 样式说明
 
-| 属性 | 基础模式 | workspace模式 |
-|------|---------|---------------|
-| 边框圆角 | rounded-2xl | 无 |
-| 边框阴影 | 有 | 无 |
-| 最小高度 | 40px | 80px (可调) |
-| 最大高度 | 200px | 400px (可调) |
-| 按钮大小 | size-8 | size-8 |
+| 属性 | 值 |
+|------|-----|
+| 边框圆角 | 无 (由父容器提供) |
+| 边框阴影 | 无 (由父容器提供) |
+| 最小高度 | 40px (基础模式) / 80px (带工具栏模式) |
+| 最大高度 | 200px (基础模式) / 400px (带工具栏模式) |
+| 按钮大小 | size-8 |
 
-**注**: workspace模式指启用 `showTopToolbar` 或 `showConfigBar` 的情况
+**重要**: ChatInput 组件**不**提供卡片样式（边框、圆角、阴影）。父组件负责提供所需的容器样式。
+
+基础模式使用示例：
+```tsx
+{/* 父容器提供卡片样式 */}
+<div className="rounded-2xl border border-border/50 shadow-lg overflow-hidden">
+  <ChatInput onSend={handleSend} />
+</div>
+```
+
+带工具栏模式使用示例：
+```tsx
+{/* 父容器仅提供边框分隔 */}
+<div className="border-t border-border">
+  <ChatInput showTopToolbar showConfigBar onSend={handleSend} />
+</div>
+```
 
 ## 高度调整 (showResizeHandle)
 
@@ -604,6 +620,12 @@ const slashCommands: SlashCommand[] = [
 ---
 
 ## 更新日志
+
+- **2026-02-08**: 移除 ChatInput 卡片样式，父容器负责样式
+  - ChatInput 不再提供任何卡片样式（边框、圆角、阴影）
+  - 父组件负责提供所需的容器样式
+  - 斜杠命令菜单 z-index 提升至 z-[100] 确保可见性
+  - workspace-chat.tsx 基础模式添加卡片容器包裹
 
 - **2026-02-08**: 添加斜杠命令和选择器隐藏功能
   - 新增 `slashCommands` 和 `onSlashCommand` props
