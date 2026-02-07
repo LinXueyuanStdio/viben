@@ -59,6 +59,9 @@ viben provider create -n <name> -t <type> --api-key <key>
 # 带自定义 base URL
 viben provider create -n <name> -t <type> --api-key <key> --base-url <url>
 
+# 使用配置文件
+viben provider create -n <name> -t <type> -c <config-file>
+
 # 简写（根据类型自动生成名称）
 viben provider create -t <type> --api-key <key>
 ```
@@ -138,29 +141,90 @@ version: 1
 default: anthropic-main
 
 providers:
+  # ============================================================
+  # Anthropic (Claude)
+  # 环境变量: ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL
+  # ============================================================
   anthropic-main:
     type: anthropic
-    api_key: "encrypted:sk-ant-xxx"
+    # 方式1: 使用环境变量 (推荐，无需在此配置)
+    # 自动读取 ANTHROPIC_API_KEY
 
+    # 方式2: 显式引用环境变量
+    # ANTHROPIC_API_KEY: "env:ANTHROPIC_API_KEY"
+
+    # 方式3: 加密存储 (通过 viben provider create 生成)
+    # ANTHROPIC_API_KEY: "encrypted:xxx"
+
+    # 可选配置
+    # ANTHROPIC_BASE_URL: "https://api.anthropic.com"
+    # timeout: 120000
+    # max_retries: 3
+
+  # ============================================================
+  # OpenAI
+  # 环境变量: OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID
+  # ============================================================
   openai-main:
     type: openai
-    api_key: "encrypted:sk-xxx"
+    # 自动读取 OPENAI_API_KEY, OPENAI_BASE_URL
+    # 可选配置
+    # OPENAI_ORG_ID: "org-xxxxx"
 
+  # ============================================================
+  # Azure OpenAI
+  # 环境变量: AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT,
+  #          AZURE_OPENAI_API_VERSION, AZURE_OPENAI_DEPLOYMENT
+  # ============================================================
   azure-gpt4:
     type: azure
-    api_key: "encrypted:xxx"
-    base_url: "https://my-resource.openai.azure.com"
-    api_version: "2024-02-15-preview"
-    deployment: "gpt-4-turbo"
+    AZURE_OPENAI_ENDPOINT: "https://my-resource.openai.azure.com"
+    AZURE_OPENAI_API_VERSION: "2024-02-15-preview"
+    AZURE_OPENAI_DEPLOYMENT: "gpt-4-turbo"
+    # AZURE_OPENAI_API_KEY 从环境变量读取
 
+  # ============================================================
+  # Google AI (Gemini)
+  # 环境变量: GOOGLE_API_KEY, GOOGLE_PROJECT_ID, GOOGLE_LOCATION
+  # ============================================================
+  google-gemini:
+    type: google
+    # 自动读取 GOOGLE_API_KEY
+    # 可选配置
+    # GOOGLE_PROJECT_ID: "my-project"
+    # GOOGLE_LOCATION: "us-central1"
+
+  # ============================================================
+  # OpenRouter
+  # 环境变量: OPENROUTER_API_KEY
+  # ============================================================
+  openrouter:
+    type: openrouter
+    # 自动读取 OPENROUTER_API_KEY
+    # 可选配置
+    # site_url: "https://myapp.com"
+    # app_name: "My App"
+
+  # ============================================================
+  # Ollama (本地模型)
+  # 环境变量: OLLAMA_HOST
+  # ============================================================
   local-ollama:
     type: ollama
-    base_url: "http://localhost:11434"
+    OLLAMA_HOST: "http://localhost:11434"
+    # 无需 API Key
 
+  # ============================================================
+  # 自定义 OpenAI 兼容 API
+  # 环境变量: OPENAI_API_KEY, OPENAI_BASE_URL
+  # ============================================================
   custom-api:
     type: custom
-    api_key: "encrypted:xxx"
-    base_url: "https://api.example.com/v1"
+    OPENAI_BASE_URL: "https://api.example.com/v1"
+    # OPENAI_API_KEY 从环境变量读取
+    # 可选: 自定义请求头
+    # headers:
+    #   X-Custom-Header: "value"
 ```
 
 ## 环境变量
@@ -196,6 +260,9 @@ export OPENAI_API_KEY="sk-xxx"
 # 创建 provider（自动使用环境变量）
 viben provider create -t anthropic
 viben provider create -t openai
+
+# 或显式指定（会加密存储）
+viben provider create -t anthropic --api-key "sk-ant-xxx"
 ```
 
 ## Provider 类型详情
@@ -258,6 +325,17 @@ viben provider create -t google --api-key "xxx"
 - `GOOGLE_PROJECT_ID`（可选）
 - `GOOGLE_LOCATION`（可选）
 
+### OpenRouter
+
+用于通过 OpenRouter 访问多种模型：
+
+```bash
+viben provider create -t openrouter --api-key "xxx"
+```
+
+环境变量：
+- `OPENROUTER_API_KEY`（必需）
+
 ### Ollama (本地)
 
 用于本地运行的 Ollama：
@@ -286,12 +364,40 @@ viben provider create -n deepseek -t custom \
 
 常见的自定义 Provider：
 
-| Provider | Base URL |
-|----------|----------|
-| DeepSeek | `https://api.deepseek.com/v1` |
-| Groq | `https://api.groq.com/openai/v1` |
-| Together AI | `https://api.together.xyz/v1` |
-| Fireworks AI | `https://api.fireworks.ai/inference/v1` |
+| Provider | Base URL | API Key 变量 |
+|----------|----------|--------------|
+| DeepSeek | `https://api.deepseek.com/v1` | `DEEPSEEK_API_KEY` |
+| Groq | `https://api.groq.com/openai/v1` | `GROQ_API_KEY` |
+| Together AI | `https://api.together.xyz/v1` | `TOGETHER_API_KEY` |
+| Fireworks AI | `https://api.fireworks.ai/inference/v1` | `FIREWORKS_API_KEY` |
+
+**常见 Provider 的配置示例：**
+
+```yaml
+# DeepSeek
+deepseek:
+  type: custom
+  OPENAI_BASE_URL: "https://api.deepseek.com/v1"
+  # 使用 DEEPSEEK_API_KEY 或 OPENAI_API_KEY
+
+# Groq
+groq:
+  type: custom
+  OPENAI_BASE_URL: "https://api.groq.com/openai/v1"
+  # 使用 GROQ_API_KEY 或 OPENAI_API_KEY
+
+# Together AI
+together:
+  type: custom
+  OPENAI_BASE_URL: "https://api.together.xyz/v1"
+  # 使用 TOGETHER_API_KEY 或 OPENAI_API_KEY
+
+# Fireworks AI
+fireworks:
+  type: custom
+  OPENAI_BASE_URL: "https://api.fireworks.ai/inference/v1"
+  # 使用 FIREWORKS_API_KEY 或 OPENAI_API_KEY
+```
 
 ## 安全性
 
@@ -330,6 +436,18 @@ viben provider list --json
         "status": "connected"
       }
     ]
+  }
+}
+```
+
+错误响应遵循标准格式：
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "PROVIDER_NOT_FOUND",
+    "message": "Provider 'unknown-provider' not found"
   }
 }
 ```
