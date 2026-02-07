@@ -9,7 +9,6 @@ import * as React from "react";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { Loader2, ImageIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import type { PreviewComponentProps } from "./types";
 import {
   getImageMimeType,

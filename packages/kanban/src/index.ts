@@ -126,6 +126,32 @@ export {
   type DragPreviewProps,
   MultiDragOverlay,
   type MultiDragOverlayProps,
+  // Activity feed system
+  type ActivityType,
+  type ActivityActor,
+  type ActivityEvent,
+  ACTIVITY_LABELS,
+  ActivityItem,
+  type ActivityItemProps,
+  ActivityFeed,
+  type ActivityFeedProps,
+  // Comment system
+  type Comment,
+  type CommentAuthor,
+  type CommentReaction,
+  REACTION_EMOJIS,
+  formatRelativeTime,
+  CommentInput,
+  type CommentInputProps,
+  CommentItem,
+  type CommentItemProps,
+  CommentList,
+  type CommentListProps,
+  // Board settings
+  type ColumnConfig,
+  COLUMN_COLORS,
+  BoardSettingsDialog,
+  type BoardSettingsDialogProps,
 } from "./components";
 
 // Hooks

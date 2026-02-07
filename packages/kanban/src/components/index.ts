@@ -150,3 +150,10 @@ export type { CommentItemProps } from "./comment-item";
 
 export { CommentList } from "./comment-list";
 export type { CommentListProps } from "./comment-list";
+
+// Board settings
+export type { ColumnConfig } from "./board-settings-types";
+export { COLUMN_COLORS } from "./board-settings-types";
+
+export { BoardSettingsDialog } from "./board-settings-dialog";
+export type { BoardSettingsDialogProps } from "./board-settings-dialog";

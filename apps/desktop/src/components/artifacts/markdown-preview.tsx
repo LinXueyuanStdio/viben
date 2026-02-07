@@ -6,8 +6,6 @@
  */
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
-import { useAppStore } from "@/stores";
 import type { PreviewComponentProps } from "./types";
 import { parseFrontmatter } from "./utils";
 
