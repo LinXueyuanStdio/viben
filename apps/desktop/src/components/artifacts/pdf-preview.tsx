@@ -9,7 +9,6 @@ import * as React from "react";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { FileText, Loader2 } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import type { PreviewComponentProps } from "./types";
 import { isRemoteUrl, MAX_PREVIEW_SIZE, formatFileSize } from "./utils";
 

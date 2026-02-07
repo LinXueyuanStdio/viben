@@ -10,7 +10,6 @@ import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { ExternalLink, Loader2, Video } from "lucide-react";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 
-import { cn } from "@/lib/utils";
 import type { PreviewComponentProps } from "./types";
 import {
   getVideoMimeType,
