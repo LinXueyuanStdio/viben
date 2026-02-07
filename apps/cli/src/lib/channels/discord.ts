@@ -235,12 +235,9 @@ export class DiscordChannel extends BaseChannel {
     return "file";
   }
 
-  private isTextBasedChannel(channel: unknown): channel is TextBasedChannel {
-    return (
-      channel !== null &&
-      typeof channel === "object" &&
-      "send" in channel &&
-      typeof (channel as { send: unknown }).send === "function"
-    );
+  private isTextBasedChannel(channel: DiscordChannelType | null): boolean {
+    if (!channel) return false;
+    // Check if channel has a send method (text-based channels)
+    return "send" in channel && typeof (channel as { send?: unknown }).send === "function";
   }
 }

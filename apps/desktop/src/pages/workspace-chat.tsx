@@ -17,6 +17,13 @@ import {
   ChevronRight,
   Pencil,
   GripVertical,
+  Pin,
+  BellOff,
+  Users,
+  History,
+  FileText,
+  Share2,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -167,25 +174,36 @@ function generateConversationId() {
 }
 
 // ============================================================================
-// Conversation List Item
+// Conversation List Item (WeChat style)
 // ============================================================================
 
 interface ConversationItemProps {
   conversation: Conversation;
   isSelected: boolean;
   agentName?: string;
+  agentAvatar?: string;
+  isPinned?: boolean;
+  isMuted?: boolean;
+  unreadCount?: number;
   onSelect: () => void;
   onRename: (newTitle: string) => void;
   onDelete: () => void;
+  onPin?: () => void;
+  onMute?: () => void;
 }
 
 function ConversationItem({
   conversation,
   isSelected,
   agentName,
+  isPinned,
+  isMuted,
+  unreadCount = 0,
   onSelect,
   onRename,
   onDelete,
+  onPin,
+  onMute,
 }: ConversationItemProps) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = React.useState(false);
@@ -215,90 +233,132 @@ function ConversationItem({
     }
   };
 
+  // Get avatar colors based on agent name
+  const getAvatarGradient = () => {
+    const colors = [
+      "from-blue-500 to-cyan-400",
+      "from-purple-500 to-pink-400",
+      "from-green-500 to-emerald-400",
+      "from-orange-500 to-yellow-400",
+      "from-red-500 to-rose-400",
+      "from-indigo-500 to-violet-400",
+    ];
+    const index = (agentName?.charCodeAt(0) || 0) % colors.length;
+    return colors[index];
+  };
+
   return (
     <div
       className={cn(
-        "group relative flex items-start gap-3 px-3 py-3 cursor-pointer rounded-lg transition-colors",
+        "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all",
         isSelected
-          ? "bg-primary/10 border border-primary/20"
-          : "hover:bg-muted/50 border border-transparent"
+          ? "bg-accent"
+          : isPinned
+            ? "bg-muted/30 hover:bg-muted/50"
+            : "hover:bg-muted/50"
       )}
       onClick={onSelect}
     >
       {/* Avatar */}
       <div
         className={cn(
-          "shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
-          isSelected ? "bg-primary/20" : "bg-muted"
+          "relative shrink-0 w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+          getAvatarGradient()
         )}
       >
-        <MessageSquare
-          className={cn(
-            "h-5 w-5",
-            isSelected ? "text-primary" : "text-muted-foreground"
-          )}
-        />
+        <Bot className="h-6 w-6 text-white" />
+        {/* Online indicator */}
+        <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-w-0">
-        {isEditing ? (
-          <Input
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            onBlur={handleSubmitRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSubmitRename();
-              if (e.key === "Escape") {
-                setEditTitle(conversation.title);
-                setIsEditing(false);
-              }
-            }}
-            onClick={(e) => e.stopPropagation()}
-            className="h-6 px-1 text-sm font-medium"
-            autoFocus
-          />
-        ) : (
-          <div className="flex items-center justify-between gap-2">
-            <span className="font-medium text-sm truncate">
-              {conversation.title}
-            </span>
-            <span className="text-xs text-muted-foreground shrink-0">
-              {formatDate(conversation.updatedAt)}
-            </span>
-          </div>
-        )}
-
-        {/* Agent name and last message */}
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <Bot className="h-3 w-3 text-muted-foreground shrink-0" />
-          <span className="text-xs text-muted-foreground truncate">
-            {agentName || t("chat.defaultAgent")}
+      <div className="flex-1 min-w-0 py-0.5">
+        <div className="flex items-center justify-between gap-2">
+          {isEditing ? (
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onBlur={handleSubmitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSubmitRename();
+                if (e.key === "Escape") {
+                  setEditTitle(conversation.title);
+                  setIsEditing(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="h-6 px-1 text-sm font-medium flex-1"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+              <span className="font-medium text-sm truncate">
+                {conversation.title}
+              </span>
+              {isPinned && (
+                <Pin className="h-3 w-3 text-muted-foreground shrink-0 rotate-45" />
+              )}
+              {isMuted && (
+                <BellOff className="h-3 w-3 text-muted-foreground shrink-0" />
+              )}
+            </div>
+          )}
+          <span className="text-[11px] text-muted-foreground shrink-0">
+            {formatDate(conversation.updatedAt)}
           </span>
         </div>
 
-        {conversation.lastMessage && (
-          <p className="text-xs text-muted-foreground truncate mt-1 opacity-70">
-            {conversation.lastMessage}
+        {/* Last message preview */}
+        <div className="flex items-center justify-between gap-2 mt-1">
+          <p className="text-xs text-muted-foreground truncate flex-1">
+            {conversation.lastMessage ? (
+              <>
+                <span className="text-muted-foreground/70">[{agentName || t("chat.defaultAgent")}]</span>{" "}
+                {conversation.lastMessage}
+              </>
+            ) : (
+              <span className="italic opacity-50">{t("chat.noMessages")}</span>
+            )}
           </p>
-        )}
+          {/* Unread badge */}
+          {unreadCount > 0 && !isMuted && (
+            <span className="shrink-0 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-medium flex items-center justify-center px-1">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          )}
+          {unreadCount > 0 && isMuted && (
+            <span className="shrink-0 w-2 h-2 rounded-full bg-muted-foreground/50" />
+          )}
+        </div>
       </div>
 
-      {/* Actions */}
+      {/* Hover actions */}
       <div
         className={cn(
-          "absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-          isSelected && "opacity-100"
+          "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
+          "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
         )}
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7">
-              <MoreHorizontal className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-6 w-6">
+              <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-48">
+            {onPin && (
+              <DropdownMenuItem onClick={onPin}>
+                <Pin className="h-4 w-4 mr-2" />
+                {isPinned ? t("chat.unpin") : t("chat.pin")}
+              </DropdownMenuItem>
+            )}
+            {onMute && (
+              <DropdownMenuItem onClick={onMute}>
+                <BellOff className="h-4 w-4 mr-2" />
+                {isMuted ? t("chat.unmute") : t("chat.mute")}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               onClick={() => {
                 setEditTitle(conversation.title);
@@ -319,11 +379,6 @@ function ConversationItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-
-      {/* Selection indicator */}
-      {isSelected && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
-      )}
     </div>
   );
 }
@@ -792,20 +847,110 @@ export function WorkspaceChatPage() {
         <div className="flex flex-1 flex-col overflow-hidden">
           {selectedConversationId ? (
             <>
-              {/* Chat Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
+              {/* Chat Header - WeChat style */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Bot className="h-4 w-4 text-primary" />
+                  {/* Agent avatar */}
+                  <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm">
+                    <Bot className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <p className="font-medium text-sm">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-sm">
+                        {currentConversation?.title || t("chat.newConversation")}
+                      </p>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
+                        {t("chat.online")}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
                       {currentAgent?.name || t("chat.defaultAgent")}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {currentConversation?.title}
-                    </p>
                   </div>
+                </div>
+
+                {/* WeChat style action buttons */}
+                <div className="flex items-center gap-1">
+                  {/* Search in conversation */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title={t("chat.searchInConversation")}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+
+                  {/* More options dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      {/* Search */}
+                      <DropdownMenuItem>
+                        <Search className="h-4 w-4 mr-3" />
+                        {t("chat.searchInConversation")}
+                      </DropdownMenuItem>
+
+                      {/* View history */}
+                      <DropdownMenuItem>
+                        <History className="h-4 w-4 mr-3" />
+                        {t("chat.viewHistory")}
+                      </DropdownMenuItem>
+
+                      {/* Export conversation */}
+                      <DropdownMenuItem>
+                        <FileText className="h-4 w-4 mr-3" />
+                        {t("chat.exportConversation")}
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {/* Invite to group */}
+                      <DropdownMenuItem>
+                        <Users className="h-4 w-4 mr-3" />
+                        {t("chat.inviteToGroup")}
+                      </DropdownMenuItem>
+
+                      {/* Share */}
+                      <DropdownMenuItem>
+                        <Share2 className="h-4 w-4 mr-3" />
+                        {t("chat.shareConversation")}
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {/* Agent settings */}
+                      <DropdownMenuItem onClick={() => setIsAgentSettingsOpen(true)}>
+                        <Settings className="h-4 w-4 mr-3" />
+                        {t("chat.agentSettings")}
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {/* Archive */}
+                      <DropdownMenuItem>
+                        <Archive className="h-4 w-4 mr-3" />
+                        {t("chat.archiveConversation")}
+                      </DropdownMenuItem>
+
+                      {/* Clear messages */}
+                      <DropdownMenuItem
+                        onClick={handleClearMessages}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-3" />
+                        {t("chat.clearMessages")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
@@ -828,8 +973,8 @@ export function WorkspaceChatPage() {
                 </div>
               )}
 
-              {/* Input - Full workspace mode with all features */}
-              <div className="border-t border-border bg-background p-4">
+              {/* Input */}
+              <div className="border-t border-border bg-background px-4 py-3">
                 <ChatInput
                   onSend={handleSendMessage}
                   onCancel={cancel}
@@ -843,13 +988,6 @@ export function WorkspaceChatPage() {
                         : undefined
                   }
                   autoFocus
-                  // Enable full workspace mode features
-                  showTopToolbar
-                  showConfigBar
-                  showResizeHandle
-                  enableWritingMode
-                  // Use global config for dynamic agent/model selection
-                  useGlobalConfig
                 />
               </div>
             </>

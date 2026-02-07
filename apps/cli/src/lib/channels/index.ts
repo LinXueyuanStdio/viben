@@ -61,4 +61,4 @@ export {
 // Channel implementations
 export { TelegramChannel, type TelegramConfig } from "./telegram.js";
 export { DiscordChannel, type DiscordConfig } from "./discord.js";
-export { FeishuChannel, type FeishuConfig } from "./feishu.js";
+export { FeishuChannel, type FeishuConfig, type FeishuMessageEvent } from "./feishu.js";

@@ -217,9 +217,11 @@ export function ChatInput({
   const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
   const onAgentChange = propOnAgentChange ?? (useGlobalConfig ? chatConfig.setSelectedAgentId : undefined);
   const onModelChange = propOnModelChange ?? (useGlobalConfig ? chatConfig.setSelectedModelId : undefined);
-  const executors = _propExecutors ?? (useGlobalConfig ? chatConfig.executors : []);
-  const selectedExecutor = _propSelectedExecutor ?? (useGlobalConfig ? chatConfig.selectedExecutor : "CLAUDE_CODE");
-  const onExecutorChange = _propOnExecutorChange ?? (useGlobalConfig ? chatConfig.setSelectedExecutor : undefined);
+  // Executors are NOT auto-loaded from global config - must be passed explicitly
+  // This is intentional: workspace chat should NOT show executor selector
+  const executors = _propExecutors ?? [];
+  const selectedExecutor = _propSelectedExecutor ?? "CLAUDE_CODE";
+  const onExecutorChange = _propOnExecutorChange;
 
   // Determine if selectors should be shown based on global config visibility
   // Only apply visibility rules when useGlobalConfig is true and no prop override
