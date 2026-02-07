@@ -5,3 +5,4 @@ export { WorkspacePackages } from './workspace-packages';
 export { WorkspaceSettings } from './workspace-settings';
 export { CreateWorkspaceDialog } from './create-workspace-dialog';
 export { AddPackageDialog } from './add-package-dialog';
+export { WorkspacesPageContent } from './workspaces-page-content';

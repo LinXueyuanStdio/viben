@@ -144,7 +144,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
   if (!workspace) {
     return (
       <div className="rounded-lg border border-destructive p-4 text-center">
-        <p className="text-destructive">{t('workspaceSettings.failedToLoadWorkspace')}</p>
+        <p className="text-destructive">{t('workspace.notFoundDesc')}</p>
       </div>
     );
   }
@@ -155,9 +155,9 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
       <Card>
         <form onSubmit={handleSave}>
           <CardHeader>
-            <CardTitle>{t('workspaceSettings.generalSettings')}</CardTitle>
+            <CardTitle>{t('workspace.generalSettings')}</CardTitle>
             <CardDescription>
-              {t('workspaceSettings.generalDescription')}
+              {t('workspace.generalSettingsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -168,12 +168,12 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
             )}
             {success && (
               <div className="rounded-md bg-green-500/10 p-3 text-sm text-green-600">
-                {t('workspaceSettings.workspaceUpdated')}
+                {t('workspace.workspaceUpdated')}
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="name">{t('workspaceSettings.name')}</Label>
+              <Label htmlFor="name">{t('common.name')}</Label>
               <Input
                 id="name"
                 value={name}
@@ -185,7 +185,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">{t('workspaceSettings.description')}</Label>
+              <Label htmlFor="description">{t('workspace.description')}</Label>
               <Textarea
                 id="description"
                 value={description}
@@ -197,9 +197,9 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
 
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div className="space-y-0.5">
-                <Label htmlFor="isDefault">{t('workspaceSettings.defaultWorkspace')}</Label>
+                <Label htmlFor="isDefault">{t('workspace.defaultWorkspace')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  {t('workspaceSettings.setAsDefault')}
+                  {t('workspace.setAsDefault')}
                 </p>
               </div>
               <Switch
@@ -215,7 +215,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
               disabled={saving || !name.trim()}
             >
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('workspaceSettings.saveChanges')}
+              {t('workspace.saveChanges')}
             </Button>
           </CardFooter>
         </form>
@@ -224,17 +224,17 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
       {/* Danger Zone */}
       <Card className="border-destructive/50">
         <CardHeader>
-          <CardTitle className="text-destructive">{t('workspaceSettings.dangerZone')}</CardTitle>
+          <CardTitle className="text-destructive">{t('workspace.dangerZone')}</CardTitle>
           <CardDescription>
-            {t('workspaceSettings.dangerDescription')}
+            {t('workspace.dangerZoneDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
             <div className="space-y-0.5">
-              <p className="font-medium">{t('workspaceSettings.deleteWorkspace')}</p>
+              <p className="font-medium">{t('workspace.deleteWorkspace')}</p>
               <p className="text-sm text-muted-foreground">
-                {t('workspaceSettings.deleteDescription')}
+                {t('workspace.deleteWorkspaceDesc')}
               </p>
             </div>
             <AlertDialog>
@@ -250,9 +250,9 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{t('workspaceSettings.confirmDeleteTitle')}</AlertDialogTitle>
+                  <AlertDialogTitle>{t('workspace.deleteWorkspace')}</AlertDialogTitle>
                   <AlertDialogDescription>
-                    {t('workspaceSettings.confirmDeleteMessage', { name: workspace.name })}
+                    {t('workspace.deleteWorkspaceConfirm', { name: workspace.name })}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -261,7 +261,7 @@ export function WorkspaceSettings({ workspaceId }: WorkspaceSettingsProps) {
                     onClick={handleDelete}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {t('workspaceSettings.deleteWorkspace')}
+                    {t('workspace.deleteWorkspace')}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
