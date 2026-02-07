@@ -1,5 +1,7 @@
 # Claude Code Guidelines
 
+生成 spec 时使用中文
+
 ## Build Requirements
 
 **IMPORTANT**: When making changes to the codebase, ensure all packages compile successfully:
