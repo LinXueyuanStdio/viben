@@ -28,7 +28,6 @@ import {
   useFilteredItems,
   useMultiSelect,
   useKanbanStats,
-  useColumnCollapse,
   useCommandPalette,
   useSortedItems,
   PriorityIcon,
@@ -40,9 +39,6 @@ import {
   ListViewItem,
   BulkActionsBar,
   SelectableCard,
-  QuickTaskInput,
-  EditableCardTitle,
-  CollapsibleColumn,
   SortModeSelect,
   StatsPanel,
   CommandPalette,
@@ -79,7 +75,7 @@ import { useTranslation } from "react-i18next";
 const COLUMN_IDS = ["todo", "in-progress", "review", "done"] as const;
 type ColumnId = (typeof COLUMN_IDS)[number];
 
-// Column colors mapping (CSS variable to hex for CollapsibleColumn)
+// Column colors mapping (full CSS value for List View)
 const COLUMN_COLORS: Record<ColumnId, string> = {
   todo: "hsl(var(--muted))",
   "in-progress": "hsl(var(--primary))",
@@ -250,9 +246,6 @@ export function WorkspaceKanbanPage() {
   const [filter, setFilter] = useState<KanbanFilter>({});
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showStats, setShowStats] = useState(false);
-
-  // Column collapse state
-  const { toggleCollapse, isCollapsed } = useColumnCollapse();
 
   // Command palette state
   const { isOpen: isCommandPaletteOpen, setIsOpen: setIsCommandPaletteOpen } =
@@ -795,95 +788,45 @@ export function WorkspaceKanbanPage() {
           {/* Board/List Panel */}
           <Panel
             id="kanban-board"
-            defaultSize={isPanelOpen ? 70 : 100}
-            minSize={50}
+            defaultSize={isPanelOpen ? 55 : 100}
+            minSize={35}
           >
             {viewMode === "kanban" ? (
-              /* Kanban View with CollapsibleColumn (Phase 3) */
+              /* Kanban View - matching vibe-kanban layout exactly */
               <div className="h-full overflow-x-auto overflow-y-auto p-4">
-                <KanbanProvider onDragEnd={handleDragEnd} className="h-full">
+                <KanbanProvider onDragEnd={handleDragEnd}>
                   {columnStatuses.map((column) => {
-                    const columnCollapsed = isCollapsed(column.id);
                     const columnTasks = tasksByColumn[column.id] ?? [];
 
                     return (
-                      <CollapsibleColumn
-                        key={column.id}
-                        id={column.id}
-                        title={column.name}
-                        color={COLUMN_COLORS[column.id as ColumnId]}
-                        count={columnTasks.length}
-                        collapsed={columnCollapsed}
-                        onToggleCollapse={(collapsed) =>
-                          toggleCollapse(column.id, collapsed)
-                        }
-                      >
-                        <KanbanBoard id={column.id} className="h-full">
-                          <KanbanHeader
-                            name={column.name}
-                            color={COLUMN_COLOR_VARS[column.id as ColumnId]}
-                            onAddTask={() => handleAddTask(column.id)}
-                            addTaskLabel={t("workspace.addTask", "Add Task")}
-                          />
-                          <KanbanCards className="p-2 gap-2 overflow-y-auto">
-                            {columnTasks.map((task, index) =>
-                              isSelecting ? (
-                                <SelectableCard
-                                  key={task.id}
-                                  id={task.id}
-                                  isSelected={isSelected(task.id)}
-                                  isSelecting={isSelecting}
-                                  onToggle={toggleSelect}
-                                >
-                                  <KanbanCard
-                                    id={task.id}
-                                    name={task.title}
-                                    index={index}
-                                    parent={column.id}
-                                    onClick={() => handleCardClick(task.id)}
-                                    isOpen={selectedTaskId === task.id}
-                                  >
-                                    <TaskCardContent
-                                      task={task}
-                                      onTitleChange={(title) =>
-                                        handleTitleChange(task.id, title)
-                                      }
-                                    />
-                                  </KanbanCard>
-                                </SelectableCard>
-                              ) : (
-                                <KanbanCard
-                                  key={task.id}
-                                  id={task.id}
-                                  name={task.title}
-                                  index={index}
-                                  parent={column.id}
-                                  onClick={() => handleCardClick(task.id)}
-                                  isOpen={selectedTaskId === task.id}
-                                >
-                                  <TaskCardContent
-                                    task={task}
-                                    onTitleChange={(title) =>
-                                      handleTitleChange(task.id, title)
-                                    }
-                                  />
-                                </KanbanCard>
-                              )
-                            )}
-                            {/* Quick Task Input at bottom of column (Phase 3) */}
-                            <QuickTaskInput
-                              onSubmit={(title) =>
-                                handleQuickAddTask(column.id, title)
-                              }
-                              placeholder={t(
-                                "workspace.quickTaskPlaceholder",
-                                "Enter task title..."
-                              )}
-                              buttonLabel={t("workspace.addTask", "Add Task")}
-                            />
-                          </KanbanCards>
-                        </KanbanBoard>
-                      </CollapsibleColumn>
+                      <KanbanBoard key={column.id} id={column.id}>
+                        <KanbanHeader
+                          name={column.name}
+                          color={COLUMN_COLOR_VARS[column.id as ColumnId]}
+                          onAddTask={() => handleAddTask(column.id)}
+                          addTaskLabel={t("workspace.addTask", "Add Task")}
+                        />
+                        <KanbanCards className="flex-1 flex-col p-2 gap-2">
+                          {columnTasks.map((task, index) => (
+                            <KanbanCard
+                              key={task.id}
+                              id={task.id}
+                              name={task.title}
+                              index={index}
+                              parent={column.id}
+                              onClick={() => handleCardClick(task.id)}
+                              isOpen={selectedTaskId === task.id}
+                            >
+                              <TaskCardContent
+                                task={task}
+                                onTitleChange={(title) =>
+                                  handleTitleChange(task.id, title)
+                                }
+                              />
+                            </KanbanCard>
+                          ))}
+                        </KanbanCards>
+                      </KanbanBoard>
                     );
                   })}
                 </KanbanProvider>
@@ -932,7 +875,7 @@ export function WorkspaceKanbanPage() {
 
           {/* Task Detail Panel */}
           {isPanelOpen && (
-            <Panel id="task-detail" defaultSize={30} minSize={20} maxSize={50}>
+            <Panel id="task-detail" defaultSize={45} minSize={30} maxSize={65}>
               <div className="h-full border-l bg-background overflow-y-auto">
                 <TaskDetailPanel
                   task={selectedTask}
