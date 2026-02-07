@@ -1,0 +1,32 @@
+{
+  "name": "@viben/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Viben CLI - Multi-agent command line interface",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "viben": "dist/bin/viben.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.44.0",
+    "discord.js": "^14.18.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "@types/node-telegram-bot-api": "^0.64.7",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

@@ -1265,8 +1265,6 @@ mod tests {
 
         #[tokio::test]
         async fn test_router_merges_all_routes() {
-            let app = test_app().await;
-
             // Test that all main routes are accessible
             let routes = [
                 "/health",
@@ -1353,7 +1351,7 @@ mod tests {
         use std::net::SocketAddr;
         use tokio::net::TcpListener;
         use tokio_tungstenite::{connect_async, tungstenite::Message as WsMsg};
-        use futures_util::{SinkExt, StreamExt};
+        use futures_util::SinkExt;
         use crate::routes::ws::WsMessage;
         use tower_http::cors::{Any, CorsLayer};
         use axum::body::Bytes;

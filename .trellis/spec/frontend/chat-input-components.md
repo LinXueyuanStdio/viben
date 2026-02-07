@@ -140,18 +140,28 @@ export interface ChatInputProps {
 │ [文本输入区] (可调高度: 80px - 400px)                │
 │                                                     │
 ├─────────────────────────────────────────────────────┤
-│ [智能体] [模型] [工具 N] [技能 N] [Nk tokens] [发送] │ ← showConfigBar
+│ [智能体▼] [模型▼] [工具] [技能] [2.5k] [发送]      │ ← showConfigBar
 └─────────────────────────────────────────────────────┘
 ```
 
+**配置栏按钮样式**:
+- **智能体/模型按钮**: 显示 icon + 名称 + 下拉箭头
+- **工具/技能按钮**: 仅显示 icon + 角标数字（启用数量 > 0 时）
+- **上下文按钮**: 仅显示 icon + token 数量（如 "2.5k"，无 "tokens" 文字）
+
+**无卡片样式**: 当启用 `showTopToolbar` 或 `showConfigBar` 时，组件不显示圆角边框和阴影，填满父容器
+
 ## 变体差异
 
-| 属性 | default | compact |
-|------|---------|---------|
-| 边框圆角 | rounded-2xl | rounded-xl |
-| 内边距 | p-4 | p-3 |
-| 最小高度 | 40px | 20px |
-| 最大高度 | 200px | 120px |
+| 属性 | default | compact | workspace模式 |
+|------|---------|---------|---------------|
+| 边框圆角 | rounded-2xl | rounded-xl | 无 |
+| 边框阴影 | 有 | 有 | 无 |
+| 内边距 | p-4 | p-3 | - |
+| 最小高度 | 40px | 20px | - |
+| 最大高度 | 200px | 120px | 可调 (80-400px) |
+
+**注**: workspace模式指启用 `showTopToolbar` 或 `showConfigBar` 的情况
 | 按钮大小 | size-8 | size-7 |
 
 ## 高度调整 (showResizeHandle)
@@ -516,6 +526,12 @@ interface ContextDetailsPopoverProps {
 ---
 
 ## 更新日志
+
+- **2026-02-08**: 优化按钮样式和容器样式
+  - 移除 workspace 模式下的卡片样式（无圆角、边框、阴影）
+  - Tools/Skills 按钮改为仅显示 icon + 角标数字
+  - Context 按钮改为仅显示 icon + token 数量（无 "tokens" 文字）
+  - Agent/Model 按钮保持 icon + 名称 + 下拉箭头
 
 - **2026-02-08**: 实现动态智能体/模型选择 (Phase 3)
   - 新增 useChatConfig hook 和 chat-config store
