@@ -5,6 +5,7 @@ import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
 import { motion } from "framer-motion";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { VibenLogo } from "@/components/ui/viben-logo";
 
 // Animation variants for staggered entrance
 const containerVariants = {
@@ -60,9 +61,7 @@ export function AboutPage() {
     >
       <motion.div className="text-center mb-8" variants={itemVariants}>
         <div className="flex justify-center mb-4">
-          <div className="h-16 w-16 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-2xl font-bold">
-            B
-          </div>
+          <VibenLogo size="xl" />
         </div>
         <h1 className="text-2xl font-bold">{t("about.title")}</h1>
         <p className="text-muted-foreground">{t("about.version", { version: appVersion })}</p>

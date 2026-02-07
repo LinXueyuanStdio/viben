@@ -1,7 +1,12 @@
 /**
  * Workspace Agents Page - WeChat-style layout
- * Left: Agent list
- * Right: Agent detail panel with inline editing
+ *
+ * 主要智能体管理入口：
+ * - 显示当前工作空间的执行器（自动发现）
+ * - 显示智能体列表（全局存储）
+ * - 支持新增智能体（创建到全局目录）
+ * - Left: List (执行器 + 智能体)
+ * - Right: Detail panel with inline editing
  */
 import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
@@ -27,6 +32,7 @@ import {
   X,
   Check,
   Pencil,
+  Terminal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,9 +66,12 @@ import {
 } from "@/components/ui/select";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
-import { useLocalWorkspaces, useVibenAgents, useVibenModels } from "@/hooks";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useLocalWorkspaces, useVibenAgents, useVibenModels, useWorkspaceAgents } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import type { WorkspaceAgent } from "@/types";
 
 // ============================================================================
 // Agent Templates
@@ -118,22 +127,51 @@ const AGENT_TEMPLATES: AgentTemplate[] = [
 // Main Component
 // ============================================================================
 
+// ============================================================================
+// List Item Type (for unified display)
+// ============================================================================
+
+interface ListItem {
+  id: string;
+  name: string;
+  description?: string;
+  type: "executor" | "agent";
+  executorType?: string; // e.g., "claude-code", "codex"
+  // For agents
+  model?: string;
+  provider?: string;
+  mcp_servers?: string[];
+  skills?: string[];
+  system_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export function WorkspaceAgentsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
-  // Viben agents and models
+  // Workspace executors (auto-discovered)
   const {
-    agents,
+    agents: workspaceExecutorsList,
+    loading: loadingWorkspaceExecutors,
+    loadAgents: loadWorkspaceExecutors,
+  } = useWorkspaceAgents(workspaceId || null);
+
+  // Viben agents (global storage) and models
+  const {
+    agents: vibenAgents,
     defaultAgentId,
     loading: loadingAgents,
     createAgent,
     removeAgent,
     updateAgent,
     setDefaultAgent,
-    refresh: refreshAgents,
+    refresh: refreshVibenAgents,
   } = useVibenAgents();
 
   const {
@@ -142,7 +180,8 @@ export function WorkspaceAgentsPage() {
   } = useVibenModels();
 
   // UI state
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<"executor" | "agent">("agent");
   const [searchQuery, setSearchQuery] = useState("");
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<AgentTemplate | null>(null);
@@ -151,33 +190,94 @@ export function WorkspaceAgentsPage() {
   const [creating, setCreating] = useState(false);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  const loading = loadingAgents || loadingModels;
+  const loading = loadingAgents || loadingModels || loadingWorkspaceExecutors;
 
-  // Filter agents by search
-  const filteredAgents = useMemo(() => {
-    if (!searchQuery.trim()) return agents;
+  // Refresh all
+  const refreshAll = async () => {
+    await Promise.all([refreshVibenAgents(), loadWorkspaceExecutors()]);
+  };
+
+  // Convert workspace executors to list items
+  const executorItems: ListItem[] = useMemo(() => {
+    return workspaceExecutorsList.map((a) => ({
+      id: a.id,
+      name: a.name,
+      type: "executor" as const,
+      executorType: a.type,
+    }));
+  }, [workspaceExecutorsList]);
+
+  // Convert viben agents to list items
+  const agentItems: ListItem[] = useMemo(() => {
+    return vibenAgents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+      type: "agent" as const,
+      model: a.model,
+      provider: a.provider,
+      mcp_servers: a.mcp_servers,
+      skills: a.skills,
+      system_prompt: a.system_prompt,
+      temperature: a.temperature,
+      max_tokens: a.max_tokens,
+      created_at: a.created_at,
+      updated_at: a.updated_at,
+    }));
+  }, [vibenAgents]);
+
+  // All items combined
+  const allItems = useMemo(() => [...executorItems, ...agentItems], [executorItems, agentItems]);
+
+  // Filter by search
+  const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return allItems;
     const query = searchQuery.toLowerCase();
-    return agents.filter(
+    return allItems.filter(
       (a) =>
         a.name.toLowerCase().includes(query) ||
         a.description?.toLowerCase().includes(query)
     );
-  }, [agents, searchQuery]);
+  }, [allItems, searchQuery]);
 
-  // Selected agent data
-  const selectedAgent = useMemo(
-    () => agents.find((a) => a.id === selectedAgentId),
-    [agents, selectedAgentId]
+  // Filtered by type
+  const filteredExecutors = useMemo(
+    () => filteredItems.filter((a) => a.type === "executor"),
+    [filteredItems]
+  );
+  const filteredAgents = useMemo(
+    () => filteredItems.filter((a) => a.type === "agent"),
+    [filteredItems]
   );
 
-  // Auto-select first agent when list changes
+  // Selected agent data (only for agents that can be edited)
+  const selectedAgent = useMemo(
+    () => vibenAgents.find((a) => a.id === selectedItemId && selectedItemType === "agent"),
+    [vibenAgents, selectedItemId, selectedItemType]
+  );
+
+  // Selected executor (workspace)
+  const selectedExecutor = useMemo(
+    () => workspaceExecutorsList.find((a) => a.id === selectedItemId && selectedItemType === "executor"),
+    [workspaceExecutorsList, selectedItemId, selectedItemType]
+  );
+
+  // Auto-select first item when list changes
   useEffect(() => {
-    if (!selectedAgentId && filteredAgents.length > 0) {
-      setSelectedAgentId(filteredAgents[0].id);
-    } else if (selectedAgentId && !filteredAgents.find((a) => a.id === selectedAgentId)) {
-      setSelectedAgentId(filteredAgents[0]?.id || null);
+    if (!selectedItemId && filteredItems.length > 0) {
+      const first = filteredItems[0];
+      setSelectedItemId(first.id);
+      setSelectedItemType(first.type);
+    } else if (selectedItemId && !filteredItems.find((a) => a.id === selectedItemId)) {
+      const first = filteredItems[0];
+      if (first) {
+        setSelectedItemId(first.id);
+        setSelectedItemType(first.type);
+      } else {
+        setSelectedItemId(null);
+      }
     }
-  }, [filteredAgents, selectedAgentId]);
+  }, [filteredItems, selectedItemId]);
 
   // Open create dialog with template
   const openCreateDialog = (template?: AgentTemplate) => {
@@ -200,7 +300,8 @@ export function WorkspaceAgentsPage() {
       setNewAgentName("");
       setNewAgentDescription("");
       setSelectedTemplate(null);
-      setSelectedAgentId(newAgent.id);
+      setSelectedItemId(newAgent.id);
+      setSelectedItemType("agent");
     } catch (err) {
       console.error("Failed to create agent:", err);
     } finally {
@@ -214,7 +315,8 @@ export function WorkspaceAgentsPage() {
       const newAgent = await createAgent({
         name: `${agentName} (副本)`,
       });
-      setSelectedAgentId(newAgent.id);
+      setSelectedItemId(newAgent.id);
+      setSelectedItemType("agent");
     } catch (err) {
       console.error("Failed to copy agent:", err);
     }
@@ -225,17 +327,18 @@ export function WorkspaceAgentsPage() {
     if (!confirm(t("settingsAgents.deleteConfirm", { name: agentName }))) return;
     try {
       await removeAgent(agentId);
-      if (selectedAgentId === agentId) {
-        setSelectedAgentId(null);
+      if (selectedItemId === agentId) {
+        setSelectedItemId(null);
       }
     } catch (err) {
       console.error("Failed to delete agent:", err);
     }
   };
 
-  // Navigate to agent detail/edit page
-  const handleEditAgent = (agentId: string) => {
-    navigate(`/workspace/${workspaceId}/agent/${agentId}`);
+  // Navigate to detail/edit page
+  // Both executors and agents use the same route
+  const handleEditItem = (itemId: string, _itemType: "executor" | "agent") => {
+    navigate(`/workspace/${workspaceId}/agent/${itemId}`);
   };
 
   // Show loading while workspaces are loading
@@ -293,7 +396,7 @@ export function WorkspaceAgentsPage() {
         segments={[
           { label: t("settingsAgents.title"), href: `/workspace/${workspaceId}/agents` },
         ]}
-        onRefresh={refreshAgents}
+        onRefresh={refreshAll}
         isRefreshing={loading}
         showRemove={false}
       />
@@ -342,13 +445,13 @@ export function WorkspaceAgentsPage() {
             </DropdownMenu>
           </div>
 
-          {/* Agent List */}
+          {/* List */}
           <ScrollArea className="flex-1">
-            {loading && agents.length === 0 ? (
+            {loading && allItems.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ) : filteredAgents.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <div className="p-6 text-center">
                 <Bot className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
                 <p className="text-sm text-muted-foreground">
@@ -357,85 +460,171 @@ export function WorkspaceAgentsPage() {
               </div>
             ) : (
               <div className="p-2 space-y-1">
-                {filteredAgents.map((agent) => (
-                  <div
-                    key={agent.id}
-                    className={cn(
-                      "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
-                      selectedAgentId === agent.id
-                        ? "bg-primary/10 border border-primary/30"
-                        : "hover:bg-muted/60"
-                    )}
-                    onClick={() => setSelectedAgentId(agent.id)}
-                  >
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarFallback
-                        className={cn(
-                          "text-sm font-medium",
-                          selectedAgentId === agent.id
-                            ? "bg-primary/20 text-primary"
-                            : "bg-muted"
-                        )}
-                      >
-                        {agent.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{agent.name}</span>
-                        {agent.id === defaultAgentId && (
-                          <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
-                        )}
-                      </div>
-                      {agent.description && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {agent.description}
-                        </p>
-                      )}
+                {/* Executors Section */}
+                {filteredExecutors.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 flex items-center gap-2">
+                      <Terminal className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        {t("settingsAgents.executors")}
+                      </span>
                     </div>
-                    {/* Actions on hover */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditAgent(agent.id)}>
-                          <Settings2 className="h-4 w-4 mr-2" />
-                          {t("settingsAgents.configuration")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleCopyAgent(agent.id, agent.name)}>
-                          <Copy className="h-4 w-4 mr-2" />
-                          {t("common.copy")}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDefaultAgent(agent.id)}>
-                          <Star className="h-4 w-4 mr-2" />
-                          {t("agents.setDefault")}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => handleDeleteAgent(agent.id, agent.name)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t("common.delete")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
+                    {filteredExecutors.map((item) => (
+                      <div
+                        key={`executor-${item.id}`}
+                        className={cn(
+                          "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                          selectedItemId === item.id && selectedItemType === "executor"
+                            ? "bg-orange-500/10 border border-orange-500/30"
+                            : "hover:bg-muted/60"
+                        )}
+                        onClick={() => {
+                          setSelectedItemId(item.id);
+                          setSelectedItemType("executor");
+                        }}
+                      >
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback
+                            className={cn(
+                              "text-sm font-medium",
+                              selectedItemId === item.id && selectedItemType === "executor"
+                                ? "bg-orange-500/20 text-orange-600"
+                                : "bg-muted"
+                            )}
+                          >
+                            {item.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{item.name}</span>
+                            <Badge variant="outline" className="text-[9px] px-1 py-0">
+                              {item.executorType}
+                            </Badge>
+                          </div>
+                        </div>
+                        {/* Actions on hover */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditItem(item.id, "executor")}>
+                              <Settings2 className="h-4 w-4 mr-2" />
+                              {t("settingsAgents.configuration")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Separator */}
+                {filteredExecutors.length > 0 && filteredAgents.length > 0 && (
+                  <Separator className="my-2" />
+                )}
+
+                {/* Agents Section */}
+                {filteredAgents.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 flex items-center gap-2">
+                      <Sparkles className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        {t("settingsAgents.agents")}
+                      </span>
+                    </div>
+                    {filteredAgents.map((item) => (
+                      <div
+                        key={`agent-${item.id}`}
+                        className={cn(
+                          "group flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors",
+                          selectedItemId === item.id && selectedItemType === "agent"
+                            ? "bg-primary/10 border border-primary/30"
+                            : "hover:bg-muted/60"
+                        )}
+                        onClick={() => {
+                          setSelectedItemId(item.id);
+                          setSelectedItemType("agent");
+                        }}
+                      >
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback
+                            className={cn(
+                              "text-sm font-medium",
+                              selectedItemId === item.id && selectedItemType === "agent"
+                                ? "bg-primary/20 text-primary"
+                                : "bg-muted"
+                            )}
+                          >
+                            {item.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium truncate">{item.name}</span>
+                            {item.id === defaultAgentId && (
+                              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
+                            )}
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        {/* Actions on hover */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditItem(item.id, "agent")}>
+                              <Settings2 className="h-4 w-4 mr-2" />
+                              {t("settingsAgents.configuration")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCopyAgent(item.id, item.name)}>
+                              <Copy className="h-4 w-4 mr-2" />
+                              {t("common.copy")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDefaultAgent(item.id)}>
+                              <Star className="h-4 w-4 mr-2" />
+                              {t("agents.setDefault")}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDeleteAgent(item.id, item.name)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {t("common.delete")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </ScrollArea>
         </div>
 
-        {/* Right: Agent Detail */}
+        {/* Right: Detail Panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {selectedAgent ? (
             <AgentDetailPanel
@@ -445,7 +634,13 @@ export function WorkspaceAgentsPage() {
               onUpdate={updateAgent}
               onSetDefault={() => setDefaultAgent(selectedAgent.id)}
               onDelete={() => handleDeleteAgent(selectedAgent.id, selectedAgent.name)}
-              onNavigateToEdit={() => handleEditAgent(selectedAgent.id)}
+              onNavigateToEdit={() => handleEditItem(selectedAgent.id, "agent")}
+            />
+          ) : selectedExecutor ? (
+            <ExecutorDetailPanel
+              executor={selectedExecutor}
+              workspaceId={workspaceId || ""}
+              onNavigateToEdit={() => handleEditItem(selectedExecutor.id, "executor")}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -523,7 +718,132 @@ export function WorkspaceAgentsPage() {
 }
 
 // ============================================================================
-// Agent Detail Panel with Inline Editing
+// Executor Detail Panel (Auto-discovered from Workspace - Read Only)
+// ============================================================================
+
+interface ExecutorDetailPanelProps {
+  executor: WorkspaceAgent;
+  workspaceId: string;
+  onNavigateToEdit: () => void;
+}
+
+function ExecutorDetailPanel({
+  executor,
+  workspaceId: _workspaceId,
+  onNavigateToEdit,
+}: ExecutorDetailPanelProps) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="p-6 border-b bg-orange-500/5">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar className="h-16 w-16">
+              <AvatarFallback className="bg-orange-500/20 text-orange-600 text-xl font-semibold">
+                {executor.name.slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold">{executor.name}</h2>
+                <Badge variant="outline" className="text-xs border-orange-500/30 text-orange-600">
+                  <Terminal className="h-3 w-3 mr-1" />
+                  {t("settingsAgents.executors")}
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-sm mt-1">
+                {executor.type}
+              </p>
+            </div>
+          </div>
+          <Button size="sm" onClick={onNavigateToEdit}>
+            <Settings2 className="h-4 w-4 mr-2" />
+            {t("settingsAgents.configuration")}
+          </Button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-6 space-y-6">
+          {/* Config Path */}
+          <section>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Terminal className="h-4 w-4" />
+              {t("workspace.configPath")}
+            </h3>
+            <Card>
+              <CardContent className="p-4">
+                <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
+                  {executor.config_path}
+                </code>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* MCP Config */}
+          {executor.mcp_config_file && (
+            <section>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                MCP {t("workspace.configuration")}
+              </h3>
+              <Card>
+                <CardContent className="p-4">
+                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
+                    {executor.mcp_config_file}
+                  </code>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {/* Skills Config */}
+          {executor.skills_config_file && (
+            <section>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                {t("chat.skills")} {t("workspace.configuration")}
+              </h3>
+              <Card>
+                <CardContent className="p-4">
+                  <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
+                    {executor.skills_config_file}
+                  </code>
+                </CardContent>
+              </Card>
+            </section>
+          )}
+
+          {/* Description */}
+          <section>
+            <Card className="border-orange-500/30 bg-orange-500/5">
+              <CardContent className="p-4">
+                <p className="text-sm text-muted-foreground">
+                  {t("settingsAgents.executorsDesc")}
+                </p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="px-0 mt-2"
+                  onClick={onNavigateToEdit}
+                >
+                  {t("settingsAgents.configuration")}
+                  <Settings2 className="h-3 w-3 ml-1" />
+                </Button>
+              </CardContent>
+            </Card>
+          </section>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
+
+// ============================================================================
+// Agent Detail Panel with Inline Editing (Sub Agent / Viben Agent)
 // ============================================================================
 
 interface AgentDetailPanelProps {

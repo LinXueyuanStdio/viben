@@ -60,7 +60,9 @@
     "selected": "已选",
     "noResults": "未找到结果",
     "rename": "重命名",
-    "yesterday": "昨天"
+    "yesterday": "昨天",
+    "overview": "概览",
+    "created": "创建"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -361,6 +363,13 @@
     "list": "智能体列表",
     "myAgents": "智能体",
     "add": "添加智能体",
+    "goToWorkspace": "去全局工作空间管理智能体",
+    "goToWorkspaceDesc": "智能体的新增和管理请在全局工作空间中进行",
+    "executors": "执行器",
+    "executorsDesc": "自动发现的运行后端配置",
+    "agents": "智能体",
+    "agentsDesc": "Viben 智能体，使用执行器作为运行后端",
+    "noExecutors": "当前工作空间暂无执行器配置",
     "addFirst": "添加您的第一个智能体",
     "noAgents": "未配置智能体",
     "fromTemplate": "从模板创建",
@@ -475,7 +484,13 @@
     "editableMemory": "可编辑的持久记忆",
     "noMcpServersHint": "创建 MCP 服务器以为您的智能体提供工具",
     "noSkillsHint": "从商店安装技能以扩展您的智能体",
-    "gatewayNotRunningHint": "Gateway 服务未运行。请先在设置中启动 Gateway。"
+    "gatewayNotRunningHint": "Gateway 服务未运行。请先在设置中启动 Gateway。",
+    "prompts": "提示词",
+    "commands": "指令",
+    "noPrompts": "暂无提示词配置",
+    "noPromptsHint": "在 .claude/agents/ 目录下添加 Markdown 文件",
+    "noCommands": "暂无指令配置",
+    "noCommandsHint": "在 .claude/commands/ 目录下添加指令文件"
   },
   "gateway": {
     "url": "网关地址",

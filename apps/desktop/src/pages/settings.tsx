@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Play,
 } from "lucide-react";
+import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -1082,9 +1083,7 @@ function AboutSection() {
       {/* App Info */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
         <div className="flex items-center gap-4 mb-4">
-          <div className="h-14 w-14 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold">
-            V
-          </div>
+          <VibenLogo size="lg" />
           <div>
             <h3 className="text-lg font-semibold font-serif">{t("about.title")}</h3>
             <p className="text-sm text-muted-foreground">{t("about.version", { version: appVersion })}</p>

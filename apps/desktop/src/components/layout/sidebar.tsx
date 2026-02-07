@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Settings,
-  Search,
   SearchCode,
   LogIn,
   Store,
@@ -18,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { VibenLogo } from "@/components/ui/viben-logo";
 import {
   Tooltip,
   TooltipContent,
@@ -99,9 +99,9 @@ export function Sidebar() {
                 <button
                   type="button"
                   onClick={toggleCollapsed}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:scale-105"
+                  className="transition-transform duration-200 hover:scale-105"
                 >
-                  <Search className="h-4 w-4" />
+                  <VibenLogo size="sm" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
@@ -111,14 +111,7 @@ export function Sidebar() {
           ) : (
             // Expanded: show logo, title, and collapse button
             <>
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform duration-200 hover:scale-105">
-                  <Search className="h-4 w-4" />
-                </div>
-                <span className="font-serif font-semibold text-sidebar-foreground tracking-tight">
-                  Viben
-                </span>
-              </div>
+              <VibenLogo size="sm" showText className="text-sidebar-foreground" />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
