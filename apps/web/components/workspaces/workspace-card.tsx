@@ -74,8 +74,8 @@ export function WorkspaceCard({ workspace, isOwner }: WorkspaceCardProps) {
           <div className="flex items-center gap-3">
             {workspace._count && (
               <>
-                <span>{workspace._count.mcpPackages} {t('workspace.mcps')}</span>
-                <span>{workspace._count.skillPackages} {t('workspace.skills')}</span>
+                <span>{workspace._count.mcpPackages} {t(workspace._count.mcpPackages === 1 ? 'workspace.mcp' : 'workspace.mcps')}</span>
+                <span>{workspace._count.skillPackages} {t(workspace._count.skillPackages === 1 ? 'workspace.skill' : 'workspace.skills')}</span>
               </>
             )}
           </div>
