@@ -468,9 +468,8 @@ export function WorkspaceKanbanPage() {
   // Bulk delete (placeholder - would need delete mutation)
   const handleBulkDelete = useCallback(() => {
     // TODO: Implement bulk delete when API is available
-    console.log("Bulk delete not yet implemented", Array.from(selectedIds));
     clearSelection();
-  }, [selectedIds, clearSelection]);
+  }, [clearSelection]);
 
   // Command palette commands
   const commands: Command[] = useMemo(
