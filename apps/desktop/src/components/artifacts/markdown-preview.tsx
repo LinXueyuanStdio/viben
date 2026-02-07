@@ -148,8 +148,6 @@ function ExpandableText({
 }
 
 export function MarkdownPreview({ artifact }: PreviewComponentProps) {
-  const { theme } = useAppStore();
-
   if (!artifact.content) {
     return (
       <div className="flex h-full items-center justify-center p-4">
