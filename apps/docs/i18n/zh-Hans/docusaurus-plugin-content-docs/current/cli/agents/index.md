@@ -162,8 +162,8 @@ Agents:
 
 ## 下一步
 
-- [创建智能体](./creating-agents) - 创建和管理智能体
-- [智能体配置](./agent-configuration) - 配置智能体设置
-- [记忆系统](./memory-system) - 了解智能体记忆
-- [会话](./sessions) - 管理智能体会话
-- [模板](./templates) - 使用智能体模板
+- [创建智能体](creating-agents) - 创建和管理智能体
+- [智能体配置](agent-configuration) - 配置智能体设置
+- [记忆系统](memory-system) - 了解智能体记忆
+- [会话](sessions) - 管理智能体会话
+- [模板](templates) - 使用智能体模板
