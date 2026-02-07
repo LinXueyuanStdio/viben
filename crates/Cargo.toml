@@ -66,6 +66,9 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 regex = "1.11"
 
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
 [profile.release]
 debug = 1
 split-debuginfo = "packed"

@@ -109,3 +109,27 @@ impl KnownModel {
         }
     }
 }
+
+/// Discovered model from provider API
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DiscoveredModel {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owned_by: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created: Option<i64>,
+}
+
+/// Provider models configuration file structure
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProviderModelsConfig {
+    #[serde(default)]
+    pub enabled_models: Vec<String>,
+}

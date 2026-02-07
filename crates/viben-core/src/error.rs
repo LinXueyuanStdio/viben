@@ -52,4 +52,10 @@ pub enum Error {
 
     #[error("Invalid operation: {0}")]
     InvalidOperation(String),
+
+    #[error("HTTP request error: {0}")]
+    Http(#[from] reqwest::Error),
+
+    #[error("Model discovery error: {0}")]
+    ModelDiscovery(String),
 }
