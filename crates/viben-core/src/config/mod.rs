@@ -10,7 +10,9 @@ pub use paths::*;
 pub use yaml::*;
 
 /// Global configuration
+/// Uses flatten to ignore unknown fields from existing config files
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct GlobalConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_agent: Option<String>,
@@ -22,6 +24,9 @@ pub struct GlobalConfig {
     pub theme: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub locale: Option<String>,
+    // Capture any extra fields without failing deserialization
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_yaml::Value>,
 }
 
 /// ConfigManager handles global configuration
