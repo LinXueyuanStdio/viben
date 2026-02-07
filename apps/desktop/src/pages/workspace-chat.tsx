@@ -160,6 +160,9 @@ interface Conversation {
   updatedAt: string;
   messageCount: number;
   lastMessage?: string;
+  isPinned?: boolean;
+  isMuted?: boolean;
+  isArchived?: boolean;
 }
 
 // ============================================================================

@@ -59,7 +59,9 @@ interface GatewayEventData {
 }
 
 /**
- * WebSocket message from server (matching Rust WsMessage::Event)
+ * WebSocket message from server (matching Rust WsMessage with serde tag="type", content="data")
+ * Structure: { "type": "Event", "data": { "channel": "gateway", "payload": GatewayEvent } }
+ * where GatewayEvent is { "type": "SessionMessage", "data": { session_id, content, role } }
  */
 interface WsServerMessage {
   type: "Event" | "Pong" | "Subscribed" | "Error";
@@ -70,6 +72,8 @@ interface WsServerMessage {
       type?: string;  // e.g., "SessionMessage", "ExecutionLog", "AgentCompleted"
       data?: GatewayEventData;
     };
+    // For Error type
+    message?: string;
   };
 }
 
@@ -113,7 +117,7 @@ export function DebugChatPanel({
   const [pendingQuestions, setPendingQuestions] = React.useState<PendingQuestion | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
-  const [toolUsages, setToolUsages] = React.useState<ToolUsage[]>([]);
+  const [_toolUsages, setToolUsages] = React.useState<ToolUsage[]>([]);
 
   // Gateway state
   const [gatewayConnected, setGatewayConnected] = React.useState<boolean | null>(null);

@@ -1166,7 +1166,7 @@ export function ChatInput({
         {isSlashMenuOpen && filteredSlashCommands.length > 0 && (
           <div
             ref={slashMenuRef}
-            className="absolute left-3 right-3 bottom-full mb-1 z-50 rounded-lg border border-border bg-popover shadow-lg overflow-hidden"
+            className="absolute left-3 right-3 bottom-full mb-1 z-[100] rounded-lg border border-border bg-popover shadow-lg overflow-hidden"
           >
             <div className="py-1 max-h-64 overflow-y-auto">
               {filteredSlashCommands.map((command, index) => (

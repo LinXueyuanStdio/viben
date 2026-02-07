@@ -47,16 +47,17 @@ interface GatewayEventData {
 }
 
 /**
- * WebSocket message from server
+ * WebSocket message from server (matching Rust WsMessage with serde tag="type", content="data")
  */
 interface WsServerMessage {
   type: "Event" | "Pong" | "Subscribed" | "Error";
   data?: {
     channel?: string;
     payload?: {
-      type?: string;
+      type?: string;  // e.g., "SessionMessage", "ExecutionLog", "AgentCompleted"
       data?: GatewayEventData;
     };
+    message?: string;
   };
 }
 
@@ -693,12 +694,6 @@ The workspace ID for this session is: \`${workspaceId}\`
       abortControllerRef.current.abort();
     }
 
-    // Close SSE connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-
     // Stop the agent through Gateway if we have a session
     if (sessionId && !mockMode && gatewayConnected) {
       try {
@@ -721,11 +716,8 @@ The workspace ID for this session is: \`${workspaceId}\`
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
-    // Close SSE connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
+    // Cancel any ongoing stream
+    client.cancelStream();
 
     setMessages([]);
     setArtifacts([]);
