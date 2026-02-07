@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Download, Star } from 'lucide-react';
@@ -29,6 +32,7 @@ interface McpHeaderProps {
 }
 
 export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderProps) {
+  const { t } = useTranslation();
   const ratingAvg = pkg.ratingAvg || 0;
 
   return (
@@ -59,7 +63,7 @@ export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderPr
               </AvatarFallback>
             </Avatar>
             <span className="text-sm">
-              by <span className="font-medium">{pkg.author.displayName}</span>
+              {t('marketplace.by')} <span className="font-medium">{pkg.author.displayName}</span>
             </span>
           </Link>
         )}
@@ -67,7 +71,7 @@ export function McpHeader({ package: pkg, isAuthenticated = false }: McpHeaderPr
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Download className="h-4 w-4" />
-            {pkg.downloadsCount} downloads
+            {t('marketplace.downloadsWithCount', { count: pkg.downloadsCount })}
           </span>
           {pkg.ratingCount > 0 && (
             <span className="flex items-center gap-1">

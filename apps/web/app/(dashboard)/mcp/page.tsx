@@ -1,11 +1,8 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
-import { Store, Package } from 'lucide-react';
 import { McpGrid } from '@/components/mcp/mcp-grid';
 import { McpFilters } from '@/components/mcp/mcp-filters';
-import { SearchInput } from '@/components/shared/search-input';
-import { PageHeader } from '@/components/shared/page-header';
-import { Button } from '@/components/ui/button';
+import { McpPageHeader } from '@/components/mcp/mcp-page-header';
+import { McpSearchInput } from '@/components/mcp/mcp-search-input';
 import { getSession } from '@/lib/auth/cookies';
 import { SourceTabs, type McpSource } from '@/components/mcp/source-tabs';
 import { OfficialServerGrid } from '@/components/mcp/official-server-grid';
@@ -31,30 +28,14 @@ export default async function McpPage({ searchParams }: McpPageProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={Store}
-        title="MCP Marketplace"
-        subtitle="Discover and install Model Context Protocol servers"
-      >
-        {session && (
-          <Button variant="outline" asChild>
-            <Link href="/my-packages">
-              <Package className="mr-2 h-4 w-4" />
-              My MCP
-            </Link>
-          </Button>
-        )}
-      </PageHeader>
+      <McpPageHeader isAuthenticated={!!session} />
 
       {/* Source Tabs */}
       <SourceTabs source={source} />
 
       {/* Search and Filters */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <SearchInput
-          placeholder={source === 'official' ? 'Search official servers...' : 'Search community packages...'}
-          defaultValue={params.q}
-        />
+        <McpSearchInput source={source} defaultValue={params.q} />
         {source === 'community' && (
           <McpFilters category={params.category} sort={params.sort} />
         )}

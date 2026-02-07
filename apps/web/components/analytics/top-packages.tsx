@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Server, Zap, Download, Heart } from 'lucide-react';
 
@@ -15,19 +18,21 @@ interface TopPackagesProps {
 }
 
 export function TopPackages({ mcps, skills }: TopPackagesProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Server className="h-5 w-5 text-blue-500" />
-            Top MCP Servers
+            {t('dashboard.analytics.topMcpServers')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {mcps.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No MCP servers published yet
+              {t('dashboard.analytics.noMcpServers')}
             </p>
           ) : (
             <div className="space-y-4">
@@ -65,13 +70,13 @@ export function TopPackages({ mcps, skills }: TopPackagesProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-yellow-500" />
-            Top Skills
+            {t('dashboard.analytics.topSkills')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {skills.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No skills published yet
+              {t('dashboard.analytics.noSkills')}
             </p>
           ) : (
             <div className="space-y-4">
