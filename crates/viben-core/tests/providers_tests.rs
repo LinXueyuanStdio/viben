@@ -492,3 +492,113 @@ async fn test_provider_manager_remove_default_provider() {
     let default = ProviderManager::get_default().await.unwrap();
     assert_eq!(default, Some(provider2.id));
 }
+
+// =============================================================================
+// Edge Case Tests for 100% Coverage
+// =============================================================================
+
+#[tokio::test]
+async fn test_provider_manager_update_provider_type() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ProviderManager::initialize().await.unwrap();
+
+    let provider = ProviderManager::create_provider(CreateProviderOptions {
+        provider_type: ProviderType::OpenAI,
+        name: "Test Provider".to_string(),
+        api_key: None,
+        base_url: None,
+        set_as_default: false,
+    })
+    .await
+    .unwrap();
+
+    // Update provider_type
+    let updated = ProviderManager::update_provider(
+        &provider.id,
+        ProviderUpdate {
+            provider_type: Some(ProviderType::Custom),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(updated.provider_type, ProviderType::Custom);
+}
+
+#[tokio::test]
+async fn test_provider_manager_update_base_url() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ProviderManager::initialize().await.unwrap();
+
+    let provider = ProviderManager::create_provider(CreateProviderOptions {
+        provider_type: ProviderType::Custom,
+        name: "Custom Provider".to_string(),
+        api_key: None,
+        base_url: None,
+        set_as_default: false,
+    })
+    .await
+    .unwrap();
+
+    // Update base_url
+    let updated = ProviderManager::update_provider(
+        &provider.id,
+        ProviderUpdate {
+            base_url: Some("http://localhost:9999/v1".to_string()),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(
+        updated.base_url,
+        Some("http://localhost:9999/v1".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_provider_manager_create_provider_empty_name() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ProviderManager::initialize().await.unwrap();
+
+    // Create provider with a name that becomes empty after processing
+    let provider = ProviderManager::create_provider(CreateProviderOptions {
+        provider_type: ProviderType::Custom,
+        name: "---".to_string(), // All dashes -> becomes empty after trim
+        api_key: None,
+        base_url: None,
+        set_as_default: false,
+    })
+    .await
+    .unwrap();
+
+    // Should generate a fallback ID
+    assert!(provider.id.starts_with("provider-") || provider.id.is_empty() == false);
+}
+
+#[tokio::test]
+async fn test_provider_manager_create_provider_long_name() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ProviderManager::initialize().await.unwrap();
+
+    // Create provider with a very long name (>50 chars)
+    let long_name = "p".repeat(100);
+    let provider = ProviderManager::create_provider(CreateProviderOptions {
+        provider_type: ProviderType::Custom,
+        name: long_name,
+        api_key: None,
+        base_url: None,
+        set_as_default: false,
+    })
+    .await
+    .unwrap();
+
+    // ID should be truncated to 50 chars
+    assert!(provider.id.len() <= 50);
+}

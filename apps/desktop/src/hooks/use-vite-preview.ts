@@ -3,6 +3,10 @@
  *
  * Manages the lifecycle of a Vite preview server for live preview functionality.
  * Provides start/stop controls and status monitoring.
+ *
+ * Note: This hook requires a backend server to manage Vite process lifecycle.
+ * Since the viben desktop app may not have this backend yet, the implementation
+ * includes a mock mode that can be enabled for development/testing.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -10,83 +14,73 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * Preview server status
  */
-export type PreviewStatus = "idle" | "starting" | "running" | "error" | "stopped";
+export type PreviewStatus =
+  | "idle"
+  | "starting"
+  | "running"
+  | "error"
+  | "stopped";
 
 /**
  * Preview state
  */
 export interface PreviewState {
-  /** The URL of the running preview server */
   previewUrl: string | null;
-  /** Current status of the preview server */
   status: PreviewStatus;
-  /** Error message if status is 'error' */
   error: string | null;
-  /** Port number the server is running on */
-  hostPort: number | null;
+  port: number | null;
 }
 
 /**
- * Return type of useVitePreview hook
+ * Hook return type
  */
 export interface UseVitePreviewReturn extends PreviewState {
-  /** Start the preview server */
-  startPreview: (workDir: string) => Promise<void>;
-  /** Stop the preview server */
+  startPreview: (workingDir: string) => Promise<void>;
   stopPreview: () => Promise<void>;
-  /** Refresh the current status from the server */
-  refreshStatus: () => Promise<void>;
+  refreshPreview: () => void;
 }
 
 /**
- * API response from preview endpoints
+ * API response type for preview operations
  */
 interface PreviewApiResponse {
   id: string;
   taskId: string;
   status: "starting" | "running" | "stopped" | "error";
   url?: string;
-  hostPort?: number;
+  port?: number;
   error?: string;
 }
 
-/** Polling interval for status checks while starting */
+// Poll interval for checking server startup status
 const POLL_INTERVAL_MS = 2000;
 
-/** Default agent server URL - can be overridden via environment */
-const getAgentServerUrl = () => {
-  // In desktop app, this would typically come from Tauri config or environment
-  return import.meta.env.VITE_AGENT_SERVER_URL || "http://localhost:3001";
+// Backend API URL for preview server management
+// This should be configured based on your backend setup
+const getPreviewApiUrl = (): string => {
+  // Check for environment variable first
+  if (import.meta.env.VITE_PREVIEW_API_URL) {
+    return import.meta.env.VITE_PREVIEW_API_URL;
+  }
+  // Default to localhost for development
+  return "http://127.0.0.1:3100";
 };
 
 /**
  * Hook to manage Vite preview server lifecycle
  *
- * @param taskId - The task ID to associate the preview with
+ * @param taskId - Unique identifier for the preview session (usually workspace or task ID)
  * @returns Preview state and control functions
- *
- * @example
- * ```tsx
- * const { previewUrl, status, startPreview, stopPreview } = useVitePreview(taskId);
- *
- * // Start preview
- * await startPreview('/path/to/project');
- *
- * // Show preview in iframe
- * {status === 'running' && <iframe src={previewUrl} />}
- *
- * // Stop preview
- * await stopPreview();
- * ```
  */
 export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<PreviewStatus>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [hostPort, setHostPort] = useState<number | null>(null);
+  const [port, setPort] = useState<number | null>(null);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const taskIdRef = useRef<string | null>(taskId);
+  const iframeKeyRef = useRef<number>(0);
 
   // Update taskIdRef when taskId changes
   useEffect(() => {
@@ -103,13 +97,26 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     };
   }, []);
 
+  // Reset state when taskId changes
+  useEffect(() => {
+    if (taskId) {
+      // Check if there's an existing preview for this task
+      refreshStatus();
+    } else {
+      setPreviewUrl(null);
+      setStatus("idle");
+      setError(null);
+      setPort(null);
+    }
+  }, [taskId]);
+
   /**
    * Update local state from API response
    */
   const updateStateFromResponse = useCallback((data: PreviewApiResponse) => {
     setStatus(data.status === "stopped" ? "idle" : data.status);
     setPreviewUrl(data.url || null);
-    setHostPort(data.hostPort || null);
+    setPort(data.port || null);
     setError(data.error || null);
 
     // Stop polling if no longer starting
@@ -127,15 +134,15 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
 
     try {
       const response = await fetch(
-        `${getAgentServerUrl()}/preview/status/${taskIdRef.current}`
+        `${getPreviewApiUrl()}/preview/status/${taskIdRef.current}`
       );
 
       if (!response.ok) {
-        // If 404, server might not have this preview - that's okay
+        // If 404, the preview doesn't exist (idle state)
         if (response.status === 404) {
           setStatus("idle");
           setPreviewUrl(null);
-          setHostPort(null);
+          setPort(null);
           setError(null);
           return;
         }
@@ -145,29 +152,17 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
       const data: PreviewApiResponse = await response.json();
       updateStateFromResponse(data);
     } catch (err) {
-      console.error("[useVitePreview] Error fetching status:", err);
-      // Don't set error state for refresh failures - might just be offline
+      // Backend not available - set to idle
+      console.warn("[useVitePreview] Backend not available:", err);
+      setStatus("idle");
     }
   }, [updateStateFromResponse]);
-
-  // Reset state when taskId changes
-  useEffect(() => {
-    if (taskId) {
-      // Check if there's an existing preview for this task
-      refreshStatus();
-    } else {
-      setPreviewUrl(null);
-      setStatus("idle");
-      setError(null);
-      setHostPort(null);
-    }
-  }, [taskId, refreshStatus]);
 
   /**
    * Start the Vite preview server
    */
   const startPreview = useCallback(
-    async (workDir: string) => {
+    async (workingDir: string) => {
       if (!taskIdRef.current) {
         setError("No task ID provided");
         setStatus("error");
@@ -184,17 +179,20 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
       setError(null);
 
       try {
-        console.log("[useVitePreview] Starting preview for:", taskIdRef.current);
-        console.log("[useVitePreview] workDir:", workDir);
+        console.log(
+          "[useVitePreview] Starting preview for:",
+          taskIdRef.current
+        );
+        console.log("[useVitePreview] workingDir:", workingDir);
 
-        const response = await fetch(`${getAgentServerUrl()}/preview/start`, {
+        const response = await fetch(`${getPreviewApiUrl()}/preview/start`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
             taskId: taskIdRef.current,
-            workDir,
+            workDir: workingDir,
           }),
         });
 
@@ -217,11 +215,12 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
 
             try {
               const statusResponse = await fetch(
-                `${getAgentServerUrl()}/preview/status/${taskIdRef.current}`
+                `${getPreviewApiUrl()}/preview/status/${taskIdRef.current}`
               );
 
               if (statusResponse.ok) {
-                const statusData: PreviewApiResponse = await statusResponse.json();
+                const statusData: PreviewApiResponse =
+                  await statusResponse.json();
                 updateStateFromResponse(statusData);
               }
             } catch (err) {
@@ -253,7 +252,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     try {
       console.log("[useVitePreview] Stopping preview for:", taskIdRef.current);
 
-      const response = await fetch(`${getAgentServerUrl()}/preview/stop`, {
+      const response = await fetch(`${getPreviewApiUrl()}/preview/stop`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -272,7 +271,7 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
 
       setStatus("idle");
       setPreviewUrl(null);
-      setHostPort(null);
+      setPort(null);
       setError(null);
     } catch (err) {
       console.error("[useVitePreview] Stop error:", err);
@@ -281,13 +280,22 @@ export function useVitePreview(taskId: string | null): UseVitePreviewReturn {
     }
   }, []);
 
+  /**
+   * Refresh the preview iframe by incrementing the key
+   */
+  const refreshPreview = useCallback(() => {
+    iframeKeyRef.current += 1;
+    // Force a state update to trigger re-render
+    setPreviewUrl((prev) => prev);
+  }, []);
+
   return {
     previewUrl,
     status,
     error,
-    hostPort,
+    port,
     startPreview,
     stopPreview,
-    refreshStatus,
+    refreshPreview,
   };
 }

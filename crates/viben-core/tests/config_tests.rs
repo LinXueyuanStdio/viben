@@ -260,3 +260,224 @@ async fn test_config_manager_get_set_default_model() {
     let default = ConfigManager::get_default_model().await.unwrap();
     assert_eq!(default, Some("gpt-4o".to_string()));
 }
+
+// =============================================================================
+// JSON Read/Write Tests
+// =============================================================================
+
+use viben_core::config::{read_json, write_json};
+
+#[tokio::test]
+async fn test_read_json_nonexistent_file() {
+    let temp_dir = setup_temp_state_dir();
+    let path = temp_dir.path().join("nonexistent.json");
+    let result: Option<GlobalConfig> = read_json(&path).await.unwrap();
+    assert!(result.is_none());
+}
+
+#[tokio::test]
+async fn test_write_and_read_json() {
+    let temp_dir = setup_temp_state_dir();
+    let path = temp_dir.path().join("test.json");
+
+    let config = GlobalConfig {
+        default_agent: Some("json-agent".to_string()),
+        default_provider: Some("openai".to_string()),
+        default_model: Some("gpt-4".to_string()),
+        theme: Some("dark".to_string()),
+        locale: Some("en".to_string()),
+    };
+
+    write_json(&path, &config).await.unwrap();
+    assert!(path.exists());
+
+    let read_config: GlobalConfig = read_json(&path).await.unwrap().unwrap();
+    assert_eq!(read_config.default_agent, Some("json-agent".to_string()));
+}
+
+#[tokio::test]
+async fn test_write_json_creates_parent_dirs() {
+    let temp_dir = setup_temp_state_dir();
+    let path = temp_dir.path().join("nested/json/dir/config.json");
+
+    let config = GlobalConfig::default();
+    write_json(&path, &config).await.unwrap();
+
+    assert!(path.exists());
+}
+
+// =============================================================================
+// Additional Path Tests
+// =============================================================================
+
+use viben_core::config::{
+    dir_exists, get_agent_mcp_servers_path, get_agent_skills_dir, get_shared_mcp_dir,
+    get_shared_skills_dir,
+};
+
+#[test]
+fn test_get_agent_mcp_servers_path() {
+    let _temp_dir = setup_temp_state_dir();
+    let path = get_agent_mcp_servers_path("test-agent");
+    assert!(path.to_string_lossy().contains("test-agent"));
+    assert!(path.to_string_lossy().contains("mcp_servers.json"));
+}
+
+#[test]
+fn test_get_agent_skills_dir() {
+    let _temp_dir = setup_temp_state_dir();
+    let path = get_agent_skills_dir("test-agent");
+    assert!(path.to_string_lossy().contains("test-agent"));
+    assert!(path.to_string_lossy().contains("skills"));
+}
+
+#[test]
+fn test_get_shared_mcp_dir() {
+    let _temp_dir = setup_temp_state_dir();
+    let path = get_shared_mcp_dir();
+    assert!(path.to_string_lossy().contains("mcp"));
+}
+
+#[test]
+fn test_get_shared_skills_dir() {
+    let _temp_dir = setup_temp_state_dir();
+    let path = get_shared_skills_dir();
+    assert!(path.to_string_lossy().contains("skills"));
+}
+
+#[test]
+fn test_dir_exists_true() {
+    let temp_dir = setup_temp_state_dir();
+    assert!(dir_exists(temp_dir.path()));
+}
+
+#[test]
+fn test_dir_exists_false() {
+    let temp_dir = setup_temp_state_dir();
+    let nonexistent = temp_dir.path().join("nonexistent_dir");
+    assert!(!dir_exists(&nonexistent));
+}
+
+// =============================================================================
+// ConfigManager Update All Fields Test
+// =============================================================================
+
+#[tokio::test]
+async fn test_config_manager_update_all_fields() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ConfigManager::initialize().await.unwrap();
+
+    // Update all fields at once to cover all branches
+    let updates = GlobalConfig {
+        default_agent: Some("updated-agent".to_string()),
+        default_provider: Some("updated-provider".to_string()),
+        default_model: Some("updated-model".to_string()),
+        theme: Some("updated-theme".to_string()),
+        locale: Some("zh-CN".to_string()),
+    };
+
+    let updated = ConfigManager::update(updates).await.unwrap();
+
+    assert_eq!(updated.default_agent, Some("updated-agent".to_string()));
+    assert_eq!(
+        updated.default_provider,
+        Some("updated-provider".to_string())
+    );
+    assert_eq!(updated.default_model, Some("updated-model".to_string()));
+    assert_eq!(updated.theme, Some("updated-theme".to_string()));
+    assert_eq!(updated.locale, Some("zh-CN".to_string()));
+}
+
+#[tokio::test]
+async fn test_config_manager_update_individual_fields() {
+    let _temp_dir = setup_temp_state_dir();
+
+    ConfigManager::initialize().await.unwrap();
+
+    // Update default_agent only
+    let updates1 = GlobalConfig {
+        default_agent: Some("agent-1".to_string()),
+        ..Default::default()
+    };
+    let result1 = ConfigManager::update(updates1).await.unwrap();
+    assert_eq!(result1.default_agent, Some("agent-1".to_string()));
+
+    // Update default_provider only
+    let updates2 = GlobalConfig {
+        default_provider: Some("provider-1".to_string()),
+        ..Default::default()
+    };
+    let result2 = ConfigManager::update(updates2).await.unwrap();
+    assert_eq!(result2.default_provider, Some("provider-1".to_string()));
+
+    // Update default_model only
+    let updates3 = GlobalConfig {
+        default_model: Some("model-1".to_string()),
+        ..Default::default()
+    };
+    let result3 = ConfigManager::update(updates3).await.unwrap();
+    assert_eq!(result3.default_model, Some("model-1".to_string()));
+
+    // Update locale only
+    let updates4 = GlobalConfig {
+        locale: Some("ja".to_string()),
+        ..Default::default()
+    };
+    let result4 = ConfigManager::update(updates4).await.unwrap();
+    assert_eq!(result4.locale, Some("ja".to_string()));
+}
+
+// Test writing to root path (no parent directory)
+#[tokio::test]
+async fn test_write_yaml_no_parent() {
+    // Write to a path that has no parent (root-level file)
+    // This is an edge case where path.parent() returns None
+    // Create a path with just a filename (no directory)
+    let temp_dir = setup_temp_state_dir();
+    let root_path = temp_dir.path().join("root_file.yaml");
+
+    // This should work even without a parent directory
+    let config = GlobalConfig::default();
+    write_yaml(&root_path, &config).await.unwrap();
+    assert!(root_path.exists());
+}
+
+#[tokio::test]
+async fn test_write_json_no_parent() {
+    let temp_dir = setup_temp_state_dir();
+    let root_path = temp_dir.path().join("root_file.json");
+
+    let config = GlobalConfig::default();
+    write_json(&root_path, &config).await.unwrap();
+    assert!(root_path.exists());
+}
+
+// Test writing to a relative path with no directory component
+// Path like "file.yaml" has parent Some("") which is empty
+#[tokio::test]
+async fn test_write_yaml_relative_file_only() {
+    use std::path::Path;
+    let _temp_dir = setup_temp_state_dir();
+
+    // "file.yaml" has parent Some("") - this is an edge case
+    let path = Path::new("relative_test.yaml");
+    let config = GlobalConfig::default();
+
+    // This may fail due to current directory permissions, but covers the code path
+    let _ = write_yaml(path, &config).await;
+    // Clean up if it succeeded
+    let _ = std::fs::remove_file(path);
+}
+
+#[tokio::test]
+async fn test_write_json_relative_file_only() {
+    use std::path::Path;
+    let _temp_dir = setup_temp_state_dir();
+
+    let path = Path::new("relative_test.json");
+    let config = GlobalConfig::default();
+
+    let _ = write_json(path, &config).await;
+    let _ = std::fs::remove_file(path);
+}

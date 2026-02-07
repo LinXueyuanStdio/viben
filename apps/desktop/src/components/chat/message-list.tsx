@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, ChevronDown, CheckCircle2 } from "lucide-react";
+import { Bot, Loader2, ChevronDown, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageItem } from "./message-item";
@@ -46,6 +46,7 @@ type MessageGroup = TaskMessageGroup | OtherMessageGroup;
  */
 function TaskGroupComponent({
   title,
+  description,
   tools,
   isCompleted,
   isRunning,
@@ -70,7 +71,7 @@ function TaskGroupComponent({
   return (
     <div className="min-w-0 space-y-3">
       {/* Task description with status icon */}
-      {title && (
+      {description && (
         <div className="flex min-w-0 flex-col gap-2">
           <div className="flex min-w-0 items-start gap-2">
             {isCompleted ? (
@@ -103,14 +104,17 @@ function TaskGroupComponent({
             />
             <span className="flex-1 text-left">
               {isExpanded
-                ? t("chat.hideSteps")
-                : t("chat.showSteps").replace("{count}", String(tools.length))}
+                ? t("chat.hideSteps", { defaultValue: "Hide steps" })
+                : t("chat.showSteps", {
+                    count: tools.length,
+                    defaultValue: `Show ${tools.length} steps`,
+                  }).replace("{count}", String(tools.length))}
             </span>
           </button>
 
           {/* Tool list */}
           {isExpanded && (
-            <div className="space-y-1 px-2 pb-2">
+            <div className="px-2 pb-2 space-y-1">
               {tools.map(({ message, globalIndex, result }) => (
                 <ToolExecutionItem
                   key={globalIndex}
@@ -134,77 +138,205 @@ function TaskGroupComponent({
 /**
  * Group messages into task groups for better display
  */
-function groupMessages(messages: AgentMessage[], isRunning: boolean): MessageGroup[] {
+function groupMessages(
+  messages: AgentMessage[],
+  isRunning: boolean
+): MessageGroup[] {
   const groups: MessageGroup[] = [];
 
-  // Build a map of tool results by toolUseId
-  const toolResultMap = new Map<string, AgentMessage>();
-  messages.forEach((msg) => {
-    if (msg.type === "tool_result" && msg.toolUseId) {
-      toolResultMap.set(msg.toolUseId, msg);
+  // Pre-process: find the last text message index in each segment between user messages
+  const lastTextIndicesInSegments = new Set<number>();
+
+  // Find segment boundaries (user messages and result)
+  const segmentBoundaries: number[] = [];
+  messages.forEach((msg, idx) => {
+    if (msg.type === "user" || msg.type === "result") {
+      segmentBoundaries.push(idx);
+    }
+  });
+  segmentBoundaries.push(messages.length); // End boundary
+
+  // For each segment, find the last text message
+  let segmentStart = 0;
+  for (const boundary of segmentBoundaries) {
+    for (let i = boundary - 1; i >= segmentStart; i--) {
+      if (messages[i].type === "text" && messages[i].content) {
+        lastTextIndicesInSegments.add(i);
+        break;
+      }
+    }
+    segmentStart = boundary + 1;
+  }
+
+  // Filter messages: only keep the last text message in each segment
+  const mergedMessages: AgentMessage[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+    if (msg.type === "text" && msg.content) {
+      // Only keep text messages that are the last in their segment
+      if (lastTextIndicesInSegments.has(i)) {
+        mergedMessages.push(msg);
+      }
+    } else {
+      mergedMessages.push(msg);
+    }
+  }
+
+  // Collect all tool_result messages in order for matching with tool_use
+  const toolResultMessages: AgentMessage[] = [];
+  mergedMessages.forEach((msg) => {
+    if (msg.type === "tool_result") {
+      toolResultMessages.push(msg);
     }
   });
 
-  let currentGroup: TaskMessageGroup | null = null;
+  // Match tool_use with tool_result by index
+  const getToolResult = (toolUseIndex: number): AgentMessage | undefined => {
+    return toolResultMessages[toolUseIndex];
+  };
+
+  // Filter out duplicate plan messages - only keep the last one
+  const lastPlanIdx = mergedMessages.reduce(
+    (lastIdx, msg, idx) => (msg.type === "plan" ? idx : lastIdx),
+    -1
+  );
+  const filteredMessages =
+    lastPlanIdx >= 0
+      ? mergedMessages.filter(
+          (msg, idx) => msg.type !== "plan" || idx === lastPlanIdx
+        )
+      : mergedMessages;
+
+  // Find the last result message index
+  let lastResultIndex = -1;
+  filteredMessages.forEach((msg, index) => {
+    if (msg.type === "result") {
+      lastResultIndex = index;
+    }
+  });
+
+  // Process messages into groups
   let toolGlobalIndex = 0;
-  let lastTextContent = "";
+  let toolUseIndex = 0;
+
+  const state = { currentGroup: null as TaskMessageGroup | null };
 
   const pushCurrentGroup = (completed: boolean) => {
-    if (currentGroup && (currentGroup.tools.length > 0 || currentGroup.description)) {
-      currentGroup.isCompleted = completed;
-      groups.push(currentGroup);
-      currentGroup = null;
+    if (
+      state.currentGroup &&
+      (state.currentGroup.tools.length > 0 || state.currentGroup.description)
+    ) {
+      state.currentGroup.isCompleted = completed;
+      groups.push(state.currentGroup);
+      state.currentGroup = null;
     }
   };
 
   const ensureCurrentGroup = () => {
-    if (!currentGroup) {
-      currentGroup = {
+    if (!state.currentGroup) {
+      state.currentGroup = {
         type: "task",
-        title: "",
+        title: "Executing task",
         description: "",
         tools: [],
         isCompleted: false,
       };
     }
-    return currentGroup;
+    return state.currentGroup;
   };
 
-  messages.forEach((message) => {
+  let lastTextContent = "";
+  let pendingTextMessage: AgentMessage | null = null;
+
+  filteredMessages.forEach((message, msgIndex) => {
     if (message.type === "text" && message.content) {
       // Skip duplicate consecutive text messages
       if (message.content === lastTextContent) {
         return;
       }
+
+      // Skip text messages that contain raw plan JSON
+      const trimmedContent = message.content.trim();
+      if (
+        trimmedContent.startsWith("{") &&
+        trimmedContent.includes('"type"') &&
+        trimmedContent.includes('"plan"')
+      ) {
+        return;
+      }
+
       lastTextContent = message.content;
+
+      // If there's a pending text message that had no tools, render it as standalone
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+      }
 
       // Push any current tool group
       pushCurrentGroup(true);
 
-      // Check if this text is followed by tools - if so, start a new group
-      // For now, just render it as standalone message
-      groups.push({ type: "other", message });
-      currentGroup = null;
+      // Store this text as pending
+      pendingTextMessage = message;
+      state.currentGroup = null;
     } else if (message.type === "tool_use" && message.name) {
+      // Text followed by tool_use - create a task group with the text as description
+      if (pendingTextMessage) {
+        const title =
+          (pendingTextMessage.content || "").slice(0, 80) +
+          ((pendingTextMessage.content || "").length > 80 ? "..." : "");
+        state.currentGroup = {
+          type: "task",
+          title,
+          description: pendingTextMessage.content || "",
+          tools: [],
+          isCompleted: false,
+        };
+        pendingTextMessage = null;
+      }
       const group = ensureCurrentGroup();
-      const result = message.id ? toolResultMap.get(message.id) : undefined;
+      const result = getToolResult(toolUseIndex);
       group.tools.push({ message, globalIndex: toolGlobalIndex++, result });
+      toolUseIndex++;
     } else if (message.type === "tool_result") {
       // Skip tool_result messages as they're associated with tool_use
     } else if (message.type === "user") {
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+        pendingTextMessage = null;
+      }
       pushCurrentGroup(true);
       groups.push({ type: "other", message });
     } else if (message.type === "result") {
-      pushCurrentGroup(true);
-      groups.push({ type: "other", message });
+      // Only show the last result message
+      if (msgIndex === lastResultIndex) {
+        if (pendingTextMessage) {
+          groups.push({ type: "other", message: pendingTextMessage });
+          pendingTextMessage = null;
+        }
+        pushCurrentGroup(true);
+        groups.push({ type: "other", message });
+      }
     } else if (message.type === "error") {
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+        pendingTextMessage = null;
+      }
       pushCurrentGroup(true);
       groups.push({ type: "other", message });
     } else if (message.type === "plan") {
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+        pendingTextMessage = null;
+      }
       pushCurrentGroup(true);
       groups.push({ type: "other", message });
     }
   });
+
+  // Push any remaining pending text as standalone message
+  if (pendingTextMessage) {
+    groups.push({ type: "other", message: pendingTextMessage });
+  }
 
   // Push any remaining tool group
   pushCurrentGroup(!isRunning);
@@ -224,7 +356,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   // Get description of current activity
   const getActivityText = () => {
     if (!lastToolUse?.name) {
-      return t("chat.thinking");
+      return t("chat.thinking", { defaultValue: "Thinking..." });
     }
 
     const input = lastToolUse.input as Record<string, unknown> | undefined;
@@ -267,6 +399,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
 
   return (
     <div className="flex items-center gap-2 py-2">
+      {/* Spinning loader */}
       <div className="relative size-4 shrink-0">
         <svg className="size-4 animate-spin" viewBox="0 0 24 24">
           <circle
@@ -309,12 +442,6 @@ export function MessageList({
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
-  // Group messages for display - must be called before any early returns
-  const groups = React.useMemo(
-    () => groupMessages(messages, isStreaming || false),
-    [messages, isStreaming]
-  );
-
   // Auto-scroll to bottom when new messages arrive
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -340,6 +467,12 @@ export function MessageList({
       </div>
     );
   }
+
+  // Group messages for display
+  const groups = React.useMemo(
+    () => groupMessages(messages, isStreaming || false),
+    [messages, isStreaming]
+  );
 
   return (
     <ScrollArea className={cn("flex-1", className)}>

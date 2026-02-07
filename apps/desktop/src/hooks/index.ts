@@ -112,44 +112,5 @@ export type {
 
 // Workspace Chat
 export { useAgent } from "./use-agent";
-
-// Viben Core Integration (CLI/Desktop shared)
-export { useVibenProviders } from "./use-viben-providers";
-export type {
-  Provider as VibenProvider,
-  ProviderType as VibenProviderType,
-  CreateProviderOptions,
-  ProviderUpdate,
-  ProviderStatus,
-  UseVibenProvidersReturn,
-} from "./use-viben-providers";
-export {
-  DEFAULT_BASE_URLS as VIBEN_DEFAULT_BASE_URLS,
-  PROVIDER_TYPE_LABELS,
-} from "./use-viben-providers";
-
-export { useVibenModels } from "./use-viben-models";
-export type {
-  Model as VibenModel,
-  CreateModelOptions,
-  ModelUpdate,
-  UseVibenModelsReturn,
-} from "./use-viben-models";
-
-export { useVibenAgents } from "./use-viben-agents";
-export type {
-  Agent as VibenAgent,
-  CreateAgentOptions as VibenCreateAgentOptions,
-  AgentUpdate as VibenAgentUpdate,
-  AgentTemplate,
-  AgentTemplateConfig,
-  AgentSession,
-  AgentMemory,
-  UseVibenAgentsReturn,
-} from "./use-viben-agents";
 export { useVitePreview } from "./use-vite-preview";
-export type {
-  PreviewStatus,
-  PreviewState,
-  UseVitePreviewReturn,
-} from "./use-vite-preview";
+export type { PreviewStatus, PreviewState, UseVitePreviewReturn } from "./use-vite-preview";

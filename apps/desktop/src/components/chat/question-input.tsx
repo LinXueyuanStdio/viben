@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { HelpCircle, Check, Send, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,38 +15,35 @@ interface QuestionInputProps {
 
 interface QuestionItemProps {
   question: AgentQuestion;
-  questionIndex: number;
   selectedOptions: string[];
   otherInput: string;
-  onSelectOption: (questionIndex: number, option: string, multiSelect: boolean) => void;
-  onOtherInput: (questionIndex: number, value: string) => void;
+  showOther: boolean;
+  onSelectOption: (option: string) => void;
+  onOtherInput: (value: string) => void;
+  onToggleOther: () => void;
 }
 
 function QuestionItem({
   question,
-  questionIndex,
   selectedOptions,
   otherInput,
+  showOther,
   onSelectOption,
   onOtherInput,
+  onToggleOther,
 }: QuestionItemProps) {
   const { t } = useTranslation();
-  const [showOther, setShowOther] = useState(false);
-
-  const handleOtherClick = useCallback(() => {
-    setShowOther(!showOther);
-  }, [showOther]);
 
   return (
     <div className="space-y-3">
       {/* Question header and text */}
       <div className="flex items-start gap-2">
         {question.header && (
-          <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs font-medium shrink-0">
             {question.header}
           </span>
         )}
-        <p className="flex-1 text-sm font-medium text-foreground">
+        <p className="text-sm font-medium text-foreground flex-1">
           {question.question}
         </p>
       </div>
@@ -59,20 +56,17 @@ function QuestionItem({
             <button
               key={oIndex}
               type="button"
-              onClick={() =>
-                onSelectOption(questionIndex, option.label, question.multiSelect)
-              }
+              onClick={() => onSelectOption(option.label)}
               className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-all",
+                "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
                 isSelected
                   ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                  : "border-border bg-background hover:border-primary/50 hover:bg-muted/50"
+                  : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
               )}
             >
-              {/* Checkbox/Radio indicator */}
               <div
                 className={cn(
-                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 transition-colors",
+                  "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
                   question.multiSelect ? "rounded-md" : "rounded-full",
                   isSelected
                     ? "border-primary bg-primary"
@@ -93,7 +87,7 @@ function QuestionItem({
                   {option.label}
                 </p>
                 {option.description && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {option.description}
                   </p>
                 )}
@@ -102,20 +96,20 @@ function QuestionItem({
           );
         })}
 
-        {/* "Other" option */}
+        {/* Other option */}
         <button
           type="button"
-          onClick={handleOtherClick}
+          onClick={onToggleOther}
           className={cn(
-            "flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-all",
+            "flex items-start gap-3 rounded-lg border p-3 text-left transition-all",
             showOther || otherInput
               ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-              : "border-border bg-background hover:border-primary/50 hover:bg-muted/50"
+              : "border-border/60 bg-background hover:border-primary/50 hover:bg-accent/50"
           )}
         >
           <div
             className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center border-2 transition-colors",
+              "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
               question.multiSelect ? "rounded-md" : "rounded-full",
               showOther || otherInput
                 ? "border-primary bg-primary"
@@ -133,34 +127,37 @@ function QuestionItem({
                 (showOther || otherInput) && "text-primary"
               )}
             >
-              {t("chat.questionOther")}
+              {t("chat.other")}
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {t("chat.questionCustomInput")}
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("chat.customInput")}
             </p>
           </div>
         </button>
       </div>
 
-      {/* "Other" input field */}
-      <AnimatePresence>
-        {showOther && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <input
-              type="text"
-              value={otherInput}
-              onChange={(e) => onOtherInput(questionIndex, e.target.value)}
-              placeholder={t("chat.questionPlaceholder")}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Other input field */}
+      {showOther && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+        >
+          <input
+            type="text"
+            value={otherInput}
+            onChange={(e) => onOtherInput(e.target.value)}
+            placeholder={t("chat.otherPlaceholder")}
+            className={cn(
+              "w-full rounded-lg border px-3 py-2 text-sm transition-colors",
+              "border-border/60 bg-background text-foreground",
+              "placeholder:text-muted-foreground",
+              "focus:border-primary focus:ring-1 focus:ring-primary/30 focus:outline-none"
+            )}
+            autoFocus
+          />
+        </motion.div>
+      )}
 
       {/* Multi-select hint */}
       {question.multiSelect && (
@@ -179,25 +176,40 @@ export function QuestionInput({
   className,
 }: QuestionInputProps) {
   const { t } = useTranslation();
-  const [answers, setAnswers] = useState<Record<number, string[]>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<number, string[]>
+  >({});
   const [otherInputs, setOtherInputs] = useState<Record<number, string>>({});
+  const [showOtherFlags, setShowOtherFlags] = useState<Record<number, boolean>>(
+    {}
+  );
 
   const handleOptionSelect = useCallback(
-    (questionIndex: number, option: string, multiSelect: boolean) => {
-      setAnswers((prev) => {
-        const currentAnswers = prev[questionIndex] || [];
+    (questionIndex: number, optionLabel: string, multiSelect: boolean) => {
+      setSelectedAnswers((prev) => {
+        const currentSelections = prev[questionIndex] || [];
+
         if (multiSelect) {
           // Toggle selection for multi-select
-          if (currentAnswers.includes(option)) {
+          if (currentSelections.includes(optionLabel)) {
             return {
               ...prev,
-              [questionIndex]: currentAnswers.filter((a) => a !== option),
+              [questionIndex]: currentSelections.filter(
+                (o) => o !== optionLabel
+              ),
             };
           }
-          return { ...prev, [questionIndex]: [...currentAnswers, option] };
+          return {
+            ...prev,
+            [questionIndex]: [...currentSelections, optionLabel],
+          };
         }
-        // Single select - replace
-        return { ...prev, [questionIndex]: [option] };
+
+        // Single select - replace selection
+        return {
+          ...prev,
+          [questionIndex]: [optionLabel],
+        };
       });
     },
     []
@@ -210,34 +222,41 @@ export function QuestionInput({
     []
   );
 
+  const handleToggleOther = useCallback((questionIndex: number) => {
+    setShowOtherFlags((prev) => ({
+      ...prev,
+      [questionIndex]: !prev[questionIndex],
+    }));
+  }, []);
+
   const handleSubmit = useCallback(() => {
-    // Format answers as Record<string, string[]> for each question
-    // The key is the question index (as string), value is array of selected options
+    // Format answers as Record<string, string[]> to match expected signature
     const formattedAnswers: Record<string, string[]> = {};
 
-    questions.questions.forEach((q, index) => {
-      const selectedOptions = answers[index] || [];
+    questions.questions.forEach((_, index) => {
+      const selectedOptions = selectedAnswers[index] || [];
       const otherInput = otherInputs[index];
 
-      // Combine selected options with other input
-      const allAnswers = [...selectedOptions];
+      const answers: string[] = [...selectedOptions];
       if (otherInput?.trim()) {
-        allAnswers.push(otherInput.trim());
+        answers.push(otherInput.trim());
       }
 
-      if (allAnswers.length > 0) {
-        // Use the question text as key for identification
-        formattedAnswers[q.question] = allAnswers;
+      if (answers.length > 0) {
+        formattedAnswers[String(index)] = answers;
       }
     });
 
     onSubmit(formattedAnswers);
-  }, [questions, answers, otherInputs, onSubmit]);
+  }, [questions, selectedAnswers, otherInputs, onSubmit]);
 
-  // Check if there are any answers (either selected options or other inputs)
-  const hasAnswers =
-    Object.keys(answers).some((k) => answers[parseInt(k)]?.length > 0) ||
-    Object.values(otherInputs).some((v) => v?.trim());
+  // Check if at least one answer is provided for each question
+  const hasAnswers = questions.questions.some((_, idx) => {
+    const hasSelected =
+      selectedAnswers[idx] && selectedAnswers[idx].length > 0;
+    const hasOther = otherInputs[idx]?.trim();
+    return hasSelected || hasOther;
+  });
 
   return (
     <motion.div
@@ -252,9 +271,11 @@ export function QuestionInput({
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-amber-500/20">
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-              {t("chat.needsInput")}
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+              <span className="text-sm font-medium text-foreground">
+                {t("chat.needsInput")}
+              </span>
             </div>
           </div>
 
@@ -263,17 +284,20 @@ export function QuestionInput({
             <div
               key={qIdx}
               className={cn(
-                "px-4 py-3",
+                "px-4 py-4",
                 qIdx > 0 && "border-t border-amber-500/20"
               )}
             >
               <QuestionItem
                 question={question}
-                questionIndex={qIdx}
-                selectedOptions={answers[qIdx] || []}
+                selectedOptions={selectedAnswers[qIdx] || []}
                 otherInput={otherInputs[qIdx] || ""}
-                onSelectOption={handleOptionSelect}
-                onOtherInput={handleOtherInput}
+                showOther={showOtherFlags[qIdx] || false}
+                onSelectOption={(option) =>
+                  handleOptionSelect(qIdx, option, question.multiSelect)
+                }
+                onOtherInput={(value) => handleOtherInput(qIdx, value)}
+                onToggleOther={() => handleToggleOther(qIdx)}
               />
             </div>
           ))}
