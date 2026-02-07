@@ -16,3 +16,26 @@ export type {
   GlobalOptions,
   OutputContext,
 } from './types';
+
+// Export channel types and classes for external use
+export type {
+  ChannelType,
+  ChannelConfig,
+  TelegramConfig,
+  DiscordConfig,
+  WhatsAppConfig,
+  FeishuConfig,
+  MediaAttachment,
+  InboundMessage,
+  OutboundMessage,
+  ChannelStatus,
+  Channel,
+  ChannelsConfig,
+} from './lib/channels';
+
+export {
+  ChannelManager,
+  TelegramChannel,
+  DiscordChannel,
+  FeishuChannel,
+} from './lib/channels';
