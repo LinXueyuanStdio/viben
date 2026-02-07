@@ -43,6 +43,10 @@ import { AudioPreview } from "./audio-preview";
 import { VideoPreview } from "./video-preview";
 import { PdfPreview } from "./pdf-preview";
 import { WebSearchPreview } from "./websearch-preview";
+import { FontPreview } from "./font-preview";
+import { DocxPreview } from "./docx-preview";
+import { XlsxPreview } from "./xlsx-preview";
+import { PptxPreview } from "./pptx-preview";
 
 /**
  * Main Artifact Preview Component
@@ -140,6 +144,14 @@ export function ArtifactPreview({
         return !!artifact.content || !!artifact.path;
       case "websearch":
         return !!artifact.content;
+      case "font":
+        return !!artifact.path || !!artifact.content;
+      case "document":
+        return !!artifact.path;
+      case "spreadsheet":
+        return !!artifact.path;
+      case "presentation":
+        return !!artifact.path;
       default:
         return false;
     }
@@ -149,7 +161,7 @@ export function ArtifactPreview({
   const hasCodeView = React.useMemo(() => {
     if (!artifact) return false;
     if (
-      ["image", "pdf", "document", "spreadsheet", "presentation"].includes(
+      ["image", "pdf", "document", "spreadsheet", "presentation", "font", "audio", "video"].includes(
         artifact.type
       )
     ) {
@@ -472,24 +484,24 @@ function PreviewContent({
     return <WebSearchPreview artifact={artifact} />;
   }
 
-  // Document Preview (fallback)
+  // Font Preview
+  if (artifact.type === "font") {
+    return <FontPreview artifact={artifact} />;
+  }
+
+  // Document Preview
   if (artifact.type === "document") {
-    return (
-      <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
-        <div className="flex max-w-md flex-col items-center text-center">
-          <div className="border-border bg-background mb-4 flex size-20 items-center justify-center rounded-xl border">
-            <FileText className="size-10 text-blue-500" />
-          </div>
-          <h3 className="text-foreground mb-2 text-lg font-medium">
-            {artifact.name}
-          </h3>
-          <p className="text-muted-foreground text-sm">
-            Use the external link button above to open with Microsoft Word or
-            other compatible applications.
-          </p>
-        </div>
-      </div>
-    );
+    return <DocxPreview artifact={artifact} />;
+  }
+
+  // Spreadsheet Preview
+  if (artifact.type === "spreadsheet") {
+    return <XlsxPreview artifact={artifact} />;
+  }
+
+  // Presentation Preview
+  if (artifact.type === "presentation") {
+    return <PptxPreview artifact={artifact} />;
   }
 
   // Default: show prompt to switch to code view

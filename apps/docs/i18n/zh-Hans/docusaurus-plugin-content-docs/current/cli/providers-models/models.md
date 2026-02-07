@@ -93,19 +93,47 @@ version: 1
 # 默认模型
 default: claude-sonnet-4-20250514
 
-# 模型别名（参见 aliases.md）
+# ============================================================
+# 模型别名
+# 使用短名称引用常用模型
+# ============================================================
 aliases:
+  # 速度优先
   fast: claude-3-5-haiku-latest
+  quick: gpt-4o-mini
+
+  # 质量优先
   smart: claude-sonnet-4-20250514
+  balanced: gpt-4o
+
+  # 最强能力
   best: claude-opus-4-20250514
+  powerful: gpt-4-turbo
 
-# 回退链（参见 fallbacks.md）
+  # 特定用途
+  code: claude-sonnet-4-20250514
+  chat: claude-3-5-haiku-latest
+  reasoning: o1-preview
+
+  # Provider 特定
+  gpt: gpt-4-turbo
+  claude: claude-sonnet-4-20250514
+  gemini: gemini-1.5-pro
+
+# ============================================================
+# 回退链
+# 当主要模型不可用时按顺序尝试
+# ============================================================
 fallbacks:
-  - claude-sonnet-4-20250514
-  - gpt-4-turbo
-  - claude-3-5-haiku-latest
+  - claude-sonnet-4-20250514      # 首选
+  - gpt-4-turbo                    # 第一备选
+  - claude-3-5-haiku-latest        # 第二备选
+  - gpt-4o-mini                    # 最后备选
 
+# ============================================================
 # 模型特定配置
+# 覆盖每个模型的默认参数
+# ============================================================
 model_config:
   claude-sonnet-4-20250514:
     provider: anthropic-main
@@ -138,10 +166,25 @@ model_config:
     max_tokens: 4096
     temperature: 0.5                # 更低的温度以获得更确定的输出
 
+  claude-3-5-haiku-latest:
+    provider: anthropic-main
+    max_tokens: 4096
+    temperature: 0.8
+
   gpt-4-turbo:
     provider: openai-main
     max_tokens: 4096
     temperature: 0.7
+
+  gpt-4o:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.7
+
+  gpt-4o-mini:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.8
 
   # Azure 托管的模型
   azure-gpt-4:
@@ -149,11 +192,29 @@ model_config:
     max_tokens: 4096
     temperature: 0.7
 
+  # Google Gemini 模型
+  gemini-1.5-pro:
+    provider: google-gemini
+    max_tokens: 8192
+    temperature: 0.7
+
   # 本地 Ollama 模型
   llama3:
     provider: local-ollama
     max_tokens: 4096
     temperature: 0.8
+
+  # DeepSeek
+  deepseek-chat:
+    provider: deepseek
+    max_tokens: 4096
+    temperature: 0.7
+
+  # Groq (LLaMA)
+  llama-3.1-70b-versatile:
+    provider: groq
+    max_tokens: 4096
+    temperature: 0.7
 ```
 
 ## 模型能力
@@ -195,6 +256,8 @@ model_capabilities:
     cost_per_1k_output: 0.0006
 ```
 
+这些能力可以被智能体用于根据任务需求智能选择模型。
+
 ## 常用模型参考
 
 ### Anthropic 模型
@@ -221,6 +284,15 @@ model_capabilities:
 | `gemini-1.5-pro` | 2M | $1.25/1M | $5/1M | 大上下文 |
 | `gemini-1.5-flash` | 1M | $0.075/1M | $0.3/1M | 快速 |
 
+### 本地模型 (Ollama)
+
+| 模型 | 上下文 | 成本 | 说明 |
+|------|--------|------|------|
+| `llama3` | 8K | 免费 | 开源 |
+| `llama3.1` | 128K | 免费 | 扩展上下文 |
+| `mistral` | 32K | 免费 | 快速 |
+| `codellama` | 16K | 免费 | 代码专用 |
+
 ## 使用别名访问模型
 
 不必记住完整的模型名称，可以使用[别名](./aliases)：
@@ -242,6 +314,18 @@ viben model set-default -n smart
 | `best` | claude-opus-4-20250514 | 最高质量 |
 | `code` | claude-sonnet-4-20250514 | 编程任务 |
 | `chat` | claude-3-5-haiku-latest | 日常对话 |
+
+## 智能体集成
+
+可以为每个智能体配置模型：
+
+```bash
+# 为特定智能体设置模型
+viben agent config -n my-agent set model claude-sonnet-4-20250514
+
+# 或使用别名
+viben agent config -n my-agent set model smart
+```
 
 ## JSON 输出
 
@@ -268,6 +352,32 @@ viben model list --json
         "provider": "openai-main",
         "context_window": 128000,
         "status": "available"
+      }
+    ]
+  }
+}
+```
+
+```bash
+viben model status --json
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "default": "claude-sonnet-4-20250514",
+    "models": [
+      {
+        "name": "claude-sonnet-4-20250514",
+        "provider": "anthropic-main",
+        "status": "available"
+      },
+      {
+        "name": "local-llama",
+        "provider": "local-ollama",
+        "status": "offline",
+        "error": "Provider not running"
       }
     ]
   }

@@ -93,19 +93,47 @@ version: 1
 # Default model
 default: claude-sonnet-4-20250514
 
-# Model aliases (see aliases.md)
+# ============================================================
+# Model Aliases
+# Use short names to reference commonly used models
+# ============================================================
 aliases:
+  # Speed-focused
   fast: claude-3-5-haiku-latest
+  quick: gpt-4o-mini
+
+  # Quality-focused
   smart: claude-sonnet-4-20250514
+  balanced: gpt-4o
+
+  # Maximum capability
   best: claude-opus-4-20250514
+  powerful: gpt-4-turbo
 
-# Fallback chain (see fallbacks.md)
+  # Purpose-specific
+  code: claude-sonnet-4-20250514
+  chat: claude-3-5-haiku-latest
+  reasoning: o1-preview
+
+  # Provider-specific
+  gpt: gpt-4-turbo
+  claude: claude-sonnet-4-20250514
+  gemini: gemini-1.5-pro
+
+# ============================================================
+# Fallback Chain
+# Models to try in order when primary is unavailable
+# ============================================================
 fallbacks:
-  - claude-sonnet-4-20250514
-  - gpt-4-turbo
-  - claude-3-5-haiku-latest
+  - claude-sonnet-4-20250514      # Primary
+  - gpt-4-turbo                    # First fallback
+  - claude-3-5-haiku-latest        # Second fallback
+  - gpt-4o-mini                    # Last resort
 
-# Model-specific configuration
+# ============================================================
+# Model-specific Configuration
+# Override default parameters for each model
+# ============================================================
 model_config:
   claude-sonnet-4-20250514:
     provider: anthropic-main
@@ -138,10 +166,25 @@ model_config:
     max_tokens: 4096
     temperature: 0.5                # Lower temperature for more deterministic output
 
+  claude-3-5-haiku-latest:
+    provider: anthropic-main
+    max_tokens: 4096
+    temperature: 0.8
+
   gpt-4-turbo:
     provider: openai-main
     max_tokens: 4096
     temperature: 0.7
+
+  gpt-4o:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.7
+
+  gpt-4o-mini:
+    provider: openai-main
+    max_tokens: 4096
+    temperature: 0.8
 
   # Azure-hosted model
   azure-gpt-4:
@@ -149,11 +192,29 @@ model_config:
     max_tokens: 4096
     temperature: 0.7
 
+  # Google Gemini model
+  gemini-1.5-pro:
+    provider: google-gemini
+    max_tokens: 8192
+    temperature: 0.7
+
   # Local Ollama model
   llama3:
     provider: local-ollama
     max_tokens: 4096
     temperature: 0.8
+
+  # DeepSeek
+  deepseek-chat:
+    provider: deepseek
+    max_tokens: 4096
+    temperature: 0.7
+
+  # Groq (LLaMA)
+  llama-3.1-70b-versatile:
+    provider: groq
+    max_tokens: 4096
+    temperature: 0.7
 ```
 
 ## Model Capabilities
@@ -195,6 +256,8 @@ model_capabilities:
     cost_per_1k_output: 0.0006
 ```
 
+These capabilities can be used by agents to intelligently select models based on task requirements.
+
 ## Popular Models Reference
 
 ### Anthropic Models
@@ -221,6 +284,15 @@ model_capabilities:
 | `gemini-1.5-pro` | 2M | $1.25/1M | $5/1M | Large context |
 | `gemini-1.5-flash` | 1M | $0.075/1M | $0.3/1M | Fast |
 
+### Local Models (Ollama)
+
+| Model | Context | Cost | Notes |
+|-------|---------|------|-------|
+| `llama3` | 8K | Free | Open-source |
+| `llama3.1` | 128K | Free | Extended context |
+| `mistral` | 32K | Free | Fast |
+| `codellama` | 16K | Free | Code-focused |
+
 ## Using Models with Aliases
 
 Instead of remembering full model names, use [aliases](./aliases):
@@ -242,6 +314,18 @@ Common alias conventions:
 | `best` | claude-opus-4-20250514 | Maximum quality |
 | `code` | claude-sonnet-4-20250514 | Coding tasks |
 | `chat` | claude-3-5-haiku-latest | Casual conversation |
+
+## Agent Integration
+
+Models can be configured per-agent:
+
+```bash
+# Set model for specific agent
+viben agent config -n my-agent set model claude-sonnet-4-20250514
+
+# Or use an alias
+viben agent config -n my-agent set model smart
+```
 
 ## JSON Output
 
@@ -268,6 +352,32 @@ viben model list --json
         "provider": "openai-main",
         "context_window": 128000,
         "status": "available"
+      }
+    ]
+  }
+}
+```
+
+```bash
+viben model status --json
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "default": "claude-sonnet-4-20250514",
+    "models": [
+      {
+        "name": "claude-sonnet-4-20250514",
+        "provider": "anthropic-main",
+        "status": "available"
+      },
+      {
+        "name": "local-llama",
+        "provider": "local-ollama",
+        "status": "offline",
+        "error": "Provider not running"
       }
     ]
   }
