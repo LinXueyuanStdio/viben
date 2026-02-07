@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { ActivityItem } from '@/lib/admin/stats';
@@ -17,20 +20,13 @@ const actionColors: Record<string, string> = {
   unban: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
 };
 
-const entityTypeIcons: Record<string, string> = {
-  mcp: 'MCP',
-  skill: 'Skill',
-  comment: 'Comment',
-  collection: 'Collection',
-  user: 'User',
-  report: 'Report',
-};
-
 export function RecentActivityList({ activities }: RecentActivityListProps) {
+  const { t } = useTranslation();
+
   if (activities.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
-        No recent activity
+        {t('dashboard.admin.noRecentActivity')}
       </div>
     );
   }
@@ -51,15 +47,15 @@ export function RecentActivityList({ activities }: RecentActivityListProps) {
                   actionColors[activity.action] ?? 'bg-gray-100 text-gray-800'
                 )}
               >
-                {activity.action}
+                {t(`dashboard.admin.actions.${activity.action}`, { defaultValue: activity.action })}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                {entityTypeIcons[activity.entityType] ?? activity.entityType}
+                {t(`dashboard.admin.entityTypes.${activity.entityType}`, { defaultValue: activity.entityType })}
               </span>
             </div>
             <p className="text-sm font-medium">{activity.entityName}</p>
             <p className="text-xs text-muted-foreground">
-              by @{activity.adminName}
+              {t('dashboard.admin.byAdmin', { name: activity.adminName })}
             </p>
           </div>
           <time className="text-xs text-muted-foreground whitespace-nowrap">

@@ -131,7 +131,57 @@
     "mon": "Mon",
     "wed": "Wed",
     "fri": "Fri",
-    "dateRequests": "{{date}}: {{count}} requests"
+    "dateRequests": "{{date}}: {{count}} requests",
+    "admin": {
+      "title": "Admin Dashboard",
+      "subtitle": "Platform overview and moderation queue",
+      "pendingPackages": "Pending Packages",
+      "openReports": "Open Reports",
+      "todayActions": "Today's Actions",
+      "totalUsers": "Total Users",
+      "recentModeration": "Recent Moderation",
+      "pendingQueue": "Pending Queue",
+      "noRecentActivity": "No recent activity",
+      "noPendingItems": "No pending items",
+      "byAdmin": "by @{{name}}",
+      "byAuthor": "by @{{author}}",
+      "actions": {
+        "approve": "approve",
+        "reject": "reject",
+        "feature": "feature",
+        "unfeature": "unfeature",
+        "delete": "delete",
+        "warn": "warn",
+        "ban": "ban",
+        "unban": "unban"
+      },
+      "entityTypes": {
+        "mcp": "MCP",
+        "skill": "Skill",
+        "comment": "Comment",
+        "collection": "Collection",
+        "user": "User",
+        "report": "Report"
+      }
+    },
+    "analytics": {
+      "title": "Analytics",
+      "subtitle": "Track your packages' performance",
+      "totalPackages": "Total Packages",
+      "totalPackagesDesc": "MCP servers and skills published",
+      "totalDownloads": "Total Downloads",
+      "totalDownloadsDesc": "All-time downloads",
+      "totalFavorites": "Total Favorites",
+      "totalFavoritesDesc": "Users who favorited your packages",
+      "avgPerPackage": "Avg per Package",
+      "avgPerPackageDesc": "Average downloads per package",
+      "downloadsOverTime": "Downloads Over Time",
+      "noDownloadData": "No download data yet",
+      "topMcpServers": "Top MCP Servers",
+      "topSkills": "Top Skills",
+      "noMcpServers": "No MCP servers published yet",
+      "noSkills": "No skills published yet"
+    }
   },
   "settings": {
     "title": "Settings",

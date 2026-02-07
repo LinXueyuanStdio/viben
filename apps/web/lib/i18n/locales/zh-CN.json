@@ -131,7 +131,57 @@
     "mon": "周一",
     "wed": "周三",
     "fri": "周五",
-    "dateRequests": "{{date}}：{{count}} 个请求"
+    "dateRequests": "{{date}}：{{count}} 个请求",
+    "admin": {
+      "title": "管理后台",
+      "subtitle": "平台概览和审核队列",
+      "pendingPackages": "待审核包",
+      "openReports": "未处理举报",
+      "todayActions": "今日操作",
+      "totalUsers": "用户总数",
+      "recentModeration": "最近审核",
+      "pendingQueue": "待处理队列",
+      "noRecentActivity": "暂无最近活动",
+      "noPendingItems": "暂无待处理项目",
+      "byAdmin": "由 @{{name}}",
+      "byAuthor": "由 @{{author}}",
+      "actions": {
+        "approve": "通过",
+        "reject": "拒绝",
+        "feature": "推荐",
+        "unfeature": "取消推荐",
+        "delete": "删除",
+        "warn": "警告",
+        "ban": "封禁",
+        "unban": "解封"
+      },
+      "entityTypes": {
+        "mcp": "MCP",
+        "skill": "技能",
+        "comment": "评论",
+        "collection": "收藏夹",
+        "user": "用户",
+        "report": "举报"
+      }
+    },
+    "analytics": {
+      "title": "数据分析",
+      "subtitle": "追踪您的包的表现",
+      "totalPackages": "包总数",
+      "totalPackagesDesc": "已发布的 MCP 服务器和技能",
+      "totalDownloads": "下载总量",
+      "totalDownloadsDesc": "历史下载总数",
+      "totalFavorites": "收藏总数",
+      "totalFavoritesDesc": "收藏您包的用户数",
+      "avgPerPackage": "平均每包",
+      "avgPerPackageDesc": "平均每包下载量",
+      "downloadsOverTime": "下载趋势",
+      "noDownloadData": "暂无下载数据",
+      "topMcpServers": "热门 MCP 服务器",
+      "topSkills": "热门技能",
+      "noMcpServers": "暂未发布 MCP 服务器",
+      "noSkills": "暂未发布技能"
+    }
   },
   "settings": {
     "title": "设置",
