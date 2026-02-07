@@ -24,9 +24,9 @@
 | [chat-prd.md](./chat-prd.md) | 聊天功能 PRD | ✅ 完成 |
 | [contacts-prd.md](./contacts-prd.md) | 联系人功能 PRD | ✅ 完成 |
 | [agent-team-prd.md](./agent-team-prd.md) | 智能体团队 PRD | ✅ 完成 |
-| chat-spec.md | 聊天功能开发规范 | 📝 待编写 |
-| contacts-spec.md | 联系人功能开发规范 | 📝 待编写 |
-| data-model.md | 数据模型设计 | 📝 待编写 |
+| [chat-spec.md](./chat-spec.md) | 聊天功能开发规范 | ✅ 完成 |
+| [contacts-spec.md](./contacts-spec.md) | 联系人功能开发规范 | ✅ 完成 |
+| [data-model.md](./data-model.md) | 数据模型设计 | ✅ 完成 |
 
 ---
 

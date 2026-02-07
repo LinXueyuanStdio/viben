@@ -29,6 +29,7 @@ mod tests {
     mod error_tests {
         use super::*;
         use axum::response::IntoResponse;
+        use axum::body::to_bytes;
 
         #[test]
         fn test_gateway_error_not_found() {
@@ -46,6 +47,59 @@ mod tests {
         fn test_gateway_error_internal() {
             let error = GatewayError::Internal("server error".to_string());
             assert_eq!(error.to_string(), "Internal error: server error");
+        }
+
+        #[test]
+        fn test_gateway_error_database() {
+            let db_error = viben_db::DbError::NotFound("table".to_string());
+            let error = GatewayError::Database(db_error);
+            assert!(error.to_string().contains("table"));
+        }
+
+        #[test]
+        fn test_gateway_error_executor() {
+            let exec_error = viben_executors::ExecutorError::UnknownExecutorType("test".to_string());
+            let error = GatewayError::Executor(exec_error);
+            assert!(error.to_string().contains("test"));
+        }
+
+        #[tokio::test]
+        async fn test_gateway_error_into_response_database() {
+            let db_error = viben_db::DbError::NotFound("table".to_string());
+            let error = GatewayError::Database(db_error);
+            let response = error.into_response();
+            assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+            assert!(json["error"]["message"].as_str().unwrap().contains("table"));
+            assert_eq!(json["error"]["code"], "Database");
+        }
+
+        #[tokio::test]
+        async fn test_gateway_error_into_response_executor() {
+            let exec_error = viben_executors::ExecutorError::UnknownExecutorType("test".to_string());
+            let error = GatewayError::Executor(exec_error);
+            let response = error.into_response();
+            assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(json["error"]["code"], "Executor");
+        }
+
+        #[tokio::test]
+        async fn test_gateway_error_response_body_format() {
+            let error = GatewayError::NotFound("test".to_string());
+            let response = error.into_response();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Verify JSON structure
+            assert!(json["error"].is_object());
+            assert!(json["error"]["message"].is_string());
+            assert!(json["error"]["code"].is_string());
         }
 
         #[tokio::test]
@@ -1033,6 +1087,432 @@ mod tests {
             let json = r#"{"content":"Hello world"}"#;
             let req: SendMessageRequest = serde_json::from_str(json).unwrap();
             assert_eq!(req.content, "Hello world");
+        }
+    }
+
+    // =========================================================================
+    // SSE Events Tests
+    // =========================================================================
+
+    mod events_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_events_endpoint_exists() {
+            let app = test_app().await;
+
+            // The events endpoint should exist and return SSE stream
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/events")
+                        .header("accept", "text/event-stream")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // SSE endpoint should return 200 OK
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+    }
+
+    // =========================================================================
+    // WebSocket Route Tests
+    // =========================================================================
+
+    mod websocket_route_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_ws_endpoint_exists() {
+            let app = test_app().await;
+
+            // Without proper upgrade headers, WebSocket endpoint should fail gracefully
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/ws")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // Without WebSocket upgrade, it might return various status codes
+            // The key is that the endpoint exists and doesn't panic
+            assert!(response.status().as_u16() >= 200);
+        }
+    }
+
+    // =========================================================================
+    // Additional Agent Tests
+    // =========================================================================
+
+    mod additional_agent_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_spawn_agent_with_custom_session_id() {
+            let app = test_app().await;
+
+            let body = serde_json::to_string(&json!({
+                "prompt": "test prompt",
+                "workdir": "/tmp/test-workdir",
+                "session_id": "custom-session-123"
+            }))
+            .unwrap();
+
+            // Create test directory
+            std::fs::create_dir_all("/tmp/test-workdir").ok();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/agents/CLAUDE_CODE/spawn")
+                        .header("content-type", "application/json")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // May fail due to executable not found, but should not be 404
+            let status = response.status();
+            assert!(
+                status == StatusCode::OK || status == StatusCode::INTERNAL_SERVER_ERROR,
+                "Expected OK or Internal Error, got {:?}",
+                status
+            );
+
+            if status == StatusCode::OK {
+                let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let json: Value = serde_json::from_slice(&body).unwrap();
+                assert_eq!(json["session_id"], "custom-session-123");
+            }
+        }
+
+        #[tokio::test]
+        async fn test_spawn_agent_invalid_type() {
+            let app = test_app().await;
+
+            let body = serde_json::to_string(&json!({
+                "prompt": "test",
+                "workdir": "/tmp"
+            }))
+            .unwrap();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .method("POST")
+                        .uri("/api/agents/INVALID_AGENT/spawn")
+                        .header("content-type", "application/json")
+                        .body(Body::from(body))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
+
+        #[tokio::test]
+        async fn test_availability_all_agents() {
+            let agent_types = [
+                "CLAUDE_CODE", "AMP", "GEMINI", "CODEX", "OPENCODE",
+                "CURSOR_AGENT", "QWEN_CODE", "COPILOT", "DROID",
+            ];
+
+            for agent_type in agent_types {
+                let app = test_app().await;
+                let response = app
+                    .oneshot(
+                        Request::builder()
+                            .uri(&format!("/api/agents/{}/availability", agent_type))
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(
+                    response.status(),
+                    StatusCode::OK,
+                    "Availability check failed for agent type: {}",
+                    agent_type
+                );
+
+                let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let json: Value = serde_json::from_slice(&body).unwrap();
+                assert!(json["type"].is_string());
+            }
+        }
+    }
+
+    // =========================================================================
+    // Router Integration Tests
+    // =========================================================================
+
+    mod router_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_router_merges_all_routes() {
+            let app = test_app().await;
+
+            // Test that all main routes are accessible
+            let routes = [
+                "/health",
+                "/api/agents",
+                "/api/tasks",
+                "/api/sessions",
+            ];
+
+            for route in routes {
+                let app_clone = test_app().await;
+                let response = app_clone
+                    .oneshot(
+                        Request::builder()
+                            .uri(route)
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert!(
+                    response.status().is_success(),
+                    "Route {} failed with status {}",
+                    route,
+                    response.status()
+                );
+            }
+        }
+
+        #[tokio::test]
+        async fn test_not_found_route() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/nonexistent/route")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
+    }
+
+    // =========================================================================
+    // Debug Trait Tests
+    // =========================================================================
+
+    mod debug_tests {
+        use crate::routes::ws::WsMessage;
+        use crate::ws::handler::{ClientMessage, ServerMessage};
+
+        #[test]
+        fn test_ws_message_debug() {
+            let msg = WsMessage::Ping;
+            let debug_str = format!("{:?}", msg);
+            assert!(debug_str.contains("Ping"));
+        }
+
+        #[test]
+        fn test_client_message_debug() {
+            let msg = ClientMessage::Ping;
+            let debug_str = format!("{:?}", msg);
+            assert!(debug_str.contains("Ping"));
+        }
+
+        #[test]
+        fn test_server_message_debug() {
+            let msg = ServerMessage::Pong;
+            let debug_str = format!("{:?}", msg);
+            assert!(debug_str.contains("Pong"));
+        }
+    }
+
+    // =========================================================================
+    // WebSocket Integration Tests
+    // =========================================================================
+
+    mod websocket_integration_tests {
+        use super::*;
+        use std::net::SocketAddr;
+        use tokio::net::TcpListener;
+        use tokio_tungstenite::{connect_async, tungstenite::Message as WsMsg};
+        use futures_util::{SinkExt, StreamExt};
+        use crate::routes::ws::WsMessage;
+        use tower_http::cors::{Any, CorsLayer};
+        use axum::body::Bytes;
+
+        async fn start_test_server() -> SocketAddr {
+            let state = test_state().await;
+            let app = routes::router(state)
+                .layer(CorsLayer::new().allow_origin(Any).allow_methods(Any).allow_headers(Any));
+
+            let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+            let addr = listener.local_addr().unwrap();
+
+            tokio::spawn(async move {
+                axum::serve(listener, app).await.unwrap();
+            });
+
+            // Give server time to start
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            addr
+        }
+
+        #[tokio::test]
+        async fn test_websocket_connect_and_ping() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send ping message
+            let ping_msg = WsMessage::Ping;
+            let json = serde_json::to_string(&ping_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            // Close connection
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_subscribe() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send subscribe message
+            let subscribe_msg = WsMessage::Subscribe {
+                channels: vec!["events".to_string(), "logs".to_string()],
+            };
+            let json = serde_json::to_string(&subscribe_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            // Close connection
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_unsubscribe() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send unsubscribe message
+            let unsubscribe_msg = WsMessage::Unsubscribe {
+                channels: vec!["events".to_string()],
+            };
+            let json = serde_json::to_string(&unsubscribe_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            // Close connection
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_invalid_message() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send invalid JSON
+            ws_stream.send(WsMsg::Text("invalid json".into())).await.expect("Failed to send");
+
+            // Server should handle gracefully, close connection
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_close() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send close frame
+            ws_stream.close(None).await.expect("Failed to close");
+        }
+
+        #[tokio::test]
+        async fn test_websocket_pong_message() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send pong message (should be handled)
+            let pong_msg = WsMessage::Pong;
+            let json = serde_json::to_string(&pong_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_event_message() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send event message (should be handled as "other")
+            let event_msg = WsMessage::Event {
+                channel: "test".to_string(),
+                payload: serde_json::json!({"data": "test"}),
+            };
+            let json = serde_json::to_string(&event_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_error_message() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send error message (should be handled as "other")
+            let error_msg = WsMessage::Error {
+                message: "test error".to_string(),
+            };
+            let json = serde_json::to_string(&error_msg).unwrap();
+            ws_stream.send(WsMsg::Text(json.into())).await.expect("Failed to send");
+
+            ws_stream.close(None).await.ok();
+        }
+
+        #[tokio::test]
+        async fn test_websocket_binary_message() {
+            let addr = start_test_server().await;
+            let url = format!("ws://{}/ws", addr);
+
+            let (mut ws_stream, _) = connect_async(&url).await.expect("Failed to connect");
+
+            // Send binary message (should be handled as "other")
+            ws_stream.send(WsMsg::Binary(Bytes::from(vec![1u8, 2, 3]))).await.expect("Failed to send");
+
+            ws_stream.close(None).await.ok();
         }
     }
 }

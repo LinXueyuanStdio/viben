@@ -1,15 +1,14 @@
 /**
  * Workspace Agents Page - WeChat-style layout
  * Left: Agent list
- * Right: Agent detail panel
+ * Right: Agent detail panel with inline editing
  */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   Bot,
   Plus,
   Trash2,
-  RefreshCw,
   Loader2,
   Star,
   Search,
@@ -22,6 +21,12 @@ import {
   Code2,
   ChevronDown,
   MoreHorizontal,
+  Server,
+  Wrench,
+  Save,
+  X,
+  Check,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +35,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +51,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { useLocalWorkspaces, useVibenAgents, useVibenModels } from "@/hooks";
@@ -116,9 +129,9 @@ export function WorkspaceAgentsPage() {
     agents,
     defaultAgentId,
     loading: loadingAgents,
-    error,
     createAgent,
     removeAgent,
+    updateAgent,
     setDefaultAgent,
     refresh: refreshAgents,
   } = useVibenAgents();
@@ -196,7 +209,7 @@ export function WorkspaceAgentsPage() {
   };
 
   // Copy agent
-  const handleCopyAgent = async (agentId: string, agentName: string) => {
+  const handleCopyAgent = async (_agentId: string, agentName: string) => {
     try {
       const newAgent = await createAgent({
         name: `${agentName} (副本)`,
@@ -395,7 +408,7 @@ export function WorkspaceAgentsPage() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEditAgent(agent.id)}>
                           <Settings2 className="h-4 w-4 mr-2" />
-                          {t("common.edit")}
+                          {t("settingsAgents.configuration")}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleCopyAgent(agent.id, agent.name)}>
                           <Copy className="h-4 w-4 mr-2" />
@@ -429,9 +442,10 @@ export function WorkspaceAgentsPage() {
               agent={selectedAgent}
               isDefault={selectedAgent.id === defaultAgentId}
               models={models}
-              onEdit={() => handleEditAgent(selectedAgent.id)}
+              onUpdate={updateAgent}
               onSetDefault={() => setDefaultAgent(selectedAgent.id)}
               onDelete={() => handleDeleteAgent(selectedAgent.id, selectedAgent.name)}
+              onNavigateToEdit={() => handleEditAgent(selectedAgent.id)}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -509,7 +523,7 @@ export function WorkspaceAgentsPage() {
 }
 
 // ============================================================================
-// Agent Detail Panel
+// Agent Detail Panel with Inline Editing
 // ============================================================================
 
 interface AgentDetailPanelProps {
@@ -528,23 +542,61 @@ interface AgentDetailPanelProps {
     updated_at: string;
   };
   isDefault: boolean;
-  models: { id: string; name: string; provider: string }[];
-  onEdit: () => void;
+  models: { id: string; name: string; provider: string; enabled: boolean }[];
+  onUpdate: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
   onSetDefault: () => void;
   onDelete: () => void;
+  onNavigateToEdit: () => void;
 }
 
 function AgentDetailPanel({
   agent,
   isDefault,
   models,
-  onEdit,
+  onUpdate,
   onSetDefault,
   onDelete,
+  onNavigateToEdit,
 }: AgentDetailPanelProps) {
   const { t } = useTranslation();
 
+  // Inline editing states
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editName, setEditName] = useState(agent.name);
+  const [editDescription, setEditDescription] = useState(agent.description || "");
+  const [editSystemPrompt, setEditSystemPrompt] = useState(agent.system_prompt || "");
+  const [editTemperature, setEditTemperature] = useState(agent.temperature ?? 0.7);
+  const [editMaxTokens, setEditMaxTokens] = useState(agent.max_tokens?.toString() || "");
+  const [saving, setSaving] = useState(false);
+
+  // Reset edit states when agent changes
+  useEffect(() => {
+    setEditName(agent.name);
+    setEditDescription(agent.description || "");
+    setEditSystemPrompt(agent.system_prompt || "");
+    setEditTemperature(agent.temperature ?? 0.7);
+    setEditMaxTokens(agent.max_tokens?.toString() || "");
+    setEditingField(null);
+  }, [agent.id]);
+
+  const enabledModels = models.filter((m) => m.enabled);
   const agentModel = models.find((m) => m.id === agent.model);
+
+  const handleSave = async (field: string, value: unknown) => {
+    setSaving(true);
+    try {
+      await onUpdate(agent.id, { [field]: value });
+      setEditingField(null);
+    } catch (err) {
+      console.error("Failed to update agent:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleModelChange = async (modelId: string) => {
+    await handleSave("model", modelId);
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -557,18 +609,104 @@ function AgentDetailPanel({
                 {agent.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-semibold">{agent.name}</h2>
-                {isDefault && (
-                  <span className="inline-flex items-center gap-1 text-xs bg-yellow-500/10 text-yellow-600 px-2 py-0.5 rounded-full">
-                    <Star className="h-3 w-3 fill-current" />
-                    {t("common.default")}
-                  </span>
-                )}
-              </div>
-              {agent.description && (
-                <p className="text-muted-foreground mt-1">{agent.description}</p>
+            <div className="flex-1 min-w-0">
+              {/* Editable Name */}
+              {editingField === "name" ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="h-8 text-lg font-semibold"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSave("name", editName);
+                      if (e.key === "Escape") setEditingField(null);
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleSave("name", editName)}
+                    disabled={saving}
+                  >
+                    <Check className="h-4 w-4 text-green-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setEditingField(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group">
+                  <h2 className="text-xl font-semibold">{agent.name}</h2>
+                  {isDefault && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-yellow-500/10 text-yellow-600 px-2 py-0.5 rounded-full">
+                      <Star className="h-3 w-3 fill-current" />
+                      {t("common.default")}
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setEditingField("name")}
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Editable Description */}
+              {editingField === "description" ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    className="h-7 text-sm"
+                    placeholder={t("settingsAgents.descriptionPlaceholder")}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSave("description", editDescription || null);
+                      if (e.key === "Escape") setEditingField(null);
+                    }}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleSave("description", editDescription || null)}
+                    disabled={saving}
+                  >
+                    <Check className="h-3 w-3 text-green-500" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => setEditingField(null)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 group mt-1">
+                  <p className="text-muted-foreground text-sm">
+                    {agent.description || t("settingsAgents.descriptionPlaceholder")}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setEditingField("description")}
+                  >
+                    <Pencil className="h-2.5 w-2.5" />
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -579,9 +717,9 @@ function AgentDetailPanel({
                 {t("agents.setDefault")}
               </Button>
             )}
-            <Button size="sm" onClick={onEdit}>
+            <Button size="sm" onClick={onNavigateToEdit}>
               <Settings2 className="h-4 w-4 mr-2" />
-              {t("common.edit")}
+              {t("settingsAgents.configuration")}
             </Button>
           </div>
         </div>
@@ -590,112 +728,238 @@ function AgentDetailPanel({
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-6">
-          {/* Model & Provider */}
+          {/* Model Selection */}
           <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
               {t("workspace.createTaskDialog.model")}
             </h3>
             <Card>
               <CardContent className="p-4">
-                {agentModel ? (
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{agentModel.name}</p>
-                      <p className="text-sm text-muted-foreground">{agentModel.provider}</p>
+                <Select value={agent.model || ""} onValueChange={handleModelChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t("settingsAgents.selectModel")}>
+                      {agentModel ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded bg-primary/10 flex items-center justify-center">
+                            <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <span>{agentModel.name}</span>
+                          <span className="text-xs text-muted-foreground">({agentModel.provider})</span>
+                        </div>
+                      ) : (
+                        t("settingsAgents.selectModel")
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {enabledModels.length === 0 ? (
+                      <div className="p-3 text-sm text-muted-foreground text-center">
+                        {t("chat.noModels")}
+                      </div>
+                    ) : (
+                      enabledModels.map((model) => (
+                        <SelectItem key={model.id} value={model.id}>
+                          <div className="flex items-center gap-2">
+                            <span>{model.name}</span>
+                            <span className="text-xs text-muted-foreground">({model.provider})</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </CardContent>
+            </Card>
+          </section>
+
+          {/* System Prompt */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                {t("settingsAgents.systemPrompt")}
+              </h3>
+              {editingField !== "system_prompt" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingField("system_prompt")}
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  {t("common.edit")}
+                </Button>
+              )}
+            </div>
+            <Card>
+              <CardContent className="p-4">
+                {editingField === "system_prompt" ? (
+                  <div className="space-y-3">
+                    <Textarea
+                      value={editSystemPrompt}
+                      onChange={(e) => setEditSystemPrompt(e.target.value)}
+                      placeholder={t("settingsAgents.systemPromptPlaceholder")}
+                      className="min-h-[200px] font-mono text-sm"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingField(null)}
+                      >
+                        {t("common.cancel")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleSave("system_prompt", editSystemPrompt || null)}
+                        disabled={saving}
+                      >
+                        {saving && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                        <Save className="h-3 w-3 mr-1" />
+                        {t("common.save")}
+                      </Button>
                     </div>
                   </div>
+                ) : agent.system_prompt ? (
+                  <pre className="text-sm whitespace-pre-wrap font-mono bg-muted/50 p-3 rounded-lg max-h-48 overflow-auto">
+                    {agent.system_prompt}
+                  </pre>
                 ) : (
-                  <p className="text-muted-foreground text-sm">
-                    {agent.model || t("common.notConfigured")}
+                  <p className="text-sm text-muted-foreground italic">
+                    {t("settingsAgents.systemPromptPlaceholder")}
                   </p>
                 )}
               </CardContent>
             </Card>
           </section>
 
-          {/* System Prompt */}
-          {agent.system_prompt && (
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                System Prompt
-              </h3>
-              <Card>
-                <CardContent className="p-4">
-                  <pre className="text-sm whitespace-pre-wrap font-mono bg-muted/50 p-3 rounded-lg max-h-48 overflow-auto">
-                    {agent.system_prompt}
-                  </pre>
-                </CardContent>
-              </Card>
-            </section>
-          )}
-
           {/* Parameters */}
           <section>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
               {t("inspector.parameters")}
             </h3>
             <Card>
-              <CardContent className="p-4 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Temperature</p>
-                  <p className="font-medium">{agent.temperature ?? 0.7}</p>
+              <CardContent className="p-4 space-y-4">
+                {/* Temperature */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Temperature</Label>
+                    <span className="text-sm font-mono text-muted-foreground">
+                      {editingField === "temperature" ? editTemperature.toFixed(2) : (agent.temperature ?? 0.7).toFixed(2)}
+                    </span>
+                  </div>
+                  <Slider
+                    value={[editingField === "temperature" ? editTemperature : (agent.temperature ?? 0.7)]}
+                    min={0}
+                    max={2}
+                    step={0.01}
+                    onValueChange={([val]) => {
+                      setEditTemperature(val);
+                      setEditingField("temperature");
+                    }}
+                    onValueCommit={([val]) => handleSave("temperature", val)}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.temperatureHint")}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Max Tokens</p>
-                  <p className="font-medium">{agent.max_tokens ?? "Auto"}</p>
+
+                {/* Max Tokens */}
+                <div className="space-y-2">
+                  <Label className="text-sm">Max Tokens</Label>
+                  <Input
+                    type="number"
+                    value={editMaxTokens}
+                    onChange={(e) => setEditMaxTokens(e.target.value)}
+                    onBlur={() => {
+                      const val = editMaxTokens ? parseInt(editMaxTokens, 10) : null;
+                      if (val !== agent.max_tokens) {
+                        handleSave("max_tokens", val);
+                      }
+                    }}
+                    placeholder="Auto"
+                    className="h-9"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.maxTokensHint")}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </section>
 
           {/* MCP Servers */}
-          {agent.mcp_servers.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Server className="h-4 w-4" />
                 MCP Servers
               </h3>
-              <Card>
-                <CardContent className="p-4">
+              <Button variant="ghost" size="sm" onClick={onNavigateToEdit}>
+                <Plus className="h-3 w-3 mr-1" />
+                {t("common.configure")}
+              </Button>
+            </div>
+            <Card>
+              <CardContent className="p-4">
+                {agent.mcp_servers.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {agent.mcp_servers.map((server) => (
                       <span
                         key={server}
-                        className="text-sm bg-muted px-2.5 py-1 rounded-full"
+                        className="text-sm bg-muted px-2.5 py-1 rounded-full flex items-center gap-1.5"
                       >
+                        <Server className="h-3 w-3" />
                         {server}
                       </span>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            </section>
-          )}
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    {t("common.notConfigured")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
 
           {/* Skills */}
-          {agent.skills.length > 0 && (
-            <section>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
                 {t("chat.skills")}
               </h3>
-              <Card>
-                <CardContent className="p-4">
+              <Button variant="ghost" size="sm" onClick={onNavigateToEdit}>
+                <Plus className="h-3 w-3 mr-1" />
+                {t("common.configure")}
+              </Button>
+            </div>
+            <Card>
+              <CardContent className="p-4">
+                {agent.skills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {agent.skills.map((skill) => (
                       <span
                         key={skill}
-                        className="text-sm bg-primary/10 text-primary px-2.5 py-1 rounded-full"
+                        className="text-sm bg-primary/10 text-primary px-2.5 py-1 rounded-full flex items-center gap-1.5"
                       >
+                        <Wrench className="h-3 w-3" />
                         {skill}
                       </span>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            </section>
-          )}
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    {t("common.notConfigured")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </section>
 
           {/* Timestamps */}
           <section>

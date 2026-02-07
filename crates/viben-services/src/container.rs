@@ -5,10 +5,12 @@ use std::{
     path::PathBuf,
 };
 
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::RwLock;
 use viben_executors::{CodingAgent, ExecutionEnv, ExecutorError, SpawnedChild, StandardCodingAgentExecutor};
 
 use crate::EventService;
+use crate::events::GatewayEvent;
 
 /// Process state tracking
 #[derive(Debug, Clone)]
@@ -44,7 +46,7 @@ impl ContainerService {
         }
     }
 
-    /// Spawn a new agent process
+    /// Spawn a new agent process and stream its output
     pub async fn spawn_agent(
         &self,
         session_id: &str,
@@ -56,7 +58,7 @@ impl ContainerService {
         let agent_type = format!("{}", agent);
 
         // Spawn the process
-        let child = agent.spawn(workdir, prompt, env).await?;
+        let mut child = agent.spawn(workdir, prompt, env).await?;
 
         // Track the process
         let state = ProcessState {
@@ -71,6 +73,87 @@ impl ContainerService {
 
         // Broadcast event
         self.event_service.agent_spawned(&agent_type, session_id);
+
+        // Spawn a task to read stdout and forward to SSE
+        let session_id_clone = session_id.to_string();
+        let event_service = self.event_service.clone();
+        let agent_type_clone = agent_type.clone();
+
+        if let Some(stdout) = child.child.inner().stdout.take() {
+            tokio::spawn(async move {
+                let reader = BufReader::new(stdout);
+                let mut lines = reader.lines();
+
+                while let Ok(Some(line)) = lines.next_line().await {
+                    // Parse JSON line from claude code --output-format=stream-json
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                        // Extract message type and content
+                        if let Some(msg_type) = json.get("type").and_then(|v| v.as_str()) {
+                            match msg_type {
+                                "assistant" | "text" => {
+                                    if let Some(content) = json.get("content").and_then(|v| v.as_str()) {
+                                        event_service.broadcast(GatewayEvent::SessionMessage {
+                                            session_id: session_id_clone.clone(),
+                                            content: content.to_string(),
+                                            role: "assistant".to_string(),
+                                        });
+                                    }
+                                }
+                                "tool_use" => {
+                                    event_service.broadcast(GatewayEvent::ExecutionLog {
+                                        session_id: session_id_clone.clone(),
+                                        log_type: "tool_use".to_string(),
+                                        content: line.clone(),
+                                    });
+                                }
+                                "tool_result" => {
+                                    event_service.broadcast(GatewayEvent::ExecutionLog {
+                                        session_id: session_id_clone.clone(),
+                                        log_type: "tool_result".to_string(),
+                                        content: line.clone(),
+                                    });
+                                }
+                                "result" => {
+                                    if let Some(content) = json.get("result").and_then(|v| v.as_str()) {
+                                        event_service.broadcast(GatewayEvent::SessionMessage {
+                                            session_id: session_id_clone.clone(),
+                                            content: content.to_string(),
+                                            role: "assistant".to_string(),
+                                        });
+                                    }
+                                }
+                                "error" => {
+                                    if let Some(message) = json.get("message").and_then(|v| v.as_str()) {
+                                        event_service.broadcast(GatewayEvent::Error {
+                                            message: message.to_string(),
+                                            code: Some(session_id_clone.clone()),
+                                        });
+                                    }
+                                }
+                                _ => {
+                                    // Forward raw line as execution log
+                                    event_service.broadcast(GatewayEvent::ExecutionLog {
+                                        session_id: session_id_clone.clone(),
+                                        log_type: msg_type.to_string(),
+                                        content: line.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    } else {
+                        // Non-JSON line, send as raw output
+                        event_service.broadcast(GatewayEvent::ExecutionLog {
+                            session_id: session_id_clone.clone(),
+                            log_type: "output".to_string(),
+                            content: line,
+                        });
+                    }
+                }
+
+                // Process completed
+                event_service.agent_completed(&agent_type_clone, &session_id_clone, true);
+            });
+        }
 
         Ok(child)
     }

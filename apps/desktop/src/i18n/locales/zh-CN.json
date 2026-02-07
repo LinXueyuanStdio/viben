@@ -58,7 +58,9 @@
     "search": "搜索...",
     "selectAll": "全选",
     "selected": "已选",
-    "noResults": "未找到结果"
+    "noResults": "未找到结果",
+    "rename": "重命名",
+    "yesterday": "昨天"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -385,6 +387,9 @@
     "temperatureHint": "较低的值更加专注，较高的值更有创意",
     "maxTokensHint": "响应中的最大令牌数",
     "deleteConfirm": "删除智能体 \"{{name}}\"？此操作无法撤销。",
+    "delete": "删除智能体",
+    "deleteWarning": "此操作无法撤销，所有相关配置将被永久删除。",
+    "selectAgent": "选择一个智能体",
     "createFromTemplate": "从模板创建",
     "createFromTemplateDescription": "基于现有模板创建新的智能体",
     "selectTemplate": "选择模板",
@@ -1543,6 +1548,15 @@
     "sidebar.mcpTools": "MCP 工具",
     "sidebar.builtinTools": "内置工具",
     "sidebar.calls": "次调用",
+    "newConversation": "新对话",
+    "searchConversations": "搜索对话...",
+    "noConversations": "暂无对话",
+    "startConversation": "开始新对话",
+    "defaultAgent": "默认智能体",
+    "noAgentSelected": "未选择智能体",
+    "agentSettings": "智能体设置",
+    "fullSettings": "完整设置",
+    "defaultModel": "默认模型",
     "agentInput": {
       "placeholder": "从任何想法开始... 按 ⌘ ↵ 换行...",
       "searchModels": "搜索模型...",

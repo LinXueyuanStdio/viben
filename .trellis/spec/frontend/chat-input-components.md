@@ -41,7 +41,16 @@ export interface ChatInputProps {
   /** 启用全屏写作模式 */
   enableWritingMode?: boolean;
 
-  // 智能体/模型选择 (用于配置栏)
+  // 全局配置模式
+  /**
+   * 使用 useChatConfig hook 的全局配置。
+   * 启用时，智能体/模型从全局 store 加载，
+   * 选择器显隐由当前路由上下文决定。
+   * Props 覆盖仍可用于灵活性。
+   */
+  useGlobalConfig?: boolean;
+
+  // 智能体/模型选择 (用于配置栏，props 覆盖优先于全局配置)
   agents?: Array<{ id: string; name: string }>;
   selectedAgentId?: string | null;
   onAgentChange?: (agentId: string) => void;
@@ -458,7 +467,61 @@ interface ContextDetailsPopoverProps {
 
 ---
 
+## 全局配置模式
+
+### useChatConfig Hook
+
+当 `useGlobalConfig` prop 为 true 时，ChatInput 使用 `useChatConfig` hook 来获取智能体/模型列表和控制选择器显隐。
+
+**Hook 特性**:
+- 从全局 store 加载智能体和模型列表
+- 根据当前路由上下文决定选择器显隐
+- Props 覆盖优先于全局配置
+
+**路由上下文检测**:
+
+| 路由模式 | 上下文类型 | 智能体选择器 | 模型选择器 |
+|---------|----------|------------|----------|
+| `/agents/:id` | agent-debug | 隐藏 | 隐藏 |
+| `/workspace/:id/chat` | workspace | 显示 | 显示 |
+| 其他路由 | default | 显示 | 显示 |
+
+**使用示例**:
+
+```tsx
+// 使用全局配置（自动加载智能体/模型，自动检测路由上下文）
+<ChatInput
+  onSend={handleSend}
+  showConfigBar
+  useGlobalConfig
+/>
+
+// Props 覆盖（即使启用全局配置，props 优先）
+<ChatInput
+  onSend={handleSend}
+  showConfigBar
+  useGlobalConfig
+  agents={customAgents}  // 覆盖全局智能体列表
+/>
+```
+
+### 相关文件
+
+| 文件 | 说明 |
+|------|------|
+| `types/chat-config.ts` | 类型定义 |
+| `stores/chat-config-store.ts` | Zustand store |
+| `hooks/use-chat-config.ts` | 配置 hook |
+
+---
+
 ## 更新日志
+
+- **2026-02-08**: 实现动态智能体/模型选择 (Phase 3)
+  - 新增 useChatConfig hook 和 chat-config store
+  - 支持路由上下文检测，智能体调试页隐藏选择器
+  - ChatInput 新增 useGlobalConfig prop
+  - Props 覆盖优先于全局配置
 
 - **2026-02-08**: 实现按钮功能组件 (Phase 2)
   - 新增 EmojiPicker 表情选择器
