@@ -112,3 +112,9 @@ export type {
 
 // Workspace Chat
 export { useAgent } from "./use-agent";
+export { useVitePreview } from "./use-vite-preview";
+export type {
+  PreviewStatus,
+  PreviewState,
+  UseVitePreviewReturn,
+} from "./use-vite-preview";

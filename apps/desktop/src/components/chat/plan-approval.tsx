@@ -1,14 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ListChecks,
   Check,
   X,
   Loader2,
-  Circle,
   CheckCircle2,
   XCircle,
-  Clock,
+  Play,
+  Ban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -19,22 +19,56 @@ interface PlanApprovalProps {
   onApprove?: () => void;
   onReject?: () => void;
   isPending?: boolean;
+  isApproving?: boolean;
+  isRejecting?: boolean;
   className?: string;
 }
 
 function StepStatusIcon({ status }: { status: TaskPlanStep["status"] }) {
   switch (status) {
     case "completed":
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      return <Check className="h-3 w-3" />;
     case "in_progress":
-      return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
+      return <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />;
     case "failed":
-      return <XCircle className="h-4 w-4 text-destructive" />;
+      return <X className="h-3 w-3" />;
     case "cancelled":
-      return <XCircle className="h-4 w-4 text-muted-foreground" />;
+      return <X className="h-3 w-3" />;
     case "pending":
     default:
-      return <Circle className="h-4 w-4 text-muted-foreground" />;
+      return null;
+  }
+}
+
+function getStepStatusStyles(status: TaskPlanStep["status"]) {
+  switch (status) {
+    case "completed":
+      return "border-primary bg-primary text-primary-foreground";
+    case "in_progress":
+      return "border-primary bg-primary/10 text-primary";
+    case "failed":
+      return "border-destructive bg-destructive/10 text-destructive";
+    case "cancelled":
+      return "border-muted-foreground/30 bg-muted text-muted-foreground";
+    case "pending":
+    default:
+      return "border-muted-foreground/30 bg-background text-muted-foreground";
+  }
+}
+
+function getStepTextStyles(status: TaskPlanStep["status"]) {
+  switch (status) {
+    case "completed":
+      return "text-muted-foreground";
+    case "in_progress":
+      return "text-foreground font-medium";
+    case "failed":
+      return "text-destructive";
+    case "cancelled":
+      return "text-muted-foreground line-through";
+    case "pending":
+    default:
+      return "text-foreground";
   }
 }
 
@@ -42,15 +76,86 @@ export function PlanApproval({
   plan,
   onApprove,
   onReject,
-  isPending,
+  isPending = false,
+  isApproving = false,
+  isRejecting = false,
   className,
 }: PlanApprovalProps) {
   const { t } = useTranslation();
 
+  // Calculate plan status
   const allCompleted = plan.steps.every((step) => step.status === "completed");
-  const allCancelled = plan.steps.every((step) => step.status === "cancelled");
+  const isCancelled = plan.steps.some((step) => step.status === "cancelled");
   const hasFailure = plan.steps.some((step) => step.status === "failed");
   const isExecuting = plan.steps.some((step) => step.status === "in_progress");
+  const completedCount = plan.steps.filter((step) => step.status === "completed").length;
+  const totalSteps = plan.steps.length;
+
+  // Determine container styles based on state
+  const containerStyles = cn(
+    "rounded-xl border transition-colors",
+    isCancelled && !isPending
+      ? "border-muted-foreground/30 bg-muted/30"
+      : allCompleted && !isPending
+        ? "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/20"
+        : hasFailure
+          ? "border-destructive/30 bg-destructive/5"
+          : "border-primary/30 bg-accent/30"
+  );
+
+  // Get header icon based on state
+  const HeaderIcon = () => {
+    if (isCancelled && !isPending) {
+      return <Ban className="h-4 w-4 text-muted-foreground" />;
+    }
+    if (allCompleted && !isPending) {
+      return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+    }
+    if (hasFailure) {
+      return <XCircle className="h-4 w-4 text-destructive" />;
+    }
+    return <ListChecks className="h-4 w-4 text-primary" />;
+  };
+
+  // Get status badge
+  const StatusBadge = () => {
+    if (isPending) {
+      return (
+        <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">
+          {t("chat.pendingApproval")}
+        </span>
+      );
+    }
+    if (isCancelled) {
+      return (
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+          {t("chat.planCancelled")}
+        </span>
+      );
+    }
+    if (allCompleted) {
+      return (
+        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
+          {t("chat.planCompleted")}
+        </span>
+      );
+    }
+    if (hasFailure) {
+      return (
+        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+          {t("chat.planFailed")}
+        </span>
+      );
+    }
+    if (isExecuting) {
+      return (
+        <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary animate-pulse">
+          {t("chat.planExecuting")}
+        </span>
+      );
+    }
+    return null;
+  };
 
   return (
     <motion.div
@@ -62,83 +167,124 @@ export function PlanApproval({
         <ListChecks className="h-4 w-4 text-primary" />
       </div>
       <div className="flex-1">
-        <div className="rounded-2xl rounded-tl-md border border-primary/30 bg-primary/5 overflow-hidden">
+        <div className={cn(containerStyles, "overflow-hidden")}>
           {/* Header */}
           <div className="px-4 py-3 border-b border-primary/20">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-primary" />
-              <h4 className="font-serif font-semibold text-foreground">
-                {t("chat.executionPlan")}
-              </h4>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <HeaderIcon />
+                <span className="font-serif font-semibold">{t("chat.executionPlan")}</span>
+                <StatusBadge />
+              </div>
+              {/* Progress indicator */}
+              {!isPending && totalSteps > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {completedCount}/{totalSteps}
+                </span>
+              )}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">{plan.goal}</p>
+          </div>
+
+          {/* Goal */}
+          <div className="px-4 py-3 space-y-1 border-b border-primary/10">
+            <p className="text-xs text-muted-foreground">{t("chat.planGoal")}</p>
+            <p className="text-sm text-foreground">{plan.goal}</p>
           </div>
 
           {/* Steps */}
           <div className="px-4 py-3">
-            <ul className="space-y-2">
-              {plan.steps.map((step, index) => (
-                <li key={step.id} className="flex items-start gap-3">
-                  <StepStatusIcon status={step.status} />
-                  <div className="flex-1 min-w-0">
-                    <p
+            <p className="text-xs text-muted-foreground mb-2">
+              {t("chat.stepsCount", { count: totalSteps })}
+            </p>
+            <div className="space-y-2">
+              <AnimatePresence mode="popLayout">
+                {plan.steps.map((step, index) => (
+                  <motion.div
+                    key={step.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="flex items-start gap-2.5"
+                  >
+                    {/* Step number or status indicator */}
+                    <div
                       className={cn(
-                        "text-sm",
-                        step.status === "completed" && "text-green-600 line-through",
-                        step.status === "cancelled" && "text-muted-foreground line-through",
-                        step.status === "failed" && "text-destructive",
-                        step.status === "in_progress" && "text-primary font-medium"
+                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border text-xs font-medium transition-colors",
+                        getStepStatusStyles(step.status)
                       )}
                     >
-                      <span className="text-muted-foreground mr-2">
-                        {index + 1}.
-                      </span>
+                      {step.status === "completed" ||
+                      step.status === "in_progress" ||
+                      step.status === "cancelled" ? (
+                        <StepStatusIcon status={step.status} />
+                      ) : (
+                        index + 1
+                      )}
+                    </div>
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 text-sm leading-snug",
+                        getStepTextStyles(step.status)
+                      )}
+                    >
                       {step.description}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            {plan.notes && (
-              <p className="mt-3 text-xs text-muted-foreground italic">
-                {plan.notes}
-              </p>
-            )}
+                    </span>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
           </div>
 
-          {/* Actions - only show if pending and not executing */}
-          {isPending && !isExecuting && !allCompleted && !allCancelled && (
+          {/* Notes */}
+          {plan.notes && (
+            <div className="px-4 py-3 border-t border-primary/10">
+              <p className="text-xs text-muted-foreground mb-1">{t("chat.planNotes")}</p>
+              <p className="text-sm text-muted-foreground italic">{plan.notes}</p>
+            </div>
+          )}
+
+          {/* Action buttons - only show when waiting for approval */}
+          {isPending && onApprove && onReject && !isExecuting && !allCompleted && !isCancelled && (
             <div className="px-4 py-3 bg-muted/50 border-t border-primary/20">
               <p className="text-sm text-muted-foreground mb-3">
                 {t("chat.planApprovalPrompt")}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  onClick={onReject}
+                  variant="ghost"
+                  size="sm"
+                  disabled={isRejecting || isApproving}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {isRejecting ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4 mr-1.5" />
+                  )}
+                  {t("chat.rejectPlan")}
+                </Button>
                 <Button
                   onClick={onApprove}
                   size="sm"
-                  className="flex-1"
+                  disabled={isApproving || isRejecting}
                 >
-                  <Check className="h-4 w-4 mr-1" />
-                  {t("chat.approvePlan")}
-                </Button>
-                <Button
-                  onClick={onReject}
-                  variant="outline"
-                  size="sm"
-                  className="flex-1"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  {t("chat.rejectPlan")}
+                  {isApproving ? (
+                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4 mr-1.5" />
+                  )}
+                  {t("chat.startExecution")}
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Status indicators */}
-          {allCompleted && (
-            <div className="px-4 py-3 bg-green-500/10 border-t border-green-500/20">
-              <div className="flex items-center gap-2 text-green-600">
+          {/* Completion status footer */}
+          {allCompleted && !isPending && (
+            <div className="px-4 py-3 bg-emerald-500/10 border-t border-emerald-500/20">
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="text-sm font-medium">
                   {t("chat.planCompleted")}
@@ -147,10 +293,11 @@ export function PlanApproval({
             </div>
           )}
 
-          {allCancelled && (
+          {/* Cancelled status footer */}
+          {isCancelled && !isPending && !allCompleted && (
             <div className="px-4 py-3 bg-muted border-t border-border">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <XCircle className="h-4 w-4" />
+                <Ban className="h-4 w-4" />
                 <span className="text-sm font-medium">
                   {t("chat.planCancelled")}
                 </span>
@@ -158,7 +305,8 @@ export function PlanApproval({
             </div>
           )}
 
-          {hasFailure && (
+          {/* Failed status footer */}
+          {hasFailure && !isCancelled && (
             <div className="px-4 py-3 bg-destructive/10 border-t border-destructive/20">
               <div className="flex items-center gap-2 text-destructive">
                 <XCircle className="h-4 w-4" />

@@ -19,6 +19,8 @@ interface ToolExecutionItemProps {
   isExecuting?: boolean;
   isError?: boolean;
   className?: string;
+  /** Compact mode for use within task groups */
+  compact?: boolean;
 }
 
 export function ToolExecutionItem({
@@ -29,6 +31,7 @@ export function ToolExecutionItem({
   isExecuting,
   isError,
   className,
+  compact = false,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -55,6 +58,85 @@ export function ToolExecutionItem({
     error: "text-destructive",
     pending: "text-muted-foreground",
   }[status];
+
+  // Compact mode for use within task groups
+  if (compact) {
+    return (
+      <div className={cn("rounded-lg", className)}>
+        <button
+          type="button"
+          onClick={() => hasDetails && setIsExpanded(!isExpanded)}
+          disabled={!hasDetails}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left",
+            hasDetails && "cursor-pointer hover:bg-accent/50",
+            "transition-colors"
+          )}
+        >
+          <StatusIcon
+            className={cn(
+              "h-3.5 w-3.5 shrink-0",
+              statusColor,
+              status === "executing" && "animate-spin"
+            )}
+          />
+          <span className="text-muted-foreground truncate text-sm">
+            {displayName || name}
+          </span>
+          {hasDetails && (
+            <span className="text-muted-foreground ml-auto shrink-0">
+              {isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </span>
+          )}
+        </button>
+
+        {/* Expandable details */}
+        <AnimatePresence>
+          {isExpanded && hasDetails && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-2 px-3 py-2">
+                {input && (
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-xs font-medium">
+                      {t("chat.toolInput")}
+                    </p>
+                    <pre className="bg-muted max-h-[150px] overflow-x-auto rounded-md p-2 text-xs">
+                      <code>{JSON.stringify(input, null, 2)}</code>
+                    </pre>
+                  </div>
+                )}
+                {output && (
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-xs font-medium">
+                      {t("chat.toolOutput")}
+                    </p>
+                    <pre
+                      className={cn(
+                        "max-h-[150px] overflow-x-auto rounded-md p-2 text-xs",
+                        isError ? "bg-destructive/10 text-destructive" : "bg-muted"
+                      )}
+                    >
+                      <code className="break-all whitespace-pre-wrap">{output}</code>
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
 
   return (
     <motion.div
