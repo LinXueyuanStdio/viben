@@ -68,7 +68,7 @@ export function ToolExecutionItem({
           onClick={() => hasDetails && setIsExpanded(!isExpanded)}
           disabled={!hasDetails}
           className={cn(
-            "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left",
+            "flex w-full items-center gap-2 px-3 py-2 text-left rounded-lg",
             hasDetails && "cursor-pointer hover:bg-accent/50",
             "transition-colors"
           )}
@@ -80,11 +80,11 @@ export function ToolExecutionItem({
               status === "executing" && "animate-spin"
             )}
           />
-          <span className="text-muted-foreground truncate text-sm">
+          <span className="truncate text-sm text-muted-foreground">
             {displayName || name}
           </span>
           {hasDetails && (
-            <span className="text-muted-foreground ml-auto shrink-0">
+            <span className="ml-auto shrink-0 text-muted-foreground">
               {isExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5" />
               ) : (
@@ -104,29 +104,29 @@ export function ToolExecutionItem({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="space-y-2 px-3 py-2">
+              <div className="px-3 py-2 space-y-2">
                 {input && (
                   <div>
-                    <p className="text-muted-foreground mb-1 text-xs font-medium">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolInput")}
                     </p>
-                    <pre className="bg-muted max-h-[150px] overflow-x-auto rounded-md p-2 text-xs">
+                    <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs max-h-[150px]">
                       <code>{JSON.stringify(input, null, 2)}</code>
                     </pre>
                   </div>
                 )}
                 {output && (
                   <div>
-                    <p className="text-muted-foreground mb-1 text-xs font-medium">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolOutput")}
                     </p>
                     <pre
                       className={cn(
-                        "max-h-[150px] overflow-x-auto rounded-md p-2 text-xs",
+                        "overflow-x-auto rounded-md p-2 text-xs max-h-[150px]",
                         isError ? "bg-destructive/10 text-destructive" : "bg-muted"
                       )}
                     >
-                      <code className="break-all whitespace-pre-wrap">{output}</code>
+                      <code className="whitespace-pre-wrap break-all">{output}</code>
                     </pre>
                   </div>
                 )}

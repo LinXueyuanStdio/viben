@@ -6,4 +6,3 @@ export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
 export { RightSidebar } from "./right-sidebar";
 export { VitePreview } from "./vite-preview";
-export type { VitePreviewProps } from "./vite-preview";

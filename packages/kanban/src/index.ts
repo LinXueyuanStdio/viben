@@ -90,20 +90,51 @@ export {
   type RelationshipListProps,
   RelationshipAdd,
   type RelationshipAddProps,
-  // Grouped list system
-  type ListGroup,
-  ListDragHandle,
-  type ListDragHandleProps,
-  GroupedListSection,
-  type GroupedListSectionProps,
-  GroupedListView,
-  type GroupedListViewProps,
-  type DragItemProps,
+  // Quick task input
+  QuickTaskInput,
+  type QuickTaskInputProps,
+  // Editable components
+  EditableCardTitle,
+  type EditableCardTitleProps,
+  EditableText,
+  type EditableTextProps,
+  // Stats system
+  type KanbanStats,
+  type StatCardProps,
+  StatCard,
+  StatsPanel,
+  type StatsPanelProps,
+  // Sort system
+  type SortMode,
+  type SortDirection,
+  type SortConfig,
+  type SortOption,
+  SORT_OPTIONS,
+  SortModeSelect,
+  type SortModeSelectProps,
+  // Command palette system
+  type Command,
+  type CommandCategory,
+  CATEGORY_LABELS,
+  CommandPalette,
+  type CommandPaletteProps,
+  // Collapsible column
+  CollapsibleColumn,
+  type CollapsibleColumnProps,
   // Drag preview
   DragPreview,
   type DragPreviewProps,
   MultiDragOverlay,
   type MultiDragOverlayProps,
+  // Activity feed system
+  type ActivityType,
+  type ActivityActor,
+  type ActivityEvent,
+  ACTIVITY_LABELS,
+  ActivityItem,
+  type ActivityItemProps,
+  ActivityFeed,
+  type ActivityFeedProps,
   // Comment system
   type Comment,
   type CommentAuthor,
@@ -116,34 +147,28 @@ export {
   type CommentItemProps,
   CommentList,
   type CommentListProps,
-  // Activity feed system
-  type ActivityType,
-  type ActivityActor,
-  type ActivityEvent,
-  ACTIVITY_LABELS,
-  ActivityItem,
-  type ActivityItemProps,
-  ActivityFeed,
-  type ActivityFeedProps,
   // Board settings
   type ColumnConfig,
   COLUMN_COLORS,
   BoardSettingsDialog,
   type BoardSettingsDialogProps,
-  ColumnSettingsPanel,
-  type ColumnSettingsPanelProps,
 } from "./components";
 
 // Hooks
 export { useFilteredItems } from "./hooks/use-filtered-items";
 export { useMultiSelect, type MultiSelectState } from "./hooks/use-multi-select";
+export { useSortedItems } from "./hooks/use-sorted-items";
+export { useKanbanStats } from "./hooks/use-kanban-stats";
+export { useCommandPalette } from "./hooks/use-command-palette";
+export { useColumnCollapse } from "./hooks/use-column-collapse";
+export { useKanbanKeyboard } from "./hooks/use-kanban-keyboard";
 export {
-  useGroupedList,
-  useGroupedListWithItems,
-  groupItemsByKey,
-  type UseGroupedListOptions,
-  type UseGroupedListReturn,
-} from "./hooks/use-grouped-list";
+  useKanbanPreferences,
+  type KanbanPreferences,
+  type SavedFilter,
+  type UseKanbanPreferencesOptions,
+  type UseKanbanPreferencesReturn,
+} from "./hooks/use-kanban-preferences";
 export {
   useDragPreview,
   type UseDragPreviewOptions,

@@ -24,7 +24,7 @@ const markdownComponents = {
   // Code blocks
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-muted my-2 max-w-full overflow-x-auto rounded-lg p-4"
+      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2"
       {...props}
     >
       {children}
@@ -40,7 +40,7 @@ const markdownComponents = {
     if (isInline) {
       return (
         <code
-          className="bg-muted rounded px-1.5 py-0.5 font-mono text-sm"
+          className="bg-muted rounded px-1.5 py-0.5 text-sm font-mono"
           {...props}
         >
           {children}
@@ -80,8 +80,8 @@ const markdownComponents = {
   ),
   // Tables
   table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => (
-    <div className="my-2 overflow-x-auto">
-      <table className="border-border w-full border-collapse border" {...props}>
+    <div className="overflow-x-auto my-2">
+      <table className="border-border border-collapse border w-full" {...props}>
         {children}
       </table>
     </div>
@@ -107,28 +107,28 @@ const markdownComponents = {
   ),
   // Headers
   h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h1 className="mb-2 mt-4 text-xl font-bold" {...props}>
+    <h1 className="text-xl font-bold mt-4 mb-2" {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h2 className="mb-2 mt-3 text-lg font-semibold" {...props}>
+    <h2 className="text-lg font-semibold mt-3 mb-2" {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-    <h3 className="mb-1 mt-2 text-base font-semibold" {...props}>
+    <h3 className="text-base font-semibold mt-2 mb-1" {...props}>
       {children}
     </h3>
   ),
   // Lists
   ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="my-2 ml-4 list-disc space-y-1" {...props}>
+    <ul className="list-disc ml-4 my-2 space-y-1" {...props}>
       {children}
     </ul>
   ),
   ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => (
-    <ol className="my-2 ml-4 list-decimal space-y-1" {...props}>
+    <ol className="list-decimal ml-4 my-2 space-y-1" {...props}>
       {children}
     </ol>
   ),
@@ -143,7 +143,7 @@ const markdownComponents = {
     ...props
   }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
     <blockquote
-      className="border-primary/30 text-muted-foreground my-2 border-l-4 pl-4 italic"
+      className="border-l-4 border-primary/30 pl-4 my-2 italic text-muted-foreground"
       {...props}
     >
       {children}
@@ -157,7 +157,7 @@ const markdownComponents = {
 function AttachmentPreview({ attachment }: { attachment: MessageAttachment }) {
   if (attachment.type === "image" && attachment.data) {
     return (
-      <div className="mt-2 overflow-hidden rounded-lg border border-border">
+      <div className="mt-2 overflow-hidden rounded-lg border border-border/50">
         <img
           src={attachment.data}
           alt={attachment.name}
@@ -168,14 +168,119 @@ function AttachmentPreview({ attachment }: { attachment: MessageAttachment }) {
   }
 
   return (
-    <div className="mt-2 flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm">
+    <div className="mt-2 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/50 px-3 py-2 text-sm">
       {attachment.type === "image" ? (
         <ImageIcon className="h-4 w-4 text-muted-foreground" />
       ) : (
         <FileText className="h-4 w-4 text-muted-foreground" />
       )}
-      <span>{attachment.name}</span>
+      <span className="truncate">{attachment.name}</span>
     </div>
+  );
+}
+
+/**
+ * User message bubble
+ */
+function UserMessage({
+  content,
+  attachments,
+}: {
+  content: string;
+  attachments?: MessageAttachment[];
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex justify-end"
+    >
+      <div className="flex max-w-[80%] gap-3">
+        <div className="flex flex-col items-end">
+          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
+            <p className="whitespace-pre-wrap text-sm">{content}</p>
+            {attachments?.map((attachment) => (
+              <AttachmentPreview key={attachment.id} attachment={attachment} />
+            ))}
+          </div>
+        </div>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <User className="h-4 w-4 text-primary" />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Error message display
+ */
+function ErrorMessage({ errorMessage }: { errorMessage: string }) {
+  const { t } = useTranslation();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
+        <AlertCircle className="h-4 w-4 text-destructive" />
+      </div>
+      <div className="flex-1">
+        <div className="rounded-2xl rounded-tl-md border border-destructive/20 bg-destructive/5 px-4 py-3">
+          <p className="text-sm font-medium text-destructive">
+            {t("chat.error")}
+          </p>
+          <p className="mt-1 text-sm text-destructive/80">{errorMessage}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Assistant text message with markdown rendering
+ */
+function AssistantMessage({
+  content,
+  isResult,
+  isStreaming,
+}: {
+  content: string;
+  isResult?: boolean;
+  isStreaming?: boolean;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
+        <Bot className="h-4 w-4 text-secondary-foreground" />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div
+          className={cn(
+            "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3",
+            isResult && "border-primary/30 bg-primary/5"
+          )}
+        >
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {content || ""}
+            </ReactMarkdown>
+          </div>
+          {isStreaming && (
+            <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
+          )}
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -186,57 +291,23 @@ export function MessageItem({
   onRejectPlan,
   isPlanPending,
 }: MessageItemProps) {
-  const { t } = useTranslation();
-
   // User message
   if (message.type === "user") {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex justify-end"
-      >
-        <div className="flex max-w-[80%] gap-3">
-          <div className="flex flex-col items-end">
-            <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
-              <p className="whitespace-pre-wrap">{message.content}</p>
-              {message.attachments?.map((attachment) => (
-                <AttachmentPreview key={attachment.id} attachment={attachment} />
-              ))}
-            </div>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <User className="h-4 w-4 text-primary" />
-          </div>
-        </div>
-      </motion.div>
+      <UserMessage
+        content={message.content || ""}
+        attachments={message.attachments}
+      />
     );
   }
 
   // Error message
   if (message.type === "error") {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex gap-3"
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-          <AlertCircle className="h-4 w-4 text-destructive" />
-        </div>
-        <div className="flex-1">
-          <div className="rounded-2xl rounded-tl-md border border-destructive/20 bg-destructive/5 px-4 py-3">
-            <p className="text-sm font-medium text-destructive">
-              {t("chat.error")}
-            </p>
-            <p className="mt-1 text-sm text-destructive/80">{message.message}</p>
-          </div>
-        </div>
-      </motion.div>
-    );
+    return <ErrorMessage errorMessage={message.message || ""} />;
   }
 
-  // Tool use message
+  // Tool use message - handled by task groups in MessageList
+  // Only render standalone if not grouped
   if (message.type === "tool_use") {
     return (
       <ToolExecutionItem
@@ -247,7 +318,7 @@ export function MessageItem({
     );
   }
 
-  // Tool result message
+  // Tool result message - handled by task groups in MessageList
   if (message.type === "tool_result") {
     return (
       <ToolExecutionItem
@@ -272,34 +343,10 @@ export function MessageItem({
 
   // Text/Result message from agent
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3"
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
-        <Bot className="h-4 w-4 text-secondary-foreground" />
-      </div>
-      <div className="min-w-0 flex-1 overflow-hidden">
-        <div
-          className={cn(
-            "border-border bg-card rounded-2xl rounded-tl-md border px-4 py-3",
-            message.type === "result" && "border-primary/30 bg-primary/5"
-          )}
-        >
-          <div className="prose prose-sm dark:prose-invert text-foreground max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={markdownComponents}
-            >
-              {message.content || ""}
-            </ReactMarkdown>
-          </div>
-          {isStreaming && (
-            <span className="bg-primary ml-1 inline-block h-4 w-1 animate-pulse" />
-          )}
-        </div>
-      </div>
-    </motion.div>
+    <AssistantMessage
+      content={message.content || ""}
+      isResult={message.type === "result"}
+      isStreaming={isStreaming}
+    />
   );
 }
