@@ -24,3 +24,6 @@ pub mod workspace_sync;
 pub mod viben_agents;
 pub mod viben_models;
 pub mod viben_providers;
+
+// Live preview module
+pub mod vite_preview;
