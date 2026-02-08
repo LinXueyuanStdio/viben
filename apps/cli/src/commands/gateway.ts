@@ -141,6 +141,124 @@ export async function startGateway(
 }
 
 /**
+ * Find process using a specific port
+ */
+async function findProcessOnPort(port: number): Promise<number | null> {
+  const { execSync } = await import('child_process');
+  try {
+    // Use lsof on macOS/Linux to find process using the port
+    const result = execSync(`lsof -ti :${port} 2>/dev/null`, { encoding: 'utf-8' });
+    const pid = parseInt(result.trim().split('\n')[0], 10);
+    return isNaN(pid) ? null : pid;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Kill process on a specific port
+ */
+async function killProcessOnPort(port: number, ctx: OutputContext): Promise<boolean> {
+  const pid = await findProcessOnPort(port);
+  if (!pid) {
+    return true; // No process to kill
+  }
+
+  if (!ctx.quiet) {
+    console.log(`Found process ${pid} on port ${port}, stopping...`);
+  }
+
+  try {
+    process.kill(pid, 'SIGTERM');
+    // Wait a bit for graceful shutdown
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Check if still running
+    const stillRunning = await findProcessOnPort(port);
+    if (stillRunning) {
+      if (!ctx.quiet) {
+        console.log(`Process still running, force killing...`);
+      }
+      process.kill(pid, 'SIGKILL');
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ESRCH') {
+      return true; // Process already gone
+    }
+    console.error(`Failed to kill process ${pid}: ${(err as Error).message}`);
+    return false;
+  }
+}
+
+/**
+ * Stop gateway
+ */
+export async function stopGateway(
+  options: { port?: number },
+  ctx: OutputContext
+): Promise<boolean> {
+  const port = options.port || parseInt(process.env.VIBEN_GATEWAY_PORT || '18790', 10);
+
+  const pid = await findProcessOnPort(port);
+  if (!pid) {
+    output(
+      ctx,
+      successResponse({ status: 'not_running' }),
+      () => {
+        console.log(`No gateway running on port ${port}`);
+      }
+    );
+    return true;
+  }
+
+  const killed = await killProcessOnPort(port, ctx);
+  if (killed) {
+    output(
+      ctx,
+      successResponse({ status: 'stopped', pid }),
+      () => {
+        console.log(`Gateway stopped (was PID ${pid})`);
+      }
+    );
+  } else {
+    output(
+      ctx,
+      errorResponse('STOP_FAILED', `Failed to stop gateway on port ${port}`),
+      () => {
+        console.error(`Failed to stop gateway on port ${port}`);
+      }
+    );
+  }
+  return killed;
+}
+
+/**
+ * Restart gateway
+ */
+export async function restartGateway(
+  options: GatewayOptions,
+  ctx: OutputContext
+): Promise<void> {
+  const port = options.port || parseInt(process.env.VIBEN_GATEWAY_PORT || '18790', 10);
+
+  if (!ctx.quiet) {
+    console.log(`Restarting gateway on port ${port}...`);
+  }
+
+  // Stop existing gateway
+  await stopGateway({ port }, ctx);
+
+  // Wait a bit for port to be released
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  // Start new gateway
+  await startGateway(options, ctx);
+}
+
+/**
  * Check gateway status
  */
 export async function gatewayStatus(ctx: OutputContext): Promise<void> {
@@ -202,6 +320,36 @@ export function registerGatewayCommand(program: Command): void {
     .action(async (options) => {
       const ctx = program.opts() as OutputContext;
       await startGateway(
+        {
+          host: options.host,
+          port: parseInt(options.port, 10),
+          logLevel: options.logLevel,
+        },
+        ctx
+      );
+    });
+
+  gateway
+    .command('stop')
+    .description('Stop the running gateway')
+    .option('-p, --port <port>', 'Port to stop', '18790')
+    .action(async (options) => {
+      const ctx = program.opts() as OutputContext;
+      await stopGateway(
+        { port: parseInt(options.port, 10) },
+        ctx
+      );
+    });
+
+  gateway
+    .command('restart')
+    .description('Restart the gateway (stop then start)')
+    .option('-H, --host <host>', 'Host to bind to', '127.0.0.1')
+    .option('-p, --port <port>', 'Port to listen on', '18790')
+    .option('-l, --log-level <level>', 'Log level (debug, info, warn, error)', 'info')
+    .action(async (options) => {
+      const ctx = program.opts() as OutputContext;
+      await restartGateway(
         {
           host: options.host,
           port: parseInt(options.port, 10),

@@ -77,6 +77,7 @@ impl PtyService {
         let session_id = Uuid::new_v4();
         let (output_tx, output_rx) = mpsc::unbounded_channel();
         let shell = get_interactive_shell().await;
+        let working_dir_display = working_dir.clone();
 
         let result = tokio::task::spawn_blocking(move || {
             let pty_system = NativePtySystem::default();
@@ -174,7 +175,7 @@ impl PtyService {
             .map_err(|e| PtyError::CreateFailed(e.to_string()))?
             .insert(session_id, session);
 
-        tracing::info!("Created PTY session {} in {:?}", session_id, working_dir);
+        tracing::info!("Created PTY session {} in {:?}", session_id, working_dir_display);
 
         Ok((session_id, output_rx))
     }

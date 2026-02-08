@@ -187,7 +187,7 @@ impl EventService {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             // Check if this patch is task-related
                             if let Some(op) = patch.0.first() {
-                                if op.path().starts_with("/tasks") {
+                                if op.path().as_str().starts_with("/tasks") {
                                     return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
@@ -239,7 +239,7 @@ impl EventService {
                         Ok(LogMsg::JsonPatch(patch)) => {
                             // Check if this patch is session-related
                             if let Some(op) = patch.0.first() {
-                                if op.path().starts_with("/sessions") {
+                                if op.path().as_str().starts_with("/sessions") {
                                     return Some(Ok(LogMsg::JsonPatch(patch)));
                                 }
                             }
@@ -292,7 +292,7 @@ impl EventService {
                             Ok(LogMsg::JsonPatch(patch)) => {
                                 // Check if this patch is session-related
                                 if let Some(op) = patch.0.first() {
-                                    if op.path().starts_with("/sessions/") {
+                                    if op.path().as_str().starts_with("/sessions/") {
                                         // Try to extract task_id from the patch value
                                         match op {
                                             json_patch::PatchOperation::Add(add_op) => {

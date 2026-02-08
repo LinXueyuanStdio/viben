@@ -739,13 +739,15 @@ mod tests {
             let db = crate::db::DbService::new().await.unwrap();
             let events = crate::services::EventService::new();
             let container = crate::services::ContainerService::new(events.clone());
+            let pty = crate::services::PtyService::new();
 
-            let state = AppState::new(db, events, container);
+            let state = AppState::new(db, events, container, pty);
 
             // Just verify it was created (no panic)
             assert!(std::sync::Arc::strong_count(&state.db) >= 1);
             assert!(std::sync::Arc::strong_count(&state.events) >= 1);
             assert!(std::sync::Arc::strong_count(&state.container) >= 1);
+            assert!(std::sync::Arc::strong_count(&state.pty) >= 1);
         }
     }
 
