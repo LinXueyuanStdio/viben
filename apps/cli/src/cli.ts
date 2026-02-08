@@ -11,6 +11,11 @@ import { registerCronCommand } from './commands/cron';
 import { registerChannelCommand } from './commands/channel';
 import { registerGatewayCommand } from './commands/gateway';
 import { registerMcpCommand } from './commands/mcp';
+import { registerSkillCommand } from './commands/skill';
+import { registerProviderCommand } from './commands/provider';
+import { registerModelCommand } from './commands/model';
+import { registerWorkspaceCommand } from './commands/workspace';
+import { registerServiceCommand } from './commands/service';
 
 // Read version from package.json (using createRequire for ESM compatibility)
 const require = createRequire(import.meta.url);
@@ -43,6 +48,11 @@ export function createProgram(): Command {
   registerChannelCommand(program);
   registerGatewayCommand(program);
   registerMcpCommand(program);
+  registerSkillCommand(program);
+  registerProviderCommand(program);
+  registerModelCommand(program);
+  registerWorkspaceCommand(program);
+  registerServiceCommand(program);
 
   return program;
 }

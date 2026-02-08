@@ -34,7 +34,7 @@ const MIN_PYTHON_VERSION = '3.10';
 const BRAND_NAME = 'Viben';
 
 // Commands that should be handled by the TypeScript CLI
-const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron', 'gateway', 'mcp'];
+const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron', 'gateway', 'mcp', 'skill', 'model', 'provider', 'workspace', 'service'];
 
 // Subcommands of 'mcp' that should be handled by the Python wrapper
 const MCP_PYTHON_SUBCOMMANDS = ['serve'];
@@ -277,10 +277,19 @@ ${colors.bold}Usage:${colors.reset}
 ${colors.bold}Workspace Commands:${colors.reset}
   init                  Initialize a Viben workspace
   config <subcommand>   Manage configuration (get, set, list, edit, unset)
-  agent <subcommand>    Manage agents (list, create, show)
+  workspace             Workspace operations (list, current)
+
+${colors.bold}Agent Commands:${colors.reset}
+  agent <subcommand>    Manage agents (list, create, show, remove, config, status)
+  provider              Manage API providers (list, create, remove, status)
+  model                 Manage models (list, aliases, fallbacks)
+
+${colors.bold}Service Commands:${colors.reset}
   channel <subcommand>  Manage chat channels (list, create, remove, status)
   cron <subcommand>     Manage scheduled tasks (list, add, remove, run)
   gateway <subcommand>  Manage Viben Gateway server (start, status)
+  service               Manage background services (status, start, stop, logs)
+  skill <subcommand>    Manage skills (list, install, uninstall)
 
 ${colors.bold}MCP Commands:${colors.reset}
   mcp inspector         Start MCP Inspector for testing MCP servers
@@ -296,14 +305,15 @@ ${colors.bold}Global Options:${colors.reset}
   -h, --help            Show help
 
 ${colors.bold}Examples:${colors.reset}
-  viben init                    # Initialize workspace
-  viben config list             # List all config
-  viben config set settings.editor vim
-  viben agent list              # List all agents
-  viben agent create -n my-agent
-  viben mcp inspector           # Start MCP Inspector UI
-  viben mcp inspector node build/index.js  # Inspect a server
-  viben mcp serve               # Start MCP server (browse-mcp)
+  viben init                      # Initialize workspace
+  viben config list               # List all config
+  viben agent list                # List all agents
+  viben agent create -n my-agent  # Create new agent
+  viben provider list             # List API providers
+  viben model list                # List available models
+  viben skill list                # List installed skills
+  viben mcp inspector             # Start MCP Inspector UI
+  viben mcp serve                 # Start MCP server (browse-mcp)
 
 ${colors.bold}Environment Variables:${colors.reset}
   VIBEN_STATE_DIR       State directory (default: ~/.viben)
