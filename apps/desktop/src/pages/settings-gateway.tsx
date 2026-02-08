@@ -54,10 +54,12 @@ export function SettingsGatewayPage() {
     isActioning,
     error,
     binaryPath,
+    discoveredUrl,
     startGateway,
     stopGateway,
     restartGateway,
     updateConfig,
+    discoverGateway,
   } = useGateway();
 
   const [portInput, setPortInput] = useState<string>("");
@@ -210,14 +212,19 @@ export function SettingsGatewayPage() {
         </div>
 
         {/* URL Display */}
-        {status?.url && (
+        {(status?.url || discoveredUrl) && (
           <div className="pt-3 border-t">
             <Label className="text-xs text-muted-foreground mb-1.5 block">
               {t("gateway.url", "网关地址")}
+              {discoveredUrl && discoveredUrl !== status?.url && (
+                <span className="ml-2 text-green-600">
+                  ({t("gateway.autoDiscovered", "已自动发现")})
+                </span>
+              )}
             </Label>
             <div className="flex items-center gap-2">
               <code className="flex-1 bg-muted rounded-lg px-3 py-2 text-sm font-mono">
-                {status.url}
+                {discoveredUrl || status?.url}
               </code>
               <Button
                 variant="ghost"
@@ -226,6 +233,15 @@ export function SettingsGatewayPage() {
                 onClick={copyUrl}
               >
                 <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9"
+                onClick={discoverGateway}
+                title={t("gateway.refreshDiscover", "重新发现")}
+              >
+                <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -317,8 +333,8 @@ export function SettingsGatewayPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               {t(
-                "gateway.buildHint",
-                "请先构建网关: cd crates && cargo build --release -p viben-gateway"
+                "gateway.installHint",
+                "请安装 Viben CLI: npm install -g @viben/cli，或构建网关: cd crates && cargo build --release"
               )}
             </p>
           </div>

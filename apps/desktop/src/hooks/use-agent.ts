@@ -127,12 +127,16 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   }, []);
 
   /**
-   * Check Gateway connection
+   * Check Gateway connection with auto-discovery
    */
   const checkGatewayConnection = useCallback(async () => {
     try {
-      const connected = await client.ping();
+      // First try auto-discovery which will update the client's URL if needed
+      const connected = await client.autoDiscover();
       setGatewayConnected(connected);
+      if (connected) {
+        console.log("[useAgent] Gateway connected at:", client.getBaseUrl());
+      }
       return connected;
     } catch {
       setGatewayConnected(false);

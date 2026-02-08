@@ -10,7 +10,14 @@ import type { AgentMessage } from "@/types";
 // Configuration
 // ============================================================================
 
-const DEFAULT_GATEWAY_URL = "http://localhost:18790";
+/** Default Gateway port */
+const DEFAULT_GATEWAY_PORT = 18790;
+
+/** Candidate ports to try when auto-discovering Gateway */
+const DISCOVERY_PORTS = [18790, 18791, 18800, 3790, 8790];
+
+/** Default Gateway URL */
+const DEFAULT_GATEWAY_URL = `http://localhost:${DEFAULT_GATEWAY_PORT}`;
 
 /**
  * Get the Gateway base URL from localStorage or use default
@@ -28,6 +35,50 @@ export function getGatewayUrl(): string {
 export function setGatewayUrl(url: string): void {
   if (typeof window !== "undefined") {
     localStorage.setItem("viben_gateway_url", url);
+  }
+}
+
+/**
+ * Auto-discover Gateway by probing known ports
+ * Returns the first reachable Gateway URL or null if none found
+ */
+export async function discoverGateway(): Promise<string | null> {
+  // First try the configured URL
+  const configuredUrl = getGatewayUrl();
+  if (await pingGatewayUrl(configuredUrl)) {
+    return configuredUrl;
+  }
+
+  // Try discovery ports
+  for (const port of DISCOVERY_PORTS) {
+    const url = `http://localhost:${port}`;
+    if (url !== configuredUrl && await pingGatewayUrl(url)) {
+      // Found a working Gateway, save it
+      setGatewayUrl(url);
+      return url;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Ping a Gateway URL to check if it's reachable
+ */
+async function pingGatewayUrl(url: string): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+
+    const response = await fetch(`${url}/health`, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+    return response.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -233,6 +284,13 @@ export class GatewayClient {
   }
 
   /**
+   * Get the current base URL
+   */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  /**
    * Update the base URL
    */
   setBaseUrl(url: string): void {
@@ -244,14 +302,39 @@ export class GatewayClient {
    */
   async ping(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/agents`, {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      const response = await fetch(`${this.baseUrl}/health`, {
         method: "GET",
-        headers: { Accept: "application/json" },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeout);
       return response.ok;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Auto-discover and connect to Gateway
+   * Tries known ports and updates baseUrl if found
+   */
+  async autoDiscover(): Promise<boolean> {
+    // First try current URL
+    if (await this.ping()) {
+      return true;
+    }
+
+    // Try discovery
+    const discoveredUrl = await discoverGateway();
+    if (discoveredUrl) {
+      this.baseUrl = discoveredUrl;
+      return true;
+    }
+
+    return false;
   }
 
   /**

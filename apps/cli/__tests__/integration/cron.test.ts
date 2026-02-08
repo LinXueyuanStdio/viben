@@ -6,7 +6,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createProgram } from '../../src/cli';
+
+// Note: createProgram must be imported dynamically after setting VIBEN_STATE_DIR
+// to ensure modules read the correct environment variable.
 
 describe('viben cron', () => {
   let tempDir: string;
@@ -16,14 +18,17 @@ describe('viben cron', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Use realpathSync to resolve symlinks (e.g., /var -> /private/var on macOS)
     tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'viben-test-')));
     originalCwd = process.cwd();
     originalEnv = { ...process.env };
 
-    // Set custom state dir
+    // Set custom state dir BEFORE resetting modules
     process.env.VIBEN_STATE_DIR = path.join(tempDir, 'state');
+
+    // Reset module cache to ensure modules read the new VIBEN_STATE_DIR
+    vi.resetModules();
 
     // Capture console output
     consoleOutput = [];
@@ -46,6 +51,34 @@ describe('viben cron', () => {
       fs.rmSync(tempDir, { recursive: true });
     }
   });
+
+  /**
+   * Dynamically import createProgram to ensure it uses current VIBEN_STATE_DIR
+   */
+  async function getCreateProgram() {
+    const { createProgram } = await import('../../src/cli');
+    return createProgram;
+  }
+
+  /**
+   * Find and parse JSON output from console output
+   * CronService logs additional messages, so we need to extract the JSON
+   */
+  function findJsonOutput(output: string[]): unknown {
+    // Find lines that look like JSON (start with { and end with })
+    for (const line of output) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+        try {
+          return JSON.parse(trimmed);
+        } catch {
+          // Not valid JSON, continue
+        }
+      }
+    }
+    // Try parsing the whole output
+    return JSON.parse(output.join('\n'));
+  }
 
   /**
    * Create a cron job directly in the state directory
@@ -101,6 +134,7 @@ describe('viben cron', () => {
 
   describe('cron list', () => {
     it('should show no jobs when none exist', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'cron', 'list']);
 
@@ -115,6 +149,7 @@ describe('viben cron', () => {
         cron: '0 9 * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'cron', 'list']);
 
@@ -135,6 +170,7 @@ describe('viben cron', () => {
         every: 3600,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'cron', 'list']);
 
@@ -157,6 +193,7 @@ describe('viben cron', () => {
         enabled: false,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'cron', 'list']);
 
@@ -174,6 +211,7 @@ describe('viben cron', () => {
         cron: '0 0 * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', '--json', 'cron', 'list']);
 
@@ -186,6 +224,7 @@ describe('viben cron', () => {
 
   describe('cron add', () => {
     it('should add a job with cron expression', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'add',
@@ -206,6 +245,7 @@ describe('viben cron', () => {
     });
 
     it('should add a job with interval (--every)', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'add',
@@ -221,6 +261,7 @@ describe('viben cron', () => {
     });
 
     it('should add job with channel option', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'add',
@@ -237,6 +278,7 @@ describe('viben cron', () => {
     });
 
     it('should add job with agent option', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'add',
@@ -253,6 +295,7 @@ describe('viben cron', () => {
     });
 
     it('should create disabled job with --disabled flag', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'add',
@@ -268,6 +311,7 @@ describe('viben cron', () => {
     });
 
     it('should fail without schedule (neither cron nor every)', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -283,6 +327,7 @@ describe('viben cron', () => {
     });
 
     it('should fail with invalid cron expression', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -305,6 +350,7 @@ describe('viben cron', () => {
         cron: '* * * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -321,6 +367,7 @@ describe('viben cron', () => {
     });
 
     it('should output JSON in json mode', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'cron', 'add',
@@ -329,7 +376,7 @@ describe('viben cron', () => {
         '--cron', '0 0 * * *'
       ]);
 
-      const parsed = JSON.parse(consoleOutput.join('\n'));
+      const parsed = findJsonOutput(consoleOutput) as { success: boolean; data: { job: { name: string } } };
       expect(parsed.success).toBe(true);
       expect(parsed.data.job).toBeDefined();
       expect(parsed.data.job.name).toBe('JSON Add');
@@ -344,6 +391,7 @@ describe('viben cron', () => {
         cron: '0 0 * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'remove', 'to-remove'
@@ -355,6 +403,7 @@ describe('viben cron', () => {
     });
 
     it('should fail for non-existent job', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -374,12 +423,13 @@ describe('viben cron', () => {
         cron: '0 0 * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'cron', 'remove', 'json-remove'
       ]);
 
-      const parsed = JSON.parse(consoleOutput.join('\n'));
+      const parsed = findJsonOutput(consoleOutput) as { success: boolean; data: { removed: boolean } };
       expect(parsed.success).toBe(true);
       expect(parsed.data.removed).toBe(true);
     });
@@ -394,6 +444,7 @@ describe('viben cron', () => {
         enabled: false,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'enable', 'disabled-job'
@@ -405,6 +456,7 @@ describe('viben cron', () => {
     });
 
     it('should fail for non-existent job', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -425,12 +477,13 @@ describe('viben cron', () => {
         enabled: false,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'cron', 'enable', 'json-enable'
       ]);
 
-      const parsed = JSON.parse(consoleOutput.join('\n'));
+      const parsed = findJsonOutput(consoleOutput) as { success: boolean; data: { job: { enabled: boolean } } };
       expect(parsed.success).toBe(true);
       expect(parsed.data.job).toBeDefined();
       expect(parsed.data.job.enabled).toBe(true);
@@ -446,6 +499,7 @@ describe('viben cron', () => {
         enabled: true,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'disable', 'enabled-job'
@@ -457,6 +511,7 @@ describe('viben cron', () => {
     });
 
     it('should fail for non-existent job', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -477,12 +532,13 @@ describe('viben cron', () => {
         enabled: true,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'cron', 'disable', 'json-disable'
       ]);
 
-      const parsed = JSON.parse(consoleOutput.join('\n'));
+      const parsed = findJsonOutput(consoleOutput) as { success: boolean; data: { job: { enabled: boolean } } };
       expect(parsed.success).toBe(true);
       expect(parsed.data.job).toBeDefined();
       expect(parsed.data.job.enabled).toBe(false);
@@ -499,6 +555,7 @@ describe('viben cron', () => {
         agent: 'my-agent',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'show', 'show-job'
@@ -520,6 +577,7 @@ describe('viben cron', () => {
         every: 3600,
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'show', 'interval-job'
@@ -540,6 +598,7 @@ describe('viben cron', () => {
         lastStatus: 'success',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'show', 'run-job'
@@ -561,6 +620,7 @@ describe('viben cron', () => {
         lastError: 'Connection timeout',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'cron', 'show', 'failed-job'
@@ -573,6 +633,7 @@ describe('viben cron', () => {
     });
 
     it('should fail for non-existent job', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -592,6 +653,7 @@ describe('viben cron', () => {
         cron: '0 12 * * *',
       });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'cron', 'show', 'json-show'

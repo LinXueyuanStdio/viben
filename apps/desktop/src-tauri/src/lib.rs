@@ -51,37 +51,62 @@ async fn auto_start_gateway(state: &GatewayState) {
         }
     }
 
-    // Find and start gateway binary (prefer release over debug)
-    let workspace_paths = [
+    // Find gateway binary or CLI command
+    // First try viben CLI
+    let viben_paths = [
+        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
+        Some(std::path::PathBuf::from("/opt/homebrew/bin/viben")),
+        Some(std::path::PathBuf::from("/usr/local/bin/viben")),
+    ];
+
+    let viben_path = viben_paths.into_iter().flatten().find(|p| p.exists());
+
+    // If no viben CLI, try standalone binary
+    let gateway_paths = [
         dirs::home_dir()
             .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/release/viben-gateway")),
         Some(std::path::PathBuf::from("/usr/local/bin/viben-gateway")),
         dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
+        dirs::home_dir().map(|h| h.join(".viben/bin/viben-gateway")),
         dirs::home_dir()
             .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
     ];
 
-    let binary_path = workspace_paths
-        .into_iter()
-        .flatten()
-        .find(|p| p.exists());
+    let gateway_path = gateway_paths.into_iter().flatten().find(|p| p.exists());
 
-    let Some(binary_path) = binary_path else {
-        eprintln!("[Gateway] Binary not found, skipping auto-start");
+    // Build the command based on what we found
+    let cmd_result = if let Some(viben) = viben_path {
+        // Use viben CLI
+        eprintln!("[Gateway] Using viben CLI: {:?}", viben);
+        let mut cmd = tokio::process::Command::new(&viben);
+        cmd.arg("gateway")
+            .arg("--port")
+            .arg(config.port.to_string())
+            .arg("--host")
+            .arg(&config.host)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        cmd.spawn()
+    } else if let Some(binary) = gateway_path {
+        // Use standalone binary
+        eprintln!("[Gateway] Using standalone binary: {:?}", binary);
+        let mut cmd = tokio::process::Command::new(&binary);
+        cmd.arg("--port")
+            .arg(config.port.to_string())
+            .arg("--host")
+            .arg(&config.host)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        cmd.spawn()
+    } else {
+        eprintln!("[Gateway] Neither viben CLI nor gateway binary found, skipping auto-start");
         return;
     };
 
     // Start the gateway
-    match tokio::process::Command::new(&binary_path)
-        .arg("--port")
-        .arg(config.port.to_string())
-        .arg("--host")
-        .arg(&config.host)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-    {
+    match cmd_result {
         Ok(child) => {
             let pid = child.id().unwrap_or(0);
             eprintln!("[Gateway] Started with PID {}", pid);
@@ -505,6 +530,7 @@ commands::workspace::write_skill_file,
             commands::gateway::get_gateway_config,
             commands::gateway::set_gateway_config,
             commands::gateway::check_gateway_binary,
+            commands::gateway::discover_gateway,
             // Screenshot commands
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,
