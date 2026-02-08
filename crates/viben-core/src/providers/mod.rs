@@ -1,5 +1,6 @@
 //! Provider management for Viben
 
+pub mod env;
 pub mod types;
 
 use crate::config::{
@@ -8,7 +9,10 @@ use crate::config::{
 };
 use crate::error::{Error, Result};
 use chrono::Utc;
+use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
+pub use env::*;
 pub use types::*;
 
 /// ProviderManager handles provider CRUD operations
@@ -40,6 +44,11 @@ impl ProviderManager {
                 name: entry.name,
                 api_key: entry.api_key,
                 base_url: entry.base_url,
+                api_version: entry.api_version,
+                deployment: entry.deployment,
+                timeout: entry.timeout,
+                max_retries: entry.max_retries,
+                headers: entry.headers,
                 is_default: file.default.as_ref() == Some(&id),
                 enabled: entry.enabled,
                 created_at: entry.created_at,
@@ -60,6 +69,11 @@ impl ProviderManager {
             name: entry.name.clone(),
             api_key: entry.api_key.clone(),
             base_url: entry.base_url.clone(),
+            api_version: entry.api_version.clone(),
+            deployment: entry.deployment.clone(),
+            timeout: entry.timeout,
+            max_retries: entry.max_retries,
+            headers: entry.headers.clone(),
             is_default: file.default.as_ref() == Some(&id.to_string()),
             enabled: entry.enabled,
             created_at: entry.created_at,
@@ -90,6 +104,11 @@ impl ProviderManager {
                 .base_url
                 .clone()
                 .or_else(|| get_default_base_url(options.provider_type).map(|s| s.to_string())),
+            api_version: options.api_version.clone(),
+            deployment: options.deployment.clone(),
+            timeout: options.timeout,
+            max_retries: options.max_retries,
+            headers: options.headers.clone(),
             enabled: true,
             created_at: now,
             updated_at: now,
@@ -111,6 +130,11 @@ impl ProviderManager {
             name: entry.name,
             api_key: entry.api_key,
             base_url: entry.base_url,
+            api_version: entry.api_version,
+            deployment: entry.deployment,
+            timeout: entry.timeout,
+            max_retries: entry.max_retries,
+            headers: entry.headers,
             is_default,
             enabled: entry.enabled,
             created_at: entry.created_at,
@@ -160,6 +184,21 @@ impl ProviderManager {
         if let Some(base_url) = updates.base_url {
             entry.base_url = Some(base_url);
         }
+        if let Some(api_version) = updates.api_version {
+            entry.api_version = Some(api_version);
+        }
+        if let Some(deployment) = updates.deployment {
+            entry.deployment = Some(deployment);
+        }
+        if let Some(timeout) = updates.timeout {
+            entry.timeout = Some(timeout);
+        }
+        if let Some(max_retries) = updates.max_retries {
+            entry.max_retries = Some(max_retries);
+        }
+        if let Some(headers) = updates.headers {
+            entry.headers = headers;
+        }
         entry.updated_at = now;
 
         let entry = entry.clone();
@@ -171,6 +210,11 @@ impl ProviderManager {
             name: entry.name,
             api_key: entry.api_key,
             base_url: entry.base_url,
+            api_version: entry.api_version,
+            deployment: entry.deployment,
+            timeout: entry.timeout,
+            max_retries: entry.max_retries,
+            headers: entry.headers,
             is_default: file.default.as_deref() == Some(id),
             enabled: entry.enabled,
             created_at: entry.created_at,
@@ -230,25 +274,144 @@ impl ProviderManager {
         Self::save_file(&file).await
     }
 
-    /// Test provider connection
+    /// Test provider connection with real HTTP request
     pub async fn test_connection(id: &str) -> Result<ProviderStatus> {
         let provider = Self::get_provider(id)
             .await?
             .ok_or_else(|| Error::ProviderNotFound(id.to_string()))?;
 
-        // For now, just return a basic status
-        // In the future, this would actually test the connection
-        Ok(ProviderStatus {
-            id: provider.id,
-            connected: provider.api_key.is_some(),
-            latency: None,
-            error: if provider.api_key.is_none() {
-                Some("No API key configured".to_string())
-            } else {
-                None
-            },
-            checked_at: Utc::now(),
-        })
+        // Check if API key is required but missing
+        if provider.api_key.is_none() && provider.provider_type != ProviderType::Ollama {
+            return Ok(ProviderStatus {
+                id: provider.id,
+                connected: false,
+                latency: None,
+                error: Some("No API key configured".to_string()),
+                checked_at: Utc::now(),
+            });
+        }
+
+        // Build the test request based on provider type
+        let (url, headers) = Self::build_test_request(&provider);
+
+        // Perform the actual HTTP request
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(provider.timeout.unwrap_or(30)))
+            .build()
+            .map_err(|e| Error::Http(e))?;
+
+        let start = Instant::now();
+        let mut request = client.get(&url);
+
+        // Add headers
+        for (key, value) in headers {
+            request = request.header(key, value);
+        }
+
+        let response = request.send().await;
+        let latency = start.elapsed().as_millis() as u64;
+
+        match response {
+            Ok(resp) => {
+                let status = resp.status();
+                if status.is_success() || status.as_u16() == 401 || status.as_u16() == 403 {
+                    // 401/403 means the endpoint exists, just auth issue
+                    // For test purposes, we consider endpoint reachable
+                    Ok(ProviderStatus {
+                        id: provider.id,
+                        connected: status.is_success(),
+                        latency: Some(latency),
+                        error: if !status.is_success() {
+                            Some(format!("Authentication error: {}", status))
+                        } else {
+                            None
+                        },
+                        checked_at: Utc::now(),
+                    })
+                } else {
+                    Ok(ProviderStatus {
+                        id: provider.id,
+                        connected: false,
+                        latency: Some(latency),
+                        error: Some(format!("HTTP error: {}", status)),
+                        checked_at: Utc::now(),
+                    })
+                }
+            }
+            Err(e) => Ok(ProviderStatus {
+                id: provider.id,
+                connected: false,
+                latency: Some(latency),
+                error: Some(format!("Connection error: {}", e)),
+                checked_at: Utc::now(),
+            }),
+        }
+    }
+
+    /// Build test request URL and headers for a provider
+    fn build_test_request(provider: &Provider) -> (String, HashMap<String, String>) {
+        let base_url = provider
+            .base_url
+            .as_deref()
+            .or_else(|| get_default_base_url(provider.provider_type))
+            .unwrap_or("http://localhost");
+
+        let mut headers = provider.headers.clone();
+
+        // Set authorization headers based on provider type
+        if let Some(ref api_key) = provider.api_key {
+            match provider.provider_type {
+                ProviderType::OpenAI | ProviderType::OpenRouter => {
+                    headers.insert("Authorization".to_string(), format!("Bearer {}", api_key));
+                }
+                ProviderType::Anthropic => {
+                    headers.insert("x-api-key".to_string(), api_key.clone());
+                    if let Some(ref version) = provider.api_version {
+                        headers.insert("anthropic-version".to_string(), version.clone());
+                    } else {
+                        headers.insert("anthropic-version".to_string(), "2024-01-01".to_string());
+                    }
+                }
+                ProviderType::Azure => {
+                    headers.insert("api-key".to_string(), api_key.clone());
+                }
+                ProviderType::Google => {
+                    // Google uses API key as query parameter, handled in URL
+                }
+                ProviderType::Ollama | ProviderType::Custom => {}
+            }
+        }
+
+        // Build test endpoint URL
+        let url = match provider.provider_type {
+            ProviderType::OpenAI | ProviderType::OpenRouter => format!("{}/models", base_url),
+            ProviderType::Anthropic => format!("{}/messages", base_url),
+            ProviderType::Azure => {
+                if let Some(ref deployment) = provider.deployment {
+                    let api_version = provider
+                        .api_version
+                        .as_deref()
+                        .unwrap_or("2024-02-15-preview");
+                    format!(
+                        "{}/openai/deployments/{}/models?api-version={}",
+                        base_url, deployment, api_version
+                    )
+                } else {
+                    format!("{}/openai/models", base_url)
+                }
+            }
+            ProviderType::Ollama => format!("{}/api/tags", base_url),
+            ProviderType::Google => {
+                if let Some(ref api_key) = provider.api_key {
+                    format!("{}/models?key={}", base_url, api_key)
+                } else {
+                    format!("{}/models", base_url)
+                }
+            }
+            ProviderType::Custom => base_url.to_string(),
+        };
+
+        (url, headers)
     }
 
     // ========================================================================

@@ -1,5 +1,6 @@
 //! Tests for models module
 
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 use viben_core::models::{find_known_model, get_known_models, get_known_models_for_provider};
@@ -18,12 +19,14 @@ fn setup_temp_state_dir() -> TempDir {
 // =============================================================================
 
 #[test]
+#[serial]
 fn test_get_known_models_not_empty() {
     let models = get_known_models();
     assert!(!models.is_empty());
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_contains_openai() {
     let models = get_known_models();
     let openai_models: Vec<_> = models
@@ -35,6 +38,7 @@ fn test_get_known_models_contains_openai() {
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_contains_anthropic() {
     let models = get_known_models();
     let anthropic_models: Vec<_> = models
@@ -46,6 +50,7 @@ fn test_get_known_models_contains_anthropic() {
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_contains_ollama() {
     let models = get_known_models();
     let ollama_models: Vec<_> = models
@@ -56,6 +61,7 @@ fn test_get_known_models_contains_ollama() {
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_for_provider_openai() {
     let models = get_known_models_for_provider(ProviderType::OpenAI);
     assert!(!models.is_empty());
@@ -63,6 +69,7 @@ fn test_get_known_models_for_provider_openai() {
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_for_provider_anthropic() {
     let models = get_known_models_for_provider(ProviderType::Anthropic);
     assert!(!models.is_empty());
@@ -70,6 +77,7 @@ fn test_get_known_models_for_provider_anthropic() {
 }
 
 #[test]
+#[serial]
 fn test_get_known_models_for_provider_custom_empty() {
     // Custom provider has no known models
     let models = get_known_models_for_provider(ProviderType::Custom);
@@ -77,6 +85,7 @@ fn test_get_known_models_for_provider_custom_empty() {
 }
 
 #[test]
+#[serial]
 fn test_find_known_model_exists() {
     let model = find_known_model("gpt-4o");
     assert!(model.is_some());
@@ -86,12 +95,14 @@ fn test_find_known_model_exists() {
 }
 
 #[test]
+#[serial]
 fn test_find_known_model_not_exists() {
     let model = find_known_model("nonexistent-model");
     assert!(model.is_none());
 }
 
 #[test]
+#[serial]
 fn test_known_model_to_model() {
     let known = find_known_model("gpt-4o").unwrap();
     let model = known.to_model(true, true);
@@ -109,6 +120,7 @@ fn test_known_model_to_model() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_initialize() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -119,6 +131,7 @@ async fn test_model_manager_initialize() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_list_models_includes_known() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -135,6 +148,7 @@ async fn test_model_manager_list_models_includes_known() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_list_models_for_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -149,6 +163,7 @@ async fn test_model_manager_list_models_for_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_get_model_known() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -162,6 +177,7 @@ async fn test_model_manager_get_model_known() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_get_model_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -172,6 +188,7 @@ async fn test_model_manager_get_model_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_create_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -198,6 +215,7 @@ async fn test_model_manager_create_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_create_custom_model_duplicate() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -221,6 +239,7 @@ async fn test_model_manager_create_custom_model_duplicate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_create_model_with_known_id() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -242,6 +261,7 @@ async fn test_model_manager_create_model_with_known_id() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_get_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -267,6 +287,7 @@ async fn test_model_manager_get_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_remove_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -291,6 +312,7 @@ async fn test_model_manager_remove_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_remove_known_model_fails() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -302,6 +324,7 @@ async fn test_model_manager_remove_known_model_fails() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_remove_nonexistent_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -312,6 +335,7 @@ async fn test_model_manager_remove_nonexistent_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_update_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -347,6 +371,7 @@ async fn test_model_manager_update_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_update_known_model_fails() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -366,6 +391,7 @@ async fn test_model_manager_update_known_model_fails() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_set_default() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -380,6 +406,7 @@ async fn test_model_manager_set_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_set_default_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -403,6 +430,7 @@ async fn test_model_manager_set_default_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_set_default_nonexistent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -413,6 +441,7 @@ async fn test_model_manager_set_default_nonexistent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_enable_disable_known_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -432,6 +461,7 @@ async fn test_model_manager_enable_disable_known_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_enable_disable_custom_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -461,6 +491,7 @@ async fn test_model_manager_enable_disable_custom_model() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_enable_nonexistent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -471,6 +502,7 @@ async fn test_model_manager_enable_nonexistent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_list_includes_custom_models() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -497,6 +529,7 @@ async fn test_model_manager_list_includes_custom_models() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_disabled_known_model_in_list() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -517,6 +550,7 @@ async fn test_model_manager_disabled_known_model_in_list() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_update_max_output_tokens() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -549,6 +583,7 @@ async fn test_model_manager_update_max_output_tokens() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_disable_nonexistent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -559,6 +594,7 @@ async fn test_model_manager_disable_nonexistent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_model_manager_remove_default_model() {
     let _temp_dir = setup_temp_state_dir();
 

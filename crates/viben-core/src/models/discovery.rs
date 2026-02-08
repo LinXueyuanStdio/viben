@@ -14,6 +14,7 @@ pub async fn discover_models(provider: &Provider) -> Result<Vec<DiscoveredModel>
         ProviderType::Anthropic => discover_anthropic_models(provider).await,
         ProviderType::Ollama => discover_ollama_models(provider).await,
         ProviderType::OpenRouter => discover_openrouter_models(provider).await,
+        ProviderType::Google => discover_google_models(provider).await,
         ProviderType::Azure | ProviderType::Custom => {
             // Azure and Custom providers don't have a standard discovery API
             Ok(vec![])
@@ -229,6 +230,80 @@ async fn discover_openrouter_models(provider: &Provider) -> Result<Vec<Discovere
                 context_window: m.context_length,
                 max_output_tokens: None,
                 owned_by,
+                created: None,
+            }
+        })
+        .collect();
+
+    Ok(models)
+}
+
+/// Discover Google AI (Gemini) models via API
+/// GET {base_url}/models?key={api_key}
+async fn discover_google_models(provider: &Provider) -> Result<Vec<DiscoveredModel>> {
+    let base_url = provider
+        .base_url
+        .as_deref()
+        .or(get_default_base_url(ProviderType::Google))
+        .ok_or_else(|| Error::ModelDiscovery("No base URL for Google provider".to_string()))?;
+
+    let api_key = provider
+        .api_key
+        .as_ref()
+        .ok_or_else(|| Error::ModelDiscovery("No API key for Google provider".to_string()))?;
+
+    let url = format!("{}/models?key={}", base_url.trim_end_matches('/'), api_key);
+
+    let client = reqwest::Client::new();
+    let response = client.get(&url).send().await?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(Error::ModelDiscovery(format!(
+            "Google AI API error ({}): {}",
+            status, text
+        )));
+    }
+
+    #[derive(Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct GoogleModel {
+        name: String,
+        #[serde(default)]
+        display_name: Option<String>,
+        #[serde(default)]
+        description: Option<String>,
+        #[serde(default)]
+        input_token_limit: Option<u32>,
+        #[serde(default)]
+        output_token_limit: Option<u32>,
+    }
+
+    #[derive(Deserialize)]
+    struct GoogleModelsResponse {
+        models: Vec<GoogleModel>,
+    }
+
+    let models_response: GoogleModelsResponse = response.json().await?;
+
+    let models: Vec<DiscoveredModel> = models_response
+        .models
+        .into_iter()
+        .filter(|m| {
+            // Filter to generative models (Gemini)
+            m.name.contains("gemini")
+        })
+        .map(|m| {
+            // Extract model ID from full name (e.g., "models/gemini-pro" -> "gemini-pro")
+            let id = m.name.strip_prefix("models/").unwrap_or(&m.name).to_string();
+            DiscoveredModel {
+                id: id.clone(),
+                name: m.display_name.unwrap_or(id),
+                description: m.description,
+                context_window: m.input_token_limit,
+                max_output_tokens: m.output_token_limit,
+                owned_by: Some("google".to_string()),
                 created: None,
             }
         })

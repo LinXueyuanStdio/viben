@@ -5,13 +5,23 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Viben core library - unified package including gateway, executors, services, db, and utilities"
-default-run = "viben-gateway"
+default-run = "viben"
+
+[lib]
+crate-type = ["lib"]
 
 [[bin]]
-name = "viben-gateway"
-path = "src/bin/gateway.rs"
+name = "viben"
+path = "src/bin/cli.rs"
+
+[features]
+default = []
+napi = ["dep:napi", "dep:napi-derive"]
 
 [dependencies]
+# NAPI bindings (optional, for Node.js addon)
+napi = { version = "2", features = ["async", "napi9"], optional = true }
+napi-derive = { version = "2", optional = true }
 # Async runtime
 tokio = { workspace = true }
 tokio-util = { workspace = true }
@@ -84,6 +94,9 @@ base64 = { workspace = true }
 # JSON Patch (RFC 6902)
 json-patch = { workspace = true }
 
+# CLI
+clap = { workspace = true }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 tempfile = "3.10"
@@ -91,3 +104,4 @@ tower = { version = "0.5", features = ["util"] }
 tokio-tungstenite = "0.26"
 hyper = { version = "1.0", features = ["full"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
+serial_test = "3.2"

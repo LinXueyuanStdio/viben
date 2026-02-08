@@ -1,5 +1,6 @@
 //! Tests for providers module
 
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 use viben_core::providers::{get_default_base_url, ProviderType};
@@ -17,6 +18,7 @@ fn setup_temp_state_dir() -> TempDir {
 // =============================================================================
 
 #[test]
+#[serial]
 fn test_provider_type_display() {
     assert_eq!(ProviderType::OpenAI.to_string(), "openai");
     assert_eq!(ProviderType::Anthropic.to_string(), "anthropic");
@@ -27,6 +29,7 @@ fn test_provider_type_display() {
 }
 
 #[test]
+#[serial]
 fn test_provider_type_from_str() {
     assert_eq!("openai".parse::<ProviderType>().unwrap(), ProviderType::OpenAI);
     assert_eq!("OPENAI".parse::<ProviderType>().unwrap(), ProviderType::OpenAI);
@@ -39,6 +42,7 @@ fn test_provider_type_from_str() {
 }
 
 #[test]
+#[serial]
 fn test_provider_type_from_str_invalid() {
     let result = "invalid".parse::<ProviderType>();
     assert!(result.is_err());
@@ -46,6 +50,7 @@ fn test_provider_type_from_str_invalid() {
 }
 
 #[test]
+#[serial]
 fn test_provider_type_serde() {
     let provider_type = ProviderType::OpenAI;
     let json = serde_json::to_string(&provider_type).unwrap();
@@ -56,6 +61,7 @@ fn test_provider_type_serde() {
 }
 
 #[test]
+#[serial]
 fn test_get_default_base_url() {
     assert_eq!(
         get_default_base_url(ProviderType::OpenAI),
@@ -82,6 +88,7 @@ fn test_get_default_base_url() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_initialize() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -92,6 +99,7 @@ async fn test_provider_manager_initialize() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_list_empty() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -102,6 +110,7 @@ async fn test_provider_manager_list_empty() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_create_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -113,6 +122,7 @@ async fn test_provider_manager_create_provider() {
         api_key: Some("sk-test-key".to_string()),
         base_url: None, // Should use default
         set_as_default: false,
+        ..Default::default()
     };
 
     let provider = ProviderManager::create_provider(options).await.unwrap();
@@ -130,6 +140,7 @@ async fn test_provider_manager_create_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_create_provider_custom_base_url() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -141,6 +152,7 @@ async fn test_provider_manager_create_provider_custom_base_url() {
         api_key: None,
         base_url: Some("http://localhost:8080/v1".to_string()),
         set_as_default: false,
+        ..Default::default()
     };
 
     let provider = ProviderManager::create_provider(options).await.unwrap();
@@ -152,6 +164,7 @@ async fn test_provider_manager_create_provider_custom_base_url() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_create_provider_duplicate() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -163,6 +176,7 @@ async fn test_provider_manager_create_provider_duplicate() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     };
 
     ProviderManager::create_provider(options.clone()).await.unwrap();
@@ -173,6 +187,7 @@ async fn test_provider_manager_create_provider_duplicate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_get_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -184,6 +199,7 @@ async fn test_provider_manager_get_provider() {
         api_key: Some("sk-ant-test".to_string()),
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     };
 
     let created = ProviderManager::create_provider(options).await.unwrap();
@@ -198,6 +214,7 @@ async fn test_provider_manager_get_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_get_provider_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -208,6 +225,7 @@ async fn test_provider_manager_get_provider_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_list_providers() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -220,6 +238,7 @@ async fn test_provider_manager_list_providers() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -230,6 +249,7 @@ async fn test_provider_manager_list_providers() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -239,6 +259,7 @@ async fn test_provider_manager_list_providers() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_remove_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -250,6 +271,7 @@ async fn test_provider_manager_remove_provider() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -261,6 +283,7 @@ async fn test_provider_manager_remove_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_remove_provider_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -271,6 +294,7 @@ async fn test_provider_manager_remove_provider_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_update_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -282,6 +306,7 @@ async fn test_provider_manager_update_provider() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -302,6 +327,7 @@ async fn test_provider_manager_update_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_update_provider_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -320,6 +346,7 @@ async fn test_provider_manager_update_provider_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_set_default() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -332,6 +359,7 @@ async fn test_provider_manager_set_default() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -342,6 +370,7 @@ async fn test_provider_manager_set_default() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -357,6 +386,7 @@ async fn test_provider_manager_set_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_set_default_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -367,6 +397,7 @@ async fn test_provider_manager_set_default_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_enable_disable() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -378,6 +409,7 @@ async fn test_provider_manager_enable_disable() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -404,6 +436,7 @@ async fn test_provider_manager_enable_disable() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_test_connection_no_api_key() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -415,6 +448,7 @@ async fn test_provider_manager_test_connection_no_api_key() {
         api_key: None, // No API key
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -429,6 +463,7 @@ async fn test_provider_manager_test_connection_no_api_key() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_test_connection_with_api_key() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -440,6 +475,7 @@ async fn test_provider_manager_test_connection_with_api_key() {
         api_key: Some("sk-test".to_string()), // Has API key
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -448,12 +484,14 @@ async fn test_provider_manager_test_connection_with_api_key() {
         .await
         .unwrap();
 
-    // Basic test just checks if API key exists
-    assert!(status.connected);
-    assert!(status.error.is_none());
+    // With a fake API key, connection will fail (actual HTTP call is made)
+    // The test verifies that we get a proper connection status back
+    assert!(!status.connected);
+    assert!(status.error.is_some()); // Should have an authentication or network error
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_remove_default_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -466,6 +504,7 @@ async fn test_provider_manager_remove_default_provider() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -476,6 +515,7 @@ async fn test_provider_manager_remove_default_provider() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -498,6 +538,7 @@ async fn test_provider_manager_remove_default_provider() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_update_provider_type() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -509,6 +550,7 @@ async fn test_provider_manager_update_provider_type() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -528,6 +570,7 @@ async fn test_provider_manager_update_provider_type() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_update_base_url() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -539,6 +582,7 @@ async fn test_provider_manager_update_base_url() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -561,6 +605,7 @@ async fn test_provider_manager_update_base_url() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_create_provider_empty_name() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -573,6 +618,7 @@ async fn test_provider_manager_create_provider_empty_name() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();
@@ -582,6 +628,7 @@ async fn test_provider_manager_create_provider_empty_name() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_provider_manager_create_provider_long_name() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -595,6 +642,7 @@ async fn test_provider_manager_create_provider_long_name() {
         api_key: None,
         base_url: None,
         set_as_default: false,
+        ..Default::default()
     })
     .await
     .unwrap();

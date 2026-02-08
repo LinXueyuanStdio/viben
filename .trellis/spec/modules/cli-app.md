@@ -908,18 +908,52 @@ Capabilities:
 Start the gateway - the core runtime that connects channels to the agent loop.
 
 ```bash
-# Start gateway (foreground)
+# Start gateway (foreground, default)
 viben gateway
+viben gateway start
 
-# Start gateway with specific agent
-viben gateway -n <agent-id>
+# Start gateway with specific options
+viben gateway start --host 127.0.0.1 --port 18790 --log-level info
 
-# Start gateway in background
-viben gateway --daemon
-
-# Stop background gateway
+# Stop running gateway
 viben gateway stop
+viben gateway stop --port 18790    # Stop on specific port
+
+# Restart gateway (stop then start)
+viben gateway restart
+viben gateway restart --port 18790 --log-level debug
+
+# Check gateway status
+viben gateway status
 ```
+
+**Gateway Commands**:
+
+| 命令 | 说明 |
+|------|------|
+| `viben gateway` | 启动 gateway（默认，等同于 `start`） |
+| `viben gateway start` | 启动 gateway，支持 `--host`, `--port`, `--log-level` |
+| `viben gateway stop` | 停止运行中的 gateway（自动查找并终止占用端口的进程） |
+| `viben gateway restart` | 重启 gateway（先停止再启动） |
+| `viben gateway status` | 检查 gateway 运行状态和健康状态 |
+
+**Options**:
+
+| 选项 | 说明 | 默认值 |
+|------|------|--------|
+| `-H, --host <host>` | Gateway 监听地址 | `127.0.0.1` |
+| `-p, --port <port>` | Gateway 监听端口 | `18790` |
+| `-l, --log-level <level>` | 日志级别 (debug, info, warn, error) | `info` |
+
+**Binary Discovery**:
+
+Gateway 命令会按以下顺序查找 `viben-gateway` 二进制文件：
+
+1. 开发路径：`./crates/target/release/viben-gateway`
+2. 开发路径：`./crates/target/debug/viben-gateway`
+3. 用户安装：`~/.viben/bin/viben-gateway`
+4. 系统安装：`/usr/local/bin/viben-gateway`
+5. Homebrew：`/opt/viben/bin/viben-gateway`
 
 **Architecture** (based on nanobot):
 

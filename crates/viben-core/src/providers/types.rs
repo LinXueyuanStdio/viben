@@ -2,9 +2,10 @@
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Provider types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderType {
     OpenAI,
@@ -12,6 +13,7 @@ pub enum ProviderType {
     Azure,
     Ollama,
     OpenRouter,
+    Google,
     Custom,
 }
 
@@ -23,6 +25,7 @@ impl std::fmt::Display for ProviderType {
             ProviderType::Azure => write!(f, "azure"),
             ProviderType::Ollama => write!(f, "ollama"),
             ProviderType::OpenRouter => write!(f, "openrouter"),
+            ProviderType::Google => write!(f, "google"),
             ProviderType::Custom => write!(f, "custom"),
         }
     }
@@ -38,6 +41,7 @@ impl std::str::FromStr for ProviderType {
             "azure" => Ok(ProviderType::Azure),
             "ollama" => Ok(ProviderType::Ollama),
             "openrouter" => Ok(ProviderType::OpenRouter),
+            "google" => Ok(ProviderType::Google),
             "custom" => Ok(ProviderType::Custom),
             _ => Err(format!("Invalid provider type: {}", s)),
         }
@@ -55,6 +59,21 @@ pub struct Provider {
     pub api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
+    /// API version (e.g., "2024-01" for Anthropic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+    /// Azure deployment name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deployment: Option<String>,
+    /// Request timeout in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+    /// Maximum retry attempts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_retries: Option<u32>,
+    /// Custom headers for requests
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub headers: HashMap<String, String>,
     pub is_default: bool,
     pub enabled: bool,
     pub created_at: DateTime<Utc>,
@@ -71,6 +90,21 @@ pub struct ProviderEntry {
     pub api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
+    /// API version (e.g., "2024-01" for Anthropic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+    /// Azure deployment name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deployment: Option<String>,
+    /// Request timeout in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+    /// Maximum retry attempts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_retries: Option<u32>,
+    /// Custom headers for requests
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub headers: HashMap<String, String>,
     pub enabled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -87,7 +121,7 @@ pub struct ProvidersFile {
 
 /// Options for creating a provider (received from frontend)
 /// Uses provider_type to match TypeScript interface
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct CreateProviderOptions {
     pub provider_type: ProviderType,
     pub name: String,
@@ -95,6 +129,21 @@ pub struct CreateProviderOptions {
     pub api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
+    /// API version (e.g., "2024-01" for Anthropic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+    /// Azure deployment name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deployment: Option<String>,
+    /// Request timeout in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+    /// Maximum retry attempts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_retries: Option<u32>,
+    /// Custom headers for requests
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub headers: HashMap<String, String>,
     #[serde(default)]
     pub set_as_default: bool,
 }
@@ -110,6 +159,21 @@ pub struct ProviderUpdate {
     pub api_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub base_url: Option<String>,
+    /// API version (e.g., "2024-01" for Anthropic)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_version: Option<String>,
+    /// Azure deployment name
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub deployment: Option<String>,
+    /// Request timeout in seconds
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<u64>,
+    /// Maximum retry attempts
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_retries: Option<u32>,
+    /// Custom headers for requests
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
 }
 
 /// Provider connection status
@@ -132,6 +196,26 @@ pub fn get_default_base_url(provider_type: ProviderType) -> Option<&'static str>
         ProviderType::Azure => None, // Requires custom endpoint
         ProviderType::Ollama => Some("http://localhost:11434"),
         ProviderType::OpenRouter => Some("https://openrouter.ai/api/v1"),
+        ProviderType::Google => Some("https://generativelanguage.googleapis.com/v1beta"),
+        ProviderType::Custom => None,
+    }
+}
+
+impl Default for ProviderType {
+    fn default() -> Self {
+        ProviderType::OpenAI
+    }
+}
+
+/// Environment variable names for API keys by provider type
+pub fn get_env_var_name(provider_type: ProviderType) -> Option<&'static str> {
+    match provider_type {
+        ProviderType::OpenAI => Some("OPENAI_API_KEY"),
+        ProviderType::Anthropic => Some("ANTHROPIC_API_KEY"),
+        ProviderType::Azure => Some("AZURE_OPENAI_API_KEY"),
+        ProviderType::Ollama => None, // No API key needed
+        ProviderType::OpenRouter => Some("OPENROUTER_API_KEY"),
+        ProviderType::Google => Some("GOOGLE_API_KEY"),
         ProviderType::Custom => None,
     }
 }
