@@ -61,9 +61,50 @@ pub struct GatewayStatus {
 }
 
 /// Find the gateway binary path
-fn find_gateway_binary() -> Option<PathBuf> {
-    // First check if it's in the workspace crates/target directory
-    let workspace_paths = [
+/// Supports both standalone viben-gateway binary and `viben gateway` CLI command
+fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
+    // First, try to find `viben` CLI (preferred method)
+    let viben_paths = [
+        // Global npm installation
+        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
+        // npx path
+        Some(PathBuf::from("npx")),
+        // Local project node_modules
+        Some(PathBuf::from("./node_modules/.bin/viben")),
+        // Homebrew installation (macOS)
+        Some(PathBuf::from("/opt/homebrew/bin/viben")),
+        Some(PathBuf::from("/usr/local/bin/viben")),
+    ];
+
+    // Check if `viben` CLI exists
+    for path in viben_paths.into_iter().flatten() {
+        if path == PathBuf::from("npx") {
+            // Special case: use npx to run viben
+            return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string()]));
+        }
+        if path.exists() {
+            return Some((path, vec!["gateway".to_string()]));
+        }
+    }
+
+    // Try to find viben via `which` command on Unix
+    #[cfg(unix)]
+    {
+        if let Ok(output) = std::process::Command::new("which")
+            .arg("viben")
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() {
+                    return Some((PathBuf::from(path), vec!["gateway".to_string()]));
+                }
+            }
+        }
+    }
+
+    // Fallback: try standalone viben-gateway binary
+    let gateway_paths = [
         // Development path: crates/target/debug/viben-gateway
         dirs::home_dir()
             .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
@@ -73,15 +114,17 @@ fn find_gateway_binary() -> Option<PathBuf> {
         Some(PathBuf::from("/usr/local/bin/viben-gateway")),
         // Cargo bin path
         dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
+        // Home viben directory
+        dirs::home_dir().map(|h| h.join(".viben/bin/viben-gateway")),
     ];
 
-    for path in workspace_paths.into_iter().flatten() {
+    for path in gateway_paths.into_iter().flatten() {
         if path.exists() {
-            return Some(path);
+            return Some((path, vec![]));
         }
     }
 
-    // Try to find via `which` command on Unix
+    // Try to find viben-gateway via `which` command on Unix
     #[cfg(unix)]
     {
         if let Ok(output) = std::process::Command::new("which")
@@ -91,7 +134,7 @@ fn find_gateway_binary() -> Option<PathBuf> {
             if output.status.success() {
                 let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 if !path.is_empty() {
-                    return Some(PathBuf::from(path));
+                    return Some((PathBuf::from(path), vec![]));
                 }
             }
         }
@@ -137,12 +180,19 @@ pub async fn start_gateway(state: State<'_, GatewayState>) -> Result<GatewayStat
     }
 
     // Find the gateway binary
-    let binary_path = find_gateway_binary().ok_or_else(|| {
-        "Gateway binary not found. Please build viben-gateway first.".to_string()
+    let (binary_path, base_args) = find_gateway_binary().ok_or_else(|| {
+        "Gateway binary not found. Please install viben CLI: npm install -g @viben/cli".to_string()
     })?;
 
     // Start the gateway process
     let mut cmd = Command::new(&binary_path);
+
+    // Add base args (e.g., "gateway" for viben CLI)
+    for arg in &base_args {
+        cmd.arg(arg);
+    }
+
+    // Add configuration args
     cmd.arg("--port")
         .arg(config.port.to_string())
         .arg("--host")
@@ -283,5 +333,34 @@ pub async fn set_gateway_config(
 /// Check if gateway binary exists
 #[tauri::command]
 pub async fn check_gateway_binary() -> Result<Option<String>, String> {
-    Ok(find_gateway_binary().map(|p| p.to_string_lossy().to_string()))
+    Ok(find_gateway_binary().map(|(p, args)| {
+        if args.is_empty() {
+            p.to_string_lossy().to_string()
+        } else {
+            format!("{} {}", p.to_string_lossy(), args.join(" "))
+        }
+    }))
+}
+
+/// Auto-discover running gateway by probing known ports
+#[tauri::command]
+pub async fn discover_gateway() -> Result<Option<String>, String> {
+    let ports = [18790, 18791, 18800, 3790, 8790];
+
+    for port in ports {
+        let url = format!("http://127.0.0.1:{}/health", port);
+        match reqwest::Client::new()
+            .get(&url)
+            .timeout(std::time::Duration::from_secs(1))
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => {
+                return Ok(Some(format!("http://127.0.0.1:{}", port)));
+            }
+            _ => continue,
+        }
+    }
+
+    Ok(None)
 }

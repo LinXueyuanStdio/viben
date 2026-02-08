@@ -85,6 +85,7 @@ async fn test_write_and_read_yaml() {
         default_model: Some("gpt-4".to_string()),
         theme: Some("dark".to_string()),
         locale: Some("en".to_string()),
+        ..Default::default()
     };
 
     write_yaml(&path, &config).await.unwrap();
@@ -182,6 +183,7 @@ async fn test_config_manager_save_and_load() {
         default_model: Some("claude-3".to_string()),
         theme: Some("dark".to_string()),
         locale: Some("zh-CN".to_string()),
+        ..Default::default()
     };
 
     ConfigManager::save(&config).await.unwrap();
@@ -286,6 +288,7 @@ async fn test_write_and_read_json() {
         default_model: Some("gpt-4".to_string()),
         theme: Some("dark".to_string()),
         locale: Some("en".to_string()),
+        ..Default::default()
     };
 
     write_json(&path, &config).await.unwrap();
@@ -375,6 +378,7 @@ async fn test_config_manager_update_all_fields() {
         default_model: Some("updated-model".to_string()),
         theme: Some("updated-theme".to_string()),
         locale: Some("zh-CN".to_string()),
+        ..Default::default()
     };
 
     let updated = ConfigManager::update(updates).await.unwrap();

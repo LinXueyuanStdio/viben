@@ -5,6 +5,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as yaml from 'yaml';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createProgram } from '../../src/cli';
 
@@ -15,6 +16,7 @@ describe('viben skill', () => {
   let consoleOutput: string[];
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
+  let exitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     // Use realpathSync to resolve symlinks (e.g., /var -> /private/var on macOS)
@@ -22,7 +24,7 @@ describe('viben skill', () => {
     originalCwd = process.cwd();
     originalEnv = { ...process.env };
 
-    // Set custom state dir
+    // Set custom state dir - unique per test
     process.env.VIBEN_STATE_DIR = path.join(tempDir, 'state');
 
     // Capture console output
@@ -32,8 +34,8 @@ describe('viben skill', () => {
     });
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Prevent process.exit
-    vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    // Prevent process.exit and track calls
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
   });
 
   afterEach(() => {
@@ -41,11 +43,28 @@ describe('viben skill', () => {
     process.env = originalEnv;
     consoleSpy.mockRestore();
     errorSpy.mockRestore();
+    exitSpy.mockRestore();
 
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true });
     }
   });
+
+  /**
+   * Helper to create skills config directory and file
+   */
+  function setupSkillsConfig(skills: Record<string, { version: string; installed_at: string }>): void {
+    const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
+    fs.mkdirSync(skillsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(skillsDir, 'installed.yaml'),
+      yaml.stringify({
+        version: 1,
+        skills,
+      }),
+      'utf-8'
+    );
+  }
 
   describe('skill list', () => {
     it('should show message when no skills installed', async () => {
@@ -57,26 +76,12 @@ describe('viben skill', () => {
     });
 
     it('should list installed skills', async () => {
-      // Import yaml synchronously for setup
-      const yaml = await import('yaml');
-
-      // Create installed skill manually
-      const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
-      fs.mkdirSync(skillsDir, { recursive: true });
-      const configPath = path.join(skillsDir, 'installed.yaml');
-      fs.writeFileSync(
-        configPath,
-        yaml.stringify({
-          version: 1,
-          skills: {
-            'code-review': {
-              version: '1.0.0',
-              installed_at: new Date().toISOString(),
-            },
-          },
-        }),
-        'utf-8'
-      );
+      setupSkillsConfig({
+        'code-review': {
+          version: '1.0.0',
+          installed_at: new Date().toISOString(),
+        },
+      });
 
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'skill', 'list']);
@@ -88,32 +93,20 @@ describe('viben skill', () => {
     });
 
     it('should list multiple installed skills', async () => {
-      const yaml = await import('yaml');
-
-      const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
-      fs.mkdirSync(skillsDir, { recursive: true });
-      const configPath = path.join(skillsDir, 'installed.yaml');
-      fs.writeFileSync(
-        configPath,
-        yaml.stringify({
-          version: 1,
-          skills: {
-            'code-review': {
-              version: '1.0.0',
-              installed_at: new Date().toISOString(),
-            },
-            'commit': {
-              version: '1.2.0',
-              installed_at: new Date().toISOString(),
-            },
-            'test-runner': {
-              version: '0.9.0',
-              installed_at: new Date().toISOString(),
-            },
-          },
-        }),
-        'utf-8'
-      );
+      setupSkillsConfig({
+        'code-review': {
+          version: '1.0.0',
+          installed_at: new Date().toISOString(),
+        },
+        'commit': {
+          version: '1.2.0',
+          installed_at: new Date().toISOString(),
+        },
+        'test-runner': {
+          version: '0.9.0',
+          installed_at: new Date().toISOString(),
+        },
+      });
 
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'skill', 'list']);
@@ -137,24 +130,12 @@ describe('viben skill', () => {
     });
 
     it('should show installed status for available skills', async () => {
-      const yaml = await import('yaml');
-
-      // Install one skill
-      const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
-      fs.mkdirSync(skillsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillsDir, 'installed.yaml'),
-        yaml.stringify({
-          version: 1,
-          skills: {
-            'code-review': {
-              version: '1.0.0',
-              installed_at: new Date().toISOString(),
-            },
-          },
-        }),
-        'utf-8'
-      );
+      setupSkillsConfig({
+        'code-review': {
+          version: '1.0.0',
+          installed_at: new Date().toISOString(),
+        },
+      });
 
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'skill', 'list', '--available']);
@@ -175,27 +156,16 @@ describe('viben skill', () => {
     });
 
     it('should output JSON in json mode with installed skills', async () => {
-      const yaml = await import('yaml');
-
-      const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
-      fs.mkdirSync(skillsDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(skillsDir, 'installed.yaml'),
-        yaml.stringify({
-          version: 1,
-          skills: {
-            'code-review': {
-              version: '1.0.0',
-              installed_at: '2024-01-15T10:00:00Z',
-            },
-            'commit': {
-              version: '1.2.0',
-              installed_at: '2024-01-16T12:00:00Z',
-            },
-          },
-        }),
-        'utf-8'
-      );
+      setupSkillsConfig({
+        'code-review': {
+          version: '1.0.0',
+          installed_at: '2024-01-15T10:00:00Z',
+        },
+        'commit': {
+          version: '1.2.0',
+          installed_at: '2024-01-16T12:00:00Z',
+        },
+      });
 
       const program = createProgram();
       await program.parseAsync(['node', 'viben', '--json', 'skill', 'list']);
@@ -227,46 +197,44 @@ describe('viben skill', () => {
   describe('skill install', () => {
     it('should install a skill', async () => {
       const program = createProgram();
-      await program.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+      await program.parseAsync(['node', 'viben', 'skill', 'install', 'my-skill']);
 
       const output = consoleOutput.join('\n');
       expect(output).toContain('Installed skill');
-      expect(output).toContain('code-review');
+      expect(output).toContain('my-skill');
 
       // Verify skill was installed
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
       expect(fs.existsSync(configPath)).toBe(true);
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
-      expect(config.skills['code-review']).toBeDefined();
-      expect(config.skills['code-review'].version).toBe('1.0.0');
+      expect(config.skills['my-skill']).toBeDefined();
+      expect(config.skills['my-skill'].version).toBe('1.0.0');
     });
 
     it('should install skill with specific version', async () => {
       const program = createProgram();
-      await program.parseAsync(['node', 'viben', 'skill', 'install', 'commit@2.0.0']);
+      await program.parseAsync(['node', 'viben', 'skill', 'install', 'versioned@2.0.0']);
 
       const output = consoleOutput.join('\n');
-      expect(output).toContain('commit');
+      expect(output).toContain('versioned');
       expect(output).toContain('v2.0.0');
 
       // Verify installed version
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
-      expect(config.skills['commit'].version).toBe('2.0.0');
+      expect(config.skills['versioned'].version).toBe('2.0.0');
     });
 
     it('should create skill directory', async () => {
       const program = createProgram();
-      await program.parseAsync(['node', 'viben', 'skill', 'install', 'test-runner']);
+      await program.parseAsync(['node', 'viben', 'skill', 'install', 'dir-test']);
 
       // Verify skill directory was created
-      const skillDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills', 'test-runner');
+      const skillDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills', 'dir-test');
       expect(fs.existsSync(skillDir)).toBe(true);
       expect(fs.existsSync(path.join(skillDir, 'config.yaml'))).toBe(true);
     });
@@ -274,20 +242,21 @@ describe('viben skill', () => {
     it('should fail when installing already installed skill', async () => {
       // First install
       const program1 = createProgram();
-      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'dup-skill']);
 
-      // Clear output
+      // Clear output and reset exit spy
       consoleOutput = [];
+      exitSpy.mockClear();
 
       // Try to install again
       const program2 = createProgram();
       try {
-        await program2.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+        await program2.parseAsync(['node', 'viben', 'skill', 'install', 'dup-skill']);
       } catch {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should fail with invalid skill name', async () => {
@@ -298,7 +267,7 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should fail with empty skill name', async () => {
@@ -309,17 +278,17 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should output JSON in json mode on success', async () => {
       const program = createProgram();
-      await program.parseAsync(['node', 'viben', '--json', 'skill', 'install', 'code-review']);
+      await program.parseAsync(['node', 'viben', '--json', 'skill', 'install', 'json-skill']);
 
       const parsed = JSON.parse(consoleOutput.join('\n'));
       expect(parsed.success).toBe(true);
       expect(parsed.data.skill).toBeDefined();
-      expect(parsed.data.skill.id).toBe('code-review');
+      expect(parsed.data.skill.id).toBe('json-skill');
       expect(parsed.data.skill.version).toBe('1.0.0');
       expect(parsed.data.skill.installed_at).toBeDefined();
     });
@@ -327,7 +296,7 @@ describe('viben skill', () => {
     it('should output JSON in json mode on error', async () => {
       // First install
       const program1 = createProgram();
-      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'json-dup-skill']);
 
       // Clear output
       consoleOutput = [];
@@ -335,7 +304,7 @@ describe('viben skill', () => {
       // Try to install again with JSON output
       const program2 = createProgram();
       try {
-        await program2.parseAsync(['node', 'viben', '--json', 'skill', 'install', 'code-review']);
+        await program2.parseAsync(['node', 'viben', '--json', 'skill', 'install', 'json-dup-skill']);
       } catch {
         // Expected to throw
       }
@@ -351,39 +320,38 @@ describe('viben skill', () => {
     it('should uninstall an installed skill', async () => {
       // First install
       const program1 = createProgram();
-      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'uninstall-test']);
 
       // Clear output
       consoleOutput = [];
 
       // Then uninstall
       const program2 = createProgram();
-      await program2.parseAsync(['node', 'viben', 'skill', 'uninstall', 'code-review']);
+      await program2.parseAsync(['node', 'viben', 'skill', 'uninstall', 'uninstall-test']);
 
       const output = consoleOutput.join('\n');
       expect(output).toContain('Uninstalled skill');
-      expect(output).toContain('code-review');
+      expect(output).toContain('uninstall-test');
 
       // Verify skill was removed from config
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
-      expect(config.skills['code-review']).toBeUndefined();
+      expect(config.skills['uninstall-test']).toBeUndefined();
     });
 
     it('should remove skill directory on uninstall', async () => {
       // First install
       const program1 = createProgram();
-      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'test-runner']);
+      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'dir-remove-test']);
 
-      const skillDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills', 'test-runner');
+      const skillDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills', 'dir-remove-test');
       expect(fs.existsSync(skillDir)).toBe(true);
 
       // Then uninstall
       const program2 = createProgram();
-      await program2.parseAsync(['node', 'viben', 'skill', 'uninstall', 'test-runner']);
+      await program2.parseAsync(['node', 'viben', 'skill', 'uninstall', 'dir-remove-test']);
 
       // Skill directory should be removed
       expect(fs.existsSync(skillDir)).toBe(false);
@@ -397,7 +365,7 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should fail with invalid skill name', async () => {
@@ -408,24 +376,24 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should output JSON in json mode on success', async () => {
       // First install
       const program1 = createProgram();
-      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'code-review']);
+      await program1.parseAsync(['node', 'viben', 'skill', 'install', 'json-uninstall-test']);
 
       // Clear output
       consoleOutput = [];
 
       // Then uninstall with JSON
       const program2 = createProgram();
-      await program2.parseAsync(['node', 'viben', '--json', 'skill', 'uninstall', 'code-review']);
+      await program2.parseAsync(['node', 'viben', '--json', 'skill', 'uninstall', 'json-uninstall-test']);
 
       const parsed = JSON.parse(consoleOutput.join('\n'));
       expect(parsed.success).toBe(true);
-      expect(parsed.data.name).toBe('code-review');
+      expect(parsed.data.name).toBe('json-uninstall-test');
       expect(parsed.data.removed).toBe(true);
     });
 
@@ -447,7 +415,7 @@ describe('viben skill', () => {
   describe('skill name validation', () => {
     it('should accept valid skill names', async () => {
       const validNames = [
-        'code-review',
+        'valid-name-1',
         'test123',
         'my_skill',
         'a',
@@ -457,7 +425,7 @@ describe('viben skill', () => {
       ];
 
       for (const name of validNames) {
-        // Reset state dir for each test
+        // Reset state dir for each iteration
         const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
         if (fs.existsSync(skillsDir)) {
           fs.rmSync(skillsDir, { recursive: true });
@@ -480,7 +448,7 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should reject skill names with uppercase letters', async () => {
@@ -491,7 +459,7 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     it('should reject skill names with special characters', async () => {
@@ -502,7 +470,7 @@ describe('viben skill', () => {
         // Expected to throw
       }
 
-      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
 
@@ -514,21 +482,19 @@ describe('viben skill', () => {
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
       expect(config.skills['simple-skill'].version).toBe('1.0.0'); // Default version
     });
 
     it('should parse skill name with semantic version', async () => {
       const program = createProgram();
-      await program.parseAsync(['node', 'viben', 'skill', 'install', 'versioned-skill@2.1.3']);
+      await program.parseAsync(['node', 'viben', 'skill', 'install', 'sem-versioned-skill@2.1.3']);
 
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
-      expect(config.skills['versioned-skill'].version).toBe('2.1.3');
+      expect(config.skills['sem-versioned-skill'].version).toBe('2.1.3');
     });
 
     it('should parse skill name with prerelease version', async () => {
@@ -538,7 +504,6 @@ describe('viben skill', () => {
       const skillsDir = path.join(process.env.VIBEN_STATE_DIR!, 'skills');
       const configPath = path.join(skillsDir, 'installed.yaml');
 
-      const yaml = await import('yaml');
       const config = yaml.parse(fs.readFileSync(configPath, 'utf-8'));
       expect(config.skills['beta-skill'].version).toBe('1.0.0-beta.1');
     });

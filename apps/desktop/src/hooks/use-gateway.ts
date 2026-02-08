@@ -34,6 +34,8 @@ export interface UseGatewayReturn {
   error: string | null;
   /** Path to gateway binary (if found) */
   binaryPath: string | null;
+  /** Auto-discovered gateway URL (if different from configured) */
+  discoveredUrl: string | null;
   /** Start the gateway */
   startGateway: () => Promise<void>;
   /** Stop the gateway */
@@ -44,6 +46,8 @@ export interface UseGatewayReturn {
   refreshStatus: () => Promise<void>;
   /** Update configuration */
   updateConfig: (config: Partial<GatewayConfig>) => Promise<void>;
+  /** Auto-discover running gateway */
+  discoverGateway: () => Promise<string | null>;
 }
 
 export function useGateway(): UseGatewayReturn {
@@ -53,6 +57,7 @@ export function useGateway(): UseGatewayReturn {
   const [isActioning, setIsActioning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [binaryPath, setBinaryPath] = useState<string | null>(null);
+  const [discoveredUrl, setDiscoveredUrl] = useState<string | null>(null);
 
   // Fetch status
   const refreshStatus = useCallback(async () => {
@@ -85,11 +90,23 @@ export function useGateway(): UseGatewayReturn {
     }
   }, []);
 
+  // Auto-discover running gateway
+  const discoverGateway = useCallback(async (): Promise<string | null> => {
+    try {
+      const url = await invoke<string | null>("discover_gateway");
+      setDiscoveredUrl(url);
+      return url;
+    } catch (err) {
+      console.error("Failed to discover gateway:", err);
+      return null;
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
-      await Promise.all([refreshStatus(), refreshConfig(), checkBinary()]);
+      await Promise.all([refreshStatus(), refreshConfig(), checkBinary(), discoverGateway()]);
       setIsLoading(false);
     };
     init();
@@ -97,7 +114,7 @@ export function useGateway(): UseGatewayReturn {
     // Poll status every 5 seconds
     const interval = setInterval(refreshStatus, 5000);
     return () => clearInterval(interval);
-  }, [refreshStatus, refreshConfig, checkBinary]);
+  }, [refreshStatus, refreshConfig, checkBinary, discoverGateway]);
 
   // Start gateway
   const startGateway = useCallback(async () => {
@@ -170,10 +187,12 @@ export function useGateway(): UseGatewayReturn {
     isActioning,
     error,
     binaryPath,
+    discoveredUrl,
     startGateway,
     stopGateway,
     restartGateway,
     refreshStatus,
     updateConfig,
+    discoverGateway,
   };
 }

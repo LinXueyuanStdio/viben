@@ -409,10 +409,10 @@ mod tests {
         async fn test_create_task() {
             let app = test_app().await;
 
+            // Create task without agent_id (agent_id is optional)
             let body = serde_json::to_string(&json!({
                 "title": "Test Task",
-                "description": "A test task description",
-                "agent_id": "test-agent"
+                "description": "A test task description"
             }))
             .unwrap();
 
@@ -439,7 +439,7 @@ mod tests {
             assert_eq!(json["title"], "Test Task");
             assert_eq!(json["description"], "A test task description");
             assert_eq!(json["status"], "todo");
-            assert_eq!(json["agent_id"], "test-agent");
+            assert!(json["agent_id"].is_null());
         }
 
         #[tokio::test]
@@ -517,28 +517,22 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn test_delete_task() {
+        async fn test_delete_task_not_found() {
             let app = test_app().await;
 
+            // Deleting a non-existent task should return 404
             let response = app
                 .oneshot(
                     Request::builder()
                         .method("DELETE")
-                        .uri("/api/tasks/test-task-id")
+                        .uri("/api/tasks/nonexistent-task-id")
                         .body(Body::empty())
                         .unwrap(),
                 )
                 .await
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::OK);
-
-            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            let json: Value = serde_json::from_slice(&body).unwrap();
-
-            assert_eq!(json["deleted"], "test-task-id");
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
         }
     }
 
@@ -548,6 +542,27 @@ mod tests {
 
     mod session_tests {
         use super::*;
+        use crate::db::models::{Agent, AgentType, CreateAgent};
+
+        /// Create or get a test agent for session tests
+        async fn get_or_create_test_agent(state: &AppState) -> Agent {
+            // Generate a unique agent ID for each test
+            let agent_id = format!("test-agent-{}", uuid::Uuid::new_v4());
+            let create_data = CreateAgent {
+                id: Some(agent_id),
+                name: "Test Agent".to_string(),
+                agent_type: AgentType::ClaudeCode,
+                config: None,
+            };
+            Agent::create(&state.db.pool, &create_data).await.unwrap()
+        }
+
+        /// Create test state with a pre-created agent
+        async fn test_state_with_agent() -> (AppState, Agent) {
+            let state = test_state().await;
+            let agent = get_or_create_test_agent(&state).await;
+            (state, agent)
+        }
 
         #[tokio::test]
         async fn test_list_sessions() {
@@ -575,11 +590,12 @@ mod tests {
 
         #[tokio::test]
         async fn test_create_session() {
-            let app = test_app().await;
+            // Create state with agent prerequisite
+            let (state, agent) = test_state_with_agent().await;
+            let app = routes::router(state);
 
             let body = serde_json::to_string(&json!({
-                "agent_id": "test-agent",
-                "task_id": "test-task",
+                "agent_id": agent.id,
                 "prompt": "Hello"
             }))
             .unwrap();
@@ -604,17 +620,19 @@ mod tests {
             let json: Value = serde_json::from_slice(&body).unwrap();
 
             assert!(json["id"].is_string());
-            assert_eq!(json["agent_id"], "test-agent");
-            assert_eq!(json["task_id"], "test-task");
+            assert_eq!(json["agent_id"], agent.id);
+            assert!(json["task_id"].is_null());
             assert_eq!(json["status"], "active");
         }
 
         #[tokio::test]
         async fn test_create_session_minimal() {
-            let app = test_app().await;
+            // Create state with agent prerequisite
+            let (state, agent) = test_state_with_agent().await;
+            let app = routes::router(state);
 
             let body = serde_json::to_string(&json!({
-                "agent_id": "test-agent"
+                "agent_id": agent.id
             }))
             .unwrap();
 
@@ -637,7 +655,7 @@ mod tests {
                 .unwrap();
             let json: Value = serde_json::from_slice(&body).unwrap();
 
-            assert_eq!(json["agent_id"], "test-agent");
+            assert_eq!(json["agent_id"], agent.id);
             assert!(json["task_id"].is_null());
         }
 
@@ -659,7 +677,7 @@ mod tests {
         }
 
         #[tokio::test]
-        async fn test_send_message() {
+        async fn test_send_message_session_not_found() {
             let app = test_app().await;
 
             let body = serde_json::to_string(&json!({
@@ -667,11 +685,12 @@ mod tests {
             }))
             .unwrap();
 
+            // Sending message to non-existent session should return 404
             let response = app
                 .oneshot(
                     Request::builder()
                         .method("POST")
-                        .uri("/api/sessions/test-session/message")
+                        .uri("/api/sessions/nonexistent-session/message")
                         .header("content-type", "application/json")
                         .body(Body::from(body))
                         .unwrap(),
@@ -679,40 +698,26 @@ mod tests {
                 .await
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::OK);
-
-            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            let json: Value = serde_json::from_slice(&body).unwrap();
-
-            assert_eq!(json["session_id"], "test-session");
-            assert_eq!(json["status"], "message_sent");
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
         }
 
         #[tokio::test]
-        async fn test_delete_session() {
+        async fn test_delete_session_not_found() {
             let app = test_app().await;
 
+            // Deleting a non-existent session should return 404
             let response = app
                 .oneshot(
                     Request::builder()
                         .method("DELETE")
-                        .uri("/api/sessions/test-session-id")
+                        .uri("/api/sessions/nonexistent-session-id")
                         .body(Body::empty())
                         .unwrap(),
                 )
                 .await
                 .unwrap();
 
-            assert_eq!(response.status(), StatusCode::OK);
-
-            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
-                .await
-                .unwrap();
-            let json: Value = serde_json::from_slice(&body).unwrap();
-
-            assert_eq!(json["deleted"], "test-session-id");
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
         }
     }
 
@@ -988,6 +993,7 @@ mod tests {
 
     mod session_response_tests {
         use crate::gateway::routes::sessions::SessionResponse;
+        use serde_json::json;
 
         #[test]
         fn test_session_response_serialize() {
@@ -996,13 +1002,17 @@ mod tests {
                 agent_id: "agent-1".to_string(),
                 task_id: Some("task-1".to_string()),
                 status: "active".to_string(),
+                prompt: Some("test prompt".to_string()),
+                session_data: json!({}),
+                created_at: "2024-01-01T00:00:00Z".to_string(),
+                updated_at: "2024-01-01T00:00:00Z".to_string(),
             };
 
-            let json = serde_json::to_string(&response).unwrap();
-            assert!(json.contains("session-1"));
-            assert!(json.contains("agent-1"));
-            assert!(json.contains("task-1"));
-            assert!(json.contains("active"));
+            let json_str = serde_json::to_string(&response).unwrap();
+            assert!(json_str.contains("session-1"));
+            assert!(json_str.contains("agent-1"));
+            assert!(json_str.contains("task-1"));
+            assert!(json_str.contains("active"));
         }
 
         #[test]
@@ -1012,11 +1022,15 @@ mod tests {
                 agent_id: "agent-1".to_string(),
                 task_id: None,
                 status: "active".to_string(),
+                prompt: None,
+                session_data: json!({}),
+                created_at: "2024-01-01T00:00:00Z".to_string(),
+                updated_at: "2024-01-01T00:00:00Z".to_string(),
             };
 
-            let json = serde_json::to_string(&response).unwrap();
-            assert!(json.contains("session-1"));
-            assert!(json.contains("agent-1"));
+            let json_str = serde_json::to_string(&response).unwrap();
+            assert!(json_str.contains("session-1"));
+            assert!(json_str.contains("agent-1"));
         }
     }
 

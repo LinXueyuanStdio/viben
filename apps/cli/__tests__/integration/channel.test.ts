@@ -6,7 +6,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createProgram } from '../../src/cli';
+
+// Note: createProgram must be imported dynamically after setting VIBEN_STATE_DIR
+// to ensure modules read the correct environment variable.
 
 describe('viben channel', () => {
   let tempDir: string;
@@ -16,14 +18,17 @@ describe('viben channel', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let errorSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Use realpathSync to resolve symlinks (e.g., /var -> /private/var on macOS)
     tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'viben-test-')));
     originalCwd = process.cwd();
     originalEnv = { ...process.env };
 
-    // Set custom state dir
+    // Set custom state dir BEFORE resetting modules
     process.env.VIBEN_STATE_DIR = path.join(tempDir, 'state');
+
+    // Reset module cache to ensure modules read the new VIBEN_STATE_DIR
+    vi.resetModules();
 
     // Capture console output
     consoleOutput = [];
@@ -46,6 +51,14 @@ describe('viben channel', () => {
       fs.rmSync(tempDir, { recursive: true });
     }
   });
+
+  /**
+   * Dynamically import createProgram to ensure it uses current VIBEN_STATE_DIR
+   */
+  async function getCreateProgram() {
+    const { createProgram } = await import('../../src/cli');
+    return createProgram;
+  }
 
   /**
    * Create a channel configuration directly in the state directory
@@ -105,6 +118,7 @@ describe('viben channel', () => {
 
   describe('channel list', () => {
     it('should show no channels when none exist', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'channel', 'list']);
 
@@ -115,6 +129,7 @@ describe('viben channel', () => {
     it('should list existing channels', async () => {
       createChannel('my-telegram', { type: 'telegram', token: 'test-token' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'channel', 'list']);
 
@@ -127,6 +142,7 @@ describe('viben channel', () => {
       createChannel('telegram-bot', { type: 'telegram', token: 'token1' });
       createChannel('discord-bot', { type: 'discord', token: 'token2' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'channel', 'list']);
 
@@ -141,6 +157,7 @@ describe('viben channel', () => {
       createChannel('enabled-ch', { type: 'telegram', token: 'token1', enabled: true });
       createChannel('disabled-ch', { type: 'telegram', token: 'token2', enabled: false });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', 'channel', 'list']);
 
@@ -154,6 +171,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode', async () => {
       createChannel('json-channel', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync(['node', 'viben', '--json', 'channel', 'list']);
 
@@ -167,6 +185,7 @@ describe('viben channel', () => {
 
   describe('channel create', () => {
     it('should create a telegram channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -185,6 +204,7 @@ describe('viben channel', () => {
     });
 
     it('should create a discord channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -199,6 +219,7 @@ describe('viben channel', () => {
     });
 
     it('should create a feishu channel with required options', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -214,6 +235,7 @@ describe('viben channel', () => {
     });
 
     it('should create a whatsapp channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -227,6 +249,7 @@ describe('viben channel', () => {
     });
 
     it('should fail without channel type', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -241,6 +264,7 @@ describe('viben channel', () => {
     });
 
     it('should fail with invalid channel type', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -256,6 +280,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for telegram without token', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -271,6 +296,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for feishu without credentials', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -288,6 +314,7 @@ describe('viben channel', () => {
     it('should fail if channel already exists', async () => {
       createChannel('existing', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -304,6 +331,7 @@ describe('viben channel', () => {
     });
 
     it('should fail with invalid channel ID (starts with number)', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -320,6 +348,7 @@ describe('viben channel', () => {
     });
 
     it('should create channel as disabled with --disabled flag', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -334,6 +363,7 @@ describe('viben channel', () => {
     });
 
     it('should set as default with --set-default flag', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'create',
@@ -349,6 +379,7 @@ describe('viben channel', () => {
     });
 
     it('should output JSON in json mode', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'create',
@@ -368,6 +399,7 @@ describe('viben channel', () => {
     it('should remove an existing channel', async () => {
       createChannel('to-remove', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'remove',
@@ -382,6 +414,7 @@ describe('viben channel', () => {
     it('should remove channel with --force flag', async () => {
       createChannel('force-remove', { type: 'discord', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'remove',
@@ -394,6 +427,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for non-existent channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -410,6 +444,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode', async () => {
       createChannel('json-remove', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'remove',
@@ -427,6 +462,7 @@ describe('viben channel', () => {
     it('should enable a disabled channel', async () => {
       createChannel('disabled-ch', { type: 'telegram', token: 'test', enabled: false });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'enable',
@@ -439,6 +475,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for non-existent channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -455,6 +492,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode', async () => {
       createChannel('json-enable', { type: 'telegram', token: 'test', enabled: false });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'enable',
@@ -471,6 +509,7 @@ describe('viben channel', () => {
     it('should disable an enabled channel', async () => {
       createChannel('enabled-ch', { type: 'telegram', token: 'test', enabled: true });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'disable',
@@ -483,6 +522,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for non-existent channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -499,6 +539,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode', async () => {
       createChannel('json-disable', { type: 'telegram', token: 'test', enabled: true });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'disable',
@@ -515,6 +556,7 @@ describe('viben channel', () => {
     it('should set a channel as default', async () => {
       createChannel('new-default', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'set-default',
@@ -527,6 +569,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for non-existent channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -543,6 +586,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode', async () => {
       createChannel('json-default', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'set-default',
@@ -556,10 +600,26 @@ describe('viben channel', () => {
   });
 
   describe('channel status', () => {
+    it('should show no channels message when none exist', async () => {
+      // Ensure state directory exists but is empty
+      const stateDir = process.env.VIBEN_STATE_DIR!;
+      fs.mkdirSync(stateDir, { recursive: true });
+
+      const createProgram = await getCreateProgram();
+      const program = createProgram();
+      await program.parseAsync([
+        'node', 'viben', 'channel', 'status'
+      ]);
+
+      const output = consoleOutput.join('\n');
+      expect(output).toContain('No channels configured');
+    });
+
     it('should show status for all channels when no name specified', async () => {
       createChannel('status-ch1', { type: 'telegram', token: 'test1' });
       createChannel('status-ch2', { type: 'discord', token: 'test2' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'status'
@@ -571,19 +631,10 @@ describe('viben channel', () => {
       expect(output).toContain('Status');
     });
 
-    it('should show no channels message when none exist', async () => {
-      const program = createProgram();
-      await program.parseAsync([
-        'node', 'viben', 'channel', 'status'
-      ]);
-
-      const output = consoleOutput.join('\n');
-      expect(output).toContain('No channels configured');
-    });
-
     it('should show status for specific channel', async () => {
       createChannel('specific-ch', { type: 'telegram', token: 'test', enabled: false });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', 'channel', 'status',
@@ -596,6 +647,7 @@ describe('viben channel', () => {
     });
 
     it('should fail for non-existent specific channel', async () => {
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       try {
         await program.parseAsync([
@@ -612,6 +664,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode for all channels', async () => {
       createChannel('json-status', { type: 'telegram', token: 'test' });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'status'
@@ -625,6 +678,7 @@ describe('viben channel', () => {
     it('should output JSON in json mode for specific channel', async () => {
       createChannel('json-specific', { type: 'discord', token: 'test', enabled: false });
 
+      const createProgram = await getCreateProgram();
       const program = createProgram();
       await program.parseAsync([
         'node', 'viben', '--json', 'channel', 'status',
