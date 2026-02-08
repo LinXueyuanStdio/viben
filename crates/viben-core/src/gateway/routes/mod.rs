@@ -9,6 +9,7 @@ pub mod events;
 pub mod health;
 pub mod sessions;
 pub mod tasks;
+pub mod terminal;
 pub mod ws;
 
 /// Create the main router with all routes
@@ -19,6 +20,7 @@ pub fn router(state: AppState) -> Router {
         .merge(tasks::router())
         .merge(sessions::router())
         .merge(events::router())
+        .merge(terminal::router())
         .merge(ws::router())
         .with_state(state)
 }

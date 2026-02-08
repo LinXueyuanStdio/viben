@@ -2399,6 +2399,166 @@ apps/cli/
 
 ---
 
+## Testing
+
+### 测试框架
+
+| 组件 | 选择 | 说明 |
+|------|------|------|
+| 测试框架 | Vitest | 快速、支持 TypeScript |
+| 断言库 | Vitest (内置) | expect API |
+| Mock | vi.spyOn | Console、process.exit 等 |
+| 覆盖率 | v8 | 原生 Node.js 覆盖率 |
+
+### 测试配置
+
+```typescript
+// vitest.config.ts
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['__tests__/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: ['src/index.ts', 'src/types/**'],
+    },
+    testTimeout: 60000,  // 部分命令需要较长时间
+    hookTimeout: 60000,
+  },
+});
+```
+
+### 测试文件结构
+
+```
+apps/cli/__tests__/
+├── unit/                          # 单元测试
+│   ├── output.test.ts             # 输出工具测试
+│   ├── scope.test.ts              # 作用域检测测试
+│   ├── config.test.ts             # 配置读写测试
+│   ├── agents.test.ts             # Agent 管理测试
+│   └── executors.test.ts          # Executor 检测测试
+└── integration/                   # 集成测试
+    ├── init.test.ts               # viben init
+    ├── config.test.ts             # viben config
+    ├── executor.test.ts           # viben executor
+    ├── agent.test.ts              # viben agent
+    ├── provider.test.ts           # viben provider
+    ├── model.test.ts              # viben model
+    ├── workspace.test.ts          # viben workspace
+    ├── service.test.ts            # viben service
+    ├── skill.test.ts              # viben skill
+    ├── channel.test.ts            # viben channel
+    └── cron.test.ts               # viben cron
+```
+
+### 测试覆盖范围
+
+| 命令组 | 测试文件 | 测试数量 | 覆盖内容 |
+|--------|----------|----------|----------|
+| executor | executor.test.ts | ~30 | list, show, JSON output, capabilities |
+| provider | provider.test.ts | 41 | list, create, remove, set-default, status |
+| model | model.test.ts | 33 | list, status, set-default, aliases, fallbacks |
+| skill | skill.test.ts | 29 | list, install, uninstall |
+| channel | channel.test.ts | 37 | list, create, remove, enable, disable, set-default, status |
+| cron | cron.test.ts | 29 | list, add, remove, enable, disable, show |
+| workspace | workspace.test.ts | 13 | list, current |
+| service | service.test.ts | 25 | status, start, stop, logs |
+
+**总计**: 16 个测试文件，约 380+ 测试用例
+
+### 测试模式
+
+#### 1. 临时目录隔离
+
+每个测试使用独立的临时目录，避免污染真实配置：
+
+```typescript
+beforeEach(() => {
+  tempDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'viben-test-')));
+  process.env.VIBEN_STATE_DIR = path.join(tempDir, 'state');
+});
+
+afterEach(() => {
+  if (fs.existsSync(tempDir)) {
+    fs.rmSync(tempDir, { recursive: true });
+  }
+});
+```
+
+#### 2. Console 输出捕获
+
+```typescript
+let consoleOutput: string[] = [];
+let consoleSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  consoleOutput = [];
+  consoleSpy = vi.spyOn(console, 'log').mockImplementation((...args) => {
+    consoleOutput.push(args.join(' '));
+  });
+});
+```
+
+#### 3. JSON 输出测试
+
+所有命令都测试 `--json` flag：
+
+```typescript
+it('should output JSON format with --json flag', async () => {
+  const program = createProgram();
+  await program.parseAsync(['node', 'viben', '--json', 'provider', 'list']);
+
+  const output = consoleOutput.join('\n');
+  const parsed = JSON.parse(output);
+
+  expect(parsed.success).toBe(true);
+  expect(parsed.data.providers).toBeDefined();
+});
+```
+
+#### 4. 错误处理测试
+
+```typescript
+it('should output JSON error with --json flag', async () => {
+  const program = createProgram();
+  await program.parseAsync(['node', 'viben', '--json', 'executor', 'show', '-n', 'INVALID']);
+
+  const output = consoleOutput.join('\n');
+  const parsed = JSON.parse(output);
+
+  expect(parsed.success).toBe(false);
+  expect(parsed.error.code).toBe('EXECUTOR_NOT_FOUND');
+});
+```
+
+### 运行测试
+
+```bash
+# 运行所有测试
+cd apps/cli && pnpm test
+
+# 运行特定测试文件
+pnpm test executor.test.ts
+
+# 运行带覆盖率
+pnpm test:coverage
+
+# 监听模式
+pnpm test:watch
+```
+
+### 已知限制
+
+1. **Executor 检测超时**: `executor.test.ts` 需要 60s 超时，因为 `execSync` 检测命令可能较慢
+2. **Service 进程测试**: 部分测试 (如实际启动 MCP 服务) 被 skip，因为会产生子进程清理问题
+3. **Vitest Worker 超时**: 大量测试并行运行时可能出现 worker 超时，是 Vitest 已知问题，不影响测试结果
+
+---
+
 ## Related Documents
 
 - [Workspace Management](./workspace-management.md) - 工作区管理规范

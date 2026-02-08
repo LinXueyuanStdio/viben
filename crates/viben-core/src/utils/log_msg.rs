@@ -3,6 +3,9 @@
 use axum::response::sse::Event;
 use serde::{Deserialize, Serialize};
 
+// Re-export json_patch types for convenience
+pub use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
+
 /// Log message types from executor processes
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "data")]
@@ -11,12 +14,14 @@ pub enum LogMsg {
     Stdout(String),
     /// Standard error from the process
     Stderr(String),
-    /// JSON patch for incremental updates
-    JsonPatch(json_patch::Patch),
+    /// JSON patch for incremental updates (RFC 6902)
+    JsonPatch(Patch),
     /// Session ID from the executor
     SessionId(String),
     /// Message ID for conversation tracking
     MessageId(String),
+    /// Ready signal (initial data sent)
+    Ready,
     /// Process finished signal
     Finished,
 }
@@ -30,6 +35,7 @@ impl LogMsg {
             LogMsg::JsonPatch(p) => serde_json::to_string(p).map(|s| s.len()).unwrap_or(64) + 16,
             LogMsg::SessionId(s) => s.len() + 16,
             LogMsg::MessageId(s) => s.len() + 16,
+            LogMsg::Ready => 16,
             LogMsg::Finished => 16,
         }
     }
@@ -44,28 +50,8 @@ impl LogMsg {
                 .data(serde_json::to_string(p).unwrap_or_default()),
             LogMsg::SessionId(s) => Event::default().event("session_id").data(s),
             LogMsg::MessageId(s) => Event::default().event("message_id").data(s),
+            LogMsg::Ready => Event::default().event("ready").data(""),
             LogMsg::Finished => Event::default().event("finished").data(""),
         }
     }
 }
-
-// Add json_patch to dependencies
-mod json_patch {
-    pub use ::serde_json::Value;
-
-    /// A JSON Patch operation
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-    pub struct PatchOperation {
-        pub op: String,
-        pub path: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub value: Option<Value>,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub from: Option<String>,
-    }
-
-    /// A JSON Patch document (RFC 6902)
-    pub type Patch = Vec<PatchOperation>;
-}
-
-pub use json_patch::{Patch, PatchOperation};

@@ -63,6 +63,15 @@ regex = "1.11"
 # HTTP client
 reqwest = { version = "0.12", features = ["json"] }
 
+# PTY support
+portable-pty = "0.8"
+
+# Base64 encoding
+base64 = "0.22"
+
+# JSON Patch (RFC 6902)
+json-patch = "3.0"
+
 [profile.release]
 debug = 1
 split-debuginfo = "packed"
