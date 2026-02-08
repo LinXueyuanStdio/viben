@@ -1,29 +1,78 @@
 //! Viben Core Library
 //!
-//! This crate provides shared functionality for both CLI and Desktop applications,
-//! including agent management, provider configuration, and model definitions.
+//! This crate provides all core functionality for Viben:
+//! - Agent management, provider configuration, and model definitions
+//! - Gateway HTTP/WebSocket server
+//! - Executor implementations for AI coding agents
+//! - Business logic services
+//! - Database layer
+//! - Common utilities
 
+// Original viben-core modules
 pub mod agents;
 pub mod config;
 pub mod error;
 pub mod models;
 pub mod providers;
 
+// Merged from viben-gateway
+pub mod gateway;
+
+// Merged from viben-services
+pub mod services;
+
+// Merged from viben-executors
+pub mod executors;
+
+// Merged from viben-db
+pub mod db;
+
+// Merged from viben-utils
+pub mod utils;
+
 // Re-export commonly used types at the crate root
+
+// From agents module
 pub use agents::{
     Agent, AgentConfigFile, AgentManager, AgentMemory, AgentSession, AgentTemplate,
     AgentTemplateConfig, AgentUpdate, CreateAgentOptions, SessionFile,
 };
+
+// From config module
 pub use config::{ConfigManager, GlobalConfig};
+
+// From error module
 pub use error::{Error, Result};
+
+// From models module
 pub use models::{
     CreateModelOptions, DiscoveredModel, KnownModel, Model, ModelEntry, ModelManager, ModelUpdate,
     ModelsFile, ProviderModelsConfig,
 };
+
+// From providers module
 pub use providers::{
     CreateProviderOptions, Provider, ProviderEntry, ProviderManager, ProviderStatus, ProviderType,
     ProviderUpdate, ProvidersFile,
 };
+
+// From gateway module
+pub use gateway::{AppState, GatewayError};
+
+// From services module
+pub use services::{ContainerService, EventService, InboundMessage, MessageBus, OutboundMessage};
+
+// From executors module
+pub use executors::{
+    AvailabilityInfo, BaseCodingAgent, CodingAgent, CommandBuilder, CommandParts, ExecutionEnv,
+    ExecutorError, RepoContext, SpawnedChild, StandardCodingAgentExecutor,
+};
+
+// From db module
+pub use db::{DbError, DbService};
+
+// From utils module
+pub use utils::{LogMsg, MsgStore};
 
 /// Initialize all managers and ensure directory structure exists
 pub async fn initialize() -> Result<()> {

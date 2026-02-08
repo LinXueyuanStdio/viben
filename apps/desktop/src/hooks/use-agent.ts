@@ -266,48 +266,61 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
 
   /**
    * Subscribe to WebSocket events for a session
+   * Returns a promise that resolves when the connection is open
    */
-  const subscribeToEvents = useCallback((targetSessionId: string) => {
-    // Close existing connection
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
-    const wsUrl = getWebSocketUrl();
-    console.log("[useAgent] Connecting to WebSocket:", wsUrl);
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log("[useAgent] WebSocket connection opened for session:", targetSessionId);
-    };
-
-    ws.onmessage = (e) => {
-      try {
-        const message: WsServerMessage = JSON.parse(e.data);
-        console.log("[useAgent] WebSocket message:", message);
-
-        if (message.type === "Event" && message.data?.payload) {
-          const eventType = message.data.payload.type;
-          const eventData = message.data.payload.data;
-          if (eventType && eventData) {
-            handleWsEvent(eventType, eventData, targetSessionId);
-          }
-        }
-      } catch (err) {
-        console.error("[useAgent] Failed to parse WebSocket message:", err, e.data);
+  const subscribeToEvents = useCallback((targetSessionId: string): Promise<WebSocket> => {
+    return new Promise((resolve, reject) => {
+      // Close existing connection
+      if (wsRef.current) {
+        wsRef.current.close();
       }
-    };
 
-    ws.onerror = (e) => {
-      console.error("[useAgent] WebSocket error:", e);
-    };
+      const wsUrl = getWebSocketUrl();
+      console.log("[useAgent] Connecting to WebSocket:", wsUrl);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onclose = (e) => {
-      console.log("[useAgent] WebSocket closed:", e.code, e.reason);
-    };
+      // Set a timeout for connection
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          ws.close();
+          reject(new Error("WebSocket connection timeout"));
+        }
+      }, 5000);
 
-    return ws;
+      ws.onopen = () => {
+        clearTimeout(connectionTimeout);
+        console.log("[useAgent] WebSocket connection opened for session:", targetSessionId);
+        resolve(ws);
+      };
+
+      ws.onmessage = (e) => {
+        try {
+          const message: WsServerMessage = JSON.parse(e.data);
+          console.log("[useAgent] WebSocket message:", message);
+
+          if (message.type === "Event" && message.data?.payload) {
+            const eventType = message.data.payload.type;
+            const eventData = message.data.payload.data;
+            if (eventType && eventData) {
+              handleWsEvent(eventType, eventData, targetSessionId);
+            }
+          }
+        } catch (err) {
+          console.error("[useAgent] Failed to parse WebSocket message:", err, e.data);
+        }
+      };
+
+      ws.onerror = (e) => {
+        clearTimeout(connectionTimeout);
+        console.error("[useAgent] WebSocket error:", e);
+        reject(new Error("WebSocket connection failed"));
+      };
+
+      ws.onclose = (e) => {
+        console.log("[useAgent] WebSocket closed:", e.code, e.reason);
+      };
+    });
   }, [handleWsEvent]);
 
   /**
@@ -329,39 +342,46 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       };
       setMessages((prev) => [...prev, userMessage]);
 
+      // Generate session ID upfront so WebSocket can listen for it
+      const newSessionId = sessionId || crypto.randomUUID();
+
       try {
+        // CRITICAL: First establish WebSocket connection BEFORE spawning
+        // This ensures we don't miss any early messages from the agent
+        console.log("[useAgent] Establishing WebSocket connection first...");
+        await subscribeToEvents(newSessionId);
+        console.log("[useAgent] WebSocket ready, now spawning agent");
+
         // Spawn agent through Gateway
         const request = {
           prompt: content,
           workdir: workspaceId, // Use workspace path as workdir
-          session_id: sessionId || undefined,
+          session_id: newSessionId,
           config: executorConfig?.config as Record<string, unknown>,
         };
         console.log("[useAgent] Spawning agent:", { agentType, request });
         const response = await client.spawnAgent(agentType, request);
         console.log("[useAgent] Spawn response:", response);
 
-        const newSessionId = response.session_id;
-        setSessionId(newSessionId);
-
-        // Subscribe to SSE events for this session
-        subscribeToEvents(newSessionId);
+        // Update session ID (should match what we sent)
+        setSessionId(response.session_id);
 
         // Add a system message indicating the agent started
         const infoMessage: AgentMessage = {
           id: generateId(),
           type: "text",
-          content: `Starting ${agentType} agent...`,
+          content: `Agent ${agentType} started (session: ${response.session_id.slice(0, 8)}...)`,
         };
         setMessages((prev) => [...prev, infoMessage]);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        console.error("[useAgent] Error:", errorMessage);
         setError(errorMessage);
 
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: errorMessage,
+          message: `Failed to start agent: ${errorMessage}`,
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);

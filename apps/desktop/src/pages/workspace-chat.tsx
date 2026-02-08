@@ -480,6 +480,8 @@ export function WorkspaceChatPage() {
     answerQuestions,
     cancel,
     clearMessages,
+    gatewayConnected,
+    checkGatewayConnection,
   } = useAgent(workspace?.path || "", { agentType: selectedExecutor });
 
   // Load conversations on mount
@@ -833,9 +835,23 @@ export function WorkspaceChatPage() {
                       <p className="font-medium text-sm">
                         {currentConversation?.title || t("chat.newConversation")}
                       </p>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
-                        {t("chat.online")}
-                      </span>
+                      {gatewayConnected === true ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
+                          Gateway
+                        </span>
+                      ) : gatewayConnected === false ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 cursor-pointer"
+                          onClick={checkGatewayConnection}
+                          title={t("chat.gatewayOfflineHint", "Gateway 未连接，点击重试")}
+                        >
+                          Mock
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          ...
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {currentAgent?.name || t("chat.defaultAgent")}
