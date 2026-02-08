@@ -98,6 +98,9 @@ export interface OutputContext {
   quiet: boolean;
 }
 
+// Re-export executor types
+export * from './executor';
+
 // Re-export model types
 export * from './model';
 
