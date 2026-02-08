@@ -60,7 +60,10 @@ pub use providers::{
 pub use gateway::{AppState, GatewayError};
 
 // From services module
-pub use services::{ContainerService, EventService, InboundMessage, MessageBus, OutboundMessage};
+pub use services::{
+    ContainerService, EventError, EventService, GatewayEvent, InboundMessage, MessageBus,
+    OutboundMessage, PtyError, PtyService, agent_patch, session_patch, task_patch,
+};
 
 // From executors module
 pub use executors::{
@@ -72,7 +75,7 @@ pub use executors::{
 pub use db::{DbError, DbService};
 
 // From utils module
-pub use utils::{LogMsg, MsgStore};
+pub use utils::{LogMsg, MsgStore, get_interactive_shell, get_shell_name};
 
 /// Initialize all managers and ensure directory structure exists
 pub async fn initialize() -> Result<()> {

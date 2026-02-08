@@ -75,6 +75,15 @@ strum_macros = "0.26"
 # Derivative for custom derives
 derivative = "2.2"
 
+# PTY support
+portable-pty = { workspace = true }
+
+# Base64 encoding
+base64 = { workspace = true }
+
+# JSON Patch (RFC 6902)
+json-patch = { workspace = true }
+
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 tempfile = "3.10"
