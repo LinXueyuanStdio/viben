@@ -41,7 +41,7 @@ jobs:
             if [[ -n "${{ inputs.version }}" ]]; then
               VERSION="${{ inputs.version }}"
             else
-              VERSION=$(jq -r '.version' packages/cli/package.json)
+              VERSION=$(jq -r '.version' apps/cli/package.json)
             fi
           else
             # Tag trigger - extract version from tag (cli-v0.1.0 -> 0.1.0)
@@ -63,7 +63,7 @@ jobs:
 
       - name: Update version in package.json
         run: |
-          cd packages/cli
+          cd apps/cli
           VERSION="${{ needs.prepare.outputs.version }}"
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
@@ -152,7 +152,7 @@ jobs:
 
       - name: Update version in package.json
         run: |
-          cd packages/cli
+          cd apps/cli
           VERSION="${{ needs.prepare.outputs.version }}"
           jq --arg v "$VERSION" '.version = $v' package.json > package.tmp.json
           mv package.tmp.json package.json
@@ -160,7 +160,7 @@ jobs:
 
       - name: Publish to npm
         run: |
-          cd packages/cli
+          cd apps/cli
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

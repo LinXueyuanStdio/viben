@@ -216,7 +216,7 @@ async function runTypeScriptCli(args) {
       const { run } = await import('../src/index.ts');
       await run(['node', 'viben', ...args]);
     } catch {
-      error('CLI not built. Run "npm run build" in packages/cli first.');
+      error('CLI not built. Run "npm run build" in apps/cli first.');
       console.error(err);
       process.exit(1);
     }
