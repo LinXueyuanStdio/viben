@@ -25,6 +25,22 @@
     "fs:allow-read-text-file",
     "fs:allow-write-file",
     "fs:allow-write-text-file",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$DESKTOP/**" },
+        { "path": "$DATA/**" },
+        { "path": "$LOCALDATA/**" },
+        { "path": "$CACHE/**" },
+        { "path": "$CONFIG/**" },
+        { "path": "$RESOURCE/**" },
+        { "path": "$TEMP/**" },
+        { "path": "**" }
+      ]
+    },
     "core:event:default",
     "core:event:allow-emit",
     "core:event:allow-listen",

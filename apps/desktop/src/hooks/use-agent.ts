@@ -144,6 +144,17 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
     }
   }, [client]);
 
+  // Streaming text buffer for accumulating delta updates
+  const streamingTextRef = useRef<{ id: string; content: string } | null>(null);
+
+  // Tool use buffer for accumulating input_json_delta updates
+  const toolUseRef = useRef<{
+    messageId: string;
+    toolUseId: string;
+    name: string;
+    inputJson: string;
+  } | null>(null);
+
   /**
    * Handle incoming WebSocket event
    */
@@ -160,6 +171,10 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         break;
 
       case "SessionMessage": {
+        // Finalize any streaming text first
+        if (streamingTextRef.current) {
+          streamingTextRef.current = null;
+        }
         const msg: AgentMessage = {
           id: generateId(),
           type: eventData.role === "user" ? "user" : "text",
@@ -172,6 +187,43 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       case "ExecutionLog": {
         const logType = eventData.log_type;
         const content = eventData.content || "";
+
+        // Handle "user" log type which may contain tool_result inside
+        if (logType === "user") {
+          try {
+            const userData = JSON.parse(content);
+
+            // Check if this is a tool_result wrapped in user message
+            if (userData.type === "user" && userData.message?.content) {
+              const messageContent = userData.message.content;
+              // Content can be an array of content blocks
+              if (Array.isArray(messageContent)) {
+                for (const block of messageContent) {
+                  if (block.type === "tool_result" && block.tool_use_id) {
+                    // This is a tool result! Create the message
+                    const resultMsg: AgentMessage = {
+                      id: generateId(),
+                      type: "tool_result",
+                      toolUseId: block.tool_use_id,
+                      output: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
+                      isError: block.is_error,
+                    };
+                    setMessages((prev) => [...prev, resultMsg]);
+
+                    // Update tool usage
+                    setToolUsages((prev) => prev.map((t) =>
+                      t.toolUseId === block.tool_use_id
+                        ? { ...t, output: resultMsg.output, completedAt: Date.now() }
+                        : t
+                    ));
+                  }
+                }
+              }
+            }
+          } catch {
+            // Ignore parse errors for user logs
+          }
+        }
 
         if (logType === "tool_use") {
           try {
@@ -204,14 +256,25 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         } else if (logType === "tool_result") {
           try {
             const resultData = JSON.parse(content);
+            // Claude Code stream-json format uses "content" for tool result, not "output"
+            const resultOutput = resultData.content || resultData.output || content;
             const resultMsg: AgentMessage = {
               id: generateId(),
               type: "tool_result",
               toolUseId: resultData.tool_use_id || "",
-              output: resultData.output || content,
+              output: typeof resultOutput === "string" ? resultOutput : JSON.stringify(resultOutput),
               isError: resultData.is_error,
             };
             setMessages((prev) => [...prev, resultMsg]);
+
+            // Update tool usage to mark as completed (match by Claude's toolUseId)
+            if (resultData.tool_use_id) {
+              setToolUsages((prev) => prev.map((t) =>
+                t.toolUseId === resultData.tool_use_id
+                  ? { ...t, output: resultMsg.output, completedAt: Date.now() }
+                  : t
+              ));
+            }
           } catch {
             const textMsg: AgentMessage = {
               id: generateId(),
@@ -219,6 +282,154 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
               content,
             };
             setMessages((prev) => [...prev, textMsg]);
+          }
+        } else if (logType === "stream_event") {
+          // Handle streaming events from Claude Code stream-json format
+          try {
+            const streamData = JSON.parse(content);
+            const event = streamData.event;
+
+            if (event?.type === "content_block_start") {
+              // Handle new content block start
+              const contentBlock = event.content_block;
+              if (contentBlock?.type === "tool_use") {
+                // Start a new tool use block
+                const messageId = generateId();
+                toolUseRef.current = {
+                  messageId,
+                  toolUseId: contentBlock.id || "",
+                  name: contentBlock.name || "unknown",
+                  inputJson: "",
+                };
+
+                // Add tool_use message placeholder with Claude's toolUseId
+                const toolMsg: AgentMessage = {
+                  id: messageId,
+                  type: "tool_use",
+                  name: contentBlock.name || "unknown",
+                  toolUseId: contentBlock.id || "",  // Store Claude's tool_use_id
+                  input: {},
+                };
+                setMessages((prev) => [...prev, toolMsg]);
+
+                // Add to tool usages with Claude's toolUseId for matching
+                const toolUsage: ToolUsage = {
+                  id: messageId,
+                  toolUseId: contentBlock.id || "",  // Store Claude's tool_use_id
+                  name: contentBlock.name || "unknown",
+                  displayName: contentBlock.name || "Unknown Tool",
+                  input: {},
+                  timestamp: Date.now(),
+                };
+                setToolUsages((prev) => [...prev, toolUsage]);
+              } else if (contentBlock?.type === "thinking") {
+                // Start thinking block - finalize any previous streaming text
+                if (streamingTextRef.current) {
+                  streamingTextRef.current = null;
+                }
+                // Create a new thinking message
+                const thinkingId = generateId();
+                streamingTextRef.current = { id: thinkingId, content: "" };
+                setMessages((prev) => [...prev, {
+                  id: thinkingId,
+                  type: "thinking",
+                  content: "",
+                }]);
+              } else if (contentBlock?.type === "text") {
+                // Start text block - finalize any previous streaming and start new
+                if (streamingTextRef.current) {
+                  streamingTextRef.current = null;
+                }
+                const textId = generateId();
+                streamingTextRef.current = { id: textId, content: "" };
+                setMessages((prev) => [...prev, {
+                  id: textId,
+                  type: "text",
+                  content: "",
+                }]);
+              }
+            } else if (event?.type === "content_block_delta") {
+              const delta = event.delta;
+              if (delta?.type === "text_delta") {
+                // Handle text delta
+                const deltaText = delta.text || "";
+                if (deltaText) {
+                  if (!streamingTextRef.current) {
+                    // Start new streaming message
+                    const newId = generateId();
+                    streamingTextRef.current = { id: newId, content: deltaText };
+                    setMessages((prev) => [...prev, {
+                      id: newId,
+                      type: "text",
+                      content: deltaText,
+                    }]);
+                  } else {
+                    // Append to existing streaming message
+                    streamingTextRef.current.content += deltaText;
+                    const currentId = streamingTextRef.current.id;
+                    const currentContent = streamingTextRef.current.content;
+                    setMessages((prev) => prev.map((m) =>
+                      m.id === currentId ? { ...m, content: currentContent } : m
+                    ));
+                  }
+                }
+              } else if (delta?.type === "thinking_delta") {
+                // Handle thinking delta
+                const thinkingText = delta.thinking || "";
+                if (thinkingText && streamingTextRef.current) {
+                  streamingTextRef.current.content += thinkingText;
+                  const currentId = streamingTextRef.current.id;
+                  const currentContent = streamingTextRef.current.content;
+                  setMessages((prev) => prev.map((m) =>
+                    m.id === currentId ? { ...m, content: currentContent } : m
+                  ));
+                }
+              } else if (delta?.type === "input_json_delta") {
+                // Handle tool input JSON delta
+                const partialJson = delta.partial_json || "";
+                if (partialJson && toolUseRef.current) {
+                  toolUseRef.current.inputJson += partialJson;
+                }
+              }
+            } else if (event?.type === "content_block_stop") {
+              // Content block finished
+              // Finalize tool use if we have one
+              if (toolUseRef.current) {
+                try {
+                  const parsedInput = toolUseRef.current.inputJson
+                    ? JSON.parse(toolUseRef.current.inputJson)
+                    : {};
+                  const currentTool = toolUseRef.current;
+
+                  // Update the tool_use message with parsed input
+                  setMessages((prev) => prev.map((m) =>
+                    m.id === currentTool.messageId
+                      ? { ...m, input: parsedInput }
+                      : m
+                  ));
+
+                  // Update tool usages
+                  setToolUsages((prev) => prev.map((t) =>
+                    t.id === currentTool.messageId
+                      ? { ...t, input: parsedInput }
+                      : t
+                  ));
+                } catch {
+                  // JSON parse error, keep empty input
+                }
+                toolUseRef.current = null;
+              }
+              // Finalize streaming text if we have one
+              if (streamingTextRef.current) {
+                streamingTextRef.current = null;
+              }
+            } else if (event?.type === "message_stop") {
+              // Message finished - clean up all refs
+              streamingTextRef.current = null;
+              toolUseRef.current = null;
+            }
+          } catch {
+            // Ignore parse errors for stream events
           }
         } else if (content.trim()) {
           const textMsg: AgentMessage = {
@@ -235,12 +446,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         setIsStreaming(false);
         if (eventData.success) {
           setPhase("completed");
-          const resultMsg: AgentMessage = {
-            id: generateId(),
-            type: "result",
-            content: "Agent completed successfully.",
-          };
-          setMessages((prev) => [...prev, resultMsg]);
+          // Don't add verbose "completed" message - the streaming indicator stopping is enough
         } else {
           setPhase("error");
           const errMsg: AgentMessage = {
@@ -369,14 +575,8 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
 
         // Update session ID (should match what we sent)
         setSessionId(response.session_id);
-
-        // Add a system message indicating the agent started
-        const infoMessage: AgentMessage = {
-          id: generateId(),
-          type: "text",
-          content: `Agent ${agentType} started (session: ${response.session_id.slice(0, 8)}...)`,
-        };
-        setMessages((prev) => [...prev, infoMessage]);
+        // Agent started - no need to add verbose info message
+        // The UI will show streaming indicator
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[useAgent] Error:", errorMessage);
@@ -749,6 +949,28 @@ The workspace ID for this session is: \`${workspaceId}\`
     setError(null);
     setPhase("idle");
     setSessionId(null);
+  }, [client]);
+
+  /**
+   * Load messages (for restoring conversation history)
+   */
+  const loadMessages = useCallback((savedMessages: AgentMessage[]) => {
+    setMessages(savedMessages);
+    // Extract tool usages from messages
+    const tools: ToolUsage[] = savedMessages
+      .filter((m): m is AgentMessage & { id: string; name: string } =>
+        m.type === "tool_use" && !!m.name && !!m.id
+      )
+      .map((m) => ({
+        id: m.id,
+        toolUseId: m.toolUseId,
+        name: m.name,
+        displayName: m.name,
+        input: m.input || {},
+        timestamp: Date.now(),
+      }));
+    setToolUsages(tools);
+    setPhase("idle");
   }, []);
 
   return {
@@ -771,6 +993,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     answerQuestions,
     cancel,
     clearMessages,
+    loadMessages,
     checkGatewayConnection,
   };
 }

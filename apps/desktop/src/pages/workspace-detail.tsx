@@ -11,6 +11,7 @@ import {
   KanbanSquare,
   ArrowLeft,
   Users,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -129,8 +130,8 @@ export function WorkspaceDetailPage() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6 max-w-5xl mx-auto w-full">
-        {/* Quick Actions: Chat, Kanban & Agents */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        {/* Quick Actions: Chat, Kanban, Cron & Agents */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Link to={`/workspace/${workspaceId}/chat`}>
             <Card className="h-full hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group">
               <CardContent className="p-6 flex items-center gap-4">
@@ -162,6 +163,25 @@ export function WorkspaceDetailPage() {
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {t("workspace.kanbanDescription", "Manage tasks with kanban board")}
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to={`/workspace/${workspaceId}/cron`}>
+            <Card className="h-full hover:border-primary/30 hover:shadow-md transition-all cursor-pointer group">
+              <CardContent className="p-6 flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg">
+                    {t("workspace.scheduledTasks", "Scheduled Tasks")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {t("workspace.scheduledTasksDescription", "Manage scheduled tasks and automation")}
                   </p>
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />

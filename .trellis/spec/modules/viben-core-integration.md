@@ -201,6 +201,7 @@ pub struct Agent {
 
 ### Medium Priority
 
+- [ ] **Group Chat 群聊功能** - 见 [gateway-group-chat.md](./gateway-group-chat.md)
 - [ ] MCP server management UI in settings
 - [ ] Skills management UI in settings
 - [ ] Connection testing with actual API calls

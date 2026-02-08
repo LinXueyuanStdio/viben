@@ -82,6 +82,43 @@ pub enum GatewayEvent {
         message: String,
         code: Option<String>,
     },
+    // Group chat events
+    /// Group chat created
+    GroupChatCreated { group_chat_id: String },
+    /// Group chat updated
+    GroupChatUpdated { group_chat_id: String },
+    /// Group chat deleted
+    GroupChatDeleted { group_chat_id: String },
+    /// Group chat member joined
+    GroupChatMemberJoined {
+        group_chat_id: String,
+        member_id: String,
+    },
+    /// Group chat member left
+    GroupChatMemberLeft {
+        group_chat_id: String,
+        member_id: String,
+    },
+    /// Group chat message
+    GroupChatMessage {
+        group_chat_id: String,
+        message_id: String,
+    },
+    // Cron job events
+    /// Cron job created
+    CronJobCreated { job: super::cron::CronJob },
+    /// Cron job updated
+    CronJobUpdated { job: super::cron::CronJob },
+    /// Cron job deleted
+    CronJobDeleted { job_id: String },
+    /// Cron job triggered (execution started)
+    CronJobTriggered { job_id: String, triggered_at: i64 },
+    /// Cron job completed
+    CronJobCompleted {
+        job_id: String,
+        status: super::cron::JobStatus,
+        completed_at: i64,
+    },
 }
 
 impl GatewayEvent {
@@ -101,6 +138,17 @@ impl GatewayEvent {
             GatewayEvent::ExecutionLog { .. } => "execution_log",
             GatewayEvent::JsonPatch { .. } => "patch",
             GatewayEvent::Error { .. } => "error",
+            GatewayEvent::GroupChatCreated { .. } => "group_chat_created",
+            GatewayEvent::GroupChatUpdated { .. } => "group_chat_updated",
+            GatewayEvent::GroupChatDeleted { .. } => "group_chat_deleted",
+            GatewayEvent::GroupChatMemberJoined { .. } => "group_chat_member_joined",
+            GatewayEvent::GroupChatMemberLeft { .. } => "group_chat_member_left",
+            GatewayEvent::GroupChatMessage { .. } => "group_chat_message",
+            GatewayEvent::CronJobCreated { .. } => "cron_job_created",
+            GatewayEvent::CronJobUpdated { .. } => "cron_job_updated",
+            GatewayEvent::CronJobDeleted { .. } => "cron_job_deleted",
+            GatewayEvent::CronJobTriggered { .. } => "cron_job_triggered",
+            GatewayEvent::CronJobCompleted { .. } => "cron_job_completed",
         };
 
         Event::default()
@@ -121,16 +169,30 @@ impl EventService {
     pub fn new() -> Self {
         let (sender, _) = broadcast::channel(1000);
         let (patch_sender, _) = broadcast::channel(1000);
+        tracing::debug!(
+            target: "viben::services::events",
+            "EventService created with broadcast channels (capacity=1000)"
+        );
         Self { sender, patch_sender }
     }
 
     /// Broadcast an event
     pub fn broadcast(&self, event: GatewayEvent) {
+        tracing::trace!(
+            target: "viben::services::events",
+            "Broadcasting event: {:?}",
+            std::mem::discriminant(&event)
+        );
         let _ = self.sender.send(event);
     }
 
     /// Broadcast a JSON Patch
     pub fn broadcast_patch(&self, patch: Patch) {
+        tracing::trace!(
+            target: "viben::services::events",
+            "Broadcasting JSON patch with {} operations",
+            patch.0.len()
+        );
         let _ = self.patch_sender.send(LogMsg::JsonPatch(patch));
     }
 
@@ -342,9 +404,16 @@ impl EventService {
 
     /// Broadcast agent spawned event
     pub fn agent_spawned(&self, agent_id: impl Into<String>, session_id: impl Into<String>) {
+        let agent_id = agent_id.into();
+        let session_id = session_id.into();
+        tracing::info!(
+            target: "viben::services::events",
+            "Event: agent_spawned (agent={}, session={})",
+            agent_id, session_id
+        );
         self.broadcast(GatewayEvent::AgentSpawned {
-            agent_id: agent_id.into(),
-            session_id: session_id.into(),
+            agent_id,
+            session_id,
         });
     }
 
@@ -355,9 +424,16 @@ impl EventService {
         session_id: impl Into<String>,
         success: bool,
     ) {
+        let agent_id = agent_id.into();
+        let session_id = session_id.into();
+        tracing::info!(
+            target: "viben::services::events",
+            "Event: agent_completed (agent={}, session={}, success={})",
+            agent_id, session_id, success
+        );
         self.broadcast(GatewayEvent::AgentCompleted {
-            agent_id: agent_id.into(),
-            session_id: session_id.into(),
+            agent_id,
+            session_id,
             success,
         });
     }
@@ -369,10 +445,18 @@ impl EventService {
         old_status: impl Into<String>,
         new_status: impl Into<String>,
     ) {
+        let task_id = task_id.into();
+        let old_status = old_status.into();
+        let new_status = new_status.into();
+        tracing::info!(
+            target: "viben::services::events",
+            "Event: task_status_changed (task={}, {} -> {})",
+            task_id, old_status, new_status
+        );
         self.broadcast(GatewayEvent::TaskStatusChanged {
-            task_id: task_id.into(),
-            old_status: old_status.into(),
-            new_status: new_status.into(),
+            task_id,
+            old_status,
+            new_status,
         });
     }
 
@@ -482,7 +566,7 @@ mod tests {
             new_status: "inprogress".to_string(),
         };
 
-        let sse_event = event.to_sse_event();
+        let _sse_event = event.to_sse_event();
         // SSE event should be created successfully
         assert!(serde_json::to_string(&event).is_ok());
     }

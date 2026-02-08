@@ -43,8 +43,13 @@ pub struct ListTasksResponse {
 pub async fn list_tasks(
     State(state): State<AppState>,
 ) -> Result<Json<ListTasksResponse>, GatewayError> {
+    tracing::debug!(target: "viben::gateway::tasks", "Listing all tasks");
+
     let tasks = Task::find_all(&state.db.pool).await?;
+    let count = tasks.len();
     let task_responses: Vec<TaskResponse> = tasks.into_iter().map(TaskResponse::from).collect();
+
+    tracing::debug!(target: "viben::gateway::tasks", "Listed {} tasks", count);
 
     Ok(Json(ListTasksResponse {
         tasks: task_responses,
@@ -56,9 +61,20 @@ pub async fn get_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<TaskResponse>, GatewayError> {
+    tracing::debug!(target: "viben::gateway::tasks", "Getting task: {}", task_id);
+
     let task = Task::find_by_id(&state.db.pool, &task_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Task not found: {}", task_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(target: "viben::gateway::tasks", "Task not found: {}", task_id);
+            GatewayError::NotFound(format!("Task not found: {}", task_id))
+        })?;
+
+    tracing::trace!(
+        target: "viben::gateway::tasks",
+        "Found task: {} (status={})",
+        task_id, task.status
+    );
 
     Ok(Json(TaskResponse::from(task)))
 }
@@ -76,16 +92,44 @@ pub async fn create_task(
     State(state): State<AppState>,
     Json(req): Json<CreateTaskRequest>,
 ) -> Result<Json<TaskResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::tasks",
+        "Creating new task: title='{}', agent={:?}",
+        req.title, req.agent_id
+    );
+
     let create_data = CreateTask {
         id: None,
-        title: req.title,
-        description: req.description,
-        agent_id: req.agent_id,
+        title: req.title.clone(),
+        description: req.description.clone(),
+        agent_id: req.agent_id.clone(),
     };
 
-    let task = Task::create(&state.db.pool, &create_data).await?;
+    let task = match Task::create(&state.db.pool, &create_data).await {
+        Ok(t) => {
+            tracing::info!(
+                target: "viben::gateway::tasks",
+                "Task created: id={}, title='{}'",
+                t.id, t.title
+            );
+            t
+        }
+        Err(e) => {
+            tracing::error!(
+                target: "viben::gateway::tasks",
+                "Failed to create task '{}': {}",
+                req.title, e
+            );
+            return Err(e.into());
+        }
+    };
 
     // Broadcast task created event
+    tracing::debug!(
+        target: "viben::gateway::tasks",
+        "Broadcasting task_status_changed for task={}",
+        task.id
+    );
     state.events.task_status_changed(&task.id, "", &task.status.to_string());
 
     Ok(Json(TaskResponse::from(task)))
@@ -106,10 +150,19 @@ pub async fn update_task(
     Path(task_id): Path<String>,
     Json(req): Json<UpdateTaskRequest>,
 ) -> Result<Json<TaskResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::tasks",
+        "Updating task: {} (title={:?}, status={:?})",
+        task_id, req.title, req.status
+    );
+
     // Get the existing task to track status change
     let existing = Task::find_by_id(&state.db.pool, &task_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Task not found: {}", task_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(target: "viben::gateway::tasks", "Cannot update: task not found: {}", task_id);
+            GatewayError::NotFound(format!("Task not found: {}", task_id))
+        })?;
 
     let old_status = existing.status.to_string();
 
@@ -131,8 +184,15 @@ pub async fn update_task(
     // Broadcast status change event if status changed
     let new_status = task.status.to_string();
     if old_status != new_status {
+        tracing::info!(
+            target: "viben::gateway::tasks",
+            "Task {} status changed: {} -> {}",
+            task_id, old_status, new_status
+        );
         state.events.task_status_changed(&task.id, &old_status, &new_status);
     }
+
+    tracing::debug!(target: "viben::gateway::tasks", "Task {} updated successfully", task_id);
 
     Ok(Json(TaskResponse::from(task)))
 }
@@ -142,12 +202,23 @@ pub async fn delete_task(
     State(state): State<AppState>,
     Path(task_id): Path<String>,
 ) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(target: "viben::gateway::tasks", "Deleting task: {}", task_id);
+
     // Check if task exists first
     let _ = Task::find_by_id(&state.db.pool, &task_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Task not found: {}", task_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(target: "viben::gateway::tasks", "Cannot delete: task not found: {}", task_id);
+            GatewayError::NotFound(format!("Task not found: {}", task_id))
+        })?;
 
     let deleted = Task::delete(&state.db.pool, &task_id).await?;
+
+    tracing::info!(
+        target: "viben::gateway::tasks",
+        "Task {} deleted (rows_affected={})",
+        task_id, deleted
+    );
 
     Ok(Json(json!({
         "deleted": task_id,
