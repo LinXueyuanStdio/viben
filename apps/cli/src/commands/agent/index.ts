@@ -10,6 +10,10 @@ import { output } from '../../lib/output';
 import { listAgents } from './list';
 import { createAgent } from './create';
 import { showAgent } from './show';
+import { removeAgent } from './remove';
+import { configAgent } from './config';
+import { setDefaultAgent } from './set-default';
+import { statusAgent } from './status';
 
 interface AgentOptions {
   name?: string;
@@ -18,6 +22,7 @@ interface AgentOptions {
   provider?: string;
   global?: boolean;
   workspace?: boolean;
+  force?: boolean;
 }
 
 /**
@@ -109,6 +114,131 @@ export function registerAgentCommand(program: Command): void {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
         showAgent(ctx, options.name);
+      } catch (error) {
+        if (error instanceof CliError) {
+          output(ctx, error.toResponse(), () => {
+            console.error(chalk.red('Error:'), error.message);
+          });
+          process.exit(1);
+        }
+        throw error;
+      }
+    });
+
+  // agent remove
+  agentCmd
+    .command('remove')
+    .description('Remove an agent')
+    .requiredOption('-n, --name <id>', 'Agent ID (required)')
+    .option('-f, --force', 'Skip confirmation')
+    .action((options: AgentOptions) => {
+      const ctx: OutputContext = {
+        json: program.opts().json || false,
+        verbose: program.opts().verbose || false,
+        quiet: program.opts().quiet || false,
+      };
+
+      try {
+        if (!options.name) {
+          throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
+        }
+        removeAgent(ctx, {
+          name: options.name,
+          force: options.force,
+        });
+      } catch (error) {
+        if (error instanceof CliError) {
+          output(ctx, error.toResponse(), () => {
+            console.error(chalk.red('Error:'), error.message);
+          });
+          process.exit(1);
+        }
+        throw error;
+      }
+    });
+
+  // agent config
+  agentCmd
+    .command('config')
+    .description('Configure an agent')
+    .requiredOption('-n, --name <id>', 'Agent ID (required)')
+    .argument('[action]', 'Action: set, get, or key name')
+    .argument('[key]', 'Config key (for set/get)')
+    .argument('[value]', 'Config value (for set)')
+    .action((action: string | undefined, key: string | undefined, value: string | undefined, options: AgentOptions) => {
+      const ctx: OutputContext = {
+        json: program.opts().json || false,
+        verbose: program.opts().verbose || false,
+        quiet: program.opts().quiet || false,
+      };
+
+      try {
+        if (!options.name) {
+          throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
+        }
+        configAgent(ctx, {
+          name: options.name,
+          action,
+          key,
+          value,
+        });
+      } catch (error) {
+        if (error instanceof CliError) {
+          output(ctx, error.toResponse(), () => {
+            console.error(chalk.red('Error:'), error.message);
+          });
+          process.exit(1);
+        }
+        throw error;
+      }
+    });
+
+  // agent set-default
+  agentCmd
+    .command('set-default')
+    .description('Set the default agent')
+    .requiredOption('-n, --name <id>', 'Agent ID (required)')
+    .action((options: AgentOptions) => {
+      const ctx: OutputContext = {
+        json: program.opts().json || false,
+        verbose: program.opts().verbose || false,
+        quiet: program.opts().quiet || false,
+      };
+
+      try {
+        if (!options.name) {
+          throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
+        }
+        setDefaultAgent(ctx, {
+          name: options.name,
+        });
+      } catch (error) {
+        if (error instanceof CliError) {
+          output(ctx, error.toResponse(), () => {
+            console.error(chalk.red('Error:'), error.message);
+          });
+          process.exit(1);
+        }
+        throw error;
+      }
+    });
+
+  // agent status
+  agentCmd
+    .command('status')
+    .description('Show agent status')
+    .option('-n, --name <id>', 'Agent ID (optional, shows all if not specified)')
+    .action((options: AgentOptions) => {
+      const ctx: OutputContext = {
+        json: program.opts().json || false,
+        verbose: program.opts().verbose || false,
+        quiet: program.opts().quiet || false,
+      };
+
+      try {
+        statusAgent(ctx, {
+          name: options.name,
+        });
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
