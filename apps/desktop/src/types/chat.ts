@@ -16,6 +16,7 @@ export interface MessageAttachment {
 export type AgentMessageType =
   | "user"
   | "text"
+  | "thinking"
   | "tool_use"
   | "tool_result"
   | "plan"
@@ -123,10 +124,13 @@ export interface WorkingFile {
 /** Tool usage info for sidebar */
 export interface ToolUsage {
   id: string;
+  /** Claude's tool_use_id for matching with tool_result */
+  toolUseId?: string;
   name: string;
   displayName: string;
   input: unknown;
   output?: string;
   isError?: boolean;
   timestamp: number;
+  completedAt?: number;
 }

@@ -160,6 +160,46 @@ export interface ContinueSessionRequest {
 }
 
 // ============================================================================
+// File-based Session Types
+// ============================================================================
+
+/** File-based session (stored in .agent_sessions) */
+export interface FileSession {
+  id: string;
+  agent_id: string;
+  task_id: string | null;
+  prompt: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+/** Session message */
+export interface SessionMessage {
+  timestamp: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  tool_calls?: Record<string, unknown>;
+  tool_result?: Record<string, unknown>;
+}
+
+/** Create session request */
+export interface CreateFileSessionRequest {
+  session_id?: string;
+  prompt?: string;
+  task_id?: string;
+}
+
+/** Append message request */
+export interface AppendMessageRequest {
+  role: "user" | "assistant" | "system";
+  content: string;
+  tool_calls?: Record<string, unknown>;
+  tool_result?: Record<string, unknown>;
+}
+
+// ============================================================================
 // SSE Message Types
 // ============================================================================
 
@@ -746,6 +786,160 @@ export class GatewayClient {
       this.abortController.abort();
       this.abortController = null;
     }
+  }
+
+  // ==========================================================================
+  // File-based Session Management
+  // ==========================================================================
+
+  /**
+   * List all file-based sessions for an agent
+   */
+  async listAgentSessions(agentId: string): Promise<FileSession[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list sessions: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.sessions as FileSession[];
+  }
+
+  /**
+   * Create a new file-based session
+   */
+  async createAgentSession(
+    agentId: string,
+    request?: CreateFileSessionRequest
+  ): Promise<FileSession> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(request || {}),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to create session: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a file-based session by ID
+   */
+  async getAgentSession(agentId: string, sessionId: string): Promise<FileSession> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to get session: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a file-based session
+   */
+  async deleteAgentSession(agentId: string, sessionId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to delete session: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * List all messages in a session
+   */
+  async listSessionMessages(
+    agentId: string,
+    sessionId: string
+  ): Promise<SessionMessage[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/messages`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list messages: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.messages as SessionMessage[];
+  }
+
+  /**
+   * Append a message to a session
+   */
+  async appendSessionMessage(
+    agentId: string,
+    sessionId: string,
+    message: AppendMessageRequest
+  ): Promise<SessionMessage> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(message),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to append message: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
   }
 }
 

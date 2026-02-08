@@ -94,8 +94,14 @@ base64 = { workspace = true }
 # JSON Patch (RFC 6902)
 json-patch = { workspace = true }
 
+# Lazy static for global state
+lazy_static = "1.5"
+
 # CLI
 clap = { workspace = true }
+
+# Cron expression parsing
+cron = "0.13"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

@@ -5,8 +5,11 @@ use axum::{Router, routing::get};
 use crate::gateway::AppState;
 
 pub mod agents;
+pub mod cron;
 pub mod events;
+pub mod group_chats;
 pub mod health;
+pub mod history;
 pub mod sessions;
 pub mod tasks;
 pub mod terminal;
@@ -14,13 +17,21 @@ pub mod ws;
 
 /// Create the main router with all routes
 pub fn router(state: AppState) -> Router {
-    Router::new()
+    tracing::debug!(target: "viben::gateway::routes", "Building API router...");
+
+    let router = Router::new()
         .route("/health", get(health::health_check))
         .merge(agents::router())
         .merge(tasks::router())
         .merge(sessions::router())
         .merge(events::router())
         .merge(terminal::router())
+        .merge(history::router())
+        .merge(group_chats::router())
+        .merge(cron::router())
         .merge(ws::router())
-        .with_state(state)
+        .with_state(state);
+
+    tracing::debug!(target: "viben::gateway::routes", "API router built successfully");
+    router
 }

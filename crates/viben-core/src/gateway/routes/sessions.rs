@@ -59,19 +59,36 @@ pub async fn list_sessions(
     State(state): State<AppState>,
     Query(query): Query<ListSessionsQuery>,
 ) -> Result<Json<ListSessionsResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Listing sessions with filters: task_id={:?}, agent_id={:?}, status={:?}",
+        query.task_id, query.agent_id, query.status
+    );
+
     let sessions = if let Some(task_id) = query.task_id {
+        tracing::trace!(target: "viben::gateway::sessions", "Filtering by task_id={}", task_id);
         Session::find_by_task_id(&state.db.pool, &task_id).await?
     } else if let Some(agent_id) = query.agent_id {
+        tracing::trace!(target: "viben::gateway::sessions", "Filtering by agent_id={}", agent_id);
         Session::find_by_agent_id(&state.db.pool, &agent_id).await?
     } else if let Some(status) = query.status {
         let status = status.parse::<SessionStatus>()
             .map_err(|e| GatewayError::BadRequest(e))?;
+        tracing::trace!(target: "viben::gateway::sessions", "Filtering by status={}", status);
         Session::find_by_status(&state.db.pool, &status).await?
     } else {
+        tracing::trace!(target: "viben::gateway::sessions", "Fetching all sessions");
         Session::find_all(&state.db.pool).await?
     };
 
+    let count = sessions.len();
     let session_responses: Vec<SessionResponse> = sessions.into_iter().map(SessionResponse::from).collect();
+
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Listed {} sessions",
+        count
+    );
 
     Ok(Json(ListSessionsResponse {
         sessions: session_responses,
@@ -83,9 +100,28 @@ pub async fn get_session(
     State(state): State<AppState>,
     Path(session_id): Path<String>,
 ) -> Result<Json<SessionResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Getting session: {}",
+        session_id
+    );
+
     let session = Session::find_by_id(&state.db.pool, &session_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Session not found: {}", session_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::sessions",
+                "Session not found: {}",
+                session_id
+            );
+            GatewayError::NotFound(format!("Session not found: {}", session_id))
+        })?;
+
+    tracing::trace!(
+        target: "viben::gateway::sessions",
+        "Found session: {} (agent={}, status={})",
+        session_id, session.agent_id, session.status
+    );
 
     Ok(Json(SessionResponse::from(session)))
 }
@@ -103,16 +139,44 @@ pub async fn create_session(
     State(state): State<AppState>,
     Json(req): Json<CreateSessionRequest>,
 ) -> Result<Json<SessionResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::sessions",
+        "Creating new session for agent={}, task={:?}",
+        req.agent_id, req.task_id
+    );
+
     let create_data = CreateSession {
         id: None,
         agent_id: req.agent_id.clone(),
-        task_id: req.task_id,
-        prompt: req.prompt,
+        task_id: req.task_id.clone(),
+        prompt: req.prompt.clone(),
     };
 
-    let session = Session::create(&state.db.pool, &create_data).await?;
+    let session = match Session::create(&state.db.pool, &create_data).await {
+        Ok(s) => {
+            tracing::info!(
+                target: "viben::gateway::sessions",
+                "Session created: {} (agent={}, task={:?})",
+                s.id, s.agent_id, s.task_id
+            );
+            s
+        }
+        Err(e) => {
+            tracing::error!(
+                target: "viben::gateway::sessions",
+                "Failed to create session for agent={}: {}",
+                req.agent_id, e
+            );
+            return Err(e.into());
+        }
+    };
 
     // Broadcast agent spawned event
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Broadcasting agent_spawned event for session={}",
+        session.id
+    );
     state.events.agent_spawned(&session.agent_id, &session.id);
 
     Ok(Json(SessionResponse::from(session)))
@@ -132,10 +196,23 @@ pub async fn update_session(
     Path(session_id): Path<String>,
     Json(req): Json<UpdateSessionRequest>,
 ) -> Result<Json<SessionResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Updating session: {} (status={:?}, has_data={}, has_prompt={})",
+        session_id, req.status, req.session_data.is_some(), req.prompt.is_some()
+    );
+
     // Get the existing session
     let existing = Session::find_by_id(&state.db.pool, &session_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Session not found: {}", session_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::sessions",
+                "Cannot update: session not found: {}",
+                session_id
+            );
+            GatewayError::NotFound(format!("Session not found: {}", session_id))
+        })?;
 
     let old_status = existing.status.clone();
 
@@ -156,17 +233,38 @@ pub async fn update_session(
     // Broadcast completion event if session completed
     if let Some(new_status) = status {
         if old_status != new_status {
+            tracing::info!(
+                target: "viben::gateway::sessions",
+                "Session {} status changed: {} -> {}",
+                session_id, old_status, new_status
+            );
             match new_status {
                 SessionStatus::Completed => {
+                    tracing::info!(
+                        target: "viben::gateway::sessions",
+                        "Session {} completed successfully",
+                        session_id
+                    );
                     state.events.agent_completed(&session.agent_id, &session.id, true);
                 }
                 SessionStatus::Cancelled => {
+                    tracing::info!(
+                        target: "viben::gateway::sessions",
+                        "Session {} was cancelled",
+                        session_id
+                    );
                     state.events.agent_completed(&session.agent_id, &session.id, false);
                 }
                 _ => {}
             }
         }
     }
+
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Session {} updated successfully",
+        session_id
+    );
 
     Ok(Json(SessionResponse::from(session)))
 }
@@ -183,12 +281,35 @@ pub async fn send_message(
     Path(session_id): Path<String>,
     Json(req): Json<SendMessageRequest>,
 ) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::sessions",
+        "Sending message to session {}: {} bytes",
+        session_id, req.content.len()
+    );
+    tracing::trace!(
+        target: "viben::gateway::sessions",
+        "Message content preview: {}...",
+        &req.content.chars().take(100).collect::<String>()
+    );
+
     // Verify session exists and is active
     let session = Session::find_by_id(&state.db.pool, &session_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Session not found: {}", session_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::sessions",
+                "Cannot send message: session not found: {}",
+                session_id
+            );
+            GatewayError::NotFound(format!("Session not found: {}", session_id))
+        })?;
 
     if session.status != SessionStatus::Active {
+        tracing::warn!(
+            target: "viben::gateway::sessions",
+            "Cannot send message: session {} is not active (status: {})",
+            session_id, session.status
+        );
         return Err(GatewayError::BadRequest(format!(
             "Session {} is not active (status: {})",
             session_id, session.status
@@ -196,6 +317,11 @@ pub async fn send_message(
     }
 
     // Broadcast the message event
+    tracing::debug!(
+        target: "viben::gateway::sessions",
+        "Broadcasting user message for session {}",
+        session_id
+    );
     state.events.broadcast(GatewayEvent::SessionMessage {
         session_id: session_id.clone(),
         content: req.content.clone(),
@@ -203,6 +329,12 @@ pub async fn send_message(
     });
 
     // TODO: Forward message to running agent process via container service
+
+    tracing::info!(
+        target: "viben::gateway::sessions",
+        "Message sent to session {} successfully",
+        session_id
+    );
 
     Ok(Json(json!({
         "session_id": session_id,
@@ -215,18 +347,42 @@ pub async fn delete_session(
     State(state): State<AppState>,
     Path(session_id): Path<String>,
 ) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::sessions",
+        "Deleting session: {}",
+        session_id
+    );
+
     // Check if session exists first
     let session = Session::find_by_id(&state.db.pool, &session_id)
         .await?
-        .ok_or_else(|| GatewayError::NotFound(format!("Session not found: {}", session_id)))?;
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::sessions",
+                "Cannot delete: session not found: {}",
+                session_id
+            );
+            GatewayError::NotFound(format!("Session not found: {}", session_id))
+        })?;
 
     // If session is active, mark it as cancelled first
     if session.status == SessionStatus::Active {
+        tracing::info!(
+            target: "viben::gateway::sessions",
+            "Cancelling active session {} before deletion",
+            session_id
+        );
         Session::update_status(&state.db.pool, &session_id, &SessionStatus::Cancelled).await?;
         state.events.agent_completed(&session.agent_id, &session_id, false);
     }
 
     let deleted = Session::delete(&state.db.pool, &session_id).await?;
+
+    tracing::info!(
+        target: "viben::gateway::sessions",
+        "Session {} deleted (rows_affected={})",
+        session_id, deleted
+    );
 
     Ok(Json(json!({
         "deleted": session_id,
