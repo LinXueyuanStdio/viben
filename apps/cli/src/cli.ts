@@ -6,6 +6,7 @@ import { Command } from 'commander';
 import { createRequire } from 'module';
 import { registerInitCommand } from './commands/init';
 import { registerConfigCommand } from './commands/config';
+import { registerExecutorCommand } from './commands/executor';
 import { registerAgentCommand } from './commands/agent';
 import { registerCronCommand } from './commands/cron';
 import { registerChannelCommand } from './commands/channel';
@@ -43,6 +44,7 @@ export function createProgram(): Command {
   // Register commands
   registerInitCommand(program);
   registerConfigCommand(program);
+  registerExecutorCommand(program);
   registerAgentCommand(program);
   registerCronCommand(program);
   registerChannelCommand(program);

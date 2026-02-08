@@ -7,6 +7,7 @@
 export * from './config';
 export * from './scope';
 export * from './output';
+export * from './executors';
 export * from './agents';
 export * from './cron';
 export * from './channels';

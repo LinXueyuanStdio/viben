@@ -34,7 +34,7 @@ const MIN_PYTHON_VERSION = '3.10';
 const BRAND_NAME = 'Viben';
 
 // Commands that should be handled by the TypeScript CLI
-const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron', 'gateway', 'mcp', 'skill', 'model', 'provider', 'workspace', 'service'];
+const TS_CLI_COMMANDS = ['init', 'config', 'executor', 'agent', 'channel', 'cron', 'gateway', 'mcp', 'skill', 'model', 'provider', 'workspace', 'service'];
 
 // Subcommands of 'mcp' that should be handled by the Python wrapper
 const MCP_PYTHON_SUBCOMMANDS = ['serve'];
@@ -279,6 +279,9 @@ ${colors.bold}Workspace Commands:${colors.reset}
   config <subcommand>   Manage configuration (get, set, list, edit, unset)
   workspace             Workspace operations (list, current)
 
+${colors.bold}Executor Commands:${colors.reset}
+  executor <subcommand> Discover executors (list, show)
+
 ${colors.bold}Agent Commands:${colors.reset}
   agent <subcommand>    Manage agents (list, create, show, remove, config, status)
   provider              Manage API providers (list, create, remove, status)
@@ -307,6 +310,8 @@ ${colors.bold}Global Options:${colors.reset}
 ${colors.bold}Examples:${colors.reset}
   viben init                      # Initialize workspace
   viben config list               # List all config
+  viben executor list             # Discover installed executors
+  viben executor show -n CLAUDE_CODE  # Show executor details
   viben agent list                # List all agents
   viben agent create -n my-agent  # Create new agent
   viben provider list             # List API providers
