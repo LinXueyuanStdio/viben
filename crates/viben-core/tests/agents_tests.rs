@@ -1,5 +1,6 @@
 //! Tests for agents module
 
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 use viben_core::{AgentManager, AgentUpdate, ConfigManager, CreateAgentOptions};
@@ -16,6 +17,7 @@ fn setup_temp_state_dir() -> TempDir {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_initialize() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -33,6 +35,7 @@ async fn test_agent_manager_initialize() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_empty() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -43,6 +46,7 @@ async fn test_agent_manager_list_empty() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -70,6 +74,7 @@ async fn test_agent_manager_create_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_with_custom_id() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -93,6 +98,7 @@ async fn test_agent_manager_create_agent_with_custom_id() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_id_from_name() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -118,6 +124,7 @@ async fn test_agent_manager_create_agent_id_from_name() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_duplicate() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -143,6 +150,7 @@ async fn test_agent_manager_create_agent_duplicate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -169,6 +177,7 @@ async fn test_agent_manager_get_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_agent_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -179,6 +188,7 @@ async fn test_agent_manager_get_agent_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_agents() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -205,6 +215,7 @@ async fn test_agent_manager_list_agents() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_remove_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -231,6 +242,7 @@ async fn test_agent_manager_remove_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_remove_agent_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -241,6 +253,7 @@ async fn test_agent_manager_remove_agent_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_remove_default_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -271,6 +284,7 @@ async fn test_agent_manager_remove_default_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_update_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -310,6 +324,7 @@ async fn test_agent_manager_update_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_update_agent_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -332,6 +347,7 @@ async fn test_agent_manager_update_agent_not_found() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_set_default() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -358,6 +374,7 @@ async fn test_agent_manager_set_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_set_default_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -368,6 +385,7 @@ async fn test_agent_manager_set_default_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_default_none() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -383,6 +401,7 @@ async fn test_agent_manager_get_default_none() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_templates_empty() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -393,6 +412,7 @@ async fn test_agent_manager_list_templates_empty() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_template() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -424,6 +444,7 @@ async fn test_agent_manager_create_template() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_template_agent_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -434,6 +455,7 @@ async fn test_agent_manager_create_template_agent_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_template_duplicate() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -465,6 +487,7 @@ async fn test_agent_manager_create_template_duplicate() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_template() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -498,6 +521,7 @@ async fn test_agent_manager_get_template() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_template_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -508,6 +532,7 @@ async fn test_agent_manager_get_template_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_from_template() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -544,6 +569,7 @@ async fn test_agent_manager_create_from_template() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_from_template_option() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -591,6 +617,7 @@ async fn test_agent_manager_create_agent_from_template_option() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_sessions_empty() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -615,6 +642,7 @@ async fn test_agent_manager_list_sessions_empty() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_session() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -644,6 +672,7 @@ async fn test_agent_manager_create_session() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_session_no_name() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -669,6 +698,7 @@ async fn test_agent_manager_create_session_no_name() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_session_agent_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -679,6 +709,7 @@ async fn test_agent_manager_create_session_agent_not_found() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_sessions() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -714,6 +745,7 @@ async fn test_agent_manager_list_sessions() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_remove_session() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -746,6 +778,7 @@ async fn test_agent_manager_remove_session() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_remove_session_not_found() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -774,6 +807,7 @@ async fn test_agent_manager_remove_session_not_found() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_get_memory_empty() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -800,6 +834,7 @@ async fn test_agent_manager_get_memory_empty() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_append_memory() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -828,6 +863,7 @@ async fn test_agent_manager_append_memory() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_append_memory_multiple() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -869,6 +905,7 @@ async fn test_agent_manager_append_memory_multiple() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_agents_before_init() {
     let _temp_dir = setup_temp_state_dir();
     // Don't call initialize - agents dir doesn't exist
@@ -877,6 +914,7 @@ async fn test_agent_manager_list_agents_before_init() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_templates_with_templates() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -911,6 +949,7 @@ async fn test_agent_manager_list_templates_with_templates() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_sessions_dir_not_exists() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -944,6 +983,7 @@ async fn test_agent_manager_list_sessions_dir_not_exists() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_empty_name_generates_id() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -970,6 +1010,7 @@ async fn test_agent_manager_create_agent_empty_name_generates_id() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_create_agent_very_long_name() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -996,6 +1037,7 @@ async fn test_agent_manager_create_agent_very_long_name() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_templates_before_init() {
     let _temp_dir = setup_temp_state_dir();
     // Don't call initialize - templates dir doesn't exist
@@ -1005,6 +1047,7 @@ async fn test_agent_manager_list_templates_before_init() {
 
 // Test list_agents when agents directory contains non-directory entries
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_agents_with_non_dir_entries() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -1037,6 +1080,7 @@ async fn test_agent_manager_list_agents_with_non_dir_entries() {
 
 // Test list_templates when templates directory contains non-directory entries
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_templates_with_non_dir_entries() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -1072,6 +1116,7 @@ async fn test_agent_manager_list_templates_with_non_dir_entries() {
 
 // Test list_sessions when sessions directory contains non-directory entries
 #[tokio::test]
+#[serial]
 async fn test_agent_manager_list_sessions_with_non_dir_entries() {
     let _temp_dir = setup_temp_state_dir();
 

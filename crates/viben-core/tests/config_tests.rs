@@ -1,5 +1,6 @@
 //! Tests for config module
 
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 use viben_core::config::{
@@ -20,6 +21,7 @@ fn setup_temp_state_dir() -> TempDir {
 // =============================================================================
 
 #[test]
+#[serial]
 fn test_get_state_dir_from_env() {
     let temp_dir = setup_temp_state_dir();
     let state_dir = get_state_dir();
@@ -27,6 +29,7 @@ fn test_get_state_dir_from_env() {
 }
 
 #[test]
+#[serial]
 fn test_get_state_dir_default() {
     // Remove env var to test default behavior
     env::remove_var("VIBEN_STATE_DIR");
@@ -35,6 +38,7 @@ fn test_get_state_dir_default() {
 }
 
 #[test]
+#[serial]
 fn test_get_config_path() {
     let _temp_dir = setup_temp_state_dir();
     let config_path = get_config_path();
@@ -42,6 +46,7 @@ fn test_get_config_path() {
 }
 
 #[test]
+#[serial]
 fn test_get_providers_path() {
     let _temp_dir = setup_temp_state_dir();
     let providers_path = get_providers_path();
@@ -49,6 +54,7 @@ fn test_get_providers_path() {
 }
 
 #[test]
+#[serial]
 fn test_get_models_path() {
     let _temp_dir = setup_temp_state_dir();
     let models_path = get_models_path();
@@ -56,6 +62,7 @@ fn test_get_models_path() {
 }
 
 #[test]
+#[serial]
 fn test_get_agents_dir() {
     let _temp_dir = setup_temp_state_dir();
     let agents_dir = get_agents_dir();
@@ -67,6 +74,7 @@ fn test_get_agents_dir() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_read_yaml_nonexistent_file() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("nonexistent.yaml");
@@ -75,6 +83,7 @@ async fn test_read_yaml_nonexistent_file() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_and_read_yaml() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("test.yaml");
@@ -98,6 +107,7 @@ async fn test_write_and_read_yaml() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_yaml_creates_parent_dirs() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("nested/deep/dir/config.yaml");
@@ -113,6 +123,7 @@ async fn test_write_yaml_creates_parent_dirs() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_ensure_dir_creates_directory() {
     let temp_dir = setup_temp_state_dir();
     let new_dir = temp_dir.path().join("new_directory");
@@ -124,6 +135,7 @@ async fn test_ensure_dir_creates_directory() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_ensure_dir_existing_directory() {
     let temp_dir = setup_temp_state_dir();
     // temp_dir already exists
@@ -132,6 +144,7 @@ async fn test_ensure_dir_existing_directory() {
 }
 
 #[test]
+#[serial]
 fn test_file_exists_true() {
     let temp_dir = setup_temp_state_dir();
     // temp_dir.path() exists
@@ -139,6 +152,7 @@ fn test_file_exists_true() {
 }
 
 #[test]
+#[serial]
 fn test_file_exists_false() {
     let temp_dir = setup_temp_state_dir();
     let nonexistent = temp_dir.path().join("nonexistent");
@@ -150,6 +164,7 @@ fn test_file_exists_false() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_initialize() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -160,6 +175,7 @@ async fn test_config_manager_initialize() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_load_default() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -172,6 +188,7 @@ async fn test_config_manager_load_default() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_save_and_load() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -194,6 +211,7 @@ async fn test_config_manager_save_and_load() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_update_partial() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -212,6 +230,7 @@ async fn test_config_manager_update_partial() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_get_set_default_agent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -236,6 +255,7 @@ async fn test_config_manager_get_set_default_agent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_get_set_default_provider() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -250,6 +270,7 @@ async fn test_config_manager_get_set_default_provider() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_get_set_default_model() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -270,6 +291,7 @@ async fn test_config_manager_get_set_default_model() {
 use viben_core::config::{read_json, write_json};
 
 #[tokio::test]
+#[serial]
 async fn test_read_json_nonexistent_file() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("nonexistent.json");
@@ -278,6 +300,7 @@ async fn test_read_json_nonexistent_file() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_and_read_json() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("test.json");
@@ -299,6 +322,7 @@ async fn test_write_and_read_json() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_json_creates_parent_dirs() {
     let temp_dir = setup_temp_state_dir();
     let path = temp_dir.path().join("nested/json/dir/config.json");
@@ -319,6 +343,7 @@ use viben_core::config::{
 };
 
 #[test]
+#[serial]
 fn test_get_agent_mcp_servers_path() {
     let _temp_dir = setup_temp_state_dir();
     let path = get_agent_mcp_servers_path("test-agent");
@@ -327,6 +352,7 @@ fn test_get_agent_mcp_servers_path() {
 }
 
 #[test]
+#[serial]
 fn test_get_agent_skills_dir() {
     let _temp_dir = setup_temp_state_dir();
     let path = get_agent_skills_dir("test-agent");
@@ -335,6 +361,7 @@ fn test_get_agent_skills_dir() {
 }
 
 #[test]
+#[serial]
 fn test_get_shared_mcp_dir() {
     let _temp_dir = setup_temp_state_dir();
     let path = get_shared_mcp_dir();
@@ -342,6 +369,7 @@ fn test_get_shared_mcp_dir() {
 }
 
 #[test]
+#[serial]
 fn test_get_shared_skills_dir() {
     let _temp_dir = setup_temp_state_dir();
     let path = get_shared_skills_dir();
@@ -349,12 +377,14 @@ fn test_get_shared_skills_dir() {
 }
 
 #[test]
+#[serial]
 fn test_dir_exists_true() {
     let temp_dir = setup_temp_state_dir();
     assert!(dir_exists(temp_dir.path()));
 }
 
 #[test]
+#[serial]
 fn test_dir_exists_false() {
     let temp_dir = setup_temp_state_dir();
     let nonexistent = temp_dir.path().join("nonexistent_dir");
@@ -366,6 +396,7 @@ fn test_dir_exists_false() {
 // =============================================================================
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_update_all_fields() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -394,6 +425,7 @@ async fn test_config_manager_update_all_fields() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_config_manager_update_individual_fields() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -434,6 +466,7 @@ async fn test_config_manager_update_individual_fields() {
 
 // Test writing to root path (no parent directory)
 #[tokio::test]
+#[serial]
 async fn test_write_yaml_no_parent() {
     // Write to a path that has no parent (root-level file)
     // This is an edge case where path.parent() returns None
@@ -448,6 +481,7 @@ async fn test_write_yaml_no_parent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_json_no_parent() {
     let temp_dir = setup_temp_state_dir();
     let root_path = temp_dir.path().join("root_file.json");
@@ -460,6 +494,7 @@ async fn test_write_json_no_parent() {
 // Test writing to a relative path with no directory component
 // Path like "file.yaml" has parent Some("") which is empty
 #[tokio::test]
+#[serial]
 async fn test_write_yaml_relative_file_only() {
     use std::path::Path;
     let _temp_dir = setup_temp_state_dir();
@@ -475,6 +510,7 @@ async fn test_write_yaml_relative_file_only() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_write_json_relative_file_only() {
     use std::path::Path;
     let _temp_dir = setup_temp_state_dir();

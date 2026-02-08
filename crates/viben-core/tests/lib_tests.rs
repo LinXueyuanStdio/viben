@@ -1,5 +1,6 @@
 //! Tests for lib.rs (top-level exports and initialize)
 
+use serial_test::serial;
 use std::env;
 use tempfile::TempDir;
 
@@ -11,6 +12,7 @@ fn setup_temp_state_dir() -> TempDir {
 }
 
 #[test]
+#[serial]
 fn test_version() {
     let version = viben_core::version();
     assert!(!version.is_empty());
@@ -19,6 +21,7 @@ fn test_version() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_initialize() {
     let temp_dir = setup_temp_state_dir();
 
@@ -44,6 +47,7 @@ async fn test_initialize() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_initialize_idempotent() {
     let _temp_dir = setup_temp_state_dir();
 
@@ -60,6 +64,7 @@ async fn test_initialize_idempotent() {
 // =============================================================================
 
 #[test]
+#[serial]
 fn test_agent_types_reexported() {
     // These should compile if types are properly re-exported
     let _: viben_core::Agent;
@@ -74,6 +79,7 @@ fn test_agent_types_reexported() {
 }
 
 #[test]
+#[serial]
 fn test_provider_types_reexported() {
     let _: viben_core::Provider;
     let _: viben_core::CreateProviderOptions;
@@ -85,6 +91,7 @@ fn test_provider_types_reexported() {
 }
 
 #[test]
+#[serial]
 fn test_model_types_reexported() {
     let _: viben_core::Model;
     let _: viben_core::CreateModelOptions;
@@ -95,17 +102,20 @@ fn test_model_types_reexported() {
 }
 
 #[test]
+#[serial]
 fn test_config_types_reexported() {
     let _: viben_core::GlobalConfig;
 }
 
 #[test]
+#[serial]
 fn test_error_types_reexported() {
     let _: viben_core::Error;
     let _: viben_core::Result<()>;
 }
 
 #[test]
+#[serial]
 fn test_managers_reexported() {
     // AgentManager is accessed via module
     let _ = viben_core::AgentManager::initialize;

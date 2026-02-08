@@ -30,6 +30,13 @@ pub mod db;
 // Merged from viben-utils
 pub mod utils;
 
+// CLI module
+pub mod cli;
+
+// NAPI bindings (optional, for Node.js addon)
+#[cfg(feature = "napi")]
+pub mod napi;
+
 // Re-export commonly used types at the crate root
 
 // From agents module
@@ -52,8 +59,9 @@ pub use models::{
 
 // From providers module
 pub use providers::{
-    CreateProviderOptions, Provider, ProviderEntry, ProviderManager, ProviderStatus, ProviderType,
-    ProviderUpdate, ProvidersFile,
+    CreateProviderOptions, Provider, ProviderEnvConfig, ProviderEntry, ProviderManager,
+    ProviderStatus, ProviderType, ProviderUpdate, ProvidersFile, get_default_base_url,
+    get_env_var_name, has_env_credentials, parse_provider_env, scan_env_providers,
 };
 
 // From gateway module

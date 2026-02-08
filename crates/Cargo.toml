@@ -72,6 +72,9 @@ base64 = "0.22"
 # JSON Patch (RFC 6902)
 json-patch = "3.0"
 
+# CLI
+clap = { version = "4", features = ["derive"] }
+
 [profile.release]
 debug = 1
 split-debuginfo = "packed"
