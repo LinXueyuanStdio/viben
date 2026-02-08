@@ -8,7 +8,6 @@
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Branding](./branding.md) | Viben brand naming conventions, migration guide | ✅ Complete |
 
 ---
 

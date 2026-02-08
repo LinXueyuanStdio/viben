@@ -9,6 +9,8 @@ import { registerConfigCommand } from './commands/config';
 import { registerAgentCommand } from './commands/agent';
 import { registerCronCommand } from './commands/cron';
 import { registerChannelCommand } from './commands/channel';
+import { registerGatewayCommand } from './commands/gateway';
+import { registerMcpCommand } from './commands/mcp';
 
 // Read version from package.json (using createRequire for ESM compatibility)
 const require = createRequire(import.meta.url);
@@ -39,6 +41,8 @@ export function createProgram(): Command {
   registerAgentCommand(program);
   registerCronCommand(program);
   registerChannelCommand(program);
+  registerGatewayCommand(program);
+  registerMcpCommand(program);
 
   return program;
 }

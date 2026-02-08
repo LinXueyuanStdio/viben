@@ -34,10 +34,10 @@ const MIN_PYTHON_VERSION = '3.10';
 const BRAND_NAME = 'Viben';
 
 // Commands that should be handled by the TypeScript CLI
-const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron'];
+const TS_CLI_COMMANDS = ['init', 'config', 'agent', 'channel', 'cron', 'gateway', 'mcp'];
 
-// Commands that should be handled by the Python wrapper
-const PYTHON_COMMANDS = ['serve', 'mcp'];
+// Subcommands of 'mcp' that should be handled by the Python wrapper
+const MCP_PYTHON_SUBCOMMANDS = ['serve'];
 
 // ANSI colors
 const colors = {
@@ -224,7 +224,7 @@ async function runTypeScriptCli(args) {
 }
 
 function handlePythonCommand(args) {
-  // Remove 'serve' or 'mcp' from args if present
+  // Remove 'mcp' and 'serve' from args if present
   const filteredArgs = args.filter((a) => a !== 'serve' && a !== 'mcp');
 
   const python = findPython();
@@ -280,10 +280,11 @@ ${colors.bold}Workspace Commands:${colors.reset}
   agent <subcommand>    Manage agents (list, create, show)
   channel <subcommand>  Manage chat channels (list, create, remove, status)
   cron <subcommand>     Manage scheduled tasks (list, add, remove, run)
+  gateway <subcommand>  Manage Viben Gateway server (start, status)
 
-${colors.bold}Server Commands:${colors.reset}
-  serve                 Start the MCP server (browse-mcp)
-  mcp                   Alias for serve
+${colors.bold}MCP Commands:${colors.reset}
+  mcp inspector         Start MCP Inspector for testing MCP servers
+  mcp serve             Start the MCP server (browse-mcp)
 
 ${colors.bold}Global Options:${colors.reset}
   --json                Output in JSON format
@@ -300,8 +301,9 @@ ${colors.bold}Examples:${colors.reset}
   viben config set settings.editor vim
   viben agent list              # List all agents
   viben agent create -n my-agent
-  viben serve                   # Start MCP server
-  viben serve -t sse --port 8080
+  viben mcp inspector           # Start MCP Inspector UI
+  viben mcp inspector node build/index.js  # Inspect a server
+  viben mcp serve               # Start MCP server (browse-mcp)
 
 ${colors.bold}Environment Variables:${colors.reset}
   VIBEN_STATE_DIR       State directory (default: ~/.viben)
@@ -320,6 +322,22 @@ function findCommand(args) {
   for (const arg of args) {
     if (!arg.startsWith('-')) {
       return arg;
+    }
+  }
+  return null;
+}
+
+/**
+ * Find the subcommand (second non-flag argument)
+ */
+function findSubcommand(args) {
+  let count = 0;
+  for (const arg of args) {
+    if (!arg.startsWith('-')) {
+      count++;
+      if (count === 2) {
+        return arg;
+      }
     }
   }
   return null;
@@ -368,12 +386,19 @@ async function main() {
   }
 
   // Route to appropriate handler based on command
-  if (command && TS_CLI_COMMANDS.includes(command)) {
+  if (command === 'mcp') {
+    // Check if subcommand should go to Python wrapper
+    const subcommand = findSubcommand(args);
+    if (subcommand && MCP_PYTHON_SUBCOMMANDS.includes(subcommand)) {
+      // mcp serve -> Python wrapper
+      handlePythonCommand(args);
+    } else {
+      // Other mcp subcommands -> TypeScript CLI
+      await runTypeScriptCli(args);
+    }
+  } else if (command && TS_CLI_COMMANDS.includes(command)) {
     // TypeScript CLI commands (pass all args including global flags)
     await runTypeScriptCli(args);
-  } else if (command && PYTHON_COMMANDS.includes(command)) {
-    // Python wrapper commands
-    handlePythonCommand(args);
   } else if (command) {
     // Unknown command - try TypeScript CLI (it will show proper error)
     await runTypeScriptCli(args);

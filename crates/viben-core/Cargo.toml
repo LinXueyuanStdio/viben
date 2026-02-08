@@ -4,19 +4,81 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Viben core library - shared configuration, agents, providers, models management"
+description = "Viben core library - unified package including gateway, executors, services, db, and utilities"
+default-run = "viben-gateway"
+
+[[bin]]
+name = "viben-gateway"
+path = "src/bin/gateway.rs"
 
 [dependencies]
+# Async runtime
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+tokio-stream = { version = "0.1", features = ["sync"] }
+
+# Command detection
+which = "7.0"
+
+# Web framework
+axum = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
 serde = { workspace = true }
-serde_yaml = { workspace = true }
 serde_json = { workspace = true }
-tokio = { version = "1", features = ["fs", "io-util"] }
-dirs = { workspace = true }
-chrono = { workspace = true }
-uuid = { workspace = true }
+serde_yaml = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Error handling
+anyhow = { workspace = true }
 thiserror = { workspace = true }
+
+# Async traits
+async-trait = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# TypeScript type generation
+ts-rs = { workspace = true }
+
+# Schema generation
+schemars = { workspace = true }
+
+# Process management
+command-group = { workspace = true }
+
+# Enum dispatch for trait implementations
+enum_dispatch = { workspace = true }
+
+# Futures and streams
+futures = { workspace = true }
+futures-util = { workspace = true }
+
+# Other utilities
+uuid = { workspace = true }
+chrono = { workspace = true }
+dirs = { workspace = true }
+regex = { workspace = true }
+
+# HTTP client
 reqwest = { workspace = true }
+
+# Strum for enum utilities
+strum = "0.26"
+strum_macros = "0.26"
+
+# Derivative for custom derives
+derivative = "2.2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }
 tempfile = "3.10"
+tower = { version = "0.5", features = ["util"] }
+tokio-tungstenite = "0.26"
+hyper = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["tokio"] }

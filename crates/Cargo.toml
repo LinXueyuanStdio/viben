@@ -1,12 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "viben-gateway",
-    "viben-executors",
-    "viben-services",
-    "viben-db",
-    "viben-utils",
-    "viben-cli",
     "viben-core",
 ]
 

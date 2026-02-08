@@ -158,7 +158,6 @@ viben/
 │   └── vibe-kanban/         # 外部看板组件符号链接
 │
 ├── crates/                  # Rust crates
-│   ├── viben-cli/           # Rust CLI 实现
 │   └── viben-core/          # Rust 核心库
 │
 ├── backend/                 # Python 后端服务
