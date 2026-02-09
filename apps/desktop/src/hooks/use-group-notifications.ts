@@ -127,13 +127,23 @@ export function useGroupNotifications(): UseGroupNotificationsReturn {
       message: GroupChatMessage,
       currentUserId: string
     ) => {
+      console.log("[GroupNotifications] notifyGroupMessage called:", {
+        groupId,
+        groupName,
+        senderId: message.sender_id,
+        currentUserId,
+        content: message.content?.slice(0, 50),
+      });
+
       // Don't notify for own messages
       if (message.sender_id === currentUserId) {
+        console.log("[GroupNotifications] Skipping - own message");
         return;
       }
 
       // Check if chat notifications are enabled
       if (!shouldShowNotification("chat")) {
+        console.log("[GroupNotifications] Skipping - notifications disabled");
         return;
       }
 
@@ -171,6 +181,8 @@ export function useGroupNotifications(): UseGroupNotificationsReturn {
           actionUrl: `/workspace/chat?group=${groupId}`,
         },
       });
+
+      console.log("[GroupNotifications] Showing notification:", { title, body, level, isMentioned });
 
       // Show toast notification
       if (isMentioned) {

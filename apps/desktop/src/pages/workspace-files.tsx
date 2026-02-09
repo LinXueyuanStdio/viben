@@ -8,7 +8,7 @@ import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/componen
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
-import type { ViewMode } from "@/hooks/use-file-browser";
+import type { ViewMode, SortField, SortDirection } from "@/hooks/use-file-browser";
 
 
 export function WorkspaceFilesPage() {
@@ -28,6 +28,19 @@ export function WorkspaceFilesPage() {
     const saved = localStorage.getItem("fileBrowser.viewMode");
     return (saved as ViewMode) || "column";
   });
+
+  // Track sort state (for toolbar in header)
+  const [sortField, setSortField] = useState<SortField>(() => {
+    const saved = localStorage.getItem("fileBrowser.sortField");
+    return (saved as SortField) || "name";
+  });
+  const [sortDirection, setSortDirection] = useState<SortDirection>(() => {
+    const saved = localStorage.getItem("fileBrowser.sortDirection");
+    return (saved as SortDirection) || "asc";
+  });
+
+  // Track search state (for toolbar in header)
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Sync viewMode when FileBrowser initializes
   useEffect(() => {
@@ -134,11 +147,37 @@ export function WorkspaceFilesPage() {
     fileBrowserRef.current?.setViewMode(mode);
   }, []);
 
+  // Handle sort field change from toolbar
+  const handleSortFieldChange = useCallback((field: SortField) => {
+    setSortField(field);
+    localStorage.setItem("fileBrowser.sortField", field);
+    fileBrowserRef.current?.setSortField(field);
+  }, []);
+
+  // Handle sort direction change from toolbar
+  const handleSortDirectionChange = useCallback((direction: SortDirection) => {
+    setSortDirection(direction);
+    localStorage.setItem("fileBrowser.sortDirection", direction);
+    fileBrowserRef.current?.setSortDirection(direction);
+  }, []);
+
+  // Handle search change from toolbar
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+    fileBrowserRef.current?.setSearchQuery(query);
+  }, []);
+
   // Toolbar component for header's rightContent
   const toolbarContent = (
     <FileBrowserToolbar
       viewMode={viewMode}
       onViewModeChange={handleViewModeChange}
+      sortField={sortField}
+      sortDirection={sortDirection}
+      onSortFieldChange={handleSortFieldChange}
+      onSortDirectionChange={handleSortDirectionChange}
+      searchQuery={searchQuery}
+      onSearchChange={handleSearchChange}
       onNewFile={() => fileBrowserRef.current?.createFile()}
       onNewFolder={() => fileBrowserRef.current?.createFolder()}
     />

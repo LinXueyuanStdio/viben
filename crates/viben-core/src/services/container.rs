@@ -5,12 +5,14 @@ use std::{
     path::PathBuf,
 };
 
+use chrono::Utc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::RwLock;
 use crate::executors::{CodingAgent, ExecutionEnv, ExecutorError, SpawnedChild, StandardCodingAgentExecutor};
 
 use crate::services::EventService;
 use crate::services::events::GatewayEvent;
+use crate::services::session_store::{SessionStoreService, SessionMessage, UIMessage, AgentMessage};
 
 /// Process state tracking
 #[derive(Debug, Clone)]
@@ -35,6 +37,7 @@ pub enum ProcessRunStatus {
 pub struct ContainerService {
     processes: RwLock<HashMap<String, ProcessState>>,
     event_service: EventService,
+    session_store: SessionStoreService,
 }
 
 impl ContainerService {
@@ -43,14 +46,33 @@ impl ContainerService {
         Self {
             processes: RwLock::new(HashMap::new()),
             event_service,
+            session_store: SessionStoreService::new(),
+        }
+    }
+
+    /// Create with custom session store
+    pub fn with_session_store(event_service: EventService, session_store: SessionStoreService) -> Self {
+        Self {
+            processes: RwLock::new(HashMap::new()),
+            event_service,
+            session_store,
         }
     }
 
     /// Spawn a new agent process and stream its output
+    ///
+    /// # Arguments
+    /// * `session_id` - Unique session identifier
+    /// * `agent` - The coding agent to spawn
+    /// * `agent_id` - The agent ID for session storage (e.g., user's agent name)
+    /// * `workdir` - Working directory for the agent
+    /// * `prompt` - Initial prompt to send
+    /// * `env` - Execution environment
     pub async fn spawn_agent(
         &self,
         session_id: &str,
         agent: &CodingAgent,
+        agent_id: &str,
         workdir: &PathBuf,
         prompt: &str,
         env: &ExecutionEnv,
@@ -75,9 +97,23 @@ impl ContainerService {
         self.event_service.agent_spawned(&agent_type, session_id);
         tracing::info!("[ContainerService] Agent spawned: {} session={}", agent_type, session_id);
 
+        // Save user message to all three message stores
+        let user_msg = SessionMessage::user(prompt);
+        if let Err(e) = self.session_store.append_message(agent_id, session_id, &user_msg).await {
+            tracing::warn!("[ContainerService] Failed to save user message to rollout: {}", e);
+        }
+
+        // Save to UI messages
+        let ui_user_msg = UIMessage::user(uuid::Uuid::new_v4().to_string(), prompt);
+        if let Err(e) = self.session_store.append_ui_message(agent_id, session_id, &ui_user_msg).await {
+            tracing::warn!("[ContainerService] Failed to save user message to UI: {}", e);
+        }
+
         // Spawn a task to read stdout and forward to SSE
         let session_id_clone = session_id.to_string();
+        let agent_id_clone = agent_id.to_string();
         let event_service = self.event_service.clone();
+        let session_store = self.session_store.clone();
         let agent_type_clone = agent_type.clone();
 
         let inner = child.child.inner();
@@ -140,23 +176,81 @@ impl ContainerService {
                     tracing::info!("[ContainerService] LINE #{} (len={}): {}", line_count, line.len(), log_preview);
                     // Parse JSON line from claude code --output-format=stream-json
                     if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                        // Always save raw agent message (append-only)
+                        let agent_msg = AgentMessage {
+                            timestamp: chrono::Utc::now(),
+                            raw: json.clone(),
+                            source: Some(agent_type_clone.clone()),
+                        };
+                        if let Err(e) = session_store.append_agent_message(&agent_id_clone, &session_id_clone, &agent_msg).await {
+                            tracing::warn!("[ContainerService] Failed to save agent message: {}", e);
+                        }
+
                         // Extract message type and content
                         if let Some(msg_type) = json.get("type").and_then(|v| v.as_str()) {
                             match msg_type {
                                 "assistant" => {
-                                    // Claude Code stream-json format: {"type":"assistant","message":{"content":[{"type":"text","text":"..."}]}}
+                                    // Claude Code stream-json format: {"type":"assistant","message":{"content":[{"type":"text","text":"..."},{"type":"tool_use",...}]}}
                                     if let Some(message) = json.get("message") {
                                         if let Some(content_array) = message.get("content").and_then(|v| v.as_array()) {
+                                            let mut text_parts: Vec<String> = Vec::new();
+                                            let mut tool_calls: Vec<serde_json::Value> = Vec::new();
+
                                             for content_item in content_array {
-                                                if let Some(text) = content_item.get("text").and_then(|v| v.as_str()) {
-                                                    if !text.is_empty() {
-                                                        event_service.broadcast(GatewayEvent::SessionMessage {
-                                                            session_id: session_id_clone.clone(),
-                                                            content: text.to_string(),
-                                                            role: "assistant".to_string(),
-                                                        });
+                                                if let Some(item_type) = content_item.get("type").and_then(|v| v.as_str()) {
+                                                    match item_type {
+                                                        "text" => {
+                                                            if let Some(text) = content_item.get("text").and_then(|v| v.as_str()) {
+                                                                if !text.is_empty() {
+                                                                    text_parts.push(text.to_string());
+                                                                    event_service.broadcast(GatewayEvent::SessionMessage {
+                                                                        session_id: session_id_clone.clone(),
+                                                                        content: text.to_string(),
+                                                                        role: "assistant".to_string(),
+                                                                    });
+                                                                    // Save to UI messages
+                                                                    let ui_msg = UIMessage::text(uuid::Uuid::new_v4().to_string(), text);
+                                                                    if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                        tracing::warn!("[ContainerService] Failed to save UI text message: {}", e);
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                        "tool_use" => {
+                                                            tool_calls.push(content_item.clone());
+                                                            // Broadcast tool use event
+                                                            event_service.broadcast(GatewayEvent::ExecutionLog {
+                                                                session_id: session_id_clone.clone(),
+                                                                log_type: "tool_use".to_string(),
+                                                                content: serde_json::to_string(content_item).unwrap_or_default(),
+                                                            });
+                                                            // Save to UI messages
+                                                            let tool_id = content_item.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                                            let tool_name = content_item.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                                            let tool_input = content_item.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                                                            let ui_msg = UIMessage::tool_use(
+                                                                uuid::Uuid::new_v4().to_string(),
+                                                                tool_id,
+                                                                tool_name,
+                                                                tool_input,
+                                                            );
+                                                            if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                tracing::warn!("[ContainerService] Failed to save UI tool_use message: {}", e);
+                                                            }
+                                                        }
+                                                        _ => {}
                                                     }
                                                 }
+                                            }
+
+                                            // Save assistant message to session store (including tool calls)
+                                            let combined_text = text_parts.join("\n");
+                                            let mut assistant_msg = SessionMessage::assistant(&combined_text);
+                                            if !tool_calls.is_empty() {
+                                                assistant_msg.tool_calls = Some(serde_json::json!(tool_calls));
+                                            }
+                                            if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &assistant_msg).await {
+                                                tracing::warn!("[ContainerService] Failed to save assistant message: {}", e);
                                             }
                                         }
                                     }
@@ -169,10 +263,20 @@ impl ContainerService {
                                             content: content.to_string(),
                                             role: "assistant".to_string(),
                                         });
+                                        // Save to session store
+                                        let msg = SessionMessage::assistant(content);
+                                        if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &msg).await {
+                                            tracing::warn!("[ContainerService] Failed to save text message: {}", e);
+                                        }
+                                        // Save to UI messages
+                                        let ui_msg = UIMessage::text(uuid::Uuid::new_v4().to_string(), content);
+                                        if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                            tracing::warn!("[ContainerService] Failed to save UI text message: {}", e);
+                                        }
                                     }
                                 }
                                 "stream_event" => {
-                                    // Streaming events contain delta updates
+                                    // Streaming events contain delta updates - don't save individual deltas
                                     // Forward to frontend for real-time text updates
                                     event_service.broadcast(GatewayEvent::ExecutionLog {
                                         session_id: session_id_clone.clone(),
@@ -181,11 +285,31 @@ impl ContainerService {
                                     });
                                 }
                                 "tool_use" => {
+                                    // Standalone tool_use messages (save with tool_calls)
                                     event_service.broadcast(GatewayEvent::ExecutionLog {
                                         session_id: session_id_clone.clone(),
                                         log_type: "tool_use".to_string(),
                                         content: line.clone(),
                                     });
+                                    // Save as assistant message with tool call
+                                    let mut msg = SessionMessage::assistant("");
+                                    msg.tool_calls = Some(json.clone());
+                                    if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &msg).await {
+                                        tracing::warn!("[ContainerService] Failed to save tool_use message: {}", e);
+                                    }
+                                    // Save to UI messages
+                                    let tool_id = json.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                    let tool_name = json.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                    let tool_input = json.get("input").cloned().unwrap_or(serde_json::Value::Null);
+                                    let ui_msg = UIMessage::tool_use(
+                                        uuid::Uuid::new_v4().to_string(),
+                                        tool_id,
+                                        tool_name,
+                                        tool_input,
+                                    );
+                                    if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                        tracing::warn!("[ContainerService] Failed to save UI tool_use message: {}", e);
+                                    }
                                 }
                                 "tool_result" => {
                                     event_service.broadcast(GatewayEvent::ExecutionLog {
@@ -193,6 +317,25 @@ impl ContainerService {
                                         log_type: "tool_result".to_string(),
                                         content: line.clone(),
                                     });
+                                    // Save as system message with tool_result
+                                    let mut msg = SessionMessage::system("");
+                                    msg.tool_result = Some(json.clone());
+                                    if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &msg).await {
+                                        tracing::warn!("[ContainerService] Failed to save tool_result message: {}", e);
+                                    }
+                                    // Save to UI messages
+                                    let tool_use_id = json.get("tool_use_id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                    let output = json.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                                    let is_error = json.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+                                    let ui_msg = UIMessage::tool_result(
+                                        uuid::Uuid::new_v4().to_string(),
+                                        tool_use_id,
+                                        output,
+                                        is_error,
+                                    );
+                                    if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                        tracing::warn!("[ContainerService] Failed to save UI tool_result message: {}", e);
+                                    }
                                 }
                                 "result" => {
                                     // Final result: {"type":"result","result":"..."}
@@ -202,6 +345,16 @@ impl ContainerService {
                                             content: content.to_string(),
                                             role: "assistant".to_string(),
                                         });
+                                        // Save final result to session store
+                                        let msg = SessionMessage::assistant(content);
+                                        if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &msg).await {
+                                            tracing::warn!("[ContainerService] Failed to save result message: {}", e);
+                                        }
+                                        // Save to UI messages
+                                        let ui_msg = UIMessage::text(uuid::Uuid::new_v4().to_string(), content);
+                                        if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                            tracing::warn!("[ContainerService] Failed to save UI result message: {}", e);
+                                        }
                                     }
                                 }
                                 "error" => {
@@ -210,6 +363,11 @@ impl ContainerService {
                                             message: message.to_string(),
                                             code: Some(session_id_clone.clone()),
                                         });
+                                        // Save to UI messages
+                                        let ui_msg = UIMessage::error(uuid::Uuid::new_v4().to_string(), message);
+                                        if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                            tracing::warn!("[ContainerService] Failed to save UI error message: {}", e);
+                                        }
                                     }
                                 }
                                 "system" => {
@@ -232,6 +390,25 @@ impl ContainerService {
                                                                 log_type: "tool_result".to_string(),
                                                                 content: serde_json::to_string(item).unwrap_or_default(),
                                                             });
+                                                            // Save to UI messages
+                                                            let tool_use_id = item.get("tool_use_id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                                            let output = item.get("content").and_then(|v| v.as_str()).unwrap_or("");
+                                                            let is_error = item.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false);
+                                                            let ui_msg = UIMessage::tool_result(
+                                                                uuid::Uuid::new_v4().to_string(),
+                                                                tool_use_id,
+                                                                output,
+                                                                is_error,
+                                                            );
+                                                            if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                tracing::warn!("[ContainerService] Failed to save UI tool_result message: {}", e);
+                                                            }
+                                                            // Also save to rollout as system message with tool_result
+                                                            let mut msg = SessionMessage::system("");
+                                                            msg.tool_result = Some(item.clone());
+                                                            if let Err(e) = session_store.append_message(&agent_id_clone, &session_id_clone, &msg).await {
+                                                                tracing::warn!("[ContainerService] Failed to save tool_result message: {}", e);
+                                                            }
                                                         }
                                                     }
                                                 }

@@ -24,6 +24,7 @@ import {
   Image,
   Home,
   HardDrive,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -46,7 +47,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { invoke } from "@tauri-apps/api/core";
-import { useFileBrowser, type ViewMode } from "@/hooks/use-file-browser";
+import { useTranslation } from "react-i18next";
+import { useFileBrowser, type ViewMode, type SortField, type SortDirection } from "@/hooks/use-file-browser";
+import { SortDropdown, FileSearchInput } from "@/components/file-browser/file-actions";
 import type { FileEntry } from "@/types";
 
 /* -----------------------------------------------------------------------------
@@ -69,6 +72,11 @@ export interface FileBrowserRef {
   // View mode control
   viewMode: ViewMode;
   setViewMode: (mode: ViewMode) => void;
+  // Sort control
+  setSortField: (field: SortField) => void;
+  setSortDirection: (direction: SortDirection) => void;
+  // Search control
+  setSearchQuery: (query: string) => void;
   // File creation
   createFile: () => void;
   createFolder: () => void;
@@ -219,6 +227,9 @@ interface ToolbarProps {
   workspacePath: string;
   currentPath: string;
   viewMode: ViewMode;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  searchQuery: string;
   canGoBack: boolean;
   canGoForward: boolean;
   canGoUp: boolean;
@@ -227,6 +238,9 @@ interface ToolbarProps {
   onGoUp: () => void;
   onNavigateTo: (path: string) => void;
   onViewModeChange: (mode: ViewMode) => void;
+  onSortFieldChange: (field: SortField) => void;
+  onSortDirectionChange: (direction: SortDirection) => void;
+  onSearchChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: () => void;
 }
@@ -235,6 +249,9 @@ function Toolbar({
   workspacePath,
   currentPath,
   viewMode,
+  sortField,
+  sortDirection,
+  searchQuery,
   canGoBack,
   canGoForward,
   canGoUp,
@@ -243,6 +260,9 @@ function Toolbar({
   onGoUp,
   onNavigateTo,
   onViewModeChange,
+  onSortFieldChange,
+  onSortDirectionChange,
+  onSearchChange,
   onNewFile,
   onNewFolder,
 }: ToolbarProps) {
@@ -332,6 +352,24 @@ function Toolbar({
           </React.Fragment>
         ))}
       </div>
+
+      <Separator orientation="vertical" className="h-6" />
+
+      {/* Search */}
+      <FileSearchInput
+        value={searchQuery}
+        onChange={onSearchChange}
+      />
+
+      <Separator orientation="vertical" className="h-6" />
+
+      {/* Sort */}
+      <SortDropdown
+        sortField={sortField}
+        sortDirection={sortDirection}
+        onSortFieldChange={onSortFieldChange}
+        onSortDirectionChange={onSortDirectionChange}
+      />
 
       <Separator orientation="vertical" className="h-6" />
 
@@ -1305,6 +1343,27 @@ function EmptyState() {
 }
 
 /* -----------------------------------------------------------------------------
+ * No Search Results State
+ * -------------------------------------------------------------------------- */
+
+interface NoSearchResultsStateProps {
+  query: string;
+}
+
+function NoSearchResultsState({ query }: NoSearchResultsStateProps) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+      <Search className="h-16 w-16 mb-4" />
+      <p className="text-lg font-medium">{t("fileBrowser.noResults")}</p>
+      <p className="text-sm mt-1 text-center">
+        {t("fileBrowser.noResultsQuery", { query })}
+      </p>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
  * Loading State
  * -------------------------------------------------------------------------- */
 
@@ -1359,6 +1418,9 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
     },
     viewMode: browser.viewMode,
     setViewMode: browser.setViewMode,
+    setSortField: browser.setSortField,
+    setSortDirection: browser.setSortDirection,
+    setSearchQuery: browser.setSearchQuery,
     createFile: () => {
       setCreateDialogType("file");
       setCreateDialogOpen(true);
@@ -1367,7 +1429,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       setCreateDialogType("folder");
       setCreateDialogOpen(true);
     },
-  }), [browser.viewMode, browser.setViewMode]);
+  }), [browser.viewMode, browser.setViewMode, browser.setSortField, browser.setSortDirection, browser.setSearchQuery]);
 
   // Notify parent of path changes (only for non-column views, column view handles this itself)
   useEffect(() => {
@@ -1498,11 +1560,16 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       return <EmptyState />;
     }
 
+    // Check for no search results
+    if (browser.filteredFiles.length === 0 && browser.searchQuery) {
+      return <NoSearchResultsState query={browser.searchQuery} />;
+    }
+
     switch (browser.viewMode) {
       case "list":
         return (
           <ListView
-            files={browser.files}
+            files={browser.filteredFiles}
             selectedFiles={browser.selectedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
@@ -1512,7 +1579,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       case "icon":
         return (
           <IconView
-            files={browser.files}
+            files={browser.filteredFiles}
             selectedFiles={browser.selectedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
@@ -1533,7 +1600,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       case "gallery":
         return (
           <GalleryView
-            files={browser.files}
+            files={browser.filteredFiles}
             selectedFiles={browser.selectedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
@@ -1553,6 +1620,9 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           workspacePath={workspacePath}
           currentPath={browser.currentPath}
           viewMode={browser.viewMode}
+          sortField={browser.sortField}
+          sortDirection={browser.sortDirection}
+          searchQuery={browser.searchQuery}
           canGoBack={browser.canGoBack}
           canGoForward={browser.canGoForward}
           canGoUp={browser.canGoUp}
@@ -1561,6 +1631,9 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           onGoUp={browser.goUp}
           onNavigateTo={browser.navigateTo}
           onViewModeChange={browser.setViewMode}
+          onSortFieldChange={browser.setSortField}
+          onSortDirectionChange={browser.setSortDirection}
+          onSearchChange={browser.setSearchQuery}
           onNewFile={() => {
             setCreateDialogType("file");
             setCreateDialogOpen(true);
