@@ -25,6 +25,13 @@ import {
   Network,
   MessageSquare,
   Play,
+  Bell,
+  Volume2,
+  VolumeX,
+  Moon,
+  Users,
+  Clock,
+  Zap,
 } from "lucide-react";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
@@ -53,9 +60,12 @@ import { SettingsAgentsPage } from "./settings-agents";
 import { SettingsGatewayPage } from "./settings-gateway";
 import { SettingsChannelsPage } from "./settings-channels";
 import { SettingsExecutorsPage } from "./settings-executors";
+import { useNotificationStore } from "@/stores/notification-store";
+import type { NotificationCategory, NotificationMethod } from "@/types/notification";
+import { Input } from "@/components/ui/input";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "gateway" | "channels" | "executors" | "model" | "agents" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -67,6 +77,7 @@ interface SectionConfig {
 const SECTIONS: SectionConfig[] = [
   { id: "general", labelKey: "settings.sections.general", icon: Settings },
   { id: "shortcuts", labelKey: "settings.sections.shortcuts", icon: Keyboard },
+  { id: "notifications", labelKey: "settings.sections.notifications", icon: Bell },
   { id: "gateway", labelKey: "settings.sections.gateway", icon: Network },
   { id: "channels", labelKey: "settings.sections.channels", icon: MessageSquare },
   { id: "executors", labelKey: "settings.sections.executors", icon: Play },
@@ -142,7 +153,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "shortcuts", "gateway", "channels", "executors", "model", "agents", "environment", "storage", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "environment", "storage", "about"];
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -229,6 +240,8 @@ export function SettingsPage() {
         return <GeneralSection key="general" />;
       case "shortcuts":
         return <ShortcutsSection key="shortcuts" />;
+      case "notifications":
+        return <NotificationsSection key="notifications" />;
       case "gateway":
         return <SettingsGatewayPage key="gateway" />;
       case "channels":
@@ -758,6 +771,279 @@ function ShortcutsSection() {
             {t("settings.resetShortcuts")}
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+/* -----------------------------------------------------------------------------
+ * Notifications Section
+ * -------------------------------------------------------------------------- */
+
+// Category configuration for notification settings
+interface NotificationCategoryConfig {
+  id: NotificationCategory;
+  labelKey: string;
+  descriptionKey: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const NOTIFICATION_CATEGORIES: NotificationCategoryConfig[] = [
+  { id: "chat", labelKey: "settings.notifications.chatCategory", descriptionKey: "settings.notifications.chatDescription", icon: MessageSquare },
+  { id: "group", labelKey: "settings.notifications.groupCategory", descriptionKey: "settings.notifications.groupDescription", icon: Users },
+  { id: "cron", labelKey: "settings.notifications.cronCategory", descriptionKey: "settings.notifications.cronDescription", icon: Clock },
+  { id: "agent", labelKey: "settings.notifications.agentCategory", descriptionKey: "settings.notifications.agentDescription", icon: Bot },
+  { id: "system", labelKey: "settings.notifications.systemCategory", descriptionKey: "settings.notifications.systemDescription", icon: Zap },
+];
+
+function NotificationsSection() {
+  const { t } = useTranslation();
+  const {
+    preferences,
+    setPreferences,
+    setCategoryEnabled,
+    setCategoryMethod,
+    setDoNotDisturb,
+  } = useNotificationStore();
+
+  // Handle master toggle
+  const handleMasterToggle = (enabled: boolean) => {
+    setPreferences({ enabled });
+  };
+
+  // Handle sound toggle
+  const handleSoundToggle = (sound: boolean) => {
+    setPreferences({ sound });
+  };
+
+  // Handle DND time change
+  const handleDndStartChange = (start: string) => {
+    setDoNotDisturb(preferences.doNotDisturb.enabled, start, preferences.doNotDisturb.end);
+  };
+
+  const handleDndEndChange = (end: string) => {
+    setDoNotDisturb(preferences.doNotDisturb.enabled, preferences.doNotDisturb.start, end);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold font-serif mb-1">
+          {t("settings.sections.notifications")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("settings.notifications.description")}
+        </p>
+      </div>
+
+      {/* Master Toggle */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Bell className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.notifications.masterToggle")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.notifications.masterToggleDescription")}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={preferences.enabled}
+            onCheckedChange={handleMasterToggle}
+          />
+        </div>
+      </div>
+
+      {/* Category Settings */}
+      <div className={cn(
+        "rounded-xl border bg-card p-4 transition-all duration-300",
+        preferences.enabled
+          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          : "opacity-50 pointer-events-none"
+      )}>
+        <SectionHeader title={t("settings.notifications.categorySettings")} />
+        <p className="text-sm text-muted-foreground mb-4">
+          {t("settings.notifications.categorySettingsDescription")}
+        </p>
+
+        <div className="space-y-4">
+          {NOTIFICATION_CATEGORIES.map((category) => {
+            const Icon = category.icon;
+            const isEnabled = preferences.categories[category.id];
+            const method = preferences.methods?.[category.id] ?? "both";
+
+            return (
+              <div
+                key={category.id}
+                className="rounded-lg border bg-muted/30 p-4 space-y-3"
+              >
+                {/* Category header with toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "p-2 rounded-lg transition-colors",
+                      isEnabled ? "bg-primary/10" : "bg-muted"
+                    )}>
+                      <Icon className={cn(
+                        "h-4 w-4 transition-colors",
+                        isEnabled ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground">
+                        {t(category.labelKey)}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {t(category.descriptionKey)}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => setCategoryEnabled(category.id, checked)}
+                  />
+                </div>
+
+                {/* Notification method selector */}
+                {isEnabled && (
+                  <div className="ml-11 pt-2 border-t border-border/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">
+                        {t("settings.notifications.deliveryMethod")}
+                      </span>
+                      <Select
+                        value={method}
+                        onValueChange={(value) => setCategoryMethod(category.id, value as NotificationMethod)}
+                      >
+                        <SelectTrigger className="w-[160px] h-8 text-xs">
+                          <SelectValue>
+                            {method === "toast" && t("settings.notifications.toastOnly")}
+                            {method === "system" && t("settings.notifications.systemOnly")}
+                            {method === "both" && t("settings.notifications.both")}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="toast">{t("settings.notifications.toastOnly")}</SelectItem>
+                          <SelectItem value="system">{t("settings.notifications.systemOnly")}</SelectItem>
+                          <SelectItem value="both">{t("settings.notifications.both")}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Sound Settings */}
+      <div className={cn(
+        "rounded-xl border bg-card p-4 transition-all duration-300",
+        preferences.enabled
+          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          : "opacity-50 pointer-events-none"
+      )}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2 rounded-lg transition-colors",
+              preferences.sound ? "bg-primary/10" : "bg-muted"
+            )}>
+              {preferences.sound ? (
+                <Volume2 className="h-5 w-5 text-primary" />
+              ) : (
+                <VolumeX className="h-5 w-5 text-muted-foreground" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.notifications.sound")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.notifications.soundDescription")}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={preferences.sound}
+            onCheckedChange={handleSoundToggle}
+          />
+        </div>
+      </div>
+
+      {/* Do Not Disturb */}
+      <div className={cn(
+        "rounded-xl border bg-card p-4 transition-all duration-300",
+        preferences.enabled
+          ? "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
+          : "opacity-50 pointer-events-none"
+      )}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "p-2 rounded-lg transition-colors",
+              preferences.doNotDisturb.enabled ? "bg-primary/10" : "bg-muted"
+            )}>
+              <Moon className={cn(
+                "h-5 w-5 transition-colors",
+                preferences.doNotDisturb.enabled ? "text-primary" : "text-muted-foreground"
+              )} />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.notifications.doNotDisturb")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.notifications.doNotDisturbDescription")}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={preferences.doNotDisturb.enabled}
+            onCheckedChange={(enabled) => setDoNotDisturb(enabled)}
+          />
+        </div>
+
+        {/* Time range inputs */}
+        {preferences.doNotDisturb.enabled && (
+          <div className="ml-11 pt-4 border-t border-border/50">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  {t("settings.notifications.dndStart")}
+                </label>
+                <Input
+                  type="time"
+                  value={preferences.doNotDisturb.start}
+                  onChange={(e) => handleDndStartChange(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="text-muted-foreground mt-5">-</div>
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  {t("settings.notifications.dndEnd")}
+                </label>
+                <Input
+                  type="time"
+                  value={preferences.doNotDisturb.end}
+                  onChange={(e) => handleDndEndChange(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {t("settings.notifications.dndHint")}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

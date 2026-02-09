@@ -15,7 +15,6 @@ import {
   Copy,
   Star,
   StarOff,
-  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -182,7 +181,7 @@ function SessionCard({
           </p>
         )}
 
-        {/* Meta row */}
+        {/* Meta row - only show time and message count, not agent name */}
         <div className="flex items-center gap-3 mt-1.5">
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
@@ -192,12 +191,6 @@ function SessionCard({
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <MessageSquare className="h-3 w-3" />
               <span>{session.messageCount}</span>
-            </div>
-          )}
-          {session.agentName && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Bot className="h-3 w-3" />
-              <span>{truncateText(session.agentName, 12)}</span>
             </div>
           )}
         </div>

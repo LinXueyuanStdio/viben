@@ -798,10 +798,10 @@ function WorkspaceTabContent({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col h-full space-y-4">
       {/* Output folder subsection */}
-      <div>
-        <div className="mb-2 flex items-center gap-1">
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="mb-2 flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={() => setOutputExpanded(!outputExpanded)}
@@ -847,7 +847,7 @@ function WorkspaceTabContent({
                 />
               </div>
             ) : (
-              <div className="max-h-[300px] space-y-0.5 overflow-y-auto rounded-md border border-border/30 bg-muted/20 p-2">
+              <div className="flex-1 space-y-0.5 overflow-y-auto rounded-md border border-border/30 bg-muted/20 p-2">
                 {workingFiles.map((file, idx) => (
                   <FileTreeItem
                     key={`${file.path}-${idx}`}
@@ -1386,7 +1386,7 @@ export function RightSidebar({
       {/* Tab content */}
       <ScrollArea className="flex-1">
         {currentTab?.type === "category" && currentTab.category === "workspace" && (
-          <div className="p-3">
+          <div className="p-3 h-full">
             <WorkspaceTabContent
               workingDir={workingDir}
               workingFiles={displayWorkingFiles}

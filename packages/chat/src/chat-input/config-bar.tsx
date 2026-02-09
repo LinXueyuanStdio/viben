@@ -142,21 +142,26 @@ export function ChatInputConfigBar({
       )}
     >
       <div className="flex items-center gap-1">
-        {/* 智能体 (Agent Selector) */}
+        {/* 智能体 (Agent Selector) - shows agent name and configured model */}
         {showAgentSelector && (
           <Popover>
             <PopoverTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 gap-1.5 text-xs"
+                className="h-auto min-h-8 px-2 py-1.5 gap-1.5 text-xs"
                 disabled={isLoading || disabled}
               >
-                <Bot className="h-3.5 w-3.5" />
-                <span className="max-w-[80px] truncate">
+                <Bot className="h-3.5 w-3.5 shrink-0" />
+                <span className="max-w-[200px] truncate">
                   {selectedAgent?.name || t("chat.agent", "智能体")}
+                  {selectedAgent?.model && (
+                    <span className="text-muted-foreground ml-1">
+                      ({selectedAgent.model})
+                    </span>
+                  )}
                 </span>
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 shrink-0" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-64 p-2" align="start">
@@ -192,7 +197,14 @@ export function ChatInputConfigBar({
                           {agent.id === selectedAgentId && (
                             <Check className="h-3 w-3 text-primary shrink-0" />
                           )}
-                          <span className="text-sm font-medium truncate">{agent.name}</span>
+                          <span className="text-sm font-medium truncate">
+                            {agent.name}
+                            {agent.model && (
+                              <span className="text-muted-foreground font-normal ml-1">
+                                ({agent.model})
+                              </span>
+                            )}
+                          </span>
                         </div>
                         {agent.description && (
                           <p className="text-xs text-muted-foreground truncate">

@@ -69,6 +69,7 @@ import {
   useEnableCronJob,
   useDisableCronJob,
   useRunCronJob,
+  useCronNotifications,
 } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import type { CronJob, CreateCronJob, UpdateCronJob } from "@/types/cron";
@@ -133,6 +134,7 @@ export function WorkspaceCronPage() {
   const { enableJob } = useEnableCronJob();
   const { disableJob } = useDisableCronJob();
   const { runJob } = useRunCronJob();
+  const { notifyCronStatus } = useCronNotifications();
 
   // UI state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -212,7 +214,26 @@ export function WorkspaceCronPage() {
 
   const handleRunNow = async (job: CronJob) => {
     setRunningJobId(job.id);
-    await runJob(job.id);
+
+    // Notify that job is starting
+    await notifyCronStatus(job.id, job.name, "started");
+
+    try {
+      const success = await runJob(job.id);
+
+      if (success) {
+        // Notify successful completion
+        await notifyCronStatus(job.id, job.name, "completed");
+      } else {
+        // Notify failure (generic error)
+        await notifyCronStatus(job.id, job.name, "failed");
+      }
+    } catch (err) {
+      // Notify failure with error message
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await notifyCronStatus(job.id, job.name, "failed", errorMessage);
+    }
+
     setRunningJobId(null);
     refreshJobs();
   };

@@ -25,6 +25,8 @@ export interface AgentOption {
   id: string;
   name: string;
   description?: string;
+  /** The model configured for this agent */
+  model?: string;
   icon?: ReactNode;
 }
 
