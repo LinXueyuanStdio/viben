@@ -3,10 +3,54 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use ts_rs::TS;
+
+/// Notification mode for channel messages
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum NotificationMode {
+    /// No notifications
+    #[default]
+    None,
+    /// In-app notifications only
+    InApp,
+    /// System notifications only
+    System,
+    /// Both in-app and system notifications
+    Both,
+}
+
+/// Binding type for agent/executor
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum BindingType {
+    /// Agent binding
+    Agent,
+    /// Executor binding (Claude Code, etc.)
+    Executor,
+}
+
+/// Agent or executor binding for a channel
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AgentBinding {
+    /// Type of binding: agent or executor
+    pub binding_type: BindingType,
+    /// Agent/executor ID
+    pub id: String,
+    /// Display name
+    pub name: String,
+    /// Workspace path (for executor bindings)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_path: Option<String>,
+}
 
 /// Channel types supported
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
 #[serde(rename_all = "lowercase")]
+#[ts(export)]
 pub enum ChannelType {
     Telegram,
     Discord,
@@ -52,7 +96,8 @@ impl Default for ChannelType {
 }
 
 /// Channel configuration (returned to frontend)
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct Channel {
     pub id: String,
     pub channel_type: ChannelType,
@@ -62,13 +107,20 @@ pub struct Channel {
     pub config: ChannelConfig,
     pub is_default: bool,
     pub enabled: bool,
+    /// Notification mode for incoming messages
+    #[serde(default)]
+    pub notification_mode: NotificationMode,
+    /// Bound agent or executor
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_binding: Option<AgentBinding>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 /// Channel-specific configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "lowercase")]
+#[ts(export)]
 pub enum ChannelConfig {
     #[default]
     None,
@@ -81,7 +133,8 @@ pub enum ChannelConfig {
 }
 
 /// Telegram channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct TelegramConfig {
     /// Bot token from @BotFather
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -92,7 +145,8 @@ pub struct TelegramConfig {
 }
 
 /// Discord channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct DiscordConfig {
     /// Bot token from Discord Developer Portal
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -100,7 +154,8 @@ pub struct DiscordConfig {
 }
 
 /// Feishu (Lark) channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct FeishuConfig {
     /// App ID from Feishu Open Platform
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -111,7 +166,8 @@ pub struct FeishuConfig {
 }
 
 /// WhatsApp channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct WhatsAppConfig {
     /// WhatsApp Web Bridge URL (WebSocket)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -119,7 +175,8 @@ pub struct WhatsAppConfig {
 }
 
 /// Slack channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct SlackConfig {
     /// Bot OAuth token
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -127,7 +184,8 @@ pub struct SlackConfig {
 }
 
 /// Webhook channel configuration
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
 pub struct WebhookConfig {
     /// Webhook URL
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -152,6 +210,12 @@ pub struct ChannelEntry {
     #[serde(flatten)]
     pub config: ChannelConfig,
     pub enabled: bool,
+    /// Notification mode for incoming messages
+    #[serde(default)]
+    pub notification_mode: NotificationMode,
+    /// Bound agent or executor
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_binding: Option<AgentBinding>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -174,6 +238,12 @@ pub struct CreateChannelOptions {
     pub config: ChannelConfig,
     #[serde(default)]
     pub set_as_default: bool,
+    /// Notification mode for incoming messages
+    #[serde(default)]
+    pub notification_mode: NotificationMode,
+    /// Agent or executor to bind
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_binding: Option<AgentBinding>,
 }
 
 /// Options for updating a channel
@@ -185,6 +255,15 @@ pub struct ChannelUpdate {
     pub config: Option<ChannelConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
+    /// Update notification mode
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notification_mode: Option<NotificationMode>,
+    /// Update agent binding (use Some(None) to clear)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_binding: Option<Option<AgentBinding>>,
+    /// Set as default channel
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub set_as_default: Option<bool>,
 }
 
 /// Options for sending a message

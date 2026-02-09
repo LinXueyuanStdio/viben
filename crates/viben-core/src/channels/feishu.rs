@@ -19,6 +19,7 @@ struct TenantTokenResponse {
     code: i32,
     msg: Option<String>,
     tenant_access_token: Option<String>,
+    #[allow(dead_code)]
     expire: Option<i64>,
 }
 

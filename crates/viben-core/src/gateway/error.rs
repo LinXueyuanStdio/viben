@@ -28,6 +28,9 @@ pub enum GatewayError {
 
     #[error("Cron error: {0}")]
     Cron(#[from] crate::services::CronError),
+
+    #[error("Channel error: {0}")]
+    Channel(#[from] crate::channels::ChannelError),
 }
 
 impl IntoResponse for GatewayError {
@@ -61,6 +64,16 @@ impl IntoResponse for GatewayError {
                     _ => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 tracing::error!(target: "viben::gateway::error", "Cron error: {}", e);
+                (status, e.to_string())
+            }
+            GatewayError::Channel(e) => {
+                let status = match &e {
+                    crate::channels::ChannelError::NotFound(_) => StatusCode::NOT_FOUND,
+                    crate::channels::ChannelError::AlreadyExists(_) => StatusCode::CONFLICT,
+                    crate::channels::ChannelError::InvalidConfig(_) => StatusCode::BAD_REQUEST,
+                    _ => StatusCode::INTERNAL_SERVER_ERROR,
+                };
+                tracing::error!(target: "viben::gateway::error", "Channel error: {}", e);
                 (status, e.to_string())
             }
         };
