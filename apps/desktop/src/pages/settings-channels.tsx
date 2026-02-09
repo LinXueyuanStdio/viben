@@ -50,11 +50,11 @@ import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway";
 import type {
   ChannelType,
-  ChannelInstance,
-  TelegramInstance,
-  DiscordInstance,
-  FeishuInstance,
-  WhatsAppInstance,
+  GatewayChannel,
+  ChannelConfig,
+  UpdateChannelRequest,
+  NotificationMode,
+  AgentBinding,
 } from "@/types/channel";
 import { getChannelTypeName } from "@/types/channel";
 
@@ -91,14 +91,22 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-const CHANNEL_ICONS: Record<ChannelType, React.ReactNode> = {
+const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   telegram: <TelegramIcon className="h-5 w-5" />,
   discord: <DiscordIcon className="h-5 w-5" />,
   feishu: <FeishuIcon className="h-5 w-5" />,
   whatsapp: <WhatsAppIcon className="h-5 w-5" />,
+  slack: <DiscordIcon className="h-5 w-5" />, // Placeholder
+  webhook: <RefreshCw className="h-5 w-5" />, // Placeholder
 };
 
 const CHANNEL_TYPES: ChannelType[] = ["telegram", "discord", "feishu", "whatsapp"];
+
+// Helper to extract config value from GatewayChannel
+function getConfigValue<T>(config: ChannelConfig, key: string): T | undefined {
+  if (config.type === "none") return undefined;
+  return (config as Record<string, unknown>)[key] as T | undefined;
+}
 
 // Password input with toggle visibility
 interface SecretInputProps {
@@ -151,39 +159,8 @@ function SecretInput({ value, onChange, placeholder, label, description }: Secre
 /**
  * Build channel config request body for gateway API
  */
-function buildChannelConfig(instance: ChannelInstance): Record<string, unknown> {
-  switch (instance.type) {
-    case "telegram": {
-      const telegram = instance as TelegramInstance;
-      return {
-        type: "telegram",
-        token: telegram.token,
-        proxy: telegram.proxy || null,
-      };
-    }
-    case "discord": {
-      const discord = instance as DiscordInstance;
-      return {
-        type: "discord",
-        token: discord.token,
-      };
-    }
-    case "feishu": {
-      const feishu = instance as FeishuInstance;
-      return {
-        type: "feishu",
-        app_id: feishu.app_id,
-        app_secret: feishu.app_secret,
-      };
-    }
-    case "whatsapp": {
-      const whatsapp = instance as WhatsAppInstance;
-      return {
-        type: "whatsapp",
-        bridge_url: whatsapp.bridge_url,
-      };
-    }
-  }
+function buildChannelConfig(channel: GatewayChannel): ChannelConfig {
+  return channel.config;
 }
 
 /**
