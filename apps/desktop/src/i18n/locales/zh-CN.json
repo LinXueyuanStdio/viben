@@ -1760,6 +1760,21 @@
     "leave": "退出群聊",
     "delete": "删除群聊",
     "members": "成员",
-    "groupChats": "群聊"
+    "groupChats": "群聊",
+    "viewMembers": "查看成员",
+    "memberCount": "{{count}} 位成员",
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "inputPlaceholder": "输入消息...",
+    "addMembers": "添加成员",
+    "removeMember": "移除",
+    "owner": "群主",
+    "admin": "管理员",
+    "member": "成员",
+    "human": "用户",
+    "agent": "智能体",
+    "executor": "执行器",
+    "renameTitle": "重命名群聊",
+    "newName": "新名称"
   }
 }

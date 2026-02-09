@@ -61,6 +61,7 @@ import {
   CreateGroupChatDialog,
   GroupChatMessageList,
   GroupChatListItem,
+  GroupChatMembersDialog,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -456,6 +457,10 @@ export function WorkspaceChatPage() {
   const [selectedGroupChatId, setSelectedGroupChatId] = React.useState<string | null>(null);
   const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
   const [groupChatInput, setGroupChatInput] = React.useState("");
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false);
+  const [renameGroupChatId, setRenameGroupChatId] = React.useState<string | null>(null);
+  const [renameGroupChatName, setRenameGroupChatName] = React.useState("");
+  const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
 
   // Get workspace info
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
@@ -510,8 +515,11 @@ export function WorkspaceChatPage() {
     loadGroupChats,
     createGroupChat,
     loadGroupChat,
+    updateGroupChat,
     deleteGroupChat,
     leaveGroupChat,
+    addMember: addGroupChatMember,
+    removeMember: removeGroupChatMember,
     sendMessage: sendGroupChatMessage,
     sendTyping,
   } = useGroupChat(selectedGroupChatId || undefined, {
@@ -1112,6 +1120,71 @@ export function WorkspaceChatPage() {
     }
   };
 
+  // Handle renaming a group chat
+  const handleRenameGroupChat = async (groupChatId: string, newName: string) => {
+    if (!newName.trim()) return;
+    try {
+      await updateGroupChat(groupChatId, { name: newName.trim() });
+      setRenameGroupChatId(null);
+      setRenameGroupChatName("");
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to rename group chat:", error);
+    }
+  };
+
+  // Handle toggling mute for a group chat
+  const handleToggleMuteGroupChat = (groupChatId: string) => {
+    setMutedGroupChats((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupChatId)) {
+        newSet.delete(groupChatId);
+      } else {
+        newSet.add(groupChatId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle opening rename dialog
+  const handleOpenRenameDialog = (groupChatId: string, currentName: string) => {
+    setRenameGroupChatId(groupChatId);
+    setRenameGroupChatName(currentName);
+  };
+
+  // Handle adding a member to the current group chat
+  const handleAddGroupChatMember = async (member: {
+    member_type: "human" | "agent" | "executor";
+    member_id: string;
+    display_name: string;
+    role?: "owner" | "admin" | "member";
+  }) => {
+    try {
+      await addGroupChatMember(member);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to add member:", error);
+      throw error;
+    }
+  };
+
+  // Handle removing a member from the current group chat
+  const handleRemoveGroupChatMember = async (memberId: string) => {
+    try {
+      await removeGroupChatMember(memberId);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to remove member:", error);
+      throw error;
+    }
+  };
+
+  // Get current user's role in the group chat
+  const currentUserGroupRole = React.useMemo(() => {
+    if (!groupChatMembers.length) return undefined;
+    const currentUserMember = groupChatMembers.find(
+      (m) => m.member_type === "human" && m.member_id === "user-1"
+    );
+    return currentUserMember?.role;
+  }, [groupChatMembers]);
+
   // Filter messages by search query
   const filteredMessages = React.useMemo(() => {
     if (!conversationSearchQuery.trim()) return messages;
@@ -1227,7 +1300,10 @@ export function WorkspaceChatPage() {
                       key={groupChat.id}
                       groupChat={groupChat}
                       isSelected={groupChat.id === selectedGroupChatId}
+                      isMuted={mutedGroupChats.has(groupChat.id)}
                       onClick={() => handleSelectGroupChat(groupChat.id)}
+                      onRename={() => handleOpenRenameDialog(groupChat.id, groupChat.name)}
+                      onToggleMute={() => handleToggleMuteGroupChat(groupChat.id)}
                       onDelete={() => handleDeleteGroupChat(groupChat.id)}
                       onLeave={handleLeaveGroupChat}
                     />
@@ -1310,7 +1386,7 @@ export function WorkspaceChatPage() {
                     size="icon"
                     className="h-8 w-8"
                     title={t("groupChat.viewMembers", "View Members")}
-                    onClick={() => {/* TODO: Open members dialog */}}
+                    onClick={() => setIsMembersDialogOpen(true)}
                   >
                     <Users className="h-4 w-4" />
                   </Button>
@@ -1883,6 +1959,81 @@ export function WorkspaceChatPage() {
         onCreate={handleCreateGroupChat}
         isCreating={isCreatingGroupChat}
       />
+
+      {/* Group Chat Members Dialog */}
+      {currentGroupChat && (
+        <GroupChatMembersDialog
+          open={isMembersDialogOpen}
+          onOpenChange={setIsMembersDialogOpen}
+          groupChatName={currentGroupChat.group_chat.name}
+          members={groupChatMembers}
+          currentUserId="user-1"
+          currentUserRole={currentUserGroupRole}
+          availableAgents={agents.map((a) => ({ id: a.id, name: a.name }))}
+          onRemoveMember={handleRemoveGroupChatMember}
+          onAddMember={handleAddGroupChatMember}
+          isLoading={isLoadingGroupChat}
+        />
+      )}
+
+      {/* Rename Group Chat Dialog */}
+      <Dialog
+        open={renameGroupChatId !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRenameGroupChatId(null);
+            setRenameGroupChatName("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {t("groupChat.renameTitle", "Rename Group Chat")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">
+                {t("groupChat.newName", "New Name")}
+              </label>
+              <Input
+                value={renameGroupChatName}
+                onChange={(e) => setRenameGroupChatName(e.target.value)}
+                placeholder={t("groupChat.namePlaceholder", "Enter group name...")}
+                className="mt-1.5"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && renameGroupChatId) {
+                    handleRenameGroupChat(renameGroupChatId, renameGroupChatName);
+                  }
+                }}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setRenameGroupChatId(null);
+                  setRenameGroupChatName("");
+                }}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={() => {
+                  if (renameGroupChatId) {
+                    handleRenameGroupChat(renameGroupChatId, renameGroupChatName);
+                  }
+                }}
+                disabled={!renameGroupChatName.trim()}
+              >
+                {t("common.save")}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

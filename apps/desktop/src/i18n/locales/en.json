@@ -1739,6 +1739,21 @@
     "leave": "Leave Group",
     "delete": "Delete Group",
     "members": "Members",
-    "groupChats": "Group Chats"
+    "groupChats": "Group Chats",
+    "viewMembers": "View Members",
+    "memberCount": "{{count}} members",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "inputPlaceholder": "Type a message...",
+    "addMembers": "Add Members",
+    "removeMember": "Remove",
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member",
+    "human": "Human",
+    "agent": "Agent",
+    "executor": "Executor",
+    "renameTitle": "Rename Group Chat",
+    "newName": "New Name"
   }
 }

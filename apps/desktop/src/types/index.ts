@@ -404,3 +404,6 @@ export * from "./unified-agent";
 
 // Re-export group chat types
 export * from "./group-chat";
+
+// Re-export notification types
+export * from "./notification";

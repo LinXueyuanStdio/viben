@@ -4,15 +4,11 @@ import { Loader2, FolderOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
-import { FileBrowser } from "@/components/file-browser";
+import { FileBrowser, type FileBrowserRef } from "@/components/file-browser";
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 
-/** Interface for FileBrowser imperative handle */
-interface FileBrowserRef {
-  navigateToColumnIndex: (index: number) => void;
-}
 
 export function WorkspaceFilesPage() {
   const { t } = useTranslation();
@@ -20,7 +16,7 @@ export function WorkspaceFilesPage() {
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
 
   // Reference to FileBrowser for imperative navigation
-  const fileBrowserRef = useRef<FileBrowserRef | null>(null);
+  const fileBrowserRef = useRef<FileBrowserRef>(null);
 
   // Track current path segments for breadcrumb
   const [currentSegments, setCurrentSegments] = useState<{ name: string; path: string }[]>([]);
@@ -125,9 +121,11 @@ export function WorkspaceFilesPage() {
 
       <div className="flex-1 overflow-hidden">
         <FileBrowser
+          ref={fileBrowserRef}
           workspacePath={workspace.path}
           className="h-full"
           onPathChange={handlePathChange}
+          hideToolbar
         />
       </div>
     </PageWrapper>

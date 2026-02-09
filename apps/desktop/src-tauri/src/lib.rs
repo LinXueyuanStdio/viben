@@ -19,6 +19,7 @@ use tauri::{
     Emitter, Manager,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
+use tauri_plugin_notification::NotificationExt;
 
 /// Initialize viben-core on app startup
 async fn initialize_viben_core() -> Result<(), Box<dyn std::error::Error>> {
@@ -225,6 +226,7 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             setup_tray(app)?;
 
