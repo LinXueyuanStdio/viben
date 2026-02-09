@@ -534,6 +534,16 @@ commands::workspace::write_skill_file,
             // Screenshot commands
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,
+            // Filesystem commands
+            commands::filesystem::read_directory,
+            commands::filesystem::create_file,
+            commands::filesystem::create_directory,
+            commands::filesystem::rename_item,
+            commands::filesystem::delete_item,
+            commands::filesystem::copy_item,
+            commands::filesystem::move_item,
+            commands::filesystem::get_file_info,
+            commands::filesystem::read_file_content,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
