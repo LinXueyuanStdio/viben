@@ -19,7 +19,6 @@ use tauri::{
     Emitter, Manager,
 };
 use tauri_plugin_deep_link::DeepLinkExt;
-use tauri_plugin_notification::NotificationExt;
 
 /// Initialize viben-core on app startup
 async fn initialize_viben_core() -> Result<(), Box<dyn std::error::Error>> {

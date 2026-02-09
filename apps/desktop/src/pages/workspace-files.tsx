@@ -125,7 +125,7 @@ export function WorkspaceFilesPage() {
           workspacePath={workspace.path}
           className="h-full"
           onPathChange={handlePathChange}
-          hideToolbar
+          hideBreadcrumb
         />
       </div>
     </PageWrapper>

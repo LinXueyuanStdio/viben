@@ -62,6 +62,7 @@ import {
   GroupChatMessageList,
   GroupChatListItem,
   GroupChatMembersDialog,
+  GroupChatSidebar,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -458,6 +459,7 @@ export function WorkspaceChatPage() {
   const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
   const [groupChatInput, setGroupChatInput] = React.useState("");
   const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false);
+  const [isGroupChatSidebarOpen, setIsGroupChatSidebarOpen] = React.useState(false);
   const [renameGroupChatId, setRenameGroupChatId] = React.useState<string | null>(null);
   const [renameGroupChatName, setRenameGroupChatName] = React.useState("");
   const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
@@ -1152,12 +1154,7 @@ export function WorkspaceChatPage() {
   };
 
   // Handle adding a member to the current group chat
-  const handleAddGroupChatMember = async (member: {
-    member_type: "human" | "agent" | "executor";
-    member_id: string;
-    display_name: string;
-    role?: "owner" | "admin" | "member";
-  }) => {
+  const handleAddGroupChatMember = async (member: import("@/lib/gateway").AddMemberRequest) => {
     try {
       await addGroupChatMember(member);
     } catch (error) {
@@ -1172,6 +1169,17 @@ export function WorkspaceChatPage() {
       await removeGroupChatMember(memberId);
     } catch (error) {
       console.error("[WorkspaceChat] Failed to remove member:", error);
+      throw error;
+    }
+  };
+
+  // Handle updating the current group chat (for sidebar)
+  const handleUpdateCurrentGroupChat = async (data: { name?: string; description?: string }) => {
+    if (!selectedGroupChatId) return;
+    try {
+      await updateGroupChat(selectedGroupChatId, data);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to update group chat:", error);
       throw error;
     }
   };
@@ -1385,32 +1393,11 @@ export function WorkspaceChatPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    title={t("groupChat.viewMembers", "View Members")}
-                    onClick={() => setIsMembersDialogOpen(true)}
+                    title={t("groupChat.viewDetails", "View Details")}
+                    onClick={() => setIsGroupChatSidebarOpen(true)}
                   >
                     <Users className="h-4 w-4" />
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={handleLeaveGroupChat}>
-                        <Users className="h-4 w-4 mr-2" />
-                        {t("groupChat.leave", "Leave Group")}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteGroupChat(selectedGroupChatId!)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        {t("groupChat.delete", "Delete Group")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
               </div>
 
@@ -2034,6 +2021,25 @@ export function WorkspaceChatPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Group Chat Sidebar */}
+      {currentGroupChat && (
+        <GroupChatSidebar
+          groupChat={currentGroupChat.group_chat}
+          members={groupChatMembers}
+          availableAgents={agents.map((a) => ({ id: a.id, name: a.name }))}
+          currentUserId="user-1"
+          currentUserRole={currentUserGroupRole}
+          isOpen={isGroupChatSidebarOpen}
+          onClose={() => setIsGroupChatSidebarOpen(false)}
+          onAddMember={handleAddGroupChatMember}
+          onRemoveMember={handleRemoveGroupChatMember}
+          onUpdateGroupChat={handleUpdateCurrentGroupChat}
+          onLeaveGroup={handleLeaveGroupChat}
+          onDeleteGroup={() => selectedGroupChatId ? handleDeleteGroupChat(selectedGroupChatId) : Promise.resolve()}
+          isLoading={isLoadingGroupChat}
+        />
+      )}
     </motion.div>
   );
 }

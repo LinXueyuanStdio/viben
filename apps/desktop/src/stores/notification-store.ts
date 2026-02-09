@@ -2,9 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   AppNotification,
+  CreateNotificationInput,
   NotificationCategory,
   NotificationPreferences,
-  CreateNotificationInput,
 } from "@/types";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/types/notification";
 
@@ -63,7 +63,7 @@ export const useNotificationStore = create<NotificationState>()(
           ...input,
           id,
           read: false,
-          createdAt: new Date(),
+          createdAt: new Date().toISOString(),
         };
 
         set((state) => {
@@ -86,7 +86,7 @@ export const useNotificationStore = create<NotificationState>()(
         set((state) => ({
           notifications: state.notifications.map((n) =>
             n.id === id && !n.read
-              ? { ...n, read: true, readAt: new Date() }
+              ? { ...n, read: true, readAt: new Date().toISOString() }
               : n
           ),
         })),
@@ -95,7 +95,7 @@ export const useNotificationStore = create<NotificationState>()(
       markAllAsRead: () =>
         set((state) => ({
           notifications: state.notifications.map((n) =>
-            n.read ? n : { ...n, read: true, readAt: new Date() }
+            n.read ? n : { ...n, read: true, readAt: new Date().toISOString() }
           ),
         })),
 
@@ -220,28 +220,9 @@ export const useNotificationStore = create<NotificationState>()(
     {
       name: "viben-notifications",
       partialize: (state) => ({
-        notifications: state.notifications.map((n) => ({
-          ...n,
-          // Ensure dates are serializable
-          createdAt:
-            n.createdAt instanceof Date
-              ? n.createdAt.toISOString()
-              : n.createdAt,
-          readAt:
-            n.readAt instanceof Date ? n.readAt.toISOString() : n.readAt,
-        })),
+        notifications: state.notifications,
         preferences: state.preferences,
       }),
-      onRehydrate: () => (state) => {
-        // Convert date strings back to Date objects after rehydration
-        if (state?.notifications) {
-          state.notifications = state.notifications.map((n) => ({
-            ...n,
-            createdAt: new Date(n.createdAt),
-            readAt: n.readAt ? new Date(n.readAt) : undefined,
-          }));
-        }
-      },
     }
   )
 );

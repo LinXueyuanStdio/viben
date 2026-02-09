@@ -191,3 +191,25 @@ export type { UseGroupChatOptions, UseGroupChatReturn } from "./use-group-chat";
 // File Browser
 export { useFileBrowser } from "./use-file-browser";
 export type { ViewMode } from "./use-file-browser";
+
+// Toast Notifications
+export { useToast, toast } from "./use-toast";
+export type {
+  ToastType,
+  ToastAction,
+  ToastOptions,
+  PromiseToastMessages,
+  PromiseToastOptions,
+} from "./use-toast";
+
+// System Notification
+export {
+  useSystemNotification,
+  sendSystemNotification,
+  ensureNotificationPermission,
+} from "./use-system-notification";
+export type {
+  NotificationPermission,
+  SystemNotificationOptions,
+  UseSystemNotificationReturn,
+} from "./use-system-notification";
