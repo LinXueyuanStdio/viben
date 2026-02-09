@@ -743,9 +743,10 @@ mod tests {
             let pty = crate::services::PtyService::new();
             let history = crate::services::HistoryService::new();
             let session_store = crate::services::SessionStoreService::new();
-            let cron = crate::services::CronService::new(events_arc);
+            let cron = crate::services::CronService::new(events_arc.clone());
+            let channel = crate::channels::ChannelService::new(events_arc);
 
-            let state = AppState::new(db, events, container, pty, history, session_store, cron);
+            let state = AppState::new(db, events, container, pty, history, session_store, cron, channel);
 
             // Just verify it was created (no panic)
             assert!(std::sync::Arc::strong_count(&state.db) >= 1);
@@ -755,6 +756,7 @@ mod tests {
             assert!(std::sync::Arc::strong_count(&state.history) >= 1);
             assert!(std::sync::Arc::strong_count(&state.session_store) >= 1);
             assert!(std::sync::Arc::strong_count(&state.cron) >= 1);
+            assert!(std::sync::Arc::strong_count(&state.channel) >= 1);
         }
     }
 

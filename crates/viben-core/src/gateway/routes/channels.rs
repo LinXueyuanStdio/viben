@@ -1,25 +1,302 @@
 //! Channel management endpoints
 //!
-//! Provides HTTP API for sending messages and testing channels.
+//! Provides HTTP API for:
+//! - Channel instance CRUD (stored in ~/.viben/channels.yaml)
+//! - Sending messages through channels
+//! - Testing channel configurations
 
 use axum::{
     Json, Router,
-    routing::post,
+    extract::{Path, State},
+    routing::{delete, get, patch, post},
 };
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
 use crate::channels::{
-    ChannelType, TelegramConfig, DiscordConfig, FeishuConfig, WhatsAppConfig,
-    SlackConfig, WebhookConfig, SendMessageOptions, ParseMode,
-    send_telegram_message, send_discord_message, send_feishu_message,
-    send_whatsapp_message, send_slack_message, send_webhook_message,
-    test_telegram_channel, test_discord_channel, test_feishu_channel,
-    test_whatsapp_channel, test_slack_channel, test_webhook_channel,
+    AgentBinding, BindingType, Channel, ChannelConfig, ChannelType, ChannelUpdate,
+    CreateChannelOptions, DiscordConfig, FeishuConfig, NotificationMode, ParseMode,
+    SendMessageOptions, SlackConfig, TelegramConfig, WebhookConfig, WhatsAppConfig,
+    send_discord_message, send_feishu_message, send_slack_message,
+    send_telegram_message, send_webhook_message, send_whatsapp_message,
+    test_discord_channel, test_feishu_channel, test_slack_channel,
+    test_telegram_channel, test_webhook_channel, test_whatsapp_channel,
 };
 use crate::gateway::{AppState, GatewayError};
 
 // ============================================================================
-// Request/Response Types
+// Channel Instance CRUD Types
+// ============================================================================
+
+/// Channel response (for API)
+#[derive(Debug, Serialize)]
+pub struct ChannelResponse {
+    pub id: String,
+    pub channel_type: String,
+    pub name: String,
+    pub config: ChannelConfig,
+    pub is_default: bool,
+    pub enabled: bool,
+    pub notification_mode: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_binding: Option<AgentBindingResponse>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+/// Agent binding response
+#[derive(Debug, Serialize)]
+pub struct AgentBindingResponse {
+    pub binding_type: String,
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_path: Option<String>,
+}
+
+impl From<&AgentBinding> for AgentBindingResponse {
+    fn from(binding: &AgentBinding) -> Self {
+        Self {
+            binding_type: match binding.binding_type {
+                BindingType::Agent => "agent".to_string(),
+                BindingType::Executor => "executor".to_string(),
+            },
+            id: binding.id.clone(),
+            name: binding.name.clone(),
+            workspace_path: binding.workspace_path.clone(),
+        }
+    }
+}
+
+impl From<Channel> for ChannelResponse {
+    fn from(channel: Channel) -> Self {
+        Self {
+            id: channel.id,
+            channel_type: channel.channel_type.to_string(),
+            name: channel.name,
+            config: channel.config,
+            is_default: channel.is_default,
+            enabled: channel.enabled,
+            notification_mode: match channel.notification_mode {
+                NotificationMode::None => "none".to_string(),
+                NotificationMode::InApp => "in_app".to_string(),
+                NotificationMode::System => "system".to_string(),
+                NotificationMode::Both => "both".to_string(),
+            },
+            agent_binding: channel.agent_binding.as_ref().map(AgentBindingResponse::from),
+            created_at: channel.created_at.to_rfc3339(),
+            updated_at: channel.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+/// List channels response
+#[derive(Debug, Serialize)]
+pub struct ListChannelsResponse {
+    pub channels: Vec<ChannelResponse>,
+}
+
+/// Create channel request
+#[derive(Debug, Deserialize)]
+pub struct CreateChannelRequest {
+    pub channel_type: ChannelType,
+    pub name: String,
+    #[serde(flatten)]
+    pub config: ChannelConfig,
+    #[serde(default)]
+    pub set_as_default: bool,
+    #[serde(default)]
+    pub notification_mode: Option<String>,
+    #[serde(default)]
+    pub agent_binding: Option<AgentBindingRequest>,
+}
+
+/// Agent binding request
+#[derive(Debug, Deserialize)]
+pub struct AgentBindingRequest {
+    pub binding_type: String,
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub workspace_path: Option<String>,
+}
+
+impl From<AgentBindingRequest> for AgentBinding {
+    fn from(req: AgentBindingRequest) -> Self {
+        Self {
+            binding_type: match req.binding_type.as_str() {
+                "executor" => BindingType::Executor,
+                _ => BindingType::Agent,
+            },
+            id: req.id,
+            name: req.name,
+            workspace_path: req.workspace_path,
+        }
+    }
+}
+
+/// Update channel request
+#[derive(Debug, Deserialize)]
+pub struct UpdateChannelRequest {
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub config: Option<ChannelConfig>,
+    #[serde(default)]
+    pub enabled: Option<bool>,
+    #[serde(default)]
+    pub notification_mode: Option<String>,
+    #[serde(default)]
+    pub agent_binding: Option<Option<AgentBindingRequest>>,
+    #[serde(default)]
+    pub set_as_default: Option<bool>,
+}
+
+// ============================================================================
+// Channel Instance CRUD Handlers
+// ============================================================================
+
+/// List all channel instances
+pub async fn list_channels(
+    State(state): State<AppState>,
+) -> Result<Json<ListChannelsResponse>, GatewayError> {
+    tracing::debug!(target: "viben::gateway::channels", "Listing all channel instances");
+
+    let channels = state.channel.list_channels().await;
+    let count = channels.len();
+    let responses: Vec<ChannelResponse> = channels.into_iter().map(ChannelResponse::from).collect();
+
+    tracing::debug!(target: "viben::gateway::channels", "Listed {} channel instances", count);
+
+    Ok(Json(ListChannelsResponse { channels: responses }))
+}
+
+/// Get a channel instance by ID
+pub async fn get_channel(
+    State(state): State<AppState>,
+    Path(channel_id): Path<String>,
+) -> Result<Json<ChannelResponse>, GatewayError> {
+    tracing::debug!(target: "viben::gateway::channels", "Getting channel instance: {}", channel_id);
+
+    let channel = state.channel.get_channel(&channel_id).await.ok_or_else(|| {
+        tracing::warn!(target: "viben::gateway::channels", "Channel not found: {}", channel_id);
+        GatewayError::NotFound(format!("Channel not found: {}", channel_id))
+    })?;
+
+    Ok(Json(ChannelResponse::from(channel)))
+}
+
+/// Create a new channel instance
+pub async fn create_channel(
+    State(state): State<AppState>,
+    Json(req): Json<CreateChannelRequest>,
+) -> Result<Json<ChannelResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Creating channel instance: name='{}', type={:?}",
+        req.name, req.channel_type
+    );
+
+    let notification_mode = match req.notification_mode.as_deref() {
+        Some("in_app") => NotificationMode::InApp,
+        Some("system") => NotificationMode::System,
+        Some("both") => NotificationMode::Both,
+        _ => NotificationMode::None,
+    };
+
+    let options = CreateChannelOptions {
+        channel_type: req.channel_type,
+        name: req.name.clone(),
+        config: req.config,
+        set_as_default: req.set_as_default,
+        notification_mode,
+        agent_binding: req.agent_binding.map(AgentBinding::from),
+    };
+
+    let channel = state.channel.create_channel(options).await?;
+
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Channel instance created: id={}, name='{}'",
+        channel.id, channel.name
+    );
+
+    Ok(Json(ChannelResponse::from(channel)))
+}
+
+/// Update an existing channel instance
+pub async fn update_channel(
+    State(state): State<AppState>,
+    Path(channel_id): Path<String>,
+    Json(req): Json<UpdateChannelRequest>,
+) -> Result<Json<ChannelResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::channels",
+        "Updating channel instance: {} (name={:?}, enabled={:?})",
+        channel_id, req.name, req.enabled
+    );
+
+    let notification_mode = req.notification_mode.map(|mode| match mode.as_str() {
+        "in_app" => NotificationMode::InApp,
+        "system" => NotificationMode::System,
+        "both" => NotificationMode::Both,
+        _ => NotificationMode::None,
+    });
+
+    let agent_binding = req.agent_binding.map(|opt| opt.map(AgentBinding::from));
+
+    let update = ChannelUpdate {
+        name: req.name,
+        config: req.config,
+        enabled: req.enabled,
+        notification_mode,
+        agent_binding,
+        set_as_default: req.set_as_default,
+    };
+
+    let channel = state.channel.update_channel(&channel_id, update).await?;
+
+    tracing::debug!(
+        target: "viben::gateway::channels",
+        "Channel instance {} updated successfully",
+        channel_id
+    );
+
+    Ok(Json(ChannelResponse::from(channel)))
+}
+
+/// Delete a channel instance
+pub async fn delete_channel(
+    State(state): State<AppState>,
+    Path(channel_id): Path<String>,
+) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(target: "viben::gateway::channels", "Deleting channel instance: {}", channel_id);
+
+    state.channel.delete_channel(&channel_id).await?;
+
+    tracing::info!(target: "viben::gateway::channels", "Channel instance {} deleted", channel_id);
+
+    Ok(Json(json!({
+        "deleted": channel_id
+    })))
+}
+
+/// Set a channel as default
+pub async fn set_default_channel(
+    State(state): State<AppState>,
+    Path(channel_id): Path<String>,
+) -> Result<Json<ChannelResponse>, GatewayError> {
+    tracing::info!(target: "viben::gateway::channels", "Setting default channel: {}", channel_id);
+
+    let channel = state.channel.set_default(&channel_id).await?;
+
+    tracing::info!(target: "viben::gateway::channels", "Default channel set to: {}", channel_id);
+
+    Ok(Json(ChannelResponse::from(channel)))
+}
+
+// ============================================================================
+// Message Sending Request/Response Types
 // ============================================================================
 
 /// Send message request
@@ -344,6 +621,14 @@ pub async fn send_test_message(
 /// Create the channels router
 pub fn router() -> Router<AppState> {
     Router::new()
+        // Channel instance CRUD endpoints
+        .route("/api/channels", get(list_channels))
+        .route("/api/channels", post(create_channel))
+        .route("/api/channels/:id", get(get_channel))
+        .route("/api/channels/:id", patch(update_channel))
+        .route("/api/channels/:id", delete(delete_channel))
+        .route("/api/channels/:id/default", post(set_default_channel))
+        // Message operations (existing endpoints)
         .route("/api/channels/send", post(send_message))
         .route("/api/channels/test", post(test_channel))
         .route("/api/channels/send-test", post(send_test_message))

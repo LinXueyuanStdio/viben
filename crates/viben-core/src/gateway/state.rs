@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use crate::channels::ChannelService;
 use crate::db::DbService;
 use crate::services::{
     ContainerService, CronService, EventService, HistoryService, PtyService, SessionStoreService,
@@ -24,6 +25,8 @@ pub struct AppState {
     pub session_store: Arc<SessionStoreService>,
     /// Cron service for scheduled task management
     pub cron: Arc<CronService>,
+    /// Channel service for channel instance management
+    pub channel: Arc<ChannelService>,
 }
 
 impl AppState {
@@ -36,6 +39,7 @@ impl AppState {
         history: HistoryService,
         session_store: SessionStoreService,
         cron: CronService,
+        channel: ChannelService,
     ) -> Self {
         let events = Arc::new(events);
         Self {
@@ -46,6 +50,7 @@ impl AppState {
             history: Arc::new(history),
             session_store: Arc::new(session_store),
             cron: Arc::new(cron),
+            channel: Arc::new(channel),
         }
     }
 
@@ -80,9 +85,13 @@ impl AppState {
         let cron = CronService::new(events_arc.clone());
         tracing::debug!(target: "viben::gateway::state", "CronService initialized");
 
+        tracing::debug!(target: "viben::gateway::state", "Initializing ChannelService...");
+        let channel = ChannelService::new(events_arc.clone());
+        tracing::debug!(target: "viben::gateway::state", "ChannelService initialized");
+
         tracing::info!(
             target: "viben::gateway::state",
-            "All services initialized: db, events, container, pty, history, session_store, cron"
+            "All services initialized: db, events, container, pty, history, session_store, cron, channel"
         );
 
         Ok(Self {
@@ -93,6 +102,7 @@ impl AppState {
             history: Arc::new(history),
             session_store: Arc::new(session_store),
             cron: Arc::new(cron),
+            channel: Arc::new(channel),
         })
     }
 }

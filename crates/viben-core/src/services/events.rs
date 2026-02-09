@@ -142,6 +142,13 @@ pub enum GatewayEvent {
         connected: bool,
         error: Option<String>,
     },
+    // Channel instance CRUD events
+    /// Channel instance created
+    ChannelCreated { channel: crate::channels::Channel },
+    /// Channel instance updated
+    ChannelUpdated { channel: crate::channels::Channel },
+    /// Channel instance deleted
+    ChannelDeleted { channel_id: String },
 }
 
 impl GatewayEvent {
@@ -175,6 +182,9 @@ impl GatewayEvent {
             GatewayEvent::CronJobMessage { .. } => "cron_job_message",
             GatewayEvent::ChannelMessageReceived { .. } => "channel_message_received",
             GatewayEvent::ChannelConnectionStatus { .. } => "channel_connection_status",
+            GatewayEvent::ChannelCreated { .. } => "channel_created",
+            GatewayEvent::ChannelUpdated { .. } => "channel_updated",
+            GatewayEvent::ChannelDeleted { .. } => "channel_deleted",
         };
 
         Event::default()
