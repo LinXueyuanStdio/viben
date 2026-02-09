@@ -87,6 +87,31 @@ export {
   type SkillMetadata,
 } from "./skills";
 
+// Channels management
+export {
+  sendChannelMessage,
+  sendTestMessage,
+  testChannel,
+  sendTelegramMessage,
+  testTelegramChannel,
+  sendDiscordMessage,
+  testDiscordChannel,
+  sendFeishuMessage,
+  testFeishuChannel,
+  sendWhatsAppMessage,
+  testWhatsAppChannel,
+  type ChannelType,
+  type ChannelConfig,
+  type TelegramChannelConfig,
+  type DiscordChannelConfig,
+  type FeishuChannelConfig,
+  type WhatsAppChannelConfig,
+  type ChannelsFile,
+  type SendMessageOptions,
+  type SendMessageResult,
+  type TestChannelResult,
+} from "./channels";
+
 /**
  * Initialize all core managers
  * Call this once at application startup

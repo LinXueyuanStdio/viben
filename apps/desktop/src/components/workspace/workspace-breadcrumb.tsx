@@ -60,7 +60,7 @@ export function WorkspaceBreadcrumb({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={cn("flex items-center gap-1", className)}
+      className={cn("flex items-center gap-1 whitespace-nowrap", className)}
     >
       {/* Root: Workspace name with icon */}
       <TooltipProvider delayDuration={300}>

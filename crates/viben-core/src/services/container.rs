@@ -169,6 +169,18 @@ impl ContainerService {
 
                 tracing::info!("[ContainerService] LOOP: Waiting for first line from session={}", session_id_clone);
                 let mut line_count = 0;
+
+                // Streaming message accumulators
+                let mut current_text_content = String::new();
+                let mut current_text_id = String::new();
+                let mut current_thinking_content = String::new();
+                let mut current_thinking_id = String::new();
+                let mut current_tool_id = String::new();
+                let mut current_tool_use_id = String::new();
+                let mut current_tool_name = String::new();
+                let mut current_tool_input_json = String::new();
+                let mut current_block_type: Option<String> = None;
+
                 while let Ok(Some(line)) = lines.next_line().await {
                     line_count += 1;
                     // Safely truncate for logging (handle UTF-8 boundaries)
@@ -276,13 +288,49 @@ impl ContainerService {
                                     }
                                 }
                                 "stream_event" => {
-                                    // Streaming events contain delta updates - don't save individual deltas
+                                    // Streaming events contain delta updates
                                     // Forward to frontend for real-time text updates
                                     event_service.broadcast(GatewayEvent::ExecutionLog {
                                         session_id: session_id_clone.clone(),
                                         log_type: "stream_event".to_string(),
                                         content: line.clone(),
                                     });
+
+                                    // Parse stream events to save complete messages
+                                    if let Some(event) = json.get("event") {
+                                        if let Some(event_type) = event.get("type").and_then(|v| v.as_str()) {
+                                            match event_type {
+                                                "content_block_start" => {
+                                                    // Track new content block
+                                                    if let Some(content_block) = event.get("content_block") {
+                                                        if let Some(block_type) = content_block.get("type").and_then(|v| v.as_str()) {
+                                                            match block_type {
+                                                                "thinking" => {
+                                                                    // Start thinking block - will be saved when complete
+                                                                    tracing::debug!("[ContainerService] Starting thinking block");
+                                                                }
+                                                                "text" => {
+                                                                    // Start text block - will be saved when complete
+                                                                    tracing::debug!("[ContainerService] Starting text block");
+                                                                }
+                                                                "tool_use" => {
+                                                                    // Tool use starts - save immediately
+                                                                    let tool_id = content_block.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                                                    let tool_name = content_block.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                                                                    tracing::debug!("[ContainerService] Starting tool_use block: {} ({})", tool_name, tool_id);
+                                                                    // Tool use will be completed later with input
+                                                                }
+                                                                _ => {}
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                                _ => {
+                                                    // Other stream events (delta, stop, etc.) are handled by frontend
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                                 "tool_use" => {
                                     // Standalone tool_use messages (save with tool_calls)
