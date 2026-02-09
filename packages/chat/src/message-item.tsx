@@ -198,7 +198,7 @@ function UserMessage({
       animate={{ opacity: 1, y: 0 }}
       className="flex justify-end"
     >
-      <div className="flex max-w-[80%] gap-3">
+      <div className="flex max-w-[85%] gap-3">
         <div className="flex flex-col items-end">
           <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
             <p className="whitespace-pre-wrap text-sm">{content}</p>
