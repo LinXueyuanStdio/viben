@@ -35,7 +35,7 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
             tracing::info!(target: "viben::gateway", "Application state initialized successfully");
             tracing::debug!(
                 target: "viben::gateway",
-                "Services initialized: db=OK, events=OK, container=OK, pty=OK"
+                "Services initialized: db=OK, events=OK, container=OK, pty=OK, cron=OK"
             );
             s
         }
@@ -45,10 +45,27 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         }
     };
 
+    // Start cron scheduler
+    tracing::info!(target: "viben::gateway", "Starting cron scheduler...");
+    if let Err(e) = state.cron.start().await {
+        tracing::error!(target: "viben::gateway", "Failed to start cron scheduler: {}", e);
+        // Don't fail gateway startup if cron fails, just log warning
+        tracing::warn!(target: "viben::gateway", "Gateway will run without cron scheduling");
+    } else {
+        let jobs = state.cron.list_jobs().await;
+        let enabled_count = jobs.iter().filter(|j| j.enabled).count();
+        tracing::info!(
+            target: "viben::gateway",
+            "Cron scheduler started with {} jobs ({} enabled)",
+            jobs.len(),
+            enabled_count
+        );
+    }
+
     // Build router
     tracing::debug!(target: "viben::gateway", "Building router with routes and middleware...");
     let app = Router::new()
-        .merge(routes::router(state))
+        .merge(routes::router(state.clone()))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -108,9 +125,16 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         }
     };
 
+    // Clone cron service for shutdown
+    let cron_for_shutdown = state.cron.clone();
+
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    // Shutdown cron scheduler
+    tracing::info!(target: "viben::gateway", "Stopping cron scheduler...");
+    cron_for_shutdown.shutdown().await;
 
     tracing::info!(
         target: "viben::gateway",

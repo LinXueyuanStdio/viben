@@ -58,4 +58,7 @@ pub enum Error {
 
     #[error("Model discovery error: {0}")]
     ModelDiscovery(String),
+
+    #[error("Agent error: {0}")]
+    Agent(String),
 }

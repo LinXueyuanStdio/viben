@@ -48,8 +48,8 @@ import {
 } from "@/components/ui/tooltip";
 import { invoke } from "@tauri-apps/api/core";
 import { useTranslation } from "react-i18next";
-import { useFileBrowser, type ViewMode, type SortField, type SortDirection } from "@/hooks/use-file-browser";
-import { SortDropdown, FileSearchInput } from "@/components/file-browser/file-actions";
+import { useFileBrowser, type ViewMode, type SortField, type SortDirection, type GroupField, type FileGroup } from "@/hooks/use-file-browser";
+import { SortDropdown, FileSearchInput, GroupDropdown } from "@/components/file-browser/file-actions";
 import type { FileEntry } from "@/types";
 
 /* -----------------------------------------------------------------------------
@@ -75,6 +75,8 @@ export interface FileBrowserRef {
   // Sort control
   setSortField: (field: SortField) => void;
   setSortDirection: (direction: SortDirection) => void;
+  // Group control
+  setGroupField: (field: GroupField) => void;
   // Search control
   setSearchQuery: (query: string) => void;
   // File creation
@@ -229,6 +231,7 @@ interface ToolbarProps {
   viewMode: ViewMode;
   sortField: SortField;
   sortDirection: SortDirection;
+  groupField: GroupField;
   searchQuery: string;
   canGoBack: boolean;
   canGoForward: boolean;
@@ -240,6 +243,7 @@ interface ToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onSortFieldChange: (field: SortField) => void;
   onSortDirectionChange: (direction: SortDirection) => void;
+  onGroupFieldChange: (field: GroupField) => void;
   onSearchChange: (query: string) => void;
   onNewFile: () => void;
   onNewFolder: () => void;
@@ -251,6 +255,7 @@ function Toolbar({
   viewMode,
   sortField,
   sortDirection,
+  groupField,
   searchQuery,
   canGoBack,
   canGoForward,
@@ -262,6 +267,7 @@ function Toolbar({
   onViewModeChange,
   onSortFieldChange,
   onSortDirectionChange,
+  onGroupFieldChange,
   onSearchChange,
   onNewFile,
   onNewFolder,
@@ -369,6 +375,14 @@ function Toolbar({
         sortDirection={sortDirection}
         onSortFieldChange={onSortFieldChange}
         onSortDirectionChange={onSortDirectionChange}
+      />
+
+      <Separator orientation="vertical" className="h-6" />
+
+      {/* Group */}
+      <GroupDropdown
+        groupField={groupField}
+        onGroupFieldChange={onGroupFieldChange}
       />
 
       <Separator orientation="vertical" className="h-6" />
@@ -488,45 +502,116 @@ function Sidebar({ workspacePath, onNavigateTo }: SidebarProps) {
 
 interface ListViewProps {
   files: FileEntry[];
+  groups?: FileGroup[] | null;
   selectedFiles: Set<string>;
   onSelect: (file: FileEntry, multiSelect?: boolean) => void;
   onOpen: (file: FileEntry) => void;
   onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
 }
 
-function ListView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: ListViewProps) {
+function ListViewItem({
+  file,
+  selectedFiles,
+  onSelect,
+  onOpen,
+  onContextMenu,
+}: {
+  file: FileEntry;
+  selectedFiles: Set<string>;
+  onSelect: (file: FileEntry, multiSelect?: boolean) => void;
+  onOpen: (file: FileEntry) => void;
+  onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      key={file.path}
+      className={cn(
+        "flex items-center gap-4 px-4 py-2 cursor-pointer",
+        "hover:bg-accent/50 transition-colors",
+        selectedFiles.has(file.path) && "bg-accent"
+      )}
+      onClick={(e) => onSelect(file, e.metaKey || e.ctrlKey)}
+      onDoubleClick={() => onOpen(file)}
+      onContextMenu={(e) => onContextMenu(file, e)}
+    >
+      <div className="flex-1 flex items-center gap-3 min-w-0">
+        {getFileIcon(file)}
+        <span className="truncate">{file.name}</span>
+      </div>
+      <div className="w-24 text-right text-sm text-muted-foreground">
+        {file.is_directory ? "--" : formatFileSize(file.size)}
+      </div>
+      <div className="w-32 text-right text-sm text-muted-foreground">
+        {formatDate(file.modified)}
+      </div>
+    </div>
+  );
+}
+
+function ListViewGroupHeader({ label, count }: { label: string; count: number }) {
+  const { t } = useTranslation();
+  // Translate the label key
+  const displayLabel = label.startsWith("fileBrowser.") ? t(label) : label;
+  return (
+    <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-y">
+      <span className="text-sm font-medium text-foreground">{displayLabel}</span>
+      <span className="text-xs text-muted-foreground">({count})</span>
+    </div>
+  );
+}
+
+function ListView({ files, groups, selectedFiles, onSelect, onOpen, onContextMenu }: ListViewProps) {
+  const { t } = useTranslation();
+
+  // If groups are provided, render grouped view
+  if (groups && groups.length > 0) {
+    return (
+      <div className="divide-y">
+        {/* Header */}
+        <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30 sticky top-0 z-10">
+          <div className="flex-1">{t("fileBrowser.sortByName")}</div>
+          <div className="w-24 text-right">{t("fileBrowser.sortBySize")}</div>
+          <div className="w-32 text-right">{t("fileBrowser.sortByModified")}</div>
+        </div>
+        {/* Grouped items */}
+        {groups.map((group) => (
+          <div key={group.key}>
+            <ListViewGroupHeader label={group.label} count={group.files.length} />
+            {group.files.map((file) => (
+              <ListViewItem
+                key={file.path}
+                file={file}
+                selectedFiles={selectedFiles}
+                onSelect={onSelect}
+                onOpen={onOpen}
+                onContextMenu={onContextMenu}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default flat list view
   return (
     <div className="divide-y">
       {/* Header */}
       <div className="flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground bg-muted/30">
-        <div className="flex-1">Name</div>
-        <div className="w-24 text-right">Size</div>
-        <div className="w-32 text-right">Modified</div>
+        <div className="flex-1">{t("fileBrowser.sortByName")}</div>
+        <div className="w-24 text-right">{t("fileBrowser.sortBySize")}</div>
+        <div className="w-32 text-right">{t("fileBrowser.sortByModified")}</div>
       </div>
       {/* Items */}
       {files.map((file) => (
-        <div
+        <ListViewItem
           key={file.path}
-          className={cn(
-            "flex items-center gap-4 px-4 py-2 cursor-pointer",
-            "hover:bg-accent/50 transition-colors",
-            selectedFiles.has(file.path) && "bg-accent"
-          )}
-          onClick={(e) => onSelect(file, e.metaKey || e.ctrlKey)}
-          onDoubleClick={() => onOpen(file)}
-          onContextMenu={(e) => onContextMenu(file, e)}
-        >
-          <div className="flex-1 flex items-center gap-3 min-w-0">
-            {getFileIcon(file)}
-            <span className="truncate">{file.name}</span>
-          </div>
-          <div className="w-24 text-right text-sm text-muted-foreground">
-            {file.is_directory ? "--" : formatFileSize(file.size)}
-          </div>
-          <div className="w-32 text-right text-sm text-muted-foreground">
-            {formatDate(file.modified)}
-          </div>
-        </div>
+          file={file}
+          selectedFiles={selectedFiles}
+          onSelect={onSelect}
+          onOpen={onOpen}
+          onContextMenu={onContextMenu}
+        />
       ))}
     </div>
   );
@@ -538,30 +623,94 @@ function ListView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: Lis
 
 interface IconViewProps {
   files: FileEntry[];
+  groups?: FileGroup[] | null;
   selectedFiles: Set<string>;
   onSelect: (file: FileEntry, multiSelect?: boolean) => void;
   onOpen: (file: FileEntry) => void;
   onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
 }
 
-function IconView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: IconViewProps) {
+function IconViewItem({
+  file,
+  selectedFiles,
+  onSelect,
+  onOpen,
+  onContextMenu,
+}: {
+  file: FileEntry;
+  selectedFiles: Set<string>;
+  onSelect: (file: FileEntry, multiSelect?: boolean) => void;
+  onOpen: (file: FileEntry) => void;
+  onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
+}) {
+  return (
+    <div
+      key={file.path}
+      className={cn(
+        "flex flex-col items-center gap-2 p-3 rounded-lg cursor-pointer",
+        "hover:bg-accent/50 transition-colors",
+        selectedFiles.has(file.path) && "bg-accent"
+      )}
+      onClick={(e) => onSelect(file, e.metaKey || e.ctrlKey)}
+      onDoubleClick={() => onOpen(file)}
+      onContextMenu={(e) => onContextMenu(file, e)}
+    >
+      {getFileIcon(file, "lg")}
+      <span className="text-xs text-center truncate w-full">{file.name}</span>
+    </div>
+  );
+}
+
+function IconViewGroupHeader({ label, count }: { label: string; count: number }) {
+  const { t } = useTranslation();
+  // Translate the label key
+  const displayLabel = label.startsWith("fileBrowser.") ? t(label) : label;
+  return (
+    <div className="flex items-center gap-2 px-4 py-2">
+      <span className="text-sm font-medium text-foreground">{displayLabel}</span>
+      <span className="text-xs text-muted-foreground">({count})</span>
+    </div>
+  );
+}
+
+function IconView({ files, groups, selectedFiles, onSelect, onOpen, onContextMenu }: IconViewProps) {
+  // If groups are provided, render grouped view
+  if (groups && groups.length > 0) {
+    return (
+      <div className="p-4 space-y-4">
+        {groups.map((group) => (
+          <div key={group.key}>
+            <IconViewGroupHeader label={group.label} count={group.files.length} />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-4 px-2">
+              {group.files.map((file) => (
+                <IconViewItem
+                  key={file.path}
+                  file={file}
+                  selectedFiles={selectedFiles}
+                  onSelect={onSelect}
+                  onOpen={onOpen}
+                  onContextMenu={onContextMenu}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Default flat icon view
   return (
     <div className="p-4 grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-4">
       {files.map((file) => (
-        <div
+        <IconViewItem
           key={file.path}
-          className={cn(
-            "flex flex-col items-center gap-2 p-3 rounded-lg cursor-pointer",
-            "hover:bg-accent/50 transition-colors",
-            selectedFiles.has(file.path) && "bg-accent"
-          )}
-          onClick={(e) => onSelect(file, e.metaKey || e.ctrlKey)}
-          onDoubleClick={() => onOpen(file)}
-          onContextMenu={(e) => onContextMenu(file, e)}
-        >
-          {getFileIcon(file, "lg")}
-          <span className="text-xs text-center truncate w-full">{file.name}</span>
-        </div>
+          file={file}
+          selectedFiles={selectedFiles}
+          onSelect={onSelect}
+          onOpen={onOpen}
+          onContextMenu={onContextMenu}
+        />
       ))}
     </div>
   );
@@ -573,6 +722,7 @@ function IconView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: Ico
 
 interface ColumnViewProps {
   workspacePath: string;
+  groups?: FileGroup[] | null;
   onSelect: (file: FileEntry) => void;
   onOpen: (file: FileEntry) => void;
   onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
@@ -659,11 +809,13 @@ function buildPathSegments(columns: ColumnData[]): { name: string; path: string 
 
 const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnView({
   workspacePath,
+  groups,
   onSelect,
   onOpen,
   onContextMenu,
   onPathChange,
 }, ref) {
+  const { t } = useTranslation();
   const [columns, setColumns] = React.useState<ColumnData[]>([]);
   const [previewFile, setPreviewFile] = React.useState<FileEntry | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -816,32 +968,73 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
                 </div>
               ) : (
                 <div className="py-0.5">
-                  {column.files.map((file) => {
-                    const isSelected = column.selectedItem === file.path;
-                    return (
-                      <div
-                        key={file.path}
-                        className={cn(
-                          "flex items-center gap-1.5 px-2 py-1 cursor-pointer mx-0.5 rounded",
-                          "hover:bg-accent/50 transition-colors",
-                          "min-w-0", // Allow shrinking
-                          isSelected && "bg-primary text-primary-foreground"
-                        )}
-                        onClick={() => handleItemClick(columnIndex, file)}
-                        onDoubleClick={() => !file.is_directory && onOpen(file)}
-                        onContextMenu={(e) => onContextMenu(file, e)}
-                      >
-                        <span className="flex-shrink-0">{getFileIcon(file, "sm")}</span>
-                        <span className="flex-1 min-w-0 truncate text-sm">{file.name}</span>
-                        {file.is_directory && (
-                          <ChevronRight className={cn(
-                            "h-3.5 w-3.5 flex-shrink-0",
-                            isSelected ? "text-primary-foreground" : "text-muted-foreground"
-                          )} />
-                        )}
+                  {/* First column with grouping support */}
+                  {columnIndex === 0 && groups && groups.length > 0 ? (
+                    // Render grouped files in first column
+                    groups.map((group) => (
+                      <div key={group.key}>
+                        {/* Group header */}
+                        <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-muted/30 sticky top-0">
+                          {t(`fileBrowser.${group.label}`, group.label)} ({group.files.length})
+                        </div>
+                        {/* Group files */}
+                        {group.files.map((file) => {
+                          const isSelected = column.selectedItem === file.path;
+                          return (
+                            <div
+                              key={file.path}
+                              className={cn(
+                                "flex items-center gap-1.5 px-2 py-1 cursor-pointer mx-0.5 rounded",
+                                "hover:bg-accent/50 transition-colors",
+                                "min-w-0",
+                                isSelected && "bg-primary text-primary-foreground"
+                              )}
+                              onClick={() => handleItemClick(columnIndex, file)}
+                              onDoubleClick={() => !file.is_directory && onOpen(file)}
+                              onContextMenu={(e) => onContextMenu(file, e)}
+                            >
+                              <span className="flex-shrink-0">{getFileIcon(file, "sm")}</span>
+                              <span className="flex-1 min-w-0 truncate text-sm">{file.name}</span>
+                              {file.is_directory && (
+                                <ChevronRight className={cn(
+                                  "h-3.5 w-3.5 flex-shrink-0",
+                                  isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                                )} />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
+                    ))
+                  ) : (
+                    // Render flat file list (no grouping or not first column)
+                    column.files.map((file) => {
+                      const isSelected = column.selectedItem === file.path;
+                      return (
+                        <div
+                          key={file.path}
+                          className={cn(
+                            "flex items-center gap-1.5 px-2 py-1 cursor-pointer mx-0.5 rounded",
+                            "hover:bg-accent/50 transition-colors",
+                            "min-w-0",
+                            isSelected && "bg-primary text-primary-foreground"
+                          )}
+                          onClick={() => handleItemClick(columnIndex, file)}
+                          onDoubleClick={() => !file.is_directory && onOpen(file)}
+                          onContextMenu={(e) => onContextMenu(file, e)}
+                        >
+                          <span className="flex-shrink-0">{getFileIcon(file, "sm")}</span>
+                          <span className="flex-1 min-w-0 truncate text-sm">{file.name}</span>
+                          {file.is_directory && (
+                            <ChevronRight className={cn(
+                              "h-3.5 w-3.5 flex-shrink-0",
+                              isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                            )} />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               )}
             </ScrollArea>
@@ -1420,6 +1613,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
     setViewMode: browser.setViewMode,
     setSortField: browser.setSortField,
     setSortDirection: browser.setSortDirection,
+    setGroupField: browser.setGroupField,
     setSearchQuery: browser.setSearchQuery,
     createFile: () => {
       setCreateDialogType("file");
@@ -1429,7 +1623,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       setCreateDialogType("folder");
       setCreateDialogOpen(true);
     },
-  }), [browser.viewMode, browser.setViewMode, browser.setSortField, browser.setSortDirection, browser.setSearchQuery]);
+  }), [browser.viewMode, browser.setViewMode, browser.setSortField, browser.setSortDirection, browser.setGroupField, browser.setSearchQuery]);
 
   // Notify parent of path changes (only for non-column views, column view handles this itself)
   useEffect(() => {
@@ -1570,6 +1764,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
         return (
           <ListView
             files={browser.filteredFiles}
+            groups={browser.groupedFiles}
             selectedFiles={browser.selectedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
@@ -1580,6 +1775,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
         return (
           <IconView
             files={browser.filteredFiles}
+            groups={browser.groupedFiles}
             selectedFiles={browser.selectedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
@@ -1591,6 +1787,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           <ColumnView
             ref={columnViewRef}
             workspacePath={workspacePath}
+            groups={browser.groupedFiles}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
             onContextMenu={handleContextMenu}
@@ -1622,6 +1819,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           viewMode={browser.viewMode}
           sortField={browser.sortField}
           sortDirection={browser.sortDirection}
+          groupField={browser.groupField}
           searchQuery={browser.searchQuery}
           canGoBack={browser.canGoBack}
           canGoForward={browser.canGoForward}
@@ -1633,6 +1831,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           onViewModeChange={browser.setViewMode}
           onSortFieldChange={browser.setSortField}
           onSortDirectionChange={browser.setSortDirection}
+          onGroupFieldChange={browser.setGroupField}
           onSearchChange={browser.setSearchQuery}
           onNewFile={() => {
             setCreateDialogType("file");

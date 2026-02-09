@@ -1,0 +1,43 @@
+# Channel Test Configuration Template
+# Copy this file to test_config.yaml and fill in your credentials
+# DO NOT commit test_config.yaml to version control!
+
+telegram:
+  # Get token from @BotFather on Telegram
+  token: "YOUR_TELEGRAM_BOT_TOKEN"
+  # Test chat ID - get it from @userinfobot
+  chat_id: "YOUR_TELEGRAM_CHAT_ID"
+  # Optional proxy for regions where Telegram is blocked
+  # proxy: "http://127.0.0.1:7890"
+
+discord:
+  # Get token from Discord Developer Portal
+  # https://discord.com/developers/applications
+  token: "YOUR_DISCORD_BOT_TOKEN"
+  # Channel ID - right-click channel > Copy Channel ID (enable Developer Mode first)
+  channel_id: "YOUR_DISCORD_CHANNEL_ID"
+
+feishu:
+  # Get from Feishu Open Platform
+  # https://open.feishu.cn/app
+  app_id: "YOUR_FEISHU_APP_ID"
+  app_secret: "YOUR_FEISHU_APP_SECRET"
+  # User's open_id or chat_id
+  chat_id: "YOUR_FEISHU_CHAT_ID"
+
+whatsapp:
+  # WhatsApp Web Bridge URL
+  bridge_url: "ws://localhost:3001"
+  # Phone number with country code
+  phone: "+1234567890"
+
+slack:
+  # Bot OAuth Token from Slack App
+  # https://api.slack.com/apps
+  token: "xoxb-YOUR_SLACK_BOT_TOKEN"
+  # Channel ID
+  channel_id: "YOUR_SLACK_CHANNEL_ID"
+
+webhook:
+  # Any webhook URL for testing
+  url: "https://webhook.site/YOUR_UNIQUE_ID"

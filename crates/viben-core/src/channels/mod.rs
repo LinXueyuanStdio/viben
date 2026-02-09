@@ -11,6 +11,9 @@ pub mod whatsapp;
 pub mod slack;
 pub mod webhook;
 
+#[cfg(test)]
+mod tests;
+
 pub use types::*;
 pub use telegram::{send_telegram_message, test_telegram_channel};
 pub use discord::{send_discord_message, test_discord_channel};

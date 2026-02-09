@@ -21,7 +21,7 @@ pub mod session_store;
 
 pub use bus::{InboundMessage, MessageBus, OutboundMessage};
 pub use container::ContainerService;
-pub use cron::{CreateCronJob, CronError, CronJob, CronService, JobStatus, UpdateCronJob};
+pub use cron::{CreateCronJob, CronError, CronJob, CronNotificationSettings, CronService, JobStatus, UpdateCronJob};
 pub use events::{EventError, EventService, GatewayEvent};
 pub use history::{HistoryEntry, HistoryError, HistoryService, HistoryStats};
 pub use patches::{agent_patch, session_patch, task_patch};

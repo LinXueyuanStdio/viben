@@ -28,8 +28,10 @@ export interface CronJob {
   name: string;
   /** Whether the job is enabled */
   enabled: boolean;
-  /** Message/command to execute */
+  /** Message/command to execute (sent to agent) */
   message: string;
+  /** Bash script to run (runs before agent message) */
+  script?: string;
   /** Cron expression (e.g., "0 9 * * *") - mutually exclusive with `every` */
   cron?: string;
   /** Interval in seconds - mutually exclusive with `cron` */
@@ -46,6 +48,8 @@ export interface CronJob {
   last_status?: JobStatus;
   /** Last error message if failed */
   last_error?: string;
+  /** Last script output */
+  last_output?: string;
   /** Next scheduled execution timestamp (milliseconds) */
   next_run?: number;
   /** Creation timestamp (milliseconds) */
@@ -60,8 +64,10 @@ export interface CreateCronJob {
   id?: string;
   /** Human-readable name */
   name: string;
-  /** Message/command to execute */
+  /** Message/command to execute (sent to agent) */
   message: string;
+  /** Bash script to run (runs before agent message) */
+  script?: string;
   /** Cron expression */
   cron?: string;
   /** Interval in seconds */
@@ -80,6 +86,7 @@ export interface CreateCronJob {
 export interface UpdateCronJob {
   name?: string;
   message?: string;
+  script?: string;
   cron?: string;
   every?: number;
   channel?: string;

@@ -1722,6 +1722,9 @@
     "hoursShort": "hr",
     "message": "Message",
     "messagePlaceholder": "Enter the message or command to execute...",
+    "script": "Bash Script",
+    "scriptPlaceholder": "#!/bin/bash\n# Enter bash script to run before agent message...",
+    "scriptHint": "Optional bash script to execute before sending the message to the agent",
     "namePlaceholder": "e.g., Daily Report",
     "scheduleType": "Schedule Type",
     "interval": "Fixed Interval",
@@ -1760,7 +1763,21 @@
       "6hours": "6 hours",
       "12hours": "12 hours",
       "24hours": "24 hours"
-    }
+    },
+    "wizard": {
+      "step1Title": "Basic",
+      "step2Title": "Schedule",
+      "step3Title": "Advanced",
+      "step1Desc": "Enter the task name and message to send",
+      "step2Desc": "Configure the schedule and execution settings",
+      "step3Desc": "Add script and notification settings",
+      "summary": "Task Summary"
+    },
+    "messageHint": "The message that will be sent to the agent when the task runs",
+    "enabledHint": "Task will start running according to schedule when enabled",
+    "every": "every",
+    "notifyInAppDesc": "Show notifications within the app",
+    "notifySystemDesc": "Show OS-level desktop notifications"
   },
   "preview": {
     "livePreview": "Live Preview",
@@ -1921,6 +1938,26 @@
     "sortDesc": "Descending",
     "search": "Search files...",
     "noResults": "No files found",
-    "noResultsQuery": "No files matching \"{{query}}\""
+    "noResultsQuery": "No files matching \"{{query}}\"",
+    "group": "Group",
+    "groupBy": "Group by",
+    "groupNone": "None",
+    "groupByType": "Type",
+    "groupByDate": "Date Modified",
+    "groupBySize": "Size",
+    "groupFolders": "Folders",
+    "groupImages": "Images",
+    "groupCode": "Code",
+    "groupDocuments": "Documents",
+    "groupOther": "Other",
+    "groupToday": "Today",
+    "groupYesterday": "Yesterday",
+    "groupThisWeek": "This Week",
+    "groupThisMonth": "This Month",
+    "groupEarlier": "Earlier",
+    "groupLarge": "Large (>100MB)",
+    "groupMedium": "Medium (1-100MB)",
+    "groupSmall": "Small (100KB-1MB)",
+    "groupTiny": "Tiny (<100KB)"
   }
 }

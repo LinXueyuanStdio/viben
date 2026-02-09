@@ -1743,6 +1743,9 @@
     "hoursShort": "小时",
     "message": "消息内容",
     "messagePlaceholder": "输入要执行的消息或命令...",
+    "script": "Bash 脚本",
+    "scriptPlaceholder": "#!/bin/bash\n# 输入在发送消息给智能体前要运行的脚本...",
+    "scriptHint": "可选的 Bash 脚本，在发送消息给智能体前执行",
     "namePlaceholder": "例如：每日报告",
     "scheduleType": "调度方式",
     "interval": "固定间隔",
@@ -1781,7 +1784,21 @@
       "6hours": "6 小时",
       "12hours": "12 小时",
       "24hours": "24 小时"
-    }
+    },
+    "wizard": {
+      "step1Title": "基本",
+      "step2Title": "调度",
+      "step3Title": "高级",
+      "step1Desc": "输入任务名称和要发送的消息",
+      "step2Desc": "配置调度和执行设置",
+      "step3Desc": "添加脚本和通知设置",
+      "summary": "任务摘要"
+    },
+    "messageHint": "任务运行时发送给智能体的消息",
+    "enabledHint": "启用后任务将按计划运行",
+    "every": "每隔",
+    "notifyInAppDesc": "在应用内显示通知",
+    "notifySystemDesc": "显示系统级桌面通知"
   },
   "preview": {
     "livePreview": "实时预览",
@@ -1942,6 +1959,26 @@
     "sortDesc": "降序",
     "search": "搜索文件...",
     "noResults": "未找到文件",
-    "noResultsQuery": "没有匹配 \"{{query}}\" 的文件"
+    "noResultsQuery": "没有匹配 \"{{query}}\" 的文件",
+    "group": "分组",
+    "groupBy": "分组方式",
+    "groupNone": "不分组",
+    "groupByType": "按类型",
+    "groupByDate": "按日期",
+    "groupBySize": "按大小",
+    "groupFolders": "文件夹",
+    "groupImages": "图片",
+    "groupCode": "代码",
+    "groupDocuments": "文档",
+    "groupOther": "其他",
+    "groupToday": "今天",
+    "groupYesterday": "昨天",
+    "groupThisWeek": "本周",
+    "groupThisMonth": "本月",
+    "groupEarlier": "更早",
+    "groupLarge": "大型 (>100MB)",
+    "groupMedium": "中型 (1-100MB)",
+    "groupSmall": "小型 (100KB-1MB)",
+    "groupTiny": "微型 (<100KB)"
   }
 }

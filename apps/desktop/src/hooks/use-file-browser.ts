@@ -21,6 +21,7 @@ interface FileBrowserState {
   viewMode: ViewMode;
   sortField: SortField;
   sortDirection: SortDirection;
+  groupField: GroupField;
   searchQuery: string;
   loading: boolean;
   error: string | null;
@@ -38,6 +39,74 @@ function getFileType(file: FileEntry): string {
   if (file.is_directory) return "";
   const ext = file.name.split(".").pop()?.toLowerCase();
   return ext || "";
+}
+
+/**
+ * Compare files for sorting
+ */
+/**
+ * Get file type category for grouping
+ */
+function getFileTypeCategory(file: FileEntry): string {
+  if (file.is_directory) return "folders";
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (!ext) return "other";
+
+  // Image extensions
+  const imageExts = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico", "bmp", "tiff"];
+  if (imageExts.includes(ext)) return "images";
+
+  // Code extensions
+  const codeExts = [
+    "ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "hpp",
+    "css", "scss", "sass", "less", "html", "xml", "json", "yaml", "yml", "toml",
+    "sh", "bash", "zsh", "fish", "rb", "php", "swift", "kt", "scala", "r", "sql"
+  ];
+  if (codeExts.includes(ext)) return "code";
+
+  // Document extensions
+  const docExts = ["md", "txt", "log", "csv", "pdf", "doc", "docx", "rtf", "odt"];
+  if (docExts.includes(ext)) return "documents";
+
+  return "other";
+}
+
+/**
+ * Get date category for grouping
+ */
+function getDateCategory(file: FileEntry): string {
+  if (!file.modified) return "earlier";
+
+  const modified = new Date(file.modified);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const thisWeekStart = new Date(today);
+  thisWeekStart.setDate(thisWeekStart.getDate() - today.getDay());
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  if (modified >= today) return "today";
+  if (modified >= yesterday) return "yesterday";
+  if (modified >= thisWeekStart) return "thisWeek";
+  if (modified >= thisMonthStart) return "thisMonth";
+  return "earlier";
+}
+
+/**
+ * Get size category for grouping
+ */
+function getSizeCategory(file: FileEntry): string {
+  if (file.is_directory) return "folders";
+  const size = file.size ?? 0;
+
+  const MB = 1024 * 1024;
+  const KB = 1024;
+
+  if (size >= 100 * MB) return "large";      // > 100MB
+  if (size >= 1 * MB) return "medium";       // 1-100MB
+  if (size >= 100 * KB) return "small";      // 100KB-1MB
+  return "tiny";                              // < 100KB
 }
 
 /**
@@ -96,6 +165,7 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     viewMode: (localStorage.getItem("fileBrowser.viewMode") as ViewMode) || "column",
     sortField: (localStorage.getItem("fileBrowser.sortField") as SortField) || "name",
     sortDirection: (localStorage.getItem("fileBrowser.sortDirection") as SortDirection) || "asc",
+    groupField: (localStorage.getItem("fileBrowser.groupField") as GroupField) || "none",
     searchQuery: "",
     loading: false,
     error: null,
@@ -249,6 +319,12 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     setState(prev => ({ ...prev, sortDirection: direction }));
   }, []);
 
+  // Set group field
+  const setGroupField = useCallback((field: GroupField) => {
+    localStorage.setItem("fileBrowser.groupField", field);
+    setState(prev => ({ ...prev, groupField: field }));
+  }, []);
+
   // Set search query
   const setSearchQuery = useCallback((query: string) => {
     setState(prev => ({ ...prev, searchQuery: query }));
@@ -273,6 +349,90 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
 
     return result;
   }, [state.files, state.searchQuery, state.sortField, state.sortDirection]);
+
+  // Computed: grouped files (returns null when groupField is "none")
+  const groupedFiles = useMemo((): FileGroup[] | null => {
+    if (state.groupField === "none") return null;
+
+    // Group order definitions
+    const typeOrder = ["folders", "images", "code", "documents", "other"];
+    const dateOrder = ["today", "yesterday", "thisWeek", "thisMonth", "earlier"];
+    const sizeOrder = ["folders", "large", "medium", "small", "tiny"];
+
+    // Label maps (keys for i18n)
+    const typeLabelKeys: Record<string, string> = {
+      folders: "fileBrowser.groupFolders",
+      images: "fileBrowser.groupImages",
+      code: "fileBrowser.groupCode",
+      documents: "fileBrowser.groupDocuments",
+      other: "fileBrowser.groupOther",
+    };
+    const dateLabelKeys: Record<string, string> = {
+      today: "fileBrowser.groupToday",
+      yesterday: "fileBrowser.groupYesterday",
+      thisWeek: "fileBrowser.groupThisWeek",
+      thisMonth: "fileBrowser.groupThisMonth",
+      earlier: "fileBrowser.groupEarlier",
+    };
+    const sizeLabelKeys: Record<string, string> = {
+      folders: "fileBrowser.groupFolders",
+      large: "fileBrowser.groupLarge",
+      medium: "fileBrowser.groupMedium",
+      small: "fileBrowser.groupSmall",
+      tiny: "fileBrowser.groupTiny",
+    };
+
+    let getCategoryFn: (file: FileEntry) => string;
+    let categoryOrder: string[];
+    let labelKeys: Record<string, string>;
+
+    switch (state.groupField) {
+      case "type":
+        getCategoryFn = getFileTypeCategory;
+        categoryOrder = typeOrder;
+        labelKeys = typeLabelKeys;
+        break;
+      case "date":
+        getCategoryFn = getDateCategory;
+        categoryOrder = dateOrder;
+        labelKeys = dateLabelKeys;
+        break;
+      case "size":
+        getCategoryFn = getSizeCategory;
+        categoryOrder = sizeOrder;
+        labelKeys = sizeLabelKeys;
+        break;
+      default:
+        return null;
+    }
+
+    // Group files by category
+    const groupMap = new Map<string, FileEntry[]>();
+    for (const file of filteredFiles) {
+      const category = getCategoryFn(file);
+      const existing = groupMap.get(category);
+      if (existing) {
+        existing.push(file);
+      } else {
+        groupMap.set(category, [file]);
+      }
+    }
+
+    // Build ordered groups array
+    const groups: FileGroup[] = [];
+    for (const key of categoryOrder) {
+      const files = groupMap.get(key);
+      if (files && files.length > 0) {
+        groups.push({
+          key,
+          label: labelKeys[key] || key,
+          files,
+        });
+      }
+    }
+
+    return groups;
+  }, [filteredFiles, state.groupField]);
 
   // Set preview file (for Quick Look)
   const setPreviewFile = useCallback((file: FileEntry | null) => {
@@ -411,6 +571,7 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     // State
     ...state,
     filteredFiles,
+    groupedFiles,
     canGoBack: state.historyIndex > 0,
     canGoForward: state.historyIndex < state.history.length - 1,
     canGoUp: state.currentPath.length > workspacePath.length,
@@ -428,9 +589,10 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     setPreviewFile,
     updateColumnPaths,
 
-    // Sort and search
+    // Sort, group and search
     setSortField,
     setSortDirection,
+    setGroupField,
     setSearchQuery,
 
     // File operations
