@@ -1330,6 +1330,7 @@ export interface CreateGroupChatRequest {
   name: string;
   description?: string;
   task_id?: string;
+  created_by: string;
   initial_members?: {
     member_type: MemberType;
     member_id: string;
