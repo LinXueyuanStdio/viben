@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -45,6 +45,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { invoke } from "@tauri-apps/api/core";
 import { useFileBrowser, type ViewMode } from "@/hooks/use-file-browser";
 import type { FileEntry } from "@/types";
 
@@ -534,71 +535,85 @@ interface ColumnViewProps {
   updateColumnPaths: (paths: string[]) => void;
   /** Called when navigating to a new directory (to update currentPath and breadcrumb) */
   onNavigate: (path: string) => void;
+  /** Navigate to specific column index (called from breadcrumb) */
+  navigateToColumn?: (columnIndex: number) => void;
 }
 
 function ColumnView({
-  workspacePath: _workspacePath,
-  currentPath,
-  columnPaths,
+  workspacePath,
+  currentPath: _currentPath,
+  columnPaths: _columnPaths,
   files: initialFiles,
   selectedFile: _selectedFile,
   onSelect,
   onOpen,
   onContextMenu,
-  loadDirectory,
+  loadDirectory: _loadDirectory,
   updateColumnPaths,
   onNavigate,
+  navigateToColumn,
 }: ColumnViewProps) {
   const [columns, setColumns] = React.useState<{ path: string; files: FileEntry[]; loading: boolean }[]>([]);
   const [columnSelections, setColumnSelections] = React.useState<Map<string, string>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
 
-  // Initialize first column with current path files
-  useEffect(() => {
-    if (columnPaths.length === 0) return;
-
-    // Only initialize if columns are empty or first path changed
-    if (columns.length === 0 || columns[0]?.path !== columnPaths[0]) {
-      setColumns([{ path: columnPaths[0], files: initialFiles, loading: false }]);
+  // Expose navigateToColumn function
+  React.useEffect(() => {
+    if (navigateToColumn) {
+      // This effect is just for the parent to pass navigation commands
     }
-  }, [columnPaths, initialFiles, columns.length]);
+  }, [navigateToColumn]);
 
-  // Update first column when initialFiles change (from parent)
+  // Initialize columns on mount
   useEffect(() => {
-    if (columns.length > 0 && columns[0].path === currentPath) {
+    if (isInitializedRef.current) return;
+    if (initialFiles.length === 0 && columns.length === 0) return;
+
+    // Initialize with first column
+    isInitializedRef.current = true;
+    setColumns([{ path: workspacePath, files: initialFiles, loading: false }]);
+  }, [initialFiles, workspacePath, columns.length]);
+
+  // Update first column files when they change
+  useEffect(() => {
+    if (columns.length > 0 && columns[0].path === workspacePath && initialFiles.length > 0) {
       setColumns(prev => {
+        if (prev[0]?.files === initialFiles) return prev;
         const updated = [...prev];
         updated[0] = { ...updated[0], files: initialFiles };
         return updated;
       });
     }
-  }, [initialFiles, currentPath, columns.length]);
+  }, [initialFiles, workspacePath, columns]);
 
   // Auto-scroll to the right when new columns are added
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    if (scrollContainerRef.current && columns.length > 1) {
+      setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+        }
+      }, 50);
     }
   }, [columns.length]);
 
   // Handle file selection in a column
   const handleColumnSelect = useCallback(async (columnIndex: number, file: FileEntry) => {
-    // Update selection for this column
-    setColumnSelections(prev => {
-      const next = new Map(prev);
-      // Clear selections for columns to the right
-      columns.slice(columnIndex + 1).forEach(col => next.delete(col.path));
-      next.set(columns[columnIndex].path, file.path);
-      return next;
-    });
-
     onSelect(file);
 
     if (file.is_directory) {
-      // Remove columns to the right
-      const newColumns = columns.slice(0, columnIndex + 1);
+      // Update selection for this column
+      setColumnSelections(prev => {
+        const next = new Map(prev);
+        // Clear selections for columns to the right
+        columns.slice(columnIndex + 1).forEach(col => next.delete(col.path));
+        next.set(columns[columnIndex].path, file.path);
+        return next;
+      });
 
-      // Add loading placeholder for new column
+      // Keep columns up to and including current column, then add new column
+      const newColumns = columns.slice(0, columnIndex + 1);
       setColumns([...newColumns, { path: file.path, files: [], loading: true }]);
 
       // Navigate to the directory (updates currentPath and breadcrumb)
@@ -606,31 +621,82 @@ function ColumnView({
 
       // Load directory contents
       try {
-        const entries = await loadDirectory(file.path);
-        setColumns(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
-          if (updated[lastIndex]?.path === file.path) {
-            updated[lastIndex] = { path: file.path, files: entries, loading: false };
-          }
-          return updated;
+        const entries = await invoke<FileEntry[]>("read_directory", {
+          workspacePath,
+          dirPath: file.path,
         });
 
-        // Update columnPaths in parent
-        const newColumnPaths = columnPaths.slice(0, columnIndex + 1);
-        newColumnPaths.push(file.path);
-        updateColumnPaths(newColumnPaths);
+        // Sort: directories first, then files, alphabetically
+        const sorted = entries.sort((a, b) => {
+          if (a.is_directory && !b.is_directory) return -1;
+          if (!a.is_directory && b.is_directory) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        setColumns(prev => {
+          // Find the column with this path and update it
+          return prev.map(col =>
+            col.path === file.path ? { ...col, files: sorted, loading: false } : col
+          );
+        });
+
+        // Update columnPaths in parent - build from columns
+        const paths = [...newColumns.map(c => c.path), file.path];
+        updateColumnPaths(paths);
       } catch {
         // Remove failed column
-        setColumns(prev => prev.slice(0, -1));
+        setColumns(prev => prev.filter(col => col.path !== file.path));
       }
     } else {
-      // File selected - keep current path at parent directory
-      setColumns(columns.slice(0, columnIndex + 1));
-      const newColumnPaths = columnPaths.slice(0, columnIndex + 1);
-      updateColumnPaths(newColumnPaths);
+      // File selected - just select it, don't remove columns
+      setColumnSelections(prev => {
+        const next = new Map(prev);
+        next.set(columns[columnIndex].path, file.path);
+        return next;
+      });
     }
-  }, [columns, columnPaths, updateColumnPaths, onSelect, loadDirectory, onNavigate]);
+  }, [columns, updateColumnPaths, onSelect, onNavigate, workspacePath]);
+
+  // Handle clicking on a column header to navigate back
+  const handleColumnHeaderClick = useCallback((columnIndex: number) => {
+    if (columnIndex === columns.length - 1) return; // Don't do anything for last column
+
+    const targetPath = columns[columnIndex].path;
+    const newColumns = columns.slice(0, columnIndex + 1);
+    setColumns(newColumns);
+    setColumnSelections(prev => {
+      const next = new Map(prev);
+      columns.slice(columnIndex + 1).forEach(col => next.delete(col.path));
+      return next;
+    });
+    onNavigate(targetPath);
+    updateColumnPaths(newColumns.map(c => c.path));
+  }, [columns, onNavigate, updateColumnPaths]);
+
+  // Navigate to a specific column (called from breadcrumb)
+  const goToColumn = useCallback((targetColumnIndex: number) => {
+    if (targetColumnIndex < 0 || targetColumnIndex >= columns.length) return;
+
+    const targetPath = columns[targetColumnIndex].path;
+    const newColumns = columns.slice(0, targetColumnIndex + 1);
+    setColumns(newColumns);
+    setColumnSelections(prev => {
+      const next = new Map(prev);
+      columns.slice(targetColumnIndex + 1).forEach(col => next.delete(col.path));
+      return next;
+    });
+    onNavigate(targetPath);
+    updateColumnPaths(newColumns.map(c => c.path));
+  }, [columns, onNavigate, updateColumnPaths]);
+
+  // Expose goToColumn via ref pattern through parent callback
+  React.useEffect(() => {
+    // Store goToColumn in a way the parent can access
+    (window as unknown as { __columnViewGoToColumn?: (index: number) => void }).__columnViewGoToColumn = goToColumn;
+    return () => {
+      delete (window as unknown as { __columnViewGoToColumn?: (index: number) => void }).__columnViewGoToColumn;
+    };
+  }, [goToColumn]);
 
   if (columns.length === 0) {
     return (
@@ -651,7 +717,13 @@ function ColumnView({
           className="w-64 min-w-[256px] flex-shrink-0 border-r last:border-r-0 bg-background"
         >
           {/* Column header */}
-          <div className="px-3 py-2 border-b bg-muted/30">
+          <div
+            className={cn(
+              "px-3 py-2 border-b bg-muted/30",
+              columnIndex < columns.length - 1 && "cursor-pointer hover:bg-muted/50"
+            )}
+            onClick={() => handleColumnHeaderClick(columnIndex)}
+          >
             <span className="text-xs font-medium text-muted-foreground truncate block">
               {column.path.split("/").pop() || "Root"}
             </span>
