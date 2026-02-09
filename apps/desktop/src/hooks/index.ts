@@ -163,6 +163,8 @@ export { useChannels } from "./use-channels";
 export type { UseChannelsReturn } from "./use-channels";
 export { useChannelInstances } from "./use-channel-instances";
 export type { UseChannelInstancesReturn } from "./use-channel-instances";
+export { useChannelNotifications } from "./use-channel-notifications";
+export type { UseChannelNotificationsReturn } from "./use-channel-notifications";
 
 // Screenshot
 export { useScreenshot } from "./use-screenshot";

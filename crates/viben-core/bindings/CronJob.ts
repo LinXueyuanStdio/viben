@@ -24,7 +24,7 @@ enabled: boolean,
  */
 job_type: CronJobType, 
 /**
- * Message to send to agent (for agent type, optional - defaults to name if empty)
+ * Message to send to agent (optional - uses name if empty)
  */
 message: string | null, 
 /**
@@ -32,19 +32,20 @@ message: string | null,
  */
 script: string | null, 
 /**
- * Cron expression (e.g., "0 9 * * *") - mutually exclusive with `every`
+ * Cron expression (e.g., "0 0 9 * * *" for 9 AM daily)
+ * Note: Uses 6-field format (sec min hour day month weekday)
  */
 cron: string | null, 
 /**
- * Interval in seconds - mutually exclusive with `cron`
+ * Interval in seconds (alternative to cron)
  */
 every: bigint | null, 
 /**
- * Target channel ID (legacy, prefer notifications.channel_ids)
+ * Target channel ID
  */
 channel: string | null, 
 /**
- * Agent ID to use (for agent type)
+ * Agent ID to use
  */
 agent: string, 
 /**

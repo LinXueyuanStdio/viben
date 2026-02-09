@@ -125,6 +125,23 @@ pub enum GatewayEvent {
         agent_id: String,
         message: String,
     },
+    // Channel notification events
+    /// Channel message received (from external platforms like Telegram, Discord, etc.)
+    ChannelMessageReceived {
+        channel_type: String,
+        channel_name: String,
+        chat_id: String,
+        sender_name: Option<String>,
+        message: String,
+        timestamp: i64,
+    },
+    /// Channel connection status changed
+    ChannelConnectionStatus {
+        channel_type: String,
+        channel_name: String,
+        connected: bool,
+        error: Option<String>,
+    },
 }
 
 impl GatewayEvent {
@@ -156,6 +173,8 @@ impl GatewayEvent {
             GatewayEvent::CronJobTriggered { .. } => "cron_job_triggered",
             GatewayEvent::CronJobCompleted { .. } => "cron_job_completed",
             GatewayEvent::CronJobMessage { .. } => "cron_job_message",
+            GatewayEvent::ChannelMessageReceived { .. } => "channel_message_received",
+            GatewayEvent::ChannelConnectionStatus { .. } => "channel_connection_status",
         };
 
         Event::default()

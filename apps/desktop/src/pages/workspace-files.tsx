@@ -1,16 +1,278 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import * as React from "react";
 import { useParams, Link } from "react-router-dom";
-import { Loader2, FolderOpen, ArrowLeft } from "lucide-react";
+import { Loader2, FolderOpen, ArrowLeft, File, FileCode, FileImage, FileText, X, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/components/file-browser";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
+import { invoke } from "@tauri-apps/api/core";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
+import type { FileEntry } from "@/types";
 
+/* -----------------------------------------------------------------------------
+ * Constants
+ * -------------------------------------------------------------------------- */
+const MIN_PREVIEW_WIDTH = 280;
+const DEFAULT_PREVIEW_WIDTH = 300;
+const PREVIEW_WIDTH_STORAGE_KEY = "workspace-files.previewPanelWidth";
 
+/* -----------------------------------------------------------------------------
+ * Types
+ * -------------------------------------------------------------------------- */
+interface PreviewTab {
+  file: FileEntry;
+  content: string | null;
+  loading: boolean;
+}
+
+/* -----------------------------------------------------------------------------
+ * Utility Functions
+ * -------------------------------------------------------------------------- */
+function getFileIcon(file: FileEntry, size: "sm" | "md" = "md") {
+  const sizeClass = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+  const iconClass = cn(sizeClass, "flex-shrink-0");
+
+  if (file.is_directory) {
+    return <FolderOpen className={cn(iconClass, "text-amber-500")} />;
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase();
+
+  switch (ext) {
+    case "jpg":
+    case "jpeg":
+    case "png":
+    case "gif":
+    case "webp":
+    case "svg":
+    case "ico":
+      return <FileImage className={cn(iconClass, "text-pink-500")} />;
+    case "ts":
+    case "tsx":
+    case "js":
+    case "jsx":
+    case "py":
+    case "rs":
+    case "go":
+    case "java":
+    case "c":
+    case "cpp":
+    case "h":
+    case "css":
+    case "scss":
+    case "html":
+    case "json":
+    case "yaml":
+    case "yml":
+    case "toml":
+    case "xml":
+      return <FileCode className={cn(iconClass, "text-blue-500")} />;
+    case "md":
+    case "txt":
+    case "log":
+    case "csv":
+      return <FileText className={cn(iconClass, "text-green-500")} />;
+    default:
+      return <File className={cn(iconClass, "text-muted-foreground")} />;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+ * ResizeHandle Component
+ * -------------------------------------------------------------------------- */
+function ResizeHandle({
+  onResize,
+}: {
+  onResize: (delta: number) => void;
+}) {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startXRef = React.useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = startXRef.current - moveEvent.clientX;
+      startXRef.current = moveEvent.clientX;
+      onResize(delta);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  return (
+    <div
+      className={cn(
+        "group absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10",
+        "flex items-center justify-center",
+        isDragging && "bg-primary/30"
+      )}
+      onMouseDown={handleMouseDown}
+    >
+      <div
+        className={cn(
+          "absolute inset-y-0 w-0.5 transition-colors",
+          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
+        )}
+      />
+      <div
+        className={cn(
+          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
+          isDragging
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * EditorTab Component
+ * -------------------------------------------------------------------------- */
+function EditorTab({
+  tab,
+  isActive,
+  onClick,
+  onClose,
+}: {
+  tab: PreviewTab;
+  isActive: boolean;
+  onClick: () => void;
+  onClose: () => void;
+}) {
+  const Icon = () => getFileIcon(tab.file, "sm");
+
+  return (
+    <button
+      type="button"
+      className={cn(
+        "group relative flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all cursor-pointer",
+        "border-b-2 -mb-[2px]",
+        isActive
+          ? "border-primary text-foreground bg-background"
+          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
+      )}
+      onClick={onClick}
+    >
+      <Icon />
+      <span className="truncate max-w-24">{tab.file.name}</span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className={cn(
+          "p-0.5 rounded-sm hover:bg-accent transition-colors ml-1",
+          isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
+        )}
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </button>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * FilePreviewPanel Component
+ * -------------------------------------------------------------------------- */
+function FilePreviewPanel({
+  tabs,
+  activeTabPath,
+  onTabClick,
+  onTabClose,
+  width,
+  onResize,
+}: {
+  tabs: PreviewTab[];
+  activeTabPath: string | null;
+  onTabClick: (path: string) => void;
+  onTabClose: (path: string) => void;
+  width: number;
+  onResize: (delta: number) => void;
+}) {
+  const { t } = useTranslation();
+  const activeTab = tabs.find((tab) => tab.file.path === activeTabPath);
+
+  if (tabs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className="relative flex flex-col border-l bg-background"
+      style={{ width, minWidth: MIN_PREVIEW_WIDTH }}
+    >
+      <ResizeHandle onResize={onResize} />
+
+      {/* Tab bar */}
+      <div className="flex items-center border-b overflow-x-auto bg-muted/30">
+        {tabs.map((tab) => (
+          <EditorTab
+            key={tab.file.path}
+            tab={tab}
+            isActive={tab.file.path === activeTabPath}
+            onClick={() => onTabClick(tab.file.path)}
+            onClose={() => onTabClose(tab.file.path)}
+          />
+        ))}
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 overflow-hidden">
+        {activeTab ? (
+          activeTab.loading ? (
+            <div className="flex items-center justify-center h-full">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : activeTab.content !== null ? (
+            <ScrollArea className="h-full">
+              <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-all">
+                {activeTab.content}
+              </pre>
+            </ScrollArea>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <FileText className="h-12 w-12 mb-2" />
+              <p className="text-sm">{t("fileBrowser.unableToPreview")}</p>
+            </div>
+          )
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <FileText className="h-12 w-12 mb-2" />
+            <p className="text-sm">{t("workspace.selectFileToView")}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * Main Component
+ * -------------------------------------------------------------------------- */
 export function WorkspaceFilesPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
@@ -47,6 +309,87 @@ export function WorkspaceFilesPage() {
     const saved = localStorage.getItem("fileBrowser.groupField");
     return (saved as GroupField) || "none";
   });
+
+  // Preview panel state
+  const [previewTabs, setPreviewTabs] = useState<PreviewTab[]>([]);
+  const [activePreviewPath, setActivePreviewPath] = useState<string | null>(null);
+  const [previewPanelWidth, setPreviewPanelWidth] = useState<number>(() => {
+    const saved = localStorage.getItem(PREVIEW_WIDTH_STORAGE_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_PREVIEW_WIDTH;
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Handle opening a file in preview panel
+  const handleFilePreview = useCallback(async (file: FileEntry) => {
+    if (file.is_directory) return;
+
+    // Check if tab already exists
+    const existingTab = previewTabs.find((tab) => tab.file.path === file.path);
+    if (existingTab) {
+      setActivePreviewPath(file.path);
+      return;
+    }
+
+    // Add new tab in loading state
+    const newTab: PreviewTab = {
+      file,
+      content: null,
+      loading: true,
+    };
+    setPreviewTabs((prev) => [...prev, newTab]);
+    setActivePreviewPath(file.path);
+
+    // Load file content
+    try {
+      const content = await invoke<string | null>("read_file_content", {
+        path: file.path,
+        maxSize: 1024 * 1024, // 1MB limit
+      });
+      setPreviewTabs((prev) =>
+        prev.map((tab) =>
+          tab.file.path === file.path
+            ? { ...tab, content, loading: false }
+            : tab
+        )
+      );
+    } catch (error) {
+      console.error("Failed to read file:", error);
+      setPreviewTabs((prev) =>
+        prev.map((tab) =>
+          tab.file.path === file.path
+            ? { ...tab, content: null, loading: false }
+            : tab
+        )
+      );
+    }
+  }, [previewTabs]);
+
+  // Handle closing a preview tab
+  const handleClosePreviewTab = useCallback((path: string) => {
+    setPreviewTabs((prev) => {
+      const newTabs = prev.filter((tab) => tab.file.path !== path);
+      // If closing active tab, switch to another tab
+      if (activePreviewPath === path && newTabs.length > 0) {
+        const closedIndex = prev.findIndex((tab) => tab.file.path === path);
+        const newActiveIndex = Math.min(closedIndex, newTabs.length - 1);
+        setActivePreviewPath(newTabs[newActiveIndex]?.file.path || null);
+      } else if (newTabs.length === 0) {
+        setActivePreviewPath(null);
+      }
+      return newTabs;
+    });
+  }, [activePreviewPath]);
+
+  // Handle resize
+  const handlePreviewResize = useCallback((delta: number) => {
+    setPreviewPanelWidth((prev) => {
+      const containerWidth = containerRef.current?.offsetWidth || 800;
+      const maxWidth = containerWidth - 400; // Leave at least 400px for file browser
+      const newWidth = Math.max(MIN_PREVIEW_WIDTH, Math.min(prev + delta, maxWidth));
+      localStorage.setItem(PREVIEW_WIDTH_STORAGE_KEY, String(newWidth));
+      return newWidth;
+    });
+  }, []);
 
   // Sync viewMode when FileBrowser initializes
   useEffect(() => {
@@ -208,13 +551,27 @@ export function WorkspaceFilesPage() {
         rightContent={toolbarContent}
       />
 
-      <div className="flex-1 overflow-hidden">
-        <FileBrowser
-          ref={fileBrowserRef}
-          workspacePath={workspace.path}
-          className="h-full"
-          onPathChange={handlePathChange}
-          hideToolbar
+      <div ref={containerRef} className="flex-1 flex overflow-hidden">
+        {/* File Browser */}
+        <div className="flex-1 overflow-hidden">
+          <FileBrowser
+            ref={fileBrowserRef}
+            workspacePath={workspace.path}
+            className="h-full"
+            onPathChange={handlePathChange}
+            onFilePreview={handleFilePreview}
+            hideToolbar
+          />
+        </div>
+
+        {/* Preview Panel */}
+        <FilePreviewPanel
+          tabs={previewTabs}
+          activeTabPath={activePreviewPath}
+          onTabClick={setActivePreviewPath}
+          onTabClose={handleClosePreviewTab}
+          width={previewPanelWidth}
+          onResize={handlePreviewResize}
         />
       </div>
     </PageWrapper>

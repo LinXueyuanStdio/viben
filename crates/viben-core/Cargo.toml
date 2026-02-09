@@ -100,8 +100,9 @@ lazy_static = "1.5"
 # CLI
 clap = { workspace = true }
 
-# Cron expression parsing
-cron = "0.13"
+# Cron job scheduling
+tokio-cron-scheduler = "0.13"
+croner = "2.2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

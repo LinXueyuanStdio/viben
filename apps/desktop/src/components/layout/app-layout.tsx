@@ -4,6 +4,7 @@ import { Sidebar } from "./sidebar";
 import { usePython } from "@/hooks/use-python";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
+import { useChannelNotifications } from "@/hooks/use-channel-notifications";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
@@ -15,6 +16,11 @@ export function AppLayout() {
 
   // Initialize store synchronization across windows
   useMainWindowStoreSync();
+
+  // Initialize channel notifications WebSocket connection
+  // This maintains a persistent connection to receive notifications from
+  // external channels (Telegram, Discord, etc.)
+  useChannelNotifications();
 
   // Setup status detection - updates whenever browseMcpInfo changes
   // This ensures status is updated when user installs browse-mcp
