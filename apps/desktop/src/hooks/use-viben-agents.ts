@@ -10,6 +10,8 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface Agent {
   id: string;
+  /** Absolute path to the agent directory (e.g., ~/.viben/agents/hello-agent) */
+  path?: string;
   name: string;
   description?: string;
   model?: string;

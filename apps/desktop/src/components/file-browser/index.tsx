@@ -745,10 +745,12 @@ interface ColumnData {
 
 /** Preview Panel for selected file */
 function ColumnPreviewPanel({ file, workspacePath }: { file: FileEntry | null; workspacePath: string }) {
+  const { t } = useTranslation();
+
   if (!file) {
     return (
       <div className="w-64 min-w-[256px] flex-shrink-0 border-l bg-muted/20 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No selection</p>
+        <p className="text-sm text-muted-foreground">{t("fileBrowser.noSelection")}</p>
       </div>
     );
   }
@@ -767,30 +769,30 @@ function ColumnPreviewPanel({ file, workspacePath }: { file: FileEntry | null; w
         </div>
         <h3 className="font-medium text-sm text-center truncate w-full px-2">{file.name}</h3>
         <p className="text-xs text-muted-foreground text-center truncate w-full mt-0.5">
-          {file.is_directory ? "Folder" : file.name.split(".").pop()?.toUpperCase() || "File"}
+          {file.is_directory ? t("fileBrowser.folder") : file.name.split(".").pop()?.toUpperCase() || t("fileBrowser.file")}
         </p>
       </div>
 
       {/* File info */}
       <div className="p-3 space-y-2 text-xs flex-1 overflow-auto">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Type</span>
-          <span>{file.is_directory ? "Folder" : "File"}</span>
+          <span className="text-muted-foreground">{t("fileBrowser.type")}</span>
+          <span>{file.is_directory ? t("fileBrowser.folder") : t("fileBrowser.file")}</span>
         </div>
         {!file.is_directory && file.size !== undefined && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Size</span>
+            <span className="text-muted-foreground">{t("fileBrowser.size")}</span>
             <span>{formatFileSize(file.size)}</span>
           </div>
         )}
         {file.modified && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Modified</span>
+            <span className="text-muted-foreground">{t("fileBrowser.modified")}</span>
             <span>{formatDate(file.modified)}</span>
           </div>
         )}
         <div className="pt-2 border-t">
-          <span className="text-muted-foreground">Path</span>
+          <span className="text-muted-foreground">{t("fileBrowser.path")}</span>
           <p className="font-mono mt-1 break-all text-[10px] leading-relaxed">{relativePath}</p>
         </div>
       </div>
@@ -964,7 +966,7 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
                 </div>
               ) : column.files.length === 0 ? (
                 <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-                  Empty folder
+                  {t("fileBrowser.emptyFolder")}
                 </div>
               ) : (
                 <div className="py-0.5">
@@ -975,7 +977,7 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
                       <div key={group.key}>
                         {/* Group header */}
                         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground bg-muted/30 sticky top-0">
-                          {t(`fileBrowser.${group.label}`, group.label)} ({group.files.length})
+                          {t(group.label, group.key)} ({group.files.length})
                         </div>
                         {/* Group files */}
                         {group.files.map((file) => {
@@ -1242,6 +1244,7 @@ function ContextMenu({
   onDelete,
   onRename,
 }: ContextMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -1285,7 +1288,7 @@ function ContextMenu({
         }}
       >
         <Folder className="h-4 w-4" />
-        Open
+        {t("fileBrowser.open")}
       </div>
       <div
         className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
@@ -1295,7 +1298,7 @@ function ContextMenu({
         }}
       >
         <Eye className="h-4 w-4" />
-        Quick Look
+        {t("fileBrowser.quickLook")}
       </div>
       <div className="-mx-1 my-1 h-px bg-muted" />
       <div
@@ -1306,7 +1309,7 @@ function ContextMenu({
         }}
       >
         <Copy className="h-4 w-4" />
-        Copy
+        {t("common.copy")}
       </div>
       <div
         className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
@@ -1316,7 +1319,7 @@ function ContextMenu({
         }}
       >
         <Scissors className="h-4 w-4" />
-        Cut
+        {t("fileBrowser.cut")}
       </div>
       <div className="-mx-1 my-1 h-px bg-muted" />
       <div
@@ -1327,7 +1330,7 @@ function ContextMenu({
         }}
       >
         <Pencil className="h-4 w-4" />
-        Rename
+        {t("common.rename")}
       </div>
       <div
         className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent text-destructive rounded-sm"
@@ -1337,7 +1340,7 @@ function ContextMenu({
         }}
       >
         <Trash2 className="h-4 w-4" />
-        Delete
+        {t("common.delete")}
       </div>
     </div>
   );
@@ -1355,6 +1358,7 @@ interface CreateDialogProps {
 }
 
 function CreateDialog({ open, type, onClose, onCreate }: CreateDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = React.useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -1378,7 +1382,7 @@ function CreateDialog({ open, type, onClose, onCreate }: CreateDialogProps) {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>
-            {type === "file" ? "Create New File" : "Create New Folder"}
+            {type === "file" ? t("fileBrowser.createNewFile") : t("fileBrowser.createNewFolder")}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -1387,15 +1391,15 @@ function CreateDialog({ open, type, onClose, onCreate }: CreateDialogProps) {
               ref={inputRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder={type === "file" ? "filename.txt" : "folder name"}
+              placeholder={type === "file" ? t("fileBrowser.filenamePlaceholder") : t("fileBrowser.foldernamePlaceholder")}
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={!name.trim()}>
-              Create
+              {t("common.create")}
             </Button>
           </DialogFooter>
         </form>
@@ -1415,6 +1419,7 @@ interface RenameDialogProps {
 }
 
 function RenameDialog({ file, onClose, onRename }: RenameDialogProps) {
+  const { t } = useTranslation();
   const [name, setName] = React.useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -1450,7 +1455,7 @@ function RenameDialog({ file, onClose, onRename }: RenameDialogProps) {
     <Dialog open={!!file} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Rename</DialogTitle>
+          <DialogTitle>{t("common.rename")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="py-4">
@@ -1458,15 +1463,15 @@ function RenameDialog({ file, onClose, onRename }: RenameDialogProps) {
               ref={inputRef}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="New name"
+              placeholder={t("fileBrowser.newNamePlaceholder")}
             />
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={onClose}>
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={!name.trim() || name.trim() === file?.name}>
-              Rename
+              {t("common.rename")}
             </Button>
           </DialogFooter>
         </form>
@@ -1486,24 +1491,26 @@ interface DeleteDialogProps {
 }
 
 function DeleteDialog({ file, onClose, onConfirm }: DeleteDialogProps) {
+  const { t } = useTranslation();
+
   if (!file) return null;
 
   return (
     <Dialog open={!!file} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Delete {file.is_directory ? "Folder" : "File"}</DialogTitle>
+          <DialogTitle>{file.is_directory ? t("fileBrowser.deleteFolder") : t("fileBrowser.deleteFile")}</DialogTitle>
         </DialogHeader>
         <div className="py-4">
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete{" "}
+            {t("fileBrowser.deleteConfirm")}{" "}
             <span className="font-medium text-foreground">{file.name}</span>?
-            {file.is_directory && " This will delete all contents inside."}
+            {file.is_directory && ` ${t("fileBrowser.deleteAllContents")}`}
           </p>
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button
             type="button"
@@ -1513,7 +1520,7 @@ function DeleteDialog({ file, onClose, onConfirm }: DeleteDialogProps) {
               onClose();
             }}
           >
-            Delete
+            {t("common.delete")}
           </Button>
         </DialogFooter>
       </DialogContent>

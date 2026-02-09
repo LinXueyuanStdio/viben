@@ -348,13 +348,18 @@ export function AgentDetailPage() {
   // Copy path state
   const [pathCopied, setPathCopied] = useState(false);
 
-  // Get agent folder path
+  // Get agent folder path - use agent.path if available (reliable), otherwise fallback to computed path
   const agentFolderPath = useMemo(() => {
+    // Prefer the actual path from the agent object (set by backend)
+    if (agent?.path) {
+      return agent.path;
+    }
+    // Fallback: compute path based on scope (less reliable)
     if (isWorkspaceScoped && workspace) {
       return `${workspace.path}/.viben/agents/${agentId}`;
     }
     return globalVibenDir ? `${globalVibenDir}/agents/${agentId}` : "";
-  }, [isWorkspaceScoped, workspace, globalVibenDir, agentId]);
+  }, [agent?.path, isWorkspaceScoped, workspace, globalVibenDir, agentId]);
 
   // Copy path to clipboard
   const handleCopyPath = useCallback(async () => {

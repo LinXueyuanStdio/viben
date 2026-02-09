@@ -10,6 +10,9 @@ export type { NotificationSettings } from "./channel";
 /** Job execution status */
 export type JobStatus = "success" | "failure" | "running";
 
+/** Cron job type */
+export type CronJobType = "agent" | "script";
+
 /** Notification settings for cron jobs */
 export interface CronNotificationSettings {
   /** Enable in-app notifications */
@@ -28,9 +31,11 @@ export interface CronJob {
   name: string;
   /** Whether the job is enabled */
   enabled: boolean;
-  /** Message/command to execute (sent to agent) */
-  message: string;
-  /** Bash script to run (runs before agent message) */
+  /** Job type: agent or script */
+  job_type: CronJobType;
+  /** Message to send to agent (optional - uses name if empty) */
+  message?: string;
+  /** Bash script to execute (for script type) */
   script?: string;
   /** Cron expression (e.g., "0 9 * * *") - mutually exclusive with `every` */
   cron?: string;
@@ -64,9 +69,11 @@ export interface CreateCronJob {
   id?: string;
   /** Human-readable name */
   name: string;
-  /** Message/command to execute (sent to agent) */
-  message: string;
-  /** Bash script to run (runs before agent message) */
+  /** Job type: agent or script */
+  job_type?: CronJobType;
+  /** Message to send to agent (optional - uses name if empty) */
+  message?: string;
+  /** Bash script to execute (for script type) */
   script?: string;
   /** Cron expression */
   cron?: string;
@@ -85,6 +92,7 @@ export interface CreateCronJob {
 /** Request to update a cron job */
 export interface UpdateCronJob {
   name?: string;
+  job_type?: CronJobType;
   message?: string;
   script?: string;
   cron?: string;

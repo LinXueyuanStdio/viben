@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::gateway::{AppState, GatewayError};
-use crate::services::{CreateCronJob, CronJob, CronNotificationSettings, UpdateCronJob};
+use crate::services::{CreateCronJob, CronJob, CronJobType, CronNotificationSettings, UpdateCronJob};
 
 /// Cron job response
 #[derive(Serialize)]
@@ -17,7 +17,11 @@ pub struct CronJobResponse {
     pub id: String,
     pub name: String,
     pub enabled: bool,
-    pub message: String,
+    pub job_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cron: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -26,11 +30,15 @@ pub struct CronJobResponse {
     pub channel: Option<String>,
     pub agent: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub notifications: Option<CronNotificationSettings>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub last_run: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_output: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_run: Option<i64>,
     pub created_at: i64,
@@ -43,14 +51,21 @@ impl From<CronJob> for CronJobResponse {
             id: job.id,
             name: job.name,
             enabled: job.enabled,
+            job_type: match job.job_type {
+                CronJobType::Agent => "agent".to_string(),
+                CronJobType::Script => "script".to_string(),
+            },
             message: job.message,
+            script: job.script,
             cron: job.cron,
             every: job.every,
             channel: job.channel,
             agent: job.agent,
+            notifications: job.notifications,
             last_run: job.last_run,
             last_status: job.last_status.map(|s| s.to_string()),
             last_error: job.last_error,
+            last_output: job.last_output,
             next_run: job.next_run,
             created_at: job.created_at,
             updated_at: job.updated_at,
@@ -108,7 +123,10 @@ pub struct CreateCronJobRequest {
     #[serde(default)]
     pub id: Option<String>,
     pub name: String,
-    pub message: String,
+    #[serde(default)]
+    pub job_type: Option<String>,
+    #[serde(default)]
+    pub message: Option<String>,
     #[serde(default)]
     pub script: Option<String>,
     #[serde(default)]
@@ -140,9 +158,16 @@ pub async fn create_cron_job(
         req.name, req.cron, req.every
     );
 
+    // Parse job type, default to Agent
+    let job_type = match req.job_type.as_deref() {
+        Some("script") => CronJobType::Script,
+        _ => CronJobType::Agent,
+    };
+
     let create_data = CreateCronJob {
         id: req.id,
         name: req.name.clone(),
+        job_type,
         message: req.message,
         script: req.script,
         cron: req.cron,
@@ -168,6 +193,7 @@ pub async fn create_cron_job(
 #[derive(Deserialize)]
 pub struct UpdateCronJobRequest {
     pub name: Option<String>,
+    pub job_type: Option<String>,
     pub message: Option<String>,
     pub script: Option<String>,
     pub cron: Option<String>,
@@ -190,8 +216,15 @@ pub async fn update_cron_job(
         job_id, req.name, req.enabled
     );
 
+    // Parse job type if provided
+    let job_type = req.job_type.map(|t| match t.as_str() {
+        "script" => CronJobType::Script,
+        _ => CronJobType::Agent,
+    });
+
     let update_data = UpdateCronJob {
         name: req.name,
+        job_type,
         message: req.message,
         script: req.script,
         cron: req.cron,

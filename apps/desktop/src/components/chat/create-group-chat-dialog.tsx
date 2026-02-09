@@ -7,13 +7,17 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Users, Bot, Plus, Loader2 } from "lucide-react";
+import { Users, Bot, Plus, Loader2, Sparkles } from "lucide-react";
+import Claude from "@lobehub/icons/es/Claude";
+import Gemini from "@lobehub/icons/es/Gemini";
+import OpenAI from "@lobehub/icons/es/OpenAI";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -127,18 +131,70 @@ export function CreateGroupChatDialog({
     }
   };
 
+  // Get executor icon based on executor_type
+  const getExecutorIcon = (executorType?: string) => {
+    const type = executorType?.toUpperCase();
+    switch (type) {
+      case "CLAUDE_CODE":
+        return <Claude.Color size={16} />;
+      case "CODEX":
+        return <OpenAI size={16} />;
+      case "GEMINI":
+        return <Gemini.Color size={16} />;
+      case "CURSOR_AGENT":
+      case "CURSOR":
+        return <Sparkles className="h-4 w-4 text-white" />;
+      default:
+        return <Bot className="h-4 w-4 text-white" />;
+    }
+  };
+
+  // Get executor display name
+  const getExecutorDisplayName = (executorType?: string) => {
+    const type = executorType?.toUpperCase();
+    switch (type) {
+      case "CLAUDE_CODE":
+        return "Claude Code";
+      case "CODEX":
+        return "Codex";
+      case "GEMINI":
+        return "Gemini";
+      case "CURSOR_AGENT":
+      case "CURSOR":
+        return "Cursor";
+      case "COPILOT":
+        return "Copilot";
+      case "QWEN_CODE":
+        return "Qwen Code";
+      case "AMP":
+        return "Amp";
+      case "OPENCODE":
+        return "Opencode";
+      case "DROID":
+        return "Droid";
+      default:
+        return executorType || "Agent";
+    }
+  };
+
   // Get avatar gradient for agent
-  const getAvatarGradient = (agentName: string) => {
-    const colors = [
-      "from-blue-500 to-cyan-400",
-      "from-purple-500 to-pink-400",
-      "from-green-500 to-emerald-400",
-      "from-orange-500 to-yellow-400",
-      "from-red-500 to-rose-400",
-      "from-indigo-500 to-violet-400",
-    ];
-    const index = (agentName?.charCodeAt(0) || 0) % colors.length;
-    return colors[index];
+  const getAvatarGradient = (executorType?: string) => {
+    const type = executorType?.toUpperCase();
+    switch (type) {
+      case "CLAUDE_CODE":
+        return "from-orange-500 to-amber-400";
+      case "CODEX":
+        return "from-emerald-500 to-teal-400";
+      case "GEMINI":
+        return "from-blue-500 to-indigo-400";
+      case "CURSOR_AGENT":
+      case "CURSOR":
+        return "from-violet-500 to-purple-400";
+      case "COPILOT":
+        return "from-gray-600 to-gray-500";
+      default:
+        return "from-blue-500 to-cyan-400";
+    }
   };
 
   return (
@@ -199,16 +255,16 @@ export function CreateGroupChatDialog({
                   </p>
                 </div>
               ) : (
-                <ScrollArea className="h-[200px]">
+                <ScrollArea className="h-[240px]">
                   <div className="p-2 space-y-1">
                     {agents.map((agent) => (
                       <div
                         key={agent.id}
                         className={cn(
-                          "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
+                          "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all",
                           selectedAgentIds.has(agent.id)
-                            ? "bg-primary/5 border border-primary/30"
-                            : "hover:bg-muted/50 border border-transparent"
+                            ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
+                            : "hover:bg-muted/50 border-2 border-transparent"
                         )}
                         onClick={() => toggleAgent(agent.id)}
                       >
@@ -219,21 +275,26 @@ export function CreateGroupChatDialog({
                         />
                         <div
                           className={cn(
-                            "w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
-                            getAvatarGradient(agent.name)
+                            "w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-md",
+                            getAvatarGradient(agent.executor_type)
                           )}
                         >
-                          <Bot className="h-4 w-4 text-white" />
+                          {getExecutorIcon(agent.executor_type)}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {agent.name}
-                          </p>
-                          {agent.description && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              {agent.description}
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium truncate">
+                              {agent.name}
                             </p>
-                          )}
+                            {agent.executor_type && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                                {getExecutorDisplayName(agent.executor_type)}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {agent.description || (agent.executor_type ? `${getExecutorDisplayName(agent.executor_type)} executor` : "AI Agent")}
+                          </p>
                         </div>
                       </div>
                     ))}

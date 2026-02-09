@@ -10,6 +10,8 @@ use crate::{AgentUpdate as CoreAgentUpdate, CreateAgentOptions as CoreCreateAgen
 #[napi(object)]
 pub struct Agent {
     pub id: String,
+    /// Absolute path to the agent directory (e.g., ~/.viben/agents/hello-agent)
+    pub path: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub model: Option<String>,
@@ -27,6 +29,7 @@ impl From<crate::Agent> for Agent {
     fn from(a: crate::Agent) -> Self {
         Agent {
             id: a.id,
+            path: a.path,
             name: a.name,
             description: a.description,
             model: a.model,

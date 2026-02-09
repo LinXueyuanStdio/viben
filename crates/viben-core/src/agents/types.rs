@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct Agent {
     pub id: String,
     pub name: String,
+    /// Absolute path to the agent directory (e.g., ~/.viben/agents/hello-agent)
+    /// This is set at runtime, not persisted in config.yaml
+    #[serde(skip)]
+    pub path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -82,6 +86,7 @@ impl From<AgentConfigFile> for Agent {
     fn from(config: AgentConfigFile) -> Self {
         Agent {
             id: String::new(), // Will be set by caller
+            path: None,        // Will be set by caller
             name: config.name,
             description: config.description,
             model: config.model,

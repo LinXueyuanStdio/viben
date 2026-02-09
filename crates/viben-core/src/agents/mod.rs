@@ -49,6 +49,7 @@ impl AgentManager {
 
     /// Get an agent by ID
     pub async fn get_agent(id: &str) -> Result<Option<Agent>> {
+        let agent_dir = get_agent_dir(id);
         let config_path = get_agent_config_path(id);
         if !file_exists(&config_path) {
             return Ok(None);
@@ -58,6 +59,8 @@ impl AgentManager {
         Ok(config.map(|c| {
             let mut agent: Agent = c.into();
             agent.id = id.to_string();
+            // Set the absolute path to the agent directory
+            agent.path = Some(agent_dir.to_string_lossy().to_string());
             agent
         }))
     }
@@ -122,6 +125,7 @@ impl AgentManager {
 
         let mut agent: Agent = config.into();
         agent.id = id;
+        agent.path = Some(agent_dir.to_string_lossy().to_string());
         Ok(agent)
     }
 
@@ -172,6 +176,7 @@ impl AgentManager {
 
         let mut updated: Agent = config.into();
         updated.id = id.to_string();
+        updated.path = Some(get_agent_dir(id).to_string_lossy().to_string());
         Ok(updated)
     }
 
