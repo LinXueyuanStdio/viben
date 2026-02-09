@@ -982,6 +982,7 @@ impl CronService {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::GatewayEvent;
     use tempfile::tempdir;
 
     fn create_test_service() -> (CronService, tempfile::TempDir) {
@@ -990,6 +991,14 @@ mod tests {
         let events = Arc::new(EventService::new());
         let service = CronService::with_config_path(config_path, events);
         (service, dir)
+    }
+
+    fn create_test_service_with_events() -> (CronService, Arc<EventService>, tempfile::TempDir) {
+        let dir = tempdir().unwrap();
+        let config_path = dir.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path.clone(), events.clone());
+        (service, events, dir)
     }
 
     #[tokio::test]
@@ -1184,5 +1193,597 @@ mod tests {
             ..job
         };
         assert_eq!(job_no_script.effective_message(), "Test Job");
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_job_id() {
+        let (service, _dir) = create_test_service();
+
+        // Create first job
+        service
+            .create_job(CreateCronJob {
+                id: Some("duplicate-test".to_string()),
+                name: "First Job".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Try to create second job with same ID
+        let result = service
+            .create_job(CreateCronJob {
+                id: Some("duplicate-test".to_string()),
+                name: "Second Job".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(7200),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await;
+
+        assert!(matches!(result, Err(CronError::AlreadyExists(_))));
+    }
+
+    #[tokio::test]
+    async fn test_no_schedule_error() {
+        let (service, _dir) = create_test_service();
+
+        // Neither cron nor every
+        let result = service
+            .create_job(CreateCronJob {
+                id: Some("no-schedule".to_string()),
+                name: "No Schedule Job".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: None,
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await;
+
+        assert!(matches!(result, Err(CronError::InvalidSchedule)));
+    }
+
+    #[tokio::test]
+    async fn test_invalid_cron_expression() {
+        let (service, _dir) = create_test_service();
+
+        let result = service
+            .create_job(CreateCronJob {
+                id: Some("invalid-cron".to_string()),
+                name: "Invalid Cron".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: Some("invalid cron expression".to_string()),
+                every: None,
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await;
+
+        assert!(matches!(result, Err(CronError::InvalidCron(_))));
+    }
+
+    #[tokio::test]
+    async fn test_enable_disable_job() {
+        let (service, _dir) = create_test_service();
+
+        service
+            .create_job(CreateCronJob {
+                id: Some("toggle-job".to_string()),
+                name: "Toggle Job".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Disable
+        let disabled = service.disable_job("toggle-job").await.unwrap();
+        assert!(!disabled.enabled);
+
+        // Verify persisted
+        let fetched = service.get_job("toggle-job").await.unwrap();
+        assert!(!fetched.enabled);
+
+        // Enable
+        let enabled = service.enable_job("toggle-job").await.unwrap();
+        assert!(enabled.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_yaml_persistence() {
+        let dir = tempdir().unwrap();
+        let config_path = dir.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+
+        // Create service and add job
+        {
+            let service = CronService::with_config_path(config_path.clone(), events.clone());
+            service
+                .create_job(CreateCronJob {
+                    id: Some("persist-test".to_string()),
+                    name: "Persist Test".to_string(),
+                    job_type: CronJobType::Script,
+                    message: Some("test message".to_string()),
+                    cron: None,
+                    every: Some(60),
+                    channel: None,
+                    agent: Some("test-agent".to_string()),
+                    enabled: true,
+                    script: Some("echo test".to_string()),
+                    notifications: Some(CronNotificationSettings {
+                        in_app: true,
+                        system: true,
+                        channel_ids: vec!["ch1".to_string()],
+                    }),
+                })
+                .await
+                .unwrap();
+        }
+
+        // Verify file exists
+        assert!(config_path.exists());
+
+        // Create new service and load
+        let service2 = CronService::with_config_path(config_path, events);
+        service2.load().await.unwrap();
+
+        let loaded = service2.get_job("persist-test").await.unwrap();
+        assert_eq!(loaded.name, "Persist Test");
+        assert_eq!(loaded.job_type, CronJobType::Script);
+        assert_eq!(loaded.message, Some("test message".to_string()));
+        assert_eq!(loaded.every, Some(60));
+        assert_eq!(loaded.agent, "test-agent");
+        assert_eq!(loaded.script, Some("echo test".to_string()));
+        assert!(loaded.notifications.is_some());
+        let notif = loaded.notifications.unwrap();
+        assert!(notif.in_app);
+        assert!(notif.system);
+        assert_eq!(notif.channel_ids, vec!["ch1".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_next_run_calculation_interval() {
+        let (service, _dir) = create_test_service();
+
+        // Start scheduler so next_run gets calculated
+        service.start().await.unwrap();
+
+        let _job = service
+            .create_job(CreateCronJob {
+                id: Some("next-run-test".to_string()),
+                name: "Next Run Test".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600), // 1 hour
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // next_run should be set for interval jobs
+        let fetched = service.get_job("next-run-test").await.unwrap();
+        assert!(fetched.next_run.is_some());
+
+        // Should be approximately now + 3600 seconds
+        let now = Utc::now().timestamp_millis();
+        let next = fetched.next_run.unwrap();
+        let diff = next - now;
+        // Allow some tolerance (3590-3610 seconds in ms)
+        assert!(diff > 3590_000 && diff < 3610_000);
+
+        service.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_next_run_calculation_cron() {
+        let (service, _dir) = create_test_service();
+
+        service.start().await.unwrap();
+
+        let _job = service
+            .create_job(CreateCronJob {
+                id: Some("cron-next-run".to_string()),
+                name: "Cron Next Run".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: Some("0 0 9 * * *".to_string()), // Every day at 9 AM
+                every: None,
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        let fetched = service.get_job("cron-next-run").await.unwrap();
+        // next_run should be set for cron jobs via croner
+        assert!(fetched.next_run.is_some());
+
+        service.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_run_job_not_found() {
+        let (service, _dir) = create_test_service();
+
+        let result = service.run_job("nonexistent").await;
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_delete_job_not_found() {
+        let (service, _dir) = create_test_service();
+
+        let result = service.delete_job("nonexistent").await;
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_update_job_not_found() {
+        let (service, _dir) = create_test_service();
+
+        let result = service
+            .update_job(
+                "nonexistent",
+                UpdateCronJob {
+                    name: Some("New Name".to_string()),
+                    job_type: None,
+                    message: None,
+                    cron: None,
+                    every: None,
+                    channel: None,
+                    agent: None,
+                    enabled: None,
+                    script: None,
+                    notifications: None,
+                },
+            )
+            .await;
+
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_script_job_execution() {
+        let (service, _events, _dir) = create_test_service_with_events();
+
+        service.start().await.unwrap();
+
+        // Create a script job
+        service
+            .create_job(CreateCronJob {
+                id: Some("script-exec-test".to_string()),
+                name: "Script Exec Test".to_string(),
+                job_type: CronJobType::Script,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: Some("echo 'hello world'".to_string()),
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Run immediately
+        service.run_job("script-exec-test").await.unwrap();
+
+        // Check job status
+        let job = service.get_job("script-exec-test").await.unwrap();
+        assert!(job.last_run.is_some());
+        assert_eq!(job.last_status, Some(JobStatus::Success));
+        assert!(job.last_output.is_some());
+        assert!(job.last_output.unwrap().contains("hello world"));
+
+        service.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_script_job_failure() {
+        let (service, _events, _dir) = create_test_service_with_events();
+
+        service.start().await.unwrap();
+
+        // Create a script job that fails
+        service
+            .create_job(CreateCronJob {
+                id: Some("script-fail-test".to_string()),
+                name: "Script Fail Test".to_string(),
+                job_type: CronJobType::Script,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: Some("exit 1".to_string()),
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Run immediately
+        service.run_job("script-fail-test").await.unwrap();
+
+        // Check job status
+        let job = service.get_job("script-fail-test").await.unwrap();
+        assert_eq!(job.last_status, Some(JobStatus::Failure));
+        assert!(job.last_error.is_some());
+
+        service.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_list_jobs() {
+        let (service, _dir) = create_test_service();
+
+        // Create multiple jobs
+        for i in 1..=3 {
+            service
+                .create_job(CreateCronJob {
+                    id: Some(format!("list-test-{}", i)),
+                    name: format!("List Test {}", i),
+                    job_type: CronJobType::Agent,
+                    message: None,
+                    cron: None,
+                    every: Some(3600),
+                    channel: None,
+                    agent: None,
+                    enabled: true,
+                    script: None,
+                    notifications: None,
+                })
+                .await
+                .unwrap();
+        }
+
+        let jobs = service.list_jobs().await;
+        assert_eq!(jobs.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_auto_generate_id() {
+        let (service, _dir) = create_test_service();
+
+        let job = service
+            .create_job(CreateCronJob {
+                id: None, // No ID provided
+                name: "Auto ID Test".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // ID should be generated from name
+        assert_eq!(job.id, "auto-id-test");
+    }
+
+    #[tokio::test]
+    async fn test_scheduler_start_stop() {
+        let (service, _dir) = create_test_service();
+
+        // Create a job before starting
+        service
+            .create_job(CreateCronJob {
+                id: Some("start-stop-test".to_string()),
+                name: "Start Stop Test".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Start scheduler
+        service.start().await.unwrap();
+
+        // Verify scheduler is running (job should be scheduled)
+        let scheduled = service.scheduled_jobs.read().await;
+        assert!(scheduled.contains_key("start-stop-test"));
+        drop(scheduled);
+
+        // Shutdown
+        service.shutdown().await;
+
+        // Verify scheduler is stopped
+        let scheduler = service.scheduler.read().await;
+        assert!(scheduler.is_none());
+    }
+
+    /// Test: 1-second interval job runs at least 4 times in 5 seconds
+    #[tokio::test]
+    async fn test_interval_job_triggers_multiple_times() {
+        let (service, events, _dir) = create_test_service_with_events();
+
+        // Subscribe to events before starting
+        let mut rx = events.subscribe();
+
+        // Start scheduler
+        service.start().await.unwrap();
+
+        // Create a 1-second interval job
+        service
+            .create_job(CreateCronJob {
+                id: Some("rapid-interval-test".to_string()),
+                name: "Rapid Interval Test".to_string(),
+                job_type: CronJobType::Script,
+                message: None,
+                cron: None,
+                every: Some(1), // 1 second
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: Some("echo 'tick'".to_string()),
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Collect trigger events for 5 seconds
+        let mut trigger_count = 0;
+        let timeout = tokio::time::Duration::from_secs(6);
+        let start = tokio::time::Instant::now();
+
+        loop {
+            let remaining = timeout.saturating_sub(start.elapsed());
+            if remaining.is_zero() {
+                break;
+            }
+
+            match tokio::time::timeout(remaining, rx.recv()).await {
+                Ok(Ok(event)) => {
+                    if let GatewayEvent::CronJobTriggered { job_id, .. } = event {
+                        if job_id == "rapid-interval-test" {
+                            trigger_count += 1;
+                            tracing::info!("Trigger #{} received", trigger_count);
+                        }
+                    }
+                }
+                Ok(Err(_)) => break, // Channel closed
+                Err(_) => break,     // Timeout
+            }
+        }
+
+        service.shutdown().await;
+
+        // Should have at least 4 triggers in 5+ seconds with 1s interval
+        assert!(
+            trigger_count >= 4,
+            "Expected at least 4 triggers, got {}",
+            trigger_count
+        );
+    }
+
+    #[tokio::test]
+    async fn test_update_schedule_reschedules() {
+        let (service, _dir) = create_test_service();
+
+        service.start().await.unwrap();
+
+        // Create job with cron
+        service
+            .create_job(CreateCronJob {
+                id: Some("reschedule-test".to_string()),
+                name: "Reschedule Test".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: Some("0 0 9 * * *".to_string()),
+                every: None,
+                channel: None,
+                agent: None,
+                enabled: true,
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Update to interval
+        let updated = service
+            .update_job(
+                "reschedule-test",
+                UpdateCronJob {
+                    name: None,
+                    job_type: None,
+                    message: None,
+                    cron: None,
+                    every: Some(7200), // Switch to 2-hour interval
+                    channel: None,
+                    agent: None,
+                    enabled: None,
+                    script: None,
+                    notifications: None,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert!(updated.cron.is_none());
+        assert_eq!(updated.every, Some(7200));
+
+        service.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn test_disabled_job_not_scheduled() {
+        let (service, _dir) = create_test_service();
+
+        service.start().await.unwrap();
+
+        // Create disabled job
+        service
+            .create_job(CreateCronJob {
+                id: Some("disabled-test".to_string()),
+                name: "Disabled Test".to_string(),
+                job_type: CronJobType::Agent,
+                message: None,
+                cron: None,
+                every: Some(3600),
+                channel: None,
+                agent: None,
+                enabled: false, // Disabled
+                script: None,
+                notifications: None,
+            })
+            .await
+            .unwrap();
+
+        // Should not be in scheduled_jobs
+        let scheduled = service.scheduled_jobs.read().await;
+        assert!(!scheduled.contains_key("disabled-test"));
+
+        service.shutdown().await;
     }
 }

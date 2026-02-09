@@ -410,62 +410,112 @@ export class GatewayClient {
   async diagnose(): Promise<{
     reachable: boolean;
     healthCheck: boolean;
-    agentsList: string[] | null;
     version: string | null;
+    service: string | null;
+    timestamp: string | null;
+    url: string;
     endpoints: { path: string; available: boolean }[];
+    websocket: boolean;
   }> {
     const result = {
       reachable: false,
       healthCheck: false,
-      agentsList: null as string[] | null,
       version: null as string | null,
+      service: null as string | null,
+      timestamp: null as string | null,
+      url: this.baseUrl,
       endpoints: [] as { path: string; available: boolean }[],
+      websocket: false,
     };
 
-    // Test health endpoint
+    // Test health endpoint and extract detailed info
     try {
-      const healthResponse = await fetch(`${this.baseUrl}/health`);
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+
+      const healthResponse = await fetch(`${this.baseUrl}/health`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
       result.healthCheck = healthResponse.ok;
       result.reachable = true;
+
+      if (healthResponse.ok) {
+        try {
+          const healthData = await healthResponse.json();
+          result.version = healthData.version || null;
+          result.service = healthData.service || null;
+          result.timestamp = healthData.timestamp || null;
+        } catch {
+          // JSON parsing failed, but health check still passed
+        }
+      }
     } catch {
       result.reachable = false;
     }
 
-    // Test agents list
-    try {
-      const agentsResponse = await fetch(`${this.baseUrl}/api/agents`);
-      if (agentsResponse.ok) {
-        const data = await agentsResponse.json();
-        result.agentsList = data.agents || [];
-        result.reachable = true;
-      }
-    } catch {
-      // Ignore
-    }
+    // Add health endpoint to the list
+    result.endpoints.push({ path: "/health", available: result.healthCheck });
 
-    // Test specific endpoints
-    const testEndpoints = [
-      "/api/agents",
-      "/api/agents/CLAUDE_CODE",
-      "/api/agents/CLAUDE_CODE/availability",
-      "/api/sessions",
-      "/api/tasks",
-      "/api/events",
-    ];
+    // Only test other endpoints if health check passed
+    if (result.healthCheck) {
+      // Test specific HTTP endpoints
+      const testEndpoints = [
+        "/api/agents",
+        "/api/sessions",
+        "/api/cron",
+        "/api/group-chats",
+      ];
 
-    for (const path of testEndpoints) {
-      try {
-        const response = await fetch(`${this.baseUrl}${path}`, {
-          method: "GET",
-          headers: { Accept: "application/json" },
-        });
-        result.endpoints.push({ path, available: response.ok || response.status < 500 });
-      } catch {
-        result.endpoints.push({ path, available: false });
+      for (const path of testEndpoints) {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const response = await fetch(`${this.baseUrl}${path}`, {
+            method: "GET",
+            headers: { Accept: "application/json" },
+            signal: controller.signal,
+          });
+          clearTimeout(timeout);
+          result.endpoints.push({ path, available: response.ok || response.status < 500 });
+        } catch {
+          result.endpoints.push({ path, available: false });
+        }
       }
+
+      // Test WebSocket connectivity
+      result.websocket = await this.testWebSocket();
     }
 
     return result;
+  }
+
+  /**
+   * Test WebSocket connectivity to the Gateway
+   */
+  private async testWebSocket(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const wsUrl = this.baseUrl.replace(/^http/, "ws");
+      // Use a simple test endpoint - try events stream
+      const ws = new WebSocket(`${wsUrl}/api/events`);
+      const timeout = setTimeout(() => {
+        ws.close();
+        resolve(false);
+      }, 3000);
+
+      ws.onopen = () => {
+        clearTimeout(timeout);
+        ws.close();
+        resolve(true);
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        ws.close();
+        resolve(false);
+      };
+    });
   }
 
   /**
