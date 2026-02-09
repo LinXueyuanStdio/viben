@@ -9,6 +9,7 @@ export { TrayPopupPage } from "./tray-popup";
 export { WorkspaceDetailPage } from "./workspace-detail";
 export { WorkspaceChatPage } from "./workspace-chat";
 export { WorkspaceKanbanPage } from "./workspace-kanban";
+export { WorkspaceFilesPage } from "./workspace-files";
 export { AgentDetailPage } from "./agent-detail";
 export { WorkspaceSkillDetailPage } from "./workspace-skill-detail";
 export { WorkspaceAgentsPage } from "./workspace-agents";

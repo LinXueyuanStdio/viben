@@ -32,3 +32,6 @@ pub mod vite_preview;
 
 // Kanban comments and activities module
 pub mod kanban_comments;
+
+// Filesystem operations module
+pub mod filesystem;
