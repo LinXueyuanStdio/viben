@@ -64,15 +64,17 @@ export function WorkspaceHeader({
   return (
     <header
       className={cn(
-        "flex items-center justify-between px-4 py-2 border-b bg-background",
+        "flex items-center gap-4 px-4 py-2 border-b bg-background",
         className
       )}
     >
-      {/* Left: Breadcrumb */}
-      <WorkspaceBreadcrumb workspace={workspace} segments={segments} />
+      {/* Left: Breadcrumb - scrollable container */}
+      <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+        <WorkspaceBreadcrumb workspace={workspace} segments={segments} />
+      </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
+      {/* Right: Actions - fixed, never shrink */}
+      <div className="flex items-center gap-2 flex-shrink-0">
         {rightContent}
 
         {showRefresh && onRefresh && (
