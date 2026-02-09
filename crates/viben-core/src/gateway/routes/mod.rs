@@ -5,6 +5,7 @@ use axum::{Router, routing::get};
 use crate::gateway::AppState;
 
 pub mod agents;
+pub mod channels;
 pub mod cron;
 pub mod events;
 pub mod group_chats;
@@ -22,6 +23,7 @@ pub fn router(state: AppState) -> Router {
     let router = Router::new()
         .route("/health", get(health::health_check))
         .merge(agents::router())
+        .merge(channels::router())
         .merge(tasks::router())
         .merge(sessions::router())
         .merge(events::router())

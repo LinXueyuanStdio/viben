@@ -18,14 +18,25 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 pub struct SessionConfig {
     /// Session ID
     pub id: String,
-    /// Agent ID
+    /// Agent ID (for quick lookup, but not reliable - use agent_path/agent_config instead)
     pub agent_id: String,
+    /// Agent path (absolute path to agent directory, reliable reference)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_path: Option<String>,
+    /// Agent config snapshot at session creation time
+    /// This preserves the agent's configuration even if the agent is later modified or deleted
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent_config: Option<serde_json::Value>,
     /// Task ID (optional)
     pub task_id: Option<String>,
     /// Initial prompt
     pub prompt: Option<String>,
     /// Session status
     pub status: String,
+    /// Workspace path where this session runs (absolute path)
+    /// Global agents can run in different workspaces
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_path: Option<String>,
     /// Created timestamp
     pub created_at: DateTime<Utc>,
     /// Updated timestamp
@@ -42,9 +53,54 @@ impl SessionConfig {
         Self {
             id: id.to_string(),
             agent_id: agent_id.to_string(),
+            agent_path: None,
+            agent_config: None,
             task_id: None,
             prompt: None,
             status: "active".to_string(),
+            workspace_path: None,
+            created_at: now,
+            updated_at: now,
+            metadata: serde_json::json!({}),
+        }
+    }
+
+    /// Create a new session config with workspace path
+    pub fn with_workspace(id: &str, agent_id: &str, workspace_path: &str) -> Self {
+        let now = Utc::now();
+        Self {
+            id: id.to_string(),
+            agent_id: agent_id.to_string(),
+            agent_path: None,
+            agent_config: None,
+            task_id: None,
+            prompt: None,
+            status: "active".to_string(),
+            workspace_path: Some(workspace_path.to_string()),
+            created_at: now,
+            updated_at: now,
+            metadata: serde_json::json!({}),
+        }
+    }
+
+    /// Create a full session config with all agent information
+    pub fn with_agent_info(
+        id: &str,
+        agent_id: &str,
+        agent_path: Option<&str>,
+        agent_config: Option<serde_json::Value>,
+        workspace_path: Option<&str>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: id.to_string(),
+            agent_id: agent_id.to_string(),
+            agent_path: agent_path.map(|s| s.to_string()),
+            agent_config,
+            task_id: None,
+            prompt: None,
+            status: "active".to_string(),
+            workspace_path: workspace_path.map(|s| s.to_string()),
             created_at: now,
             updated_at: now,
             metadata: serde_json::json!({}),
@@ -550,6 +606,22 @@ impl SessionStoreService {
         Ok(sessions)
     }
 
+    /// List all sessions for an agent in a workspace
+    /// Note: workspace_id is currently unused, sessions are stored per-agent
+    pub async fn list_sessions_in_workspace(&self, _workspace_id: &str, agent_id: &str) -> Result<Vec<SessionConfig>, SessionStoreError> {
+        // TODO: Implement workspace-based session storage
+        // For now, delegate to agent-based storage
+        self.list_sessions(agent_id).await
+    }
+
+    /// Create a session in a workspace
+    /// Note: workspace_id is currently unused, sessions are stored per-agent
+    pub async fn create_session_in_workspace(&self, _workspace_id: &str, config: &SessionConfig) -> Result<(), SessionStoreError> {
+        // TODO: Implement workspace-based session storage
+        // For now, delegate to agent-based storage
+        self.create_session(config).await
+    }
+
     /// Append a message to the session
     pub async fn append_message(&self, agent_id: &str, session_id: &str, message: &SessionMessage) -> Result<(), SessionStoreError> {
         let messages_path = self.messages_path(agent_id, session_id);
@@ -893,6 +965,9 @@ mod tests {
         assert_eq!(retrieved.id, "session-1");
         assert_eq!(retrieved.agent_id, "test-agent");
         assert_eq!(retrieved.status, "active");
+        assert!(retrieved.agent_path.is_none());
+        assert!(retrieved.agent_config.is_none());
+        assert!(retrieved.workspace_path.is_none());
 
         // List sessions
         let sessions = service.list_sessions("test-agent").await.unwrap();
@@ -922,5 +997,185 @@ mod tests {
         service.delete_session("test-agent", "session-1").await.unwrap();
         let sessions = service.list_sessions("test-agent").await.unwrap();
         assert_eq!(sessions.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_session_with_workspace_path() {
+        let temp = tempdir().unwrap();
+        let service = SessionStoreService::with_state_dir(temp.path().to_path_buf());
+
+        // Create agent directory
+        fs::create_dir_all(temp.path().join("agents").join("test-agent"))
+            .await
+            .unwrap();
+
+        // Create session with workspace path
+        let config = SessionConfig::with_workspace("session-2", "test-agent", "/home/user/projects/myapp");
+        service.create_session(&config).await.unwrap();
+
+        // Get session and verify workspace_path
+        let retrieved = service.get_session("test-agent", "session-2").await.unwrap();
+        assert_eq!(retrieved.id, "session-2");
+        assert_eq!(retrieved.workspace_path, Some("/home/user/projects/myapp".to_string()));
+        assert!(retrieved.agent_path.is_none());
+        assert!(retrieved.agent_config.is_none());
+
+        // Cleanup
+        service.delete_session("test-agent", "session-2").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_session_with_full_agent_info() {
+        let temp = tempdir().unwrap();
+        let service = SessionStoreService::with_state_dir(temp.path().to_path_buf());
+
+        // Create agent directory
+        fs::create_dir_all(temp.path().join("agents").join("my-agent"))
+            .await
+            .unwrap();
+
+        // Create agent config snapshot
+        let agent_config = serde_json::json!({
+            "id": "my-agent",
+            "name": "My Custom Agent",
+            "description": "A test agent",
+            "model": "claude-3-opus",
+            "provider": "anthropic",
+            "temperature": 0.7,
+            "max_tokens": 4096,
+            "plan_mode": true,
+            "approvals": false
+        });
+
+        // Create session with full agent info
+        let config = SessionConfig::with_agent_info(
+            "session-3",
+            "my-agent",
+            Some("/home/user/.viben/agents/my-agent"),
+            Some(agent_config.clone()),
+            Some("/home/user/projects/myapp"),
+        );
+        service.create_session(&config).await.unwrap();
+
+        // Get session and verify all fields
+        let retrieved = service.get_session("my-agent", "session-3").await.unwrap();
+        assert_eq!(retrieved.id, "session-3");
+        assert_eq!(retrieved.agent_id, "my-agent");
+        assert_eq!(retrieved.agent_path, Some("/home/user/.viben/agents/my-agent".to_string()));
+        assert_eq!(retrieved.workspace_path, Some("/home/user/projects/myapp".to_string()));
+
+        // Verify agent config snapshot
+        let saved_config = retrieved.agent_config.unwrap();
+        assert_eq!(saved_config["name"], "My Custom Agent");
+        assert_eq!(saved_config["model"], "claude-3-opus");
+        assert_eq!(saved_config["temperature"], 0.7);
+        assert_eq!(saved_config["plan_mode"], true);
+
+        // Cleanup
+        service.delete_session("my-agent", "session-3").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_ui_messages() {
+        let temp = tempdir().unwrap();
+        let service = SessionStoreService::with_state_dir(temp.path().to_path_buf());
+
+        // Create agent directory
+        fs::create_dir_all(temp.path().join("agents").join("test-agent"))
+            .await
+            .unwrap();
+
+        // Create session
+        let config = SessionConfig::new("session-ui", "test-agent");
+        service.create_session(&config).await.unwrap();
+
+        // Append UI messages
+        let user_msg = UIMessage::user("msg-1", "Hello, how are you?");
+        service.append_ui_message("test-agent", "session-ui", &user_msg).await.unwrap();
+
+        let text_msg = UIMessage::text("msg-2", "I'm doing great, thank you!");
+        service.append_ui_message("test-agent", "session-ui", &text_msg).await.unwrap();
+
+        let tool_msg = UIMessage::tool_use(
+            "msg-3",
+            "toolu_123",
+            "read_file",
+            serde_json::json!({"path": "/tmp/test.txt"}),
+        );
+        service.append_ui_message("test-agent", "session-ui", &tool_msg).await.unwrap();
+
+        let result_msg = UIMessage::tool_result("msg-4", "toolu_123", "File content here", false);
+        service.append_ui_message("test-agent", "session-ui", &result_msg).await.unwrap();
+
+        // Read UI messages
+        let messages = service.read_ui_messages("test-agent", "session-ui").await.unwrap();
+        assert_eq!(messages.len(), 4);
+
+        // Verify message types
+        assert_eq!(messages[0].msg_type, "user");
+        assert_eq!(messages[0].content, Some("Hello, how are you?".to_string()));
+
+        assert_eq!(messages[1].msg_type, "text");
+        assert_eq!(messages[1].content, Some("I'm doing great, thank you!".to_string()));
+
+        assert_eq!(messages[2].msg_type, "tool_use");
+        assert_eq!(messages[2].tool_name, Some("read_file".to_string()));
+        assert_eq!(messages[2].tool_use_id, Some("toolu_123".to_string()));
+
+        assert_eq!(messages[3].msg_type, "tool_result");
+        assert_eq!(messages[3].tool_output, Some("File content here".to_string()));
+        assert_eq!(messages[3].is_error, Some(false));
+
+        // Cleanup
+        service.delete_session("test-agent", "session-ui").await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_agent_messages() {
+        let temp = tempdir().unwrap();
+        let service = SessionStoreService::with_state_dir(temp.path().to_path_buf());
+
+        // Create agent directory
+        fs::create_dir_all(temp.path().join("agents").join("test-agent"))
+            .await
+            .unwrap();
+
+        // Create session
+        let config = SessionConfig::new("session-agent", "test-agent");
+        service.create_session(&config).await.unwrap();
+
+        // Append raw agent messages
+        let msg1 = AgentMessage {
+            timestamp: Utc::now(),
+            raw: serde_json::json!({
+                "type": "assistant",
+                "message": {"content": [{"type": "text", "text": "Hello"}]}
+            }),
+            source: Some("claude_code".to_string()),
+        };
+        service.append_agent_message("test-agent", "session-agent", &msg1).await.unwrap();
+
+        let msg2 = AgentMessage {
+            timestamp: Utc::now(),
+            raw: serde_json::json!({
+                "type": "tool_use",
+                "id": "toolu_456",
+                "name": "bash",
+                "input": {"command": "ls"}
+            }),
+            source: Some("claude_code".to_string()),
+        };
+        service.append_agent_message("test-agent", "session-agent", &msg2).await.unwrap();
+
+        // Read agent messages
+        let messages = service.read_agent_messages("test-agent", "session-agent").await.unwrap();
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0].source, Some("claude_code".to_string()));
+        assert_eq!(messages[0].raw["type"], "assistant");
+        assert_eq!(messages[1].raw["type"], "tool_use");
+        assert_eq!(messages[1].raw["name"], "bash");
+
+        // Cleanup
+        service.delete_session("test-agent", "session-agent").await.unwrap();
     }
 }

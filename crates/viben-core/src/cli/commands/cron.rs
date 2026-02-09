@@ -87,10 +87,9 @@ impl CronCommand {
 
         match self.action {
             CronAction::List => {
-                // Load existing jobs from config
-                let _ = cron_service.start().await;
+                // Load existing jobs from config (without scheduling)
+                let _ = cron_service.load().await;
                 let jobs = cron_service.list_jobs().await;
-                cron_service.shutdown().await;
 
                 if ctx.json {
                     print_json(&SuccessResponse::new(json!({ "jobs": jobs })));
@@ -163,15 +162,20 @@ impl CronCommand {
                     ));
                 }
 
+                // Load existing jobs first
+                let _ = cron_service.load().await;
+
                 let create = CreateCronJob {
                     id,
                     name: name.clone(),
                     message,
+                    script: None,
                     cron: schedule,
                     every,
                     channel: None,
                     agent,
                     enabled: !disabled,
+                    notifications: None,
                 };
 
                 match cron_service.create_job(create).await {
@@ -196,18 +200,17 @@ impl CronCommand {
                         } else {
                             print_error(&format!("Failed to create job: {}", e));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                        return Err(CliError::Other(e.to_string()));
                     }
                 }
             }
 
             CronAction::Remove { id } => {
-                // Load jobs first
-                let _ = cron_service.start().await;
+                // Load jobs first (without scheduling)
+                let _ = cron_service.load().await;
 
                 match cron_service.delete_job(&id).await {
                     Ok(()) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&SuccessResponse::new(json!({ "removed": id })));
                         } else {
@@ -215,24 +218,22 @@ impl CronCommand {
                         }
                     }
                     Err(e) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&json!({ "error": e.to_string() }));
                         } else {
                             print_error(&format!("Failed to remove job: {}", e));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                        return Err(CliError::Other(e.to_string()));
                     }
                 }
             }
 
             CronAction::Enable { id } => {
-                // Load jobs first
-                let _ = cron_service.start().await;
+                // Load jobs first (without scheduling)
+                let _ = cron_service.load().await;
 
                 match cron_service.enable_job(&id).await {
                     Ok(job) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&SuccessResponse::new(json!(job)));
                         } else {
@@ -245,24 +246,22 @@ impl CronCommand {
                         }
                     }
                     Err(e) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&json!({ "error": e.to_string() }));
                         } else {
                             print_error(&format!("Failed to enable job: {}", e));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                        return Err(CliError::Other(e.to_string()));
                     }
                 }
             }
 
             CronAction::Disable { id } => {
-                // Load jobs first
-                let _ = cron_service.start().await;
+                // Load jobs first (without scheduling)
+                let _ = cron_service.load().await;
 
                 match cron_service.disable_job(&id).await {
                     Ok(job) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&SuccessResponse::new(json!(job)));
                         } else {
@@ -270,20 +269,19 @@ impl CronCommand {
                         }
                     }
                     Err(e) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&json!({ "error": e.to_string() }));
                         } else {
                             print_error(&format!("Failed to disable job: {}", e));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                        return Err(CliError::Other(e.to_string()));
                     }
                 }
             }
 
             CronAction::Run { id } => {
-                // Load jobs first
-                let _ = cron_service.start().await;
+                // Load jobs first (without scheduling)
+                let _ = cron_service.load().await;
 
                 println!("Running job '{}' immediately...", id);
 
@@ -291,7 +289,6 @@ impl CronCommand {
                     Ok(()) => {
                         // Get updated job status
                         if let Some(job) = cron_service.get_job(&id).await {
-                            cron_service.shutdown().await;
                             if ctx.json {
                                 print_json(&SuccessResponse::new(json!(job)));
                             } else {
@@ -304,29 +301,26 @@ impl CronCommand {
                                 }
                             }
                         } else {
-                            cron_service.shutdown().await;
                             print_success(&format!("Job '{}' executed", id));
                         }
                     }
                     Err(e) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&json!({ "error": e.to_string() }));
                         } else {
                             print_error(&format!("Failed to run job: {}", e));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                        return Err(CliError::Other(e.to_string()));
                     }
                 }
             }
 
             CronAction::Show { id } => {
-                // Load jobs first
-                let _ = cron_service.start().await;
+                // Load jobs first (without scheduling)
+                let _ = cron_service.load().await;
 
                 match cron_service.get_job(&id).await {
                     Some(job) => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&SuccessResponse::new(json!(job)));
                         } else {
@@ -377,16 +371,15 @@ impl CronCommand {
                         }
                     }
                     None => {
-                        cron_service.shutdown().await;
                         if ctx.json {
                             print_json(&json!({ "error": format!("Job not found: {}", id) }));
                         } else {
                             print_error(&format!("Job not found: {}", id));
                         }
-                        return Err(CliError::Core(crate::Error::Agent(format!(
+                        return Err(CliError::NotFound(format!(
                             "Job not found: {}",
                             id
-                        ))));
+                        )));
                     }
                 }
             }
@@ -398,7 +391,7 @@ impl CronCommand {
                 // Start the cron service
                 if let Err(e) = cron_service.start().await {
                     print_error(&format!("Failed to start cron service: {}", e));
-                    return Err(CliError::Core(crate::Error::Agent(e.to_string())));
+                    return Err(CliError::Other(e.to_string()));
                 }
 
                 let jobs = cron_service.list_jobs().await;

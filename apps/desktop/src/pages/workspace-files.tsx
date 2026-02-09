@@ -8,7 +8,7 @@ import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/componen
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
-import type { ViewMode, SortField, SortDirection } from "@/hooks/use-file-browser";
+import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
 
 
 export function WorkspaceFilesPage() {
@@ -41,6 +41,12 @@ export function WorkspaceFilesPage() {
 
   // Track search state (for toolbar in header)
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Track group state (for toolbar in header)
+  const [groupField, setGroupField] = useState<GroupField>(() => {
+    const saved = localStorage.getItem("fileBrowser.groupField");
+    return (saved as GroupField) || "none";
+  });
 
   // Sync viewMode when FileBrowser initializes
   useEffect(() => {
@@ -167,6 +173,13 @@ export function WorkspaceFilesPage() {
     fileBrowserRef.current?.setSearchQuery(query);
   }, []);
 
+  // Handle group field change from toolbar
+  const handleGroupFieldChange = useCallback((field: GroupField) => {
+    setGroupField(field);
+    localStorage.setItem("fileBrowser.groupField", field);
+    fileBrowserRef.current?.setGroupField(field);
+  }, []);
+
   // Toolbar component for header's rightContent
   const toolbarContent = (
     <FileBrowserToolbar
@@ -176,6 +189,8 @@ export function WorkspaceFilesPage() {
       sortDirection={sortDirection}
       onSortFieldChange={handleSortFieldChange}
       onSortDirectionChange={handleSortDirectionChange}
+      groupField={groupField}
+      onGroupFieldChange={handleGroupFieldChange}
       searchQuery={searchQuery}
       onSearchChange={handleSearchChange}
       onNewFile={() => fileBrowserRef.current?.createFile()}

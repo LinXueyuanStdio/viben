@@ -201,9 +201,17 @@ fn create_agent_by_type(agent_type: &str) -> Result<CodingAgent, GatewayError> {
 pub struct FileSessionResponse {
     pub id: String,
     pub agent_id: String,
+    /// Agent path (absolute path to agent directory)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_path: Option<String>,
+    /// Agent config snapshot at session creation time
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_config: Option<Value>,
     pub task_id: Option<String>,
     pub prompt: Option<String>,
     pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_path: Option<String>,
     pub created_at: String,
     pub updated_at: String,
     pub metadata: Value,
@@ -214,9 +222,12 @@ impl From<SessionConfig> for FileSessionResponse {
         Self {
             id: config.id,
             agent_id: config.agent_id,
+            agent_path: config.agent_path,
+            agent_config: config.agent_config,
             task_id: config.task_id,
             prompt: config.prompt,
             status: config.status,
+            workspace_path: config.workspace_path,
             created_at: config.created_at.to_rfc3339(),
             updated_at: config.updated_at.to_rfc3339(),
             metadata: config.metadata,
@@ -277,6 +288,12 @@ pub struct CreateFileSessionRequest {
     pub session_id: Option<String>,
     pub prompt: Option<String>,
     pub task_id: Option<String>,
+    /// Agent path (absolute path to agent directory)
+    pub agent_path: Option<String>,
+    /// Agent config snapshot at session creation time
+    pub agent_config: Option<Value>,
+    /// Workspace path where this session runs (absolute path)
+    pub workspace_path: Option<String>,
 }
 
 /// Create a new file-based session
@@ -290,11 +307,18 @@ pub async fn create_agent_session(
 
     tracing::info!(
         target: "viben::gateway::agents",
-        "Creating file-based session: agent={}, session={}",
-        agent_id, session_id
+        "Creating file-based session: agent={}, session={}, agent_path={:?}, workspace_path={:?}",
+        agent_id, session_id, req.agent_path, req.workspace_path
     );
 
-    let mut config = SessionConfig::new(&session_id, &agent_id);
+    // Create config with full agent information
+    let mut config = SessionConfig::with_agent_info(
+        &session_id,
+        &agent_id,
+        req.agent_path.as_deref(),
+        req.agent_config.clone(),
+        req.workspace_path.as_deref(),
+    );
     config.prompt = req.prompt;
     config.task_id = req.task_id;
 

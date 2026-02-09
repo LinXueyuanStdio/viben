@@ -20,6 +20,11 @@ import {
   XCircle,
   AlertCircle,
   Pencil,
+  ChevronLeft,
+  ChevronRight,
+  Terminal,
+  Bell,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +36,6 @@ import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -83,6 +87,7 @@ type ScheduleType = "cron" | "interval";
 interface JobFormData {
   name: string;
   message: string;
+  script: string;
   scheduleType: ScheduleType;
   cronExpression: string;
   intervalSeconds: number;
@@ -98,6 +103,7 @@ interface JobFormData {
 const defaultFormData: JobFormData = {
   name: "",
   message: "",
+  script: "",
   scheduleType: "interval",
   cronExpression: "0 9 * * *",
   intervalSeconds: 3600,
@@ -163,6 +169,8 @@ export function WorkspaceCronPage() {
   const [editingJob, setEditingJob] = useState<CronJob | null>(null);
   const [formData, setFormData] = useState<JobFormData>(defaultFormData);
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
+  const [wizardStep, setWizardStep] = useState(1);
+  const totalSteps = 3;
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
   const loading = loadingJobs || isLoadingWorkspaces || loadingAgents;
@@ -171,6 +179,7 @@ export function WorkspaceCronPage() {
   useEffect(() => {
     if (!createDialogOpen && !editingJob) {
       setFormData(defaultFormData);
+      setWizardStep(1);
     }
   }, [createDialogOpen, editingJob]);
 
@@ -180,6 +189,7 @@ export function WorkspaceCronPage() {
       setFormData({
         name: editingJob.name,
         message: editingJob.message,
+        script: editingJob.script || "",
         scheduleType: editingJob.cron ? "cron" : "interval",
         cronExpression: editingJob.cron || "0 9 * * *",
         intervalSeconds: editingJob.every || 3600,
@@ -203,6 +213,7 @@ export function WorkspaceCronPage() {
     const data: CreateCronJob | UpdateCronJob = {
       name: formData.name.trim(),
       message: formData.message.trim(),
+      script: formData.script.trim() || undefined,
       agent: formData.agent || undefined,
       channel: formData.channel || undefined,
       enabled: formData.enabled,
@@ -538,7 +549,7 @@ export function WorkspaceCronPage() {
         )}
       </div>
 
-      {/* Create/Edit Dialog */}
+      {/* Create/Edit Dialog - Wizard Style */}
       <Dialog
         open={createDialogOpen || !!editingJob}
         onOpenChange={(open) => {
@@ -553,115 +564,230 @@ export function WorkspaceCronPage() {
             <DialogTitle>
               {editingJob ? t("cron.editJob") : t("cron.createJob")}
             </DialogTitle>
-            <DialogDescription>
-              {editingJob ? t("cron.editJobDesc") : t("cron.createJobDesc")}
-            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label htmlFor="job-name">{t("common.name")} *</Label>
-              <Input
-                id="job-name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder={t("cron.namePlaceholder")}
-              />
-            </div>
+          {/* Step Indicator with Labels */}
+          <div className="flex items-center justify-between px-2">
+            {[
+              { step: 1, icon: Clock, label: t("cron.wizard.step1Title") },
+              { step: 2, icon: Settings2, label: t("cron.wizard.step2Title") },
+              { step: 3, icon: Bell, label: t("cron.wizard.step3Title") },
+            ].map(({ step, icon: Icon, label }, index) => {
+              const isCompleted = step < wizardStep;
+              const isCurrent = step === wizardStep;
+              const isLocked = step > 1 && !formData.name.trim() || !formData.message.trim();
+              const canNavigate = isCompleted || (step <= wizardStep && !isLocked);
 
-            {/* Message */}
-            <div className="space-y-2">
-              <Label htmlFor="job-message">{t("cron.message")} *</Label>
-              <Textarea
-                id="job-message"
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                placeholder={t("cron.messagePlaceholder")}
-                className="min-h-[80px]"
-              />
-            </div>
-
-            {/* Schedule Type */}
-            <div className="space-y-2">
-              <Label>{t("cron.scheduleType")}</Label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="scheduleType"
-                    value="interval"
-                    checked={formData.scheduleType === "interval"}
-                    onChange={() => setFormData({ ...formData, scheduleType: "interval" })}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">{t("cron.interval")}</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="scheduleType"
-                    value="cron"
-                    checked={formData.scheduleType === "cron"}
-                    onChange={() => setFormData({ ...formData, scheduleType: "cron" })}
-                    className="accent-primary"
-                  />
-                  <span className="text-sm">{t("cron.cronExpression")}</span>
-                </label>
-              </div>
-            </div>
-
-            {/* Interval or Cron Expression */}
-            {formData.scheduleType === "interval" ? (
-              <div className="space-y-2">
-                <Label htmlFor="job-interval">{t("cron.intervalLabel")}</Label>
-                <Select
-                  value={formData.intervalSeconds.toString()}
-                  onValueChange={(val) =>
-                    setFormData({ ...formData, intervalSeconds: parseInt(val) })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("cron.selectInterval")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INTERVAL_PRESETS.map((preset) => (
-                      <SelectItem key={preset.value} value={preset.value.toString()}>
-                        {t(preset.label)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="job-cron">{t("cron.cronExpressionLabel")}</Label>
-                <div className="space-y-2">
-                  <Input
-                    id="job-cron"
-                    value={formData.cronExpression}
-                    onChange={(e) =>
-                      setFormData({ ...formData, cronExpression: e.target.value })
-                    }
-                    placeholder="0 9 * * *"
-                    className="font-mono"
-                  />
-                  <Select
-                    value=""
-                    onValueChange={(val) =>
-                      setFormData({ ...formData, cronExpression: val })
-                    }
+              return (
+                <div key={step} className="flex items-center flex-1">
+                  <button
+                    onClick={() => canNavigate && setWizardStep(step)}
+                    disabled={!canNavigate}
+                    className={`flex flex-col items-center gap-1 flex-1 py-2 rounded-lg transition-all ${
+                      isCurrent
+                        ? "bg-primary/10"
+                        : canNavigate
+                        ? "hover:bg-muted/50"
+                        : "opacity-50 cursor-not-allowed"
+                    }`}
                   >
-                    <SelectTrigger className="text-muted-foreground">
-                      <SelectValue placeholder={t("cron.selectPreset")} />
+                    <div
+                      className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                        isCurrent
+                          ? "bg-primary text-primary-foreground"
+                          : isCompleted
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-5 w-5" />
+                      ) : (
+                        <Icon className="h-5 w-5" />
+                      )}
+                    </div>
+                    <span
+                      className={`text-xs font-medium ${
+                        isCurrent ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  </button>
+                  {index < 2 && (
+                    <div
+                      className={`w-8 h-0.5 ${
+                        isCompleted ? "bg-primary/50" : "bg-muted"
+                      }`}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="py-2 min-h-[300px]">
+            {/* Step 1: Basic Info */}
+            {wizardStep === 1 && (
+              <div className="space-y-5">
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="job-name" className="text-sm font-medium">
+                    {t("common.name")} <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="job-name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder={t("cron.namePlaceholder")}
+                    autoFocus
+                    className="h-11"
+                  />
+                </div>
+
+                {/* Message */}
+                <div className="space-y-2">
+                  <Label htmlFor="job-message" className="text-sm font-medium">
+                    {t("cron.message")} <span className="text-destructive">*</span>
+                  </Label>
+                  <Textarea
+                    id="job-message"
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    placeholder={t("cron.messagePlaceholder")}
+                    className="min-h-[120px] resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("cron.messageHint")}
+                  </p>
+                </div>
+
+                {/* Enabled */}
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <Label htmlFor="job-enabled" className="text-sm font-medium">
+                      {t("cron.enabled")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("cron.enabledHint")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="job-enabled"
+                    checked={formData.enabled}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, enabled: checked })
+                    }
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Schedule & Execution */}
+            {wizardStep === 2 && (
+              <div className="space-y-5">
+                {/* Schedule Type */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">{t("cron.scheduleType")}</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, scheduleType: "interval" })}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        formData.scheduleType === "interval"
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <RefreshCw className={`h-6 w-6 ${formData.scheduleType === "interval" ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${formData.scheduleType === "interval" ? "text-primary" : ""}`}>
+                        {t("cron.interval")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, scheduleType: "cron" })}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        formData.scheduleType === "cron"
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <Clock className={`h-6 w-6 ${formData.scheduleType === "cron" ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${formData.scheduleType === "cron" ? "text-primary" : ""}`}>
+                        {t("cron.cronExpression")}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Interval or Cron Expression */}
+                {formData.scheduleType === "interval" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="job-interval" className="text-sm font-medium">{t("cron.intervalLabel")}</Label>
+                    <Select
+                      value={formData.intervalSeconds.toString()}
+                      onValueChange={(val) =>
+                        setFormData({ ...formData, intervalSeconds: parseInt(val) })
+                      }
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder={t("cron.selectInterval")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {INTERVAL_PRESETS.map((preset) => (
+                          <SelectItem key={preset.value} value={preset.value.toString()}>
+                            {t(preset.label)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label htmlFor="job-cron" className="text-sm font-medium">{t("cron.cronExpressionLabel")}</Label>
+                    <Input
+                      id="job-cron"
+                      value={formData.cronExpression}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cronExpression: e.target.value })
+                      }
+                      placeholder="0 9 * * *"
+                      className="font-mono h-11"
+                    />
+                    <div className="flex flex-wrap gap-1.5">
+                      {CRON_PRESETS.slice(0, 4).map((preset) => (
+                        <Badge
+                          key={preset.value}
+                          variant={formData.cronExpression === preset.value ? "default" : "outline"}
+                          className="cursor-pointer text-xs"
+                          onClick={() => setFormData({ ...formData, cronExpression: preset.value })}
+                        >
+                          {t(preset.label)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Agent Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="job-agent" className="text-sm font-medium">{t("cron.agent")}</Label>
+                  <Select
+                    value={formData.agent}
+                    onValueChange={(val) => setFormData({ ...formData, agent: val })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder={t("cron.selectAgent")} />
                     </SelectTrigger>
                     <SelectContent>
-                      {CRON_PRESETS.map((preset) => (
-                        <SelectItem key={preset.value} value={preset.value}>
-                          <span className="font-mono mr-2">{preset.value}</span>
-                          <span className="text-muted-foreground">
-                            ({t(preset.label)})
-                          </span>
+                      <SelectItem value="main">
+                        <span className="font-medium">main</span>
+                        <span className="text-muted-foreground ml-2">({t("cron.defaultAgent")})</span>
+                      </SelectItem>
+                      {workspaceAgents.map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          <span className="font-medium">{agent.name}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -670,155 +796,157 @@ export function WorkspaceCronPage() {
               </div>
             )}
 
-            {/* Agent Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="job-agent">{t("cron.agent")}</Label>
-              <Select
-                value={formData.agent}
-                onValueChange={(val) => setFormData({ ...formData, agent: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("cron.selectAgent")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="main">
-                    <span className="font-medium">main</span>
-                    <span className="text-muted-foreground ml-2">({t("cron.defaultAgent")})</span>
-                  </SelectItem>
-                  {workspaceAgents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      <span className="font-medium">{agent.name}</span>
-                      {agent.description && (
-                        <span className="text-muted-foreground ml-2 text-xs truncate max-w-[200px]">
-                          {agent.description}
-                        </span>
-                      )}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                {t("cron.agentHint")}
-              </p>
-            </div>
-
-            {/* Notification Settings */}
-            <div className="space-y-3">
-              <Label>{t("cron.notifications")}</Label>
-
-              {/* In-app notification */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="notify-inapp"
-                  checked={formData.notifyInApp}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, notifyInApp: checked === true })
-                  }
-                />
-                <label htmlFor="notify-inapp" className="text-sm cursor-pointer">
-                  {t("cron.notifyInApp")}
-                </label>
-              </div>
-
-              {/* System notification */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="notify-system"
-                  checked={formData.notifySystem}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, notifySystem: checked === true })
-                  }
-                />
-                <label htmlFor="notify-system" className="text-sm cursor-pointer">
-                  {t("cron.notifySystem")}
-                </label>
-              </div>
-
-              {/* Channel notifications */}
-              {enabledChannels.length > 0 && (
+            {/* Step 3: Script & Notifications */}
+            {wizardStep === 3 && (
+              <div className="space-y-5">
+                {/* Script (optional) */}
                 <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{t("cron.notifyChannels")}</p>
-                  <div className="space-y-2 pl-2">
-                    {enabledChannels.map((channel) => (
-                      <div key={channel.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`notify-channel-${channel.id}`}
-                          checked={formData.notifyChannelIds.includes(channel.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setFormData({
-                                ...formData,
-                                notifyChannelIds: [...formData.notifyChannelIds, channel.id],
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                notifyChannelIds: formData.notifyChannelIds.filter(
-                                  (id) => id !== channel.id
-                                ),
-                              });
-                            }
-                          }}
-                        />
-                        <label
-                          htmlFor={`notify-channel-${channel.id}`}
-                          className="text-sm cursor-pointer flex items-center gap-2"
-                        >
-                          <span>{channel.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            ({getChannelTypeName(channel.type)})
-                          </span>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="job-script" className="text-sm font-medium flex items-center gap-2">
+                    <Terminal className="h-4 w-4" />
+                    {t("cron.script")}
+                    <Badge variant="outline" className="text-xs font-normal">{t("common.optional")}</Badge>
+                  </Label>
+                  <Textarea
+                    id="job-script"
+                    value={formData.script}
+                    onChange={(e) => setFormData({ ...formData, script: e.target.value })}
+                    placeholder={t("cron.scriptPlaceholder")}
+                    className="min-h-[80px] font-mono text-sm resize-none"
+                  />
                 </div>
-              )}
 
-              {enabledChannels.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {t("cron.noChannelsConfigured")}
-                </p>
-              )}
-            </div>
+                {/* Notification Settings */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">{t("cron.notifications")}</Label>
 
-            {/* Enabled */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="job-enabled">{t("cron.enabled")}</Label>
-              <Switch
-                id="job-enabled"
-                checked={formData.enabled}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, enabled: checked })
-                }
-              />
-            </div>
+                  {/* In-app notification */}
+                  <label
+                    htmlFor="notify-inapp"
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      formData.notifyInApp ? "border-primary/50 bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <Checkbox
+                      id="notify-inapp"
+                      checked={formData.notifyInApp}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, notifyInApp: checked === true })
+                      }
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{t("cron.notifyInApp")}</p>
+                      <p className="text-xs text-muted-foreground">{t("cron.notifyInAppDesc")}</p>
+                    </div>
+                  </label>
+
+                  {/* System notification */}
+                  <label
+                    htmlFor="notify-system"
+                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      formData.notifySystem ? "border-primary/50 bg-primary/5" : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <Checkbox
+                      id="notify-system"
+                      checked={formData.notifySystem}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, notifySystem: checked === true })
+                      }
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{t("cron.notifySystem")}</p>
+                      <p className="text-xs text-muted-foreground">{t("cron.notifySystemDesc")}</p>
+                    </div>
+                  </label>
+
+                  {/* Channel notifications */}
+                  {enabledChannels.length > 0 && enabledChannels.map((channel) => (
+                    <label
+                      key={channel.id}
+                      htmlFor={`notify-channel-${channel.id}`}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                        formData.notifyChannelIds.includes(channel.id) ? "border-primary/50 bg-primary/5" : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <Checkbox
+                        id={`notify-channel-${channel.id}`}
+                        checked={formData.notifyChannelIds.includes(channel.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setFormData({
+                              ...formData,
+                              notifyChannelIds: [...formData.notifyChannelIds, channel.id],
+                            });
+                          } else {
+                            setFormData({
+                              ...formData,
+                              notifyChannelIds: formData.notifyChannelIds.filter(
+                                (id) => id !== channel.id
+                              ),
+                            });
+                          }
+                        }}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{channel.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getChannelTypeName(channel.type)}
+                        </p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-row justify-between sm:justify-between gap-2">
             <Button
-              variant="outline"
-              onClick={() => {
-                setCreateDialogOpen(false);
-                setEditingJob(null);
-              }}
+              variant="ghost"
+              onClick={() => wizardStep > 1 ? setWizardStep(wizardStep - 1) : null}
+              disabled={wizardStep === 1}
+              className={wizardStep === 1 ? "invisible" : ""}
             >
-              {t("common.cancel")}
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              {t("common.back")}
             </Button>
-            <Button
-              onClick={handleCreateOrUpdate}
-              disabled={
-                !formData.name.trim() ||
-                !formData.message.trim() ||
-                creating ||
-                updating
-              }
-            >
-              {(creating || updating) && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCreateDialogOpen(false);
+                  setEditingJob(null);
+                }}
+              >
+                {t("common.cancel")}
+              </Button>
+              {wizardStep < totalSteps ? (
+                <Button
+                  onClick={() => setWizardStep(wizardStep + 1)}
+                  disabled={
+                    (wizardStep === 1 && (!formData.name.trim() || !formData.message.trim()))
+                  }
+                >
+                  {t("common.next")}
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleCreateOrUpdate}
+                  disabled={
+                    !formData.name.trim() ||
+                    !formData.message.trim() ||
+                    creating ||
+                    updating
+                  }
+                >
+                  {(creating || updating) && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  {editingJob ? t("common.update") : t("common.create")}
+                </Button>
               )}
-              {editingJob ? t("common.update") : t("common.create")}
-            </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

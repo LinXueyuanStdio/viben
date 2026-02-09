@@ -1,0 +1,28 @@
+# Channel Test Configuration
+# This file contains real credentials for testing
+
+telegram:
+  token: "7951401289:AAF_QdOJpGlj0ZZ0M1rL9Y4h6GD_f9ThBtw"
+  chat_id: "504787769"
+  # proxy: "http://127.0.0.1:7890"
+
+# Other channels - not configured yet
+# discord:
+#   token: ""
+#   channel_id: ""
+
+# feishu:
+#   app_id: ""
+#   app_secret: ""
+#   chat_id: ""
+
+# whatsapp:
+#   bridge_url: ""
+#   phone: ""
+
+# slack:
+#   token: ""
+#   channel_id: ""
+
+# webhook:
+#   url: ""

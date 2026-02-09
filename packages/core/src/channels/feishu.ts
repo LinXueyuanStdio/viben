@@ -41,7 +41,7 @@ async function getTenantAccessToken(
       }
     );
 
-    const data: TenantAccessTokenResponse = await response.json();
+    const data = await response.json() as TenantAccessTokenResponse;
 
     if (data.code !== 0 || !data.tenant_access_token) {
       return { error: data.msg || "Failed to get access token" };
@@ -118,7 +118,7 @@ export async function sendFeishuMessage(
       }
     );
 
-    const data = await response.json();
+    const data = await response.json() as { code: number; msg?: string; data?: { message_id?: string } };
 
     if (data.code !== 0) {
       return {

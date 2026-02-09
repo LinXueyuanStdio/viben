@@ -1,0 +1,350 @@
+//! Channel management endpoints
+//!
+//! Provides HTTP API for sending messages and testing channels.
+
+use axum::{
+    Json, Router,
+    routing::post,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::channels::{
+    ChannelType, TelegramConfig, DiscordConfig, FeishuConfig, WhatsAppConfig,
+    SlackConfig, WebhookConfig, SendMessageOptions, ParseMode,
+    send_telegram_message, send_discord_message, send_feishu_message,
+    send_whatsapp_message, send_slack_message, send_webhook_message,
+    test_telegram_channel, test_discord_channel, test_feishu_channel,
+    test_whatsapp_channel, test_slack_channel, test_webhook_channel,
+};
+use crate::gateway::{AppState, GatewayError};
+
+// ============================================================================
+// Request/Response Types
+// ============================================================================
+
+/// Send message request
+#[derive(Debug, Deserialize)]
+pub struct SendMessageRequest {
+    /// Channel type
+    pub channel_type: ChannelType,
+    /// Channel configuration (varies by type)
+    pub config: ChannelConfigRequest,
+    /// Target chat/channel ID
+    pub chat_id: String,
+    /// Message content
+    pub message: String,
+    /// Parse mode (optional)
+    pub parse_mode: Option<String>,
+}
+
+/// Channel configuration for request
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum ChannelConfigRequest {
+    Telegram {
+        token: String,
+        #[serde(default)]
+        proxy: Option<String>,
+    },
+    Discord {
+        token: String,
+    },
+    Feishu {
+        app_id: String,
+        app_secret: String,
+    },
+    WhatsApp {
+        bridge_url: String,
+    },
+    Slack {
+        token: String,
+    },
+    Webhook {
+        url: String,
+        #[serde(default = "default_method")]
+        method: String,
+        #[serde(default)]
+        headers: std::collections::HashMap<String, String>,
+    },
+}
+
+fn default_method() -> String {
+    "POST".to_string()
+}
+
+/// Send message response
+#[derive(Debug, Serialize)]
+pub struct SendMessageResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Test channel request
+#[derive(Debug, Deserialize)]
+pub struct TestChannelRequest {
+    /// Channel type
+    pub channel_type: ChannelType,
+    /// Channel configuration
+    pub config: ChannelConfigRequest,
+}
+
+/// Test channel response
+#[derive(Debug, Serialize)]
+pub struct TestChannelResponse {
+    pub success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+/// Send test message request
+#[derive(Debug, Deserialize)]
+pub struct SendTestMessageRequest {
+    /// Channel type
+    pub channel_type: ChannelType,
+    /// Channel configuration
+    pub config: ChannelConfigRequest,
+    /// Target chat/channel ID
+    pub chat_id: String,
+}
+
+// ============================================================================
+// Handlers
+// ============================================================================
+
+/// Send a message through a channel
+pub async fn send_message(
+    Json(req): Json<SendMessageRequest>,
+) -> Result<Json<SendMessageResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Sending message: channel_type={:?}, chat_id={}",
+        req.channel_type, req.chat_id
+    );
+
+    let parse_mode = req.parse_mode.as_ref().and_then(|pm| match pm.to_lowercase().as_str() {
+        "markdown" => Some(ParseMode::Markdown),
+        "html" => Some(ParseMode::Html),
+        "plain" => Some(ParseMode::Plain),
+        _ => None,
+    });
+
+    let options = SendMessageOptions {
+        chat_id: req.chat_id,
+        message: req.message,
+        parse_mode,
+    };
+
+    let result = match req.config {
+        ChannelConfigRequest::Telegram { token, proxy } => {
+            let config = TelegramConfig {
+                token: Some(token),
+                proxy,
+            };
+            send_telegram_message(&config, &options).await
+        }
+        ChannelConfigRequest::Discord { token } => {
+            let config = DiscordConfig {
+                token: Some(token),
+            };
+            send_discord_message(&config, &options).await
+        }
+        ChannelConfigRequest::Feishu { app_id, app_secret } => {
+            let config = FeishuConfig {
+                app_id: Some(app_id),
+                app_secret: Some(app_secret),
+            };
+            send_feishu_message(&config, &options).await
+        }
+        ChannelConfigRequest::WhatsApp { bridge_url } => {
+            let config = WhatsAppConfig {
+                bridge_url: Some(bridge_url),
+            };
+            send_whatsapp_message(&config, &options).await
+        }
+        ChannelConfigRequest::Slack { token } => {
+            let config = SlackConfig {
+                token: Some(token),
+            };
+            send_slack_message(&config, &options).await
+        }
+        ChannelConfigRequest::Webhook { url, method, headers } => {
+            let config = WebhookConfig {
+                url: Some(url),
+                method,
+                headers,
+            };
+            send_webhook_message(&config, &options).await
+        }
+    };
+
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Send message result: success={}, message_id={:?}, error={:?}",
+        result.success, result.message_id, result.error
+    );
+
+    Ok(Json(SendMessageResponse {
+        success: result.success,
+        message_id: result.message_id,
+        error: result.error,
+    }))
+}
+
+/// Test a channel configuration
+pub async fn test_channel(
+    Json(req): Json<TestChannelRequest>,
+) -> Result<Json<TestChannelResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Testing channel: type={:?}",
+        req.channel_type
+    );
+
+    let result = match req.config {
+        ChannelConfigRequest::Telegram { token, proxy } => {
+            let config = TelegramConfig {
+                token: Some(token),
+                proxy,
+            };
+            test_telegram_channel(&config).await
+        }
+        ChannelConfigRequest::Discord { token } => {
+            let config = DiscordConfig {
+                token: Some(token),
+            };
+            test_discord_channel(&config).await
+        }
+        ChannelConfigRequest::Feishu { app_id, app_secret } => {
+            let config = FeishuConfig {
+                app_id: Some(app_id),
+                app_secret: Some(app_secret),
+            };
+            test_feishu_channel(&config).await
+        }
+        ChannelConfigRequest::WhatsApp { bridge_url } => {
+            let config = WhatsAppConfig {
+                bridge_url: Some(bridge_url),
+            };
+            test_whatsapp_channel(&config).await
+        }
+        ChannelConfigRequest::Slack { token } => {
+            let config = SlackConfig {
+                token: Some(token),
+            };
+            test_slack_channel(&config).await
+        }
+        ChannelConfigRequest::Webhook { url, method, headers } => {
+            let config = WebhookConfig {
+                url: Some(url),
+                method,
+                headers,
+            };
+            test_webhook_channel(&config).await
+        }
+    };
+
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Test channel result: success={}, details={:?}, error={:?}",
+        result.success, result.details, result.error
+    );
+
+    Ok(Json(TestChannelResponse {
+        success: result.success,
+        details: result.details,
+        error: result.error,
+    }))
+}
+
+/// Send a test message to verify channel configuration
+pub async fn send_test_message(
+    Json(req): Json<SendTestMessageRequest>,
+) -> Result<Json<SendMessageResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Sending test message: type={:?}, chat_id={}",
+        req.channel_type, req.chat_id
+    );
+
+    let test_message = format!(
+        "🔔 Viben Test Message\n\n\
+        This is a test message from Viben.\n\
+        Time: {}\n\n\
+        If you received this message, your channel is configured correctly!",
+        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
+    );
+
+    let options = SendMessageOptions {
+        chat_id: req.chat_id,
+        message: test_message,
+        parse_mode: None,
+    };
+
+    let result = match req.config {
+        ChannelConfigRequest::Telegram { token, proxy } => {
+            let config = TelegramConfig {
+                token: Some(token),
+                proxy,
+            };
+            send_telegram_message(&config, &options).await
+        }
+        ChannelConfigRequest::Discord { token } => {
+            let config = DiscordConfig {
+                token: Some(token),
+            };
+            send_discord_message(&config, &options).await
+        }
+        ChannelConfigRequest::Feishu { app_id, app_secret } => {
+            let config = FeishuConfig {
+                app_id: Some(app_id),
+                app_secret: Some(app_secret),
+            };
+            send_feishu_message(&config, &options).await
+        }
+        ChannelConfigRequest::WhatsApp { bridge_url } => {
+            let config = WhatsAppConfig {
+                bridge_url: Some(bridge_url),
+            };
+            send_whatsapp_message(&config, &options).await
+        }
+        ChannelConfigRequest::Slack { token } => {
+            let config = SlackConfig {
+                token: Some(token),
+            };
+            send_slack_message(&config, &options).await
+        }
+        ChannelConfigRequest::Webhook { url, method, headers } => {
+            let config = WebhookConfig {
+                url: Some(url),
+                method,
+                headers,
+            };
+            send_webhook_message(&config, &options).await
+        }
+    };
+
+    tracing::info!(
+        target: "viben::gateway::channels",
+        "Test message result: success={}, error={:?}",
+        result.success, result.error
+    );
+
+    Ok(Json(SendMessageResponse {
+        success: result.success,
+        message_id: result.message_id,
+        error: result.error,
+    }))
+}
+
+/// Create the channels router
+pub fn router() -> Router<AppState> {
+    Router::new()
+        .route("/api/channels/send", post(send_message))
+        .route("/api/channels/test", post(test_channel))
+        .route("/api/channels/send-test", post(send_test_message))
+}

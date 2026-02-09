@@ -923,8 +923,27 @@ export function WorkspaceChatPage() {
     try {
       const client = getGatewayClient();
       const agent = agents.find((a) => a.id === selectedAgentId);
+
+      // Create agent config snapshot (preserve agent state at session creation)
+      const agentConfigSnapshot = agent ? {
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        model: agent.model,
+        provider: agent.provider,
+        system_prompt: agent.system_prompt,
+        temperature: agent.temperature,
+        max_tokens: agent.max_tokens,
+        plan_mode: agent.plan_mode,
+        approvals: agent.approvals,
+      } : undefined;
+
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: t("chat.newConversation") + (agent ? ` - ${agent.name}` : ""),
+        // Save agent config snapshot for reliable reference
+        agent_config: agentConfigSnapshot,
+        // Save workspace path for global agents running in this workspace
+        workspace_path: workspace?.path,
       });
 
       const newConversation = fileSessionToConversation(newSession);
@@ -1027,8 +1046,26 @@ export function WorkspaceChatPage() {
 
     try {
       const client = getGatewayClient();
+      const agent = agents.find((a) => a.id === selectedAgentId);
+
+      // Create agent config snapshot
+      const agentConfigSnapshot = agent ? {
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        model: agent.model,
+        provider: agent.provider,
+        system_prompt: agent.system_prompt,
+        temperature: agent.temperature,
+        max_tokens: agent.max_tokens,
+        plan_mode: agent.plan_mode,
+        approvals: agent.approvals,
+      } : undefined;
+
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: `${original.title} (副本)`,
+        agent_config: agentConfigSnapshot,
+        workspace_path: workspace?.path,
       });
       const duplicate = fileSessionToConversation(newSession);
       const updated = [duplicate, ...conversations];

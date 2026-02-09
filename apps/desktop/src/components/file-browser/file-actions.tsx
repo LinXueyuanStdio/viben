@@ -18,6 +18,7 @@ import {
   ArrowDown,
   Search,
   X,
+  Group,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,7 +40,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import type { ViewMode, SortField, SortDirection } from "@/hooks/use-file-browser";
+import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
 
 /* -----------------------------------------------------------------------------
  * View Mode Toggle
@@ -163,6 +164,69 @@ export function SortDropdown({
           onValueChange={(value) => onSortDirectionChange(value as SortDirection)}
         >
           {directionOptions.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * Group Dropdown
+ * -------------------------------------------------------------------------- */
+
+export interface GroupDropdownProps {
+  groupField: GroupField;
+  onGroupFieldChange: (field: GroupField) => void;
+  className?: string;
+}
+
+export function GroupDropdown({
+  groupField,
+  onGroupFieldChange,
+  className,
+}: GroupDropdownProps) {
+  const { t } = useTranslation();
+
+  const groupOptions: { value: GroupField; label: string }[] = [
+    { value: "none", label: t("fileBrowser.groupNone") },
+    { value: "type", label: t("fileBrowser.groupByType") },
+    { value: "date", label: t("fileBrowser.groupByDate") },
+    { value: "size", label: t("fileBrowser.groupBySize") },
+  ];
+
+  // Get current group label
+  const currentGroupLabel = groupOptions.find(opt => opt.value === groupField)?.label || groupField;
+
+  return (
+    <DropdownMenu>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn("h-8 px-2 gap-1", className)}
+              >
+                <Group className="h-4 w-4" />
+                <span className="text-xs hidden sm:inline">{currentGroupLabel}</span>
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{t("fileBrowser.group")}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>{t("fileBrowser.groupBy")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={groupField}
+          onValueChange={(value) => onGroupFieldChange(value as GroupField)}
+        >
+          {groupOptions.map((option) => (
             <DropdownMenuRadioItem key={option.value} value={option.value}>
               {option.label}
             </DropdownMenuRadioItem>
@@ -307,6 +371,8 @@ export interface FileBrowserToolbarProps {
   sortDirection?: SortDirection;
   onSortFieldChange?: (field: SortField) => void;
   onSortDirectionChange?: (direction: SortDirection) => void;
+  groupField?: GroupField;
+  onGroupFieldChange?: (field: GroupField) => void;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
   onNewFile?: () => void;
@@ -321,6 +387,8 @@ export function FileBrowserToolbar({
   sortDirection,
   onSortFieldChange,
   onSortDirectionChange,
+  groupField,
+  onGroupFieldChange,
   searchQuery,
   onSearchChange,
   onNewFile,
@@ -345,6 +413,15 @@ export function FileBrowserToolbar({
             sortDirection={sortDirection}
             onSortFieldChange={onSortFieldChange}
             onSortDirectionChange={onSortDirectionChange}
+          />
+          <Separator orientation="vertical" className="h-6" />
+        </>
+      )}
+      {groupField !== undefined && onGroupFieldChange && (
+        <>
+          <GroupDropdown
+            groupField={groupField}
+            onGroupFieldChange={onGroupFieldChange}
           />
           <Separator orientation="vertical" className="h-6" />
         </>

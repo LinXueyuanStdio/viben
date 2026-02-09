@@ -36,6 +36,33 @@ impl std::fmt::Display for JobStatus {
     }
 }
 
+/// Cron job type
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum CronJobType {
+    /// Send message to an agent
+    #[default]
+    Agent,
+    /// Execute a bash script
+    Script,
+}
+
+/// Notification settings for cron jobs
+#[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
+#[ts(export)]
+pub struct CronNotificationSettings {
+    /// Enable in-app notifications
+    #[serde(default)]
+    pub in_app: bool,
+    /// Enable system notifications (OS-level)
+    #[serde(default)]
+    pub system: bool,
+    /// Channel instance IDs to notify (e.g., telegram, discord)
+    #[serde(default)]
+    pub channel_ids: Vec<String>,
+}
+
 /// A scheduled cron job
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -46,8 +73,15 @@ pub struct CronJob {
     pub name: String,
     /// Whether the job is enabled
     pub enabled: bool,
-    /// Message/command to execute
-    pub message: String,
+    /// Job type: agent or script
+    #[serde(default)]
+    pub job_type: CronJobType,
+    /// Message to send to agent (for agent type, optional - defaults to name if empty)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+    /// Bash script to execute (for script type)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub script: Option<String>,
 
     /// Cron expression (e.g., "0 9 * * *") - mutually exclusive with `every`
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -56,12 +90,15 @@ pub struct CronJob {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub every: Option<u64>,
 
-    /// Target channel ID
+    /// Target channel ID (legacy, prefer notifications.channel_ids)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub channel: Option<String>,
-    /// Agent ID to use
+    /// Agent ID to use (for agent type)
     #[serde(default = "default_agent")]
     pub agent: String,
+    /// Notification settings
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notifications: Option<CronNotificationSettings>,
 
     /// Last execution timestamp (milliseconds)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,6 +109,9 @@ pub struct CronJob {
     /// Last error message if failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_error: Option<String>,
+    /// Last script output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_output: Option<String>,
     /// Next scheduled execution timestamp (milliseconds)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next_run: Option<i64>,
@@ -82,47 +122,67 @@ pub struct CronJob {
     pub updated_at: i64,
 }
 
+impl CronJob {
+    /// Get the effective message to send (message > script > name)
+    pub fn effective_message(&self) -> String {
+        self.message.clone()
+            .filter(|m| !m.is_empty())
+            .or_else(|| self.script.clone().filter(|s| !s.is_empty()))
+            .unwrap_or_else(|| self.name.clone())
+    }
+}
+
 fn default_agent() -> String {
     "main".to_string()
 }
 
 impl CronJob {
-    /// Create a new cron job with a cron expression
+    /// Create a new agent-type cron job with a cron expression
     pub fn new_cron(id: impl Into<String>, name: impl Into<String>, message: impl Into<String>, cron_expr: impl Into<String>) -> Self {
         let now = Utc::now().timestamp_millis();
+        let msg: String = message.into();
         Self {
             id: id.into(),
             name: name.into(),
             enabled: true,
-            message: message.into(),
+            job_type: CronJobType::Agent,
+            message: if msg.is_empty() { None } else { Some(msg) },
+            script: None,
             cron: Some(cron_expr.into()),
             every: None,
             channel: None,
             agent: default_agent(),
+            notifications: None,
             last_run: None,
             last_status: None,
             last_error: None,
+            last_output: None,
             next_run: None,
             created_at: now,
             updated_at: now,
         }
     }
 
-    /// Create a new interval-based job
+    /// Create a new agent-type interval-based job
     pub fn new_interval(id: impl Into<String>, name: impl Into<String>, message: impl Into<String>, every_seconds: u64) -> Self {
         let now = Utc::now().timestamp_millis();
+        let msg: String = message.into();
         Self {
             id: id.into(),
             name: name.into(),
             enabled: true,
-            message: message.into(),
+            job_type: CronJobType::Agent,
+            message: if msg.is_empty() { None } else { Some(msg) },
+            script: None,
             cron: None,
             every: Some(every_seconds),
             channel: None,
             agent: default_agent(),
+            notifications: None,
             last_run: None,
             last_status: None,
             last_error: None,
+            last_output: None,
             next_run: None,
             created_at: now,
             updated_at: now,
@@ -155,8 +215,11 @@ pub struct CreateCronJob {
     pub id: Option<String>,
     /// Human-readable name
     pub name: String,
-    /// Message/command to execute
+    /// Message/command to execute (sent to agent)
     pub message: String,
+    /// Bash script to run (runs before agent message)
+    #[serde(default)]
+    pub script: Option<String>,
     /// Cron expression
     #[serde(default)]
     pub cron: Option<String>,
@@ -172,6 +235,9 @@ pub struct CreateCronJob {
     /// Whether enabled (default true)
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    /// Notification settings
+    #[serde(default)]
+    pub notifications: Option<CronNotificationSettings>,
 }
 
 fn default_enabled() -> bool {
@@ -183,11 +249,13 @@ fn default_enabled() -> bool {
 pub struct UpdateCronJob {
     pub name: Option<String>,
     pub message: Option<String>,
+    pub script: Option<String>,
     pub cron: Option<String>,
     pub every: Option<u64>,
     pub channel: Option<String>,
     pub agent: Option<String>,
     pub enabled: Option<bool>,
+    pub notifications: Option<CronNotificationSettings>,
 }
 
 /// Cron service errors
@@ -325,6 +393,26 @@ impl CronService {
             target: "viben::services::cron",
             "Saved {} jobs to config file",
             jobs.len()
+        );
+
+        Ok(())
+    }
+
+    /// Load jobs from config file without scheduling (for CLI operations)
+    pub async fn load(&self) -> Result<(), CronError> {
+        tracing::debug!(target: "viben::services::cron", "Loading CronService config...");
+
+        // Load jobs from config
+        let config = self.load_config().await?;
+        {
+            let mut jobs = self.jobs.write().await;
+            *jobs = config.jobs;
+        }
+
+        tracing::debug!(
+            target: "viben::services::cron",
+            "Loaded {} jobs from config",
+            self.jobs.read().await.len()
         );
 
         Ok(())
@@ -650,13 +738,16 @@ impl CronService {
             name: create.name,
             enabled: create.enabled,
             message: create.message,
+            script: create.script,
             cron: create.cron,
             every: create.every,
             channel: create.channel,
             agent: create.agent.unwrap_or_else(default_agent),
+            notifications: create.notifications,
             last_run: None,
             last_status: None,
             last_error: None,
+            last_output: None,
             next_run: None,
             created_at: now,
             updated_at: now,
@@ -714,6 +805,9 @@ impl CronService {
             if let Some(message) = update.message {
                 job.message = message;
             }
+            if let Some(script) = update.script {
+                job.script = Some(script);
+            }
             if let Some(cron) = update.cron {
                 job.cron = Some(cron);
                 job.every = None; // Clear interval if cron is set
@@ -730,6 +824,9 @@ impl CronService {
             }
             if let Some(enabled) = update.enabled {
                 job.enabled = enabled;
+            }
+            if let Some(notifications) = update.notifications {
+                job.notifications = Some(notifications);
             }
 
             job.updated_at = Utc::now().timestamp_millis();
@@ -812,11 +909,13 @@ impl CronService {
         self.update_job(id, UpdateCronJob {
             name: None,
             message: None,
+            script: None,
             cron: None,
             every: None,
             channel: None,
             agent: None,
             enabled: Some(true),
+            notifications: None,
         }).await
     }
 
@@ -825,11 +924,13 @@ impl CronService {
         self.update_job(id, UpdateCronJob {
             name: None,
             message: None,
+            script: None,
             cron: None,
             every: None,
             channel: None,
             agent: None,
             enabled: Some(false),
+            notifications: None,
         }).await
     }
 
@@ -872,6 +973,8 @@ mod tests {
             channel: None,
             agent: None,
             enabled: true,
+            script: None,
+            notifications: None,
         }).await.unwrap();
 
         assert_eq!(job.id, "test-job");
@@ -900,6 +1003,8 @@ mod tests {
             channel: None,
             agent: None,
             enabled: true,
+            script: None,
+            notifications: None,
         }).await.unwrap();
 
         // Update it
@@ -911,6 +1016,8 @@ mod tests {
             channel: None,
             agent: None,
             enabled: None,
+            script: None,
+            notifications: None,
         }).await.unwrap();
 
         assert_eq!(updated.name, "Updated Job");
@@ -933,6 +1040,8 @@ mod tests {
             channel: None,
             agent: None,
             enabled: true,
+            script: None,
+            notifications: None,
         }).await.unwrap();
 
         // Delete it
@@ -960,6 +1069,8 @@ mod tests {
             channel: None,
             agent: None,
             enabled: true,
+            script: None,
+            notifications: None,
         }).await;
 
         assert!(matches!(result, Err(CronError::InvalidSchedule)));
@@ -972,5 +1083,513 @@ mod tests {
         let parsed: CronJob = serde_yaml::from_str(&yaml).unwrap();
         assert_eq!(parsed.id, "test");
         assert_eq!(parsed.cron, Some("0 9 * * *".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_load_without_scheduling() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path.clone(), events);
+
+        // Create a job
+        service.create_job(CreateCronJob {
+            id: Some("load-test".to_string()),
+            name: "Load Test".to_string(),
+            message: "Test message".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Create new service instance and load
+        let events2 = Arc::new(EventService::new());
+        let service2 = CronService::with_config_path(config_path, events2);
+        service2.load().await.unwrap();
+
+        // Should have the job loaded
+        let jobs = service2.list_jobs().await;
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].id, "load-test");
+
+        // Service should not be running (no scheduling)
+        assert!(!*service2.running.read().await);
+    }
+
+    #[tokio::test]
+    async fn test_enable_disable_job() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create an enabled job
+        let job = service.create_job(CreateCronJob {
+            id: Some("toggle-test".to_string()),
+            name: "Toggle Test".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+        assert!(job.enabled);
+
+        // Disable it
+        let disabled = service.disable_job("toggle-test").await.unwrap();
+        assert!(!disabled.enabled);
+
+        // Enable it again
+        let enabled = service.enable_job("toggle-test").await.unwrap();
+        assert!(enabled.enabled);
+    }
+
+    #[tokio::test]
+    async fn test_run_job_immediately() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create a job
+        service.create_job(CreateCronJob {
+            id: Some("run-test".to_string()),
+            name: "Run Test".to_string(),
+            message: "Execute me".to_string(),
+            cron: None,
+            every: Some(3600),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Run it immediately
+        service.run_job("run-test").await.unwrap();
+
+        // Check last_run was updated
+        let job = service.get_job("run-test").await.unwrap();
+        assert!(job.last_run.is_some());
+        assert_eq!(job.last_status, Some(JobStatus::Success));
+    }
+
+    #[tokio::test]
+    async fn test_job_not_found_errors() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Try to get non-existent job
+        assert!(service.get_job("nonexistent").await.is_none());
+
+        // Try to update non-existent job
+        let result = service.update_job("nonexistent", UpdateCronJob {
+            name: Some("New Name".to_string()),
+            message: None,
+            cron: None,
+            every: None,
+            channel: None,
+            agent: None,
+            enabled: None,
+            script: None,
+            notifications: None,
+        }).await;
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+
+        // Try to delete non-existent job
+        let result = service.delete_job("nonexistent").await;
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+
+        // Try to run non-existent job
+        let result = service.run_job("nonexistent").await;
+        assert!(matches!(result, Err(CronError::NotFound(_))));
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_job_id() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create first job
+        service.create_job(CreateCronJob {
+            id: Some("duplicate-test".to_string()),
+            name: "First Job".to_string(),
+            message: "First".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Try to create second job with same ID
+        let result = service.create_job(CreateCronJob {
+            id: Some("duplicate-test".to_string()),
+            name: "Second Job".to_string(),
+            message: "Second".to_string(),
+            cron: None,
+            every: Some(120),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await;
+
+        assert!(matches!(result, Err(CronError::AlreadyExists(_))));
+    }
+
+    #[tokio::test]
+    async fn test_invalid_cron_expression() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Try to create with invalid cron expression
+        let result = service.create_job(CreateCronJob {
+            id: Some("invalid-cron".to_string()),
+            name: "Invalid Cron".to_string(),
+            message: "Test".to_string(),
+            cron: Some("invalid cron expression".to_string()),
+            every: None,
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await;
+
+        assert!(matches!(result, Err(CronError::InvalidCron(_))));
+    }
+
+    #[tokio::test]
+    async fn test_no_schedule_error() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Try to create without any schedule
+        let result = service.create_job(CreateCronJob {
+            id: Some("no-schedule".to_string()),
+            name: "No Schedule".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: None,
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await;
+
+        assert!(matches!(result, Err(CronError::InvalidSchedule)));
+    }
+
+    #[tokio::test]
+    async fn test_cron_expression_scheduling() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create a job with cron expression (every minute at second 0)
+        let job = service.create_job(CreateCronJob {
+            id: Some("cron-expr-test".to_string()),
+            name: "Cron Expr Test".to_string(),
+            message: "Test".to_string(),
+            cron: Some("0 * * * * *".to_string()), // Every minute
+            every: None,
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert!(job.cron.is_some());
+        assert!(job.every.is_none());
+        assert!(job.next_run.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_interval_scheduling() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create a job with interval
+        let job = service.create_job(CreateCronJob {
+            id: Some("interval-test".to_string()),
+            name: "Interval Test".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(300), // Every 5 minutes
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert!(job.cron.is_none());
+        assert_eq!(job.every, Some(300));
+        assert!(job.next_run.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_persistence_across_restarts() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+
+        // Create service and add jobs
+        {
+            let events = Arc::new(EventService::new());
+            let service = CronService::with_config_path(config_path.clone(), events);
+
+            service.create_job(CreateCronJob {
+                id: Some("persist-1".to_string()),
+                name: "Persist 1".to_string(),
+                message: "First".to_string(),
+                script: None,
+                cron: None,
+                every: Some(60),
+                channel: None,
+                agent: None,
+                enabled: true,
+                notifications: None,
+            }).await.unwrap();
+
+            service.create_job(CreateCronJob {
+                id: Some("persist-2".to_string()),
+                name: "Persist 2".to_string(),
+                message: "Second".to_string(),
+                script: None,
+                cron: Some("0 0 * * * *".to_string()),
+                every: None,
+                channel: None,
+                agent: None,
+                enabled: false,
+                notifications: None,
+            }).await.unwrap();
+        }
+
+        // Create new service and load
+        {
+            let events = Arc::new(EventService::new());
+            let service = CronService::with_config_path(config_path, events);
+            service.load().await.unwrap();
+
+            let jobs = service.list_jobs().await;
+            assert_eq!(jobs.len(), 2);
+
+            let job1 = service.get_job("persist-1").await.unwrap();
+            assert_eq!(job1.name, "Persist 1");
+            assert_eq!(job1.every, Some(60));
+            assert!(job1.enabled);
+
+            let job2 = service.get_job("persist-2").await.unwrap();
+            assert_eq!(job2.name, "Persist 2");
+            assert_eq!(job2.cron, Some("0 0 * * * *".to_string()));
+            assert!(!job2.enabled);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_job_schedule() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create job with interval
+        service.create_job(CreateCronJob {
+            id: Some("update-schedule".to_string()),
+            name: "Update Schedule".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Update to cron expression (should clear interval)
+        let updated = service.update_job("update-schedule", UpdateCronJob {
+            name: None,
+            message: None,
+            cron: Some("0 0 * * * *".to_string()),
+            every: None,
+            channel: None,
+            agent: None,
+            enabled: None,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert_eq!(updated.cron, Some("0 0 * * * *".to_string()));
+        assert!(updated.every.is_none());
+
+        // Update back to interval (should clear cron)
+        let updated2 = service.update_job("update-schedule", UpdateCronJob {
+            name: None,
+            message: None,
+            cron: None,
+            every: Some(120),
+            channel: None,
+            agent: None,
+            enabled: None,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert!(updated2.cron.is_none());
+        assert_eq!(updated2.every, Some(120));
+    }
+
+    #[tokio::test]
+    async fn test_auto_generated_id() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create job without explicit ID
+        let job = service.create_job(CreateCronJob {
+            id: None,
+            name: "My Test Job".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // ID should be auto-generated from name
+        assert_eq!(job.id, "my-test-job");
+    }
+
+    #[tokio::test]
+    async fn test_custom_agent() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create job with custom agent
+        let job = service.create_job(CreateCronJob {
+            id: Some("custom-agent".to_string()),
+            name: "Custom Agent".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: Some("my-custom-agent".to_string()),
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert_eq!(job.agent, "my-custom-agent");
+
+        // Create job without agent (should default to "main")
+        let job2 = service.create_job(CreateCronJob {
+            id: Some("default-agent".to_string()),
+            name: "Default Agent".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: true,
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        assert_eq!(job2.agent, "main");
+    }
+
+    #[tokio::test]
+    async fn test_start_and_shutdown() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create a disabled job (won't be scheduled)
+        service.create_job(CreateCronJob {
+            id: Some("start-test".to_string()),
+            name: "Start Test".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(60),
+            channel: None,
+            agent: None,
+            enabled: false, // Disabled so it won't spawn scheduler tasks
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Start the service
+        service.start().await.unwrap();
+        assert!(*service.running.read().await);
+
+        // Shutdown
+        service.shutdown().await;
+        assert!(!*service.running.read().await);
+    }
+
+    #[tokio::test]
+    async fn test_disabled_job_not_scheduled() {
+        let temp = tempdir().unwrap();
+        let config_path = temp.path().join("cron.yaml");
+        let events = Arc::new(EventService::new());
+        let service = CronService::with_config_path(config_path, events);
+
+        // Create a disabled job
+        service.create_job(CreateCronJob {
+            id: Some("disabled-test".to_string()),
+            name: "Disabled Test".to_string(),
+            message: "Test".to_string(),
+            cron: None,
+            every: Some(1), // Very short interval
+            channel: None,
+            agent: None,
+            enabled: false, // Disabled!
+            script: None,
+            notifications: None,
+        }).await.unwrap();
+
+        // Start the service
+        service.start().await.unwrap();
+
+        // Wait a bit (longer than the interval)
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+        // Job should not have run (disabled)
+        let job = service.get_job("disabled-test").await.unwrap();
+        assert!(job.last_run.is_none());
+
+        service.shutdown().await;
     }
 }

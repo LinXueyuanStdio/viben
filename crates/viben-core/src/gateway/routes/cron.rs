@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::gateway::{AppState, GatewayError};
-use crate::services::{CreateCronJob, CronJob, UpdateCronJob};
+use crate::services::{CreateCronJob, CronJob, CronNotificationSettings, UpdateCronJob};
 
 /// Cron job response
 #[derive(Serialize)]
@@ -110,6 +110,8 @@ pub struct CreateCronJobRequest {
     pub name: String,
     pub message: String,
     #[serde(default)]
+    pub script: Option<String>,
+    #[serde(default)]
     pub cron: Option<String>,
     #[serde(default)]
     pub every: Option<u64>,
@@ -119,6 +121,8 @@ pub struct CreateCronJobRequest {
     pub agent: Option<String>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    #[serde(default)]
+    pub notifications: Option<CronNotificationSettings>,
 }
 
 fn default_enabled() -> bool {
@@ -140,11 +144,13 @@ pub async fn create_cron_job(
         id: req.id,
         name: req.name.clone(),
         message: req.message,
+        script: req.script,
         cron: req.cron,
         every: req.every,
         channel: req.channel,
         agent: req.agent,
         enabled: req.enabled,
+        notifications: req.notifications,
     };
 
     let job = state.cron.create_job(create_data).await?;
@@ -163,11 +169,13 @@ pub async fn create_cron_job(
 pub struct UpdateCronJobRequest {
     pub name: Option<String>,
     pub message: Option<String>,
+    pub script: Option<String>,
     pub cron: Option<String>,
     pub every: Option<u64>,
     pub channel: Option<String>,
     pub agent: Option<String>,
     pub enabled: Option<bool>,
+    pub notifications: Option<CronNotificationSettings>,
 }
 
 /// Update an existing cron job
@@ -185,11 +193,13 @@ pub async fn update_cron_job(
     let update_data = UpdateCronJob {
         name: req.name,
         message: req.message,
+        script: req.script,
         cron: req.cron,
         every: req.every,
         channel: req.channel,
         agent: req.agent,
         enabled: req.enabled,
+        notifications: req.notifications,
     };
 
     let job = state.cron.update_job(&job_id, update_data).await?;
