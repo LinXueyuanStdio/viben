@@ -126,6 +126,9 @@
     "deleteConfirm": "Delete channel \"{{name}}\"?",
     "noChannels": "No channels configured",
     "noChannelsHint": "Click the button above to add a channel",
+    "testConnection": "Test Connection",
+    "connectionSuccess": "Connection verified!",
+    "connectionFailed": "Connection failed",
     "sendTestMessage": "Send Test Message",
     "sendTestMessageDesc": "Send a test message to verify the channel configuration is correct.",
     "testSuccess": "Test message sent successfully!",
@@ -1986,10 +1989,13 @@
     "deleteConfirm": "Are you sure you want to delete",
     "deleteAllContents": "This will delete all contents inside.",
     "open": "Open",
+    "openWith": "Open With",
+    "openWithDefault": "Default Application",
     "quickLook": "Quick Look",
     "cut": "Cut",
     "filenamePlaceholder": "filename.txt",
     "foldernamePlaceholder": "folder name",
-    "newNamePlaceholder": "New name"
+    "newNamePlaceholder": "New name",
+    "unableToPreview": "Unable to preview this file"
   }
 }

@@ -13,6 +13,6 @@ in_app: boolean,
  */
 system: boolean, 
 /**
- * Channel instance IDs to notify (e.g., telegram, discord)
+ * Channel instance IDs to notify
  */
 channel_ids: Array<string>, };

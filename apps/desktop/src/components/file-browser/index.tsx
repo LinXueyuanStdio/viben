@@ -67,6 +67,8 @@ interface FileBrowserProps {
   onPathChange?: (path: string, segments: { name: string; path: string }[]) => void;
   /** Hide internal toolbar completely (when using external toolbar in header) */
   hideToolbar?: boolean;
+  /** Callback when a file is double-clicked for preview in external panel */
+  onFilePreview?: (file: FileEntry) => void;
 }
 
 /** Methods exposed via ref for external control */
@@ -1706,7 +1708,7 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
  * -------------------------------------------------------------------------- */
 
 export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function FileBrowser(
-  { workspacePath, initialPath, className, onPathChange, hideToolbar },
+  { workspacePath, initialPath, className, onPathChange, hideToolbar, onFilePreview },
   ref
 ) {
   const browser = useFileBrowser({ workspacePath, initialPath });
@@ -1835,16 +1837,51 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
       if (file.is_directory) {
         browser.navigateTo(file.path);
       } else {
-        browser.setPreviewFile(file);
+        // If external preview handler is provided, use it; otherwise use internal QuickLook
+        if (onFilePreview) {
+          onFilePreview(file);
+        } else {
+          browser.setPreviewFile(file);
+        }
       }
     },
-    [browser]
+    [browser, onFilePreview]
   );
 
   // Handle context menu
   const handleContextMenu = useCallback((file: FileEntry, e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ file, x: e.clientX, y: e.clientY });
+  }, []);
+
+  // Handle "Open With" - open file with system default or specific app
+  const handleOpenWith = useCallback(async (file: FileEntry, app?: string) => {
+    if (file.is_directory) return;
+
+    try {
+      if (app) {
+        // Open with specific app based on app ID
+        switch (app) {
+          case "vscode":
+            await open(file.path, "code");
+            break;
+          case "cursor":
+            await open(file.path, "cursor");
+            break;
+          case "preview":
+            // On macOS, Preview is the default for images/PDFs
+            await open(file.path);
+            break;
+          default:
+            await open(file.path);
+        }
+      } else {
+        // Open with system default
+        await open(file.path);
+      }
+    } catch (error) {
+      console.error("Failed to open file:", error);
+    }
   }, []);
 
   // Render content based on view mode
@@ -1984,6 +2021,7 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
         state={contextMenu}
         onClose={() => setContextMenu({ file: null, x: 0, y: 0 })}
         onOpen={handleOpen}
+        onOpenWith={handleOpenWith}
         onPreview={(file) => browser.setPreviewFile(file)}
         onCopy={(file) => browser.copyToClipboard([file])}
         onCut={(file) => browser.cutToClipboard([file])}

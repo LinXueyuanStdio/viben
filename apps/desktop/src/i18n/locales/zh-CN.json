@@ -128,6 +128,9 @@
     "deleteConfirm": "确定要删除渠道 \"{{name}}\" 吗？",
     "noChannels": "还没有配置任何渠道",
     "noChannelsHint": "点击上方按钮添加一个渠道",
+    "testConnection": "验证连接",
+    "connectionSuccess": "连接验证成功！",
+    "connectionFailed": "连接验证失败",
     "sendTestMessage": "发送测试消息",
     "sendTestMessageDesc": "发送一条测试消息以验证渠道配置是否正确。",
     "testSuccess": "测试消息发送成功！",
@@ -2007,10 +2010,13 @@
     "deleteConfirm": "确定要删除",
     "deleteAllContents": "这将删除其中的所有内容。",
     "open": "打开",
+    "openWith": "打开方式",
+    "openWithDefault": "默认应用程序",
     "quickLook": "快速查看",
     "cut": "剪切",
     "filenamePlaceholder": "文件名.txt",
     "foldernamePlaceholder": "文件夹名称",
-    "newNamePlaceholder": "新名称"
+    "newNamePlaceholder": "新名称",
+    "unableToPreview": "无法预览此文件"
   }
 }

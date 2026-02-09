@@ -47,6 +47,7 @@ import {
 import { useChannelInstances } from "@/hooks";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { getGatewayUrl } from "@/lib/gateway";
 import type {
   ChannelType,
   ChannelInstance,
@@ -144,180 +145,196 @@ function SecretInput({ value, onChange, placeholder, label, description }: Secre
 }
 
 // ============================================================================
-// Test Message Functions
+// Gateway API Functions (via backend)
 // ============================================================================
 
 /**
- * Send a test message to verify channel configuration
+ * Build channel config request body for gateway API
+ */
+function buildChannelConfig(instance: ChannelInstance): Record<string, unknown> {
+  switch (instance.type) {
+    case "telegram": {
+      const telegram = instance as TelegramInstance;
+      return {
+        type: "telegram",
+        token: telegram.token,
+        proxy: telegram.proxy || null,
+      };
+    }
+    case "discord": {
+      const discord = instance as DiscordInstance;
+      return {
+        type: "discord",
+        token: discord.token,
+      };
+    }
+    case "feishu": {
+      const feishu = instance as FeishuInstance;
+      return {
+        type: "feishu",
+        app_id: feishu.app_id,
+        app_secret: feishu.app_secret,
+      };
+    }
+    case "whatsapp": {
+      const whatsapp = instance as WhatsAppInstance;
+      return {
+        type: "whatsapp",
+        bridge_url: whatsapp.bridge_url,
+      };
+    }
+  }
+}
+
+/**
+ * Format error message for display
+ */
+function formatChannelError(error: string | undefined, channelType: ChannelType): string {
+  if (!error) return "Unknown error";
+
+  // Common error patterns with user-friendly messages
+  const errorLower = error.toLowerCase();
+
+  // Network errors
+  if (errorLower.includes("fetch") || errorLower.includes("network") || errorLower.includes("econnrefused")) {
+    return `Network error: Unable to connect. Please check your internet connection.`;
+  }
+
+  // Gateway not running
+  if (errorLower.includes("failed to fetch") || errorLower.includes("connection refused")) {
+    return `Gateway not running. Please start the gateway service first.`;
+  }
+
+  // Timeout
+  if (errorLower.includes("timeout")) {
+    return `Request timed out. The service may be slow or unreachable.`;
+  }
+
+  // Channel-specific error formatting
+  switch (channelType) {
+    case "telegram":
+      if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
+        return `Invalid Bot Token. Please check your token from @BotFather.`;
+      }
+      if (errorLower.includes("chat not found") || errorLower.includes("400")) {
+        return `Chat not found. Make sure you've sent /start to the bot first.`;
+      }
+      if (errorLower.includes("bot was blocked")) {
+        return `Bot was blocked by the user. Please unblock the bot in Telegram.`;
+      }
+      break;
+    case "discord":
+      if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
+        return `Invalid Bot Token. Please check your token from Discord Developer Portal.`;
+      }
+      if (errorLower.includes("unknown channel") || errorLower.includes("404")) {
+        return `Channel not found. Please verify the Channel ID.`;
+      }
+      if (errorLower.includes("missing access") || errorLower.includes("403")) {
+        return `Bot lacks permission. Invite the bot to the channel first.`;
+      }
+      break;
+    case "feishu":
+      if (errorLower.includes("invalid app_id") || errorLower.includes("10003")) {
+        return `Invalid App ID. Please check your credentials from Feishu Open Platform.`;
+      }
+      if (errorLower.includes("app_secret") || errorLower.includes("10014")) {
+        return `Invalid App Secret. Please verify your credentials.`;
+      }
+      if (errorLower.includes("user_not_found") || errorLower.includes("230001")) {
+        return `User not found. Please check the Open ID or Chat ID.`;
+      }
+      break;
+    case "whatsapp":
+      if (errorLower.includes("websocket") || errorLower.includes("ws://")) {
+        return `Cannot connect to WhatsApp Bridge. Is the bridge server running?`;
+      }
+      break;
+  }
+
+  // Return original error if no specific formatting
+  return error;
+}
+
+/**
+ * Test channel connection via gateway API (no Chat ID required)
+ */
+async function testChannelConnection(
+  instance: ChannelInstance
+): Promise<{ success: boolean; details?: string; error?: string }> {
+  try {
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/channels/test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channel_type: instance.type,
+        config: buildChannelConfig(instance),
+      }),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Gateway returned ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      details: data.details,
+      error: data.error ? formatChannelError(data.error, instance.type) : undefined,
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      error: formatChannelError(errorMsg, instance.type),
+    };
+  }
+}
+
+/**
+ * Send a test message via gateway API (requires Chat ID)
  */
 async function sendTestMessage(
   instance: ChannelInstance,
   chatId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  const testMessage = `🔔 Viben Test Message\n\nThis is a test message from Viben Desktop.\nTime: ${new Date().toLocaleString()}\n\nIf you received this message, your channel is configured correctly!`;
+  if (!chatId && instance.type !== "whatsapp") {
+    return { success: false, error: "Chat ID is required to send test message" };
+  }
 
   try {
-    switch (instance.type) {
-      case "telegram": {
-        const telegram = instance as TelegramInstance;
-        if (!telegram.token) {
-          return { success: false, error: "Bot token is required" };
-        }
-        if (!chatId) {
-          return { success: false, error: "Chat ID is required for Telegram" };
-        }
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/channels/send-test`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        channel_type: instance.type,
+        config: buildChannelConfig(instance),
+        chat_id: chatId || "",
+      }),
+    });
 
-        // Use proxy if configured
-        const baseUrl = telegram.proxy
-          ? `${telegram.proxy}/bot${telegram.token}`
-          : `https://api.telegram.org/bot${telegram.token}`;
-
-        const response = await fetch(`${baseUrl}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: testMessage,
-            parse_mode: "Markdown",
-          }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          return { success: false, error: data.description || "Failed to send message" };
-        }
-        return { success: true };
-      }
-
-      case "discord": {
-        const discord = instance as DiscordInstance;
-        if (!discord.token) {
-          return { success: false, error: "Bot token is required" };
-        }
-        if (!chatId) {
-          return { success: false, error: "Channel ID is required for Discord" };
-        }
-
-        const response = await fetch(`https://discord.com/api/v10/channels/${chatId}/messages`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bot ${discord.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ content: testMessage }),
-        });
-
-        if (!response.ok) {
-          const data = await response.json();
-          return { success: false, error: data.message || "Failed to send message" };
-        }
-        return { success: true };
-      }
-
-      case "feishu": {
-        const feishu = instance as FeishuInstance;
-        if (!feishu.app_id || !feishu.app_secret) {
-          return { success: false, error: "App ID and App Secret are required" };
-        }
-        if (!chatId) {
-          return { success: false, error: "Chat ID (open_id or chat_id) is required for Feishu" };
-        }
-
-        // Get tenant access token first
-        const tokenResponse = await fetch("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            app_id: feishu.app_id,
-            app_secret: feishu.app_secret,
-          }),
-        });
-
-        if (!tokenResponse.ok) {
-          return { success: false, error: "Failed to get access token" };
-        }
-
-        const tokenData = await tokenResponse.json();
-        if (tokenData.code !== 0) {
-          return { success: false, error: tokenData.msg || "Failed to get access token" };
-        }
-
-        // Determine receive_id_type based on chatId prefix
-        let receiveIdType = "chat_id";
-        if (chatId.startsWith("ou_")) {
-          receiveIdType = "open_id";
-        } else if (chatId.startsWith("on_")) {
-          receiveIdType = "union_id";
-        } else if (chatId.includes("@")) {
-          receiveIdType = "email";
-        }
-
-        // Send message
-        const msgResponse = await fetch(`https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=${receiveIdType}`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${tokenData.tenant_access_token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            receive_id: chatId,
-            msg_type: "text",
-            content: JSON.stringify({ text: testMessage }),
-          }),
-        });
-
-        if (!msgResponse.ok) {
-          const data = await msgResponse.json();
-          return { success: false, error: data.msg || "Failed to send message" };
-        }
-
-        const msgData = await msgResponse.json();
-        if (msgData.code !== 0) {
-          return { success: false, error: msgData.msg || "Failed to send message" };
-        }
-
-        return { success: true };
-      }
-
-      case "whatsapp": {
-        // WhatsApp requires bridge server - just verify connection
-        const whatsapp = instance as WhatsAppInstance;
-        if (!whatsapp.bridge_url) {
-          return { success: false, error: "Bridge URL is required" };
-        }
-
-        try {
-          // Try to establish WebSocket connection to check bridge
-          const ws = new WebSocket(whatsapp.bridge_url);
-          return new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-              ws.close();
-              resolve({ success: false, error: "Connection timeout" });
-            }, 5000);
-
-            ws.onopen = () => {
-              clearTimeout(timeout);
-              ws.close();
-              resolve({ success: true });
-            };
-
-            ws.onerror = () => {
-              clearTimeout(timeout);
-              resolve({ success: false, error: "Failed to connect to bridge" });
-            };
-          });
-        } catch {
-          return { success: false, error: "Invalid bridge URL" };
-        }
-      }
-
-      default:
-        return { success: false, error: "Unknown channel type" };
+    if (!response.ok) {
+      return {
+        success: false,
+        error: `Gateway returned ${response.status}: ${response.statusText}`,
+      };
     }
+
+    const data = await response.json();
+    return {
+      success: data.success,
+      error: data.error ? formatChannelError(data.error, instance.type) : undefined,
+    };
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: formatChannelError(errorMsg, instance.type),
     };
   }
 }
@@ -328,11 +345,24 @@ interface InstanceCardProps {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onTest: () => void;
-  isTesting?: boolean;
+  onTestConnection: () => void;
+  onSendTestMessage: () => void;
+  isTestingConnection?: boolean;
+  isSendingTestMessage?: boolean;
 }
 
-function InstanceCard({ instance, onToggle, onEdit, onDelete, onTest, isTesting }: InstanceCardProps) {
+function InstanceCard({
+  instance,
+  onToggle,
+  onEdit,
+  onDelete,
+  onTestConnection,
+  onSendTestMessage,
+  isTestingConnection,
+  isSendingTestMessage,
+}: InstanceCardProps) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary/30 transition-colors">
       <div className="flex items-center gap-3">
@@ -372,12 +402,26 @@ function InstanceCard({ instance, onToggle, onEdit, onDelete, onTest, isTesting 
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-primary hover:text-primary"
-          onClick={onTest}
-          disabled={isTesting}
-          title="Send test message"
+          className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/30"
+          onClick={onTestConnection}
+          disabled={isTestingConnection}
+          title={t("channels.testConnection", "Test Connection")}
         >
-          {isTesting ? (
+          {isTestingConnection ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-primary hover:text-primary"
+          onClick={onSendTestMessage}
+          disabled={isSendingTestMessage}
+          title={t("channels.sendTestMessage", "Send Test Message")}
+        >
+          {isSendingTestMessage ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Send className="h-4 w-4" />
@@ -689,8 +733,9 @@ export function SettingsChannelsPage() {
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testingInstance, setTestingInstance] = useState<ChannelInstance | null>(null);
   const [testChatId, setTestChatId] = useState("");
-  const [isTesting, setIsTesting] = useState(false);
-  const [testingInstanceId, setTestingInstanceId] = useState<string | null>(null);
+  const [isSendingTestMessage, setIsSendingTestMessage] = useState(false);
+  const [sendingTestMessageId, setSendingTestMessageId] = useState<string | null>(null);
+  const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
 
   // Reset new instance when dialog opens/closes
   const handleOpenCreateDialog = () => {
@@ -769,7 +814,30 @@ export function SettingsChannelsPage() {
     setEditingInstance(null);
   };
 
-  // Open test dialog
+  // Test connection (no Chat ID required)
+  const handleTestConnection = async (instance: ChannelInstance) => {
+    setTestingConnectionId(instance.id);
+
+    const result = await testChannelConnection(instance);
+
+    setTestingConnectionId(null);
+
+    if (result.success) {
+      toast.success(t("channels.connectionSuccess", "Connection verified!"), {
+        description: result.details,
+      });
+    } else {
+      toast.error(
+        `${t("channels.connectionFailed", "Connection failed")} - ${instance.name}`,
+        {
+          description: result.error,
+          duration: 8000, // Show longer for errors
+        }
+      );
+    }
+  };
+
+  // Open test message dialog
   const handleOpenTestDialog = (instance: ChannelInstance) => {
     setTestingInstance(instance);
     setTestChatId("");
@@ -780,21 +848,25 @@ export function SettingsChannelsPage() {
   const handleSendTestMessage = async () => {
     if (!testingInstance) return;
 
-    setIsTesting(true);
-    setTestingInstanceId(testingInstance.id);
+    setIsSendingTestMessage(true);
+    setSendingTestMessageId(testingInstance.id);
 
     const result = await sendTestMessage(testingInstance, testChatId || undefined);
 
-    setIsTesting(false);
-    setTestingInstanceId(null);
+    setIsSendingTestMessage(false);
+    setSendingTestMessageId(null);
 
     if (result.success) {
       toast.success(t("channels.testSuccess", "Test message sent successfully!"));
       setTestDialogOpen(false);
     } else {
-      toast.error(t("channels.testFailed", "Failed to send test message"), {
-        description: result.error,
-      });
+      toast.error(
+        `${t("channels.testFailed", "Failed to send test message")} - ${testingInstance.name}`,
+        {
+          description: result.error,
+          duration: 8000, // Show longer for errors
+        }
+      );
     }
   };
 
@@ -871,8 +943,10 @@ export function SettingsChannelsPage() {
                   onToggle={() => toggleInstance(instance.id)}
                   onEdit={() => setEditingInstance(instance)}
                   onDelete={() => handleDelete(instance)}
-                  onTest={() => handleOpenTestDialog(instance)}
-                  isTesting={testingInstanceId === instance.id}
+                  onTestConnection={() => handleTestConnection(instance)}
+                  onSendTestMessage={() => handleOpenTestDialog(instance)}
+                  isTestingConnection={testingConnectionId === instance.id}
+                  isSendingTestMessage={sendingTestMessageId === instance.id}
                 />
               ))}
             </div>
@@ -1077,9 +1151,9 @@ export function SettingsChannelsPage() {
             </Button>
             <Button
               onClick={handleSendTestMessage}
-              disabled={isTesting || (testingInstance?.type !== "whatsapp" && !testChatId.trim())}
+              disabled={isSendingTestMessage || (testingInstance?.type !== "whatsapp" && !testChatId.trim())}
             >
-              {isTesting ? (
+              {isSendingTestMessage ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {t("channels.testing", "测试中...")}
