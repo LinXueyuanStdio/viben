@@ -18,13 +18,16 @@ import {
   AlertCircle,
   Server,
   Copy,
+  Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGateway } from "@/hooks";
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { getGatewayClient } from "@/lib/gateway";
+import { toast } from "sonner";
 
 // Settings item component
 interface SettingsItemProps {
@@ -45,6 +48,18 @@ function SettingsItem({ title, description, children }: SettingsItemProps) {
   );
 }
 
+// Connectivity test result type
+interface ConnectivityResult {
+  reachable: boolean;
+  healthCheck: boolean;
+  version: string | null;
+  service: string | null;
+  timestamp: string | null;
+  url: string;
+  endpoints: { path: string; available: boolean }[];
+  websocket: boolean;
+}
+
 export function SettingsGatewayPage() {
   const { t } = useTranslation();
   const {
@@ -63,6 +78,57 @@ export function SettingsGatewayPage() {
   } = useGateway();
 
   const [portInput, setPortInput] = useState<string>("");
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ConnectivityResult | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  // Test connectivity
+  const testConnectivity = useCallback(async () => {
+    setIsTesting(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      const client = getGatewayClient();
+      const result = await client.diagnose();
+      setTestResult(result);
+
+      // Show toast notification based on result
+      if (result.reachable && result.healthCheck) {
+        const availableEndpoints = result.endpoints.filter((e) => e.available).length;
+        const totalEndpoints = result.endpoints.length;
+
+        toast.success(t("gateway.connectionSuccess", "网关连接成功"), {
+          description: [
+            result.service && result.version
+              ? `${result.service} v${result.version}`
+              : null,
+            `${t("gateway.address", "地址")}: ${result.url}`,
+            `${t("gateway.availableEndpoints", "可用端点")}: ${availableEndpoints}/${totalEndpoints}`,
+            `WebSocket: ${result.websocket ? "OK" : "N/A"}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          duration: 5000,
+        });
+      } else {
+        toast.error(t("gateway.connectionFailed", "网关连接失败"), {
+          description: result.reachable
+            ? t("gateway.healthCheckFailed", "健康检查未通过")
+            : t("gateway.unreachableDescription", "无法连接到网关服务，请检查网关是否已启动"),
+          duration: 5000,
+        });
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      setTestError(errorMsg);
+      toast.error(t("gateway.connectionError", "连接错误"), {
+        description: errorMsg,
+        duration: 5000,
+      });
+    } finally {
+      setIsTesting(false);
+    }
+  }, [t]);
 
   // Initialize port input when config loads
   if (config && !portInput) {
@@ -243,6 +309,146 @@ export function SettingsGatewayPage() {
               >
                 <RefreshCw className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Connectivity Test Card */}
+      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
+              <Wifi className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">
+                {t("gateway.connectivityTest", "连通性检测")}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t(
+                  "gateway.connectivityTestDescription",
+                  "检测网关服务的连接状态和可用端点"
+                )}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={testConnectivity}
+            disabled={isTesting}
+            className="gap-1.5"
+          >
+            {isTesting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Wifi className="h-4 w-4" />
+            )}
+            {t("gateway.testConnection", "检测")}
+          </Button>
+        </div>
+
+        {/* Test Error */}
+        {testError && (
+          <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{testError}</span>
+          </div>
+        )}
+
+        {/* Test Result */}
+        {testResult && (
+          <div className="pt-3 border-t space-y-3">
+            {/* Overall Status */}
+            <div className="flex items-center gap-2">
+              {testResult.reachable ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-600">
+                    {t("gateway.reachable", "网关可达")}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-4 w-4 text-destructive" />
+                  <span className="text-sm text-destructive">
+                    {t("gateway.unreachable", "网关不可达")}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Gateway Info - Service & Version */}
+            {(testResult.service || testResult.version) && (
+              <div className="flex items-center gap-4 text-sm">
+                {testResult.service && (
+                  <div className="flex items-center gap-1.5">
+                    <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">{testResult.service}</span>
+                  </div>
+                )}
+                {testResult.version && (
+                  <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-mono">
+                    v{testResult.version}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Gateway URL */}
+            {testResult.url && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-xs text-muted-foreground">
+                  {t("gateway.address", "地址")}:
+                </span>
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
+                  {testResult.url}
+                </code>
+              </div>
+            )}
+
+            {/* Endpoints Status */}
+            {testResult.endpoints.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  {t("gateway.endpoints", "端点状态")} ({testResult.endpoints.filter(e => e.available).length}/{testResult.endpoints.length})
+                </Label>
+                <div className="grid grid-cols-2 gap-1">
+                  {testResult.endpoints.map((endpoint) => (
+                    <div
+                      key={endpoint.path}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      {endpoint.available ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+                      )}
+                      <code className="text-muted-foreground truncate">
+                        {endpoint.path}
+                      </code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* WebSocket Status */}
+            <div className="flex items-center gap-2">
+              {testResult.websocket ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="text-sm text-muted-foreground">
+                WebSocket
+              </span>
+              {testResult.websocket && (
+                <span className="text-xs text-green-600">
+                  {t("gateway.connected", "已连接")}
+                </span>
+              )}
             </div>
           </div>
         )}

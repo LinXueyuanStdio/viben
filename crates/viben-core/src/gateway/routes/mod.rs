@@ -8,6 +8,7 @@ pub mod agents;
 pub mod channels;
 pub mod cron;
 pub mod events;
+pub mod executors;
 pub mod group_chats;
 pub mod health;
 pub mod history;
@@ -24,6 +25,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(health::health_check))
         .merge(agents::router())
         .merge(channels::router())
+        .merge(executors::router())
         .merge(tasks::router())
         .merge(sessions::router())
         .merge(events::router())
