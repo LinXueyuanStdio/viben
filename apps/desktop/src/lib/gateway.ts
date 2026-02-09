@@ -941,6 +941,437 @@ export class GatewayClient {
 
     return response.json();
   }
+
+  // ==========================================================================
+  // Group Chat Management
+  // ==========================================================================
+
+  /**
+   * List all group chats
+   */
+  async listGroupChats(): Promise<GroupChat[]> {
+    const response = await fetch(`${this.baseUrl}/api/group-chats`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list group chats: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.group_chats as GroupChat[];
+  }
+
+  /**
+   * Create a new group chat
+   */
+  async createGroupChat(
+    request: CreateGroupChatRequest
+  ): Promise<GroupChatWithMembers> {
+    const response = await fetch(`${this.baseUrl}/api/group-chats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to create group chat: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a group chat by ID with its members
+   */
+  async getGroupChat(groupChatId: string): Promise<GroupChatWithMembers> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to get group chat: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a group chat
+   */
+  async updateGroupChat(
+    groupChatId: string,
+    request: UpdateGroupChatRequest
+  ): Promise<GroupChat> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to update group chat: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a group chat
+   */
+  async deleteGroupChat(groupChatId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to delete group chat: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Group Chat Members
+  // ==========================================================================
+
+  /**
+   * List members of a group chat
+   */
+  async listGroupChatMembers(groupChatId: string): Promise<GroupChatMember[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list group chat members: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.members as GroupChatMember[];
+  }
+
+  /**
+   * Add a member to a group chat
+   */
+  async addGroupChatMember(
+    groupChatId: string,
+    request: AddMemberRequest
+  ): Promise<GroupChatMember> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to add member: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Remove a member from a group chat
+   */
+  async removeGroupChatMember(
+    groupChatId: string,
+    memberId: string
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members/${memberId}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to remove member: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Leave a group chat
+   */
+  async leaveGroupChat(groupChatId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/leave`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to leave group chat: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Group Chat Messages
+  // ==========================================================================
+
+  /**
+   * List messages in a group chat
+   */
+  async listGroupChatMessages(
+    groupChatId: string,
+    params?: ListGroupChatMessagesParams
+  ): Promise<GroupChatMessage[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+    if (params?.before) searchParams.set("before", params.before);
+    if (params?.after) searchParams.set("after", params.after);
+
+    const queryString = searchParams.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/group-chats/${groupChatId}/messages?${queryString}`
+      : `${this.baseUrl}/api/group-chats/${groupChatId}/messages`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list group chat messages: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.messages as GroupChatMessage[];
+  }
+
+  /**
+   * Send a message to a group chat
+   */
+  async sendGroupChatMessage(
+    groupChatId: string,
+    request: SendGroupChatMessageRequest
+  ): Promise<GroupChatMessage> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/messages`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(request),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to send message: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.message as GroupChatMessage;
+  }
+
+  /**
+   * Delete a message from a group chat
+   */
+  async deleteGroupChatMessage(
+    groupChatId: string,
+    messageId: string
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/messages/${messageId}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to delete message: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Group Chat WebSocket
+  // ==========================================================================
+
+  /**
+   * Connect to a group chat WebSocket for real-time updates
+   *
+   * @param groupChatId - The group chat ID
+   * @param memberType - Type of the connecting member (human/agent/executor)
+   * @param memberId - ID of the connecting member
+   * @returns WebSocket connection
+   */
+  connectGroupChatWs(
+    groupChatId: string,
+    memberType: string,
+    memberId: string
+  ): WebSocket {
+    const wsUrl = this.baseUrl.replace(/^http/, "ws");
+    const url = `${wsUrl}/api/group-chats/${groupChatId}/ws?member_type=${encodeURIComponent(memberType)}&member_id=${encodeURIComponent(memberId)}`;
+    return new WebSocket(url);
+  }
+}
+
+// ============================================================================
+// Group Chat Types (for gateway client)
+// ============================================================================
+
+/** Group chat entity */
+export interface GroupChat {
+  id: string;
+  name: string;
+  description?: string;
+  task_id?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Member type in a group chat */
+export type MemberType = "human" | "agent" | "executor";
+
+/** Role of a member in a group chat */
+export type MemberRole = "owner" | "admin" | "member";
+
+/** Member of a group chat */
+export interface GroupChatMember {
+  id: string;
+  group_chat_id: string;
+  member_type: MemberType;
+  member_id: string;
+  display_name: string;
+  role: MemberRole;
+  joined_at: string;
+  last_seen_at?: string;
+}
+
+/** Type of message content */
+export type MessageContentType = "text" | "code" | "file" | "system" | "tool_call";
+
+/** Message in a group chat */
+export interface GroupChatMessage {
+  id: string;
+  group_chat_id: string;
+  sender_id: string;
+  sender_type: MemberType;
+  sender_name: string;
+  content_type: MessageContentType;
+  content: string;
+  mentions?: string[];
+  reply_to?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+/** Request to create a group chat */
+export interface CreateGroupChatRequest {
+  name: string;
+  description?: string;
+  task_id?: string;
+  initial_members?: {
+    member_type: MemberType;
+    member_id: string;
+    display_name?: string;
+    role?: MemberRole;
+  }[];
+}
+
+/** Response containing group chat with members */
+export interface GroupChatWithMembers {
+  group_chat: GroupChat;
+  members: GroupChatMember[];
+}
+
+/** Request to update a group chat */
+export interface UpdateGroupChatRequest {
+  name?: string;
+  description?: string;
+}
+
+/** Request to add a member */
+export interface AddMemberRequest {
+  member_type: MemberType;
+  member_id: string;
+  display_name?: string;
+  role?: MemberRole;
+}
+
+/** Parameters for listing messages */
+export interface ListGroupChatMessagesParams {
+  limit?: number;
+  before?: string;
+  after?: string;
+}
+
+/** Request to send a message */
+export interface SendGroupChatMessageRequest {
+  content_type?: MessageContentType;
+  content: string;
+  mentions?: string[];
+  reply_to?: string;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================

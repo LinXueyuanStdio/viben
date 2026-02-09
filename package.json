@@ -10,6 +10,7 @@
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
     "desktop": "pnpm --filter @viben/desktop",
+    "desktop:restart": "./scripts/restart-desktop.sh",
     "mcp-server": "pnpm --filter @viben/mcp-server",
     "docs": "pnpm --filter @viben/docs"
   },
