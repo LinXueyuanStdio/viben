@@ -78,7 +78,7 @@ import {
 } from "@/hooks";
 import { useUnifiedAgents } from "@/hooks/use-unified-agents";
 import { useTranslation } from "react-i18next";
-import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings } from "@/types/cron";
+import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings, CronJobType } from "@/types/cron";
 import { getChannelTypeName } from "@/types/channel";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -86,6 +86,7 @@ type ScheduleType = "cron" | "interval";
 
 interface JobFormData {
   name: string;
+  jobType: CronJobType;
   message: string;
   script: string;
   scheduleType: ScheduleType;
@@ -102,6 +103,7 @@ interface JobFormData {
 
 const defaultFormData: JobFormData = {
   name: "",
+  jobType: "agent",
   message: "",
   script: "",
   scheduleType: "interval",
@@ -188,7 +190,8 @@ export function WorkspaceCronPage() {
     if (editingJob) {
       setFormData({
         name: editingJob.name,
-        message: editingJob.message,
+        jobType: editingJob.job_type || "agent",
+        message: editingJob.message || "",
         script: editingJob.script || "",
         scheduleType: editingJob.cron ? "cron" : "interval",
         cronExpression: editingJob.cron || "0 9 * * *",
@@ -212,7 +215,8 @@ export function WorkspaceCronPage() {
 
     const data: CreateCronJob | UpdateCronJob = {
       name: formData.name.trim(),
-      message: formData.message.trim(),
+      job_type: formData.jobType,
+      message: formData.message.trim() || undefined,
       script: formData.script.trim() || undefined,
       agent: formData.agent || undefined,
       channel: formData.channel || undefined,
@@ -471,9 +475,14 @@ export function WorkspaceCronPage() {
                   <TableRow key={job.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{job.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium">{job.name}</p>
+                          <Badge variant="outline" className="text-[10px] px-1 py-0">
+                            {job.job_type === "script" ? t("cron.scriptType") : t("cron.agentType")}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-muted-foreground truncate max-w-[180px]">
-                          {job.message}
+                          {job.message || job.script || job.name}
                         </p>
                       </div>
                     </TableCell>
@@ -575,7 +584,8 @@ export function WorkspaceCronPage() {
             ].map(({ step, icon: Icon, label }, index) => {
               const isCompleted = step < wizardStep;
               const isCurrent = step === wizardStep;
-              const isLocked = step > 1 && !formData.name.trim() || !formData.message.trim();
+              // Name is required to proceed
+              const isLocked = step > 1 && !formData.name.trim();
               const canNavigate = isCompleted || (step <= wizardStep && !isLocked);
 
               return (
@@ -627,7 +637,7 @@ export function WorkspaceCronPage() {
           </div>
 
           <div className="py-2 min-h-[300px]">
-            {/* Step 1: Basic Info */}
+            {/* Step 1: Name & Schedule */}
             {wizardStep === 1 && (
               <div className="space-y-5">
                 {/* Name */}
@@ -645,50 +655,9 @@ export function WorkspaceCronPage() {
                   />
                 </div>
 
-                {/* Message */}
-                <div className="space-y-2">
-                  <Label htmlFor="job-message" className="text-sm font-medium">
-                    {t("cron.message")} <span className="text-destructive">*</span>
-                  </Label>
-                  <Textarea
-                    id="job-message"
-                    value={formData.message}
-                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    placeholder={t("cron.messagePlaceholder")}
-                    className="min-h-[120px] resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("cron.messageHint")}
-                  </p>
-                </div>
-
-                {/* Enabled */}
-                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                  <div>
-                    <Label htmlFor="job-enabled" className="text-sm font-medium">
-                      {t("cron.enabled")}
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t("cron.enabledHint")}
-                    </p>
-                  </div>
-                  <Switch
-                    id="job-enabled"
-                    checked={formData.enabled}
-                    onCheckedChange={(checked) =>
-                      setFormData({ ...formData, enabled: checked })
-                    }
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Step 2: Schedule & Execution */}
-            {wizardStep === 2 && (
-              <div className="space-y-5">
                 {/* Schedule Type */}
                 <div className="space-y-3">
-                  <Label className="text-sm font-medium">{t("cron.scheduleType")}</Label>
+                  <Label className="text-sm font-medium">{t("cron.scheduleType")} <span className="text-destructive">*</span></Label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -770,51 +739,141 @@ export function WorkspaceCronPage() {
                   </div>
                 )}
 
-                {/* Agent Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="job-agent" className="text-sm font-medium">{t("cron.agent")}</Label>
-                  <Select
-                    value={formData.agent}
-                    onValueChange={(val) => setFormData({ ...formData, agent: val })}
-                  >
-                    <SelectTrigger className="h-11">
-                      <SelectValue placeholder={t("cron.selectAgent")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="main">
-                        <span className="font-medium">main</span>
-                        <span className="text-muted-foreground ml-2">({t("cron.defaultAgent")})</span>
-                      </SelectItem>
-                      {workspaceAgents.map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          <span className="font-medium">{agent.name}</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                {/* Enabled */}
+                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                  <div>
+                    <Label htmlFor="job-enabled" className="text-sm font-medium">
+                      {t("cron.enabled")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("cron.enabledHint")}
+                    </p>
+                  </div>
+                  <Switch
+                    id="job-enabled"
+                    checked={formData.enabled}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, enabled: checked })
+                    }
+                  />
                 </div>
               </div>
             )}
 
-            {/* Step 3: Script & Notifications */}
-            {wizardStep === 3 && (
+            {/* Step 2: Job Type & Content */}
+            {wizardStep === 2 && (
               <div className="space-y-5">
-                {/* Script (optional) */}
-                <div className="space-y-2">
-                  <Label htmlFor="job-script" className="text-sm font-medium flex items-center gap-2">
-                    <Terminal className="h-4 w-4" />
-                    {t("cron.script")}
-                    <Badge variant="outline" className="text-xs font-normal">{t("common.optional")}</Badge>
-                  </Label>
-                  <Textarea
-                    id="job-script"
-                    value={formData.script}
-                    onChange={(e) => setFormData({ ...formData, script: e.target.value })}
-                    placeholder={t("cron.scriptPlaceholder")}
-                    className="min-h-[80px] font-mono text-sm resize-none"
-                  />
+                {/* Job Type Selection */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">{t("cron.jobType")}</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, jobType: "agent" })}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        formData.jobType === "agent"
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <Settings2 className={`h-6 w-6 ${formData.jobType === "agent" ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${formData.jobType === "agent" ? "text-primary" : ""}`}>
+                        {t("cron.agentType")}
+                      </span>
+                      <span className="text-xs text-muted-foreground text-center">
+                        {t("cron.agentTypeDesc")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, jobType: "script" })}
+                      className={`flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all ${
+                        formData.jobType === "script"
+                          ? "border-primary bg-primary/5"
+                          : "border-muted hover:border-muted-foreground/30"
+                      }`}
+                    >
+                      <Terminal className={`h-6 w-6 ${formData.jobType === "script" ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${formData.jobType === "script" ? "text-primary" : ""}`}>
+                        {t("cron.scriptType")}
+                      </span>
+                      <span className="text-xs text-muted-foreground text-center">
+                        {t("cron.scriptTypeDesc")}
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
+                {/* Content based on job type */}
+                {formData.jobType === "agent" ? (
+                  <>
+                    {/* Message for Agent type */}
+                    <div className="space-y-2">
+                      <Label htmlFor="job-message" className="text-sm font-medium">
+                        {t("cron.message")}
+                        <Badge variant="outline" className="text-xs font-normal ml-2">{t("common.optional")}</Badge>
+                      </Label>
+                      <Textarea
+                        id="job-message"
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        placeholder={t("cron.messagePlaceholder")}
+                        className="min-h-[100px] resize-none"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t("cron.messageOptionalHint")}
+                      </p>
+                    </div>
+                    {/* Agent Selection */}
+                    <div className="space-y-2">
+                      <Label htmlFor="job-agent" className="text-sm font-medium">{t("cron.agent")}</Label>
+                      <Select
+                        value={formData.agent}
+                        onValueChange={(val) => setFormData({ ...formData, agent: val })}
+                      >
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder={t("cron.selectAgent")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="main">
+                            <span className="font-medium">main</span>
+                            <span className="text-muted-foreground ml-2">({t("cron.defaultAgent")})</span>
+                          </SelectItem>
+                          {workspaceAgents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id}>
+                              <span className="font-medium">{agent.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
+                ) : (
+                  /* Script for Script type */
+                  <div className="space-y-2">
+                    <Label htmlFor="job-script" className="text-sm font-medium flex items-center gap-2">
+                      <Terminal className="h-4 w-4" />
+                      {t("cron.script")}
+                      <Badge variant="outline" className="text-xs font-normal">{t("common.optional")}</Badge>
+                    </Label>
+                    <Textarea
+                      id="job-script"
+                      value={formData.script}
+                      onChange={(e) => setFormData({ ...formData, script: e.target.value })}
+                      placeholder={t("cron.scriptPlaceholder")}
+                      className="min-h-[140px] font-mono text-sm resize-none"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t("cron.scriptOptionalHint")}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Advanced & Notifications */}
+            {wizardStep === 3 && (
+              <div className="space-y-5">
                 {/* Notification Settings */}
                 <div className="space-y-3">
                   <Label className="text-sm font-medium">{t("cron.notifications")}</Label>
@@ -923,9 +982,7 @@ export function WorkspaceCronPage() {
               {wizardStep < totalSteps ? (
                 <Button
                   onClick={() => setWizardStep(wizardStep + 1)}
-                  disabled={
-                    (wizardStep === 1 && (!formData.name.trim() || !formData.message.trim()))
-                  }
+                  disabled={wizardStep === 1 && !formData.name.trim()}
                 >
                   {t("common.next")}
                   <ChevronRight className="h-4 w-4 ml-1" />
@@ -933,12 +990,7 @@ export function WorkspaceCronPage() {
               ) : (
                 <Button
                   onClick={handleCreateOrUpdate}
-                  disabled={
-                    !formData.name.trim() ||
-                    !formData.message.trim() ||
-                    creating ||
-                    updating
-                  }
+                  disabled={!formData.name.trim() || creating || updating}
                 >
                   {(creating || updating) && (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />

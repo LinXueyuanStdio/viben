@@ -215,9 +215,13 @@ pub struct CreateCronJob {
     pub id: Option<String>,
     /// Human-readable name
     pub name: String,
-    /// Message/command to execute (sent to agent)
-    pub message: String,
-    /// Bash script to run (runs before agent message)
+    /// Job type: agent or script
+    #[serde(default)]
+    pub job_type: CronJobType,
+    /// Message to send to agent (optional - defaults to name if empty)
+    #[serde(default)]
+    pub message: Option<String>,
+    /// Bash script to execute (for script type)
     #[serde(default)]
     pub script: Option<String>,
     /// Cron expression
@@ -248,6 +252,7 @@ fn default_enabled() -> bool {
 #[derive(Debug, Clone, Deserialize)]
 pub struct UpdateCronJob {
     pub name: Option<String>,
+    pub job_type: Option<CronJobType>,
     pub message: Option<String>,
     pub script: Option<String>,
     pub cron: Option<String>,
@@ -630,12 +635,27 @@ impl CronService {
             job_id
         );
 
+        // Get job details
+        let job = {
+            let jobs = self.jobs.read().await;
+            jobs.get(job_id).cloned()
+        };
+
+        let Some(job) = job else {
+            tracing::error!(
+                target: "viben::services::cron",
+                "Job {} not found",
+                job_id
+            );
+            return;
+        };
+
         // Mark job as running
         {
             let mut jobs = self.jobs.write().await;
-            if let Some(job) = jobs.get_mut(job_id) {
-                job.last_run = Some(now);
-                job.last_status = Some(JobStatus::Running);
+            if let Some(j) = jobs.get_mut(job_id) {
+                j.last_run = Some(now);
+                j.last_status = Some(JobStatus::Running);
             }
         }
 
@@ -645,19 +665,27 @@ impl CronService {
             triggered_at: now,
         });
 
-        // TODO: Actually execute the job by sending to agent
-        // For now, we just mark it as successful
-        let status = JobStatus::Success;
-        let error: Option<String> = None;
+        // Execute based on job type
+        let (status, error, output) = match job.job_type {
+            CronJobType::Script => {
+                // Execute bash script
+                self.execute_script_job(&job).await
+            }
+            CronJobType::Agent => {
+                // Send message to agent
+                self.execute_agent_job(&job).await
+            }
+        };
 
         // Update job status
         {
             let mut jobs = self.jobs.write().await;
-            if let Some(job) = jobs.get_mut(job_id) {
-                job.last_status = Some(status.clone());
-                job.last_error = error.clone();
+            if let Some(j) = jobs.get_mut(job_id) {
+                j.last_status = Some(status.clone());
+                j.last_error = error.clone();
+                j.last_output = output.clone();
                 // Calculate next run
-                job.calculate_next_run();
+                j.calculate_next_run();
             }
         }
 
@@ -682,6 +710,96 @@ impl CronService {
             "Job {} execution completed",
             job_id
         );
+    }
+
+    /// Execute a script-type job
+    async fn execute_script_job(&self, job: &CronJob) -> (JobStatus, Option<String>, Option<String>) {
+        let script = job.script.as_deref().unwrap_or("");
+
+        if script.is_empty() {
+            tracing::info!(
+                target: "viben::services::cron",
+                "Script job {} has no script, using name as output",
+                job.id
+            );
+            return (JobStatus::Success, None, Some(format!("No script defined. Job name: {}", job.name)));
+        }
+
+        tracing::info!(
+            target: "viben::services::cron",
+            "Executing script for job {}: {}",
+            job.id,
+            if script.len() > 50 { &script[..50] } else { script }
+        );
+
+        // Execute bash script
+        match tokio::process::Command::new("bash")
+            .arg("-c")
+            .arg(script)
+            .output()
+            .await
+        {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                let combined_output = if stderr.is_empty() {
+                    stdout
+                } else {
+                    format!("{}\n[stderr]\n{}", stdout, stderr)
+                };
+
+                if output.status.success() {
+                    tracing::info!(
+                        target: "viben::services::cron",
+                        "Script job {} completed successfully",
+                        job.id
+                    );
+                    (JobStatus::Success, None, Some(combined_output))
+                } else {
+                    let error_msg = format!("Script exited with code: {:?}", output.status.code());
+                    tracing::warn!(
+                        target: "viben::services::cron",
+                        "Script job {} failed: {}",
+                        job.id, error_msg
+                    );
+                    (JobStatus::Failure, Some(error_msg), Some(combined_output))
+                }
+            }
+            Err(e) => {
+                let error_msg = format!("Failed to execute script: {}", e);
+                tracing::error!(
+                    target: "viben::services::cron",
+                    "Script job {} error: {}",
+                    job.id, error_msg
+                );
+                (JobStatus::Failure, Some(error_msg), None)
+            }
+        }
+    }
+
+    /// Execute an agent-type job
+    async fn execute_agent_job(&self, job: &CronJob) -> (JobStatus, Option<String>, Option<String>) {
+        let message = job.effective_message();
+
+        tracing::info!(
+            target: "viben::services::cron",
+            "Executing agent job {}: sending message to agent '{}': {}",
+            job.id,
+            job.agent,
+            if message.len() > 50 { &message[..50] } else { &message }
+        );
+
+        // Broadcast the message as an event for the frontend to handle
+        // The actual agent execution will be handled by the gateway/frontend
+        self.events.broadcast(super::GatewayEvent::CronJobMessage {
+            job_id: job.id.clone(),
+            agent_id: job.agent.clone(),
+            message: message.clone(),
+        });
+
+        // For now, mark as success since we've broadcast the event
+        // TODO: In the future, we could wait for the agent to complete and track status
+        (JobStatus::Success, None, Some(format!("Message sent to agent '{}': {}", job.agent, message)))
     }
 
     /// List all jobs
@@ -737,6 +855,7 @@ impl CronService {
             id: id.clone(),
             name: create.name,
             enabled: create.enabled,
+            job_type: create.job_type,
             message: create.message,
             script: create.script,
             cron: create.cron,
@@ -802,8 +921,11 @@ impl CronService {
             if let Some(name) = update.name {
                 job.name = name;
             }
+            if let Some(job_type) = update.job_type {
+                job.job_type = job_type;
+            }
             if let Some(message) = update.message {
-                job.message = message;
+                job.message = Some(message);
             }
             if let Some(script) = update.script {
                 job.script = Some(script);
@@ -908,6 +1030,7 @@ impl CronService {
     pub async fn enable_job(&self, id: &str) -> Result<CronJob, CronError> {
         self.update_job(id, UpdateCronJob {
             name: None,
+            job_type: None,
             message: None,
             script: None,
             cron: None,
@@ -923,6 +1046,7 @@ impl CronService {
     pub async fn disable_job(&self, id: &str) -> Result<CronJob, CronError> {
         self.update_job(id, UpdateCronJob {
             name: None,
+            job_type: None,
             message: None,
             script: None,
             cron: None,
@@ -967,7 +1091,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: Some("test-job".to_string()),
             name: "Test Job".to_string(),
-            message: "Hello, World!".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Hello, World!".to_string()),
             cron: None,
             every: Some(3600),
             channel: None,
@@ -997,7 +1122,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("test-job".to_string()),
             name: "Test Job".to_string(),
-            message: "Hello".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Hello".to_string()),
             cron: None,
             every: Some(3600),
             channel: None,
@@ -1010,6 +1136,7 @@ mod tests {
         // Update it
         let updated = service.update_job("test-job", UpdateCronJob {
             name: Some("Updated Job".to_string()),
+            job_type: None,
             message: None,
             cron: None,
             every: None,
@@ -1034,7 +1161,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("test-job".to_string()),
             name: "Test Job".to_string(),
-            message: "Hello".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Hello".to_string()),
             cron: None,
             every: Some(3600),
             channel: None,
@@ -1063,7 +1191,8 @@ mod tests {
         let result = service.create_job(CreateCronJob {
             id: Some("test-job".to_string()),
             name: "Test Job".to_string(),
-            message: "Hello".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Hello".to_string()),
             cron: Some("0 9 * * *".to_string()),
             every: Some(3600),
             channel: None,
@@ -1096,7 +1225,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("load-test".to_string()),
             name: "Load Test".to_string(),
-            message: "Test message".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test message".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1131,7 +1261,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: Some("toggle-test".to_string()),
             name: "Toggle Test".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1162,7 +1293,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("run-test".to_string()),
             name: "Run Test".to_string(),
-            message: "Execute me".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Execute me".to_string()),
             cron: None,
             every: Some(3600),
             channel: None,
@@ -1194,6 +1326,7 @@ mod tests {
         // Try to update non-existent job
         let result = service.update_job("nonexistent", UpdateCronJob {
             name: Some("New Name".to_string()),
+            job_type: None,
             message: None,
             cron: None,
             every: None,
@@ -1225,7 +1358,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("duplicate-test".to_string()),
             name: "First Job".to_string(),
-            message: "First".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("First".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1239,7 +1373,8 @@ mod tests {
         let result = service.create_job(CreateCronJob {
             id: Some("duplicate-test".to_string()),
             name: "Second Job".to_string(),
-            message: "Second".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Second".to_string()),
             cron: None,
             every: Some(120),
             channel: None,
@@ -1263,7 +1398,8 @@ mod tests {
         let result = service.create_job(CreateCronJob {
             id: Some("invalid-cron".to_string()),
             name: "Invalid Cron".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: Some("invalid cron expression".to_string()),
             every: None,
             channel: None,
@@ -1287,7 +1423,8 @@ mod tests {
         let result = service.create_job(CreateCronJob {
             id: Some("no-schedule".to_string()),
             name: "No Schedule".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: None,
             channel: None,
@@ -1311,7 +1448,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: Some("cron-expr-test".to_string()),
             name: "Cron Expr Test".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: Some("0 * * * * *".to_string()), // Every minute
             every: None,
             channel: None,
@@ -1337,7 +1475,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: Some("interval-test".to_string()),
             name: "Interval Test".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(300), // Every 5 minutes
             channel: None,
@@ -1365,7 +1504,8 @@ mod tests {
             service.create_job(CreateCronJob {
                 id: Some("persist-1".to_string()),
                 name: "Persist 1".to_string(),
-                message: "First".to_string(),
+                job_type: CronJobType::Agent,
+                message: Some("First".to_string()),
                 script: None,
                 cron: None,
                 every: Some(60),
@@ -1378,7 +1518,8 @@ mod tests {
             service.create_job(CreateCronJob {
                 id: Some("persist-2".to_string()),
                 name: "Persist 2".to_string(),
-                message: "Second".to_string(),
+                job_type: CronJobType::Agent,
+                message: Some("Second".to_string()),
                 script: None,
                 cron: Some("0 0 * * * *".to_string()),
                 every: None,
@@ -1421,7 +1562,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("update-schedule".to_string()),
             name: "Update Schedule".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1434,6 +1576,7 @@ mod tests {
         // Update to cron expression (should clear interval)
         let updated = service.update_job("update-schedule", UpdateCronJob {
             name: None,
+            job_type: None,
             message: None,
             cron: Some("0 0 * * * *".to_string()),
             every: None,
@@ -1450,6 +1593,7 @@ mod tests {
         // Update back to interval (should clear cron)
         let updated2 = service.update_job("update-schedule", UpdateCronJob {
             name: None,
+            job_type: None,
             message: None,
             cron: None,
             every: Some(120),
@@ -1475,7 +1619,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: None,
             name: "My Test Job".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1500,7 +1645,8 @@ mod tests {
         let job = service.create_job(CreateCronJob {
             id: Some("custom-agent".to_string()),
             name: "Custom Agent".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1516,7 +1662,8 @@ mod tests {
         let job2 = service.create_job(CreateCronJob {
             id: Some("default-agent".to_string()),
             name: "Default Agent".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1540,7 +1687,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("start-test".to_string()),
             name: "Start Test".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(60),
             channel: None,
@@ -1570,7 +1718,8 @@ mod tests {
         service.create_job(CreateCronJob {
             id: Some("disabled-test".to_string()),
             name: "Disabled Test".to_string(),
-            message: "Test".to_string(),
+            job_type: CronJobType::Agent,
+            message: Some("Test".to_string()),
             cron: None,
             every: Some(1), // Very short interval
             channel: None,

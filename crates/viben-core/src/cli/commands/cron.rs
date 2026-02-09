@@ -11,7 +11,7 @@ use crate::cli::{
     error::{CliError, CliResult},
     output::{print_json, print_simple_table, print_success, print_error, SuccessResponse},
 };
-use crate::services::{CronService, CreateCronJob, EventService};
+use crate::services::{CronService, CreateCronJob, CronJobType, EventService};
 
 #[derive(Args)]
 pub struct CronCommand {
@@ -33,9 +33,15 @@ pub enum CronAction {
         /// Interval in seconds (e.g., 60 for every minute) - use this OR --schedule
         #[arg(short, long)]
         every: Option<u64>,
-        /// Message/command to execute
+        /// Message/command to execute (optional, uses name if not provided)
         #[arg(short, long)]
-        message: String,
+        message: Option<String>,
+        /// Bash script to execute (for script type jobs)
+        #[arg(long)]
+        script: Option<String>,
+        /// Job type: agent or script
+        #[arg(long, default_value = "agent")]
+        job_type: String,
         /// Agent ID to use (default: main)
         #[arg(short, long)]
         agent: Option<String>,
@@ -144,6 +150,8 @@ impl CronCommand {
                 schedule,
                 every,
                 message,
+                script,
+                job_type,
                 agent,
                 id,
                 disabled,
@@ -162,14 +170,27 @@ impl CronCommand {
                     ));
                 }
 
+                // Parse job type
+                let parsed_job_type = match job_type.to_lowercase().as_str() {
+                    "agent" => CronJobType::Agent,
+                    "script" => CronJobType::Script,
+                    _ => {
+                        print_error("Job type must be 'agent' or 'script'");
+                        return Err(CliError::InvalidArgument(
+                            "Job type must be 'agent' or 'script'".to_string(),
+                        ));
+                    }
+                };
+
                 // Load existing jobs first
                 let _ = cron_service.load().await;
 
                 let create = CreateCronJob {
                     id,
                     name: name.clone(),
+                    job_type: parsed_job_type,
                     message,
-                    script: None,
+                    script,
                     cron: schedule,
                     every,
                     channel: None,
@@ -326,8 +347,15 @@ impl CronCommand {
                         } else {
                             println!("Cron Job: {}", job.id);
                             println!("  Name: {}", job.name);
+                            println!("  Type: {:?}", job.job_type);
                             println!("  Enabled: {}", if job.enabled { "yes" } else { "no" });
-                            println!("  Message: {}", job.message);
+                            if let Some(ref msg) = job.message {
+                                println!("  Message: {}", msg);
+                            }
+                            if let Some(ref script) = job.script {
+                                println!("  Script: {}", script);
+                            }
+                            println!("  Effective Message: {}", job.effective_message());
                             println!("  Agent: {}", job.agent);
 
                             if let Some(ref cron) = job.cron {

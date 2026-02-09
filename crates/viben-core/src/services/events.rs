@@ -119,6 +119,12 @@ pub enum GatewayEvent {
         status: super::cron::JobStatus,
         completed_at: i64,
     },
+    /// Cron job message (for agent-type jobs)
+    CronJobMessage {
+        job_id: String,
+        agent_id: String,
+        message: String,
+    },
 }
 
 impl GatewayEvent {
@@ -149,6 +155,7 @@ impl GatewayEvent {
             GatewayEvent::CronJobDeleted { .. } => "cron_job_deleted",
             GatewayEvent::CronJobTriggered { .. } => "cron_job_triggered",
             GatewayEvent::CronJobCompleted { .. } => "cron_job_completed",
+            GatewayEvent::CronJobMessage { .. } => "cron_job_message",
         };
 
         Event::default()
