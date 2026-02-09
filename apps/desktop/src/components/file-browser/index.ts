@@ -5,3 +5,11 @@ export { FileListView } from "./file-list-view";
 export { FilePreview } from "./file-preview";
 export { FileSidebar, type FileSidebarProps } from "./file-sidebar";
 export { FileToolbar } from "./file-toolbar";
+export {
+  ViewModeToggle,
+  FileActionButtons,
+  FileBrowserToolbar,
+  type ViewModeToggleProps,
+  type FileActionButtonsProps,
+  type FileBrowserToolbarProps,
+} from "./file-actions";

@@ -4,8 +4,20 @@
  * TypeScript types for cron job management matching the Rust backend.
  */
 
+import type { NotificationSettings } from "./channel";
+
 /** Job execution status */
 export type JobStatus = "success" | "failure" | "running";
+
+/** Notification settings for cron jobs */
+export interface CronNotificationSettings {
+  /** Enable in-app notifications */
+  in_app: boolean;
+  /** Enable system notifications (OS-level) */
+  system: boolean;
+  /** Channel instance IDs to notify */
+  channel_ids: string[];
+}
 
 /** A scheduled cron job */
 export interface CronJob {
@@ -21,10 +33,12 @@ export interface CronJob {
   cron?: string;
   /** Interval in seconds - mutually exclusive with `cron` */
   every?: number;
-  /** Target channel ID */
+  /** Target channel ID (legacy) */
   channel?: string;
   /** Agent ID to use */
   agent: string;
+  /** Notification settings */
+  notifications?: CronNotificationSettings;
   /** Last execution timestamp (milliseconds) */
   last_run?: number;
   /** Last execution status */
@@ -51,12 +65,14 @@ export interface CreateCronJob {
   cron?: string;
   /** Interval in seconds */
   every?: number;
-  /** Target channel ID */
+  /** Target channel ID (legacy) */
   channel?: string;
   /** Agent ID */
   agent?: string;
   /** Whether enabled (default true) */
   enabled?: boolean;
+  /** Notification settings */
+  notifications?: CronNotificationSettings;
 }
 
 /** Request to update a cron job */
@@ -68,6 +84,7 @@ export interface UpdateCronJob {
   channel?: string;
   agent?: string;
   enabled?: boolean;
+  notifications?: CronNotificationSettings;
 }
 
 /** API response for listing cron jobs */

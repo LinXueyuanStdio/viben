@@ -8,7 +8,10 @@
  */
 
 // Notification category - determines icon and filtering
-export type NotificationCategory = "chat" | "cron" | "agent" | "system";
+export type NotificationCategory = "chat" | "group" | "cron" | "agent" | "system";
+
+// Notification method - how notifications are delivered
+export type NotificationMethod = "toast" | "system" | "both";
 
 // Notification level - determines styling and urgency
 export type NotificationLevel = "info" | "success" | "warning" | "error";
@@ -69,6 +72,8 @@ export interface NotificationPreferences {
   enabled: boolean;
   /** Per-category toggles */
   categories: Record<NotificationCategory, boolean>;
+  /** Notification method per category (toast, system, or both) */
+  methods: Record<NotificationCategory, NotificationMethod>;
   /** Whether to show system (OS) notifications */
   systemNotifications: boolean;
   /** Whether to play notification sounds */
@@ -108,9 +113,17 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   enabled: true,
   categories: {
     chat: true,
+    group: true,
     cron: true,
     agent: true,
     system: true,
+  },
+  methods: {
+    chat: "both",
+    group: "both",
+    cron: "both",
+    agent: "both",
+    system: "both",
   },
   systemNotifications: true,
   sound: true,

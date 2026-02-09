@@ -71,6 +71,7 @@ import {
   useLocalWorkspaces,
   useChatConfig,
   useGroupChat,
+  useChatNotifications,
 } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -211,20 +212,76 @@ function fileSessionToConversation(session: FileSession): Conversation {
   };
 }
 
-// Convert Gateway SessionMessage to AgentMessage
-function sessionMessageToAgentMessage(msg: SessionMessage): import("@/types").AgentMessage {
-  const baseMessage = {
-    id: crypto.randomUUID(),
-    content: msg.content,
-  };
+// Convert Gateway SessionMessage to AgentMessage(s)
+// A single SessionMessage may produce multiple AgentMessages (e.g., tool calls + text)
+function sessionMessageToAgentMessages(msg: SessionMessage): import("@/types").AgentMessage[] {
+  const messages: import("@/types").AgentMessage[] = [];
 
   if (msg.role === "user") {
-    return { ...baseMessage, type: "user" as const };
+    // User message
+    messages.push({
+      id: crypto.randomUUID(),
+      type: "user" as const,
+      content: msg.content,
+    });
   } else if (msg.role === "assistant") {
-    return { ...baseMessage, type: "text" as const };
-  } else {
-    return { ...baseMessage, type: "text" as const };
+    // Assistant message - may contain tool calls
+    if (msg.tool_calls && typeof msg.tool_calls === "object") {
+      // Handle tool calls - they can be an array or object
+      const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [msg.tool_calls];
+      for (const toolCall of toolCalls) {
+        if (toolCall && typeof toolCall === "object") {
+          const tc = toolCall as { id?: string; name?: string; input?: Record<string, unknown> };
+          messages.push({
+            id: tc.id || crypto.randomUUID(),
+            type: "tool_use" as const,
+            name: tc.name || "unknown_tool",
+            input: tc.input || {},
+            toolUseId: tc.id,
+          });
+        }
+      }
+    }
+
+    // Add text content if present
+    if (msg.content && msg.content.trim()) {
+      messages.push({
+        id: crypto.randomUUID(),
+        type: "text" as const,
+        content: msg.content,
+      });
+    }
+  } else if (msg.role === "system") {
+    // System message - could be tool result
+    if (msg.tool_result && typeof msg.tool_result === "object") {
+      const tr = msg.tool_result as { tool_use_id?: string; output?: string; is_error?: boolean };
+      messages.push({
+        id: crypto.randomUUID(),
+        type: "tool_result" as const,
+        toolUseId: tr.tool_use_id,
+        output: tr.output || msg.content,
+        isError: tr.is_error || false,
+      });
+    } else if (msg.content && msg.content.trim()) {
+      // Regular system message as text
+      messages.push({
+        id: crypto.randomUUID(),
+        type: "text" as const,
+        content: msg.content,
+      });
+    }
   }
+
+  // If no messages were created, add a text message with the content
+  if (messages.length === 0 && msg.content && msg.content.trim()) {
+    messages.push({
+      id: crypto.randomUUID(),
+      type: "text" as const,
+      content: msg.content,
+    });
+  }
+
+  return messages;
 }
 
 // ============================================================================
@@ -474,6 +531,9 @@ export function WorkspaceChatPage() {
   // Get chat config for executor and agent selection
   const { selectedExecutor, selectedAgentId: configSelectedAgentId } = useChatConfig();
 
+  // Chat notifications hook
+  const { notifyAIResponse, notifyChatError } = useChatNotifications();
+
   // Get current conversation and selected agent
   const currentConversation = conversations.find(
     (c) => c.id === selectedConversationId
@@ -537,6 +597,39 @@ export function WorkspaceChatPage() {
 
   // Check if we're in group chat mode
   const isGroupChatMode = selectedGroupChatId !== null;
+
+  // Chat notifications - track previous state to detect changes
+  const prevPhaseRef = React.useRef<string | null>(null);
+  const prevErrorRef = React.useRef<string | null>(null);
+
+  // Notify on AI response completion or error
+  React.useEffect(() => {
+    // Detect phase transition to completed
+    if (prevPhaseRef.current === "running" && phase === "completed") {
+      // Get the last assistant message for preview
+      const lastAssistantMessage = [...messages].reverse().find(
+        (m) => m.type === "text" || m.type === "result"
+      );
+      if (lastAssistantMessage && lastAssistantMessage.content) {
+        const agentName = currentAgent?.name || t("chat.defaultAgent");
+        notifyAIResponse(agentName, lastAssistantMessage.content, {
+          agentId: selectedAgentId || undefined,
+          workspaceId: workspaceId,
+          sessionId: selectedConversationId || undefined,
+        });
+      }
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, messages, currentAgent, selectedAgentId, workspaceId, selectedConversationId, notifyAIResponse, t]);
+
+  // Notify on error
+  React.useEffect(() => {
+    if (error && error !== prevErrorRef.current) {
+      const agentName = currentAgent?.name;
+      notifyChatError(error, agentName);
+    }
+    prevErrorRef.current = error;
+  }, [error, currentAgent, notifyChatError]);
 
   // Refresh sessions for current agent (manual refresh button)
   const refreshAgentSessions = React.useCallback(async () => {
@@ -775,8 +868,9 @@ export function WorkspaceChatPage() {
         }
 
         if (sessionMessages.length > 0) {
-          const agentMessages = sessionMessages.map(sessionMessageToAgentMessage);
-          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages, calling loadMessages`);
+          // Flatten array since sessionMessageToAgentMessages returns array per message
+          const agentMessages = sessionMessages.flatMap(sessionMessageToAgentMessages);
+          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages from ${sessionMessages.length} session messages, calling loadMessages`);
           loadMessages(agentMessages);
         } else {
           console.log(`[WorkspaceChat:Effect:Messages] No messages, calling clearMessages`);
@@ -1660,6 +1754,7 @@ export function WorkspaceChatPage() {
                   enableWritingMode
                   useGlobalConfig
                   hideExecutorSelector
+                  hideModelSelector
                   onAgentSettings={(agentId) => {
                     // Navigate to agent orchestration page
                     if (workspaceId) {

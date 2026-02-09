@@ -161,6 +161,8 @@ export type {
 // Channel Management
 export { useChannels } from "./use-channels";
 export type { UseChannelsReturn } from "./use-channels";
+export { useChannelInstances } from "./use-channel-instances";
+export type { UseChannelInstancesReturn } from "./use-channel-instances";
 
 // Screenshot
 export { useScreenshot } from "./use-screenshot";
@@ -183,10 +185,23 @@ export {
   useDisableCronJob,
   useRunCronJob,
 } from "./use-cron";
+export { useCronNotifications } from "./use-cron-notifications";
+export type { CronJobStatus, UseCronNotificationsReturn } from "./use-cron-notifications";
+
+// Chat Notifications
+export { useChatNotifications } from "./use-chat-notifications";
+export type {
+  ChatNotificationType,
+  UseChatNotificationsReturn,
+} from "./use-chat-notifications";
 
 // Group Chat
 export { useGroupChat } from "./use-group-chat";
-export type { UseGroupChatOptions, UseGroupChatReturn } from "./use-group-chat";
+export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks } from "./use-group-chat";
+
+// Group Chat Notifications
+export { useGroupNotifications } from "./use-group-notifications";
+export type { UseGroupNotificationsReturn } from "./use-group-notifications";
 
 // File Browser
 export { useFileBrowser } from "./use-file-browser";

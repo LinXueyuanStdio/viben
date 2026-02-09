@@ -1,13 +1,14 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Loader2, FolderOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
-import { FileBrowser, type FileBrowserRef } from "@/components/file-browser";
+import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/components/file-browser";
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
+import type { ViewMode } from "@/hooks/use-file-browser";
 
 
 export function WorkspaceFilesPage() {
@@ -20,6 +21,23 @@ export function WorkspaceFilesPage() {
 
   // Track current path segments for breadcrumb
   const [currentSegments, setCurrentSegments] = useState<{ name: string; path: string }[]>([]);
+
+  // Track view mode state (for toolbar in header)
+  // Initialize from localStorage if available
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = localStorage.getItem("fileBrowser.viewMode");
+    return (saved as ViewMode) || "column";
+  });
+
+  // Sync viewMode when FileBrowser initializes
+  useEffect(() => {
+    if (fileBrowserRef.current) {
+      const browserViewMode = fileBrowserRef.current.viewMode;
+      if (browserViewMode !== viewMode) {
+        setViewMode(browserViewMode);
+      }
+    }
+  }, []);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
@@ -110,6 +128,22 @@ export function WorkspaceFilesPage() {
     );
   }
 
+  // Handle view mode change from toolbar
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    fileBrowserRef.current?.setViewMode(mode);
+  }, []);
+
+  // Toolbar component for header's rightContent
+  const toolbarContent = (
+    <FileBrowserToolbar
+      viewMode={viewMode}
+      onViewModeChange={handleViewModeChange}
+      onNewFile={() => fileBrowserRef.current?.createFile()}
+      onNewFolder={() => fileBrowserRef.current?.createFolder()}
+    />
+  );
+
   return (
     <PageWrapper className="flex flex-col h-full">
       <WorkspaceHeader
@@ -117,6 +151,7 @@ export function WorkspaceFilesPage() {
         segments={pathSegments}
         showRefresh={false}
         showRemove={false}
+        rightContent={toolbarContent}
       />
 
       <div className="flex-1 overflow-hidden">
@@ -125,7 +160,7 @@ export function WorkspaceFilesPage() {
           workspacePath={workspace.path}
           className="h-full"
           onPathChange={handlePathChange}
-          hideBreadcrumb
+          hideToolbar
         />
       </div>
     </PageWrapper>

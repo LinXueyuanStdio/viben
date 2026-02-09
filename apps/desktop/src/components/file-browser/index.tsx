@@ -59,13 +59,19 @@ interface FileBrowserProps {
   className?: string;
   /** Callback when path changes - used to sync with workspace breadcrumb */
   onPathChange?: (path: string, segments: { name: string; path: string }[]) => void;
-  /** Hide internal breadcrumb when using external navigation (keeps view toggle and action buttons) */
-  hideBreadcrumb?: boolean;
+  /** Hide internal toolbar completely (when using external toolbar in header) */
+  hideToolbar?: boolean;
 }
 
 /** Methods exposed via ref for external control */
 export interface FileBrowserRef {
   navigateToColumnIndex: (index: number) => void;
+  // View mode control
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
+  // File creation
+  createFile: () => void;
+  createFolder: () => void;
 }
 
 interface SidebarItem {
@@ -223,8 +229,6 @@ interface ToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onNewFile: () => void;
   onNewFolder: () => void;
-  /** Hide breadcrumb and navigation buttons (when using external breadcrumb) */
-  hideBreadcrumb?: boolean;
 }
 
 function Toolbar({
@@ -241,103 +245,95 @@ function Toolbar({
   onViewModeChange,
   onNewFile,
   onNewFolder,
-  hideBreadcrumb = false,
 }: ToolbarProps) {
   const pathSegments = getPathSegments(currentPath, workspacePath);
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b bg-background/50">
-      {/* Navigation buttons - hidden when using external breadcrumb */}
-      {!hideBreadcrumb && (
-        <>
-          <TooltipProvider>
-            <div className="flex items-center gap-0.5">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canGoBack}
-                    onClick={onGoBack}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Back</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canGoForward}
-                    onClick={onGoForward}
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Forward</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={!canGoUp}
-                    onClick={onGoUp}
-                  >
-                    <ArrowUp className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Up</TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
+      {/* Navigation buttons */}
+      <TooltipProvider>
+        <div className="flex items-center gap-0.5">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!canGoBack}
+                onClick={onGoBack}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Back</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!canGoForward}
+                onClick={onGoForward}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Forward</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                disabled={!canGoUp}
+                onClick={onGoUp}
+              >
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Up</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
 
-          <Separator orientation="vertical" className="h-6" />
+      <Separator orientation="vertical" className="h-6" />
 
-          {/* Breadcrumb */}
-          <div className="flex-1 flex items-center gap-1 overflow-hidden">
+      {/* Breadcrumb */}
+      <div className="flex-1 flex items-center gap-1 overflow-hidden">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-muted-foreground hover:text-foreground"
+          onClick={() => onNavigateTo(workspacePath)}
+        >
+          <Home className="h-4 w-4 mr-1" />
+          <span className="truncate max-w-[100px]">
+            {workspacePath.split("/").pop()}
+          </span>
+        </Button>
+        {pathSegments.map((segment, i) => (
+          <React.Fragment key={segment.path}>
+            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-muted-foreground hover:text-foreground"
-              onClick={() => onNavigateTo(workspacePath)}
+              className={cn(
+                "h-7 px-2",
+                i === pathSegments.length - 1
+                  ? "text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => onNavigateTo(segment.path)}
             >
-              <Home className="h-4 w-4 mr-1" />
-              <span className="truncate max-w-[100px]">
-                {workspacePath.split("/").pop()}
-              </span>
+              <span className="truncate max-w-[100px]">{segment.name}</span>
             </Button>
-            {pathSegments.map((segment, i) => (
-              <React.Fragment key={segment.path}>
-                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={cn(
-                    "h-7 px-2",
-                    i === pathSegments.length - 1
-                      ? "text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => onNavigateTo(segment.path)}
-                >
-                  <span className="truncate max-w-[100px]">{segment.name}</span>
-                </Button>
-              </React.Fragment>
-            ))}
-          </div>
+          </React.Fragment>
+        ))}
+      </div>
 
-          <Separator orientation="vertical" className="h-6" />
-        </>
-      )}
-
-      {/* Spacer when breadcrumb is hidden */}
-      {hideBreadcrumb && <div className="flex-1" />}
+      <Separator orientation="vertical" className="h-6" />
 
       {/* View mode toggle */}
       <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
@@ -539,17 +535,11 @@ function IconView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: Ico
 
 interface ColumnViewProps {
   workspacePath: string;
-  currentPath: string;
-  columnPaths: string[];
-  files: FileEntry[];
-  selectedFile: FileEntry | null;
   onSelect: (file: FileEntry) => void;
   onOpen: (file: FileEntry) => void;
   onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
-  loadDirectory: (path: string) => Promise<FileEntry[]>;
-  updateColumnPaths: (paths: string[]) => void;
-  /** Called when navigating to a new directory (to update currentPath and breadcrumb) */
-  onNavigate: (path: string) => void;
+  /** Called when path changes (for breadcrumb sync) */
+  onPathChange?: (path: string, segments: { name: string; path: string }[]) => void;
 }
 
 /** Methods exposed by ColumnView via ref */
@@ -569,8 +559,8 @@ interface ColumnData {
 function ColumnPreviewPanel({ file, workspacePath }: { file: FileEntry | null; workspacePath: string }) {
   if (!file) {
     return (
-      <div className="w-72 min-w-[288px] flex-shrink-0 border-l bg-muted/20 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Select a file to preview</p>
+      <div className="w-64 min-w-[256px] flex-shrink-0 border-l bg-muted/20 flex items-center justify-center">
+        <p className="text-sm text-muted-foreground">No selection</p>
       </div>
     );
   }
@@ -581,20 +571,20 @@ function ColumnPreviewPanel({ file, workspacePath }: { file: FileEntry | null; w
     : file.path;
 
   return (
-    <div className="w-72 min-w-[288px] flex-shrink-0 border-l bg-muted/20 flex flex-col">
+    <div className="w-64 min-w-[256px] flex-shrink-0 border-l bg-muted/20 flex flex-col">
       {/* Preview header with large icon */}
-      <div className="p-6 flex flex-col items-center border-b">
-        <div className="p-4 rounded-xl bg-background shadow-sm mb-3">
+      <div className="p-4 flex flex-col items-center border-b">
+        <div className="p-3 rounded-xl bg-background shadow-sm mb-2">
           {getFileIcon(file, "lg")}
         </div>
-        <h3 className="font-medium text-sm text-center truncate w-full">{file.name}</h3>
-        <p className="text-xs text-muted-foreground text-center truncate w-full mt-1">
+        <h3 className="font-medium text-sm text-center truncate w-full px-2">{file.name}</h3>
+        <p className="text-xs text-muted-foreground text-center truncate w-full mt-0.5">
           {file.is_directory ? "Folder" : file.name.split(".").pop()?.toUpperCase() || "File"}
         </p>
       </div>
 
       {/* File info */}
-      <div className="p-4 space-y-3 text-sm">
+      <div className="p-3 space-y-2 text-xs flex-1 overflow-auto">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Type</span>
           <span>{file.is_directory ? "Folder" : "File"}</span>
@@ -612,62 +602,80 @@ function ColumnPreviewPanel({ file, workspacePath }: { file: FileEntry | null; w
           </div>
         )}
         <div className="pt-2 border-t">
-          <span className="text-muted-foreground text-xs">Path</span>
-          <p className="text-xs font-mono mt-1 break-all">{relativePath}</p>
+          <span className="text-muted-foreground">Path</span>
+          <p className="font-mono mt-1 break-all text-[10px] leading-relaxed">{relativePath}</p>
         </div>
       </div>
     </div>
   );
 }
 
+/** Helper to build path segments for breadcrumb */
+function buildPathSegments(columns: ColumnData[]): { name: string; path: string }[] {
+  // Skip the first column (workspace root), return subsequent paths
+  return columns.slice(1).map(col => ({
+    name: col.path.split("/").pop() || "",
+    path: col.path
+  }));
+}
+
 const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnView({
   workspacePath,
-  currentPath: _currentPath,
-  columnPaths: _columnPaths,
-  files: initialFiles,
-  selectedFile,
   onSelect,
   onOpen,
   onContextMenu,
-  loadDirectory: _loadDirectory,
-  updateColumnPaths,
-  onNavigate,
+  onPathChange,
 }, ref) {
   const [columns, setColumns] = React.useState<ColumnData[]>([]);
   const [previewFile, setPreviewFile] = React.useState<FileEntry | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
 
-  // Initialize columns on mount
+  // Load a directory and return sorted files
+  const loadDirectoryFiles = useCallback(async (dirPath: string): Promise<FileEntry[]> => {
+    const entries = await invoke<FileEntry[]>("read_directory", {
+      workspacePath,
+      dirPath,
+    });
+    // Sort: directories first, then files, alphabetically
+    return entries.sort((a, b) => {
+      if (a.is_directory && !b.is_directory) return -1;
+      if (!a.is_directory && b.is_directory) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [workspacePath]);
+
+  // Initialize first column on mount
   useEffect(() => {
     if (isInitializedRef.current) return;
-    if (initialFiles.length === 0 && columns.length === 0) return;
-
-    // Initialize with first column (workspace root)
     isInitializedRef.current = true;
-    setColumns([{
-      path: workspacePath,
-      files: initialFiles,
-      loading: false,
-      selectedItem: null
-    }]);
-  }, [initialFiles, workspacePath, columns.length]);
 
-  // Update first column files when they change
+    const initFirstColumn = async () => {
+      setColumns([{ path: workspacePath, files: [], loading: true, selectedItem: null }]);
+      try {
+        const files = await loadDirectoryFiles(workspacePath);
+        setColumns([{ path: workspacePath, files, loading: false, selectedItem: null }]);
+      } catch (error) {
+        console.error("Failed to load root directory:", error);
+        setColumns([{ path: workspacePath, files: [], loading: false, selectedItem: null }]);
+      }
+    };
+
+    initFirstColumn();
+  }, [workspacePath, loadDirectoryFiles]);
+
+  // Notify parent when columns change (for breadcrumb sync)
   useEffect(() => {
-    if (columns.length > 0 && columns[0].path === workspacePath && initialFiles.length > 0) {
-      setColumns(prev => {
-        if (prev[0]?.files === initialFiles) return prev;
-        const updated = [...prev];
-        updated[0] = { ...updated[0], files: initialFiles };
-        return updated;
-      });
+    if (columns.length > 0 && onPathChange) {
+      const lastColumn = columns[columns.length - 1];
+      const segments = buildPathSegments(columns);
+      onPathChange(lastColumn.path, segments);
     }
-  }, [initialFiles, workspacePath, columns]);
+  }, [columns, onPathChange]);
 
   // Auto-scroll to the right when new columns are added
   useEffect(() => {
-    if (scrollContainerRef.current && columns.length > 0) {
+    if (scrollContainerRef.current && columns.length > 1) {
       setTimeout(() => {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
@@ -678,87 +686,60 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
 
   // Handle item click in a column
   const handleItemClick = useCallback(async (columnIndex: number, file: FileEntry) => {
-    // Update selection in this column and clear selections in columns to the right
-    setColumns(prev => {
-      const updated = prev.slice(0, columnIndex + 1);
-      updated[columnIndex] = { ...updated[columnIndex], selectedItem: file.path };
-      return updated;
-    });
-
     if (file.is_directory) {
       // Directory clicked - add new column to the right
       setPreviewFile(null);
 
-      // Add loading column
+      // Step 1: Truncate columns to current + set selection + add loading column
       setColumns(prev => {
         const updated = prev.slice(0, columnIndex + 1);
         updated[columnIndex] = { ...updated[columnIndex], selectedItem: file.path };
         return [...updated, { path: file.path, files: [], loading: true, selectedItem: null }];
       });
 
-      // Update navigation
-      onNavigate(file.path);
-
-      // Load directory contents
+      // Step 2: Load directory contents
       try {
-        const entries = await invoke<FileEntry[]>("read_directory", {
-          workspacePath,
-          dirPath: file.path,
-        });
+        const files = await loadDirectoryFiles(file.path);
 
-        // Sort: directories first, then files, alphabetically
-        const sorted = entries.sort((a, b) => {
-          if (a.is_directory && !b.is_directory) return -1;
-          if (!a.is_directory && b.is_directory) return 1;
-          return a.name.localeCompare(b.name);
-        });
-
+        // Step 3: Update the new column with loaded files
         setColumns(prev => {
           return prev.map(col =>
-            col.path === file.path ? { ...col, files: sorted, loading: false } : col
+            col.path === file.path && col.loading
+              ? { ...col, files, loading: false }
+              : col
           );
         });
-
-        // Update column paths
-        const paths = columns.slice(0, columnIndex + 1).map(c => c.path);
-        paths.push(file.path);
-        updateColumnPaths(paths);
-      } catch {
+      } catch (error) {
+        console.error("Failed to load directory:", error);
         // Remove failed column
         setColumns(prev => prev.filter(col => col.path !== file.path));
       }
     } else {
-      // File clicked - show in preview panel, remove columns to the right
+      // File clicked - show in preview panel, truncate columns to current
       setPreviewFile(file);
       onSelect(file);
 
-      // Update column paths (only folders)
-      const paths = columns.slice(0, columnIndex + 1).map(c => c.path);
-      updateColumnPaths(paths);
-
-      // Navigate to parent folder (for breadcrumb)
-      onNavigate(columns[columnIndex].path);
+      setColumns(prev => {
+        const updated = prev.slice(0, columnIndex + 1);
+        updated[columnIndex] = { ...updated[columnIndex], selectedItem: file.path };
+        return updated;
+      });
     }
-  }, [columns, workspacePath, onNavigate, onSelect, updateColumnPaths]);
+  }, [loadDirectoryFiles, onSelect]);
 
   // Navigate to a specific column index (called from breadcrumb)
   const navigateToColumnIndex = useCallback((targetColumnIndex: number) => {
-    if (targetColumnIndex < 0 || targetColumnIndex >= columns.length) return;
-
-    const targetPath = columns[targetColumnIndex].path;
-
-    // Keep columns up to and including target
     setColumns(prev => {
+      if (targetColumnIndex < 0 || targetColumnIndex >= prev.length) return prev;
+
       const updated = prev.slice(0, targetColumnIndex + 1);
       // Clear selection in target column
       updated[targetColumnIndex] = { ...updated[targetColumnIndex], selectedItem: null };
+
+      setPreviewFile(null);
       return updated;
     });
-
-    setPreviewFile(null);
-    onNavigate(targetPath);
-    updateColumnPaths(columns.slice(0, targetColumnIndex + 1).map(c => c.path));
-  }, [columns, onNavigate, updateColumnPaths]);
+  }, []);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
@@ -783,7 +764,7 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
         {columns.map((column, columnIndex) => (
           <div
             key={column.path}
-            className="w-56 min-w-[224px] flex-shrink-0 border-r bg-background flex flex-col"
+            className="w-52 min-w-[208px] max-w-[208px] flex-shrink-0 border-r bg-background flex flex-col"
           >
             {/* Column content */}
             <ScrollArea className="flex-1">
@@ -796,26 +777,27 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
                   Empty folder
                 </div>
               ) : (
-                <div className="py-1">
+                <div className="py-0.5">
                   {column.files.map((file) => {
                     const isSelected = column.selectedItem === file.path;
                     return (
                       <div
                         key={file.path}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-1.5 cursor-pointer mx-1 rounded-md",
+                          "flex items-center gap-1.5 px-2 py-1 cursor-pointer mx-0.5 rounded",
                           "hover:bg-accent/50 transition-colors",
+                          "min-w-0", // Allow shrinking
                           isSelected && "bg-primary text-primary-foreground"
                         )}
                         onClick={() => handleItemClick(columnIndex, file)}
                         onDoubleClick={() => !file.is_directory && onOpen(file)}
                         onContextMenu={(e) => onContextMenu(file, e)}
                       >
-                        {getFileIcon(file, "sm")}
-                        <span className="flex-1 truncate text-sm">{file.name}</span>
+                        <span className="flex-shrink-0">{getFileIcon(file, "sm")}</span>
+                        <span className="flex-1 min-w-0 truncate text-sm">{file.name}</span>
                         {file.is_directory && (
                           <ChevronRight className={cn(
-                            "h-4 w-4 flex-shrink-0",
+                            "h-3.5 w-3.5 flex-shrink-0",
                             isSelected ? "text-primary-foreground" : "text-muted-foreground"
                           )} />
                         )}
@@ -830,7 +812,7 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
       </div>
 
       {/* Preview panel on the right */}
-      <ColumnPreviewPanel file={previewFile || selectedFile} workspacePath={workspacePath} />
+      <ColumnPreviewPanel file={previewFile} workspacePath={workspacePath} />
     </div>
   );
 });
@@ -1360,30 +1342,42 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
  * -------------------------------------------------------------------------- */
 
 export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function FileBrowser(
-  { workspacePath, initialPath, className, onPathChange, hideBreadcrumb },
+  { workspacePath, initialPath, className, onPathChange, hideToolbar },
   ref
 ) {
   const browser = useFileBrowser({ workspacePath, initialPath });
   const columnViewRef = useRef<ColumnViewRef>(null);
+
+  // Dialog states for file creation
+  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
+  const [createDialogType, setCreateDialogType] = React.useState<"file" | "folder">("file");
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     navigateToColumnIndex: (index: number) => {
       columnViewRef.current?.navigateToColumnIndex(index);
     },
-  }), []);
+    viewMode: browser.viewMode,
+    setViewMode: browser.setViewMode,
+    createFile: () => {
+      setCreateDialogType("file");
+      setCreateDialogOpen(true);
+    },
+    createFolder: () => {
+      setCreateDialogType("folder");
+      setCreateDialogOpen(true);
+    },
+  }), [browser.viewMode, browser.setViewMode]);
 
-  // Notify parent of path changes
+  // Notify parent of path changes (only for non-column views, column view handles this itself)
   useEffect(() => {
-    if (onPathChange) {
+    if (onPathChange && browser.viewMode !== "column") {
       const segments = getPathSegments(browser.currentPath, workspacePath);
       onPathChange(browser.currentPath, segments);
     }
-  }, [browser.currentPath, workspacePath, onPathChange]);
+  }, [browser.currentPath, workspacePath, onPathChange, browser.viewMode]);
 
-  // Dialog states
-  const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
-  const [createDialogType, setCreateDialogType] = React.useState<"file" | "folder">("file");
+  // Dialog states (createDialogOpen and createDialogType are already defined above for ref)
   const [renameFile, setRenameFile] = React.useState<FileEntry | null>(null);
   const [deleteFile, setDeleteFile] = React.useState<FileEntry | null>(null);
 
@@ -1530,16 +1524,10 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
           <ColumnView
             ref={columnViewRef}
             workspacePath={workspacePath}
-            currentPath={browser.currentPath}
-            columnPaths={browser.columnPaths}
-            files={browser.files}
-            selectedFile={browser.selectedFile}
             onSelect={browser.selectFile}
             onOpen={handleOpen}
             onContextMenu={handleContextMenu}
-            loadDirectory={browser.loadDirectory}
-            updateColumnPaths={browser.updateColumnPaths}
-            onNavigate={(path) => browser.navigateTo(path, false)}
+            onPathChange={onPathChange}
           />
         );
       case "gallery":
@@ -1559,29 +1547,30 @@ export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function
 
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
-      {/* Toolbar - always shown, breadcrumb can be hidden when using external navigation */}
-      <Toolbar
-        workspacePath={workspacePath}
-        currentPath={browser.currentPath}
-        viewMode={browser.viewMode}
-        canGoBack={browser.canGoBack}
-        canGoForward={browser.canGoForward}
-        canGoUp={browser.canGoUp}
-        onGoBack={browser.goBack}
-        onGoForward={browser.goForward}
-        onGoUp={browser.goUp}
-        onNavigateTo={browser.navigateTo}
-        onViewModeChange={browser.setViewMode}
-        onNewFile={() => {
-          setCreateDialogType("file");
-          setCreateDialogOpen(true);
-        }}
-        onNewFolder={() => {
-          setCreateDialogType("folder");
-          setCreateDialogOpen(true);
-        }}
-        hideBreadcrumb={hideBreadcrumb}
-      />
+      {/* Toolbar - can be completely hidden when using external toolbar in header */}
+      {!hideToolbar && (
+        <Toolbar
+          workspacePath={workspacePath}
+          currentPath={browser.currentPath}
+          viewMode={browser.viewMode}
+          canGoBack={browser.canGoBack}
+          canGoForward={browser.canGoForward}
+          canGoUp={browser.canGoUp}
+          onGoBack={browser.goBack}
+          onGoForward={browser.goForward}
+          onGoUp={browser.goUp}
+          onNavigateTo={browser.navigateTo}
+          onViewModeChange={browser.setViewMode}
+          onNewFile={() => {
+            setCreateDialogType("file");
+            setCreateDialogOpen(true);
+          }}
+          onNewFolder={() => {
+            setCreateDialogType("folder");
+            setCreateDialogOpen(true);
+          }}
+        />
+      )}
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">

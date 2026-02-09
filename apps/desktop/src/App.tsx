@@ -102,6 +102,7 @@ function App() {
             <Route index element={null} />
             <Route path="general" element={null} />
             <Route path="shortcuts" element={null} />
+            <Route path="notifications" element={null} />
             <Route path="gateway" element={null} />
             <Route path="channels" element={null} />
             <Route path="executors" element={null} />

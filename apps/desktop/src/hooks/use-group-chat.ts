@@ -56,6 +56,30 @@ type GroupChatWsEvent =
   | WsTypingEvent
   | WsMessageReadEvent;
 
+/** Notification callbacks for group chat events */
+export interface GroupChatNotificationCallbacks {
+  /** Called when a new message is received from another user */
+  onNewMessage?: (
+    groupId: string,
+    groupName: string,
+    message: GroupChatMessage,
+    currentUserId: string
+  ) => void;
+  /** Called when a member joins the group */
+  onMemberJoined?: (
+    groupId: string,
+    groupName: string,
+    member: GroupChatMember
+  ) => void;
+  /** Called when a member leaves the group */
+  onMemberLeft?: (
+    groupId: string,
+    groupName: string,
+    memberId: string,
+    memberName?: string
+  ) => void;
+}
+
 /** Hook options */
 export interface UseGroupChatOptions {
   /** Current user's ID */
@@ -64,6 +88,8 @@ export interface UseGroupChatOptions {
   userDisplayName?: string;
   /** Auto-connect to WebSocket when groupChatId is provided */
   autoConnect?: boolean;
+  /** Optional notification callbacks for group chat events */
+  notificationCallbacks?: GroupChatNotificationCallbacks;
 }
 
 /** Hook return type */
@@ -123,6 +149,7 @@ export function useGroupChat(
     userId = "user-1",
     userDisplayName = "User",
     autoConnect = true,
+    notificationCallbacks,
   } = options || {};
 
   // State
@@ -138,7 +165,9 @@ export function useGroupChat(
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const currentGroupChatIdRef = useRef<string | null>(null);
+  const currentGroupChatNameRef = useRef<string>("");
   const typingTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const membersMapRef = useRef<Map<string, string>>(new Map()); // member_id -> display_name
 
   // Get client
   const client = getGatewayClient();
@@ -151,18 +180,40 @@ export function useGroupChat(
    * Handle incoming WebSocket events
    */
   const handleWsEvent = useCallback((event: GroupChatWsEvent) => {
+    const groupId = currentGroupChatIdRef.current;
+    const groupName = currentGroupChatNameRef.current;
+
     switch (event.type) {
       case "new_message":
         setMessages((prev) => [...prev, event.message]);
+        // Trigger notification callback for new messages (not from self)
+        if (notificationCallbacks?.onNewMessage && groupId && event.message.sender_id !== userId) {
+          notificationCallbacks.onNewMessage(groupId, groupName, event.message, userId);
+        }
         break;
 
       case "member_joined":
         setMembers((prev) => [...prev, event.member]);
+        // Update members map
+        membersMapRef.current.set(event.member.member_id, event.member.display_name);
+        // Trigger notification callback
+        if (notificationCallbacks?.onMemberJoined && groupId) {
+          notificationCallbacks.onMemberJoined(groupId, groupName, event.member);
+        }
         break;
 
-      case "member_left":
+      case "member_left": {
+        // Get member name before removing
+        const memberName = membersMapRef.current.get(event.member_id);
         setMembers((prev) => prev.filter((m) => m.member_id !== event.member_id));
+        // Remove from members map
+        membersMapRef.current.delete(event.member_id);
+        // Trigger notification callback
+        if (notificationCallbacks?.onMemberLeft && groupId) {
+          notificationCallbacks.onMemberLeft(groupId, groupName, event.member_id, memberName);
+        }
         break;
+      }
 
       case "typing": {
         const { member_id, is_typing } = event;
@@ -187,7 +238,7 @@ export function useGroupChat(
         // Could track read receipts here
         break;
     }
-  }, []);
+  }, [notificationCallbacks, userId]);
 
   /**
    * Connect to WebSocket
@@ -244,6 +295,8 @@ export function useGroupChat(
     }
     setIsConnected(false);
     currentGroupChatIdRef.current = null;
+    currentGroupChatNameRef.current = "";
+    membersMapRef.current.clear();
   }, []);
 
   /**
@@ -327,6 +380,13 @@ export function useGroupChat(
       const result = await client.getGroupChat(chatId);
       setCurrentGroupChat(result);
       setMembers(result.members);
+      // Store group name for notifications
+      currentGroupChatNameRef.current = result.group_chat.name;
+      // Build members map for looking up display names
+      membersMapRef.current.clear();
+      for (const member of result.members) {
+        membersMapRef.current.set(member.member_id, member.display_name);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load group chat";
       setError(message);
@@ -351,6 +411,10 @@ export function useGroupChat(
       );
       if (currentGroupChat?.group_chat.id === chatId) {
         setCurrentGroupChat((prev) => prev ? { ...prev, group_chat: updated } : null);
+        // Update the group name ref if it changed
+        if (data.name) {
+          currentGroupChatNameRef.current = data.name;
+        }
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to update group chat";

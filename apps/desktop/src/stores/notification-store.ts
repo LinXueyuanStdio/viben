@@ -4,6 +4,7 @@ import type {
   AppNotification,
   CreateNotificationInput,
   NotificationCategory,
+  NotificationMethod,
   NotificationPreferences,
 } from "@/types";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/types/notification";
@@ -33,6 +34,7 @@ interface NotificationState {
   // Actions: Preference management
   setPreferences: (prefs: Partial<NotificationPreferences>) => void;
   setCategoryEnabled: (category: NotificationCategory, enabled: boolean) => void;
+  setCategoryMethod: (category: NotificationCategory, method: NotificationMethod) => void;
   setDoNotDisturb: (
     enabled: boolean,
     start?: string,
@@ -130,6 +132,18 @@ export const useNotificationStore = create<NotificationState>()(
             categories: {
               ...state.preferences.categories,
               [category]: enabled,
+            },
+          },
+        })),
+
+      // Set notification method for a category
+      setCategoryMethod: (category, method) =>
+        set((state) => ({
+          preferences: {
+            ...state.preferences,
+            methods: {
+              ...state.preferences.methods,
+              [category]: method,
             },
           },
         })),
