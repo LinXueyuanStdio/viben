@@ -4,11 +4,92 @@
  * Supports multiple instances of the same channel type
  */
 
-/** Channel type identifiers */
-export type ChannelType = "telegram" | "discord" | "feishu" | "whatsapp";
+/** Channel type identifiers (matches backend ChannelType) */
+export type ChannelType = "telegram" | "discord" | "feishu" | "whatsapp" | "slack" | "webhook";
 
 /** Notification target type */
 export type NotificationType = "in_app" | "system" | "channel";
+
+// ============================================================================
+// Gateway API Types (matches Rust backend)
+// ============================================================================
+
+/** Notification mode for channel messages (matches backend NotificationMode) */
+export type NotificationMode = "none" | "in_app" | "system" | "both";
+
+/** Binding type for agent/executor (matches backend BindingType) */
+export type BindingType = "agent" | "executor";
+
+/** Agent or executor binding for a channel (matches backend AgentBinding) */
+export interface AgentBinding {
+  binding_type: BindingType;
+  id: string;
+  name: string;
+  workspace_path?: string;
+}
+
+/** Channel config union type (matches backend ChannelConfig) */
+export type ChannelConfig =
+  | { type: "none" }
+  | { type: "telegram"; token?: string; proxy?: string }
+  | { type: "discord"; token?: string }
+  | { type: "feishu"; app_id?: string; app_secret?: string }
+  | { type: "whatsapp"; bridge_url?: string }
+  | { type: "slack"; token?: string }
+  | { type: "webhook"; url?: string; method?: string; headers?: Record<string, string> };
+
+/** Channel from Gateway API (matches backend Channel struct) */
+export interface GatewayChannel {
+  id: string;
+  channel_type: ChannelType;
+  name: string;
+  config: ChannelConfig;
+  is_default: boolean;
+  enabled: boolean;
+  notification_mode: NotificationMode;
+  agent_binding?: AgentBinding;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
+}
+
+/** Request to create a channel (matches backend CreateChannelOptions) */
+export interface CreateChannelRequest {
+  channel_type: ChannelType;
+  name: string;
+  config?: ChannelConfig;
+  set_as_default?: boolean;
+  notification_mode?: NotificationMode;
+  agent_binding?: AgentBinding;
+}
+
+/** Request to update a channel (matches backend ChannelUpdate) */
+export interface UpdateChannelRequest {
+  name?: string;
+  config?: ChannelConfig;
+  enabled?: boolean;
+  notification_mode?: NotificationMode;
+  agent_binding?: AgentBinding | null; // null to clear
+  set_as_default?: boolean;
+}
+
+/** Response from list channels API */
+export interface ListChannelsResponse {
+  channels: GatewayChannel[];
+}
+
+/** Test channel result (matches backend TestChannelResult) */
+export interface TestChannelResult {
+  success: boolean;
+  details?: string;
+  error?: string;
+}
+
+/** Send message result (matches backend SendMessageResult) */
+export interface SendMessageResult {
+  success: boolean;
+  message_id?: string;
+  error?: string;
+}
 
 /** Base channel instance interface */
 export interface BaseChannelInstance {

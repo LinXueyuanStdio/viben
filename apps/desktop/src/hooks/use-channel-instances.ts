@@ -1,137 +1,458 @@
 /**
- * Hook for managing channel instances
+ * Hook for managing channel instances via Gateway API
  *
  * Supports multiple instances of the same channel type.
- * Stores in localStorage for now, will integrate with gateway later.
+ * Data is stored in ~/.viben/channels.yaml via Gateway.
  */
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  ChannelInstance,
+import { getGatewayClient } from "@/lib/gateway";
+import type {
   ChannelType,
-  ChannelsStorage,
-  DEFAULT_CHANNELS_STORAGE,
-  createDefaultInstance,
+  GatewayChannel,
+  CreateChannelRequest,
+  UpdateChannelRequest,
+  ListChannelsResponse,
+  NotificationMode,
+  AgentBinding,
+  ChannelConfig,
 } from "@/types/channel";
 
-const STORAGE_KEY = "viben_channel_instances";
+/**
+ * Helper to make API requests to the gateway
+ */
+async function gatewayFetch<T>(
+  path: string,
+  options?: RequestInit
+): Promise<T> {
+  const client = getGatewayClient();
+  const baseUrl = client.getBaseUrl();
+  const response = await fetch(`${baseUrl}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...options?.headers,
+    },
+    ...options,
+  });
+
+  if (!response.ok) {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      errorMessage =
+        errorBody?.error?.message ||
+        errorBody?.message ||
+        JSON.stringify(errorBody);
+    } catch {
+      // Keep statusText as fallback
+    }
+    throw new Error(errorMessage);
+  }
+
+  // Handle empty responses
+  const text = await response.text();
+  if (!text) {
+    return {} as T;
+  }
+
+  return JSON.parse(text) as T;
+}
 
 export interface UseChannelInstancesReturn {
   /** All channel instances */
-  instances: ChannelInstance[];
+  instances: GatewayChannel[];
   /** Loading state */
   isLoading: boolean;
   /** Error message */
   error: string | null;
+  /** Refresh instances from server */
+  refresh: () => Promise<void>;
   /** Get instances by type */
-  getInstancesByType: (type: ChannelType) => ChannelInstance[];
+  getInstancesByType: (type: ChannelType) => GatewayChannel[];
   /** Get instance by ID */
-  getInstance: (id: string) => ChannelInstance | undefined;
+  getInstance: (id: string) => GatewayChannel | undefined;
   /** Get enabled instances */
-  getEnabledInstances: () => ChannelInstance[];
+  getEnabledInstances: () => GatewayChannel[];
+  /** Get default instance */
+  getDefaultInstance: () => GatewayChannel | undefined;
   /** Create new instance */
-  createInstance: (type: ChannelType, name: string) => ChannelInstance;
+  createInstance: (
+    type: ChannelType,
+    name: string,
+    config?: ChannelConfig
+  ) => Promise<GatewayChannel | null>;
   /** Update instance */
-  updateInstance: (id: string, update: Partial<ChannelInstance>) => void;
+  updateInstance: (
+    id: string,
+    update: UpdateChannelRequest
+  ) => Promise<GatewayChannel | null>;
   /** Delete instance */
-  deleteInstance: (id: string) => void;
+  deleteInstance: (id: string) => Promise<boolean>;
   /** Toggle instance enabled state */
-  toggleInstance: (id: string) => void;
+  toggleInstance: (id: string) => Promise<boolean>;
+  /** Set as default channel */
+  setDefault: (id: string) => Promise<GatewayChannel | null>;
 }
 
 export function useChannelInstances(): UseChannelInstancesReturn {
-  const [storage, setStorage] = useState<ChannelsStorage>(DEFAULT_CHANNELS_STORAGE);
+  const [instances, setInstances] = useState<GatewayChannel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load from localStorage on mount
-  useEffect(() => {
+  // Load from Gateway API
+  const loadInstances = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as ChannelsStorage;
-        setStorage(parsed);
-      }
-    } catch (e) {
-      console.error("Failed to load channel instances:", e);
-      setError("Failed to load channel instances");
+      const data = await gatewayFetch<ListChannelsResponse>("/api/channels");
+      setInstances(data.channels || []);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load channel instances";
+      setError(message);
+      console.error("Failed to load channel instances:", err);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  // Save to localStorage on change
+  // Load on mount
   useEffect(() => {
-    if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
-    }
-  }, [storage, isLoading]);
+    loadInstances();
+  }, [loadInstances]);
 
   const getInstancesByType = useCallback(
-    (type: ChannelType) => storage.instances.filter((i) => i.type === type),
-    [storage.instances]
+    (type: ChannelType) => instances.filter((i) => i.channel_type === type),
+    [instances]
   );
 
   const getInstance = useCallback(
-    (id: string) => storage.instances.find((i) => i.id === id),
-    [storage.instances]
+    (id: string) => instances.find((i) => i.id === id),
+    [instances]
   );
 
   const getEnabledInstances = useCallback(
-    () => storage.instances.filter((i) => i.enabled),
-    [storage.instances]
+    () => instances.filter((i) => i.enabled),
+    [instances]
   );
 
-  const createInstance = useCallback((type: ChannelType, name: string) => {
-    const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const instance = createDefaultInstance(type, id, name);
+  const getDefaultInstance = useCallback(
+    () => instances.find((i) => i.is_default),
+    [instances]
+  );
 
-    setStorage((prev) => ({
-      ...prev,
-      instances: [...prev.instances, instance],
-    }));
-
-    return instance;
-  }, []);
+  const createInstance = useCallback(
+    async (
+      type: ChannelType,
+      name: string,
+      config?: ChannelConfig
+    ): Promise<GatewayChannel | null> => {
+      try {
+        const request: CreateChannelRequest = {
+          channel_type: type,
+          name,
+          config,
+        };
+        const result = await gatewayFetch<GatewayChannel>("/api/channels", {
+          method: "POST",
+          body: JSON.stringify(request),
+        });
+        // Refresh the list
+        await loadInstances();
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to create channel";
+        setError(message);
+        console.error("Failed to create channel instance:", err);
+        return null;
+      }
+    },
+    [loadInstances]
+  );
 
   const updateInstance = useCallback(
-    (id: string, update: Partial<ChannelInstance>) => {
-      setStorage((prev) => ({
-        ...prev,
-        instances: prev.instances.map((i) =>
-          i.id === id ? ({ ...i, ...update } as ChannelInstance) : i
-        ),
-      }));
+    async (
+      id: string,
+      update: UpdateChannelRequest
+    ): Promise<GatewayChannel | null> => {
+      try {
+        const result = await gatewayFetch<GatewayChannel>(
+          `/api/channels/${id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(update),
+          }
+        );
+        // Refresh the list
+        await loadInstances();
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to update channel";
+        setError(message);
+        console.error("Failed to update channel instance:", err);
+        return null;
+      }
     },
-    []
+    [loadInstances]
   );
 
-  const deleteInstance = useCallback((id: string) => {
-    setStorage((prev) => ({
-      ...prev,
-      instances: prev.instances.filter((i) => i.id !== id),
-    }));
-  }, []);
+  const deleteInstance = useCallback(
+    async (id: string): Promise<boolean> => {
+      try {
+        await gatewayFetch(`/api/channels/${id}`, {
+          method: "DELETE",
+        });
+        // Refresh the list
+        await loadInstances();
+        return true;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to delete channel";
+        setError(message);
+        console.error("Failed to delete channel instance:", err);
+        return false;
+      }
+    },
+    [loadInstances]
+  );
 
-  const toggleInstance = useCallback((id: string) => {
-    setStorage((prev) => ({
-      ...prev,
-      instances: prev.instances.map((i) =>
-        i.id === id ? { ...i, enabled: !i.enabled } : i
-      ),
-    }));
-  }, []);
+  const toggleInstance = useCallback(
+    async (id: string): Promise<boolean> => {
+      const instance = instances.find((i) => i.id === id);
+      if (!instance) return false;
+
+      const result = await updateInstance(id, { enabled: !instance.enabled });
+      return result !== null;
+    },
+    [instances, updateInstance]
+  );
+
+  const setDefault = useCallback(
+    async (id: string): Promise<GatewayChannel | null> => {
+      try {
+        const result = await gatewayFetch<GatewayChannel>(
+          `/api/channels/${id}/default`,
+          {
+            method: "POST",
+          }
+        );
+        // Refresh the list
+        await loadInstances();
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to set default channel";
+        setError(message);
+        console.error("Failed to set default channel:", err);
+        return null;
+      }
+    },
+    [loadInstances]
+  );
 
   return {
-    instances: storage.instances,
+    instances,
     isLoading,
     error,
+    refresh: loadInstances,
     getInstancesByType,
     getInstance,
     getEnabledInstances,
+    getDefaultInstance,
     createInstance,
     updateInstance,
     deleteInstance,
     toggleInstance,
+    setDefault,
   };
+}
+
+// ============================================================================
+// Separate hooks for specific operations (following use-cron.ts pattern)
+// ============================================================================
+
+/**
+ * Hook to create a new channel
+ */
+export function useCreateChannel() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createChannel = useCallback(
+    async (data: CreateChannelRequest): Promise<GatewayChannel | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await gatewayFetch<GatewayChannel>("/api/channels", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to create channel";
+        setError(message);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { createChannel, loading, error };
+}
+
+/**
+ * Hook to update a channel
+ */
+export function useUpdateChannel() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateChannel = useCallback(
+    async (
+      id: string,
+      data: UpdateChannelRequest
+    ): Promise<GatewayChannel | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await gatewayFetch<GatewayChannel>(
+          `/api/channels/${id}`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(data),
+          }
+        );
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to update channel";
+        setError(message);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { updateChannel, loading, error };
+}
+
+/**
+ * Hook to delete a channel
+ */
+export function useDeleteChannel() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteChannel = useCallback(async (id: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await gatewayFetch(`/api/channels/${id}`, {
+        method: "DELETE",
+      });
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete channel";
+      setError(message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { deleteChannel, loading, error };
+}
+
+/**
+ * Hook to test a channel connection
+ */
+export function useTestChannel() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const testChannel = useCallback(
+    async (
+      channelType: ChannelType,
+      config: ChannelConfig
+    ): Promise<{ success: boolean; details?: string; error?: string }> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await gatewayFetch<{
+          success: boolean;
+          details?: string;
+          error?: string;
+        }>("/api/channels/test", {
+          method: "POST",
+          body: JSON.stringify({ channel_type: channelType, config }),
+        });
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to test channel";
+        setError(message);
+        return { success: false, error: message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { testChannel, loading, error };
+}
+
+/**
+ * Hook to send a test message
+ */
+export function useSendTestMessage() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendTestMessage = useCallback(
+    async (
+      channelType: ChannelType,
+      config: ChannelConfig,
+      chatId: string,
+      message: string
+    ): Promise<{ success: boolean; message_id?: string; error?: string }> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await gatewayFetch<{
+          success: boolean;
+          message_id?: string;
+          error?: string;
+        }>("/api/channels/send-test", {
+          method: "POST",
+          body: JSON.stringify({
+            channel_type: channelType,
+            config,
+            chat_id: chatId,
+            message,
+          }),
+        });
+        return result;
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to send test message";
+        setError(message);
+        return { success: false, error: message };
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  return { sendTestMessage, loading, error };
 }
