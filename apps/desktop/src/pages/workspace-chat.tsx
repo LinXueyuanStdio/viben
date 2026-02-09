@@ -58,6 +58,9 @@ import {
   DesktopMessageList,
   RightSidebar,
   SessionSelector,
+  CreateGroupChatDialog,
+  GroupChatMessageList,
+  GroupChatListItem,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -65,6 +68,7 @@ import {
   useVibenAgents,
   useLocalWorkspaces,
   useChatConfig,
+  useGroupChat,
 } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -448,6 +452,11 @@ export function WorkspaceChatPage() {
   // Selected agent for the left sidebar
   const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
 
+  // Group Chat State
+  const [selectedGroupChatId, setSelectedGroupChatId] = React.useState<string | null>(null);
+  const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
+  const [groupChatInput, setGroupChatInput] = React.useState("");
+
   // Get workspace info
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
@@ -488,6 +497,37 @@ export function WorkspaceChatPage() {
     checkGatewayConnection,
   } = useAgent(workspace?.path || "", { agentType: selectedExecutor });
 
+  // Group Chat hook
+  const {
+    groupChats,
+    currentGroupChat,
+    messages: groupChatMessages,
+    members: groupChatMembers,
+    typingMembers,
+    isConnected: groupChatConnected,
+    isLoading: isLoadingGroupChat,
+    error: groupChatError,
+    loadGroupChats,
+    createGroupChat,
+    loadGroupChat,
+    deleteGroupChat,
+    leaveGroupChat,
+    sendMessage: sendGroupChatMessage,
+    sendTyping,
+  } = useGroupChat(selectedGroupChatId || undefined, {
+    userId: "user-1", // TODO: Get from auth context
+    userDisplayName: "User",
+    autoConnect: true,
+  });
+
+  // Load group chats on mount
+  React.useEffect(() => {
+    loadGroupChats();
+  }, [loadGroupChats]);
+
+  // Check if we're in group chat mode
+  const isGroupChatMode = selectedGroupChatId !== null;
+
   // Refresh sessions for current agent (manual refresh button)
   const refreshAgentSessions = React.useCallback(async () => {
     if (!selectedAgentId || isLoadingRef.current) return;
@@ -516,51 +556,85 @@ export function WorkspaceChatPage() {
     }
   }, [selectedAgentId]);
 
-  // Restore last selected agent on mount
+  // Restore last selected agent on mount - run only once when agents are available
+  const hasInitializedAgentRef = React.useRef(false);
+
   React.useEffect(() => {
-    if (workspaceId && agents.length > 0) {
-      // Restore last selected agent
-      const lastAgentId = loadLastAgentId(workspaceId);
-      if (lastAgentId && agents.some((a) => a.id === lastAgentId)) {
-        setSelectedAgentId(lastAgentId);
-      } else if (!selectedAgentId) {
-        // Set default agent if no previous selection
-        setSelectedAgentId(defaultAgentId || agents[0].id);
-      }
+    // Only run once
+    if (hasInitializedAgentRef.current) {
+      console.log("[WorkspaceChat:Effect:InitAgent] Already initialized, skipping");
+      return;
     }
-  }, [workspaceId, agents, defaultAgentId, selectedAgentId]);
+
+    if (!workspaceId || agents.length === 0) {
+      console.log("[WorkspaceChat:Effect:InitAgent] No workspace or agents yet, waiting");
+      return;
+    }
+
+    hasInitializedAgentRef.current = true;
+
+    // Restore last selected agent
+    const lastAgentId = loadLastAgentId(workspaceId);
+    console.log(`[WorkspaceChat:Effect:InitAgent] Initializing agent: lastAgentId=${lastAgentId}, defaultAgentId=${defaultAgentId}`);
+
+    if (lastAgentId && agents.some((a) => a.id === lastAgentId)) {
+      console.log(`[WorkspaceChat:Effect:InitAgent] Restoring last agent: ${lastAgentId}`);
+      setSelectedAgentId(lastAgentId);
+    } else {
+      // Set default agent if no previous selection
+      const agentToSelect = defaultAgentId || agents[0].id;
+      console.log(`[WorkspaceChat:Effect:InitAgent] Setting default agent: ${agentToSelect}`);
+      setSelectedAgentId(agentToSelect);
+    }
+  }, [workspaceId, agents, defaultAgentId]);
 
   // Refs to track loading state and prevent loops
   const prevAgentRef = React.useRef<string | null>(null);
   const isLoadingRef = React.useRef(false);
-  const pendingAgentIdRef = React.useRef<string | null>(null);
 
   // Combined effect: Load sessions and auto-select when agent changes
   // Using a single async flow to prevent cascading effects
   React.useEffect(() => {
-    if (!selectedAgentId) return;
-
-    // Skip if same agent (already loaded)
-    if (prevAgentRef.current === selectedAgentId) return;
-
-    // Detect if this is an agent switch (not initial load)
-    const isAgentSwitch = prevAgentRef.current !== null;
-    prevAgentRef.current = selectedAgentId;
-
-    // Prevent re-entry
-    if (isLoadingRef.current) {
-      pendingAgentIdRef.current = selectedAgentId;
+    // Guard: no agent selected
+    if (!selectedAgentId) {
+      console.log("[WorkspaceChat:Effect:Sessions] No agent selected, skipping");
       return;
     }
 
+    // Guard: already loading
+    if (isLoadingRef.current) {
+      console.log("[WorkspaceChat:Effect:Sessions] Already loading, skipping");
+      return;
+    }
+
+    // Guard: same agent (already loaded)
+    if (prevAgentRef.current === selectedAgentId) {
+      console.log("[WorkspaceChat:Effect:Sessions] Same agent, skipping");
+      return;
+    }
+
+    // Detect if this is an agent switch (not initial load)
+    const isAgentSwitch = prevAgentRef.current !== null;
+    const previousAgent = prevAgentRef.current;
+
+    console.log(`[WorkspaceChat:Effect:Sessions] Agent changed: ${previousAgent} -> ${selectedAgentId}, isSwitch=${isAgentSwitch}`);
+
+    // Mark as loading and update ref BEFORE any async work
+    isLoadingRef.current = true;
+    prevAgentRef.current = selectedAgentId;
+
+    // Capture current agent ID for closure
+    const targetAgentId = selectedAgentId;
+
     // Single async flow to load sessions and auto-select
     const loadAndSelect = async () => {
-      isLoadingRef.current = true;
-      pendingAgentIdRef.current = null;
+      console.log(`[WorkspaceChat:Effect:Sessions] Starting load for agent ${targetAgentId}`);
 
-      // Clear current session when switching agents
+      // Clear current session when switching agents - do this synchronously before async
       if (isAgentSwitch) {
+        console.log("[WorkspaceChat:Effect:Sessions] Clearing conversation for agent switch");
         setSelectedConversationId(null);
+        setConversations([]);
       }
 
       setIsLoadingSessions(true);
@@ -570,39 +644,50 @@ export function WorkspaceChatPage() {
         const client = getGatewayClient();
         const isReachable = await client.ping();
 
-        if (!isReachable) {
-          console.log(`[WorkspaceChat] Gateway not reachable, skipping session load`);
-          setConversations([]);
-          setIsLoadingSessions(false);
-          isLoadingRef.current = false;
+        // Check if agent changed during async
+        if (prevAgentRef.current !== targetAgentId) {
+          console.log(`[WorkspaceChat:Effect:Sessions] Agent changed during ping, aborting (${targetAgentId} -> ${prevAgentRef.current})`);
           return;
         }
 
-        const sessions = await client.listAgentSessions(selectedAgentId);
+        if (!isReachable) {
+          console.log(`[WorkspaceChat:Effect:Sessions] Gateway not reachable`);
+          setConversations([]);
+          return;
+        }
+
+        console.log(`[WorkspaceChat:Effect:Sessions] Fetching sessions for ${targetAgentId}`);
+        const sessions = await client.listAgentSessions(targetAgentId);
+
+        // Check if agent changed during fetch
+        if (prevAgentRef.current !== targetAgentId) {
+          console.log(`[WorkspaceChat:Effect:Sessions] Agent changed during fetch, aborting`);
+          return;
+        }
+
         const convs = sessions.map(fileSessionToConversation);
-        // Sort by updatedAt descending
         convs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
-        console.log(`[WorkspaceChat] Loaded ${convs.length} sessions for agent ${selectedAgentId}`);
+        console.log(`[WorkspaceChat:Effect:Sessions] Loaded ${convs.length} sessions for agent ${targetAgentId}`);
 
-        // Update conversations and auto-select first one atomically
-        setConversations(convs);
+        // Batch state updates
         if (convs.length > 0) {
+          console.log(`[WorkspaceChat:Effect:Sessions] Setting conversations and selecting first: ${convs[0].id}`);
+          setConversations(convs);
           setSelectedConversationId(convs[0].id);
+        } else {
+          console.log(`[WorkspaceChat:Effect:Sessions] No sessions, setting empty conversations`);
+          setConversations([]);
+          // Don't set selectedConversationId to null here - it's already null or will cause issues
         }
       } catch (error) {
-        console.error("[WorkspaceChat] Failed to load sessions from Gateway:", error);
+        console.error("[WorkspaceChat:Effect:Sessions] Failed to load sessions:", error);
         setSessionsError(error instanceof Error ? error.message : "Failed to load sessions");
         setConversations([]);
       } finally {
+        console.log(`[WorkspaceChat:Effect:Sessions] Finished loading for ${targetAgentId}`);
         setIsLoadingSessions(false);
         isLoadingRef.current = false;
-
-        // Check if another agent was selected while loading
-        if (pendingAgentIdRef.current && pendingAgentIdRef.current !== selectedAgentId) {
-          // Reset and let the effect re-run for the pending agent
-          prevAgentRef.current = null;
-        }
       }
     };
 
@@ -635,30 +720,39 @@ export function WorkspaceChatPage() {
   const isLoadingMessagesRef = React.useRef(false);
 
   React.useEffect(() => {
+    console.log(`[WorkspaceChat:Effect:Messages] Effect triggered: session=${selectedConversationId}, agent=${selectedAgentId}`);
+
     // Early return if no session or agent selected
     if (!selectedConversationId || !selectedAgentId) {
+      console.log("[WorkspaceChat:Effect:Messages] No session or agent, resetting ref");
       prevSessionRef.current = null;
       return;
     }
 
     // Skip if same session (already loaded)
     if (prevSessionRef.current === selectedConversationId) {
+      console.log("[WorkspaceChat:Effect:Messages] Same session, skipping");
       return;
     }
 
     // Prevent concurrent loads
     if (isLoadingMessagesRef.current) {
+      console.log("[WorkspaceChat:Effect:Messages] Already loading messages, skipping");
       return;
     }
 
+    console.log(`[WorkspaceChat:Effect:Messages] Session changed: ${prevSessionRef.current} -> ${selectedConversationId}`);
+
+    // Update ref BEFORE async work
     prevSessionRef.current = selectedConversationId;
+    isLoadingMessagesRef.current = true;
 
     // Capture values for async closure
     const agentId = selectedAgentId;
     const sessionId = selectedConversationId;
 
     const loadSessionMessages = async () => {
-      isLoadingMessagesRef.current = true;
+      console.log(`[WorkspaceChat:Effect:Messages] Loading messages for session ${sessionId}`);
 
       try {
         const client = getGatewayClient();
@@ -666,30 +760,33 @@ export function WorkspaceChatPage() {
 
         // Check if session is still the same after async call
         if (prevSessionRef.current !== sessionId) {
-          console.log(`[WorkspaceChat] Session changed during load, skipping message update`);
+          console.log(`[WorkspaceChat:Effect:Messages] Session changed during load, aborting`);
           return;
         }
 
         if (sessionMessages.length > 0) {
           const agentMessages = sessionMessages.map(sessionMessageToAgentMessage);
+          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages, calling loadMessages`);
           loadMessages(agentMessages);
-          console.log(`[WorkspaceChat] Loaded ${agentMessages.length} messages for session ${sessionId}`);
         } else {
+          console.log(`[WorkspaceChat:Effect:Messages] No messages, calling clearMessages`);
           clearMessages();
         }
       } catch (error) {
-        console.error("[WorkspaceChat] Failed to load messages from Gateway:", error);
-        // Only clear if session is still current
+        console.error("[WorkspaceChat:Effect:Messages] Failed to load messages:", error);
         if (prevSessionRef.current === sessionId) {
           clearMessages();
         }
       } finally {
+        console.log(`[WorkspaceChat:Effect:Messages] Finished loading for ${sessionId}`);
         isLoadingMessagesRef.current = false;
       }
     };
 
     loadSessionMessages();
-  }, [selectedConversationId, selectedAgentId, loadMessages, clearMessages]);
+    // NOTE: We intentionally exclude loadMessages and clearMessages from deps
+    // They are stable callbacks but including them can cause issues with React's effect comparisons
+  }, [selectedConversationId, selectedAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save messages to Gateway whenever they change
   React.useEffect(() => {
@@ -945,6 +1042,76 @@ export function WorkspaceChatPage() {
     setIsShareDialogOpen(false);
   };
 
+  // Handle creating a group chat
+  const handleCreateGroupChat = async (data: {
+    name: string;
+    description?: string;
+    initial_members: Array<{
+      member_type: "human" | "agent" | "executor";
+      member_id: string;
+      display_name: string;
+      role?: "owner" | "admin" | "member";
+    }>;
+  }) => {
+    setIsCreatingGroupChat(true);
+    try {
+      const result = await createGroupChat({
+        name: data.name,
+        description: data.description,
+        initial_members: data.initial_members,
+      });
+      // Switch to the new group chat
+      setSelectedGroupChatId(result.group_chat.id);
+      setSelectedConversationId(null);
+      setIsCreateGroupDialogOpen(false);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to create group chat:", error);
+      throw error;
+    } finally {
+      setIsCreatingGroupChat(false);
+    }
+  };
+
+  // Handle selecting a group chat
+  const handleSelectGroupChat = (groupChatId: string) => {
+    setSelectedGroupChatId(groupChatId);
+    setSelectedConversationId(null);
+    loadGroupChat(groupChatId);
+  };
+
+  // Handle sending message in group chat
+  const handleSendGroupChatMessage = async (content: string) => {
+    if (!selectedGroupChatId || !content.trim()) return;
+    try {
+      await sendGroupChatMessage(content);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to send group chat message:", error);
+    }
+  };
+
+  // Handle deleting a group chat
+  const handleDeleteGroupChat = async (groupChatId: string) => {
+    try {
+      await deleteGroupChat(groupChatId);
+      if (selectedGroupChatId === groupChatId) {
+        setSelectedGroupChatId(null);
+      }
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to delete group chat:", error);
+    }
+  };
+
+  // Handle leaving a group chat
+  const handleLeaveGroupChat = async () => {
+    if (!selectedGroupChatId) return;
+    try {
+      await leaveGroupChat();
+      setSelectedGroupChatId(null);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to leave group chat:", error);
+    }
+  };
+
   // Filter messages by search query
   const filteredMessages = React.useMemo(() => {
     if (!conversationSearchQuery.trim()) return messages;
@@ -1049,6 +1216,27 @@ export function WorkspaceChatPage() {
           {/* Agent List */}
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
+              {/* Group Chats Section */}
+              {groupChats.length > 0 && (
+                <>
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    {t("groupChat.groupChats", "Group Chats")}
+                  </div>
+                  {groupChats.map((groupChat) => (
+                    <GroupChatListItem
+                      key={groupChat.id}
+                      groupChat={groupChat}
+                      isSelected={groupChat.id === selectedGroupChatId}
+                      onClick={() => handleSelectGroupChat(groupChat.id)}
+                      onDelete={() => handleDeleteGroupChat(groupChat.id)}
+                      onLeave={handleLeaveGroupChat}
+                    />
+                  ))}
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">
+                    {t("agent.agents", "Agents")}
+                  </div>
+                </>
+              )}
               {filteredAgents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                   <Bot className="h-12 w-12 mb-3 opacity-30" />
@@ -1059,11 +1247,12 @@ export function WorkspaceChatPage() {
                   <AgentListItem
                     key={agent.id}
                     agent={agent}
-                    isSelected={agent.id === selectedAgentId}
+                    isSelected={agent.id === selectedAgentId && !isGroupChatMode}
                     isDefault={agent.id === defaultAgentId}
                     sessionCount={conversations.filter((c) => c.agentId === agent.id).length}
                     onSelect={() => {
-                      // Set the selected agent - the useEffect will auto-select the session
+                      // Exit group chat mode and select agent
+                      setSelectedGroupChatId(null);
                       setSelectedAgentId(agent.id);
                     }}
                     onSettings={() => {
@@ -1081,7 +1270,121 @@ export function WorkspaceChatPage() {
 
         {/* Middle: Chat Area */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          {selectedConversationId ? (
+          {/* Group Chat Mode */}
+          {isGroupChatMode && currentGroupChat ? (
+            <>
+              {/* Group Chat Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+                <div className="flex items-center gap-3">
+                  {/* Group avatar */}
+                  <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-sm">
+                    <Users className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {currentGroupChat.group_chat.name}
+                      </span>
+                      {groupChatConnected ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
+                          {t("groupChat.connected", "Connected")}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600">
+                          {t("groupChat.disconnected", "Disconnected")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t("groupChat.memberCount", "{{count}} members", {
+                        count: groupChatMembers.length,
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Group Chat action buttons */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title={t("groupChat.viewMembers", "View Members")}
+                    onClick={() => {/* TODO: Open members dialog */}}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem onClick={handleLeaveGroupChat}>
+                        <Users className="h-4 w-4 mr-2" />
+                        {t("groupChat.leave", "Leave Group")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => handleDeleteGroupChat(selectedGroupChatId!)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        {t("groupChat.delete", "Delete Group")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+
+              {/* Group Chat Messages */}
+              <GroupChatMessageList
+                messages={groupChatMessages}
+                members={groupChatMembers}
+                currentUserId="user-1"
+                typingMembers={typingMembers}
+                className="flex-1"
+              />
+
+              {/* Group Chat Error */}
+              {groupChatError && (
+                <div className="px-4 py-2 bg-destructive/10 border-t border-destructive/20">
+                  <p className="text-sm text-destructive">{groupChatError}</p>
+                </div>
+              )}
+
+              {/* Group Chat Input */}
+              <div className="border-t border-border p-4">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t("groupChat.inputPlaceholder", "Type a message...")}
+                    value={groupChatInput}
+                    onChange={(e) => setGroupChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendGroupChatMessage(groupChatInput);
+                        setGroupChatInput("");
+                      }
+                    }}
+                    onFocus={() => sendTyping(true)}
+                    onBlur={() => sendTyping(false)}
+                    className="flex-1"
+                  />
+                  <Button
+                    onClick={() => {
+                      handleSendGroupChatMessage(groupChatInput);
+                      setGroupChatInput("");
+                    }}
+                    disabled={!groupChatInput.trim() || isLoadingGroupChat}
+                  >
+                    {t("common.send", "Send")}
+                  </Button>
+                </div>
+              </div>
+            </>
+          ) : selectedConversationId ? (
             <>
               {/* Chat Header - WeChat style */}
               <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
@@ -1573,29 +1876,13 @@ export function WorkspaceChatPage() {
       </Dialog>
 
       {/* Create Group Chat Dialog */}
-      <Dialog open={isCreateGroupDialogOpen} onOpenChange={setIsCreateGroupDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              {t("chat.createGroup", "创建群聊")}
-            </DialogTitle>
-            <DialogDescription>
-              {t("chat.createGroupDesc", "创建一个群聊，多个智能体可以协作完成任务")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center py-8">
-              {t("chat.groupFeatureComingSoon", "群聊功能即将上线，敬请期待")}
-            </p>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateGroupDialogOpen(false)}>
-                {t("common.close", "关闭")}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CreateGroupChatDialog
+        open={isCreateGroupDialogOpen}
+        onOpenChange={setIsCreateGroupDialogOpen}
+        agents={agents}
+        onCreate={handleCreateGroupChat}
+        isCreating={isCreatingGroupChat}
+      />
     </motion.div>
   );
 }

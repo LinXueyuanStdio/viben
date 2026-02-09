@@ -42,3 +42,8 @@ export {
   type ContextTokenBreakdown,
 } from "./context-details-popover";
 export { SessionSelector, type Session } from "./session-selector";
+
+// Group Chat components
+export { CreateGroupChatDialog } from "./create-group-chat-dialog";
+export { GroupChatMessageList } from "./group-chat-message-list";
+export { GroupChatListItem } from "./group-chat-list-item";

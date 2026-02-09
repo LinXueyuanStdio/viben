@@ -62,3 +62,21 @@ Icons without `.Color` (use default): OpenAI, Ollama, Groq, Anthropic
 
 - `ChatInput` - Simple chat input with attachment support (used in task panels, debug panels)
 - `AgentChatInput` - Full-featured agent chat input with model selector, parameters, token usage (used in workspace chat)
+
+## Desktop App Development
+
+### Restart Desktop App
+
+When the desktop app hangs or port 1420 is occupied, use the restart script:
+
+```bash
+pnpm desktop:restart
+```
+
+This script will:
+1. Kill processes on port 1420 (Vite dev server)
+2. Kill all Tauri, Vite, and viben-desktop processes
+3. Verify port 1420 is free
+4. Start Tauri dev server
+
+The script is located at `scripts/restart-desktop.sh`.

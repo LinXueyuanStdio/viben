@@ -401,3 +401,6 @@ export * from "./chat-config";
 
 // Re-export unified agent types
 export * from "./unified-agent";
+
+// Re-export group chat types
+export * from "./group-chat";
