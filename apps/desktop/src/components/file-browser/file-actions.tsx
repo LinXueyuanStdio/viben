@@ -13,17 +13,33 @@ import {
   Image,
   FilePlus,
   FolderPlus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Search,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { ViewMode } from "@/hooks/use-file-browser";
+import { useTranslation } from "react-i18next";
+import type { ViewMode, SortField, SortDirection } from "@/hooks/use-file-browser";
 
 /* -----------------------------------------------------------------------------
  * View Mode Toggle
@@ -70,6 +86,182 @@ export function ViewModeToggle({ viewMode, onViewModeChange, className }: ViewMo
 }
 
 /* -----------------------------------------------------------------------------
+ * Sort Dropdown
+ * -------------------------------------------------------------------------- */
+
+export interface SortDropdownProps {
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSortFieldChange: (field: SortField) => void;
+  onSortDirectionChange: (direction: SortDirection) => void;
+  className?: string;
+}
+
+export function SortDropdown({
+  sortField,
+  sortDirection,
+  onSortFieldChange,
+  onSortDirectionChange,
+  className,
+}: SortDropdownProps) {
+  const { t } = useTranslation();
+
+  const sortOptions: { value: SortField; label: string }[] = [
+    { value: "name", label: t("fileBrowser.sortByName") },
+    { value: "size", label: t("fileBrowser.sortBySize") },
+    { value: "modified", label: t("fileBrowser.sortByModified") },
+    { value: "type", label: t("fileBrowser.sortByType") },
+  ];
+
+  const directionOptions: { value: SortDirection; label: string }[] = [
+    { value: "asc", label: t("fileBrowser.sortAsc") },
+    { value: "desc", label: t("fileBrowser.sortDesc") },
+  ];
+
+  // Get current sort label
+  const currentSortLabel = sortOptions.find(opt => opt.value === sortField)?.label || sortField;
+
+  return (
+    <DropdownMenu>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn("h-8 px-2 gap-1", className)}
+              >
+                <ArrowUpDown className="h-4 w-4" />
+                <span className="text-xs hidden sm:inline">{currentSortLabel}</span>
+                {sortDirection === "asc" ? (
+                  <ArrowUp className="h-3 w-3" />
+                ) : (
+                  <ArrowDown className="h-3 w-3" />
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{t("fileBrowser.sort")}</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuLabel>{t("fileBrowser.sortBy")}</DropdownMenuLabel>
+        <DropdownMenuRadioGroup
+          value={sortField}
+          onValueChange={(value) => onSortFieldChange(value as SortField)}
+        >
+          {sortOptions.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuRadioGroup
+          value={sortDirection}
+          onValueChange={(value) => onSortDirectionChange(value as SortDirection)}
+        >
+          {directionOptions.map((option) => (
+            <DropdownMenuRadioItem key={option.value} value={option.value}>
+              {option.label}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * File Search Input
+ * -------------------------------------------------------------------------- */
+
+export interface FileSearchInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export const FileSearchInput = React.memo(function FileSearchInput({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: FileSearchInputProps) {
+  const { t } = useTranslation();
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [localValue, setLocalValue] = React.useState(value);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local value with external value
+  React.useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  // Handle input change with debounce
+  const handleChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newValue = e.target.value;
+      setLocalValue(newValue);
+
+      // Clear existing timeout
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+
+      // Set new timeout
+      debounceRef.current = setTimeout(() => {
+        onChange(newValue);
+      }, 300);
+    },
+    [onChange]
+  );
+
+  // Clear search
+  const handleClear = React.useCallback(() => {
+    setLocalValue("");
+    onChange("");
+    inputRef.current?.focus();
+  }, [onChange]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div className={cn("relative", className)}>
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <Input
+        ref={inputRef}
+        type="text"
+        value={localValue}
+        onChange={handleChange}
+        placeholder={placeholder || t("fileBrowser.search")}
+        className="h-8 pl-8 pr-8 text-sm w-40 sm:w-48"
+      />
+      {localValue && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClear}
+          className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+        >
+          <X className="h-3.5 w-3.5" />
+          <span className="sr-only">{t("common.clear")}</span>
+        </Button>
+      )}
+    </div>
+  );
+});
+
+/* -----------------------------------------------------------------------------
  * File Action Buttons
  * -------------------------------------------------------------------------- */
 
@@ -111,23 +303,59 @@ export function FileActionButtons({ onNewFile, onNewFolder, className }: FileAct
 export interface FileBrowserToolbarProps {
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  onNewFile: () => void;
-  onNewFolder: () => void;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  onSortFieldChange?: (field: SortField) => void;
+  onSortDirectionChange?: (direction: SortDirection) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  onNewFile?: () => void;
+  onNewFolder?: () => void;
   className?: string;
 }
 
 export function FileBrowserToolbar({
   viewMode,
   onViewModeChange,
+  sortField,
+  sortDirection,
+  onSortFieldChange,
+  onSortDirectionChange,
+  searchQuery,
+  onSearchChange,
   onNewFile,
   onNewFolder,
   className,
 }: FileBrowserToolbarProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
+      {onSearchChange && (
+        <>
+          <FileSearchInput
+            value={searchQuery ?? ""}
+            onChange={onSearchChange}
+          />
+          <Separator orientation="vertical" className="h-6" />
+        </>
+      )}
+      {sortField !== undefined && sortDirection !== undefined && onSortFieldChange && onSortDirectionChange && (
+        <>
+          <SortDropdown
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSortFieldChange={onSortFieldChange}
+            onSortDirectionChange={onSortDirectionChange}
+          />
+          <Separator orientation="vertical" className="h-6" />
+        </>
+      )}
       <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
-      <Separator orientation="vertical" className="h-6" />
-      <FileActionButtons onNewFile={onNewFile} onNewFolder={onNewFolder} />
+      {(onNewFile || onNewFolder) && (
+        <>
+          <Separator orientation="vertical" className="h-6" />
+          <FileActionButtons onNewFile={onNewFile ?? (() => {})} onNewFolder={onNewFolder ?? (() => {})} />
+        </>
+      )}
     </div>
   );
 }

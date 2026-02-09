@@ -175,13 +175,27 @@ export interface FileSession {
   metadata: Record<string, unknown>;
 }
 
-/** Session message */
+/** Session message (rollout format - for sending to agent) */
 export interface SessionMessage {
   timestamp: string;
   role: "user" | "assistant" | "system";
   content: string;
   tool_calls?: Record<string, unknown>;
   tool_result?: Record<string, unknown>;
+}
+
+/** UI Message (for frontend rendering) */
+export interface UIMessage {
+  id: string;
+  timestamp: string;
+  type: "user" | "text" | "tool_use" | "tool_result" | "thinking" | "error";
+  content?: string;
+  tool_use_id?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+  tool_output?: string;
+  is_error?: boolean;
+  attachments?: Record<string, unknown>[];
 }
 
 /** Create session request */
@@ -887,7 +901,7 @@ export class GatewayClient {
   }
 
   /**
-   * List all messages in a session
+   * List all messages in a session (rollout format)
    */
   async listSessionMessages(
     agentId: string,
@@ -910,6 +924,32 @@ export class GatewayClient {
 
     const data = await response.json();
     return data.messages as SessionMessage[];
+  }
+
+  /**
+   * List all UI messages in a session (for frontend rendering)
+   */
+  async listSessionUIMessages(
+    agentId: string,
+    sessionId: string
+  ): Promise<UIMessage[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/ui-messages`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list UI messages: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.messages as UIMessage[];
   }
 
   /**

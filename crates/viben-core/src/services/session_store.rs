@@ -2,8 +2,10 @@
 //!
 //! Stores session data in the file system according to the spec:
 //! ~/.viben/agents/<agent-id>/.agent_sessions/<session-id>/
-//!   ├── config.yaml      # Session configuration
-//!   └── messages.rollout.jsonl  # Message history (JSONL format)
+//!   ├── config.yaml              # Session configuration
+//!   ├── messages.ui.jsonl        # User-facing messages for rendering (append-only)
+//!   ├── messages.rollout.jsonl   # Messages for sending to agent (can be compressed)
+//!   └── messages.agent.jsonl     # Agent-side raw messages (append-only)
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -50,7 +52,7 @@ impl SessionConfig {
     }
 }
 
-/// Message in the rollout JSONL file
+/// Message in the rollout JSONL file (for sending to agent, can be compressed)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionMessage {
     /// Timestamp
@@ -65,6 +67,161 @@ pub struct SessionMessage {
     /// Tool results (if any)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool_result: Option<serde_json::Value>,
+}
+
+/// UI Message for user-facing rendering (append-only, ignore compression)
+/// This message type contains all the information needed to render the UI
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UIMessage {
+    /// Unique message ID
+    pub id: String,
+    /// Timestamp
+    pub timestamp: DateTime<Utc>,
+    /// Message type: "user", "text", "tool_use", "tool_result", "thinking", "error"
+    #[serde(rename = "type")]
+    pub msg_type: String,
+    /// Message content (text content for user/text/error, tool name for tool_use)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    /// Tool use ID (for tool_use and tool_result)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    /// Tool name (for tool_use)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+    /// Tool input (for tool_use)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_input: Option<serde_json::Value>,
+    /// Tool output (for tool_result)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_output: Option<String>,
+    /// Whether the tool result is an error
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+    /// Attachments (for user messages)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<Vec<serde_json::Value>>,
+}
+
+impl UIMessage {
+    /// Create a user message
+    pub fn user(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "user".to_string(),
+            content: Some(content.into()),
+            tool_use_id: None,
+            tool_name: None,
+            tool_input: None,
+            tool_output: None,
+            is_error: None,
+            attachments: None,
+        }
+    }
+
+    /// Create a text message (assistant response)
+    pub fn text(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "text".to_string(),
+            content: Some(content.into()),
+            tool_use_id: None,
+            tool_name: None,
+            tool_input: None,
+            tool_output: None,
+            is_error: None,
+            attachments: None,
+        }
+    }
+
+    /// Create a tool_use message
+    pub fn tool_use(
+        id: impl Into<String>,
+        tool_use_id: impl Into<String>,
+        tool_name: impl Into<String>,
+        tool_input: serde_json::Value,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "tool_use".to_string(),
+            content: None,
+            tool_use_id: Some(tool_use_id.into()),
+            tool_name: Some(tool_name.into()),
+            tool_input: Some(tool_input),
+            tool_output: None,
+            is_error: None,
+            attachments: None,
+        }
+    }
+
+    /// Create a tool_result message
+    pub fn tool_result(
+        id: impl Into<String>,
+        tool_use_id: impl Into<String>,
+        output: impl Into<String>,
+        is_error: bool,
+    ) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "tool_result".to_string(),
+            content: None,
+            tool_use_id: Some(tool_use_id.into()),
+            tool_name: None,
+            tool_input: None,
+            tool_output: Some(output.into()),
+            is_error: Some(is_error),
+            attachments: None,
+        }
+    }
+
+    /// Create a thinking message
+    pub fn thinking(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "thinking".to_string(),
+            content: Some(content.into()),
+            tool_use_id: None,
+            tool_name: None,
+            tool_input: None,
+            tool_output: None,
+            is_error: None,
+            attachments: None,
+        }
+    }
+
+    /// Create an error message
+    pub fn error(id: impl Into<String>, content: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            timestamp: Utc::now(),
+            msg_type: "error".to_string(),
+            content: Some(content.into()),
+            tool_use_id: None,
+            tool_name: None,
+            tool_input: None,
+            tool_output: None,
+            is_error: Some(true),
+            attachments: None,
+        }
+    }
+}
+
+/// Agent-side raw message (append-only, agent's data structure)
+/// This preserves the original format from the agent/executor
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentMessage {
+    /// Timestamp when received
+    pub timestamp: DateTime<Utc>,
+    /// Raw JSON from the agent
+    pub raw: serde_json::Value,
+    /// Source executor (e.g., "claude_code", "cursor")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
 }
 
 impl SessionMessage {
@@ -172,10 +329,22 @@ impl SessionStoreService {
         self.session_dir(agent_id, session_id).join("config.yaml")
     }
 
-    /// Get the messages file path for a session
+    /// Get the messages file path for a session (rollout - for sending to agent)
     fn messages_path(&self, agent_id: &str, session_id: &str) -> PathBuf {
         self.session_dir(agent_id, session_id)
             .join("messages.rollout.jsonl")
+    }
+
+    /// Get the UI messages file path for a session (user-facing rendering)
+    fn ui_messages_path(&self, agent_id: &str, session_id: &str) -> PathBuf {
+        self.session_dir(agent_id, session_id)
+            .join("messages.ui.jsonl")
+    }
+
+    /// Get the agent messages file path for a session (raw agent data)
+    fn agent_messages_path(&self, agent_id: &str, session_id: &str) -> PathBuf {
+        self.session_dir(agent_id, session_id)
+            .join("messages.agent.jsonl")
     }
 
     /// Create a new session
@@ -206,13 +375,29 @@ impl SessionStoreService {
             config_path.display()
         );
 
-        // Create empty messages file
+        // Create empty messages files
         let messages_path = self.messages_path(&config.agent_id, &config.id);
         fs::write(&messages_path, "").await?;
         tracing::debug!(
             target: "viben::services::session_store",
-            "Created messages file: {}",
+            "Created messages.rollout.jsonl: {}",
             messages_path.display()
+        );
+
+        let ui_messages_path = self.ui_messages_path(&config.agent_id, &config.id);
+        fs::write(&ui_messages_path, "").await?;
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Created messages.ui.jsonl: {}",
+            ui_messages_path.display()
+        );
+
+        let agent_messages_path = self.agent_messages_path(&config.agent_id, &config.id);
+        fs::write(&agent_messages_path, "").await?;
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Created messages.agent.jsonl: {}",
+            agent_messages_path.display()
         );
 
         tracing::info!(
@@ -449,6 +634,194 @@ impl SessionStoreService {
         tracing::info!(
             target: "viben::services::session_store",
             "Read {} messages from session={}",
+            messages.len(), session_id
+        );
+
+        Ok(messages)
+    }
+
+    // ========================================================================
+    // UI Messages (user-facing, append-only, for rendering)
+    // ========================================================================
+
+    /// Append a UI message to the session
+    pub async fn append_ui_message(&self, agent_id: &str, session_id: &str, message: &UIMessage) -> Result<(), SessionStoreError> {
+        let messages_path = self.ui_messages_path(agent_id, session_id);
+
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Appending UI message to session: agent={}, session={}, type={}",
+            agent_id, session_id, message.msg_type
+        );
+
+        // Ensure session exists
+        if !messages_path.parent().map(|p| p.exists()).unwrap_or(false) {
+            tracing::warn!(
+                target: "viben::services::session_store",
+                "Cannot append UI message: session not found: {}",
+                session_id
+            );
+            return Err(SessionStoreError::NotFound(session_id.to_string()));
+        }
+
+        // Append as JSONL
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&messages_path)
+            .await?;
+
+        let json = serde_json::to_string(message)?;
+        file.write_all(json.as_bytes()).await?;
+        file.write_all(b"\n").await?;
+        file.flush().await?;
+
+        tracing::trace!(
+            target: "viben::services::session_store",
+            "UI message appended: {} bytes, id={}",
+            json.len(), message.id
+        );
+
+        Ok(())
+    }
+
+    /// Read all UI messages from a session
+    pub async fn read_ui_messages(&self, agent_id: &str, session_id: &str) -> Result<Vec<UIMessage>, SessionStoreError> {
+        let messages_path = self.ui_messages_path(agent_id, session_id);
+
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Reading UI messages from session: agent={}, session={}",
+            agent_id, session_id
+        );
+
+        if !messages_path.exists() {
+            tracing::debug!(
+                target: "viben::services::session_store",
+                "UI messages file does not exist: {}",
+                messages_path.display()
+            );
+            return Ok(vec![]);
+        }
+
+        let file = fs::File::open(&messages_path).await?;
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
+        let mut messages = Vec::new();
+
+        while let Some(line) = lines.next_line().await? {
+            if line.trim().is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<UIMessage>(&line) {
+                Ok(msg) => messages.push(msg),
+                Err(e) => {
+                    tracing::warn!(
+                        target: "viben::services::session_store",
+                        "Failed to parse UI message: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        tracing::info!(
+            target: "viben::services::session_store",
+            "Read {} UI messages from session={}",
+            messages.len(), session_id
+        );
+
+        Ok(messages)
+    }
+
+    // ========================================================================
+    // Agent Messages (raw agent data, append-only)
+    // ========================================================================
+
+    /// Append an agent message to the session
+    pub async fn append_agent_message(&self, agent_id: &str, session_id: &str, message: &AgentMessage) -> Result<(), SessionStoreError> {
+        let messages_path = self.agent_messages_path(agent_id, session_id);
+
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Appending agent message to session: agent={}, session={}",
+            agent_id, session_id
+        );
+
+        // Ensure session exists
+        if !messages_path.parent().map(|p| p.exists()).unwrap_or(false) {
+            tracing::warn!(
+                target: "viben::services::session_store",
+                "Cannot append agent message: session not found: {}",
+                session_id
+            );
+            return Err(SessionStoreError::NotFound(session_id.to_string()));
+        }
+
+        // Append as JSONL
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&messages_path)
+            .await?;
+
+        let json = serde_json::to_string(message)?;
+        file.write_all(json.as_bytes()).await?;
+        file.write_all(b"\n").await?;
+        file.flush().await?;
+
+        tracing::trace!(
+            target: "viben::services::session_store",
+            "Agent message appended: {} bytes",
+            json.len()
+        );
+
+        Ok(())
+    }
+
+    /// Read all agent messages from a session
+    pub async fn read_agent_messages(&self, agent_id: &str, session_id: &str) -> Result<Vec<AgentMessage>, SessionStoreError> {
+        let messages_path = self.agent_messages_path(agent_id, session_id);
+
+        tracing::debug!(
+            target: "viben::services::session_store",
+            "Reading agent messages from session: agent={}, session={}",
+            agent_id, session_id
+        );
+
+        if !messages_path.exists() {
+            tracing::debug!(
+                target: "viben::services::session_store",
+                "Agent messages file does not exist: {}",
+                messages_path.display()
+            );
+            return Ok(vec![]);
+        }
+
+        let file = fs::File::open(&messages_path).await?;
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
+        let mut messages = Vec::new();
+
+        while let Some(line) = lines.next_line().await? {
+            if line.trim().is_empty() {
+                continue;
+            }
+            match serde_json::from_str::<AgentMessage>(&line) {
+                Ok(msg) => messages.push(msg),
+                Err(e) => {
+                    tracing::warn!(
+                        target: "viben::services::session_store",
+                        "Failed to parse agent message: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        tracing::info!(
+            target: "viben::services::session_store",
+            "Read {} agent messages from session={}",
             messages.len(), session_id
         );
 

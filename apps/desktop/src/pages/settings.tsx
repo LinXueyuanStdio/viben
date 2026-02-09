@@ -61,6 +61,7 @@ import { SettingsGatewayPage } from "./settings-gateway";
 import { SettingsChannelsPage } from "./settings-channels";
 import { SettingsExecutorsPage } from "./settings-executors";
 import { useNotificationStore } from "@/stores/notification-store";
+import { useSystemNotification } from "@/hooks/use-system-notification";
 import type { NotificationCategory, NotificationMethod } from "@/types/notification";
 import { Input } from "@/components/ui/input";
 
@@ -806,9 +807,19 @@ function NotificationsSection() {
     setCategoryMethod,
     setDoNotDisturb,
   } = useNotificationStore();
+  const {
+    isGranted,
+    isChecking,
+    requestPermission,
+  } = useSystemNotification();
 
-  // Handle master toggle
-  const handleMasterToggle = (enabled: boolean) => {
+  // Handle master toggle - also request permission when enabling
+  const handleMasterToggle = async (enabled: boolean) => {
+    if (enabled && !isGranted) {
+      // Request system notification permission when enabling
+      const granted = await requestPermission();
+      console.log("[NotificationsSection] Permission request result:", granted);
+    }
     setPreferences({ enabled });
   };
 
@@ -836,6 +847,37 @@ function NotificationsSection() {
           {t("settings.notifications.description")}
         </p>
       </div>
+
+      {/* System Permission Status */}
+      {!isGranted && !isChecking && (
+        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-amber-500/20">
+                <AlertCircle className="h-5 w-5 text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-foreground">
+                  {t("settings.notifications.permissionRequired")}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t("settings.notifications.permissionRequiredDescription")}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                const granted = await requestPermission();
+                console.log("[NotificationsSection] Manual permission request:", granted);
+              }}
+            >
+              {t("settings.notifications.grantPermission")}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Master Toggle */}
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">

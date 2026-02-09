@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor};
-use crate::services::session_store::{SessionConfig, SessionMessage};
+use crate::services::session_store::{SessionConfig, SessionMessage, UIMessage};
 
 /// List all available agent types
 pub async fn list_agents() -> Json<Value> {
@@ -115,7 +115,7 @@ pub async fn spawn_agent(
 
     let _child = state
         .container
-        .spawn_agent(&session_id, &agent, &workdir, &req.prompt, &env)
+        .spawn_agent(&session_id, &agent, &agent_type, &workdir, &req.prompt, &env)
         .await?;
 
     tracing::info!(
@@ -509,6 +509,97 @@ pub async fn append_session_message(
     Ok(Json(SessionMessageResponse::from(message)))
 }
 
+// ============================================================================
+// UI Messages (for frontend rendering)
+// ============================================================================
+
+/// UI message response
+#[derive(Serialize)]
+pub struct UIMessageResponse {
+    pub id: String,
+    pub timestamp: String,
+    #[serde(rename = "type")]
+    pub msg_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_use_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_input: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_output: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<Vec<Value>>,
+}
+
+impl From<UIMessage> for UIMessageResponse {
+    fn from(msg: UIMessage) -> Self {
+        Self {
+            id: msg.id,
+            timestamp: msg.timestamp.to_rfc3339(),
+            msg_type: msg.msg_type,
+            content: msg.content,
+            tool_use_id: msg.tool_use_id,
+            tool_name: msg.tool_name,
+            tool_input: msg.tool_input,
+            tool_output: msg.tool_output,
+            is_error: msg.is_error,
+            attachments: msg.attachments,
+        }
+    }
+}
+
+/// List UI messages response
+#[derive(Serialize)]
+pub struct ListUIMessagesResponse {
+    pub messages: Vec<UIMessageResponse>,
+    pub total: usize,
+}
+
+/// List all UI messages in a session (for frontend rendering)
+pub async fn list_session_ui_messages(
+    State(state): State<AppState>,
+    Path((id, session_id)): Path<(String, String)>,
+) -> Result<Json<ListUIMessagesResponse>, GatewayError> {
+    let agent_id = id;
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Listing UI messages: agent={}, session={}",
+        agent_id, session_id
+    );
+
+    let messages = state
+        .session_store
+        .read_ui_messages(&agent_id, &session_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to read UI messages: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    let total = messages.len();
+    let message_responses: Vec<UIMessageResponse> = messages.into_iter().map(UIMessageResponse::from).collect();
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Listed {} UI messages for session={}",
+        total, session_id
+    );
+
+    Ok(Json(ListUIMessagesResponse {
+        messages: message_responses,
+        total,
+    }))
+}
+
 /// Create the agents router
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -523,6 +614,8 @@ pub fn router() -> Router<AppState> {
         // Session messages
         .route("/api/agents/:id/sessions/:session_id/messages", get(list_session_messages))
         .route("/api/agents/:id/sessions/:session_id/messages", post(append_session_message))
+        // UI messages (for frontend rendering)
+        .route("/api/agents/:id/sessions/:session_id/ui-messages", get(list_session_ui_messages))
         // Agent type info endpoints (less specific, must come after session routes)
         .route("/api/agents/:id/availability", get(check_availability))
         .route("/api/agents/:id/spawn", post(spawn_agent))

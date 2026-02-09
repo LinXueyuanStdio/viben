@@ -119,6 +119,21 @@
     "agentSpawned": "智能体 {{agentType}} 已启动，会话 ID: {{sessionId}}。实时流式响应将在网关支持 SSE 后可用。"
   },
   "channels": {
+    "addChannel": "添加渠道",
+    "addChannelDesc": "选择渠道类型并设置名称",
+    "addChannelDescFull": "选择渠道类型并填写必要信息",
+    "channelType": "渠道类型",
+    "instanceName": "实例名称",
+    "editChannel": "编辑渠道",
+    "deleteConfirm": "确定要删除渠道 \"{{name}}\" 吗？",
+    "noChannels": "还没有配置任何渠道",
+    "noChannelsHint": "点击上方按钮添加一个渠道",
+    "sendTestMessage": "发送测试消息",
+    "sendTestMessageDesc": "发送一条测试消息以验证渠道配置是否正确。",
+    "testSuccess": "测试消息发送成功！",
+    "testFailed": "测试消息发送失败",
+    "sendTest": "发送测试",
+    "testing": "测试中...",
     "telegram": {
       "description": "通过 Telegram Bot 接收消息",
       "token": "Bot Token",
@@ -126,14 +141,20 @@
       "proxy": "代理 (可选)",
       "proxyDescription": "支持 HTTP/SOCKS5 代理",
       "allowFrom": "允许的用户 (可选)",
-      "allowFromDescription": "留空允许所有用户，用逗号分隔"
+      "allowFromDescription": "留空允许所有用户，用逗号分隔",
+      "chatId": "Chat ID",
+      "chatIdPlaceholder": "输入 Chat ID（如 123456789 或 @频道用户名）",
+      "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID"
     },
     "discord": {
       "description": "通过 Discord Bot 接收消息",
       "token": "Bot Token",
       "tokenDescription": "从 Discord Developer Portal 获取",
       "allowFrom": "允许的用户 (可选)",
-      "allowFromDescription": "留空允许所有用户"
+      "allowFromDescription": "留空允许所有用户",
+      "channelId": "频道 ID",
+      "channelIdPlaceholder": "输入频道 ID（如 1234567890123456789）",
+      "channelIdHint": "右键点击频道 > 复制频道 ID（需开启开发者模式）"
     },
     "feishu": {
       "name": "飞书",
@@ -145,14 +166,18 @@
       "encryptKeyDescription": "用于事件订阅加密",
       "verificationToken": "Verification Token (可选)",
       "allowFrom": "允许的用户 (可选)",
-      "allowFromDescription": "用户 open_id，留空允许所有用户"
+      "allowFromDescription": "用户 open_id，留空允许所有用户",
+      "chatId": "接收者 ID",
+      "chatIdPlaceholder": "输入 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱",
+      "chatIdHint": "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱地址"
     },
     "whatsapp": {
       "description": "通过 WhatsApp Bridge 接收消息",
       "bridgeUrl": "Bridge URL",
       "bridgeDescription": "WhatsApp Web Bridge WebSocket 地址",
       "allowFrom": "允许的手机号 (可选)",
-      "allowFromDescription": "留空允许所有用户"
+      "allowFromDescription": "留空允许所有用户",
+      "testNote": "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。"
     }
   },
   "dashboard": {
@@ -220,6 +245,9 @@
     },
     "notifications": {
       "description": "配置通知的接收方式和时间",
+      "permissionRequired": "需要系统通知权限",
+      "permissionRequiredDescription": "授权后可在应用后台时接收系统通知",
+      "grantPermission": "授权",
       "masterToggle": "启用通知",
       "masterToggleDescription": "全局开启或关闭所有通知",
       "categorySettings": "通知类型",
@@ -1724,10 +1752,17 @@
     "cronExpressionLabel": "Cron 表达式",
     "selectPreset": "选择预设...",
     "agent": "目标智能体",
-    "agentHint": "指定执行任务的智能体 ID",
+    "agentHint": "选择执行定时任务的智能体",
+    "selectAgent": "选择智能体",
+    "defaultAgent": "默认",
     "channel": "目标渠道",
     "channelPlaceholder": "留空使用默认渠道",
     "enabled": "启用任务",
+    "notifications": "通知设置",
+    "notifyInApp": "应用内通知",
+    "notifySystem": "系统通知（应用外）",
+    "notifyChannels": "渠道通知",
+    "noChannelsConfigured": "暂无已启用的渠道。前往设置 > 消息渠道添加。",
     "presets": {
       "everyMinute": "每分钟",
       "every5Minutes": "每 5 分钟",
@@ -1804,7 +1839,17 @@
     "agent": "智能体",
     "executor": "执行器",
     "renameTitle": "重命名群聊",
-    "newName": "新名称"
+    "newName": "新名称",
+    "details": "群聊详情",
+    "viewDetails": "查看详情",
+    "detailsDescription": "查看和管理群聊设置",
+    "selectAgent": "选择智能体...",
+    "allAgentsAdded": "所有智能体已添加",
+    "created": "创建于",
+    "leaveConfirmTitle": "退出群聊？",
+    "leaveConfirmDesc": "确定要退出此群聊吗？退出后将无法接收此群聊的消息。",
+    "deleteConfirmTitle": "删除群聊？",
+    "deleteConfirmDesc": "确定要删除此群聊吗？此操作无法撤销，所有消息将被永久删除。"
   },
   "notifications": {
     "title": "通知",
@@ -1885,5 +1930,18 @@
     "dismiss": "关闭",
     "viewDetails": "查看详情",
     "undo": "撤销"
+  },
+  "fileBrowser": {
+    "sort": "排序",
+    "sortBy": "排序方式",
+    "sortByName": "名称",
+    "sortBySize": "大小",
+    "sortByModified": "修改日期",
+    "sortByType": "类型",
+    "sortAsc": "升序",
+    "sortDesc": "降序",
+    "search": "搜索文件...",
+    "noResults": "未找到文件",
+    "noResultsQuery": "没有匹配 \"{{query}}\" 的文件"
   }
 }

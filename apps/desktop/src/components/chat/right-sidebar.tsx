@@ -32,11 +32,50 @@ import {
   Code2,
   FileEdit,
   GripVertical,
+  Users,
+  User,
+  Bot,
+  Crown,
+  Shield,
+  UserMinus,
+  UserPlus,
+  Pencil,
+  Check,
+  Calendar,
+  LogOut,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// Tabs and Button removed - using custom VS Code style tabs
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Artifact, ArtifactType, WorkingFile, ToolUsage, AgentMessage } from "@/types";
+import type {
+  GroupChat,
+  GroupChatMember,
+  MemberType,
+  MemberRole,
+  AddMemberRequest,
+} from "@/lib/gateway";
 import { invoke } from "@tauri-apps/api/core";
 
 // Default number of items to show before "show more"
@@ -110,7 +149,7 @@ function ResizeHandle({
 }
 
 // Tab types for the sidebar
-type SidebarTab = "workspace" | "artifacts" | "tools" | "skills";
+type SidebarTab = "workspace" | "artifacts" | "tools" | "skills" | "groupChat";
 
 interface RightSidebarProps {
   artifacts: Artifact[];
@@ -134,6 +173,29 @@ interface RightSidebarProps {
   width?: number;
   /** Callback when resize handle is dragged */
   onResize?: (delta: number) => void;
+  // Group Chat props
+  /** Group chat data - when provided, shows the group chat tab */
+  groupChat?: GroupChat | null;
+  /** Members of the current group chat */
+  groupChatMembers?: GroupChatMember[];
+  /** Available agents that can be added to the group */
+  availableAgents?: Array<{ id: string; name: string }>;
+  /** Current user's member ID */
+  currentUserId?: string;
+  /** Current user's role in the group */
+  currentUserRole?: MemberRole;
+  /** Called when a member is added */
+  onAddMember?: (member: AddMemberRequest) => Promise<void>;
+  /** Called when a member is removed */
+  onRemoveMember?: (memberId: string) => Promise<void>;
+  /** Called when the group chat is updated */
+  onUpdateGroupChat?: (data: { name?: string; description?: string }) => Promise<void>;
+  /** Called when the user leaves the group */
+  onLeaveGroupChat?: () => Promise<void>;
+  /** Called when the group is deleted */
+  onDeleteGroupChat?: () => Promise<void>;
+  /** Whether group chat operations are loading */
+  isGroupChatLoading?: boolean;
 }
 
 /**
@@ -626,29 +688,36 @@ function EditorTab({
   const Icon = tab.icon;
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        "group relative flex items-center gap-1.5 pl-3 pr-1 py-1.5 text-xs transition-colors cursor-pointer border-r border-border/50",
+        "group relative flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all cursor-pointer",
+        "border-b-2 -mb-[2px]",
         isActive
-          ? "bg-background text-foreground"
-          : "bg-muted/30 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+          ? "border-primary text-foreground bg-background"
+          : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
       )}
       onClick={onClick}
     >
-      <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate max-w-24">{tab.label}</span>
+      <Icon className={cn(
+        "h-4 w-4 shrink-0 transition-colors",
+        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+      )} />
+      <span className="truncate max-w-20">{tab.label}</span>
       {count !== undefined && count > 0 && tab.type === "category" && (
         <span
           className={cn(
-            "ml-0.5 min-w-[16px] rounded-full px-1 py-0 text-[10px] font-medium text-center",
-            isActive ? "bg-primary/20 text-primary" : "bg-muted"
+            "min-w-[18px] h-[18px] rounded-full px-1.5 text-[10px] font-semibold flex items-center justify-center",
+            isActive
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground"
           )}
         >
           {count}
         </span>
       )}
       {tab.tool?.isError && (
-        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+        <span className="w-2 h-2 rounded-full bg-destructive shrink-0 animate-pulse" />
       )}
       {onClose && (
         <button
@@ -657,18 +726,14 @@ function EditorTab({
             onClose();
           }}
           className={cn(
-            "p-0.5 rounded hover:bg-accent transition-colors ml-1",
-            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+            "p-0.5 rounded-sm hover:bg-accent transition-colors ml-auto",
+            isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
           )}
         >
           <X className="h-3 w-3" />
         </button>
       )}
-      {/* Active indicator */}
-      {isActive && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
-      )}
-    </div>
+    </button>
   );
 }
 
@@ -1170,6 +1235,649 @@ function SkillsTabContent({ skills }: { skills: SkillInfo[] }) {
   );
 }
 
+// ============================================================================
+// Group Chat Tab Content
+// ============================================================================
+
+/**
+ * Get icon for member type
+ */
+function getMemberTypeIcon(type: MemberType) {
+  switch (type) {
+    case "human":
+      return User;
+    case "agent":
+      return Bot;
+    case "executor":
+      return Terminal;
+    default:
+      return User;
+  }
+}
+
+/**
+ * Get role icon
+ */
+function getRoleIcon(role: MemberRole) {
+  switch (role) {
+    case "owner":
+      return Crown;
+    case "admin":
+      return Shield;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Check if user can manage members
+ */
+function canManageMembers(role?: MemberRole): boolean {
+  return role === "owner" || role === "admin";
+}
+
+/**
+ * Check if user can remove a specific member
+ */
+function canRemoveMember(
+  currentUserRole?: MemberRole,
+  targetMemberRole?: MemberRole,
+  targetMemberId?: string,
+  currentUserId?: string
+): boolean {
+  if (targetMemberId === currentUserId) return false;
+  if (currentUserRole === "owner") return true;
+  if (currentUserRole === "admin" && targetMemberRole === "member") return true;
+  return false;
+}
+
+/**
+ * Format date string to localized format
+ */
+function formatGroupChatDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
+ * Editable field component for inline editing
+ */
+interface EditableFieldProps {
+  value: string;
+  onSave: (value: string) => Promise<void>;
+  placeholder?: string;
+  multiline?: boolean;
+  className?: string;
+  inputClassName?: string;
+  disabled?: boolean;
+}
+
+function EditableField({
+  value,
+  onSave,
+  placeholder,
+  multiline = false,
+  className,
+  inputClassName,
+  disabled = false,
+}: EditableFieldProps) {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editValue, setEditValue] = React.useState(value);
+  const [isSaving, setIsSaving] = React.useState(false);
+
+  const handleSave = async () => {
+    if (editValue.trim() === value) {
+      setIsEditing(false);
+      return;
+    }
+    setIsSaving(true);
+    try {
+      await onSave(editValue.trim());
+      setIsEditing(false);
+    } catch (error) {
+      console.error("[EditableField] Save failed:", error);
+      setEditValue(value);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue(value);
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !multiline) {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === "Escape") {
+      handleCancel();
+    }
+  };
+
+  React.useEffect(() => {
+    setEditValue(value);
+  }, [value]);
+
+  if (isEditing) {
+    return (
+      <div className={cn("flex items-start gap-1", className)}>
+        {multiline ? (
+          <Textarea
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className={cn("min-h-[60px] resize-none text-sm", inputClassName)}
+            autoFocus
+            disabled={isSaving}
+          />
+        ) : (
+          <Input
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            className={cn("h-8 text-sm", inputClassName)}
+            autoFocus
+            disabled={isSaving}
+          />
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={handleCancel}
+          disabled={isSaving}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "group flex items-start gap-1 cursor-pointer rounded-md hover:bg-muted/50 transition-colors -mx-1 px-1",
+        disabled && "cursor-default hover:bg-transparent",
+        className
+      )}
+      onClick={() => !disabled && setIsEditing(true)}
+    >
+      <span className={cn("flex-1", !value && "text-muted-foreground")}>
+        {value || placeholder}
+      </span>
+      {!disabled && (
+        <Pencil className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50 shrink-0 mt-0.5" />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Member list item for group chat
+ */
+interface GroupChatMemberListItemProps {
+  member: GroupChatMember;
+  isCurrentUser: boolean;
+  canRemove: boolean;
+  onRemove?: () => void;
+  isRemoving?: boolean;
+}
+
+function GroupChatMemberListItem({
+  member,
+  isCurrentUser,
+  canRemove,
+  onRemove,
+  isRemoving,
+}: GroupChatMemberListItemProps) {
+  const { t } = useTranslation();
+  const TypeIcon = getMemberTypeIcon(member.member_type);
+  const RoleIcon = getRoleIcon(member.role);
+
+  const getAvatarGradient = () => {
+    const colors = [
+      "from-blue-500 to-cyan-400",
+      "from-purple-500 to-pink-400",
+      "from-green-500 to-emerald-400",
+      "from-orange-500 to-yellow-400",
+      "from-red-500 to-rose-400",
+      "from-indigo-500 to-violet-400",
+    ];
+    const index = (member.display_name?.charCodeAt(0) || 0) % colors.length;
+    return colors[index];
+  };
+
+  return (
+    <div className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted/50 transition-colors">
+      <div
+        className={cn(
+          "relative shrink-0 w-7 h-7 rounded-full flex items-center justify-center bg-gradient-to-br shadow-sm",
+          getAvatarGradient()
+        )}
+      >
+        <TypeIcon className="h-3.5 w-3.5 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1">
+          <span className="font-medium text-xs truncate">
+            {member.display_name}
+          </span>
+          {isCurrentUser && (
+            <span className="text-[9px] px-1 py-0.5 rounded bg-primary/10 text-primary">
+              {t("common.you", "You")}
+            </span>
+          )}
+          {RoleIcon && (
+            <RoleIcon
+              className={cn(
+                "h-2.5 w-2.5",
+                member.role === "owner" ? "text-yellow-500" : "text-blue-500"
+              )}
+            />
+          )}
+        </div>
+      </div>
+      {canRemove && onRemove && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+          disabled={isRemoving}
+        >
+          {isRemoving ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <UserMinus className="h-3 w-3" />
+          )}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Add member section for group chat
+ */
+interface AddMemberSectionProps {
+  availableAgents: Array<{ id: string; name: string }>;
+  existingMemberIds: string[];
+  onAdd: (member: AddMemberRequest) => Promise<void>;
+  isLoading?: boolean;
+}
+
+function GroupChatAddMemberSection({
+  availableAgents,
+  existingMemberIds,
+  onAdd,
+  isLoading,
+}: AddMemberSectionProps) {
+  const { t } = useTranslation();
+  const [selectedAgentId, setSelectedAgentId] = React.useState<string>("");
+  const [isAdding, setIsAdding] = React.useState(false);
+
+  const availableToAdd = availableAgents.filter(
+    (agent) => !existingMemberIds.includes(agent.id)
+  );
+
+  const handleAdd = async () => {
+    if (!selectedAgentId) return;
+    const agent = availableAgents.find((a) => a.id === selectedAgentId);
+    if (!agent) return;
+
+    setIsAdding(true);
+    try {
+      const memberRequest: AddMemberRequest = {
+        member_type: "agent",
+        member_id: agent.id,
+        display_name: agent.name,
+        role: "member",
+      };
+      await onAdd(memberRequest);
+      setSelectedAgentId("");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  if (availableAgents.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground text-center py-2">
+        {t("groupChat.noAgentsAvailable", "No agents available")}
+      </p>
+    );
+  }
+
+  if (availableToAdd.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground text-center py-2">
+        {t("groupChat.allAgentsAdded", "All agents are already members")}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex gap-1.5">
+      <Select
+        value={selectedAgentId}
+        onValueChange={setSelectedAgentId}
+        disabled={isLoading || isAdding}
+      >
+        <SelectTrigger className="flex-1 h-8 text-xs">
+          <SelectValue placeholder={t("groupChat.selectAgent", "Select agent...")} />
+        </SelectTrigger>
+        <SelectContent>
+          {availableToAdd.map((agent) => (
+            <SelectItem key={agent.id} value={agent.id}>
+              <div className="flex items-center gap-2">
+                <Bot className="h-3.5 w-3.5" />
+                <span className="text-xs">{agent.name}</span>
+              </div>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Button
+        size="sm"
+        onClick={handleAdd}
+        disabled={!selectedAgentId || isLoading || isAdding}
+        className="h-8 px-2"
+      >
+        {isAdding ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : (
+          <UserPlus className="h-3.5 w-3.5" />
+        )}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * Group Chat tab content
+ */
+interface GroupChatTabContentProps {
+  groupChat: GroupChat;
+  members: GroupChatMember[];
+  availableAgents: Array<{ id: string; name: string }>;
+  currentUserId: string;
+  currentUserRole?: MemberRole;
+  onAddMember: (member: AddMemberRequest) => Promise<void>;
+  onRemoveMember: (memberId: string) => Promise<void>;
+  onUpdateGroupChat: (data: { name?: string; description?: string }) => Promise<void>;
+  onLeaveGroup: () => Promise<void>;
+  onDeleteGroup: () => Promise<void>;
+  isLoading?: boolean;
+}
+
+function GroupChatTabContent({
+  groupChat,
+  members,
+  availableAgents,
+  currentUserId,
+  currentUserRole,
+  onAddMember,
+  onRemoveMember,
+  onUpdateGroupChat,
+  onLeaveGroup,
+  onDeleteGroup,
+  isLoading,
+}: GroupChatTabContentProps) {
+  const { t } = useTranslation();
+  const [removingMemberId, setRemovingMemberId] = React.useState<string | null>(null);
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [isLeavingOrDeleting, setIsLeavingOrDeleting] = React.useState(false);
+
+  const handleRemoveMember = async (memberId: string) => {
+    setRemovingMemberId(memberId);
+    try {
+      await onRemoveMember(memberId);
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  const handleUpdateName = async (name: string) => {
+    await onUpdateGroupChat({ name });
+  };
+
+  const handleUpdateDescription = async (description: string) => {
+    await onUpdateGroupChat({ description });
+  };
+
+  const handleLeaveGroup = async () => {
+    setIsLeavingOrDeleting(true);
+    try {
+      await onLeaveGroup();
+      setIsLeaveDialogOpen(false);
+    } finally {
+      setIsLeavingOrDeleting(false);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    setIsLeavingOrDeleting(true);
+    try {
+      await onDeleteGroup();
+      setIsDeleteDialogOpen(false);
+    } finally {
+      setIsLeavingOrDeleting(false);
+    }
+  };
+
+  const sortedMembers = React.useMemo(() => {
+    return [...members].sort((a, b) => {
+      const roleOrder = { owner: 0, admin: 1, member: 2 };
+      return roleOrder[a.role] - roleOrder[b.role];
+    });
+  }, [members]);
+
+  const existingMemberIds = members.map((m) => m.member_id);
+  const isOwner = currentUserRole === "owner";
+
+  const getGroupAvatarGradient = () => {
+    const colors = [
+      "from-purple-500 to-pink-400",
+      "from-blue-500 to-cyan-400",
+      "from-green-500 to-emerald-400",
+      "from-orange-500 to-yellow-400",
+    ];
+    const index = (groupChat.name?.charCodeAt(0) || 0) % colors.length;
+    return colors[index];
+  };
+
+  return (
+    <>
+      <div className="space-y-4">
+        {/* Group Info Section */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div
+            className={cn(
+              "w-12 h-12 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-md",
+              getGroupAvatarGradient()
+            )}
+          >
+            <Users className="h-6 w-6 text-white" />
+          </div>
+          <div className="w-full">
+            <EditableField
+              value={groupChat.name}
+              onSave={handleUpdateName}
+              placeholder={t("groupChat.namePlaceholder", "Group name")}
+              className="justify-center text-base font-semibold"
+              disabled={!canManageMembers(currentUserRole)}
+            />
+          </div>
+          <div className="w-full">
+            <EditableField
+              value={groupChat.description || ""}
+              onSave={handleUpdateDescription}
+              placeholder={t("groupChat.descriptionPlaceholder", "Add a description...")}
+              multiline
+              className="text-xs text-muted-foreground justify-center"
+              disabled={!canManageMembers(currentUserRole)}
+            />
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Calendar className="h-3 w-3" />
+            <span>
+              {t("groupChat.created", "Created")} {formatGroupChatDate(groupChat.created_at)}
+            </span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Members Section */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground">
+            {t("groupChat.members", "Members")} ({members.length})
+          </h4>
+          <div className="space-y-0.5 rounded-md border border-border/30 bg-muted/20 p-1.5 max-h-[200px] overflow-y-auto">
+            {sortedMembers.map((member) => (
+              <GroupChatMemberListItem
+                key={member.id}
+                member={member}
+                isCurrentUser={member.member_id === currentUserId}
+                canRemove={canRemoveMember(
+                  currentUserRole,
+                  member.role,
+                  member.member_id,
+                  currentUserId
+                )}
+                onRemove={() => handleRemoveMember(member.id)}
+                isRemoving={removingMemberId === member.id}
+              />
+            ))}
+          </div>
+
+          {/* Add Member Section */}
+          {canManageMembers(currentUserRole) && (
+            <div className="space-y-1.5 pt-1">
+              <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <UserPlus className="h-3 w-3" />
+                {t("groupChat.addMembers", "Add Agent")}
+              </h4>
+              <GroupChatAddMemberSection
+                availableAgents={availableAgents}
+                existingMemberIds={existingMemberIds}
+                onAdd={onAddMember}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* Actions */}
+        <div className="space-y-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full justify-start text-xs text-muted-foreground hover:text-foreground h-8"
+            onClick={() => setIsLeaveDialogOpen(true)}
+          >
+            <LogOut className="h-3.5 w-3.5 mr-2" />
+            {t("groupChat.leave", "Leave Group")}
+          </Button>
+          {isOwner && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs text-destructive hover:text-destructive hover:bg-destructive/10 h-8"
+              onClick={() => setIsDeleteDialogOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              {t("groupChat.delete", "Delete Group")}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Leave Group Confirmation Dialog */}
+      <AlertDialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("groupChat.leaveConfirmTitle", "Leave Group?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "groupChat.leaveConfirmDesc",
+                "Are you sure you want to leave this group? You will no longer receive messages from this group."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLeavingOrDeleting}>
+              {t("common.cancel", "Cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveGroup}
+              disabled={isLeavingOrDeleting}
+            >
+              {isLeavingOrDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {t("groupChat.leave", "Leave Group")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Group Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("groupChat.deleteConfirmTitle", "Delete Group?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t(
+                "groupChat.deleteConfirmDesc",
+                "Are you sure you want to delete this group? This action cannot be undone and all messages will be lost."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLeavingOrDeleting}>
+              {t("common.cancel", "Cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteGroup}
+              disabled={isLeavingOrDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isLeavingOrDeleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              {t("groupChat.delete", "Delete Group")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 export function RightSidebar({
   artifacts,
   workingFiles = [],
@@ -1185,6 +1893,18 @@ export function RightSidebar({
   className,
   width,
   onResize,
+  // Group chat props
+  groupChat,
+  groupChatMembers = [],
+  availableAgents = [],
+  currentUserId = "",
+  currentUserRole,
+  onAddMember,
+  onRemoveMember,
+  onUpdateGroupChat,
+  onLeaveGroupChat,
+  onDeleteGroupChat,
+  isGroupChatLoading,
 }: RightSidebarProps) {
   const { t } = useTranslation();
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
@@ -1255,6 +1975,7 @@ export function RightSidebar({
   const artifactsCount = artifacts.length;
   const toolsCount = allTools.length;
   const skillsCount = usedSkills.length;
+  const groupChatMembersCount = groupChatMembers.length;
 
   // Auto-expand sidebar if there's content and switch to relevant tab
   React.useEffect(() => {
@@ -1269,15 +1990,41 @@ export function RightSidebar({
   const [openTabs, setOpenTabs] = React.useState<OpenTab[]>([]);
   const [activeTabId, setActiveTabId] = React.useState<string>("workspace");
 
-  // Initialize category tabs
+  // Track previous groupChat to detect when it changes
+  const prevGroupChatRef = React.useRef<GroupChat | null | undefined>(undefined);
+
+  // Initialize category tabs - dynamically include group chat tab when available
   React.useEffect(() => {
-    setOpenTabs([
+    const baseTabs: OpenTab[] = [
       { id: "workspace", type: "category", category: "workspace", label: t("chat.sidebar.workspace", "Workspace"), icon: Folder },
       { id: "artifacts", type: "category", category: "artifacts", label: t("chat.artifacts"), icon: Package },
       { id: "tools", type: "category", category: "tools", label: t("chat.tools"), icon: Wrench },
       { id: "skills", type: "category", category: "skills", label: t("chat.sidebar.skills", "Skills"), icon: Sparkles },
-    ]);
-  }, [t]);
+    ];
+
+    // Add group chat tab at the beginning if group chat is available
+    if (groupChat) {
+      baseTabs.unshift({
+        id: "groupChat",
+        type: "category",
+        category: "groupChat",
+        label: t("groupChat.details", "Group"),
+        icon: Users,
+      });
+    }
+
+    setOpenTabs(baseTabs);
+
+    // Auto-switch to groupChat tab when groupChat becomes available (or changes to a different group)
+    if (groupChat && (!prevGroupChatRef.current || prevGroupChatRef.current.id !== groupChat.id)) {
+      setActiveTabId("groupChat");
+    } else if (!groupChat && prevGroupChatRef.current) {
+      // Switch away from groupChat tab when groupChat is removed
+      setActiveTabId("workspace");
+    }
+
+    prevGroupChatRef.current = groupChat;
+  }, [t, groupChat]);
 
   // Handle artifact selection - open as new tab
   const handleArtifactSelectWithPreview = (artifact: Artifact) => {
@@ -1337,6 +2084,7 @@ export function RightSidebar({
       case "artifacts": return artifactsCount;
       case "tools": return toolsCount;
       case "skills": return skillsCount;
+      case "groupChat": return groupChatMembersCount;
       default: return undefined;
     }
   };
@@ -1359,9 +2107,9 @@ export function RightSidebar({
       {/* Resize handle */}
       {onResize && <ResizeHandle onResize={onResize} />}
 
-      {/* VS Code style tabs */}
-      <div className="flex items-center border-b border-border shrink-0 bg-muted/30">
-        <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
+      {/* Tab bar */}
+      <div className="flex items-center border-b-2 border-border shrink-0 bg-muted/20">
+        <div className="flex-1 flex items-center overflow-x-auto scrollbar-none gap-1 px-1">
           {openTabs.map((tab) => (
             <EditorTab
               key={tab.id}
@@ -1376,7 +2124,7 @@ export function RightSidebar({
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0 rounded-md m-1"
           >
             <X className="h-4 w-4" />
           </button>
@@ -1419,6 +2167,24 @@ export function RightSidebar({
         {currentTab?.type === "category" && currentTab.category === "skills" && (
           <div className="p-3">
             <SkillsTabContent skills={usedSkills} />
+          </div>
+        )}
+
+        {currentTab?.type === "category" && currentTab.category === "groupChat" && groupChat && (
+          <div className="p-3">
+            <GroupChatTabContent
+              groupChat={groupChat}
+              members={groupChatMembers}
+              availableAgents={availableAgents}
+              currentUserId={currentUserId}
+              currentUserRole={currentUserRole}
+              onAddMember={onAddMember || (async () => {})}
+              onRemoveMember={onRemoveMember || (async () => {})}
+              onUpdateGroupChat={onUpdateGroupChat || (async () => {})}
+              onLeaveGroup={onLeaveGroupChat || (async () => {})}
+              onDeleteGroup={onDeleteGroupChat || (async () => {})}
+              isLoading={isGroupChatLoading}
+            />
           </div>
         )}
 

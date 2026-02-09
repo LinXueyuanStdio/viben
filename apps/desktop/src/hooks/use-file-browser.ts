@@ -1,8 +1,10 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { FileEntry, FileInfo } from "@/types";
 
 export type ViewMode = "list" | "icon" | "column" | "gallery";
+export type SortField = "name" | "size" | "modified" | "type";
+export type SortDirection = "asc" | "desc";
 
 interface FileBrowserState {
   currentPath: string;
@@ -10,6 +12,9 @@ interface FileBrowserState {
   selectedFile: FileEntry | null;
   selectedFiles: Set<string>;
   viewMode: ViewMode;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  searchQuery: string;
   loading: boolean;
   error: string | null;
   history: string[];
@@ -17,6 +22,57 @@ interface FileBrowserState {
   clipboard: { files: FileEntry[]; operation: "copy" | "cut" } | null;
   previewFile: FileEntry | null;
   columnPaths: string[]; // For Miller Columns view
+}
+
+/**
+ * Get file type/extension for sorting
+ */
+function getFileType(file: FileEntry): string {
+  if (file.is_directory) return "";
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ext || "";
+}
+
+/**
+ * Compare files for sorting
+ */
+function compareFiles(
+  a: FileEntry,
+  b: FileEntry,
+  field: SortField,
+  direction: SortDirection
+): number {
+  // Directories always come first
+  if (a.is_directory !== b.is_directory) {
+    return a.is_directory ? -1 : 1;
+  }
+
+  let comparison = 0;
+
+  switch (field) {
+    case "name":
+      comparison = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      break;
+    case "size":
+      comparison = (a.size ?? 0) - (b.size ?? 0);
+      break;
+    case "modified":
+      const aTime = a.modified ? new Date(a.modified).getTime() : 0;
+      const bTime = b.modified ? new Date(b.modified).getTime() : 0;
+      comparison = aTime - bTime;
+      break;
+    case "type":
+      const aType = getFileType(a);
+      const bType = getFileType(b);
+      comparison = aType.localeCompare(bType, undefined, { sensitivity: "base" });
+      // If same type, sort by name
+      if (comparison === 0) {
+        comparison = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+      }
+      break;
+  }
+
+  return direction === "asc" ? comparison : -comparison;
 }
 
 interface UseFileBrowserOptions {
@@ -31,6 +87,9 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     selectedFile: null,
     selectedFiles: new Set(),
     viewMode: (localStorage.getItem("fileBrowser.viewMode") as ViewMode) || "column",
+    sortField: (localStorage.getItem("fileBrowser.sortField") as SortField) || "name",
+    sortDirection: (localStorage.getItem("fileBrowser.sortDirection") as SortDirection) || "asc",
+    searchQuery: "",
     loading: false,
     error: null,
     history: [initialPath || workspacePath],
@@ -87,6 +146,7 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
         currentPath: path,
         selectedFile: null,
         selectedFiles: new Set(),
+        searchQuery: "", // Clear search when navigating
         history: newHistory,
         historyIndex: newIndex,
       };
@@ -169,6 +229,43 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     localStorage.setItem("fileBrowser.viewMode", mode);
     setState(prev => ({ ...prev, viewMode: mode }));
   }, []);
+
+  // Set sort field
+  const setSortField = useCallback((field: SortField) => {
+    localStorage.setItem("fileBrowser.sortField", field);
+    setState(prev => ({ ...prev, sortField: field }));
+  }, []);
+
+  // Set sort direction
+  const setSortDirection = useCallback((direction: SortDirection) => {
+    localStorage.setItem("fileBrowser.sortDirection", direction);
+    setState(prev => ({ ...prev, sortDirection: direction }));
+  }, []);
+
+  // Set search query
+  const setSearchQuery = useCallback((query: string) => {
+    setState(prev => ({ ...prev, searchQuery: query }));
+  }, []);
+
+  // Computed: filtered and sorted files
+  const filteredFiles = useMemo(() => {
+    let result = state.files;
+
+    // Filter by search query
+    if (state.searchQuery.trim()) {
+      const query = state.searchQuery.toLowerCase().trim();
+      result = result.filter(file =>
+        file.name.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort files
+    result = [...result].sort((a, b) =>
+      compareFiles(a, b, state.sortField, state.sortDirection)
+    );
+
+    return result;
+  }, [state.files, state.searchQuery, state.sortField, state.sortDirection]);
 
   // Set preview file (for Quick Look)
   const setPreviewFile = useCallback((file: FileEntry | null) => {
@@ -306,6 +403,7 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
   return {
     // State
     ...state,
+    filteredFiles,
     canGoBack: state.historyIndex > 0,
     canGoForward: state.historyIndex < state.history.length - 1,
     canGoUp: state.currentPath.length > workspacePath.length,
@@ -322,6 +420,11 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     setViewMode,
     setPreviewFile,
     updateColumnPaths,
+
+    // Sort and search
+    setSortField,
+    setSortDirection,
+    setSearchQuery,
 
     // File operations
     createFile,

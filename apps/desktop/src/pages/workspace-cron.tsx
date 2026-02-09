@@ -70,9 +70,13 @@ import {
   useDisableCronJob,
   useRunCronJob,
   useCronNotifications,
+  useChannelInstances,
 } from "@/hooks";
+import { useUnifiedAgents } from "@/hooks/use-unified-agents";
 import { useTranslation } from "react-i18next";
-import type { CronJob, CreateCronJob, UpdateCronJob } from "@/types/cron";
+import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings } from "@/types/cron";
+import { getChannelTypeName } from "@/types/channel";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type ScheduleType = "cron" | "interval";
 
@@ -85,6 +89,10 @@ interface JobFormData {
   agent: string;
   channel: string;
   enabled: boolean;
+  // Notification settings
+  notifyInApp: boolean;
+  notifySystem: boolean;
+  notifyChannelIds: string[];
 }
 
 const defaultFormData: JobFormData = {
@@ -96,6 +104,9 @@ const defaultFormData: JobFormData = {
   agent: "main",
   channel: "",
   enabled: true,
+  notifyInApp: true,
+  notifySystem: false,
+  notifyChannelIds: [],
 };
 
 // Common cron presets
@@ -126,6 +137,13 @@ export function WorkspaceCronPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
+  // Workspace agents (unified: executors + global agents)
+  const { all: workspaceAgents, loading: loadingAgents } = useUnifiedAgents({
+    workspaceId: workspaceId || null,
+    includeAgents: true,
+    includeExecutors: true,
+  });
+
   // Cron job hooks
   const { jobs, loading: loadingJobs, error: jobsError, refresh: refreshJobs } = useCronJobs();
   const { createJob, loading: creating } = useCreateCronJob();
@@ -136,6 +154,10 @@ export function WorkspaceCronPage() {
   const { runJob } = useRunCronJob();
   const { notifyCronStatus } = useCronNotifications();
 
+  // Channel instances for notification
+  const { getEnabledInstances } = useChannelInstances();
+  const enabledChannels = getEnabledInstances();
+
   // UI state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<CronJob | null>(null);
@@ -143,7 +165,7 @@ export function WorkspaceCronPage() {
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  const loading = loadingJobs || isLoadingWorkspaces;
+  const loading = loadingJobs || isLoadingWorkspaces || loadingAgents;
 
   // Reset form when dialog closes
   useEffect(() => {
@@ -164,17 +186,27 @@ export function WorkspaceCronPage() {
         agent: editingJob.agent || "main",
         channel: editingJob.channel || "",
         enabled: editingJob.enabled,
+        notifyInApp: editingJob.notifications?.in_app ?? true,
+        notifySystem: editingJob.notifications?.system ?? false,
+        notifyChannelIds: editingJob.notifications?.channel_ids ?? [],
       });
     }
   }, [editingJob]);
 
   const handleCreateOrUpdate = async () => {
+    const notifications: CronNotificationSettings = {
+      in_app: formData.notifyInApp,
+      system: formData.notifySystem,
+      channel_ids: formData.notifyChannelIds,
+    };
+
     const data: CreateCronJob | UpdateCronJob = {
       name: formData.name.trim(),
       message: formData.message.trim(),
       agent: formData.agent || undefined,
       channel: formData.channel || undefined,
       enabled: formData.enabled,
+      notifications,
       ...(formData.scheduleType === "cron"
         ? { cron: formData.cronExpression }
         : { every: formData.intervalSeconds }),
@@ -638,31 +670,116 @@ export function WorkspaceCronPage() {
               </div>
             )}
 
-            {/* Agent */}
+            {/* Agent Selection */}
             <div className="space-y-2">
               <Label htmlFor="job-agent">{t("cron.agent")}</Label>
-              <Input
-                id="job-agent"
+              <Select
                 value={formData.agent}
-                onChange={(e) => setFormData({ ...formData, agent: e.target.value })}
-                placeholder="main"
-              />
+                onValueChange={(val) => setFormData({ ...formData, agent: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t("cron.selectAgent")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="main">
+                    <span className="font-medium">main</span>
+                    <span className="text-muted-foreground ml-2">({t("cron.defaultAgent")})</span>
+                  </SelectItem>
+                  {workspaceAgents.map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      <span className="font-medium">{agent.name}</span>
+                      {agent.description && (
+                        <span className="text-muted-foreground ml-2 text-xs truncate max-w-[200px]">
+                          {agent.description}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-xs text-muted-foreground">
                 {t("cron.agentHint")}
               </p>
             </div>
 
-            {/* Channel (optional) */}
-            <div className="space-y-2">
-              <Label htmlFor="job-channel">
-                {t("cron.channel")} ({t("common.optional")})
-              </Label>
-              <Input
-                id="job-channel"
-                value={formData.channel}
-                onChange={(e) => setFormData({ ...formData, channel: e.target.value })}
-                placeholder={t("cron.channelPlaceholder")}
-              />
+            {/* Notification Settings */}
+            <div className="space-y-3">
+              <Label>{t("cron.notifications")}</Label>
+
+              {/* In-app notification */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="notify-inapp"
+                  checked={formData.notifyInApp}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, notifyInApp: checked === true })
+                  }
+                />
+                <label htmlFor="notify-inapp" className="text-sm cursor-pointer">
+                  {t("cron.notifyInApp")}
+                </label>
+              </div>
+
+              {/* System notification */}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="notify-system"
+                  checked={formData.notifySystem}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, notifySystem: checked === true })
+                  }
+                />
+                <label htmlFor="notify-system" className="text-sm cursor-pointer">
+                  {t("cron.notifySystem")}
+                </label>
+              </div>
+
+              {/* Channel notifications */}
+              {enabledChannels.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">{t("cron.notifyChannels")}</p>
+                  <div className="space-y-2 pl-2">
+                    {enabledChannels.map((channel) => (
+                      <div key={channel.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`notify-channel-${channel.id}`}
+                          checked={formData.notifyChannelIds.includes(channel.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData({
+                                ...formData,
+                                notifyChannelIds: [...formData.notifyChannelIds, channel.id],
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                notifyChannelIds: formData.notifyChannelIds.filter(
+                                  (id) => id !== channel.id
+                                ),
+                              });
+                            }
+                          }}
+                        />
+                        <label
+                          htmlFor={`notify-channel-${channel.id}`}
+                          className="text-sm cursor-pointer flex items-center gap-2"
+                        >
+                          <span>{channel.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({getChannelTypeName(channel.type)})
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {enabledChannels.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {t("cron.noChannelsConfigured")}
+                </p>
+              )}
             </div>
 
             {/* Enabled */}

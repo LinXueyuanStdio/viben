@@ -23,7 +23,7 @@ import {
   Archive,
   RefreshCcw,
 } from "lucide-react";
-import { getGatewayClient, type FileSession, type SessionMessage } from "@/lib/gateway";
+import { getGatewayClient, type FileSession, type UIMessage } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -62,7 +62,6 @@ import {
   GroupChatMessageList,
   GroupChatListItem,
   GroupChatMembersDialog,
-  GroupChatSidebar,
 } from "@/components/chat";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -72,6 +71,7 @@ import {
   useChatConfig,
   useGroupChat,
   useChatNotifications,
+  useGroupNotifications,
 } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -212,76 +212,54 @@ function fileSessionToConversation(session: FileSession): Conversation {
   };
 }
 
-// Convert Gateway SessionMessage to AgentMessage(s)
-// A single SessionMessage may produce multiple AgentMessages (e.g., tool calls + text)
-function sessionMessageToAgentMessages(msg: SessionMessage): import("@/types").AgentMessage[] {
-  const messages: import("@/types").AgentMessage[] = [];
-
-  if (msg.role === "user") {
-    // User message
-    messages.push({
-      id: crypto.randomUUID(),
-      type: "user" as const,
-      content: msg.content,
-    });
-  } else if (msg.role === "assistant") {
-    // Assistant message - may contain tool calls
-    if (msg.tool_calls && typeof msg.tool_calls === "object") {
-      // Handle tool calls - they can be an array or object
-      const toolCalls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [msg.tool_calls];
-      for (const toolCall of toolCalls) {
-        if (toolCall && typeof toolCall === "object") {
-          const tc = toolCall as { id?: string; name?: string; input?: Record<string, unknown> };
-          messages.push({
-            id: tc.id || crypto.randomUUID(),
-            type: "tool_use" as const,
-            name: tc.name || "unknown_tool",
-            input: tc.input || {},
-            toolUseId: tc.id,
-          });
-        }
-      }
-    }
-
-    // Add text content if present
-    if (msg.content && msg.content.trim()) {
-      messages.push({
-        id: crypto.randomUUID(),
+// Convert Gateway UIMessage to AgentMessage
+// UIMessage is already in the correct format for frontend rendering
+function uiMessageToAgentMessage(msg: UIMessage): import("@/types").AgentMessage | null {
+  switch (msg.type) {
+    case "user":
+      return {
+        id: msg.id,
+        type: "user" as const,
+        content: msg.content || "",
+      };
+    case "text":
+      return {
+        id: msg.id,
         type: "text" as const,
-        content: msg.content,
-      });
-    }
-  } else if (msg.role === "system") {
-    // System message - could be tool result
-    if (msg.tool_result && typeof msg.tool_result === "object") {
-      const tr = msg.tool_result as { tool_use_id?: string; output?: string; is_error?: boolean };
-      messages.push({
-        id: crypto.randomUUID(),
+        content: msg.content || "",
+      };
+    case "tool_use":
+      return {
+        id: msg.id,
+        type: "tool_use" as const,
+        name: msg.tool_name || "unknown_tool",
+        input: msg.tool_input || {},
+        toolUseId: msg.tool_use_id,
+      };
+    case "tool_result":
+      return {
+        id: msg.id,
         type: "tool_result" as const,
-        toolUseId: tr.tool_use_id,
-        output: tr.output || msg.content,
-        isError: tr.is_error || false,
-      });
-    } else if (msg.content && msg.content.trim()) {
-      // Regular system message as text
-      messages.push({
-        id: crypto.randomUUID(),
+        toolUseId: msg.tool_use_id,
+        output: msg.tool_output || "",
+        isError: msg.is_error || false,
+      };
+    case "thinking":
+      return {
+        id: msg.id,
         type: "text" as const,
-        content: msg.content,
-      });
-    }
+        content: msg.content || "",
+      };
+    case "error":
+      return {
+        id: msg.id,
+        type: "error" as const,
+        message: msg.content || "",
+        isError: true,
+      };
+    default:
+      return null;
   }
-
-  // If no messages were created, add a text message with the content
-  if (messages.length === 0 && msg.content && msg.content.trim()) {
-    messages.push({
-      id: crypto.randomUUID(),
-      type: "text" as const,
-      content: msg.content,
-    });
-  }
-
-  return messages;
 }
 
 // ============================================================================
@@ -516,7 +494,6 @@ export function WorkspaceChatPage() {
   const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
   const [groupChatInput, setGroupChatInput] = React.useState("");
   const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false);
-  const [isGroupChatSidebarOpen, setIsGroupChatSidebarOpen] = React.useState(false);
   const [renameGroupChatId, setRenameGroupChatId] = React.useState<string | null>(null);
   const [renameGroupChatName, setRenameGroupChatName] = React.useState("");
   const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
@@ -564,6 +541,13 @@ export function WorkspaceChatPage() {
     checkGatewayConnection,
   } = useAgent(workspace?.path || "", { agentType: selectedExecutor });
 
+  // Group notifications hook
+  const {
+    notifyGroupMessage,
+    notifyMemberJoined,
+    notifyMemberLeft,
+  } = useGroupNotifications();
+
   // Group Chat hook
   const {
     groupChats,
@@ -588,6 +572,20 @@ export function WorkspaceChatPage() {
     userId: "user-1", // TODO: Get from auth context
     userDisplayName: "User",
     autoConnect: true,
+    notificationCallbacks: {
+      onNewMessage: (groupId, groupName, message, currentUserId) => {
+        console.log("[GroupChat] New message notification:", { groupId, groupName, senderId: message.sender_id, currentUserId });
+        notifyGroupMessage(groupId, groupName, message, currentUserId);
+      },
+      onMemberJoined: (groupId, groupName, member) => {
+        console.log("[GroupChat] Member joined notification:", { groupId, groupName, member: member.display_name });
+        notifyMemberJoined(groupId, groupName, member);
+      },
+      onMemberLeft: (groupId, groupName, memberId, memberName) => {
+        console.log("[GroupChat] Member left notification:", { groupId, groupName, memberId, memberName });
+        notifyMemberLeft(groupId, groupName, memberId, memberName);
+      },
+    },
   });
 
   // Load group chats on mount
@@ -855,11 +853,12 @@ export function WorkspaceChatPage() {
     const sessionId = selectedConversationId;
 
     const loadSessionMessages = async () => {
-      console.log(`[WorkspaceChat:Effect:Messages] Loading messages for session ${sessionId}`);
+      console.log(`[WorkspaceChat:Effect:Messages] Loading UI messages for session ${sessionId}`);
 
       try {
         const client = getGatewayClient();
-        const sessionMessages = await client.listSessionMessages(agentId, sessionId);
+        // Use the new UI messages endpoint for proper rendering
+        const uiMessages = await client.listSessionUIMessages(agentId, sessionId);
 
         // Check if session is still the same after async call
         if (prevSessionRef.current !== sessionId) {
@@ -867,17 +866,19 @@ export function WorkspaceChatPage() {
           return;
         }
 
-        if (sessionMessages.length > 0) {
-          // Flatten array since sessionMessageToAgentMessages returns array per message
-          const agentMessages = sessionMessages.flatMap(sessionMessageToAgentMessages);
-          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages from ${sessionMessages.length} session messages, calling loadMessages`);
+        if (uiMessages.length > 0) {
+          // Convert UI messages to agent messages, filtering out null results
+          const agentMessages = uiMessages
+            .map(uiMessageToAgentMessage)
+            .filter((msg): msg is import("@/types").AgentMessage => msg !== null);
+          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages from ${uiMessages.length} UI messages, calling loadMessages`);
           loadMessages(agentMessages);
         } else {
           console.log(`[WorkspaceChat:Effect:Messages] No messages, calling clearMessages`);
           clearMessages();
         }
       } catch (error) {
-        console.error("[WorkspaceChat:Effect:Messages] Failed to load messages:", error);
+        console.error("[WorkspaceChat:Effect:Messages] Failed to load UI messages:", error);
         if (prevSessionRef.current === sessionId) {
           clearMessages();
         }
@@ -1267,17 +1268,6 @@ export function WorkspaceChatPage() {
     }
   };
 
-  // Handle updating the current group chat (for sidebar)
-  const handleUpdateCurrentGroupChat = async (data: { name?: string; description?: string }) => {
-    if (!selectedGroupChatId) return;
-    try {
-      await updateGroupChat(selectedGroupChatId, data);
-    } catch (error) {
-      console.error("[WorkspaceChat] Failed to update group chat:", error);
-      throw error;
-    }
-  };
-
   // Get current user's role in the group chat
   const currentUserGroupRole = React.useMemo(() => {
     if (!groupChatMembers.length) return undefined;
@@ -1488,7 +1478,7 @@ export function WorkspaceChatPage() {
                     size="icon"
                     className="h-8 w-8"
                     title={t("groupChat.viewDetails", "View Details")}
-                    onClick={() => setIsGroupChatSidebarOpen(true)}
+                    onClick={() => setIsSidebarOpen(true)}
                   >
                     <Users className="h-4 w-4" />
                   </Button>
@@ -1792,6 +1782,18 @@ export function WorkspaceChatPage() {
           onClose={() => setIsSidebarOpen(false)}
           width={rightPanelWidth}
           onResize={handleRightPanelResize}
+          // Group chat props (only when in group chat mode)
+          groupChat={isGroupChatMode && currentGroupChat ? currentGroupChat.group_chat : null}
+          groupChatMembers={isGroupChatMode ? groupChatMembers : []}
+          availableAgents={agents.map((a) => ({ id: a.id, name: a.name }))}
+          currentUserId="user-1"
+          currentUserRole={currentUserGroupRole}
+          onAddMember={addGroupChatMember}
+          onRemoveMember={removeGroupChatMember}
+          onUpdateGroupChat={(data) => updateGroupChat(selectedGroupChatId!, data)}
+          onLeaveGroupChat={leaveGroupChat}
+          onDeleteGroupChat={() => deleteGroupChat(selectedGroupChatId!)}
+          isGroupChatLoading={isLoadingGroupChat}
         />
       </div>
 
@@ -2117,24 +2119,6 @@ export function WorkspaceChatPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Group Chat Sidebar */}
-      {currentGroupChat && (
-        <GroupChatSidebar
-          groupChat={currentGroupChat.group_chat}
-          members={groupChatMembers}
-          availableAgents={agents.map((a) => ({ id: a.id, name: a.name }))}
-          currentUserId="user-1"
-          currentUserRole={currentUserGroupRole}
-          isOpen={isGroupChatSidebarOpen}
-          onClose={() => setIsGroupChatSidebarOpen(false)}
-          onAddMember={handleAddGroupChatMember}
-          onRemoveMember={handleRemoveGroupChatMember}
-          onUpdateGroupChat={handleUpdateCurrentGroupChat}
-          onLeaveGroup={handleLeaveGroupChat}
-          onDeleteGroup={() => selectedGroupChatId ? handleDeleteGroupChat(selectedGroupChatId) : Promise.resolve()}
-          isLoading={isLoadingGroupChat}
-        />
-      )}
     </motion.div>
   );
 }

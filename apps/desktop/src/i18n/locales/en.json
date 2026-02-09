@@ -117,6 +117,21 @@
     "agentSpawned": "Agent {{agentType}} spawned with session {{sessionId}}. Real-time streaming will be available when Gateway supports SSE."
   },
   "channels": {
+    "addChannel": "Add Channel",
+    "addChannelDesc": "Select channel type and set a name",
+    "addChannelDescFull": "Select channel type and fill in required information",
+    "channelType": "Channel Type",
+    "instanceName": "Instance Name",
+    "editChannel": "Edit Channel",
+    "deleteConfirm": "Delete channel \"{{name}}\"?",
+    "noChannels": "No channels configured",
+    "noChannelsHint": "Click the button above to add a channel",
+    "sendTestMessage": "Send Test Message",
+    "sendTestMessageDesc": "Send a test message to verify the channel configuration is correct.",
+    "testSuccess": "Test message sent successfully!",
+    "testFailed": "Failed to send test message",
+    "sendTest": "Send Test",
+    "testing": "Testing...",
     "telegram": {
       "description": "Receive messages via Telegram Bot",
       "token": "Bot Token",
@@ -124,14 +139,20 @@
       "proxy": "Proxy (optional)",
       "proxyDescription": "Support HTTP/SOCKS5 proxy",
       "allowFrom": "Allowed Users (optional)",
-      "allowFromDescription": "Leave empty to allow all users, separate with comma"
+      "allowFromDescription": "Leave empty to allow all users, separate with comma",
+      "chatId": "Chat ID",
+      "chatIdPlaceholder": "Enter Chat ID (e.g., 123456789 or @channel_username)",
+      "chatIdHint": "You can get your Chat ID from @userinfobot"
     },
     "discord": {
       "description": "Receive messages via Discord Bot",
       "token": "Bot Token",
       "tokenDescription": "Get from Discord Developer Portal",
       "allowFrom": "Allowed Users (optional)",
-      "allowFromDescription": "Leave empty to allow all users"
+      "allowFromDescription": "Leave empty to allow all users",
+      "channelId": "Channel ID",
+      "channelIdPlaceholder": "Enter Channel ID (e.g., 1234567890123456789)",
+      "channelIdHint": "Right-click channel > Copy Channel ID (requires Developer Mode)"
     },
     "feishu": {
       "name": "Feishu",
@@ -143,14 +164,18 @@
       "encryptKeyDescription": "For event subscription encryption",
       "verificationToken": "Verification Token (optional)",
       "allowFrom": "Allowed Users (optional)",
-      "allowFromDescription": "User open_id, leave empty to allow all users"
+      "allowFromDescription": "User open_id, leave empty to allow all users",
+      "chatId": "Recipient ID",
+      "chatIdPlaceholder": "Enter Open ID (ou_xxx), Chat ID (oc_xxx), or email",
+      "chatIdHint": "You can use Open ID (ou_xxx), Chat ID (oc_xxx), or email address"
     },
     "whatsapp": {
       "description": "Receive messages via WhatsApp Bridge",
       "bridgeUrl": "Bridge URL",
       "bridgeDescription": "WhatsApp Web Bridge WebSocket address",
       "allowFrom": "Allowed Phone Numbers (optional)",
-      "allowFromDescription": "Leave empty to allow all users"
+      "allowFromDescription": "Leave empty to allow all users",
+      "testNote": "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication."
     }
   },
   "dashboard": {
@@ -218,6 +243,9 @@
     },
     "notifications": {
       "description": "Configure how and when you receive notifications",
+      "permissionRequired": "System Notification Permission Required",
+      "permissionRequiredDescription": "Grant permission to receive system notifications when the app is in the background",
+      "grantPermission": "Grant Permission",
       "masterToggle": "Enable Notifications",
       "masterToggleDescription": "Turn on/off all notifications globally",
       "categorySettings": "Notification Types",
@@ -1703,10 +1731,17 @@
     "cronExpressionLabel": "Cron Expression",
     "selectPreset": "Select preset...",
     "agent": "Target Agent",
-    "agentHint": "Specify the agent ID to execute the task",
+    "agentHint": "Select the agent to execute the scheduled task",
+    "selectAgent": "Select agent",
+    "defaultAgent": "Default",
     "channel": "Target Channel",
     "channelPlaceholder": "Leave empty for default channel",
     "enabled": "Enable Task",
+    "notifications": "Notification Settings",
+    "notifyInApp": "In-app notifications",
+    "notifySystem": "System notifications (external)",
+    "notifyChannels": "Channel notifications",
+    "noChannelsConfigured": "No channels configured. Go to Settings > Channels to add one.",
     "presets": {
       "everyMinute": "Every minute",
       "every5Minutes": "Every 5 minutes",
@@ -1783,7 +1818,17 @@
     "agent": "Agent",
     "executor": "Executor",
     "renameTitle": "Rename Group Chat",
-    "newName": "New Name"
+    "newName": "New Name",
+    "details": "Group Details",
+    "viewDetails": "View Details",
+    "detailsDescription": "View and manage group chat settings",
+    "selectAgent": "Select agent...",
+    "allAgentsAdded": "All agents are already members",
+    "created": "Created",
+    "leaveConfirmTitle": "Leave Group?",
+    "leaveConfirmDesc": "Are you sure you want to leave this group? You will no longer receive messages from this group.",
+    "deleteConfirmTitle": "Delete Group?",
+    "deleteConfirmDesc": "Are you sure you want to delete this group? This action cannot be undone and all messages will be lost."
   },
   "notifications": {
     "title": "Notifications",
@@ -1864,5 +1909,18 @@
     "dismiss": "Dismiss",
     "viewDetails": "View Details",
     "undo": "Undo"
+  },
+  "fileBrowser": {
+    "sort": "Sort",
+    "sortBy": "Sort by",
+    "sortByName": "Name",
+    "sortBySize": "Size",
+    "sortByModified": "Date Modified",
+    "sortByType": "Type",
+    "sortAsc": "Ascending",
+    "sortDesc": "Descending",
+    "search": "Search files...",
+    "noResults": "No files found",
+    "noResultsQuery": "No files matching \"{{query}}\""
   }
 }
