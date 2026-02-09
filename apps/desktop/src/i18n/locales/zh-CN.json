@@ -1734,5 +1734,32 @@
     "fullscreen": "全屏",
     "exitFullscreen": "退出全屏",
     "close": "关闭"
+  },
+  "groupChat": {
+    "createTitle": "创建群聊",
+    "createDescription": "创建一个群聊，与多个 AI 智能体协作。",
+    "nameLabel": "群聊名称",
+    "namePlaceholder": "输入群聊名称...",
+    "descriptionLabel": "群聊描述",
+    "descriptionPlaceholder": "可选描述...",
+    "selectAgentsLabel": "添加 AI 智能体",
+    "noAgentsAvailable": "暂无可用智能体",
+    "selectedCount": "已选择 {{count}} 个智能体",
+    "createButton": "创建群聊",
+    "errorNameRequired": "请输入群聊名称",
+    "emptyTitle": "暂无消息",
+    "emptyDescription": "发送消息开始对话。",
+    "noMessages": "暂无消息",
+    "replyingTo": "回复消息",
+    "oneTyping": "{{name}} 正在输入...",
+    "twoTyping": "{{name1}} 和 {{name2}} 正在输入...",
+    "manyTyping": "多人正在输入...",
+    "rename": "重命名",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "leave": "退出群聊",
+    "delete": "删除群聊",
+    "members": "成员",
+    "groupChats": "群聊"
   }
 }

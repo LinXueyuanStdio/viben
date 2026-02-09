@@ -82,7 +82,7 @@ export interface UseGroupChatReturn {
 
   // Group Chat CRUD
   loadGroupChats: () => Promise<void>;
-  createGroupChat: (data: CreateGroupChatRequest) => Promise<GroupChatWithMembers>;
+  createGroupChat: (data: Omit<CreateGroupChatRequest, "created_by">) => Promise<GroupChatWithMembers>;
   loadGroupChat: (groupChatId: string) => Promise<void>;
   updateGroupChat: (groupChatId: string, data: { name?: string; description?: string }) => Promise<void>;
   deleteGroupChat: (groupChatId: string) => Promise<void>;
@@ -283,7 +283,7 @@ export function useGroupChat(
   /**
    * Create a new group chat
    */
-  const createGroupChat = useCallback(async (data: CreateGroupChatRequest): Promise<GroupChatWithMembers> => {
+  const createGroupChat = useCallback(async (data: Omit<CreateGroupChatRequest, "created_by">): Promise<GroupChatWithMembers> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -291,9 +291,10 @@ export function useGroupChat(
       const hasCurrentUser = data.initial_members?.some(
         (m) => m.member_type === "human" && m.member_id === userId
       );
-      const requestData = hasCurrentUser ? data : {
+      const requestData: CreateGroupChatRequest = {
         ...data,
-        initial_members: [
+        created_by: userId,
+        initial_members: hasCurrentUser ? data.initial_members : [
           {
             member_type: "human" as const,
             member_id: userId,

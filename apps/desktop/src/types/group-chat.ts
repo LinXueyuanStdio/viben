@@ -76,6 +76,7 @@ export interface CreateGroupChatRequest {
   name: string;
   description?: string;
   task_id?: string;
+  created_by: string;
   initial_members?: GroupChatMemberInput[];
 }
 

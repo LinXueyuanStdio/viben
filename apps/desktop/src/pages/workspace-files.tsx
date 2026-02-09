@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Loader2, FolderOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,13 +7,40 @@ import { WorkspaceHeader } from "@/components/workspace";
 import { FileBrowser } from "@/components/file-browser";
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
+import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 
 export function WorkspaceFilesPage() {
   const { t } = useTranslation();
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading, workspaces } = useLocalWorkspaces();
 
+  // Track current path for breadcrumb
+  const [pathSegments, setPathSegments] = useState<BreadcrumbSegment[]>([
+    { label: t("workspace.files", "Files"), href: `/workspace/${workspaceId}/files` },
+  ]);
+
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+
+  // Handle path changes from FileBrowser
+  const handlePathChange = useCallback(
+    (_path: string, segments: { name: string; path: string }[]) => {
+      // Build breadcrumb segments: "Files" + relative path parts
+      const breadcrumbs: BreadcrumbSegment[] = [
+        { label: t("workspace.files", "Files"), href: `/workspace/${workspaceId}/files` },
+      ];
+
+      // Add path segments (skip the first one which is workspace root)
+      segments.forEach((segment) => {
+        breadcrumbs.push({
+          label: segment.name,
+          href: `/workspace/${workspaceId}/files`, // All segments link to files page (navigation handled internally)
+        });
+      });
+
+      setPathSegments(breadcrumbs);
+    },
+    [workspaceId, t]
+  );
 
   // Show loading state while workspaces are being fetched
   if (isLoading && !workspace) {
@@ -63,12 +91,18 @@ export function WorkspaceFilesPage() {
 
   return (
     <PageWrapper className="flex flex-col h-full">
-      <WorkspaceHeader workspace={workspace} />
+      <WorkspaceHeader
+        workspace={workspace}
+        segments={pathSegments}
+        showRefresh={false}
+        showRemove={false}
+      />
 
       <div className="flex-1 overflow-hidden">
         <FileBrowser
           workspacePath={workspace.path}
           className="h-full"
+          onPathChange={handlePathChange}
         />
       </div>
     </PageWrapper>

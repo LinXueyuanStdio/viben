@@ -56,6 +56,10 @@ interface FileBrowserProps {
   workspacePath: string;
   initialPath?: string;
   className?: string;
+  /** Callback when path changes - used to sync with workspace breadcrumb */
+  onPathChange?: (path: string, segments: { name: string; path: string }[]) => void;
+  /** Hide internal toolbar when using external navigation */
+  hideToolbar?: boolean;
 }
 
 interface SidebarItem {
@@ -528,94 +532,170 @@ interface ColumnViewProps {
   onContextMenu: (file: FileEntry, e: React.MouseEvent) => void;
   loadDirectory: (path: string) => Promise<FileEntry[]>;
   updateColumnPaths: (paths: string[]) => void;
+  /** Called when navigating to a new directory (to update currentPath and breadcrumb) */
+  onNavigate: (path: string) => void;
 }
 
 function ColumnView({
   workspacePath: _workspacePath,
-  currentPath: _currentPath,
+  currentPath,
   columnPaths,
-  files: _files,
+  files: initialFiles,
   selectedFile: _selectedFile,
   onSelect,
   onOpen,
   onContextMenu,
   loadDirectory,
   updateColumnPaths,
+  onNavigate,
 }: ColumnViewProps) {
-  const [columns, setColumns] = React.useState<{ path: string; files: FileEntry[] }[]>([]);
+  const [columns, setColumns] = React.useState<{ path: string; files: FileEntry[]; loading: boolean }[]>([]);
   const [columnSelections, setColumnSelections] = React.useState<Map<string, string>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize columns when columnPaths changes
+  // Initialize first column with current path files
   useEffect(() => {
-    const initColumns = async () => {
-      const newColumns: { path: string; files: FileEntry[] }[] = [];
+    if (columnPaths.length === 0) return;
 
-      for (const path of columnPaths) {
-        const entries = await loadDirectory(path);
-        newColumns.push({ path, files: entries });
-      }
+    // Only initialize if columns are empty or first path changed
+    if (columns.length === 0 || columns[0]?.path !== columnPaths[0]) {
+      setColumns([{ path: columnPaths[0], files: initialFiles, loading: false }]);
+    }
+  }, [columnPaths, initialFiles, columns.length]);
 
-      setColumns(newColumns);
-    };
+  // Update first column when initialFiles change (from parent)
+  useEffect(() => {
+    if (columns.length > 0 && columns[0].path === currentPath) {
+      setColumns(prev => {
+        const updated = [...prev];
+        updated[0] = { ...updated[0], files: initialFiles };
+        return updated;
+      });
+    }
+  }, [initialFiles, currentPath, columns.length]);
 
-    initColumns();
-  }, [columnPaths, loadDirectory]);
+  // Auto-scroll to the right when new columns are added
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [columns.length]);
 
   // Handle file selection in a column
   const handleColumnSelect = useCallback(async (columnIndex: number, file: FileEntry) => {
     // Update selection for this column
     setColumnSelections(prev => {
       const next = new Map(prev);
+      // Clear selections for columns to the right
+      columns.slice(columnIndex + 1).forEach(col => next.delete(col.path));
       next.set(columns[columnIndex].path, file.path);
       return next;
     });
 
+    onSelect(file);
+
     if (file.is_directory) {
-      // Remove columns to the right and add new column
-      const newColumnPaths = columnPaths.slice(0, columnIndex + 1);
-      newColumnPaths.push(file.path);
-      updateColumnPaths(newColumnPaths);
+      // Remove columns to the right
+      const newColumns = columns.slice(0, columnIndex + 1);
+
+      // Add loading placeholder for new column
+      setColumns([...newColumns, { path: file.path, files: [], loading: true }]);
+
+      // Navigate to the directory (updates currentPath and breadcrumb)
+      onNavigate(file.path);
+
+      // Load directory contents
+      try {
+        const entries = await loadDirectory(file.path);
+        setColumns(prev => {
+          const updated = [...prev];
+          const lastIndex = updated.length - 1;
+          if (updated[lastIndex]?.path === file.path) {
+            updated[lastIndex] = { path: file.path, files: entries, loading: false };
+          }
+          return updated;
+        });
+
+        // Update columnPaths in parent
+        const newColumnPaths = columnPaths.slice(0, columnIndex + 1);
+        newColumnPaths.push(file.path);
+        updateColumnPaths(newColumnPaths);
+      } catch {
+        // Remove failed column
+        setColumns(prev => prev.slice(0, -1));
+      }
     } else {
-      // Remove columns to the right (file selected)
+      // File selected - keep current path at parent directory
+      setColumns(columns.slice(0, columnIndex + 1));
       const newColumnPaths = columnPaths.slice(0, columnIndex + 1);
       updateColumnPaths(newColumnPaths);
     }
+  }, [columns, columnPaths, updateColumnPaths, onSelect, loadDirectory, onNavigate]);
 
-    onSelect(file);
-  }, [columns, columnPaths, updateColumnPaths, onSelect]);
+  if (columns.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full">
+    <div
+      ref={scrollContainerRef}
+      className="flex h-full overflow-x-auto"
+    >
       {columns.map((column, columnIndex) => (
         <div
           key={column.path}
-          className="w-64 flex-shrink-0 border-r last:border-r-0"
+          className="w-64 min-w-[256px] flex-shrink-0 border-r last:border-r-0 bg-background"
         >
-          <ScrollArea className="h-full">
-            <div className="divide-y">
-              {column.files.map((file) => {
-                const isSelected = columnSelections.get(column.path) === file.path;
-                return (
-                  <div
-                    key={file.path}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 cursor-pointer",
-                      "hover:bg-accent/50 transition-colors",
-                      isSelected && "bg-accent"
-                    )}
-                    onClick={() => handleColumnSelect(columnIndex, file)}
-                    onDoubleClick={() => !file.is_directory && onOpen(file)}
-                    onContextMenu={(e) => onContextMenu(file, e)}
-                  >
-                    {getFileIcon(file, "sm")}
-                    <span className="flex-1 truncate text-sm">{file.name}</span>
-                    {file.is_directory && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          {/* Column header */}
+          <div className="px-3 py-2 border-b bg-muted/30">
+            <span className="text-xs font-medium text-muted-foreground truncate block">
+              {column.path.split("/").pop() || "Root"}
+            </span>
+          </div>
+
+          {/* Column content */}
+          <ScrollArea className="h-[calc(100%-36px)]">
+            {column.loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : column.files.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                Empty folder
+              </div>
+            ) : (
+              <div className="py-1">
+                {column.files.map((file) => {
+                  const isSelected = columnSelections.get(column.path) === file.path;
+                  return (
+                    <div
+                      key={file.path}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 cursor-pointer mx-1 rounded-md",
+                        "hover:bg-accent/50 transition-colors",
+                        isSelected && "bg-primary text-primary-foreground"
+                      )}
+                      onClick={() => handleColumnSelect(columnIndex, file)}
+                      onDoubleClick={() => !file.is_directory && onOpen(file)}
+                      onContextMenu={(e) => onContextMenu(file, e)}
+                    >
+                      {getFileIcon(file, "sm")}
+                      <span className="flex-1 truncate text-sm">{file.name}</span>
+                      {file.is_directory && (
+                        <ChevronRight className={cn(
+                          "h-4 w-4 flex-shrink-0",
+                          isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                        )} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </ScrollArea>
         </div>
       ))}
@@ -1147,8 +1227,16 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
  * Main FileBrowser Component
  * -------------------------------------------------------------------------- */
 
-export function FileBrowser({ workspacePath, initialPath, className }: FileBrowserProps) {
+export function FileBrowser({ workspacePath, initialPath, className, onPathChange, hideToolbar }: FileBrowserProps) {
   const browser = useFileBrowser({ workspacePath, initialPath });
+
+  // Notify parent of path changes
+  useEffect(() => {
+    if (onPathChange) {
+      const segments = getPathSegments(browser.currentPath, workspacePath);
+      onPathChange(browser.currentPath, segments);
+    }
+  }, [browser.currentPath, workspacePath, onPathChange]);
 
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = React.useState(false);
@@ -1307,6 +1395,7 @@ export function FileBrowser({ workspacePath, initialPath, className }: FileBrows
             onContextMenu={handleContextMenu}
             loadDirectory={browser.loadDirectory}
             updateColumnPaths={browser.updateColumnPaths}
+            onNavigate={(path) => browser.navigateTo(path, false)}
           />
         );
       case "gallery":
@@ -1326,28 +1415,30 @@ export function FileBrowser({ workspacePath, initialPath, className }: FileBrows
 
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
-      {/* Toolbar */}
-      <Toolbar
-        workspacePath={workspacePath}
-        currentPath={browser.currentPath}
-        viewMode={browser.viewMode}
-        canGoBack={browser.canGoBack}
-        canGoForward={browser.canGoForward}
-        canGoUp={browser.canGoUp}
-        onGoBack={browser.goBack}
-        onGoForward={browser.goForward}
-        onGoUp={browser.goUp}
-        onNavigateTo={browser.navigateTo}
-        onViewModeChange={browser.setViewMode}
-        onNewFile={() => {
-          setCreateDialogType("file");
-          setCreateDialogOpen(true);
-        }}
-        onNewFolder={() => {
-          setCreateDialogType("folder");
-          setCreateDialogOpen(true);
-        }}
-      />
+      {/* Toolbar - can be hidden when using external navigation */}
+      {!hideToolbar && (
+        <Toolbar
+          workspacePath={workspacePath}
+          currentPath={browser.currentPath}
+          viewMode={browser.viewMode}
+          canGoBack={browser.canGoBack}
+          canGoForward={browser.canGoForward}
+          canGoUp={browser.canGoUp}
+          onGoBack={browser.goBack}
+          onGoForward={browser.goForward}
+          onGoUp={browser.goUp}
+          onNavigateTo={browser.navigateTo}
+          onViewModeChange={browser.setViewMode}
+          onNewFile={() => {
+            setCreateDialogType("file");
+            setCreateDialogOpen(true);
+          }}
+          onNewFolder={() => {
+            setCreateDialogType("folder");
+            setCreateDialogOpen(true);
+          }}
+        />
+      )}
 
       {/* Main content area */}
       <div className="flex-1 flex overflow-hidden">
