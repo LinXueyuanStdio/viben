@@ -358,6 +358,32 @@ export interface WorkspaceCommand {
   content: string;         // full markdown content
 }
 
+// Filesystem types
+
+/** File entry for file browser */
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size?: number;
+  modified?: string;
+  created?: string;
+}
+
+/** File information with detailed metadata */
+export interface FileInfo {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size: number;
+  modified: string;
+  created: string;
+  extension?: string;
+}
+
+/** View mode for file browser */
+export type FileBrowserViewMode = "list" | "icon" | "column" | "gallery";
+
 // Re-export official registry types
 export * from "./official-registry";
 
