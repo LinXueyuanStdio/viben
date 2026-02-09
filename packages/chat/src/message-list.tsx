@@ -572,7 +572,7 @@ export function MessageList({
   return (
     <div className={cn("relative flex-1 min-h-0 overflow-hidden", className)}>
       <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
-        <div className="space-y-4 p-4 pb-8">
+        <div className="space-y-4 p-4 pb-8 max-w-4xl mx-auto">
           {groups.map((group, index) => {
             if (group.type === "task") {
               return (

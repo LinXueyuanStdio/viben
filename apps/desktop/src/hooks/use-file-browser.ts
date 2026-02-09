@@ -5,6 +5,13 @@ import type { FileEntry, FileInfo } from "@/types";
 export type ViewMode = "list" | "icon" | "column" | "gallery";
 export type SortField = "name" | "size" | "modified" | "type";
 export type SortDirection = "asc" | "desc";
+export type GroupField = "none" | "type" | "date" | "size";
+
+export interface FileGroup {
+  key: string;
+  label: string;
+  files: FileEntry[];
+}
 
 interface FileBrowserState {
   currentPath: string;

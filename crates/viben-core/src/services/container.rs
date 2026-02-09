@@ -5,7 +5,6 @@ use std::{
     path::PathBuf,
 };
 
-use chrono::Utc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::RwLock;
 use crate::executors::{CodingAgent, ExecutionEnv, ExecutorError, SpawnedChild, StandardCodingAgentExecutor};
@@ -296,7 +295,7 @@ impl ContainerService {
                                         content: line.clone(),
                                     });
 
-                                    // Parse stream events to save complete messages
+                                    // Parse stream events to accumulate and save complete messages
                                     if let Some(event) = json.get("event") {
                                         if let Some(event_type) = event.get("type").and_then(|v| v.as_str()) {
                                             match event_type {
@@ -304,30 +303,110 @@ impl ContainerService {
                                                     // Track new content block
                                                     if let Some(content_block) = event.get("content_block") {
                                                         if let Some(block_type) = content_block.get("type").and_then(|v| v.as_str()) {
+                                                            current_block_type = Some(block_type.to_string());
                                                             match block_type {
                                                                 "thinking" => {
-                                                                    // Start thinking block - will be saved when complete
-                                                                    tracing::debug!("[ContainerService] Starting thinking block");
+                                                                    // Start thinking block
+                                                                    current_thinking_content.clear();
+                                                                    current_thinking_id = uuid::Uuid::new_v4().to_string();
+                                                                    tracing::debug!("[ContainerService] Starting thinking block: {}", current_thinking_id);
                                                                 }
                                                                 "text" => {
-                                                                    // Start text block - will be saved when complete
-                                                                    tracing::debug!("[ContainerService] Starting text block");
+                                                                    // Start text block
+                                                                    current_text_content.clear();
+                                                                    current_text_id = uuid::Uuid::new_v4().to_string();
+                                                                    tracing::debug!("[ContainerService] Starting text block: {}", current_text_id);
                                                                 }
                                                                 "tool_use" => {
-                                                                    // Tool use starts - save immediately
-                                                                    let tool_id = content_block.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
-                                                                    let tool_name = content_block.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                                                                    tracing::debug!("[ContainerService] Starting tool_use block: {} ({})", tool_name, tool_id);
-                                                                    // Tool use will be completed later with input
+                                                                    // Start tool use block
+                                                                    current_tool_use_id = content_block.get("id").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                                                                    current_tool_name = content_block.get("name").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
+                                                                    current_tool_input_json.clear();
+                                                                    current_tool_id = uuid::Uuid::new_v4().to_string();
+                                                                    tracing::debug!("[ContainerService] Starting tool_use block: {} ({})", current_tool_name, current_tool_use_id);
                                                                 }
                                                                 _ => {}
                                                             }
                                                         }
                                                     }
                                                 }
-                                                _ => {
-                                                    // Other stream events (delta, stop, etc.) are handled by frontend
+                                                "content_block_delta" => {
+                                                    // Accumulate delta content
+                                                    if let Some(delta) = event.get("delta") {
+                                                        if let Some(delta_type) = delta.get("type").and_then(|v| v.as_str()) {
+                                                            match delta_type {
+                                                                "thinking_delta" => {
+                                                                    if let Some(thinking) = delta.get("thinking").and_then(|v| v.as_str()) {
+                                                                        current_thinking_content.push_str(thinking);
+                                                                    }
+                                                                }
+                                                                "text_delta" => {
+                                                                    if let Some(text) = delta.get("text").and_then(|v| v.as_str()) {
+                                                                        current_text_content.push_str(text);
+                                                                    }
+                                                                }
+                                                                "input_json_delta" => {
+                                                                    if let Some(partial) = delta.get("partial_json").and_then(|v| v.as_str()) {
+                                                                        current_tool_input_json.push_str(partial);
+                                                                    }
+                                                                }
+                                                                _ => {}
+                                                            }
+                                                        }
+                                                    }
                                                 }
+                                                "content_block_stop" => {
+                                                    // Save completed content block to UI messages
+                                                    if let Some(ref block_type) = current_block_type {
+                                                        match block_type.as_str() {
+                                                            "thinking" => {
+                                                                if !current_thinking_content.is_empty() {
+                                                                    let ui_msg = UIMessage::thinking(&current_thinking_id, &current_thinking_content);
+                                                                    if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                        tracing::warn!("[ContainerService] Failed to save UI thinking message: {}", e);
+                                                                    }
+                                                                    tracing::debug!("[ContainerService] Saved thinking message: {} chars", current_thinking_content.len());
+                                                                }
+                                                                current_thinking_content.clear();
+                                                            }
+                                                            "text" => {
+                                                                if !current_text_content.is_empty() {
+                                                                    let ui_msg = UIMessage::text(&current_text_id, &current_text_content);
+                                                                    if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                        tracing::warn!("[ContainerService] Failed to save UI text message: {}", e);
+                                                                    }
+                                                                    tracing::debug!("[ContainerService] Saved text message: {} chars", current_text_content.len());
+                                                                }
+                                                                current_text_content.clear();
+                                                            }
+                                                            "tool_use" => {
+                                                                // Parse tool input and save
+                                                                let tool_input: serde_json::Value = if current_tool_input_json.is_empty() {
+                                                                    serde_json::Value::Null
+                                                                } else {
+                                                                    serde_json::from_str(&current_tool_input_json).unwrap_or(serde_json::Value::Null)
+                                                                };
+                                                                let ui_msg = UIMessage::tool_use(&current_tool_id, &current_tool_use_id, &current_tool_name, tool_input);
+                                                                if let Err(e) = session_store.append_ui_message(&agent_id_clone, &session_id_clone, &ui_msg).await {
+                                                                    tracing::warn!("[ContainerService] Failed to save UI tool_use message: {}", e);
+                                                                }
+                                                                tracing::debug!("[ContainerService] Saved tool_use message: {} ({})", current_tool_name, current_tool_use_id);
+                                                                current_tool_input_json.clear();
+                                                            }
+                                                            _ => {}
+                                                        }
+                                                    }
+                                                    current_block_type = None;
+                                                }
+                                                "message_stop" => {
+                                                    // Message complete - clear all accumulators
+                                                    current_text_content.clear();
+                                                    current_thinking_content.clear();
+                                                    current_tool_input_json.clear();
+                                                    current_block_type = None;
+                                                    tracing::debug!("[ContainerService] Message complete, cleared accumulators");
+                                                }
+                                                _ => {}
                                             }
                                         }
                                     }

@@ -10,6 +10,7 @@
 
 // Original viben-core modules
 pub mod agents;
+pub mod channels;
 pub mod config;
 pub mod error;
 pub mod models;
@@ -43,6 +44,18 @@ pub mod napi;
 pub use agents::{
     Agent, AgentConfigFile, AgentManager, AgentMemory, AgentSession, AgentTemplate,
     AgentTemplateConfig, AgentUpdate, CreateAgentOptions, SessionFile,
+};
+
+// From channels module
+pub use channels::{
+    Channel, ChannelConfig, ChannelEntry, ChannelStatus, ChannelType, ChannelUpdate,
+    ChannelsFile, CreateChannelOptions, DiscordConfig, FeishuConfig, ParseMode,
+    SendMessageOptions, SendMessageResult, SlackConfig, TelegramConfig, TestChannelResult,
+    WebhookConfig, WhatsAppConfig, send_channel_message, send_discord_message,
+    send_feishu_message, send_slack_message, send_telegram_message, send_test_message,
+    send_webhook_message, send_whatsapp_message, test_channel, test_discord_channel,
+    test_feishu_channel, test_slack_channel, test_telegram_channel, test_webhook_channel,
+    test_whatsapp_channel,
 };
 
 // From config module
