@@ -341,6 +341,34 @@ export function MessageItem({
     );
   }
 
+  // Thinking message (extended thinking from Claude)
+  if (message.type === "thinking") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex gap-3"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+          <Bot className="h-4 w-4 text-amber-600" />
+        </div>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="rounded-2xl rounded-tl-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-xs text-amber-600/80 mb-1 font-medium">Thinking...</p>
+            <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground text-sm">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {message.content || ""}
+              </ReactMarkdown>
+            </div>
+            {isStreaming && (
+              <span className="inline-block h-4 w-1 animate-pulse bg-amber-500 ml-1" />
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   // Text/Result message from agent
   return (
     <AssistantMessage

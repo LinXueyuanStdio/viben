@@ -10,7 +10,8 @@
  * - Global: /agents/:agentId
  * - Workspace: /workspace/:workspaceId/agent/:agentId
  */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import * as React from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -38,6 +39,10 @@ import {
   Server,
   Command,
   MessageSquare,
+  GripVertical,
+  Copy,
+  Check,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +86,7 @@ import {
   useWorkspaceCommands,
 } from "@/hooks";
 import { homeDir } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
 import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import {
@@ -90,6 +96,91 @@ import {
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
 import type { AvailabilityInfo } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
+
+// ============================================================================
+// Panel Width Constants
+// ============================================================================
+
+const MIN_LEFT_PANEL_WIDTH = 200;
+const MAX_LEFT_PANEL_WIDTH = 400;
+const DEFAULT_LEFT_PANEL_WIDTH = 288; // w-72
+
+const MIN_RIGHT_PANEL_WIDTH = 240;
+const MAX_RIGHT_PANEL_WIDTH = 480;
+const DEFAULT_RIGHT_PANEL_WIDTH = 320; // w-80
+
+// ============================================================================
+// Resize Handle Component
+// ============================================================================
+
+interface ResizeHandleProps {
+  side: "left" | "right";
+  onResize: (delta: number) => void;
+  className?: string;
+}
+
+function ResizeHandle({ side, onResize, className }: ResizeHandleProps) {
+  const [isDragging, setIsDragging] = useState(false);
+  const startXRef = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    startXRef.current = e.clientX;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startXRef.current;
+      startXRef.current = moveEvent.clientX;
+      // For left panel, positive delta = expand; for right panel, negative delta = expand
+      onResize(side === "left" ? delta : -delta);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  };
+
+  return (
+    <div
+      className={cn(
+        "group absolute top-0 bottom-0 w-1 cursor-col-resize z-10",
+        "flex items-center justify-center",
+        side === "left" ? "right-0" : "left-0",
+        isDragging && "bg-primary/30",
+        className
+      )}
+      onMouseDown={handleMouseDown}
+    >
+      {/* Hover/drag indicator line */}
+      <div
+        className={cn(
+          "absolute inset-y-0 w-0.5 transition-colors",
+          isDragging ? "bg-primary" : "bg-transparent group-hover:bg-border"
+        )}
+      />
+      {/* Grip handle - vertically centered */}
+      <div
+        className={cn(
+          "absolute flex items-center justify-center w-4 h-8 rounded-md transition-all",
+          isDragging
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted/80 text-muted-foreground opacity-0 group-hover:opacity-100"
+        )}
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </div>
+  );
+}
 
 // ============================================================================
 // Collapsible Section Component
@@ -228,6 +319,23 @@ export function AgentDetailPage() {
   const [availability, setAvailability] = useState<AvailabilityInfo | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
 
+  // Panel width state for resizable panels
+  const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH);
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
+
+  // Resize handlers
+  const handleLeftResize = useCallback((delta: number) => {
+    setLeftPanelWidth((prev) =>
+      Math.max(MIN_LEFT_PANEL_WIDTH, Math.min(MAX_LEFT_PANEL_WIDTH, prev + delta))
+    );
+  }, []);
+
+  const handleRightResize = useCallback((delta: number) => {
+    setRightPanelWidth((prev) =>
+      Math.max(MIN_RIGHT_PANEL_WIDTH, Math.min(MAX_RIGHT_PANEL_WIDTH, prev + delta))
+    );
+  }, []);
+
   // Dialog states
   const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
   const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
@@ -236,6 +344,35 @@ export function AgentDetailPage() {
   // MCP and Skills selection
   const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+
+  // Copy path state
+  const [pathCopied, setPathCopied] = useState(false);
+
+  // Get agent folder path
+  const agentFolderPath = useMemo(() => {
+    if (isWorkspaceScoped && workspace) {
+      return `${workspace.path}/.viben/agents/${agentId}`;
+    }
+    return globalVibenDir ? `${globalVibenDir}/agents/${agentId}` : "";
+  }, [isWorkspaceScoped, workspace, globalVibenDir, agentId]);
+
+  // Copy path to clipboard
+  const handleCopyPath = useCallback(async () => {
+    if (!agentFolderPath) return;
+    await navigator.clipboard.writeText(agentFolderPath);
+    setPathCopied(true);
+    setTimeout(() => setPathCopied(false), 2000);
+  }, [agentFolderPath]);
+
+  // Open folder in file manager
+  const handleOpenFolder = useCallback(async () => {
+    if (!agentFolderPath) return;
+    try {
+      await invoke("open_path", { path: agentFolderPath });
+    } catch (err) {
+      console.error("Failed to open folder:", err);
+    }
+  }, [agentFolderPath]);
 
   // Load form from agent
   useEffect(() => {
@@ -476,13 +613,51 @@ export function AgentDetailPage() {
               {formName.slice(0, 2).toUpperCase() || "AG"}
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex flex-col">
             <Input
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               className="h-7 px-2 font-semibold border-none shadow-none focus-visible:ring-0"
               placeholder={t("settingsAgents.namePlaceholder")}
             />
+            {/* Path with copy button */}
+            {agentFolderPath && (
+              <div className="flex items-center gap-1 px-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-muted-foreground truncate max-w-[200px] cursor-default">
+                        {agentFolderPath.split("/").slice(-3).join("/")}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[400px]">
+                      <code className="text-xs break-all">{agentFolderPath}</code>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={handleCopyPath}
+                      >
+                        {pathCopied ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {pathCopied ? t("common.copied") : t("common.copyPath")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
           {/* Scope indicator */}
           <TooltipProvider>
@@ -534,6 +709,22 @@ export function AgentDetailPage() {
               {t("settingsAgents.unsaved")}
             </Badge>
           )}
+          {/* Open folder button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleOpenFolder}
+                  disabled={!agentFolderPath}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button onClick={handleSave} disabled={saving || !isDirty}>
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -556,15 +747,19 @@ export function AgentDetailPage() {
       {/* Three Column Layout */}
       <div className="flex-1 flex min-h-0">
         {/* ================================================================
-            LEFT COLUMN: Persona
+            LEFT COLUMN: Persona (Resizable)
             ================================================================ */}
-        <div className="w-72 border-r flex flex-col">
+        <div
+          className="relative flex flex-col shrink-0"
+          style={{ width: leftPanelWidth }}
+        >
           <div className="p-4 border-b">
             <h3 className="font-semibold text-sm">{t("settingsAgents.persona")}</h3>
             <p className="text-xs text-muted-foreground mt-1">
               {t("settingsAgents.personaDesc")}
             </p>
           </div>
+          <ResizeHandle side="left" onResize={handleLeftResize} />
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-4">
@@ -1032,9 +1227,13 @@ export function AgentDetailPage() {
         </div>
 
         {/* ================================================================
-            RIGHT COLUMN: Preview & Debug (reusing workspace chat components)
+            RIGHT COLUMN: Preview & Debug (Resizable)
             ================================================================ */}
-        <div className="w-80 flex flex-col bg-muted/30">
+        <div
+          className="relative flex flex-col bg-muted/30 shrink-0"
+          style={{ width: rightPanelWidth }}
+        >
+          <ResizeHandle side="right" onResize={handleRightResize} />
           {/* Header with actions */}
           <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -1278,6 +1477,55 @@ function ExecutorDetailView({
     } : undefined,
   });
 
+  // Panel width state for resizable panels
+  const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH);
+  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
+
+  // Resize handlers
+  const handleLeftResize = useCallback((delta: number) => {
+    setLeftPanelWidth((prev) =>
+      Math.max(MIN_LEFT_PANEL_WIDTH, Math.min(MAX_LEFT_PANEL_WIDTH, prev + delta))
+    );
+  }, []);
+
+  const handleRightResize = useCallback((delta: number) => {
+    setRightPanelWidth((prev) =>
+      Math.max(MIN_RIGHT_PANEL_WIDTH, Math.min(MAX_RIGHT_PANEL_WIDTH, prev + delta))
+    );
+  }, []);
+
+  // Copy path state
+  const [pathCopied, setPathCopied] = useState(false);
+
+  // Get executor config folder path (parent of config_path)
+  const executorFolderPath = useMemo(() => {
+    if (executor.config_path) {
+      // Get parent directory of config file
+      const parts = executor.config_path.split("/");
+      parts.pop(); // Remove filename
+      return parts.join("/");
+    }
+    return workspacePath;
+  }, [executor.config_path, workspacePath]);
+
+  // Copy path to clipboard
+  const handleCopyPath = useCallback(async () => {
+    if (!executorFolderPath) return;
+    await navigator.clipboard.writeText(executorFolderPath);
+    setPathCopied(true);
+    setTimeout(() => setPathCopied(false), 2000);
+  }, [executorFolderPath]);
+
+  // Open folder in file manager
+  const handleOpenFolder = useCallback(async () => {
+    if (!executorFolderPath) return;
+    try {
+      await invoke("open_path", { path: executorFolderPath });
+    } catch (err) {
+      console.error("Failed to open folder:", err);
+    }
+  }, [executorFolderPath]);
+
   // Slash commands for executor chat
   const slashCommands = useMemo<SlashCommand[]>(() => [
     {
@@ -1308,27 +1556,86 @@ function ExecutorDetailView({
               {executor.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div>
+          <div className="flex flex-col">
             <h1 className="font-semibold">{executor.name}</h1>
-            <p className="text-xs text-muted-foreground">{executor.type}</p>
+            {/* Path with copy button */}
+            {executorFolderPath && (
+              <div className="flex items-center gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="text-xs text-muted-foreground truncate max-w-[200px] cursor-default">
+                        {executorFolderPath.split("/").slice(-3).join("/")}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-[400px]">
+                      <code className="text-xs break-all">{executorFolderPath}</code>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={handleCopyPath}
+                      >
+                        {pathCopied ? (
+                          <Check className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {pathCopied ? t("common.copied") : t("common.copyPath")}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
           <Badge variant="outline" className="border-orange-500/30 text-orange-600">
             <Terminal className="h-3 w-3 mr-1" />
             {t("settingsAgents.executors")}
           </Badge>
         </div>
+        <div className="flex items-center gap-2">
+          {/* Open folder button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleOpenFolder}
+                  disabled={!executorFolderPath}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* Three Column Layout */}
       <div className="flex-1 flex min-h-0">
         {/* ================================================================
-            LEFT COLUMN: CLAUDE.md Content (System Prompt)
+            LEFT COLUMN: CLAUDE.md Content (System Prompt) - Resizable
             ================================================================ */}
-        <div className="w-72 border-r flex flex-col">
+        <div
+          className="relative flex flex-col shrink-0"
+          style={{ width: leftPanelWidth }}
+        >
           <div className="p-4 border-b">
             <h3 className="font-semibold text-sm">{t("settingsAgents.systemPrompt")}</h3>
             <p className="text-xs text-muted-foreground mt-1">CLAUDE.md</p>
           </div>
+          <ResizeHandle side="left" onResize={handleLeftResize} />
 
           <ScrollArea className="flex-1">
             <div className="p-4">
@@ -1591,9 +1898,13 @@ function ExecutorDetailView({
         </div>
 
         {/* ================================================================
-            RIGHT COLUMN: Chat Preview
+            RIGHT COLUMN: Chat Preview - Resizable
             ================================================================ */}
-        <div className="w-80 flex flex-col bg-muted/30">
+        <div
+          className="relative flex flex-col bg-muted/30 shrink-0"
+          style={{ width: rightPanelWidth }}
+        >
+          <ResizeHandle side="right" onResize={handleRightResize} />
           {/* Header with actions */}
           <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">

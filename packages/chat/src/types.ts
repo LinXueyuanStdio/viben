@@ -24,6 +24,7 @@ export interface MessageAttachment {
 export type AgentMessageType =
   | "user"
   | "text"
+  | "thinking"
   | "tool_use"
   | "tool_result"
   | "plan"

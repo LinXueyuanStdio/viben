@@ -17,6 +17,7 @@ import {
   Square,
   ChevronDown,
   Check,
+  Settings,
 } from "lucide-react";
 import {
   cn,
@@ -41,6 +42,8 @@ export interface ChatInputConfigBarProps {
   agents: AgentOption[];
   selectedAgentId: string | null;
   onAgentChange?: (agentId: string) => void;
+  /** Callback when agent settings button is clicked */
+  onAgentSettings?: (agentId: string) => void;
   showAgentSelector: boolean;
   // Model
   models: ModelOption[];
@@ -80,6 +83,7 @@ export function ChatInputConfigBar({
   agents,
   selectedAgentId,
   onAgentChange,
+  onAgentSettings,
   showAgentSelector,
   models,
   selectedModelId,
@@ -155,28 +159,64 @@ export function ChatInputConfigBar({
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-1" align="start">
+            <PopoverContent className="w-64 p-2" align="start">
               {agents.length === 0 ? (
                 <div className="px-2 py-3 text-sm text-muted-foreground text-center">
                   {t("chat.noAgents", "暂无智能体")}
                 </div>
               ) : (
-                agents.map((agent) => (
-                  <Button
-                    key={agent.id}
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start gap-2 h-8"
-                    onClick={() => onAgentChange?.(agent.id)}
-                  >
-                    {agent.id === selectedAgentId && (
-                      <Check className="h-3.5 w-3.5" />
-                    )}
-                    <span className={agent.id !== selectedAgentId ? "ml-5" : ""}>
-                      {agent.name}
-                    </span>
-                  </Button>
-                ))
+                <div className="space-y-1">
+                  {agents.map((agent) => (
+                    <div
+                      key={agent.id}
+                      className={cn(
+                        "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
+                        agent.id === selectedAgentId
+                          ? "bg-primary/10 border border-primary/20"
+                          : "hover:bg-muted/60"
+                      )}
+                      onClick={() => onAgentChange?.(agent.id)}
+                    >
+                      {/* Agent icon */}
+                      <div className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                        agent.id === selectedAgentId
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      )}>
+                        <Bot className="h-4 w-4" />
+                      </div>
+                      {/* Agent info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          {agent.id === selectedAgentId && (
+                            <Check className="h-3 w-3 text-primary shrink-0" />
+                          )}
+                          <span className="text-sm font-medium truncate">{agent.name}</span>
+                        </div>
+                        {agent.description && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            {agent.description}
+                          </p>
+                        )}
+                      </div>
+                      {/* Settings button */}
+                      {onAgentSettings && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onAgentSettings(agent.id);
+                          }}
+                        >
+                          <Settings className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </PopoverContent>
           </Popover>

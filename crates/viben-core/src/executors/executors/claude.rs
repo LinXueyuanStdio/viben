@@ -152,37 +152,53 @@ impl ClaudeCode {
     }
 
     /// Internal spawn implementation
+    ///
+    /// When using `--input-format=stream-json`, the prompt should NOT be passed as a CLI argument.
+    /// Instead, the user message must be sent via stdin after the process spawns.
+    /// The ContainerService is responsible for sending the message via stdin.
     async fn spawn_internal(
         &self,
         current_dir: &Path,
-        prompt: &str,
+        _prompt: &str, // Note: prompt is NOT used here when using stream-json format
         command_parts: crate::executors::command::CommandParts,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        // Combine prompt with append_prompt
-        let full_prompt = self.append_prompt.combine_prompt(prompt);
+        // Parse the program and resolve path
+        // npx command needs to be split: "npx -y @anthropic-ai/claude-code@latest" -> ["npx", "-y", "@anthropic-ai/claude-code@latest"]
+        let program_parts: Vec<&str> = command_parts.program.split_whitespace().collect();
+        let program = program_parts.first().ok_or_else(|| {
+            ExecutorError::ExecutableNotFound { program: "empty command".to_string() }
+        })?;
 
-        // Build the full command string for shell execution
-        // This ensures nvm and other shell configurations are loaded
-        let mut full_command = command_parts.program.clone();
-        for arg in &command_parts.args {
-            // Escape single quotes in arguments
-            let escaped = arg.replace('\'', "'\\''");
-            full_command.push_str(&format!(" '{}'", escaped));
-        }
-        // Add the prompt as the final argument
-        let escaped_prompt = full_prompt.replace('\'', "'\\''");
-        full_command.push_str(&format!(" '{}'", escaped_prompt));
+        // Resolve program path (handles npx, node, etc.)
+        let program_path = which::which(program)
+            .map_err(|_| ExecutorError::ExecutableNotFound { program: program.to_string() })?;
 
-        tracing::debug!("[ClaudeCode] Spawning command via shell: {}", &full_command[..full_command.len().min(200)]);
+        tracing::info!("[ClaudeCode] Resolved program path: {:?}", program_path);
 
-        // Use shell to execute the command (loads user's shell config including nvm)
-        let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string());
-        let mut cmd = Command::new(&shell);
-        cmd.arg("-l"); // Login shell to load profile
-        cmd.arg("-c");
-        cmd.arg(&full_command);
+        let mut cmd = Command::new(&program_path);
+        // Note: Do NOT use kill_on_drop(true) here because the child will be dropped
+        // after spawn_agent returns, which would kill the process immediately.
+        // The child process should run until completion.
+        cmd.stdin(Stdio::piped());
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
         cmd.current_dir(current_dir);
+        cmd.env("NPM_CONFIG_LOGLEVEL", "error");
+
+        // Add remaining parts of the base command (e.g., "-y @anthropic-ai/claude-code@latest")
+        for arg in program_parts.iter().skip(1) {
+            cmd.arg(arg);
+        }
+
+        // Add command arguments (but NOT the prompt - it will be sent via stdin)
+        for arg in &command_parts.args {
+            cmd.arg(arg);
+        }
+
+        // NOTE: When using --input-format=stream-json, do NOT add prompt as CLI argument!
+        // The user message must be sent via stdin as JSON after the process spawns.
+        // Format: {"type":"user","message":{"role":"user","content":"..."}}
 
         // Apply environment variables
         for (key, value) in &command_parts.env {
@@ -190,15 +206,17 @@ impl ClaudeCode {
         }
         env.apply_to_command(&mut cmd);
 
-        // Setup I/O
-        cmd.stdin(Stdio::piped());
-        cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
+        // Debug: log all arguments
+        let mut all_args: Vec<String> = program_parts.iter().skip(1).map(|s| s.to_string()).collect();
+        all_args.extend(command_parts.args.iter().cloned());
+        tracing::info!("[ClaudeCode] Full command: {:?} {:?}", program_path, all_args);
 
         // Spawn as process group
         let child = cmd
             .group_spawn()
             .map_err(|e| ExecutorError::SpawnError(e))?;
+
+        tracing::info!("[ClaudeCode] Process spawned successfully (user message will be sent via stdin)");
 
         Ok(SpawnedChild::from(child))
     }

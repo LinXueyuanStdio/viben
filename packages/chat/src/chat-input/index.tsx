@@ -71,6 +71,7 @@ export function ChatInput({
   agents = [],
   selectedAgentId = null,
   onAgentChange,
+  onAgentSettings,
   models = [],
   selectedModelId = null,
   onModelChange,
@@ -513,6 +514,7 @@ export function ChatInput({
           agents={agents}
           selectedAgentId={selectedAgentId}
           onAgentChange={onAgentChange}
+          onAgentSettings={onAgentSettings}
           showAgentSelector={shouldShowAgentSelector}
           models={models}
           selectedModelId={selectedModelId}

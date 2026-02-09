@@ -22,10 +22,31 @@ use tower_http::trace::TraceLayer;
 
 /// Run the gateway server on the specified address
 pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
+    tracing::info!(
+        target: "viben::gateway",
+        "Initializing Viben Gateway v{}",
+        env!("CARGO_PKG_VERSION")
+    );
+
     // Initialize application state
-    let state = AppState::with_defaults().await?;
+    tracing::debug!(target: "viben::gateway", "Creating application state...");
+    let state = match AppState::with_defaults().await {
+        Ok(s) => {
+            tracing::info!(target: "viben::gateway", "Application state initialized successfully");
+            tracing::debug!(
+                target: "viben::gateway",
+                "Services initialized: db=OK, events=OK, container=OK, pty=OK"
+            );
+            s
+        }
+        Err(e) => {
+            tracing::error!(target: "viben::gateway", "Failed to initialize application state: {}", e);
+            return Err(e.into());
+        }
+    };
 
     // Build router
+    tracing::debug!(target: "viben::gateway", "Building router with routes and middleware...");
     let app = Router::new()
         .merge(routes::router(state))
         .layer(
@@ -36,29 +57,83 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         )
         .layer(TraceLayer::new_for_http());
 
-    tracing::info!("Viben Gateway starting on http://{}", addr);
+    tracing::debug!(target: "viben::gateway", "Router built with CORS and tracing layers");
+
+    tracing::info!(
+        target: "viben::gateway",
+        "Starting server on {}...",
+        addr
+    );
 
     // Start server
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    let actual_addr = listener.local_addr()?;
-
-    tracing::info!("Viben Gateway running on http://{}", actual_addr);
+    let listener = match tokio::net::TcpListener::bind(addr).await {
+        Ok(l) => {
+            let actual_addr = l.local_addr()?;
+            tracing::info!(
+                target: "viben::gateway",
+                "========================================="
+            );
+            tracing::info!(
+                target: "viben::gateway",
+                "Viben Gateway running on http://{}",
+                actual_addr
+            );
+            tracing::info!(
+                target: "viben::gateway",
+                "========================================="
+            );
+            tracing::info!(
+                target: "viben::gateway",
+                "API endpoints:"
+            );
+            tracing::info!(target: "viben::gateway", "  GET  /health - Health check");
+            tracing::info!(target: "viben::gateway", "  GET  /api/agents - List agents");
+            tracing::info!(target: "viben::gateway", "  GET  /api/tasks - List tasks");
+            tracing::info!(target: "viben::gateway", "  GET  /api/sessions - List sessions");
+            tracing::info!(target: "viben::gateway", "  GET  /api/events - SSE event stream");
+            tracing::info!(target: "viben::gateway", "  WS   /ws - WebSocket connection");
+            tracing::info!(
+                target: "viben::gateway",
+                "========================================="
+            );
+            l
+        }
+        Err(e) => {
+            tracing::error!(
+                target: "viben::gateway",
+                "Failed to bind to {}: {}",
+                addr, e
+            );
+            return Err(e.into());
+        }
+    };
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    tracing::info!("Viben Gateway shut down gracefully");
+    tracing::info!(
+        target: "viben::gateway",
+        "========================================="
+    );
+    tracing::info!(target: "viben::gateway", "Viben Gateway shut down gracefully");
+    tracing::info!(
+        target: "viben::gateway",
+        "========================================="
+    );
 
     Ok(())
 }
 
 /// Signal handler for graceful shutdown
 async fn shutdown_signal() {
+    tracing::debug!(target: "viben::gateway", "Installing shutdown signal handlers...");
+
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
             .expect("Failed to install Ctrl+C handler");
+        tracing::info!(target: "viben::gateway", "Received Ctrl+C signal");
     };
 
     #[cfg(unix)]
@@ -68,7 +143,9 @@ async fn shutdown_signal() {
         let terminate = async {
             if let Ok(mut sigterm) = signal(SignalKind::terminate()) {
                 sigterm.recv().await;
+                tracing::info!(target: "viben::gateway", "Received SIGTERM signal");
             } else {
+                tracing::warn!(target: "viben::gateway", "Failed to register SIGTERM handler");
                 std::future::pending::<()>().await;
             }
         };
@@ -84,5 +161,8 @@ async fn shutdown_signal() {
         ctrl_c.await;
     }
 
-    tracing::info!("Shutdown signal received");
+    tracing::info!(
+        target: "viben::gateway",
+        "Shutdown signal received, initiating graceful shutdown..."
+    );
 }

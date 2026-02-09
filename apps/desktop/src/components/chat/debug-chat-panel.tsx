@@ -400,15 +400,8 @@ export function DebugChatPanel({
       await subscribeToEvents(newSessionId);
       console.log("[DebugChatPanel] WebSocket connected, now spawning agent...");
 
-      // Add a system message indicating the agent is starting
-      const infoMessage: AgentMessage = {
-        id: crypto.randomUUID(),
-        type: "text",
-        content: `Connecting to ${agentType} agent...`,
-      };
-      setMessages((prev) => [...prev, infoMessage]);
-
-      // Spawn or continue agent with our pre-generated session ID
+      // Spawn agent with our pre-generated session ID
+      // No verbose "connecting" message - the UI shows streaming indicator
       const response = await client.spawnAgent(agentType, {
         prompt: content,
         workdir: workdirInput,
@@ -418,19 +411,7 @@ export function DebugChatPanel({
 
       console.log("[DebugChatPanel] Spawn response:", response);
       setSessionId(response.session_id);
-
-      // Update message to show agent started
-      setMessages((prev) => {
-        const updated = [...prev];
-        const lastIdx = updated.findIndex(m => m.content === `Connecting to ${agentType} agent...`);
-        if (lastIdx !== -1) {
-          updated[lastIdx] = {
-            ...updated[lastIdx],
-            content: `${agentType} agent started (session: ${response.session_id.slice(0, 8)}...)`,
-          };
-        }
-        return updated;
-      });
+      // Agent started - streaming indicator in UI is sufficient
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
       setError(errorMessage);

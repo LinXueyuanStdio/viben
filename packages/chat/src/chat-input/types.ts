@@ -24,6 +24,7 @@ import type {
 export interface AgentOption {
   id: string;
   name: string;
+  description?: string;
   icon?: ReactNode;
 }
 
@@ -108,6 +109,8 @@ export interface ChatInputProps {
   selectedAgentId?: string | null;
   /** Callback when agent is selected */
   onAgentChange?: (agentId: string) => void;
+  /** Callback when agent settings button is clicked */
+  onAgentSettings?: (agentId: string) => void;
   /** Available models for selection */
   models?: ModelOption[];
   /** Currently selected model ID */

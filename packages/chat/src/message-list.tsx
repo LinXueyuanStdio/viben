@@ -191,17 +191,17 @@ function groupMessages(
     }
   }
 
-  // Collect all tool_result messages in order for matching with tool_use
-  const toolResultMessages: AgentMessage[] = [];
+  // Collect all tool_result messages in a Map for matching with tool_use by toolUseId
+  const toolResultMap = new Map<string, AgentMessage>();
   mergedMessages.forEach((msg) => {
-    if (msg.type === "tool_result") {
-      toolResultMessages.push(msg);
+    if (msg.type === "tool_result" && msg.toolUseId) {
+      toolResultMap.set(msg.toolUseId, msg);
     }
   });
 
-  // Match tool_use with tool_result by index
-  const getToolResult = (toolUseIndex: number): AgentMessage | undefined => {
-    return toolResultMessages[toolUseIndex];
+  // Match tool_use with tool_result by toolUseId
+  const getToolResult = (toolUseId: string): AgentMessage | undefined => {
+    return toolResultMap.get(toolUseId);
   };
 
   // Filter out duplicate plan messages - only keep the last one
@@ -226,7 +226,6 @@ function groupMessages(
 
   // Process messages into groups
   let toolGlobalIndex = 0;
-  let toolUseIndex = 0;
 
   const state = { currentGroup: null as TaskMessageGroup | null };
 
@@ -303,9 +302,8 @@ function groupMessages(
         pendingTextMessage = null;
       }
       const group = ensureCurrentGroup();
-      const result = getToolResult(toolUseIndex);
+      const result = message.toolUseId ? getToolResult(message.toolUseId) : undefined;
       group.tools.push({ message, globalIndex: toolGlobalIndex++, result });
-      toolUseIndex++;
     } else if (message.type === "tool_result") {
       // Skip tool_result messages as they're associated with tool_use
     } else if (message.type === "user") {
@@ -572,8 +570,8 @@ export function MessageList({
   }
 
   return (
-    <div className={cn("relative flex-1", className)}>
-      <ScrollArea className="h-full" viewportRef={viewportRef}>
+    <div className={cn("relative flex-1 min-h-0 overflow-hidden", className)}>
+      <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
         <div className="space-y-4 p-4 pb-8">
           {groups.map((group, index) => {
             if (group.type === "task") {

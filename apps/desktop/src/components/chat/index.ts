@@ -41,3 +41,4 @@ export {
   ContextDetailsPopover,
   type ContextTokenBreakdown,
 } from "./context-details-popover";
+export { SessionSelector, type Session } from "./session-selector";

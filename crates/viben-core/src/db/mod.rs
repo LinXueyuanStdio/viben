@@ -155,6 +155,80 @@ impl DbService {
         .execute(&self.pool)
         .await?;
 
+        // Group chat tables
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS group_chats (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+                created_by TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS group_chat_members (
+                id TEXT PRIMARY KEY,
+                group_chat_id TEXT NOT NULL REFERENCES group_chats(id) ON DELETE CASCADE,
+                member_type TEXT NOT NULL CHECK (member_type IN ('human', 'agent', 'executor')),
+                member_id TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+                joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+                last_seen_at TEXT,
+                UNIQUE(group_chat_id, member_type, member_id)
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS group_chat_messages (
+                id TEXT PRIMARY KEY,
+                group_chat_id TEXT NOT NULL REFERENCES group_chats(id) ON DELETE CASCADE,
+                sender_id TEXT NOT NULL,
+                sender_type TEXT NOT NULL CHECK (sender_type IN ('human', 'agent', 'executor')),
+                sender_name TEXT NOT NULL,
+                content_type TEXT NOT NULL DEFAULT 'text' CHECK (content_type IN ('text', 'code', 'file', 'system', 'tool_call')),
+                content TEXT NOT NULL,
+                mentions TEXT,
+                reply_to TEXT REFERENCES group_chat_messages(id) ON DELETE SET NULL,
+                metadata TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Create indexes for group chat tables
+        sqlx::query(
+            r#"CREATE INDEX IF NOT EXISTS idx_group_chat_members_group_id ON group_chat_members(group_chat_id)"#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"CREATE INDEX IF NOT EXISTS idx_group_chat_messages_group_id ON group_chat_messages(group_chat_id)"#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        sqlx::query(
+            r#"CREATE INDEX IF NOT EXISTS idx_group_chat_messages_created_at ON group_chat_messages(created_at)"#,
+        )
+        .execute(&self.pool)
+        .await?;
+
         Ok(())
     }
 }
