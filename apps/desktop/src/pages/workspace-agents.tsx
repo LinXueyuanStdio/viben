@@ -1101,6 +1101,7 @@ interface AgentDetailPanelProps {
   agent: {
     id: string;
     name: string;
+    path?: string;
     description?: string;
     model?: string;
     provider?: string;
@@ -1293,6 +1294,23 @@ function AgentDetailPanel({
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-1">
+          {/* Config Section */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("workspace.configuration")}
+            </h4>
+
+            <CollapsibleSection
+              title={t("workspace.configPath")}
+              icon={<Terminal className="h-4 w-4" />}
+              defaultOpen
+            >
+              <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                {agent.path || "-"}
+              </code>
+            </CollapsibleSection>
+          </div>
+
           {/* Model Section */}
           <div className="mb-4">
             <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
