@@ -1,4 +1,4 @@
-export { FileBrowser } from "./index.tsx";
+export { FileBrowser, type FileBrowserRef } from "./index.tsx";
 export { FileColumnView, type FileColumnViewProps } from "./file-column-view";
 export { FileIconView } from "./file-icon-view";
 export { FileListView } from "./file-list-view";

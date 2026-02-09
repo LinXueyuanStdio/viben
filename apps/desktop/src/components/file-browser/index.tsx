@@ -59,8 +59,13 @@ interface FileBrowserProps {
   className?: string;
   /** Callback when path changes - used to sync with workspace breadcrumb */
   onPathChange?: (path: string, segments: { name: string; path: string }[]) => void;
-  /** Hide internal toolbar when using external navigation */
-  hideToolbar?: boolean;
+  /** Hide internal breadcrumb when using external navigation (keeps view toggle and action buttons) */
+  hideBreadcrumb?: boolean;
+}
+
+/** Methods exposed via ref for external control */
+export interface FileBrowserRef {
+  navigateToColumnIndex: (index: number) => void;
 }
 
 interface SidebarItem {
@@ -218,6 +223,8 @@ interface ToolbarProps {
   onViewModeChange: (mode: ViewMode) => void;
   onNewFile: () => void;
   onNewFolder: () => void;
+  /** Hide breadcrumb and navigation buttons (when using external breadcrumb) */
+  hideBreadcrumb?: boolean;
 }
 
 function Toolbar({
@@ -234,95 +241,103 @@ function Toolbar({
   onViewModeChange,
   onNewFile,
   onNewFolder,
+  hideBreadcrumb = false,
 }: ToolbarProps) {
   const pathSegments = getPathSegments(currentPath, workspacePath);
 
   return (
     <div className="flex items-center gap-2 px-3 py-2 border-b bg-background/50">
-      {/* Navigation buttons */}
-      <TooltipProvider>
-        <div className="flex items-center gap-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={!canGoBack}
-                onClick={onGoBack}
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Back</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={!canGoForward}
-                onClick={onGoForward}
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Forward</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                disabled={!canGoUp}
-                onClick={onGoUp}
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Up</TooltipContent>
-          </Tooltip>
-        </div>
-      </TooltipProvider>
+      {/* Navigation buttons - hidden when using external breadcrumb */}
+      {!hideBreadcrumb && (
+        <>
+          <TooltipProvider>
+            <div className="flex items-center gap-0.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={!canGoBack}
+                    onClick={onGoBack}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Back</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={!canGoForward}
+                    onClick={onGoForward}
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Forward</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={!canGoUp}
+                    onClick={onGoUp}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Up</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
 
-      <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-6" />
 
-      {/* Breadcrumb */}
-      <div className="flex-1 flex items-center gap-1 overflow-hidden">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-muted-foreground hover:text-foreground"
-          onClick={() => onNavigateTo(workspacePath)}
-        >
-          <Home className="h-4 w-4 mr-1" />
-          <span className="truncate max-w-[100px]">
-            {workspacePath.split("/").pop()}
-          </span>
-        </Button>
-        {pathSegments.map((segment, i) => (
-          <React.Fragment key={segment.path}>
-            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          {/* Breadcrumb */}
+          <div className="flex-1 flex items-center gap-1 overflow-hidden">
             <Button
               variant="ghost"
               size="sm"
-              className={cn(
-                "h-7 px-2",
-                i === pathSegments.length - 1
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-              onClick={() => onNavigateTo(segment.path)}
+              className="h-7 px-2 text-muted-foreground hover:text-foreground"
+              onClick={() => onNavigateTo(workspacePath)}
             >
-              <span className="truncate max-w-[100px]">{segment.name}</span>
+              <Home className="h-4 w-4 mr-1" />
+              <span className="truncate max-w-[100px]">
+                {workspacePath.split("/").pop()}
+              </span>
             </Button>
-          </React.Fragment>
-        ))}
-      </div>
+            {pathSegments.map((segment, i) => (
+              <React.Fragment key={segment.path}>
+                <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "h-7 px-2",
+                    i === pathSegments.length - 1
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => onNavigateTo(segment.path)}
+                >
+                  <span className="truncate max-w-[100px]">{segment.name}</span>
+                </Button>
+              </React.Fragment>
+            ))}
+          </div>
 
-      <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-6" />
+        </>
+      )}
+
+      {/* Spacer when breadcrumb is hidden */}
+      {hideBreadcrumb && <div className="flex-1" />}
 
       {/* View mode toggle */}
       <ViewModeToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
@@ -535,11 +550,14 @@ interface ColumnViewProps {
   updateColumnPaths: (paths: string[]) => void;
   /** Called when navigating to a new directory (to update currentPath and breadcrumb) */
   onNavigate: (path: string) => void;
-  /** Navigate to specific column index (called from breadcrumb) */
-  navigateToColumn?: (columnIndex: number) => void;
 }
 
-function ColumnView({
+/** Methods exposed by ColumnView via ref */
+export interface ColumnViewRef {
+  navigateToColumnIndex: (index: number) => void;
+}
+
+const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnView({
   workspacePath,
   currentPath: _currentPath,
   columnPaths: _columnPaths,
@@ -551,19 +569,11 @@ function ColumnView({
   loadDirectory: _loadDirectory,
   updateColumnPaths,
   onNavigate,
-  navigateToColumn,
-}: ColumnViewProps) {
+}, ref) {
   const [columns, setColumns] = React.useState<{ path: string; files: FileEntry[]; loading: boolean }[]>([]);
   const [columnSelections, setColumnSelections] = React.useState<Map<string, string>>(new Map());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
-
-  // Expose navigateToColumn function
-  React.useEffect(() => {
-    if (navigateToColumn) {
-      // This effect is just for the parent to pass navigation commands
-    }
-  }, [navigateToColumn]);
 
   // Initialize columns on mount
   useEffect(() => {
@@ -673,8 +683,8 @@ function ColumnView({
     updateColumnPaths(newColumns.map(c => c.path));
   }, [columns, onNavigate, updateColumnPaths]);
 
-  // Navigate to a specific column (called from breadcrumb)
-  const goToColumn = useCallback((targetColumnIndex: number) => {
+  // Navigate to a specific column index (called from breadcrumb)
+  const navigateToColumnIndex = useCallback((targetColumnIndex: number) => {
     if (targetColumnIndex < 0 || targetColumnIndex >= columns.length) return;
 
     const targetPath = columns[targetColumnIndex].path;
@@ -689,14 +699,10 @@ function ColumnView({
     updateColumnPaths(newColumns.map(c => c.path));
   }, [columns, onNavigate, updateColumnPaths]);
 
-  // Expose goToColumn via ref pattern through parent callback
-  React.useEffect(() => {
-    // Store goToColumn in a way the parent can access
-    (window as unknown as { __columnViewGoToColumn?: (index: number) => void }).__columnViewGoToColumn = goToColumn;
-    return () => {
-      delete (window as unknown as { __columnViewGoToColumn?: (index: number) => void }).__columnViewGoToColumn;
-    };
-  }, [goToColumn]);
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    navigateToColumnIndex,
+  }), [navigateToColumnIndex]);
 
   if (columns.length === 0) {
     return (
@@ -773,7 +779,7 @@ function ColumnView({
       ))}
     </div>
   );
-}
+});
 
 /* -----------------------------------------------------------------------------
  * Gallery View
@@ -1299,8 +1305,19 @@ function ErrorState({ error, onRetry }: ErrorStateProps) {
  * Main FileBrowser Component
  * -------------------------------------------------------------------------- */
 
-export function FileBrowser({ workspacePath, initialPath, className, onPathChange, hideToolbar }: FileBrowserProps) {
+export const FileBrowser = forwardRef<FileBrowserRef, FileBrowserProps>(function FileBrowser(
+  { workspacePath, initialPath, className, onPathChange, hideBreadcrumb },
+  ref
+) {
   const browser = useFileBrowser({ workspacePath, initialPath });
+  const columnViewRef = useRef<ColumnViewRef>(null);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    navigateToColumnIndex: (index: number) => {
+      columnViewRef.current?.navigateToColumnIndex(index);
+    },
+  }), []);
 
   // Notify parent of path changes
   useEffect(() => {
@@ -1457,6 +1474,7 @@ export function FileBrowser({ workspacePath, initialPath, className, onPathChang
       case "column":
         return (
           <ColumnView
+            ref={columnViewRef}
             workspacePath={workspacePath}
             currentPath={browser.currentPath}
             columnPaths={browser.columnPaths}
@@ -1519,7 +1537,12 @@ export function FileBrowser({ workspacePath, initialPath, className, onPathChang
 
         {/* File content */}
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">{renderContent()}</ScrollArea>
+          {/* ColumnView handles its own scrolling, other views need ScrollArea */}
+          {browser.viewMode === "column" ? (
+            <div className="h-full">{renderContent()}</div>
+          ) : (
+            <ScrollArea className="h-full">{renderContent()}</ScrollArea>
+          )}
         </div>
       </div>
 
@@ -1571,6 +1594,6 @@ export function FileBrowser({ workspacePath, initialPath, className, onPathChang
       />
     </div>
   );
-}
+});
 
 export default FileBrowser;

@@ -28,7 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -391,100 +390,98 @@ export function WorkspaceCronPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card>
-            <ScrollArea className="w-full">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">{t("common.name")}</TableHead>
-                    <TableHead className="w-[100px]">{t("common.status")}</TableHead>
-                    <TableHead className="w-[120px]">{t("cron.schedule")}</TableHead>
-                    <TableHead className="w-[150px]">{t("cron.nextRun")}</TableHead>
-                    <TableHead className="w-[150px]">{t("cron.lastRun")}</TableHead>
-                    <TableHead className="w-[100px] text-right">{t("common.actions")}</TableHead>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[200px]">{t("common.name")}</TableHead>
+                  <TableHead className="w-[100px]">{t("common.status")}</TableHead>
+                  <TableHead className="w-[120px]">{t("cron.schedule")}</TableHead>
+                  <TableHead className="w-[150px]">{t("cron.nextRun")}</TableHead>
+                  <TableHead className="w-[150px]">{t("cron.lastRun")}</TableHead>
+                  <TableHead className="w-[100px] text-right">{t("common.actions")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {jobs.map((job) => (
+                  <TableRow key={job.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{job.name}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                          {job.message}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(job)}</TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {formatSchedule(job)}
+                      </code>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatNextRun(job.next_run)}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatLastRun(job.last_run)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleRunNow(job)}
+                          disabled={runningJobId === job.id}
+                          title={t("cron.runNow")}
+                        >
+                          {runningJobId === job.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="z-50">
+                            <DropdownMenuItem onClick={() => setEditingJob(job)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              {t("common.edit")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleToggleEnabled(job)}>
+                              {job.enabled ? (
+                                <>
+                                  <Pause className="h-4 w-4 mr-2" />
+                                  {t("common.disable")}
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="h-4 w-4 mr-2" />
+                                  {t("common.enable")}
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => handleDelete(job)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              {t("common.delete")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{job.name}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[180px]">
-                            {job.message}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(job)}</TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                          {formatSchedule(job)}
-                        </code>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatNextRun(job.next_run)}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatLastRun(job.last_run)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleRunNow(job)}
-                            disabled={runningJobId === job.id}
-                            title={t("cron.runNow")}
-                          >
-                            {runningJobId === job.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setEditingJob(job)}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                {t("common.edit")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleToggleEnabled(job)}>
-                                {job.enabled ? (
-                                  <>
-                                    <Pause className="h-4 w-4 mr-2" />
-                                    {t("common.disable")}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Play className="h-4 w-4 mr-2" />
-                                    {t("common.enable")}
-                                  </>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDelete(job)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {t("common.delete")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </ScrollArea>
-          </Card>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
 

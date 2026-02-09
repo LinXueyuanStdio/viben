@@ -47,3 +47,4 @@ export { SessionSelector, type Session } from "./session-selector";
 export { CreateGroupChatDialog } from "./create-group-chat-dialog";
 export { GroupChatMessageList } from "./group-chat-message-list";
 export { GroupChatListItem } from "./group-chat-list-item";
+export { GroupChatMembersDialog } from "./group-chat-members-dialog";
