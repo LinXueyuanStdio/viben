@@ -11,6 +11,8 @@
     "clean": "turbo clean && rm -rf node_modules",
     "desktop": "pnpm --filter @viben/desktop",
     "desktop:restart": "./scripts/restart-desktop.sh",
+    "gateway:restart": "./scripts/restart-gateway.sh",
+    "gateway:build": "./scripts/restart-gateway.sh --build",
     "mcp-server": "pnpm --filter @viben/mcp-server",
     "docs": "pnpm --filter @viben/docs"
   },

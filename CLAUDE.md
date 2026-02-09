@@ -80,3 +80,25 @@ This script will:
 4. Start Tauri dev server
 
 The script is located at `scripts/restart-desktop.sh`.
+
+### Restart Gateway
+
+When you need to restart the Viben Gateway (after modifying Rust backend code):
+
+```bash
+# Restart gateway (uses existing binary)
+pnpm gateway:restart
+
+# Rebuild and restart gateway
+pnpm gateway:build
+```
+
+The gateway runs on port **18790** by default.
+
+API endpoints:
+- Health: `http://127.0.0.1:18790/health`
+- Agents: `http://127.0.0.1:18790/api/agents`
+- Cron: `http://127.0.0.1:18790/api/cron`
+- Sessions: `http://127.0.0.1:18790/api/sessions`
+
+The script is located at `scripts/restart-gateway.sh`.
