@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Copy,
   Eye,
+  ExternalLink,
   File,
   FileCode,
   FileImage,
@@ -25,6 +26,7 @@ import {
   Home,
   HardDrive,
   Search,
+  AppWindow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-shell";
 import { useTranslation } from "react-i18next";
 import { useFileBrowser, type ViewMode, type SortField, type SortDirection, type GroupField, type FileGroup } from "@/hooks/use-file-browser";
 import { SortDropdown, FileSearchInput, GroupDropdown } from "@/components/file-browser/file-actions";
@@ -1227,6 +1230,7 @@ interface ContextMenuProps {
   state: ContextMenuState;
   onClose: () => void;
   onOpen: (file: FileEntry) => void;
+  onOpenWith: (file: FileEntry, app?: string) => void;
   onPreview: (file: FileEntry) => void;
   onCopy: (file: FileEntry) => void;
   onCut: (file: FileEntry) => void;
@@ -1234,10 +1238,40 @@ interface ContextMenuProps {
   onRename: (file: FileEntry) => void;
 }
 
+/** Get suggested apps for "Open With" based on file extension */
+function getOpenWithApps(file: FileEntry): { id: string; label: string; icon: React.ReactNode }[] {
+  if (file.is_directory) return [];
+
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  const apps: { id: string; label: string; icon: React.ReactNode }[] = [];
+
+  // Code editors for code files
+  const codeExtensions = ["ts", "tsx", "js", "jsx", "py", "rs", "go", "java", "c", "cpp", "h", "css", "scss", "html", "json", "yaml", "yml", "toml", "xml", "md", "txt"];
+  if (ext && codeExtensions.includes(ext)) {
+    apps.push({ id: "vscode", label: "VS Code", icon: <FileCode className="h-4 w-4" /> });
+    apps.push({ id: "cursor", label: "Cursor", icon: <FileCode className="h-4 w-4" /> });
+  }
+
+  // Image viewers for images
+  const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico"];
+  if (ext && imageExtensions.includes(ext)) {
+    apps.push({ id: "preview", label: "Preview", icon: <FileImage className="h-4 w-4" /> });
+  }
+
+  // Document apps
+  const docExtensions = ["pdf", "doc", "docx"];
+  if (ext && docExtensions.includes(ext)) {
+    apps.push({ id: "preview", label: "Preview", icon: <FileText className="h-4 w-4" /> });
+  }
+
+  return apps;
+}
+
 function ContextMenu({
   state,
   onClose,
   onOpen,
+  onOpenWith,
   onPreview,
   onCopy,
   onCut,
@@ -1246,6 +1280,7 @@ function ContextMenu({
 }: ContextMenuProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [showOpenWithSubmenu, setShowOpenWithSubmenu] = React.useState(false);
 
   useEffect(() => {
     if (!state.file) return;
@@ -1269,7 +1304,16 @@ function ContextMenu({
     };
   }, [state.file, onClose]);
 
+  // Reset submenu when context menu closes
+  useEffect(() => {
+    if (!state.file) {
+      setShowOpenWithSubmenu(false);
+    }
+  }, [state.file]);
+
   if (!state.file) return null;
+
+  const openWithApps = getOpenWithApps(state.file);
 
   return (
     <div
@@ -1290,6 +1334,67 @@ function ContextMenu({
         <Folder className="h-4 w-4" />
         {t("fileBrowser.open")}
       </div>
+
+      {/* Open With submenu - only for files, not directories */}
+      {!state.file.is_directory && (
+        <div
+          className="relative"
+          onMouseEnter={() => setShowOpenWithSubmenu(true)}
+          onMouseLeave={() => setShowOpenWithSubmenu(false)}
+        >
+          <div
+            className="flex items-center justify-between gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
+          >
+            <div className="flex items-center gap-2">
+              <AppWindow className="h-4 w-4" />
+              {t("fileBrowser.openWith")}
+            </div>
+            <ChevronRight className="h-3 w-3 text-muted-foreground" />
+          </div>
+
+          {/* Submenu */}
+          {showOpenWithSubmenu && (
+            <div
+              className={cn(
+                "absolute left-full top-0 ml-1 min-w-[160px] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+                "animate-in fade-in-0 zoom-in-95"
+              )}
+            >
+              {/* Default system app */}
+              <div
+                className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
+                onClick={() => {
+                  onOpenWith(state.file!);
+                  onClose();
+                }}
+              >
+                <ExternalLink className="h-4 w-4" />
+                {t("fileBrowser.openWithDefault")}
+              </div>
+
+              {openWithApps.length > 0 && (
+                <>
+                  <div className="-mx-1 my-1 h-px bg-muted" />
+                  {openWithApps.map((app) => (
+                    <div
+                      key={app.id}
+                      className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
+                      onClick={() => {
+                        onOpenWith(state.file!, app.id);
+                        onClose();
+                      }}
+                    >
+                      {app.icon}
+                      {app.label}
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div
         className="flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent rounded-sm"
         onClick={() => {

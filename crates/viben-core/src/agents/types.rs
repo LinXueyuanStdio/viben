@@ -10,7 +10,7 @@ pub struct Agent {
     pub name: String,
     /// Absolute path to the agent directory (e.g., ~/.viben/agents/hello-agent)
     /// This is set at runtime, not persisted in config.yaml
-    #[serde(skip)]
+    #[serde(skip_deserializing, skip_serializing_if = "Option::is_none")]
     pub path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
