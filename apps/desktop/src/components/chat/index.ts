@@ -48,3 +48,4 @@ export { CreateGroupChatDialog } from "./create-group-chat-dialog";
 export { GroupChatMessageList } from "./group-chat-message-list";
 export { GroupChatListItem } from "./group-chat-list-item";
 export { GroupChatMembersDialog } from "./group-chat-members-dialog";
+export { GroupChatSidebar } from "./group-chat-sidebar";

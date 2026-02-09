@@ -30,7 +30,8 @@ export interface NotificationMetadata {
 }
 
 /**
- * Application notification stored in notification center
+ * Application notification stored in notification center.
+ * Dates are stored as ISO strings for persistence compatibility.
  */
 export interface AppNotification {
   /** Unique identifier */
@@ -47,10 +48,17 @@ export interface AppNotification {
   metadata?: NotificationMetadata;
   /** Whether the notification has been read */
   read: boolean;
-  /** Timestamp when notification was created */
-  createdAt: Date;
-  /** Timestamp when notification was marked as read */
-  readAt?: Date;
+  /** ISO string timestamp when notification was created */
+  createdAt: string;
+  /** ISO string timestamp when notification was marked as read */
+  readAt?: string;
+}
+
+/**
+ * Helper to convert ISO date string to Date object
+ */
+export function parseNotificationDate(isoString: string): Date {
+  return new Date(isoString);
 }
 
 /**
@@ -80,10 +88,18 @@ export interface NotificationPreferences {
 /**
  * Input for creating a new notification (without auto-generated fields)
  */
-export type CreateNotificationInput = Omit<
-  AppNotification,
-  "id" | "read" | "createdAt" | "readAt"
->;
+export interface CreateNotificationInput {
+  /** Category for filtering */
+  category: NotificationCategory;
+  /** Notification level/severity */
+  level: NotificationLevel;
+  /** Notification title */
+  title: string;
+  /** Notification body/description */
+  body: string;
+  /** Optional metadata for context and navigation */
+  metadata?: NotificationMetadata;
+}
 
 /**
  * Default notification preferences
