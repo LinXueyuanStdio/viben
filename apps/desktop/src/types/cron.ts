@@ -4,7 +4,8 @@
  * TypeScript types for cron job management matching the Rust backend.
  */
 
-import type { NotificationSettings } from "./channel";
+// NotificationSettings is re-exported for convenience
+export type { NotificationSettings } from "./channel";
 
 /** Job execution status */
 export type JobStatus = "success" | "failure" | "running";

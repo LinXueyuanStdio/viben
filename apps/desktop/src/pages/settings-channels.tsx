@@ -7,26 +7,52 @@
  * - Feishu (飞书/Lark)
  * - WhatsApp
  *
- * Based on nanobot channel architecture.
+ * Supports multiple instances of each channel type.
  */
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ChevronRight,
   Eye,
   EyeOff,
   CheckCircle2,
   XCircle,
   AlertCircle,
   RefreshCw,
+  Plus,
+  Trash2,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useChannels } from "@/hooks";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useChannelInstances } from "@/hooks";
 import { cn } from "@/lib/utils";
+import type {
+  ChannelType,
+  ChannelInstance,
+  TelegramInstance,
+  DiscordInstance,
+  FeishuInstance,
+  WhatsAppInstance,
+} from "@/types/channel";
+import { getChannelTypeName } from "@/types/channel";
 
 // Channel Icons (using simple SVG)
 function TelegramIcon({ className }: { className?: string }) {
@@ -61,99 +87,14 @@ function WhatsAppIcon({ className }: { className?: string }) {
   );
 }
 
-// Channel card component
-interface ChannelCardProps {
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  enabled: boolean;
-  onToggle: (enabled: boolean) => void;
-  isExpanded: boolean;
-  onExpand: () => void;
-  children: React.ReactNode;
-}
+const CHANNEL_ICONS: Record<ChannelType, React.ReactNode> = {
+  telegram: <TelegramIcon className="h-5 w-5" />,
+  discord: <DiscordIcon className="h-5 w-5" />,
+  feishu: <FeishuIcon className="h-5 w-5" />,
+  whatsapp: <WhatsAppIcon className="h-5 w-5" />,
+};
 
-function ChannelCard({
-  name,
-  description,
-  icon,
-  enabled,
-  onToggle,
-  isExpanded,
-  onExpand,
-  children,
-}: ChannelCardProps) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border bg-card transition-all duration-300",
-        isExpanded && "border-primary/30 shadow-lg",
-        !isExpanded && "hover:-translate-y-1 hover:shadow-lg hover:border-primary/30"
-      )}
-    >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 cursor-pointer"
-        onClick={onExpand}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "h-10 w-10 rounded-full flex items-center justify-center",
-              enabled
-                ? "bg-green-100 dark:bg-green-900/30"
-                : "bg-muted"
-            )}
-          >
-            <div
-              className={cn(
-                "h-5 w-5",
-                enabled
-                  ? "text-green-600 dark:text-green-400"
-                  : "text-muted-foreground"
-              )}
-            >
-              {icon}
-            </div>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold">{name}</h3>
-            <p className="text-xs text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            {enabled ? (
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            ) : (
-              <XCircle className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-          <Switch
-            checked={enabled}
-            onCheckedChange={(checked) => {
-              onToggle(checked);
-            }}
-            onClick={(e) => e.stopPropagation()}
-          />
-          <ChevronRight
-            className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
-              isExpanded && "rotate-90"
-            )}
-          />
-        </div>
-      </div>
-
-      {/* Expandable content */}
-      {isExpanded && (
-        <div className="px-4 pb-4 border-t pt-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
+const CHANNEL_TYPES: ChannelType[] = ["telegram", "discord", "feishu", "whatsapp"];
 
 // Password input with toggle visibility
 interface SecretInputProps {
@@ -199,20 +140,324 @@ function SecretInput({ value, onChange, placeholder, label, description }: Secre
   );
 }
 
+// Instance card component
+interface InstanceCardProps {
+  instance: ChannelInstance;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function InstanceCard({ instance, onToggle, onEdit, onDelete }: InstanceCardProps) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:border-primary/30 transition-colors">
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "h-8 w-8 rounded-full flex items-center justify-center",
+            instance.enabled
+              ? "bg-green-100 dark:bg-green-900/30"
+              : "bg-muted"
+          )}
+        >
+          <div
+            className={cn(
+              "h-4 w-4",
+              instance.enabled
+                ? "text-green-600 dark:text-green-400"
+                : "text-muted-foreground"
+            )}
+          >
+            {CHANNEL_ICONS[instance.type]}
+          </div>
+        </div>
+        <div>
+          <p className="text-sm font-medium">{instance.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {getChannelTypeName(instance.type)}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {instance.enabled ? (
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+        ) : (
+          <XCircle className="h-4 w-4 text-muted-foreground" />
+        )}
+        <Switch checked={instance.enabled} onCheckedChange={onToggle} />
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEdit}>
+          <Pencil className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Telegram config form
+function TelegramForm({
+  instance,
+  onChange,
+}: {
+  instance: TelegramInstance;
+  onChange: (update: Partial<TelegramInstance>) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Input
+          value={instance.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="My Telegram Bot"
+        />
+      </div>
+      <SecretInput
+        label={t("channels.telegram.token", "Bot Token")}
+        description={t("channels.telegram.tokenDescription", "从 @BotFather 获取")}
+        value={instance.token}
+        onChange={(token) => onChange({ token })}
+        placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+      />
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.telegram.proxy", "代理 (可选)")}
+        </Label>
+        <Input
+          value={instance.proxy || ""}
+          onChange={(e) => onChange({ proxy: e.target.value || undefined })}
+          placeholder="http://127.0.0.1:7890"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.telegram.allowFrom", "允许的用户 (可选)")}
+        </Label>
+        <Input
+          value={instance.allow_from.join(", ")}
+          onChange={(e) =>
+            onChange({
+              allow_from: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="user_id1, username2"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Discord config form
+function DiscordForm({
+  instance,
+  onChange,
+}: {
+  instance: DiscordInstance;
+  onChange: (update: Partial<DiscordInstance>) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Input
+          value={instance.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="My Discord Bot"
+        />
+      </div>
+      <SecretInput
+        label={t("channels.discord.token", "Bot Token")}
+        description={t("channels.discord.tokenDescription", "从 Discord Developer Portal 获取")}
+        value={instance.token}
+        onChange={(token) => onChange({ token })}
+        placeholder="MTIzNDU2Nzg5..."
+      />
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.discord.allowFrom", "允许的用户 (可选)")}
+        </Label>
+        <Input
+          value={instance.allow_from.join(", ")}
+          onChange={(e) =>
+            onChange({
+              allow_from: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="user_id1, user_id2"
+        />
+      </div>
+    </div>
+  );
+}
+
+// Feishu config form
+function FeishuForm({
+  instance,
+  onChange,
+}: {
+  instance: FeishuInstance;
+  onChange: (update: Partial<FeishuInstance>) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Input
+          value={instance.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="My Feishu Bot"
+        />
+      </div>
+      <SecretInput
+        label={t("channels.feishu.appId", "App ID")}
+        description={t("channels.feishu.appIdDescription", "从飞书开放平台获取")}
+        value={instance.app_id}
+        onChange={(app_id) => onChange({ app_id })}
+        placeholder="cli_xxxxx"
+      />
+      <SecretInput
+        label={t("channels.feishu.appSecret", "App Secret")}
+        value={instance.app_secret}
+        onChange={(app_secret) => onChange({ app_secret })}
+        placeholder="xxxxxxxx"
+      />
+      <SecretInput
+        label={t("channels.feishu.encryptKey", "Encrypt Key (可选)")}
+        value={instance.encrypt_key}
+        onChange={(encrypt_key) => onChange({ encrypt_key })}
+        placeholder=""
+      />
+      <SecretInput
+        label={t("channels.feishu.verificationToken", "Verification Token (可选)")}
+        value={instance.verification_token}
+        onChange={(verification_token) => onChange({ verification_token })}
+        placeholder=""
+      />
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.feishu.allowFrom", "允许的用户 (可选)")}
+        </Label>
+        <Input
+          value={instance.allow_from.join(", ")}
+          onChange={(e) =>
+            onChange({
+              allow_from: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="ou_xxxxx"
+        />
+      </div>
+    </div>
+  );
+}
+
+// WhatsApp config form
+function WhatsAppForm({
+  instance,
+  onChange,
+}: {
+  instance: WhatsAppInstance;
+  onChange: (update: Partial<WhatsAppInstance>) => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label>{t("channels.instanceName", "实例名称")}</Label>
+        <Input
+          value={instance.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+          placeholder="My WhatsApp Bridge"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.whatsapp.bridgeUrl", "Bridge URL")}
+        </Label>
+        <Input
+          value={instance.bridge_url}
+          onChange={(e) => onChange({ bridge_url: e.target.value })}
+          placeholder="ws://localhost:3001"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.whatsapp.allowFrom", "允许的手机号 (可选)")}
+        </Label>
+        <Input
+          value={instance.allow_from.join(", ")}
+          onChange={(e) =>
+            onChange({
+              allow_from: e.target.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+            })
+          }
+          placeholder="+86138xxxx, +1555xxxx"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function SettingsChannelsPage() {
   const { t } = useTranslation();
   const {
-    config,
+    instances,
     isLoading,
     error,
-    updateTelegram,
-    updateDiscord,
-    updateFeishu,
-    updateWhatsApp,
-    resetConfig,
-  } = useChannels();
+    createInstance,
+    updateInstance,
+    deleteInstance,
+    toggleInstance,
+  } = useChannelInstances();
 
-  const [expandedChannel, setExpandedChannel] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingInstance, setEditingInstance] = useState<ChannelInstance | null>(null);
+  const [newChannelType, setNewChannelType] = useState<ChannelType>("telegram");
+  const [newChannelName, setNewChannelName] = useState("");
+
+  const handleCreate = () => {
+    if (!newChannelName.trim()) return;
+    const instance = createInstance(newChannelType, newChannelName.trim());
+    setCreateDialogOpen(false);
+    setNewChannelName("");
+    // Immediately open edit dialog for the new instance
+    setEditingInstance(instance);
+  };
+
+  const handleDelete = (instance: ChannelInstance) => {
+    if (!confirm(t("channels.deleteConfirm", { name: instance.name }))) return;
+    deleteInstance(instance.id);
+  };
+
+  const handleSaveEdit = () => {
+    setEditingInstance(null);
+  };
 
   if (isLoading) {
     return (
@@ -224,13 +469,19 @@ export function SettingsChannelsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold font-serif mb-1">
-          {t("settings.sections.channels", "消息渠道")}
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {t("settings.channelsDescription", "配置 AI 智能体的通信渠道")}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold font-serif mb-1">
+            {t("settings.sections.channels", "消息渠道")}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t("settings.channelsDescription", "配置 AI 智能体的通信渠道")}
+          </p>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          {t("channels.addChannel", "添加渠道")}
+        </Button>
       </div>
 
       {/* Error Display */}
@@ -241,218 +492,147 @@ export function SettingsChannelsPage() {
         </div>
       )}
 
-      {/* Channel Cards */}
-      <div className="space-y-3">
-        {/* Telegram */}
-        <ChannelCard
-          name="Telegram"
-          description={t("channels.telegram.description", "通过 Telegram Bot 接收消息")}
-          icon={<TelegramIcon className="h-5 w-5" />}
-          enabled={config.telegram.enabled}
-          onToggle={(enabled) => updateTelegram({ enabled })}
-          isExpanded={expandedChannel === "telegram"}
-          onExpand={() => setExpandedChannel(expandedChannel === "telegram" ? null : "telegram")}
-        >
-          <div className="space-y-4">
-            <SecretInput
-              label={t("channels.telegram.token", "Bot Token")}
-              description={t("channels.telegram.tokenDescription", "从 @BotFather 获取")}
-              value={config.telegram.token}
-              onChange={(token) => updateTelegram({ token })}
-              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-            />
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.telegram.proxy", "代理 (可选)")}
-              </Label>
-              <Input
-                value={config.telegram.proxy || ""}
-                onChange={(e) => updateTelegram({ proxy: e.target.value || undefined })}
-                placeholder="http://127.0.0.1:7890"
-              />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.telegram.proxyDescription", "支持 HTTP/SOCKS5 代理")}
-              </p>
+      {/* Channel Instances by Type */}
+      {CHANNEL_TYPES.map((type) => {
+        const typeInstances = instances.filter((i) => i.type === type);
+        if (typeInstances.length === 0) return null;
+
+        return (
+          <div key={type} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 text-muted-foreground">
+                {CHANNEL_ICONS[type]}
+              </div>
+              <h3 className="font-medium">{getChannelTypeName(type)}</h3>
+              <span className="text-xs text-muted-foreground">
+                ({typeInstances.length})
+              </span>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.telegram.allowFrom", "允许的用户 (可选)")}
-              </Label>
-              <Input
-                value={config.telegram.allow_from.join(", ")}
-                onChange={(e) =>
-                  updateTelegram({
-                    allow_from: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-                placeholder="user_id1, username2"
-              />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.telegram.allowFromDescription", "留空允许所有用户，用逗号分隔")}
-              </p>
+            <div className="space-y-2 pl-8">
+              {typeInstances.map((instance) => (
+                <InstanceCard
+                  key={instance.id}
+                  instance={instance}
+                  onToggle={() => toggleInstance(instance.id)}
+                  onEdit={() => setEditingInstance(instance)}
+                  onDelete={() => handleDelete(instance)}
+                />
+              ))}
             </div>
           </div>
-        </ChannelCard>
+        );
+      })}
 
-        {/* Discord */}
-        <ChannelCard
-          name="Discord"
-          description={t("channels.discord.description", "通过 Discord Bot 接收消息")}
-          icon={<DiscordIcon className="h-5 w-5" />}
-          enabled={config.discord.enabled}
-          onToggle={(enabled) => updateDiscord({ enabled })}
-          isExpanded={expandedChannel === "discord"}
-          onExpand={() => setExpandedChannel(expandedChannel === "discord" ? null : "discord")}
-        >
-          <div className="space-y-4">
-            <SecretInput
-              label={t("channels.discord.token", "Bot Token")}
-              description={t("channels.discord.tokenDescription", "从 Discord Developer Portal 获取")}
-              value={config.discord.token}
-              onChange={(token) => updateDiscord({ token })}
-              placeholder="MTIzNDU2Nzg5..."
-            />
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.discord.allowFrom", "允许的用户 (可选)")}
-              </Label>
+      {/* Empty state */}
+      {instances.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <p>{t("channels.noChannels", "还没有配置任何渠道")}</p>
+          <p className="text-sm mt-1">
+            {t("channels.noChannelsHint", "点击上方按钮添加一个渠道")}
+          </p>
+        </div>
+      )}
+
+      {/* Create Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("channels.addChannel", "添加渠道")}</DialogTitle>
+            <DialogDescription>
+              {t("channels.addChannelDesc", "选择渠道类型并设置名称")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>{t("channels.channelType", "渠道类型")}</Label>
+              <Select
+                value={newChannelType}
+                onValueChange={(v) => setNewChannelType(v as ChannelType)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      <div className="flex items-center gap-2">
+                        <span className="h-4 w-4">{CHANNEL_ICONS[type]}</span>
+                        {getChannelTypeName(type)}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("channels.instanceName", "实例名称")}</Label>
               <Input
-                value={config.discord.allow_from.join(", ")}
-                onChange={(e) =>
-                  updateDiscord({
-                    allow_from: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
-                }
-                placeholder="user_id1, user_id2"
+                value={newChannelName}
+                onChange={(e) => setNewChannelName(e.target.value)}
+                placeholder={`My ${getChannelTypeName(newChannelType)} Bot`}
               />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.discord.allowFromDescription", "留空允许所有用户")}
-              </p>
             </div>
           </div>
-        </ChannelCard>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              {t("common.cancel", "取消")}
+            </Button>
+            <Button onClick={handleCreate} disabled={!newChannelName.trim()}>
+              {t("common.create", "创建")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Feishu */}
-        <ChannelCard
-          name={t("channels.feishu.name", "飞书")}
-          description={t("channels.feishu.description", "通过飞书/Lark Bot 接收消息")}
-          icon={<FeishuIcon className="h-5 w-5" />}
-          enabled={config.feishu.enabled}
-          onToggle={(enabled) => updateFeishu({ enabled })}
-          isExpanded={expandedChannel === "feishu"}
-          onExpand={() => setExpandedChannel(expandedChannel === "feishu" ? null : "feishu")}
-        >
-          <div className="space-y-4">
-            <SecretInput
-              label={t("channels.feishu.appId", "App ID")}
-              description={t("channels.feishu.appIdDescription", "从飞书开放平台获取")}
-              value={config.feishu.app_id}
-              onChange={(app_id) => updateFeishu({ app_id })}
-              placeholder="cli_xxxxx"
-            />
-            <SecretInput
-              label={t("channels.feishu.appSecret", "App Secret")}
-              value={config.feishu.app_secret}
-              onChange={(app_secret) => updateFeishu({ app_secret })}
-              placeholder="xxxxxxxx"
-            />
-            <SecretInput
-              label={t("channels.feishu.encryptKey", "Encrypt Key (可选)")}
-              description={t("channels.feishu.encryptKeyDescription", "用于事件订阅加密")}
-              value={config.feishu.encrypt_key}
-              onChange={(encrypt_key) => updateFeishu({ encrypt_key })}
-              placeholder=""
-            />
-            <SecretInput
-              label={t("channels.feishu.verificationToken", "Verification Token (可选)")}
-              value={config.feishu.verification_token}
-              onChange={(verification_token) => updateFeishu({ verification_token })}
-              placeholder=""
-            />
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.feishu.allowFrom", "允许的用户 (可选)")}
-              </Label>
-              <Input
-                value={config.feishu.allow_from.join(", ")}
-                onChange={(e) =>
-                  updateFeishu({
-                    allow_from: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
+      {/* Edit Dialog */}
+      <Dialog open={!!editingInstance} onOpenChange={(open) => !open && setEditingInstance(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {t("channels.editChannel", "编辑渠道")} - {editingInstance?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {editingInstance?.type === "telegram" && (
+              <TelegramForm
+                instance={editingInstance as TelegramInstance}
+                onChange={(update) =>
+                  updateInstance(editingInstance.id, update)
                 }
-                placeholder="ou_xxxxx"
               />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.feishu.allowFromDescription", "用户 open_id，留空允许所有用户")}
-              </p>
-            </div>
-          </div>
-        </ChannelCard>
-
-        {/* WhatsApp */}
-        <ChannelCard
-          name="WhatsApp"
-          description={t("channels.whatsapp.description", "通过 WhatsApp Bridge 接收消息")}
-          icon={<WhatsAppIcon className="h-5 w-5" />}
-          enabled={config.whatsapp.enabled}
-          onToggle={(enabled) => updateWhatsApp({ enabled })}
-          isExpanded={expandedChannel === "whatsapp"}
-          onExpand={() => setExpandedChannel(expandedChannel === "whatsapp" ? null : "whatsapp")}
-        >
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.whatsapp.bridgeUrl", "Bridge URL")}
-              </Label>
-              <Input
-                value={config.whatsapp.bridge_url}
-                onChange={(e) => updateWhatsApp({ bridge_url: e.target.value })}
-                placeholder="ws://localhost:3001"
-              />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.whatsapp.bridgeDescription", "WhatsApp Web Bridge WebSocket 地址")}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">
-                {t("channels.whatsapp.allowFrom", "允许的手机号 (可选)")}
-              </Label>
-              <Input
-                value={config.whatsapp.allow_from.join(", ")}
-                onChange={(e) =>
-                  updateWhatsApp({
-                    allow_from: e.target.value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  })
+            )}
+            {editingInstance?.type === "discord" && (
+              <DiscordForm
+                instance={editingInstance as DiscordInstance}
+                onChange={(update) =>
+                  updateInstance(editingInstance.id, update)
                 }
-                placeholder="+86138xxxx, +1555xxxx"
               />
-              <p className="text-xs text-muted-foreground/70">
-                {t("channels.whatsapp.allowFromDescription", "留空允许所有用户")}
-              </p>
-            </div>
+            )}
+            {editingInstance?.type === "feishu" && (
+              <FeishuForm
+                instance={editingInstance as FeishuInstance}
+                onChange={(update) =>
+                  updateInstance(editingInstance.id, update)
+                }
+              />
+            )}
+            {editingInstance?.type === "whatsapp" && (
+              <WhatsAppForm
+                instance={editingInstance as WhatsAppInstance}
+                onChange={(update) =>
+                  updateInstance(editingInstance.id, update)
+                }
+              />
+            )}
           </div>
-        </ChannelCard>
-      </div>
-
-      {/* Reset Button */}
-      <div className="pt-4">
-        <Button variant="outline" onClick={resetConfig} className="w-full">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          {t("settings.resetChannels", "重置渠道配置")}
-        </Button>
-      </div>
+          <DialogFooter>
+            <Button onClick={handleSaveEdit}>
+              {t("common.save", "保存")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
