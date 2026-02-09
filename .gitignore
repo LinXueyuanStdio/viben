@@ -273,3 +273,4 @@ coverage/
 *.temp
 
 TODO.md
+Cargo.lock
