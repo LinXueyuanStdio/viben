@@ -79,7 +79,7 @@ import {
 import { useUnifiedAgents } from "@/hooks/use-unified-agents";
 import { useTranslation } from "react-i18next";
 import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings, CronJobType } from "@/types/cron";
-import { getChannelTypeName } from "@/types/channel";
+import { getChannelTypeName, type ChannelType } from "@/types/channel";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type ScheduleType = "cron" | "interval";
@@ -949,7 +949,7 @@ export function WorkspaceCronPage() {
                       <div className="flex-1">
                         <p className="text-sm font-medium">{channel.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {getChannelTypeName(channel.type)}
+                          {getChannelTypeName(channel.channel_type as ChannelType)}
                         </p>
                       </div>
                     </label>
