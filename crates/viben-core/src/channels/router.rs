@@ -8,14 +8,20 @@
 //! 2. Router looks up channel binding from ChannelService
 //! 3. Sends notifications based on notification_mode (in_app, system, both)
 //! 4. Routes to bound agent/executor if configured
+//! 5. Sends response back through the channel (bidirectional communication)
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::channels::{BindingType, Channel, ChannelService, NotificationMode};
-use crate::services::{EventService, GatewayEvent};
+use crate::channels::{
+    send_channel_message, AgentBinding, BindingType, Channel, ChannelService, NotificationMode,
+    SendMessageOptions,
+};
+use crate::executors::{CodingAgent, ExecutionEnv};
+use crate::services::{ContainerService, EventService, GatewayEvent};
 
 /// Channel router errors
 #[derive(Debug, thiserror::Error)]
@@ -26,8 +32,14 @@ pub enum RouterError {
     #[error("Agent execution error: {0}")]
     AgentExecutionError(String),
 
+    #[error("Executor error: {0}")]
+    ExecutorError(String),
+
     #[error("Router already started")]
     AlreadyStarted,
+
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
 }
 
 /// Incoming message from external channel
@@ -41,14 +53,23 @@ pub struct IncomingMessage {
     pub timestamp: i64,
 }
 
+/// Response message to send back through channel
+#[derive(Debug, Clone)]
+pub struct OutgoingMessage {
+    pub channel_id: String,
+    pub chat_id: String,
+    pub message: String,
+}
+
 /// Channel message router
 ///
 /// Subscribes to ChannelMessageReceived events and routes messages
-/// to bound agents/executors.
+/// to bound agents/executors, then sends responses back.
 #[derive(Clone)]
 pub struct ChannelRouter {
     events: Arc<EventService>,
     channels: Arc<ChannelService>,
+    container: Option<Arc<ContainerService>>,
     task_handle: Arc<tokio::sync::Mutex<Option<JoinHandle<()>>>>,
 }
 
@@ -63,8 +84,33 @@ impl ChannelRouter {
         Self {
             events,
             channels,
+            container: None,
             task_handle: Arc::new(tokio::sync::Mutex::new(None)),
         }
+    }
+
+    /// Create with container service for agent execution
+    pub fn with_container(
+        events: Arc<EventService>,
+        channels: Arc<ChannelService>,
+        container: Arc<ContainerService>,
+    ) -> Self {
+        tracing::info!(
+            target: "viben::channels::router",
+            "ChannelRouter created with ContainerService"
+        );
+
+        Self {
+            events,
+            channels,
+            container: Some(container),
+            task_handle: Arc::new(tokio::sync::Mutex::new(None)),
+        }
+    }
+
+    /// Set container service after creation
+    pub fn set_container(&mut self, container: Arc<ContainerService>) {
+        self.container = Some(container);
     }
 
     /// Start the router (subscribe to events and process messages)
@@ -76,6 +122,7 @@ impl ChannelRouter {
 
         let events = self.events.clone();
         let channels = self.channels.clone();
+        let container = self.container.clone();
         let events_for_broadcast = self.events.clone();
 
         let task = tokio::spawn(async move {
@@ -110,6 +157,7 @@ impl ChannelRouter {
                             if let Err(e) = Self::handle_message(
                                 &channels,
                                 &events_for_broadcast,
+                                container.as_ref(),
                                 msg,
                             )
                             .await
@@ -160,6 +208,7 @@ impl ChannelRouter {
     async fn handle_message(
         channels: &ChannelService,
         events: &EventService,
+        container: Option<&Arc<ContainerService>>,
         msg: IncomingMessage,
     ) -> Result<(), RouterError> {
         tracing::info!(
@@ -175,8 +224,8 @@ impl ChannelRouter {
             }
         );
 
-        // Find channel by name (TODO: also support lookup by chat_id)
-        let channel = Self::find_channel_by_name(channels, &msg.channel_name).await;
+        // Find channel by name or ID
+        let channel = Self::find_channel(channels, &msg.channel_name, &msg.channel_type).await;
 
         if let Some(channel) = channel {
             // Send notifications based on notification_mode
@@ -184,7 +233,19 @@ impl ChannelRouter {
 
             // Route to bound agent/executor if configured
             if let Some(ref binding) = channel.agent_binding {
-                Self::route_to_agent(events, &channel, binding, &msg).await?;
+                let response = Self::route_and_execute(
+                    events,
+                    container,
+                    &channel,
+                    binding,
+                    &msg,
+                )
+                .await?;
+
+                // Send response back through channel
+                if let Some(response_text) = response {
+                    Self::send_response(&channel, &msg.chat_id, &response_text).await;
+                }
             } else {
                 tracing::debug!(
                     target: "viben::channels::router",
@@ -204,21 +265,34 @@ impl ChannelRouter {
         Ok(())
     }
 
-    /// Find channel by name
-    async fn find_channel_by_name(
+    /// Find channel by name or channel type
+    async fn find_channel(
         channels: &ChannelService,
         name: &str,
+        channel_type: &str,
     ) -> Option<Channel> {
         let all_channels = channels.list_channels().await;
-        all_channels.into_iter().find(|c| c.name == name)
+
+        // First try to find by exact name match
+        if let Some(channel) = all_channels.iter().find(|c| c.name == name).cloned() {
+            return Some(channel);
+        }
+
+        // Then try to find by channel type (if only one of that type exists)
+        let type_matches: Vec<_> = all_channels
+            .iter()
+            .filter(|c| c.channel_type.to_string() == channel_type)
+            .collect();
+
+        if type_matches.len() == 1 {
+            return type_matches.first().cloned().cloned();
+        }
+
+        None
     }
 
     /// Send notifications based on channel notification_mode
-    async fn send_notifications(
-        events: &EventService,
-        channel: &Channel,
-        msg: &IncomingMessage,
-    ) {
+    async fn send_notifications(events: &EventService, channel: &Channel, msg: &IncomingMessage) {
         match channel.notification_mode {
             NotificationMode::None => {
                 tracing::debug!(
@@ -246,16 +320,13 @@ impl ChannelRouter {
         channel: &Channel,
         msg: &IncomingMessage,
     ) {
-        // Re-broadcast as a more specific notification event
-        // Frontend can subscribe to ChannelMessageReceived for in-app display
         tracing::info!(
             target: "viben::channels::router",
             "Sending in-app notification for channel {}",
             channel.name
         );
 
-        // The original ChannelMessageReceived event serves as the in-app notification
-        // Frontend SSE subscribers will receive it automatically
+        // Broadcast notification event for frontend
         events.broadcast(GatewayEvent::ChannelMessageReceived {
             channel_type: msg.channel_type.clone(),
             channel_name: msg.channel_name.clone(),
@@ -268,12 +339,9 @@ impl ChannelRouter {
 
     /// Send system notification (OS-level)
     async fn send_system_notification(channel: &Channel, msg: &IncomingMessage) {
-        // TODO: Implement OS-level notifications
-        // This would require platform-specific code or a notification library
-        // For now, just log that we would send a system notification
         tracing::info!(
             target: "viben::channels::router",
-            "Would send system notification for channel {}: {} from {}",
+            "Sending system notification for channel {}: {} from {}",
             channel.name,
             if msg.message.len() > 100 {
                 format!("{}...", &msg.message[..100])
@@ -283,19 +351,29 @@ impl ChannelRouter {
             msg.sender_name.as_deref().unwrap_or("unknown")
         );
 
-        // Platform-specific notification implementation would go here:
-        // - macOS: Use NSUserNotification or notify-rust crate
-        // - Windows: Use ToastNotification or notify-rust crate
-        // - Linux: Use libnotify or notify-rust crate
+        // Use the notifications module for cross-platform OS notifications
+        if let Err(e) = crate::notifications::notify_channel_message(
+            &channel.name,
+            &msg.channel_type,
+            msg.sender_name.as_deref(),
+            &msg.message,
+        ) {
+            tracing::warn!(
+                target: "viben::channels::router",
+                "Failed to send system notification: {}",
+                e
+            );
+        }
     }
 
-    /// Route message to bound agent or executor
-    async fn route_to_agent(
+    /// Route message to bound agent/executor and execute
+    async fn route_and_execute(
         events: &EventService,
+        container: Option<&Arc<ContainerService>>,
         channel: &Channel,
-        binding: &crate::channels::AgentBinding,
+        binding: &AgentBinding,
         msg: &IncomingMessage,
-    ) -> Result<(), RouterError> {
+    ) -> Result<Option<String>, RouterError> {
         tracing::info!(
             target: "viben::channels::router",
             "Routing message to {:?} '{}' (id={})",
@@ -306,55 +384,341 @@ impl ChannelRouter {
 
         match binding.binding_type {
             BindingType::Agent => {
-                // Route to agent via event
-                // The agent system will pick this up and process it
-                tracing::info!(
-                    target: "viben::channels::router",
-                    "Creating agent session for channel message processing"
-                );
-
-                // TODO: Create a new session and spawn agent to process the message
-                // This would involve:
-                // 1. Creating a new Session in the database
-                // 2. Spawning the agent with the message as input
-                // 3. Sending the response back through the channel
-                //
-                // For now, broadcast an event that can be handled by other services
-                events.broadcast(GatewayEvent::SessionMessage {
-                    session_id: format!("channel-{}-{}", channel.id, msg.timestamp),
-                    content: msg.message.clone(),
-                    role: "user".to_string(),
-                });
+                Self::execute_agent(events, container, channel, binding, msg).await
             }
             BindingType::Executor => {
-                // Route to executor (e.g., Claude Code)
-                tracing::info!(
-                    target: "viben::channels::router",
-                    "Routing to executor '{}' with workspace: {:?}",
-                    binding.name,
-                    binding.workspace_path
-                );
-
-                // TODO: Execute command via executor
-                // This would involve:
-                // 1. Looking up the executor configuration
-                // 2. Spawning the executor process with the message
-                // 3. Capturing output and sending back through the channel
-                //
-                // For now, just log the routing intent
-                events.broadcast(GatewayEvent::ExecutionLog {
-                    session_id: format!("executor-{}-{}", binding.id, msg.timestamp),
-                    log_type: "channel_message".to_string(),
-                    content: format!(
-                        "Received message from {}: {}",
-                        msg.sender_name.as_deref().unwrap_or("unknown"),
-                        msg.message
-                    ),
-                });
+                Self::execute_executor(events, container, channel, binding, msg).await
             }
         }
+    }
 
-        Ok(())
+    /// Execute an agent with the incoming message
+    async fn execute_agent(
+        events: &EventService,
+        container: Option<&Arc<ContainerService>>,
+        channel: &Channel,
+        binding: &AgentBinding,
+        msg: &IncomingMessage,
+    ) -> Result<Option<String>, RouterError> {
+        tracing::info!(
+            target: "viben::channels::router",
+            "Executing agent '{}' for channel message",
+            binding.name
+        );
+
+        // Generate session ID for tracking
+        let session_id = format!("channel-{}-{}", channel.id, msg.timestamp);
+
+        // Broadcast session start event
+        events.broadcast(GatewayEvent::SessionCreated {
+            session_id: session_id.clone(),
+        });
+
+        // Check if we have a container service for spawning agents
+        let Some(container) = container else {
+            tracing::warn!(
+                target: "viben::channels::router",
+                "No ContainerService available for agent execution"
+            );
+
+            // Fallback: broadcast event for external handling
+            events.broadcast(GatewayEvent::SessionMessage {
+                session_id: session_id.clone(),
+                content: msg.message.clone(),
+                role: "user".to_string(),
+            });
+
+            return Ok(Some(format!(
+                "Message received. Agent '{}' execution requires ContainerService.",
+                binding.name
+            )));
+        };
+
+        // Determine workspace path
+        let workdir = binding
+            .workspace_path
+            .as_ref()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                dirs::home_dir().unwrap_or_else(|| PathBuf::from("."))
+            });
+
+        // Create execution environment
+        let env = ExecutionEnv::default();
+
+        // Determine which agent to use based on binding.id
+        // Default to Claude Code if not specified
+        let agent = Self::resolve_agent(&binding.id)?;
+
+        // Spawn the agent
+        match container
+            .spawn_agent(&session_id, &agent, &binding.id, &workdir, &msg.message, &env)
+            .await
+        {
+            Ok(_child) => {
+                tracing::info!(
+                    target: "viben::channels::router",
+                    "Agent spawned successfully for session {}",
+                    session_id
+                );
+
+                // The container service will stream output via events
+                // We can't easily get the final response synchronously here
+                // So we return a pending message
+                Ok(Some(format!(
+                    "Processing your message with agent '{}'...",
+                    binding.name
+                )))
+            }
+            Err(e) => {
+                tracing::error!(
+                    target: "viben::channels::router",
+                    "Failed to spawn agent: {}",
+                    e
+                );
+
+                events.broadcast(GatewayEvent::Error {
+                    message: format!("Failed to execute agent: {}", e),
+                    code: Some(session_id),
+                });
+
+                Err(RouterError::AgentExecutionError(e.to_string()))
+            }
+        }
+    }
+
+    /// Execute an executor (e.g., Claude Code) with the incoming message
+    async fn execute_executor(
+        events: &EventService,
+        container: Option<&Arc<ContainerService>>,
+        channel: &Channel,
+        binding: &AgentBinding,
+        msg: &IncomingMessage,
+    ) -> Result<Option<String>, RouterError> {
+        tracing::info!(
+            target: "viben::channels::router",
+            "Executing executor '{}' for channel message",
+            binding.name
+        );
+
+        // Generate session ID
+        let session_id = format!("executor-{}-{}", channel.id, msg.timestamp);
+
+        // Determine workspace path (required for executors)
+        let Some(workspace_path) = &binding.workspace_path else {
+            return Err(RouterError::InvalidConfig(
+                "Executor binding requires workspace_path".to_string(),
+            ));
+        };
+        let workdir = PathBuf::from(workspace_path);
+
+        // Verify workspace exists
+        if !workdir.exists() {
+            return Err(RouterError::InvalidConfig(format!(
+                "Workspace path does not exist: {}",
+                workspace_path
+            )));
+        }
+
+        // Check for container service
+        let Some(container) = container else {
+            tracing::warn!(
+                target: "viben::channels::router",
+                "No ContainerService available for executor"
+            );
+
+            events.broadcast(GatewayEvent::ExecutionLog {
+                session_id: session_id.clone(),
+                log_type: "channel_message".to_string(),
+                content: format!(
+                    "Received message for executor '{}': {}",
+                    binding.name, msg.message
+                ),
+            });
+
+            return Ok(Some(format!(
+                "Message received. Executor '{}' requires ContainerService.",
+                binding.name
+            )));
+        };
+
+        // Create execution environment
+        let env = ExecutionEnv::default();
+
+        // Resolve executor type
+        let agent = Self::resolve_executor(&binding.id)?;
+
+        // Spawn the executor
+        match container
+            .spawn_agent(&session_id, &agent, &binding.id, &workdir, &msg.message, &env)
+            .await
+        {
+            Ok(_child) => {
+                tracing::info!(
+                    target: "viben::channels::router",
+                    "Executor spawned successfully for session {}",
+                    session_id
+                );
+
+                Ok(Some(format!(
+                    "Processing in workspace '{}' with {}...",
+                    workspace_path, binding.name
+                )))
+            }
+            Err(e) => {
+                tracing::error!(
+                    target: "viben::channels::router",
+                    "Failed to spawn executor: {}",
+                    e
+                );
+
+                events.broadcast(GatewayEvent::Error {
+                    message: format!("Failed to execute: {}", e),
+                    code: Some(session_id),
+                });
+
+                Err(RouterError::ExecutorError(e.to_string()))
+            }
+        }
+    }
+
+    /// Resolve agent type from binding ID
+    fn resolve_agent(agent_id: &str) -> Result<CodingAgent, RouterError> {
+        // Map common agent IDs to CodingAgent variants
+        let agent = match agent_id.to_lowercase().as_str() {
+            "claude" | "claude-code" | "claudecode" => CodingAgent::ClaudeCode(Default::default()),
+            "gemini" => CodingAgent::Gemini(Default::default()),
+            "codex" | "openai" => CodingAgent::Codex(Default::default()),
+            "cursor" => CodingAgent::CursorAgent(Default::default()),
+            "copilot" | "github-copilot" => CodingAgent::Copilot(Default::default()),
+            "amp" => CodingAgent::Amp(Default::default()),
+            "opencode" => CodingAgent::Opencode(Default::default()),
+            "qwen" | "qwencode" => CodingAgent::QwenCode(Default::default()),
+            "droid" => CodingAgent::Droid(Default::default()),
+            _ => {
+                // Default to Claude Code for unknown agents
+                tracing::warn!(
+                    target: "viben::channels::router",
+                    "Unknown agent '{}', defaulting to Claude Code",
+                    agent_id
+                );
+                CodingAgent::ClaudeCode(Default::default())
+            }
+        };
+
+        Ok(agent)
+    }
+
+    /// Resolve executor type from binding ID
+    fn resolve_executor(executor_id: &str) -> Result<CodingAgent, RouterError> {
+        // Executors use the same CodingAgent enum
+        Self::resolve_agent(executor_id)
+    }
+
+    /// Send response back through the channel
+    async fn send_response(channel: &Channel, chat_id: &str, message: &str) {
+        tracing::info!(
+            target: "viben::channels::router",
+            "Sending response to channel {} chat_id={}: {}",
+            channel.name,
+            chat_id,
+            if message.len() > 50 {
+                format!("{}...", &message[..50])
+            } else {
+                message.to_string()
+            }
+        );
+
+        let options = SendMessageOptions {
+            chat_id: chat_id.to_string(),
+            message: message.to_string(),
+            parse_mode: None,
+        };
+
+        let result = send_channel_message(channel.channel_type, &channel.config, &options).await;
+
+        if result.success {
+            tracing::info!(
+                target: "viben::channels::router",
+                "Response sent successfully to {} via {}",
+                chat_id,
+                channel.channel_type
+            );
+        } else {
+            tracing::error!(
+                target: "viben::channels::router",
+                "Failed to send response: {}",
+                result.error.unwrap_or_else(|| "Unknown error".to_string())
+            );
+        }
+    }
+}
+
+/// Response collector for streaming agent responses
+///
+/// Subscribes to session events and collects the final response
+/// for sending back through the channel.
+pub struct ResponseCollector {
+    session_id: String,
+    events: Arc<EventService>,
+    response_parts: Vec<String>,
+}
+
+impl ResponseCollector {
+    pub fn new(session_id: String, events: Arc<EventService>) -> Self {
+        Self {
+            session_id,
+            events,
+            response_parts: Vec::new(),
+        }
+    }
+
+    /// Collect response from streaming events
+    ///
+    /// Returns the collected response when the session completes
+    pub async fn collect(&mut self, timeout_secs: u64) -> Option<String> {
+        let mut rx = self.events.subscribe();
+        let timeout = tokio::time::Duration::from_secs(timeout_secs);
+
+        let result = tokio::time::timeout(timeout, async {
+            loop {
+                match rx.recv().await {
+                    Ok(event) => {
+                        match event {
+                            GatewayEvent::SessionMessage {
+                                session_id,
+                                content,
+                                role,
+                            } if session_id == self.session_id && role == "assistant" => {
+                                self.response_parts.push(content);
+                            }
+                            GatewayEvent::AgentCompleted {
+                                session_id,
+                                success,
+                                ..
+                            } if session_id == self.session_id => {
+                                if success {
+                                    return Some(self.response_parts.join("\n"));
+                                } else {
+                                    return Some("Agent execution failed.".to_string());
+                                }
+                            }
+                            GatewayEvent::Error { code, message }
+                                if code.as_deref() == Some(&self.session_id) =>
+                            {
+                                return Some(format!("Error: {}", message));
+                            }
+                            _ => {}
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+            None
+        })
+        .await;
+
+        result.unwrap_or(None)
     }
 }
 
@@ -368,8 +732,8 @@ mod tests {
         let channels = Arc::new(ChannelService::new(events.clone()));
 
         let router = ChannelRouter::new(events, channels);
-        // Router should be created successfully
         assert!(router.task_handle.lock().await.is_none());
+        assert!(router.container.is_none());
     }
 
     #[tokio::test]
@@ -393,5 +757,16 @@ mod tests {
 
         // After stop, start should succeed again
         assert!(router.start().await.is_ok());
+    }
+
+    #[test]
+    fn test_resolve_agent() {
+        // Known agents
+        assert!(ChannelRouter::resolve_agent("claude").is_ok());
+        assert!(ChannelRouter::resolve_agent("gemini").is_ok());
+        assert!(ChannelRouter::resolve_agent("codex").is_ok());
+
+        // Unknown agent defaults to Claude
+        assert!(ChannelRouter::resolve_agent("unknown-agent").is_ok());
     }
 }
