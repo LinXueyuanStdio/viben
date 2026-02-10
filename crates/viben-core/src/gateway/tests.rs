@@ -744,9 +744,10 @@ mod tests {
             let history = crate::services::HistoryService::new();
             let session_store = crate::services::SessionStoreService::new();
             let cron = crate::services::CronService::new(events_arc.clone());
-            let channel = crate::channels::ChannelService::new(events_arc);
+            let channel = crate::channels::ChannelService::new(events_arc.clone());
+            let channel_router = crate::channels::ChannelRouter::new(events_arc.clone(), std::sync::Arc::new(channel.clone()));
 
-            let state = AppState::new(db, events, container, pty, history, session_store, cron, channel);
+            let state = AppState::new(db, events, container, pty, history, session_store, cron, channel, channel_router);
 
             // Just verify it was created (no panic)
             assert!(std::sync::Arc::strong_count(&state.db) >= 1);
@@ -757,6 +758,7 @@ mod tests {
             assert!(std::sync::Arc::strong_count(&state.session_store) >= 1);
             assert!(std::sync::Arc::strong_count(&state.cron) >= 1);
             assert!(std::sync::Arc::strong_count(&state.channel) >= 1);
+            assert!(std::sync::Arc::strong_count(&state.channel_router) >= 1);
         }
     }
 
@@ -3457,6 +3459,193 @@ mod tests {
             let json = serde_json::to_value(&response).unwrap();
             assert_eq!(json["total"], 1);
             assert_eq!(json["messages"].as_array().unwrap().len(), 1);
+        }
+
+        // =====================================================================
+        // Tests with real ~/.claude data
+        // =====================================================================
+
+        #[tokio::test]
+        async fn test_discover_sessions_viben_workspace_has_data() {
+            let app = test_app().await;
+
+            // Use the actual viben workspace path
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/discover-sessions?workspace_path={}",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Response should have sessions array and total count
+            assert!(json["sessions"].is_array());
+            assert!(json["total"].is_number());
+
+            let sessions = json["sessions"].as_array().unwrap();
+            let total = json["total"].as_u64().unwrap() as usize;
+
+            // CRITICAL: Ensure we have actual data
+            assert!(
+                total > 0,
+                "Expected at least 1 session for viben workspace, got 0. \
+                This test requires real Claude Code sessions in ~/.claude/projects/"
+            );
+            assert_eq!(sessions.len(), total, "Sessions count mismatch");
+
+            // Verify first session structure
+            let first = &sessions[0];
+            assert!(first["id"].is_string(), "Session should have id");
+            assert_eq!(first["executor_type"], "claude-code");
+            assert_eq!(first["workspace_path"], workspace_path);
+            assert!(first["created_at"].is_string(), "Session should have created_at");
+            assert!(first["updated_at"].is_string(), "Session should have updated_at");
+
+            // file_path should be hidden (skip_serializing)
+            assert!(first.get("file_path").is_none(), "file_path should not be serialized");
+
+            println!(
+                "✓ Found {} Claude Code sessions for viben workspace",
+                total
+            );
+        }
+
+        #[tokio::test]
+        async fn test_get_session_messages_with_real_data() {
+            let app = test_app().await;
+
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            // First, discover sessions to get a real session ID
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/discover-sessions?workspace_path={}",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let discover_json: Value = serde_json::from_slice(&body).unwrap();
+
+            let sessions = discover_json["sessions"].as_array().unwrap();
+            assert!(!sessions.is_empty(), "Need at least one session for this test");
+
+            // Get the first session ID
+            let session_id = sessions[0]["id"].as_str().unwrap();
+
+            // Now fetch messages for this session
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/sessions/{}/messages?workspace_path={}&limit=10",
+                            session_id,
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            assert!(json["messages"].is_array());
+            assert!(json["total"].is_number());
+
+            let messages = json["messages"].as_array().unwrap();
+            let total = json["total"].as_u64().unwrap() as usize;
+
+            // Messages should exist (sessions have at least some content)
+            // Note: Some sessions may be empty or have only non-UI messages
+            println!(
+                "✓ Retrieved {} messages (total: {}) from session {}",
+                messages.len(),
+                total,
+                session_id
+            );
+
+            // If we have messages, verify structure
+            if !messages.is_empty() {
+                let first_msg = &messages[0];
+                assert!(first_msg["id"].is_string(), "Message should have id");
+                assert!(first_msg["timestamp"].is_string(), "Message should have timestamp");
+                assert!(first_msg["type"].is_string(), "Message should have type");
+            }
+        }
+
+        #[tokio::test]
+        async fn test_sessions_sorted_by_updated_at() {
+            let app = test_app().await;
+
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/discover-sessions?workspace_path={}",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let sessions = json["sessions"].as_array().unwrap();
+
+            if sessions.len() >= 2 {
+                // Verify sessions are sorted by updated_at (newest first)
+                for i in 0..sessions.len() - 1 {
+                    let current = sessions[i]["updated_at"].as_str().unwrap();
+                    let next = sessions[i + 1]["updated_at"].as_str().unwrap();
+                    assert!(
+                        current >= next,
+                        "Sessions should be sorted by updated_at descending: {} should >= {}",
+                        current,
+                        next
+                    );
+                }
+                println!("✓ Sessions are correctly sorted by updated_at (newest first)");
+            }
         }
     }
 }

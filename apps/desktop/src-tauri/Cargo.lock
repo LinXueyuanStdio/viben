@@ -6642,6 +6642,7 @@ dependencies = [
  "futures-util",
  "json-patch",
  "lazy_static",
+ "notify-rust",
  "portable-pty",
  "regex",
  "reqwest",
