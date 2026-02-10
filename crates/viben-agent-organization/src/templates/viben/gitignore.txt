@@ -1,22 +1,26 @@
-# Developer identity (local to each machine)
+# Developer identity (local only)
 .developer
 
-# Current task pointer (session state)
+# Current task pointer (each dev works on different task)
 .current-task
 
-# Ralph Loop state
+# Ralph Loop state file
 .ralph-state.json
 
-# Agent registry (runtime state)
-agents/
-
-# Log files
-*.log
+# Agent runtime files
+.agents/
 .agent-log
+.agent-runner.sh
+.session-id
+
+# Task directory runtime files
 .plan-log
 
-# Runner scripts (temporary)
-.agent-runner.sh
+# Atomic update temp files
+*.tmp
 
-# Session ID files
-.session-id
+# Update backup directories
+.backup-*
+
+# Conflict resolution temp files
+*.new

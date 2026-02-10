@@ -3,4 +3,3 @@
 pub mod backend;
 pub mod frontend;
 pub mod guides;
-pub mod shared;

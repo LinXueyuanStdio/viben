@@ -1,40 +1,59 @@
 # Component Guidelines
 
-> To be filled by the team with project-specific component conventions.
+> How components are built in this project.
+
+---
+
+## Overview
+
+<!--
+Document your project's component conventions here.
+
+Questions to answer:
+- What component patterns do you use?
+- How are props defined?
+- How do you handle composition?
+- What accessibility standards apply?
+-->
+
+(To be filled by the team)
 
 ---
 
 ## Component Structure
 
-<!-- Document standard component structure -->
+<!-- Standard structure of a component file -->
 
-```tsx
-// Example component template
-```
+(To be filled by the team)
 
 ---
 
-## Naming Conventions
+## Props Conventions
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Component files | ... | ... |
-| Props types | ... | ... |
+<!-- How props should be defined and typed -->
 
----
-
-## Props Patterns
-
-<!-- Document prop patterns -->
+(To be filled by the team)
 
 ---
 
-## Composition Patterns
+## Styling Patterns
 
-<!-- Document component composition patterns -->
+<!-- How styles are applied (CSS modules, styled-components, Tailwind, etc.) -->
+
+(To be filled by the team)
 
 ---
 
-## Styling
+## Accessibility
 
-<!-- Document styling approach (CSS modules, Tailwind, styled-components, etc.) -->
+<!-- A11y requirements and patterns -->
+
+(To be filled by the team)
+
+---
+
+## Common Mistakes
+
+<!-- Component-related mistakes your team has made -->
+
+(To be filled by the team)

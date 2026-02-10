@@ -1,39 +1,51 @@
 # Hook Guidelines
 
-> To be filled by the team with project-specific hook conventions.
+> How hooks are used in this project.
+
+---
+
+## Overview
+
+<!--
+Document your project's hook conventions here.
+
+Questions to answer:
+- What custom hooks do you have?
+- How do you handle data fetching?
+- What are the naming conventions?
+- How do you share stateful logic?
+-->
+
+(To be filled by the team)
 
 ---
 
 ## Custom Hook Patterns
 
-<!-- Document custom hook naming and organization -->
+<!-- How to create and structure custom hooks -->
+
+(To be filled by the team)
 
 ---
 
-## Data Fetching Hooks
+## Data Fetching
 
-<!-- Document data fetching patterns (React Query, SWR, etc.) -->
+<!-- How data fetching is handled (React Query, SWR, etc.) -->
 
----
-
-## State Hooks
-
-<!-- Document state management hook patterns -->
+(To be filled by the team)
 
 ---
 
-## Common Hooks
+## Naming Conventions
 
-<!-- List commonly used custom hooks -->
+<!-- Hook naming rules (use*, etc.) -->
 
-| Hook | Purpose |
-|------|---------|
-| ... | ... |
+(To be filled by the team)
 
 ---
 
-## Anti-patterns
+## Common Mistakes
 
-| Don't | Do Instead |
-|-------|------------|
-| ... | ... |
+<!-- Hook-related mistakes your team has made -->
+
+(To be filled by the team)

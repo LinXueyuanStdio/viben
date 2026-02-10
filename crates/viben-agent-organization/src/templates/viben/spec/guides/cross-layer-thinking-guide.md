@@ -1,73 +1,94 @@
 # Cross-Layer Thinking Guide
 
-> A systematic approach to changes that span multiple system layers.
+> **Purpose**: Think through data flow across layers before implementing.
 
 ---
 
-## When to Use This Guide
+## The Problem
 
-Use this guide when your change involves:
-- Database schema changes
-- API endpoint changes
-- Frontend-backend integration
-- Changes to shared types/interfaces
+**Most bugs happen at layer boundaries**, not within layers.
 
----
-
-## Layer Map
-
-| Layer | Description | Common Locations |
-|-------|-------------|------------------|
-| Database | Data storage | `db/`, `models/`, `schema/` |
-| Service | Business logic | `services/`, `lib/`, `core/` |
-| API | HTTP interface | `routes/`, `api/`, `handlers/` |
-| Frontend | UI layer | `components/`, `pages/`, `views/` |
+Common cross-layer bugs:
+- API returns format A, frontend expects format B
+- Database stores X, service transforms to Y, but loses data
+- Multiple layers implement the same logic differently
 
 ---
 
-## Pre-Implementation Checklist
+## Before Implementing Cross-Layer Features
 
-Before writing code, answer these questions:
+### Step 1: Map the Data Flow
 
-### 1. Data Flow
-- [ ] Where does the data originate?
-- [ ] What transformations happen at each layer?
-- [ ] Where does it end up (display/storage)?
+Draw out how data moves:
 
-### 2. Type Consistency
-- [ ] Are types defined in a shared location?
-- [ ] Do all layers use the same type definitions?
-- [ ] What happens if types don't match?
+```
+Source → Transform → Store → Retrieve → Transform → Display
+```
 
-### 3. Error Handling
-- [ ] How are errors propagated up the stack?
-- [ ] What error format does the frontend expect?
-- [ ] Are errors logged at appropriate layers?
+For each arrow, ask:
+- What format is the data in?
+- What could go wrong?
+- Who is responsible for validation?
 
-### 4. Loading/Pending States
-- [ ] How does the UI indicate loading?
-- [ ] What happens on timeout?
-- [ ] Is there optimistic updating?
+### Step 2: Identify Boundaries
 
----
+| Boundary | Common Issues |
+|----------|---------------|
+| API ↔ Service | Type mismatches, missing fields |
+| Service ↔ Database | Format conversions, null handling |
+| Backend ↔ Frontend | Serialization, date formats |
+| Component ↔ Component | Props shape changes |
 
-## Implementation Order
+### Step 3: Define Contracts
 
-For cross-layer features, implement in this order:
-
-1. **Types first** - Define shared types
-2. **Database layer** - Schema changes
-3. **Service layer** - Business logic
-4. **API layer** - Endpoint implementation
-5. **Frontend layer** - UI integration
+For each boundary:
+- What is the exact input format?
+- What is the exact output format?
+- What errors can occur?
 
 ---
 
-## Post-Implementation Checklist
+## Common Cross-Layer Mistakes
+
+### Mistake 1: Implicit Format Assumptions
+
+**Bad**: Assuming date format without checking
+
+**Good**: Explicit format conversion at boundaries
+
+### Mistake 2: Scattered Validation
+
+**Bad**: Validating the same thing in multiple layers
+
+**Good**: Validate once at the entry point
+
+### Mistake 3: Leaky Abstractions
+
+**Bad**: Component knows about database schema
+
+**Good**: Each layer only knows its neighbors
+
+---
+
+## Checklist for Cross-Layer Features
+
+Before implementation:
+- [ ] Mapped the complete data flow
+- [ ] Identified all layer boundaries
+- [ ] Defined format at each boundary
+- [ ] Decided where validation happens
 
 After implementation:
+- [ ] Tested with edge cases (null, empty, invalid)
+- [ ] Verified error handling at each boundary
+- [ ] Checked data survives round-trip
 
-- [ ] Test full data flow (create/read/update/delete)
-- [ ] Verify error handling at each boundary
-- [ ] Check loading states render correctly
-- [ ] Confirm types match across layers
+---
+
+## When to Create Flow Documentation
+
+Create detailed flow docs when:
+- Feature spans 3+ layers
+- Multiple teams are involved
+- Data format is complex
+- Feature has caused bugs before

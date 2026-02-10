@@ -1,97 +1,47 @@
-# Viben Multi-Agent Configuration
-# =================================
-# This file configures multi-agent parallel development using git worktrees.
+# Worktree Configuration for Multi-Agent Pipeline
+# Used for worktree initialization in multi-agent workflows
 #
-# Each agent runs in an isolated worktree with its own task context.
-# The dispatch agent coordinates phases: implement -> check -> finish -> create-pr
+# All paths are relative to project root
 
-# Version of this configuration format
-version: "1.0"
+#-------------------------------------------------------------------------------
+# Paths
+#-------------------------------------------------------------------------------
 
-# Worktree base directory (relative to repo root)
-# All agent worktrees will be created under: ../{repo-name}-worktrees/
-worktree_base: "../{repo-name}-worktrees"
+# Worktree storage directory (relative to project root)
+worktree_dir: ../viben-worktrees
 
-# Agent registry location (relative to .viben/)
-# Tracks running agents, their PIDs, worktrees, and tasks
-registry: "agents/registry.json"
+#-------------------------------------------------------------------------------
+# Files to Copy
+#-------------------------------------------------------------------------------
 
-# Default pipeline phases
-# Each phase maps to a subagent type and has timeout settings
-pipeline:
-  phases:
-    - phase: 1
-      action: implement
-      description: "Implement feature from prd.md"
-      timeout: 1800  # 30 minutes
+# Files to copy to each worktree (each worktree needs independent copy)
+# These files contain sensitive info or need worktree-independent config
+copy:
+  # Environment variables (uncomment and customize as needed)
+  # - .env
+  # - .env.local
+  # Workflow config
+  - .viben/.developer
 
-    - phase: 2
-      action: check
-      description: "Review and fix code quality issues"
-      timeout: 900   # 15 minutes
+#-------------------------------------------------------------------------------
+# Post-Create Hooks
+#-------------------------------------------------------------------------------
 
-    - phase: 3
-      action: finish
-      description: "Final verification before PR"
-      timeout: 600   # 10 minutes
+# Commands to run after creating worktree
+# Executed in worktree directory, in order, abort on failure
+post_create:
+  # Install dependencies (uncomment based on your package manager)
+  # - npm install
+  # - pnpm install --frozen-lockfile
+  # - yarn install --frozen-lockfile
 
-    - phase: 4
-      action: create-pr
-      description: "Create pull request"
-      timeout: 300   # 5 minutes
+#-------------------------------------------------------------------------------
+# Check Agent Verification (Ralph Loop)
+#-------------------------------------------------------------------------------
 
-# Verify commands (optional)
-# If configured, Ralph Loop will run these commands to verify check phase completion
-# instead of relying on completion markers in agent output.
-#
-# Example:
-# verify:
-#   - pnpm lint
-#   - pnpm typecheck
-#   - pnpm test --run
-#
-# Leave empty to use completion markers (default behavior)
-verify: []
-
-# Context injection settings
-context:
-  # Default jsonl files for each agent type
-  defaults:
-    implement:
-      - ".viben/spec/shared/index.md"
-    check:
-      - ".claude/commands/viben/finish-work.md"
-      - ".claude/commands/viben/check-cross-layer.md"
-    debug:
-      - ".viben/spec/shared/index.md"
-
-  # Dev type specific additions
-  dev_types:
-    backend:
-      implement:
-        - ".viben/spec/backend/index.md"
-      check:
-        - ".claude/commands/viben/check-backend.md"
-    frontend:
-      implement:
-        - ".viben/spec/frontend/index.md"
-      check:
-        - ".claude/commands/viben/check-frontend.md"
-    fullstack:
-      implement:
-        - ".viben/spec/backend/index.md"
-        - ".viben/spec/frontend/index.md"
-      check:
-        - ".claude/commands/viben/check-backend.md"
-        - ".claude/commands/viben/check-frontend.md"
-
-# Safety limits
-limits:
-  # Maximum concurrent agents
-  max_agents: 5
-
-  # Ralph Loop max iterations before forcing stop
-  ralph_max_iterations: 5
-
-  # Session state timeout (minutes)
-  session_timeout: 30
+# Commands to verify code quality before allowing check agent to finish
+# If configured, Ralph Loop will run these commands - all must pass to allow completion
+# If not configured or empty, trusts agent's completion markers
+verify:
+  # - pnpm lint
+  # - pnpm typecheck

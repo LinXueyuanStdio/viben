@@ -1,74 +1,92 @@
 # Code Reuse Thinking Guide
 
-> A systematic approach to identifying and implementing code reuse.
+> **Purpose**: Stop and think before creating new code - does it already exist?
 
 ---
 
-## When to Use This Guide
+## The Problem
 
-Use this guide when:
-- Creating a new utility function
-- Modifying constants/config values
-- Seeing similar code in multiple places
-- About to copy-paste code
+**Duplicated code is the #1 source of inconsistency bugs.**
+
+When you copy-paste or rewrite existing logic:
+- Bug fixes don't propagate
+- Behavior diverges over time
+- Codebase becomes harder to understand
 
 ---
 
-## Pre-Implementation Questions
+## Before Writing New Code
 
-### 1. Does It Already Exist?
-
-Before creating new code:
+### Step 1: Search First
 
 ```bash
-# Search for similar utilities
-grep -r "functionNamePattern" src/
+# Search for similar function names
+grep -r "functionName" .
+
+# Search for similar logic
+grep -r "keyword" .
 ```
 
-### 2. Should It Be Shared?
+### Step 2: Ask These Questions
 
-| Criteria | Shared | Local |
-|----------|--------|-------|
-| Used in 2+ places | Yes | No |
-| Domain-specific logic | No | Yes |
-| Pure utility function | Yes | No |
-| Component-specific | No | Yes |
-
-### 3. Where Should It Live?
-
-| Type | Location |
-|------|----------|
-| Generic utils | `src/utils/` or `lib/` |
-| Domain logic | `src/services/domain/` |
-| UI components | `src/components/shared/` |
-| Constants | `src/constants/` |
+| Question | If Yes... |
+|----------|-----------|
+| Does a similar function exist? | Use or extend it |
+| Is this pattern used elsewhere? | Follow the existing pattern |
+| Could this be a shared utility? | Create it in the right place |
+| Am I copying code from another file? | **STOP** - extract to shared |
 
 ---
 
-## Extraction Checklist
+## Common Duplication Patterns
 
-When extracting shared code:
+### Pattern 1: Copy-Paste Functions
 
-- [ ] Search for ALL usages first
-- [ ] Create in appropriate shared location
-- [ ] Update ALL existing usages
-- [ ] Add documentation/comments
-- [ ] Consider backward compatibility
+**Bad**: Copying a validation function to another file
+
+**Good**: Extract to shared utilities, import where needed
+
+### Pattern 2: Similar Components
+
+**Bad**: Creating a new component that's 80% similar to existing
+
+**Good**: Extend existing component with props/variants
+
+### Pattern 3: Repeated Constants
+
+**Bad**: Defining the same constant in multiple files
+
+**Good**: Single source of truth, import everywhere
 
 ---
 
-## Common Mistakes
+## When to Abstract
 
-| Mistake | Consequence | Prevention |
-|---------|-------------|------------|
-| Not searching first | Duplicate utilities | Always search before creating |
-| Extracting too early | Over-engineering | Wait for 2+ usages |
-| Incomplete update | Inconsistent behavior | grep after changes |
+**Abstract when**:
+- Same code appears 3+ times
+- Logic is complex enough to have bugs
+- Multiple people might need this
+
+**Don't abstract when**:
+- Only used once
+- Trivial one-liner
+- Abstraction would be more complex than duplication
 
 ---
 
-## After Extraction
+## After Batch Modifications
 
-- [ ] Run grep to verify no duplicates remain
-- [ ] Update imports in all affected files
-- [ ] Run tests to verify behavior
+When you've made similar changes to multiple files:
+
+1. **Review**: Did you catch all instances?
+2. **Search**: Run grep to find any missed
+3. **Consider**: Should this be abstracted?
+
+---
+
+## Checklist Before Commit
+
+- [ ] Searched for existing similar code
+- [ ] No copy-pasted logic that should be shared
+- [ ] Constants defined in one place
+- [ ] Similar patterns follow same structure

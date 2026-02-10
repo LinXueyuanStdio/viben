@@ -363,8 +363,8 @@ tasks/
 
 | Task Type | Must-read Document |
 |-----------|-------------------|
-| Frontend work | `frontend/index.md` -> relevant docs |
-| Backend work | `backend/index.md` -> relevant docs |
+| Frontend work | `frontend/index.md` → relevant docs |
+| Backend work | `backend/index.md` → relevant docs |
 | Cross-Layer Feature | `guides/cross-layer-thinking-guide.md` |
 
 ### Commit Convention

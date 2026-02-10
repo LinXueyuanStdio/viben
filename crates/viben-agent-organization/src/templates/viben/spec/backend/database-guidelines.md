@@ -1,37 +1,51 @@
 # Database Guidelines
 
-> To be filled by the team with project-specific database conventions.
+> Database patterns and conventions for this project.
 
 ---
 
-## ORM/Query Library
+## Overview
 
-<!-- Document which ORM or query library is used -->
+<!--
+Document your project's database conventions here.
 
----
+Questions to answer:
+- What ORM/query library do you use?
+- How are migrations managed?
+- What are the naming conventions for tables/columns?
+- How do you handle transactions?
+-->
 
-## Schema Conventions
-
-<!-- Document table/collection naming, column conventions -->
+(To be filled by the team)
 
 ---
 
 ## Query Patterns
 
-<!-- Document common query patterns -->
+<!-- How should queries be written? Batch operations? -->
+
+(To be filled by the team)
 
 ---
 
 ## Migrations
 
-<!-- Document migration workflow -->
+<!-- How to create and run migrations -->
+
+(To be filled by the team)
+
+---
+
+## Naming Conventions
+
+<!-- Table names, column names, index names -->
+
+(To be filled by the team)
 
 ---
 
 ## Common Mistakes
 
-<!-- Document common database-related mistakes to avoid -->
+<!-- Database-related mistakes your team has made -->
 
-| Mistake | Consequence | Fix |
-|---------|-------------|-----|
-| ... | ... | ... |
+(To be filled by the team)

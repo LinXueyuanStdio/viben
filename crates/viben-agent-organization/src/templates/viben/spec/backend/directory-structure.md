@@ -1,14 +1,29 @@
-# Backend Directory Structure
+# Directory Structure
 
-> To be filled by the team with project-specific directory conventions.
+> How backend code is organized in this project.
 
 ---
 
-## Module Organization
+## Overview
 
-<!-- Document your project's module structure here -->
+<!--
+Document your project's backend directory structure here.
+
+Questions to answer:
+- How are modules/packages organized?
+- Where does business logic live?
+- Where are API endpoints defined?
+- How are utilities and helpers organized?
+-->
+
+(To be filled by the team)
+
+---
+
+## Directory Layout
 
 ```
+<!-- Replace with your actual structure -->
 src/
 ├── ...
 └── ...
@@ -16,27 +31,24 @@ src/
 
 ---
 
-## File Naming
+## Module Organization
 
-<!-- Document file naming conventions -->
+<!-- How should new features/modules be organized? -->
 
-| Type | Convention | Example |
-|------|------------|---------|
-| Modules | ... | ... |
-| Tests | ... | ... |
+(To be filled by the team)
 
 ---
 
-## Import Patterns
+## Naming Conventions
 
-<!-- Document import conventions -->
+<!-- File and folder naming rules -->
 
-```python
-# Example import structure
-```
+(To be filled by the team)
 
 ---
 
-## Notes
+## Examples
 
-(Add project-specific notes here)
+<!-- Link to well-organized modules as examples -->
+
+(To be filled by the team)

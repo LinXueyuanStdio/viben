@@ -1,41 +1,51 @@
-# State Management Guidelines
+# State Management
 
-> To be filled by the team with project-specific state management conventions.
-
----
-
-## State Library
-
-<!-- Document which state management solution is used (Redux, Zustand, Jotai, etc.) -->
+> How state is managed in this project.
 
 ---
 
-## Local vs Global State
+## Overview
 
-<!-- Document when to use local vs global state -->
+<!--
+Document your project's state management conventions here.
 
-| Use Case | State Type |
-|----------|------------|
-| Form input | Local |
-| User session | Global |
-| ... | ... |
+Questions to answer:
+- What state management solution do you use?
+- How is local vs global state decided?
+- How do you handle server state?
+- What are the patterns for derived state?
+-->
+
+(To be filled by the team)
 
 ---
 
-## State Patterns
+## State Categories
 
-<!-- Document common state patterns -->
+<!-- Local state, global state, server state, URL state -->
+
+(To be filled by the team)
+
+---
+
+## When to Use Global State
+
+<!-- Criteria for promoting state to global -->
+
+(To be filled by the team)
 
 ---
 
 ## Server State
 
-<!-- Document server state management (React Query, SWR, etc.) -->
+<!-- How server data is cached and synchronized -->
+
+(To be filled by the team)
 
 ---
 
 ## Common Mistakes
 
-| Mistake | Fix |
-|---------|-----|
-| ... | ... |
+<!-- State management mistakes your team has made -->
+
+(To be filled by the team)

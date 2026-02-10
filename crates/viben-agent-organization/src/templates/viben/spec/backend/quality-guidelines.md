@@ -1,44 +1,51 @@
-# Code Quality Guidelines
+# Quality Guidelines
 
-> To be filled by the team with project-specific quality standards.
-
----
-
-## Linting & Formatting
-
-| Tool | Purpose | Command |
-|------|---------|---------|
-| ... | Linting | `...` |
-| ... | Formatting | `...` |
+> Code quality standards for backend development.
 
 ---
 
-## Type Hints
+## Overview
 
-<!-- Document type hint requirements -->
+<!--
+Document your project's quality standards here.
 
----
+Questions to answer:
+- What patterns are forbidden?
+- What linting rules do you enforce?
+- What are your testing requirements?
+- What code review standards apply?
+-->
 
-## Testing Requirements
-
-<!-- Document testing requirements -->
+(To be filled by the team)
 
 ---
 
 ## Forbidden Patterns
 
-| Pattern | Why Forbidden | Alternative |
-|---------|---------------|-------------|
-| `except:` (bare) | Catches everything | `except Exception:` |
-| `print()` | Not logged | Use logger |
-| ... | ... | ... |
+<!-- Patterns that should never be used and why -->
+
+(To be filled by the team)
 
 ---
 
-## Code Metrics
+## Required Patterns
 
-| Metric | Limit |
-|--------|-------|
-| Function length | < 50 lines |
-| File length | < 500 lines |
-| Cyclomatic complexity | < 10 |
+<!-- Patterns that must always be used -->
+
+(To be filled by the team)
+
+---
+
+## Testing Requirements
+
+<!-- What level of testing is expected -->
+
+(To be filled by the team)
+
+---
+
+## Code Review Checklist
+
+<!-- What reviewers should check -->
+
+(To be filled by the team)

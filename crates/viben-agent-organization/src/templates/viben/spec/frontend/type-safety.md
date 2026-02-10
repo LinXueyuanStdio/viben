@@ -1,33 +1,51 @@
-# Type Safety Guidelines
+# Type Safety
 
-> To be filled by the team with project-specific TypeScript conventions.
-
----
-
-## General Rules
-
-- [ ] No `any` types
-- [ ] No non-null assertions (`!`)
-- [ ] Explicit return types on public functions
+> Type safety patterns in this project.
 
 ---
 
-## Type Definitions
+## Overview
 
-<!-- Document where types should be defined -->
+<!--
+Document your project's type safety conventions here.
+
+Questions to answer:
+- What type system do you use?
+- How are types organized?
+- What validation library do you use?
+- How do you handle type inference?
+-->
+
+(To be filled by the team)
+
+---
+
+## Type Organization
+
+<!-- Where types are defined, shared types vs local types -->
+
+(To be filled by the team)
+
+---
+
+## Validation
+
+<!-- Runtime validation patterns (Zod, Yup, io-ts, etc.) -->
+
+(To be filled by the team)
+
+---
+
+## Common Patterns
+
+<!-- Type utilities, generics, type guards -->
+
+(To be filled by the team)
 
 ---
 
 ## Forbidden Patterns
 
-| Pattern | Why | Alternative |
-|---------|-----|-------------|
-| `any` | Bypasses type checking | Proper type definition |
-| `as unknown as X` | Dangerous cast | Type guards |
-| ... | ... | ... |
+<!-- any, type assertions, etc. -->
 
----
-
-## Type Utilities
-
-<!-- Document common type utilities used in the project -->
+(To be filled by the team)

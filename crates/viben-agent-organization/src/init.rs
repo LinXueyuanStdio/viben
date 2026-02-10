@@ -101,8 +101,6 @@ fn create_viben_directory(target_dir: &Path, options: &InitOptions) -> Result<()
         "spec/backend",
         "spec/frontend",
         "spec/guides",
-        "spec/shared",
-        "agents",
     ];
 
     for dir in dirs {
@@ -234,11 +232,6 @@ fn write_scripts(viben_dir: &Path, options: &InitOptions) -> Result<()> {
 /// Write spec files based on project type
 fn write_spec_files(viben_dir: &Path, options: &InitOptions) -> Result<()> {
     let spec_dir = viben_dir.join("spec");
-
-    // Always write shared specs
-    for (name, content) in templates::viben::spec::shared::get_all() {
-        write_file(&spec_dir.join("shared").join(name), content, options)?;
-    }
 
     // Always write guides
     for (name, content) in templates::viben::spec::guides::get_all() {

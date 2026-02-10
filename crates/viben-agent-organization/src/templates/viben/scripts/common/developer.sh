@@ -1,182 +1,129 @@
 #!/bin/bash
-# Developer management utilities for Viben workflow
+# Developer management utilities
 #
-# Source this file after paths.sh
+# Usage: source this file in other scripts
+#   source "$(dirname "$0")/common/developer.sh"
+#
+# Provides:
+#   init_developer     - Initialize developer
+#   ensure_developer   - Ensure developer is initialized (exit if not)
+#   show_developer_info - Show developer information
+
+# Ensure paths.sh is loaded
+if ! type get_repo_root &>/dev/null; then
+  source "$(dirname "${BASH_SOURCE[0]}")/paths.sh"
+fi
 
 # =============================================================================
-# Developer Functions
+# Developer Initialization
 # =============================================================================
 
-# Initialize developer identity
 init_developer() {
   local name="$1"
   local repo_root="${2:-$(get_repo_root)}"
 
   if [[ -z "$name" ]]; then
-    echo "Error: Developer name is required" >&2
+    echo "Error: developer name is required" >&2
     return 1
   fi
 
-  # Validate name format (lowercase alphanumeric with hyphens)
-  if ! [[ "$name" =~ ^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$ ]]; then
-    echo "Error: Invalid developer name. Use lowercase letters, numbers, and hyphens." >&2
-    return 1
-  fi
+  local dev_file="$repo_root/$DIR_WORKFLOW/$FILE_DEVELOPER"
+  local workspace_dir="$repo_root/$DIR_WORKFLOW/$DIR_WORKSPACE/$name"
 
-  local workflow_dir=$(get_workflow_dir "$repo_root")
-  local workspace_dir=$(get_workspace_dir "$repo_root")
-  local developer_dir="$workspace_dir/$name"
+  # Create .developer file
+  cat > "$dev_file" << EOF
+name=$name
+initialized_at=$(date -Iseconds)
+EOF
 
-  # Create developer file
-  echo "$name" > "$workflow_dir/$FILE_DEVELOPER"
+  # Create workspace directory structure
+  mkdir -p "$workspace_dir"
 
-  # Create developer workspace directory
-  mkdir -p "$developer_dir"
+  # Create initial journal file
+  local journal_file="$workspace_dir/${FILE_JOURNAL_PREFIX}1.md"
+  if [[ ! -f "$journal_file" ]]; then
+    cat > "$journal_file" << JOURNAL_EOF
+# Journal - $name (Part 1)
 
-  # Create developer index.md if not exists
-  if [[ ! -f "$developer_dir/index.md" ]]; then
-    local today=$(date +%Y-%m-%d)
-    cat > "$developer_dir/index.md" << EOF
-# $name Workspace
-
-> Personal workspace for AI Agent sessions
+> AI development session journal
+> Started: $(date +%Y-%m-%d)
 
 ---
 
-## Quick Stats
+JOURNAL_EOF
+  fi
 
-<!-- @@@auto:stats -->
-| Metric | Value |
-|--------|-------|
-| Total Sessions | 0 |
-| Last Active | $today |
-| Current Journal | journal-1.md |
-<!-- @@@/auto:stats -->
+  # Create index.md with markers for auto-update
+  local index_file="$workspace_dir/index.md"
+  if [[ ! -f "$index_file" ]]; then
+    cat > "$index_file" << INDEX_EOF
+# Workspace Index - $name
+
+> Journal tracking for AI development sessions.
+
+---
+
+## Current Status
+
+<!-- @@@auto:current-status -->
+- **Active File**: \`journal-1.md\`
+- **Total Sessions**: 0
+- **Last Active**: -
+<!-- @@@/auto:current-status -->
+
+---
+
+## Active Documents
+
+<!-- @@@auto:active-documents -->
+| File | Lines | Status |
+|------|-------|--------|
+| \`journal-1.md\` | ~0 | Active |
+<!-- @@@/auto:active-documents -->
 
 ---
 
 ## Session History
 
-<!-- @@@auto:history -->
+<!-- @@@auto:session-history -->
 | # | Date | Title | Commits |
 |---|------|-------|---------|
-<!-- @@@/auto:history -->
-
----
-
-## Active Work
-
-(None currently)
+<!-- @@@/auto:session-history -->
 
 ---
 
 ## Notes
 
-(Add any personal notes here)
-EOF
-  fi
-
-  # Create initial journal file if not exists
-  if [[ ! -f "$developer_dir/journal-1.md" ]]; then
-    local today=$(date +%Y-%m-%d)
-    cat > "$developer_dir/journal-1.md" << EOF
-# Journal 1
-
-> Session records for $name
-
----
-
-## Session 1: Workspace Initialized
-
-**Date**: $today
-
-### Summary
-
-Initialized Viben Agent Organization workspace.
-
-### Status
-
-[OK] **Completed**
-EOF
+- Sessions are appended to journal files
+- New journal file created when current exceeds 2000 lines
+- Use \`add-session.sh\` to record sessions
+INDEX_EOF
   fi
 
   echo "Developer initialized: $name"
-  echo "Workspace created: $developer_dir"
+  echo "  .developer file: $dev_file"
+  echo "  Workspace dir: $workspace_dir"
 }
 
-# Get developer workspace directory
-get_developer_workspace() {
+ensure_developer() {
+  local repo_root="${1:-$(get_repo_root)}"
+
+  if ! check_developer "$repo_root"; then
+    echo "Error: Developer not initialized." >&2
+    echo "Run: ./.viben/scripts/init-developer.sh <your-name>" >&2
+    exit 1
+  fi
+}
+
+show_developer_info() {
   local repo_root="${1:-$(get_repo_root)}"
   local developer=$(get_developer "$repo_root")
 
   if [[ -z "$developer" ]]; then
-    return 1
-  fi
-
-  echo "$(get_workspace_dir "$repo_root")/$developer"
-}
-
-# Get current journal file path
-get_current_journal() {
-  local repo_root="${1:-$(get_repo_root)}"
-  local developer_dir=$(get_developer_workspace "$repo_root")
-
-  if [[ -z "$developer_dir" ]]; then
-    return 1
-  fi
-
-  # Find highest numbered journal file
-  local latest=$(ls -1 "$developer_dir"/journal-*.md 2>/dev/null | sort -t'-' -k2 -n | tail -1)
-
-  if [[ -z "$latest" ]]; then
-    echo "$developer_dir/journal-1.md"
+    echo "Developer: (not initialized)"
   else
-    echo "$latest"
+    echo "Developer: $developer"
+    echo "Workspace: $DIR_WORKFLOW/$DIR_WORKSPACE/$developer/"
+    echo "Tasks: $DIR_WORKFLOW/$DIR_TASKS/"
   fi
-}
-
-# Check if journal needs rotation (2000 line limit)
-needs_journal_rotation() {
-  local journal_file="$1"
-
-  if [[ ! -f "$journal_file" ]]; then
-    return 1  # false, doesn't need rotation
-  fi
-
-  local lines=$(wc -l < "$journal_file")
-  [[ "$lines" -ge 2000 ]]
-}
-
-# Create next journal file
-create_next_journal() {
-  local repo_root="${1:-$(get_repo_root)}"
-  local developer_dir=$(get_developer_workspace "$repo_root")
-  local developer=$(get_developer "$repo_root")
-
-  if [[ -z "$developer_dir" ]]; then
-    return 1
-  fi
-
-  # Find current journal number
-  local current=$(ls -1 "$developer_dir"/journal-*.md 2>/dev/null | sort -t'-' -k2 -n | tail -1)
-  local next_num=1
-
-  if [[ -n "$current" ]]; then
-    local current_num=$(basename "$current" .md | sed 's/journal-//')
-    next_num=$((current_num + 1))
-  fi
-
-  local next_file="$developer_dir/journal-$next_num.md"
-  local today=$(date +%Y-%m-%d)
-
-  cat > "$next_file" << EOF
-# Journal $next_num
-
-> Session records for $developer
-
----
-
-EOF
-
-  echo "$next_file"
 }

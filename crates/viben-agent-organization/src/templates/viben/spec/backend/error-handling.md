@@ -1,35 +1,51 @@
-# Error Handling Guidelines
+# Error Handling
 
-> To be filled by the team with project-specific error handling conventions.
+> How errors are handled in this project.
+
+---
+
+## Overview
+
+<!--
+Document your project's error handling conventions here.
+
+Questions to answer:
+- What error types do you define?
+- How are errors propagated?
+- How are errors logged?
+- How are errors returned to clients?
+-->
+
+(To be filled by the team)
 
 ---
 
 ## Error Types
 
-<!-- Document custom error types used in the project -->
+<!-- Custom error classes/types -->
+
+(To be filled by the team)
 
 ---
 
-## Error Propagation
+## Error Handling Patterns
 
-<!-- Document how errors should be propagated -->
+<!-- Try-catch patterns, error propagation -->
 
----
-
-## User-Facing Errors
-
-<!-- Document how to format errors for users -->
+(To be filled by the team)
 
 ---
 
-## Error Logging
+## API Error Responses
 
-<!-- Document error logging requirements -->
+<!-- Standard error response format -->
+
+(To be filled by the team)
 
 ---
 
-## Common Patterns
+## Common Mistakes
 
-```python
-# Example error handling pattern
-```
+<!-- Error handling mistakes your team has made -->
+
+(To be filled by the team)

@@ -1,43 +1,51 @@
 # Logging Guidelines
 
-> To be filled by the team with project-specific logging conventions.
+> How logging is done in this project.
 
 ---
 
-## Logging Library
+## Overview
 
-<!-- Document which logging library/framework is used -->
+<!--
+Document your project's logging conventions here.
+
+Questions to answer:
+- What logging library do you use?
+- What are the log levels and when to use each?
+- What should be logged?
+- What should NOT be logged (PII, secrets)?
+-->
+
+(To be filled by the team)
 
 ---
 
 ## Log Levels
 
-| Level | Usage |
-|-------|-------|
-| DEBUG | ... |
-| INFO | ... |
-| WARNING | ... |
-| ERROR | ... |
+<!-- When to use each level: debug, info, warn, error -->
+
+(To be filled by the team)
 
 ---
 
 ## Structured Logging
 
-<!-- Document structured logging format -->
+<!-- Log format, required fields -->
+
+(To be filled by the team)
 
 ---
 
 ## What to Log
 
-- [ ] Request/response metadata
-- [ ] Error details with context
-- [ ] Performance metrics
-- [ ] Security events
+<!-- Important events to log -->
+
+(To be filled by the team)
 
 ---
 
 ## What NOT to Log
 
-- [ ] Passwords/secrets
-- [ ] Personal data
-- [ ] Full request/response bodies (unless debugging)
+<!-- Sensitive data, PII, secrets -->
+
+(To be filled by the team)
