@@ -28,8 +28,9 @@ import type {
 // Import tab components and utilities from tabs folder
 import {
   type SidebarTab,
-  type AgentDetailInfo,
-  type ExecutorDetailInfo,
+  type AgentDetailData,
+  type ExecutorDetailData,
+  type ModelOption,
   type OpenTab,
   extractAllTools,
   extractUsedSkills,
@@ -160,11 +161,11 @@ interface RightSidebarProps {
   /** Whether group chat operations are loading */
   isGroupChatLoading?: boolean;
   // Agent/Executor detail props
-  /** Agent detail info - when provided, shows the agent detail tab */
-  agentDetail?: AgentDetailInfo | null;
-  /** Executor detail info - when provided, shows the executor detail tab */
-  executorDetail?: ExecutorDetailInfo | null;
-  /** Workspace ID for loading executor capabilities (MCP, skills, commands) */
+  /** Agent detail data - when provided, shows the agent detail tab */
+  agentDetail?: AgentDetailData | null;
+  /** Executor detail data - when provided, shows the executor detail tab */
+  executorDetail?: ExecutorDetailData | null;
+  /** Workspace ID for loading executor capabilities (MCP, skills, commands) - required when executorDetail is provided */
   workspaceId?: string;
   /** Called when agent settings button is clicked */
   onAgentSettings?: (agentId: string) => void;
@@ -173,8 +174,10 @@ interface RightSidebarProps {
   // Agent detail panel props (for full editing support)
   /** Whether the agent is the default agent */
   isAgentDefault?: boolean;
+  /** Whether the agent is workspace-scoped */
+  isAgentWorkspaceScoped?: boolean;
   /** Available models for agent selection */
-  agentModels?: Array<{ id: string; name: string; provider: string; enabled: boolean }>;
+  agentModels?: ModelOption[];
   /** Called when agent is updated */
   onAgentUpdate?: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
   /** Called when agent is set as default */
@@ -286,6 +289,7 @@ export function RightSidebar({
   onExecutorSettings,
   // Agent detail panel props
   isAgentDefault,
+  isAgentWorkspaceScoped,
   agentModels,
   onAgentUpdate,
   onAgentSetDefault,
@@ -376,8 +380,8 @@ export function RightSidebar({
 
   // Track previous groupChat, agentDetail, executorDetail to detect when they change
   const prevGroupChatRef = React.useRef<GroupChat | null | undefined>(undefined);
-  const prevAgentDetailRef = React.useRef<AgentDetailInfo | null | undefined>(undefined);
-  const prevExecutorDetailRef = React.useRef<ExecutorDetailInfo | null | undefined>(undefined);
+  const prevAgentDetailRef = React.useRef<AgentDetailData | null | undefined>(undefined);
+  const prevExecutorDetailRef = React.useRef<ExecutorDetailData | null | undefined>(undefined);
 
   // Initialize category tabs - dynamically include group chat, agent, executor tabs when available
   React.useEffect(() => {
@@ -627,11 +631,12 @@ export function RightSidebar({
               onSetDefault={onAgentSetDefault}
               onDelete={onAgentDelete}
               onSettings={onAgentSettings}
+              isWorkspaceScoped={isAgentWorkspaceScoped}
             />
           </div>
         )}
 
-        {currentTab?.type === "category" && currentTab.category === "executorDetail" && executorDetail && (
+        {currentTab?.type === "category" && currentTab.category === "executorDetail" && executorDetail && workspaceId && (
           <div className="p-3">
             <ExecutorDetailTabContent
               executor={executorDetail}

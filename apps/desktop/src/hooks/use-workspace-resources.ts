@@ -13,6 +13,10 @@ import {
   type WorkspaceModel,
   type ChatListItem,
   type ChatListCounts,
+  type CreateVibenAgentOptions,
+  type UpdateVibenAgentOptions,
+  type VibenAgentResponse,
+  type VibenAgentTemplate,
   // Legacy types for backwards compatibility
   type WorkspaceExecutor,
   type WorkspaceAgent,
@@ -308,14 +312,19 @@ export interface UseAgentsOptions {
 }
 
 export interface UseAgentsReturn {
+  // Data
   /** List of agents (both workspace and global if includeGlobal=true) */
   agents: AgentInfo[];
+  /** Default agent ID */
+  defaultAgentId: string | null;
   /** Loading state */
   loading: boolean;
   /** Error message */
   error: string | null;
   /** Total count */
   total: number;
+
+  // Read operations
   /** Refresh agents */
   refresh: () => Promise<void>;
   /** Get Viben agents */
@@ -328,6 +337,26 @@ export interface UseAgentsReturn {
   getWorkspaceAgents: () => AgentInfo[];
   /** Get global agents */
   getGlobalAgents: () => AgentInfo[];
+
+  // CRUD operations (Viben agents only)
+  /** Create a new Viben agent */
+  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  /** Update a Viben agent */
+  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  /** Remove a Viben agent */
+  removeAgent: (id: string) => Promise<void>;
+  /** Set the default agent */
+  setDefaultAgent: (id: string) => Promise<void>;
+
+  // Templates
+  /** List of agent templates */
+  templates: VibenAgentTemplate[];
+  /** Refresh templates */
+  refreshTemplates: () => Promise<void>;
+  /** Create a template from an agent */
+  createTemplate: (agentId: string, templateId: string) => Promise<VibenAgentTemplate>;
+  /** Create an agent from a template */
+  createFromTemplate: (templateId: string, agentId: string) => Promise<VibenAgentResponse>;
 }
 
 /**
@@ -336,12 +365,16 @@ export interface UseAgentsReturn {
  * When workspacePath is provided with includeGlobal=true (default):
  * - Returns both workspace-scoped and global agents
  * - source field indicates "workspace" or "global"
+ *
+ * Also provides CRUD operations for Viben agents via Gateway API.
  */
 export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const workspacePath = options?.workspacePath;
   const includeGlobal = options?.includeGlobal ?? true;
 
   const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<VibenAgentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -352,12 +385,16 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
     try {
       const client = getGatewayClient();
-      const response = await client.getAgents({
-        workspacePath: workspacePath || undefined,
-        includeGlobal,
-      });
-      setAgents(response.agents);
-      setTotal(response.total);
+      const [agentsResponse, defaultId] = await Promise.all([
+        client.getAgents({
+          workspacePath: workspacePath || undefined,
+          includeGlobal,
+        }),
+        client.getDefaultAgentId().catch(() => null),
+      ]);
+      setAgents(agentsResponse.agents);
+      setTotal(agentsResponse.total);
+      setDefaultAgentIdState(defaultId);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load agents";
@@ -368,11 +405,23 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     }
   }, [workspacePath, includeGlobal]);
 
+  const loadTemplates = useCallback(async () => {
+    try {
+      const client = getGatewayClient();
+      const templateList = await client.listAgentTemplates();
+      setTemplates(templateList);
+    } catch (err) {
+      console.error("[useAgents] Failed to load templates:", err);
+    }
+  }, []);
+
   // Load on mount and when options change
   useEffect(() => {
     loadAgents();
-  }, [loadAgents]);
+    loadTemplates();
+  }, [loadAgents, loadTemplates]);
 
+  // Read operations
   const getVibenAgents = useCallback(() => {
     return agents.filter((a) => a.agent_type === "viben");
   }, [agents]);
@@ -396,17 +445,108 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     return agents.filter((a) => a.source === "global");
   }, [agents]);
 
+  // CRUD operations
+  const createAgent = useCallback(
+    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      // Add workspace path if creating workspace-scoped agent
+      const optionsWithPath = workspacePath
+        ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
+        : createOptions;
+      const result = await client.createVibenAgent(optionsWithPath);
+      // Refresh agent list after creation
+      await loadAgents();
+      return result;
+    },
+    [workspacePath, loadAgents]
+  );
+
+  const updateAgent = useCallback(
+    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      const result = await client.updateVibenAgent(agentId, updates);
+      // Refresh agent list after update
+      await loadAgents();
+      return result;
+    },
+    [loadAgents]
+  );
+
+  const removeAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      await client.deleteVibenAgent(agentId);
+      // Refresh agent list after deletion
+      await loadAgents();
+    },
+    [loadAgents]
+  );
+
+  const setDefaultAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      await client.setDefaultAgent(id);
+      setDefaultAgentIdState(id);
+    },
+    []
+  );
+
+  // Template operations
+  const createTemplate = useCallback(
+    async (agentId: string, templateId: string): Promise<VibenAgentTemplate> => {
+      const client = getGatewayClient();
+      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
+      const cleanAgentId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
+      const result = await client.createAgentTemplate(cleanAgentId, templateId);
+      // Refresh templates after creation
+      await loadTemplates();
+      return result;
+    },
+    [loadTemplates]
+  );
+
+  const createFromTemplate = useCallback(
+    async (templateId: string, agentId: string): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      const result = await client.createAgentFromTemplate(templateId, agentId);
+      // Refresh agent list after creation
+      await loadAgents();
+      return result;
+    },
+    [loadAgents]
+  );
+
   return {
+    // Data
     agents,
+    defaultAgentId,
     loading,
     error,
     total,
+
+    // Read operations
     refresh: loadAgents,
     getVibenAgents,
     getIdeAgents,
     getAgent,
     getWorkspaceAgents,
     getGlobalAgents,
+
+    // CRUD operations
+    createAgent,
+    updateAgent,
+    removeAgent,
+    setDefaultAgent,
+
+    // Templates
+    templates,
+    refreshTemplates: loadTemplates,
+    createTemplate,
+    createFromTemplate,
   };
 }
 
@@ -557,6 +697,20 @@ export interface UseChatListOptions {
   includeGlobal?: boolean;
 }
 
+/** Agent operations available from useChatList */
+export interface AgentOperations {
+  /** Default agent ID */
+  defaultAgentId: string | null;
+  /** Set the default agent */
+  setDefaultAgent: (id: string) => Promise<void>;
+  /** Remove a Viben agent */
+  removeAgent: (id: string) => Promise<void>;
+  /** Update a Viben agent */
+  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  /** Create a new Viben agent */
+  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
+}
+
 export interface UseChatListReturn {
   /** All chat list items (group chats, executors, agents) */
   items: ChatListItem[];
@@ -574,6 +728,8 @@ export interface UseChatListReturn {
   error: string | null;
   /** Refresh chat list */
   refresh: () => Promise<void>;
+  /** Agent operations (delegate to useAgents internally) */
+  agentOperations: AgentOperations;
 }
 
 /**
@@ -583,6 +739,8 @@ export interface UseChatListReturn {
  * - Group chats (from workspace + global)
  * - Executors (with config)
  * - Viben agents (from workspace + global)
+ *
+ * Also provides agentOperations for managing Viben agents.
  */
 export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const workspacePath = options?.workspacePath;
@@ -594,6 +752,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
     executors: 0,
     agents: 0,
   });
+  const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -603,12 +762,16 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
 
     try {
       const client = getGatewayClient();
-      const response = await client.getChatList({
-        workspacePath: workspacePath || undefined,
-        includeGlobal,
-      });
+      const [response, defaultId] = await Promise.all([
+        client.getChatList({
+          workspacePath: workspacePath || undefined,
+          includeGlobal,
+        }),
+        client.getDefaultAgentId().catch(() => null),
+      ]);
       setItems(response.items);
       setCounts(response.counts);
+      setDefaultAgentIdState(defaultId);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to load chat list";
@@ -629,6 +792,64 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const executors = items.filter((item) => item.item_type === "executor");
   const agents = items.filter((item) => item.item_type === "agent");
 
+  // Agent operations
+  const setDefaultAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      await client.setDefaultAgent(id);
+      setDefaultAgentIdState(id);
+    },
+    []
+  );
+
+  const removeAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      await client.deleteVibenAgent(agentId);
+      // Refresh chat list after deletion
+      await loadChatList();
+    },
+    [loadChatList]
+  );
+
+  const updateAgent = useCallback(
+    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      const result = await client.updateVibenAgent(agentId, updates);
+      // Refresh chat list after update
+      await loadChatList();
+      return result;
+    },
+    [loadChatList]
+  );
+
+  const createAgent = useCallback(
+    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      // Add workspace path if creating workspace-scoped agent
+      const optionsWithPath = workspacePath
+        ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
+        : createOptions;
+      const result = await client.createVibenAgent(optionsWithPath);
+      // Refresh chat list after creation
+      await loadChatList();
+      return result;
+    },
+    [workspacePath, loadChatList]
+  );
+
+  const agentOperations: AgentOperations = {
+    defaultAgentId,
+    setDefaultAgent,
+    removeAgent,
+    updateAgent,
+    createAgent,
+  };
+
   return {
     items,
     groupChats,
@@ -639,5 +860,6 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
     loading,
     error,
     refresh: loadChatList,
+    agentOperations,
   };
 }

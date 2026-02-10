@@ -6,7 +6,8 @@
  * - 智能体 (Agent): 来自 ~/.viben/agents/，Viben Agent 使用执行器作为运行后端
  */
 import { useCallback, useMemo } from "react";
-import { useVibenAgents, type Agent, type AgentUpdate, type CreateAgentOptions } from "./use-viben-agents";
+import { useAgents } from "./use-workspace-resources";
+import type { CreateVibenAgentOptions, UpdateVibenAgentOptions, VibenAgentResponse } from "@/lib/gateway";
 import { useWorkspaceAgents, useLocalWorkspaces } from "./use-workspaces";
 import {
   type UnifiedAgent,
@@ -50,9 +51,9 @@ export interface UseUnifiedAgentsReturn {
   /** 获取单个项目 */
   getItem: (id: string) => UnifiedAgent | undefined;
   /** 创建智能体 (全局) */
-  createAgent: (options: CreateAgentOptions) => Promise<Agent>;
+  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
   /** 更新智能体 */
-  updateAgent: (id: string, updates: AgentUpdate) => Promise<Agent>;
+  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
   /** 删除智能体 */
   removeAgent: (id: string) => Promise<void>;
   /** 设置默认智能体 */
@@ -80,19 +81,18 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   const { getWorkspace } = useLocalWorkspaces();
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
-  // Viben agents (global storage)
+  // Viben agents (from Gateway API)
   const {
-    agents: vibenAgents,
     defaultAgentId,
     loading: vibenLoading,
     error: vibenError,
     refresh: refreshVibenAgents,
-    getAgent: _getVibenAgent,
+    getVibenAgents,
     createAgent,
     updateAgent,
     removeAgent: removeVibenAgent,
     setDefaultAgent,
-  } = useVibenAgents();
+  } = useAgents();
 
   // Workspace executors (auto-discovered)
   const {
@@ -105,6 +105,9 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   // Combined loading and error states
   const loading = vibenLoading || workspaceLoading;
   const error = vibenError || workspaceError;
+
+  // Filter viben agents only (agent_type === "viben")
+  const vibenAgents = useMemo(() => getVibenAgents(), [getVibenAgents]);
 
   // Convert and merge
   const { all, executors, agents } = useMemo(() => {

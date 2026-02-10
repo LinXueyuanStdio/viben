@@ -52,7 +52,7 @@ import {
   AgentDetailPanel,
 } from "@/components/chat";
 import { Separator } from "@/components/ui/separator";
-import { useLocalWorkspaces, useVibenAgents, useVibenModels, useWorkspaceAgents, useWorkspaceAgentsFromGateway } from "@/hooks";
+import { useLocalWorkspaces, useAgents, useModels, useWorkspaceAgents, useWorkspaceAgentsFromGateway } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types";
@@ -170,7 +170,7 @@ export function WorkspaceAgentsPage({
     getVibenAgents,
   } = useWorkspaceAgentsFromGateway(workspace?.path || null);
 
-  // Viben agents for CRUD operations (we still need this for create/update/delete)
+  // Viben agents for CRUD operations (now using Gateway API)
   const {
     defaultAgentId,
     loading: loadingAgents,
@@ -179,12 +179,12 @@ export function WorkspaceAgentsPage({
     updateAgent,
     setDefaultAgent,
     refresh: refreshVibenAgents,
-  } = useVibenAgents();
+  } = useAgents({ workspacePath: workspace?.path });
 
   const {
     models,
     loading: loadingModels,
-  } = useVibenModels();
+  } = useModels();
 
   // UI state
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -612,7 +612,12 @@ export function WorkspaceAgentsPage({
             <AgentDetailPanel
               agent={selectedAgent}
               isDefault={!isWorkspaceAgent && selectedAgent.id === defaultAgentId}
-              models={models}
+              models={models.map((m) => ({
+                id: m.id,
+                name: m.name,
+                provider: m.provider_id,
+                enabled: m.is_available,
+              }))}
               onUpdate={updateAgent}
               onSetDefault={isWorkspaceAgent ? () => {} : () => setDefaultAgent(selectedAgent.id)}
               onDelete={() => handleDeleteAgent(selectedAgent.id, selectedAgent.name)}

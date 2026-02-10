@@ -1,6 +1,5 @@
 export { useAuth } from "./use-auth";
 export { usePython } from "./use-python";
-export { useAgents } from "./use-agents";
 export { useMcp } from "./use-mcp";
 export { useMcpStatusMonitor, useOnPageEnter, useServerStatus } from "./use-mcp-status-monitor";
 export { useUsage } from "./use-usage";
@@ -90,11 +89,11 @@ export {
 export {
   // New API hooks
   useExecutors,
-  useAgents as useGatewayAgents,
+  useAgents,
+  useAgents as useGatewayAgents, // Alias for backwards compatibility
   useChatList,
-  // Legacy hooks (deprecated)
+  // Legacy hooks (for backwards compatibility)
   useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
-  useWorkspaceModels,
   useWorkspaceAgentsFromGateway,
   useWorkspaceResources,
 } from "./use-workspace-resources";
@@ -106,12 +105,25 @@ export type {
   UseAgentsReturn,
   UseChatListOptions,
   UseChatListReturn,
-  // Legacy types (deprecated)
+  AgentOperations,
+  // Legacy types (for backwards compatibility)
   UseWorkspaceExecutorsReturn,
-  UseWorkspaceModelsReturn,
   UseWorkspaceAgentsFromGatewayReturn,
   UseWorkspaceResourcesReturn,
 } from "./use-workspace-resources";
+
+// Unified Models (Gateway API)
+export { useModels } from "./use-models";
+export type {
+  UseModelsOptions,
+  UseModelsReturn,
+  WorkspaceModel,
+  ModelResponse,
+  CreateModelOptions as GatewayCreateModelOptions,
+  ModelUpdate as GatewayModelUpdate,
+  DiscoveredModel,
+  ProviderType,
+} from "./use-models";
 
 // Official MCP Registry Integration
 export {
@@ -137,11 +149,9 @@ export type {
   OfficialPackageRegistryType,
 } from "./use-official-registry";
 
-// Viben-core Agents and Models
-export { useVibenAgents, useWorkspaceVibenAgents } from "./use-viben-agents";
-export type { Agent, CreateAgentOptions, AgentUpdate, AgentTemplate, AgentSession, AgentMemory, UseVibenAgentsReturn, UseWorkspaceVibenAgentsReturn } from "./use-viben-agents";
-export { useVibenModels } from "./use-viben-models";
-export type { Model, CreateModelOptions, ModelUpdate, DiscoveredModel, UseVibenModelsReturn } from "./use-viben-models";
+// Viben-core Agents
+// NOTE: useVibenAgents is DEPRECATED and will be removed. Use useAgents from use-workspace-resources.ts instead
+// Types are now available via @/lib/gateway (AgentInfo, VibenAgentResponse, etc.)
 
 // Unified Agents (combines executors and agents)
 export { useUnifiedAgents, useVibenAgentsOnly, useWorkspaceExecutors } from "./use-unified-agents";

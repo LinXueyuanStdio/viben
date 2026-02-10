@@ -61,9 +61,9 @@ import {
   PROVIDER_TYPE_LABELS,
 } from "@/hooks/use-viben-providers";
 import {
-  useVibenModels,
+  useModels,
   type DiscoveredModel,
-} from "@/hooks/use-viben-models";
+} from "@/hooks/use-models";
 import { getGatewayClient, type WorkspaceModel } from "@/lib/gateway";
 
 // Check if user prefers reduced motion
@@ -135,7 +135,7 @@ export function SettingsModelPage() {
     listProviderEnabledModels,
     enableModelForProvider,
     disableModelForProvider,
-  } = useVibenModels();
+  } = useModels();
 
   // Selected provider
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);

@@ -1906,6 +1906,801 @@ export class GatewayClient {
     const url = `${wsUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}/ws?${searchParams.toString()}`;
     return new WebSocket(url);
   }
+
+  // ==========================================================================
+  // Viben Agent CRUD Operations
+  // ==========================================================================
+
+  /**
+   * Create a new Viben agent
+   *
+   * @param options - Agent creation options
+   * @returns Created agent response
+   */
+  async createVibenAgent(
+    options: CreateVibenAgentOptions
+  ): Promise<VibenAgentResponse> {
+    const response = await fetch(`${this.baseUrl}/api/agents/viben`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(options),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create Viben agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a Viben agent by ID
+   *
+   * @param agentId - The agent ID (without viben: prefix)
+   * @returns Agent response
+   */
+  async getVibenAgent(agentId: string): Promise<VibenAgentResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get Viben agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a Viben agent
+   *
+   * @param agentId - The agent ID (without viben: prefix)
+   * @param options - Update options
+   * @returns Updated agent response
+   */
+  async updateVibenAgent(
+    agentId: string,
+    options: UpdateVibenAgentOptions
+  ): Promise<VibenAgentResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(options),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update Viben agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a Viben agent
+   *
+   * @param agentId - The agent ID (without viben: prefix)
+   */
+  async deleteVibenAgent(agentId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete Viben agent: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Default Agent Management
+  // ==========================================================================
+
+  /**
+   * Get the default agent ID
+   *
+   * @returns Default agent response
+   */
+  async getDefaultAgentId(): Promise<string | null> {
+    const response = await fetch(`${this.baseUrl}/api/agents/default`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get default agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: DefaultAgentResponse = await response.json();
+    return data.default_agent_id;
+  }
+
+  /**
+   * Set the default agent
+   *
+   * @param agentId - The agent ID to set as default
+   */
+  async setDefaultAgent(agentId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/agents/default`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ agent_id: agentId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set default agent: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Agent Templates
+  // ==========================================================================
+
+  /**
+   * List all agent templates
+   *
+   * @returns List of templates
+   */
+  async listAgentTemplates(): Promise<VibenAgentTemplate[]> {
+    const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list templates: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: ListTemplatesResponse = await response.json();
+    return data.templates;
+  }
+
+  /**
+   * Get a template by ID
+   *
+   * @param templateId - The template ID
+   * @returns Template
+   */
+  async getAgentTemplate(templateId: string): Promise<VibenAgentTemplate> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get template: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create a template from an agent
+   *
+   * @param agentId - The agent ID to create template from
+   * @param templateId - The ID for the new template
+   * @returns Created template
+   */
+  async createAgentTemplate(
+    agentId: string,
+    templateId: string
+  ): Promise<VibenAgentTemplate> {
+    const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ agent_id: agentId, template_id: templateId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create template: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create an agent from a template
+   *
+   * @param templateId - The template ID
+   * @param agentId - The ID for the new agent
+   * @returns Created agent response
+   */
+  async createAgentFromTemplate(
+    templateId: string,
+    agentId: string
+  ): Promise<VibenAgentResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}/instantiate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ agent_id: agentId }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create agent from template: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Model CRUD Operations
+  // ==========================================================================
+
+  /**
+   * Create a new custom model
+   *
+   * @param options - Model creation options
+   * @returns Created model response
+   */
+  async createModel(options: CreateModelOptions): Promise<ModelResponse> {
+    const response = await fetch(`${this.baseUrl}/api/models`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(options),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create model: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a model by ID
+   *
+   * @param id - The model ID
+   * @returns Model response
+   */
+  async getModel(id: string): Promise<ModelResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/models/${encodeURIComponent(id)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get model: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a model
+   *
+   * @param id - The model ID
+   * @param updates - Model update options
+   * @returns Updated model response
+   */
+  async updateModel(id: string, updates: ModelUpdate): Promise<ModelResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/models/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(updates),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update model: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a model
+   *
+   * @param id - The model ID
+   */
+  async deleteModel(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/models/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Default Model Management
+  // ==========================================================================
+
+  /**
+   * Get the default model ID
+   *
+   * @returns Default model ID or null if not set
+   */
+  async getDefaultModelId(): Promise<string | null> {
+    const response = await fetch(`${this.baseUrl}/api/models/default`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get default model: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: DefaultModelResponse = await response.json();
+    return data.default_model_id;
+  }
+
+  /**
+   * Set the default model
+   *
+   * @param modelId - The model ID to set as default
+   */
+  async setDefaultModel(modelId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/models/default`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ model_id: modelId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set default model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Model Enable/Disable
+  // ==========================================================================
+
+  /**
+   * Enable a model
+   *
+   * @param id - The model ID
+   */
+  async enableModel(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/models/${encodeURIComponent(id)}/enable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to enable model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Disable a model
+   *
+   * @param id - The model ID
+   */
+  async disableModel(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/models/${encodeURIComponent(id)}/disable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to disable model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Provider Model Discovery
+  // ==========================================================================
+
+  /**
+   * Discover models available from a provider via API
+   *
+   * @param providerId - The provider ID
+   * @returns List of discovered models
+   */
+  async discoverProviderModels(providerId: string): Promise<DiscoveredModel[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(providerId)}/discover-models`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to discover provider models: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: DiscoverModelsResponse = await response.json();
+    return data.models;
+  }
+
+  /**
+   * List models enabled for a specific provider
+   *
+   * @param providerId - The provider ID
+   * @returns List of enabled model IDs
+   */
+  async listProviderEnabledModels(providerId: string): Promise<string[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(providerId)}/models`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list provider enabled models: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: ProviderEnabledModelsResponse = await response.json();
+    return data.enabled_models;
+  }
+
+  /**
+   * Enable a model for a specific provider
+   *
+   * @param providerId - The provider ID
+   * @param modelId - The model ID to enable
+   */
+  async enableProviderModel(providerId: string, modelId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}/enable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to enable provider model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Disable a model for a specific provider
+   *
+   * @param providerId - The provider ID
+   * @param modelId - The model ID to disable
+   */
+  async disableProviderModel(providerId: string, modelId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}/disable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to disable provider model: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // IDE Agent Detection
+  // ==========================================================================
+
+  /**
+   * List all detected IDE agents (Claude Desktop, Cursor, etc.)
+   *
+   * @returns List of detected IDE agents
+   */
+  async listIdeAgents(): Promise<IdeAgentInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/agents/ide`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list IDE agents: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: ListIdeAgentsResponse = await response.json();
+    return data.agents;
+  }
+
+  /**
+   * Get a specific IDE agent
+   *
+   * @param agentId - The IDE agent ID (e.g., "claude", "cursor", "windsurf")
+   * @returns IDE agent information
+   */
+  async getIdeAgent(agentId: string): Promise<IdeAgentInfo> {
+    const response = await fetch(
+      `${this.baseUrl}/api/agents/ide/${encodeURIComponent(agentId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get IDE agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // MCP Configuration
+  // ==========================================================================
+
+  /**
+   * Read MCP configuration for an agent (IDE)
+   *
+   * @param agentId - The agent ID
+   * @returns MCP configuration or null if not configured
+   */
+  async readMcpConfig(agentId: string): Promise<IdeAgentMcpConfig | null> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to read MCP config: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: McpConfigResponse = await response.json();
+    return data.config;
+  }
+
+  /**
+   * Write MCP configuration for an agent (IDE)
+   *
+   * @param agentId - The agent ID
+   * @param config - MCP configuration to write
+   */
+  async writeMcpConfig(
+    agentId: string,
+    config: IdeAgentMcpConfig
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ config }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to write MCP config: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Configure browse-mcp for an agent
+   *
+   * @param agentId - The agent ID
+   * @param options - Configuration options
+   */
+  async configureBrowseMcp(
+    agentId: string,
+    options?: ConfigureBrowseMcpOptions
+  ): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}/browse-mcp`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          python_path: options?.pythonPath,
+          transport: options?.transport,
+          port: options?.port,
+          api_key: options?.apiKey,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to configure browse-mcp: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Check if browse-mcp is configured for an agent
+   *
+   * @param agentId - The agent ID
+   * @returns Whether browse-mcp is configured
+   */
+  async isBrowseMcpConfigured(agentId: string): Promise<boolean> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}/browse-mcp`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to check browse-mcp status: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data: BrowseMcpStatusResponse = await response.json();
+    return data.configured;
+  }
+
+  // Legacy aliases for backwards compatibility
+  /** @deprecated Use readMcpConfig instead */
+  async readIdeAgentConfig(agentId: string): Promise<IdeAgentMcpConfig | null> {
+    return this.readMcpConfig(agentId);
+  }
+
+  /** @deprecated Use writeMcpConfig instead */
+  async writeIdeAgentConfig(
+    agentId: string,
+    config: IdeAgentMcpConfig
+  ): Promise<void> {
+    return this.writeMcpConfig(agentId, config);
+  }
 }
 
 // ============================================================================
@@ -2333,7 +3128,10 @@ export type WorkspaceAgentType =
   | "windsurf"
   | "other";
 
-/** Agent info */
+/**
+ * Agent info - basic agent information for listing.
+ * For full agent details (Viben agents), use VibenAgentResponse.
+ */
 export interface AgentInfo {
   /** Agent ID */
   id: string;
@@ -2353,6 +3151,36 @@ export interface AgentInfo {
   mcp_server_count: number;
   /** Number of skills/commands configured */
   skill_count: number;
+
+  // Optional fields for Viben agents (populated when detailed info is available)
+  /** Description (Viben agents only) */
+  description?: string;
+  /** Model ID (Viben agents only) */
+  model?: string;
+  /** Provider ID (Viben agents only) */
+  provider?: string;
+  /** System prompt (Viben agents only) */
+  system_prompt?: string;
+  /** Append prompt (Viben agents only) */
+  append_prompt?: string;
+  /** Temperature (Viben agents only) */
+  temperature?: number;
+  /** Max tokens (Viben agents only) */
+  max_tokens?: number;
+  /** Executor type (Viben agents only) */
+  executor_type?: string;
+  /** MCP servers (Viben agents only) */
+  mcp_servers?: string[];
+  /** Skills (Viben agents only) */
+  skills?: string[];
+  /** Plan mode (Viben agents only) */
+  plan_mode?: boolean;
+  /** Approvals (Viben agents only) */
+  approvals?: boolean;
+  /** Created at (Viben agents only) */
+  created_at?: string;
+  /** Updated at (Viben agents only) */
+  updated_at?: string;
 }
 
 /** Response for agents */
@@ -2386,6 +3214,170 @@ export interface WorkspaceAgent {
 export interface WorkspaceAgentsResponse {
   workspace_path: string;
   agents: WorkspaceAgent[];
+  total: number;
+}
+
+// ============================================================================
+// Model CRUD Types
+// ============================================================================
+
+/** Provider type (matching Rust ProviderType) */
+export type ProviderType =
+  | "openai"
+  | "anthropic"
+  | "google"
+  | "groq"
+  | "deepseek"
+  | "openrouter"
+  | "ollama"
+  | "azure"
+  | "bedrock"
+  | "custom";
+
+/** Options for creating a custom model */
+export interface CreateModelOptions {
+  id: string;
+  name: string;
+  provider: ProviderType;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  set_as_default?: boolean;
+}
+
+/** Options for updating a model */
+export interface ModelUpdate {
+  name?: string;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+}
+
+/** Response from model operations */
+export interface ModelResponse {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  is_default: boolean;
+  enabled: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Response for default model */
+export interface DefaultModelResponse {
+  default_model_id: string | null;
+}
+
+/** Discovered model from provider API */
+export interface DiscoveredModel {
+  id: string;
+  name: string;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  owned_by?: string;
+  created?: number;
+}
+
+/** Response for discovered models */
+export interface DiscoverModelsResponse {
+  models: DiscoveredModel[];
+  total: number;
+}
+
+/** Response for provider enabled models */
+export interface ProviderEnabledModelsResponse {
+  provider_id: string;
+  enabled_models: string[];
+}
+
+// ============================================================================
+// Viben Agent CRUD Types
+// ============================================================================
+
+/** Options for creating a Viben agent */
+export interface CreateVibenAgentOptions {
+  name: string;
+  id?: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  system_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  from_template?: string;
+  /** Workspace path for workspace-scoped agents */
+  base_path?: string;
+}
+
+/** Response from creating/updating a Viben agent */
+export interface VibenAgentResponse {
+  id: string;
+  name: string;
+  agent_type: string;
+  source: string;
+  workspace_path?: string;
+  config_path?: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  system_prompt?: string;
+  append_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  /** MCP servers (may be omitted if empty due to skip_serializing_if) */
+  mcp_servers?: string[];
+  /** Skills (may be omitted if empty due to skip_serializing_if) */
+  skills?: string[];
+  /** Plan mode (defaults to false if omitted) */
+  plan_mode?: boolean;
+  /** Approvals (defaults to false if omitted) */
+  approvals?: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Options for updating a Viben agent */
+export interface UpdateVibenAgentOptions {
+  name?: string;
+  description?: string;
+  model?: string;
+  provider?: string;
+  system_prompt?: string;
+  append_prompt?: string;
+  temperature?: number;
+  max_tokens?: number;
+  executor_type?: string;
+  executor_config?: Record<string, unknown>;
+  mcp_servers?: string[];
+  skills?: string[];
+  plan_mode?: boolean;
+  approvals?: boolean;
+}
+
+/** Response for default agent */
+export interface DefaultAgentResponse {
+  default_agent_id: string | null;
+}
+
+/** Viben agent template */
+export interface VibenAgentTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  config: Record<string, unknown>;
+  created_at: string;
+}
+
+/** Response for listing templates */
+export interface ListTemplatesResponse {
+  templates: VibenAgentTemplate[];
   total: number;
 }
 
@@ -2429,6 +3421,65 @@ export interface ChatListResponse {
   items: ChatListItem[];
   total: number;
   counts: ChatListCounts;
+}
+
+// ============================================================================
+// IDE Agent Types (for detecting IDE agents like Claude Desktop, Cursor, etc.)
+// ============================================================================
+
+/** IDE Agent information (Claude Desktop, Cursor, etc.) */
+export interface IdeAgentInfo {
+  id: string;
+  name: string;
+  installed: boolean;
+  config_path: string | null;
+  has_mcp_config: boolean;
+  mcp_server_count?: number;
+  version?: string;
+}
+
+/** MCP Server configuration for IDE agents */
+export interface IdeMcpServerConfig {
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  transport?: string;
+  headers?: Record<string, string>;
+}
+
+/** IDE Agent MCP configuration */
+export interface IdeAgentMcpConfig {
+  mcpServers: Record<string, IdeMcpServerConfig>;
+}
+
+/** Response for listing IDE agents */
+export interface ListIdeAgentsResponse {
+  agents: IdeAgentInfo[];
+  total: number;
+}
+
+/** Response for MCP config */
+export interface McpConfigResponse {
+  agent_id: string;
+  config: IdeAgentMcpConfig | null;
+}
+
+/** @deprecated Use McpConfigResponse instead */
+export type IdeAgentConfigResponse = McpConfigResponse;
+
+/** Options for configuring browse-mcp */
+export interface ConfigureBrowseMcpOptions {
+  pythonPath?: string;
+  transport?: "stdio" | "sse" | "http";
+  port?: number;
+  apiKey?: string;
+}
+
+/** Response for browse-mcp status */
+export interface BrowseMcpStatusResponse {
+  agent_id: string;
+  configured: boolean;
 }
 
 /**

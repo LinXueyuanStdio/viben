@@ -13,8 +13,8 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useChatConfigStore } from "@/stores/chat-config-store";
-import { useVibenAgents } from "./use-viben-agents";
-import { useVibenModels } from "./use-viben-models";
+import { useAgents } from "./use-workspace-resources";
+import { useModels } from "./use-models";
 import type {
   ChatAgentConfig,
   ChatModelConfig,
@@ -129,18 +129,18 @@ export function useChatConfig(): UseChatConfigReturn {
     getSelectedModel,
   } = useChatConfigStore();
 
-  // Load agents and models from viben-core
+  // Load agents and models from Gateway API
   const {
     agents: vibenAgents,
     loading: agentsLoading,
     error: agentsError,
-  } = useVibenAgents();
+  } = useAgents();
 
   const {
     models: vibenModels,
     loading: modelsLoading,
     error: modelsError,
-  } = useVibenModels();
+  } = useModels();
 
   // Sync viben agents to store
   useEffect(() => {
@@ -159,11 +159,11 @@ export function useChatConfig(): UseChatConfigReturn {
   useEffect(() => {
     if (!modelsLoading && vibenModels.length > 0) {
       const chatModels: ChatModelConfig[] = vibenModels
-        .filter((m) => m.enabled) // Only show enabled models
+        .filter((m) => m.is_available) // Only show available models
         .map((m) => ({
           id: m.id,
           name: m.name,
-          provider: m.provider,
+          provider: m.provider_id,
         }));
       setGlobalModels(chatModels);
     }

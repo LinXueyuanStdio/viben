@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useChannelInstances, useVibenAgents } from "@/hooks";
+import { useChannelInstances, useAgents } from "@/hooks";
 import { useExecutorSessions } from "@/hooks/use-executor-sessions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -782,8 +782,10 @@ export function SettingsChannelsPage() {
     toggleInstance,
   } = useChannelInstances();
 
-  // Load agents for binding selector
-  const { agents } = useVibenAgents();
+  // Load agents for binding selector (use Gateway API)
+  const { getVibenAgents } = useAgents();
+  // Filter to only Viben agents for the binding selector
+  const agents = getVibenAgents();
 
   // Load executor sessions for binding selector (global workspace)
   const { sessions: executorSessions } = useExecutorSessions("claude-code", null);

@@ -74,9 +74,8 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
-  useVibenAgents,
-  useWorkspaceVibenAgents,
-  useVibenModels,
+  useAgents,
+  useModels,
   useAgent,
   useCloudSkillPackages,
   useLocalWorkspaces,
@@ -95,7 +94,7 @@ import {
   AGENT_TYPES,
 } from "@/types";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
-import type { AvailabilityInfo } from "@/lib/gateway";
+import type { AvailabilityInfo, VibenAgentResponse, AgentInfo } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
 
 // ============================================================================
@@ -256,18 +255,19 @@ export function AgentDetailPage() {
     ? workspaces.find((w) => w.id === workspaceId)
     : null;
 
+  // Use Gateway API for all agents (global + workspace)
   const {
-    agents: vibenAgents,
     loading: agentsLoading,
     error: agentsError,
     updateAgent,
-  } = useVibenAgents();
+    getWorkspaceAgents,
+    getGlobalAgents,
+  } = useAgents({ workspacePath: workspace?.path });
 
-  // Workspace-scoped viben agents (stored in workspace/.viben/agents/)
-  const {
-    agents: workspaceVibenAgents,
-    loading: workspaceAgentsLoading,
-  } = useWorkspaceVibenAgents(workspace?.path || null);
+  // Filter agents by source
+  const vibenAgents = getGlobalAgents().filter((a: AgentInfo) => a.agent_type === "viben");
+  const workspaceVibenAgents = getWorkspaceAgents().filter((a: AgentInfo) => a.agent_type === "viben");
+  const workspaceAgentsLoading = agentsLoading;
 
   // Workspace executors (auto-discovered from .claude, .cursor, etc.)
   const {
@@ -275,7 +275,7 @@ export function AgentDetailPage() {
     loading: executorsLoading,
   } = useWorkspaceAgents(workspaceId || null);
 
-  const { models } = useVibenModels();
+  const { models } = useModels();
   const mcpServers = useAppStore((state) => state.mcpServers);
   const { packages: skillPackages } = useCloudSkillPackages();
 
@@ -290,14 +290,14 @@ export function AgentDetailPage() {
   }, [isWorkspaceScoped]);
 
   // Find the current agent or executor
-  // First try to find in global Viben Agents
-  const globalVibenAgent = useMemo(
+  // First try to find in global Viben Agents (from list - minimal info)
+  const globalVibenAgentInfo = useMemo(
     () => vibenAgents.find((a) => a.id === agentId) || null,
     [vibenAgents, agentId]
   );
 
-  // Then try to find in workspace-scoped Viben Agents
-  const workspaceVibenAgent = useMemo(
+  // Then try to find in workspace-scoped Viben Agents (from list - minimal info)
+  const workspaceVibenAgentInfo = useMemo(
     () => workspaceVibenAgents.find((a) => a.id === agentId) || null,
     [workspaceVibenAgents, agentId]
   );
@@ -308,12 +308,45 @@ export function AgentDetailPage() {
     [workspaceExecutors, agentId]
   );
 
-  // Use workspace agent if found, otherwise fall back to global
-  const vibenAgent = workspaceVibenAgent || globalVibenAgent;
+  // Use workspace agent if found, otherwise fall back to global (just to check if it exists)
+  const vibenAgentInfo = workspaceVibenAgentInfo || globalVibenAgentInfo;
+
+  // Full agent details (loaded from Gateway API)
+  const [fullAgent, setFullAgent] = useState<VibenAgentResponse | null>(null);
+  const [loadingFullAgent, setLoadingFullAgent] = useState(false);
+
+  // Load full agent details when agent ID changes
+  useEffect(() => {
+    if (!agentId || !vibenAgentInfo) {
+      setFullAgent(null);
+      return;
+    }
+
+    const loadFullAgent = async () => {
+      setLoadingFullAgent(true);
+      try {
+        const gateway = getGatewayClient();
+        const agentData = await gateway.getVibenAgent(agentId);
+        setFullAgent(agentData);
+      } catch (err) {
+        console.error("Failed to load agent details:", err);
+        setFullAgent(null);
+      } finally {
+        setLoadingFullAgent(false);
+      }
+    };
+
+    loadFullAgent();
+  }, [agentId, vibenAgentInfo]);
 
   // Determine if we're viewing an executor or an agent
-  const isExecutor = Boolean(workspaceExecutor && !vibenAgent);
-  const agent = vibenAgent;
+  const isExecutor = Boolean(workspaceExecutor && !vibenAgentInfo);
+  // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
+  const agent = fullAgent ? {
+    ...fullAgent,
+    // Map config_path to path for backwards compatibility
+    path: fullAgent.config_path,
+  } : null;
   const executor = workspaceExecutor;
 
   // Form state
@@ -512,10 +545,10 @@ export function AgentDetailPage() {
   const modelsByProvider = useMemo(() => {
     const grouped: Record<string, typeof models> = {};
     for (const model of models) {
-      if (!grouped[model.provider]) {
-        grouped[model.provider] = [];
+      if (!grouped[model.provider_id]) {
+        grouped[model.provider_id] = [];
       }
-      grouped[model.provider].push(model);
+      grouped[model.provider_id].push(model);
     }
     return grouped;
   }, [models]);
@@ -589,7 +622,7 @@ export function AgentDetailPage() {
     }
   }, [clearMessages]);
 
-  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || executorsLoading) {
+  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || executorsLoading || loadingFullAgent) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -867,7 +900,7 @@ export function AgentDetailPage() {
                             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                               {provider}
                             </div>
-                            {providerModels.filter((m) => m.enabled).map((model) => (
+                            {providerModels.filter((m) => m.is_available).map((model) => (
                               <SelectItem key={model.id} value={model.id}>
                                 {model.name}
                               </SelectItem>

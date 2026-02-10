@@ -4,13 +4,48 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Skeleton, SkeletonCard, SkeletonChart, SkeletonHeatmap } from "@/components/ui/skeleton";
 import { BentoGrid, BentoCard } from "@/components/layout";
-import { useAgents } from "@/hooks/use-agents";
+import { getGatewayClient, type IdeAgentInfo } from "@/lib/gateway";
 import { usePython } from "@/hooks/use-python";
 import { useUsage } from "@/hooks/use-usage";
 import { useMcpStatusMonitor, useOnPageEnter } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Hook for detecting IDE agents via Gateway API.
+ */
+function useIdeAgents() {
+  const [agents, setAgents] = useState<IdeAgentInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const detectAgents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const gateway = getGatewayClient();
+      const detected = await gateway.listIdeAgents();
+      setAgents(detected);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Auto-detect on mount
+  useEffect(() => {
+    detectAgents();
+  }, [detectAgents]);
+
+  return {
+    agents,
+    loading,
+    error,
+    detectAgents,
+  };
+}
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -39,7 +74,7 @@ const cardVariants = {
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { agents, loading: agentsLoading } = useAgents();
+  const { agents, loading: agentsLoading } = useIdeAgents();
   const { selectedPython, browseMcpInfo } = usePython();
   const { stats, loading: usageLoading } = useUsage();
   const {
@@ -55,7 +90,7 @@ export function DashboardPage() {
   const { getStats } = useMcpStatusMonitor();
   useOnPageEnter({ enabled: mcpServers.length > 0 });
 
-  const configuredAgents = agents.filter((a) => a.configured);
+  const configuredAgents = agents.filter((a) => a.has_mcp_config);
   const availableProviders = getAvailableProviders();
 
   // Get server stats from the status monitor (includes real-time status)
