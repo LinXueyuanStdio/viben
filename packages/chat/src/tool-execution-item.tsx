@@ -142,7 +142,7 @@ export function ToolExecutionItem({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn("flex gap-3", className)}
+      className={cn("flex gap-3 w-full min-w-0", className)}
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
         <Wrench className="h-4 w-4 text-muted-foreground" />

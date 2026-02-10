@@ -123,11 +123,11 @@ export function PathPopover({
         <TooltipContent
           side={side}
           align={align}
-          className="w-auto max-w-[400px] p-2"
+          className="w-auto max-w-[400px] p-2 bg-popover text-popover-foreground border shadow-md"
         >
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
-              <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all select-all">
+              <code className="block text-xs bg-muted text-foreground px-2 py-1.5 rounded font-mono break-all select-all">
                 {path}
               </code>
             </div>

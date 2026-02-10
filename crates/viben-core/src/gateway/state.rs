@@ -86,10 +86,6 @@ impl AppState {
         let session_store = SessionStoreService::new();
         tracing::debug!(target: "viben::gateway::state", "SessionStoreService initialized");
 
-        tracing::debug!(target: "viben::gateway::state", "Initializing CronService...");
-        let cron = CronService::new(events_arc.clone());
-        tracing::debug!(target: "viben::gateway::state", "CronService initialized");
-
         tracing::debug!(target: "viben::gateway::state", "Initializing ChannelService...");
         let channel = ChannelService::new(events_arc.clone());
         // Load channels from config file
@@ -102,6 +98,11 @@ impl AppState {
         }
         let channel_arc = Arc::new(channel);
         tracing::debug!(target: "viben::gateway::state", "ChannelService initialized");
+
+        tracing::debug!(target: "viben::gateway::state", "Initializing CronService...");
+        let cron = CronService::new(events_arc.clone())
+            .with_channels(channel_arc.clone());
+        tracing::debug!(target: "viben::gateway::state", "CronService initialized with ChannelService");
 
         tracing::debug!(target: "viben::gateway::state", "Initializing ChannelRouter with ContainerService...");
         let channel_router = ChannelRouter::with_container(

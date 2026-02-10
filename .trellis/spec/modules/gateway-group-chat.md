@@ -1,6 +1,6 @@
 # Gateway 群聊功能规范
 
-> 支持人类用户、AI 智能体和执行器在群聊中进行实时讨论和协作。
+> 基于文件系统的群聊功能，支持人类用户与多个 AI 智能体在群聊中进行实时讨论和协作。
 
 ---
 
@@ -9,186 +9,237 @@
 | 属性 | 值 |
 |------|-----|
 | 模块 | `viben-core/gateway` |
-| 状态 | **Draft** |
+| 存储 | **文件系统** (非数据库) |
+| 状态 | **Draft v2** |
 | 优先级 | P1 |
 
 ---
 
-## 功能需求
+## 核心概念
+
+### 用户视角 vs Agent 视角
+
+| 视角 | 文件 | 内容 |
+|------|------|------|
+| **用户视角** | `messages.ui.jsonl` | 用户看到的消息流，不包含工具调用细节 |
+| **Agent 视角** | `<agent-id>/messages.agent.jsonl` | 某个 Agent 的原始消息，包含工具调用 |
+
+用户发送一句话后：
+1. 群聊里所有 Agent **并行思考**
+2. 用户视角只看到 "Agent 正在思考..."
+3. 每个 Agent 思考完成后给出答案
+4. 工具调用在后台进行，用户视角不显示
 
 ### 参与者类型
 
 | 类型 | 标识 | 说明 |
 |------|------|------|
-| `human` | 用户 ID | 人类用户，通过 WebSocket 客户端连接 |
-| `agent` | Agent ID | AI 智能体，如 Claude Code、Cursor 等 |
-| `executor` | Executor ID | 执行器进程，如 PTY session、代码执行环境 |
+| `human` | 用户 ID | 人类用户，通过 UI 发送消息 |
+| `agent` | Agent ID | AI 智能体，如 Claude、GPT 等 |
 
-### 消息路由策略
+---
 
-- **广播模式**: 消息对所有群聊成员可见
-- **定向模式**: 使用 `@mention` 指定接收者，仅被 mention 的成员收到通知
-- **混合模式**: 消息对所有人可见，但只有被 `@mention` 的成员需要响应
+## 文件系统结构
 
-### 加入方式
+### 存储位置
 
-1. **创建时指定**: 创建群聊时指定初始成员列表
-2. **动态邀请**: 群聊进行中可邀请新成员加入
-3. **成员退出**: 成员可主动退出或被移除
+```
+<workspace>/.viben/group-chats/
+```
+
+### 目录结构
+
+```
+group-chats/
+└── <group-chat-id>/
+    ├── config.yaml              # 群聊配置
+    ├── files/                   # 群文件（共享文件）
+    ├── pictures/                # 群相册（共享图片）
+    └── sessions/                # 对话记录
+        └── <session-id>/
+            ├── config.yaml          # Session 配置
+            ├── messages.ui.jsonl    # 用户视角消息（append-only）
+            ├── responses.jsonl      # 当前轮次各 agent 的回答（每轮清空重写）
+            └── agents/
+                └── <agent-id>/
+                    ├── messages.rollout.jsonl  # Agent 消息记录（含工具调用）
+                    └── subagents/              # 子 agent 消息（如有）
+                        └── agent-<subagent-id>.jsonl
+```
+
+### 关键文件说明
+
+| 文件 | 生命周期 | 用途 |
+|------|----------|------|
+| `messages.ui.jsonl` | append-only | 用户视角的完整对话历史 |
+| `responses.jsonl` | 每轮清空 | 临时存储当前轮次各 agent 回答，用于构建下轮上下文 |
+| `messages.rollout.jsonl` | append-only | agent 完整消息记录（含工具调用） |
+| `subagents/agent-*.jsonl` | append-only | 子 agent 消息记录（跟随 Claude Code 设计） |
 
 ---
 
 ## 数据模型
 
-### GroupChat (群聊)
+### config.yaml (群聊配置)
 
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GroupChat {
-    pub id: Uuid,
-    pub name: String,
-    pub description: Option<String>,
-    pub task_id: Option<Uuid>,           // 关联的任务 (可选)
-    pub created_by: String,              // 创建者 ID
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
+```yaml
+# <group-chat-id>/config.yaml
+id: "gc-uuid"
+name: "代码审查讨论"
+description: "PR #123 的代码审查"
+created_by: "user-1"
+created_at: "2026-02-10T12:00:00Z"
+updated_at: "2026-02-10T12:00:00Z"
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateGroupChat {
-    pub name: String,
-    pub description: Option<String>,
-    pub task_id: Option<Uuid>,
-    pub initial_members: Vec<GroupChatMemberInput>,
+# 群聊成员
+members:
+  - id: "user-1"
+    type: human
+    display_name: "张三"
+    role: owner
+    joined_at: "2026-02-10T12:00:00Z"
+
+  - id: "claude-code"
+    type: agent
+    display_name: "Claude Code"
+    model: "claude-sonnet-4-20250514"
+    role: member
+    joined_at: "2026-02-10T12:00:00Z"
+
+  - id: "cursor"
+    type: agent
+    display_name: "Cursor AI"
+    model: "gpt-4o"
+    role: member
+    joined_at: "2026-02-10T12:00:00Z"
+
+# 群聊设置
+settings:
+  # 消息广播模式
+  broadcast_mode: all  # all | mention_only
+  # 是否显示 agent 思考过程
+  show_thinking: false
+  # 历史消息加载数量
+  history_limit: 10
+```
+
+### config.yaml (Session 配置)
+
+```yaml
+# sessions/<session-id>/config.yaml
+id: "session-uuid"
+group_chat_id: "gc-uuid"
+title: "讨论会话 1"
+created_at: "2026-02-10T12:05:00Z"
+updated_at: "2026-02-10T12:30:00Z"
+
+# 本次会话参与的 agents
+active_agents:
+  - claude-code
+  - cursor
+
+# 会话状态
+status: active  # active | archived
+```
+
+### messages.ui.jsonl (用户视角消息)
+
+每行一条 JSON 消息，用于 UI 渲染：
+
+```jsonl
+{"id":"msg-1","type":"user","sender_id":"user-1","sender_name":"张三","content":"请帮我审查这段代码","timestamp":"2026-02-10T12:05:00Z"}
+{"id":"msg-2","type":"agent_thinking","agent_id":"claude-code","agent_name":"Claude Code","status":"thinking","timestamp":"2026-02-10T12:05:01Z"}
+{"id":"msg-3","type":"agent_thinking","agent_id":"cursor","agent_name":"Cursor AI","status":"thinking","timestamp":"2026-02-10T12:05:01Z"}
+{"id":"msg-4","type":"agent_response","agent_id":"claude-code","agent_name":"Claude Code","content":"这段代码有几个问题...","timestamp":"2026-02-10T12:05:30Z"}
+{"id":"msg-5","type":"agent_response","agent_id":"cursor","agent_name":"Cursor AI","content":"我同意 Claude 的观点，另外...","timestamp":"2026-02-10T12:05:35Z"}
+```
+
+#### UI 消息类型
+
+```typescript
+type UIMessageType =
+  | "user"           // 用户消息
+  | "agent_thinking" // Agent 正在思考
+  | "agent_response" // Agent 回复
+  | "system"         // 系统消息（成员加入/退出等）
+
+interface UIMessage {
+  id: string
+  type: UIMessageType
+  timestamp: string
+
+  // user 消息
+  sender_id?: string
+  sender_name?: string
+  content?: string
+
+  // agent_thinking 消息
+  agent_id?: string
+  agent_name?: string
+  status?: "thinking" | "done" | "error"
+
+  // agent_response 消息
+  // agent_id, agent_name, content
+
+  // system 消息
+  event?: "member_joined" | "member_left" | "session_created"
+  data?: Record<string, unknown>
 }
 ```
 
-### GroupChatMember (群聊成员)
+### responses.jsonl (当前轮次 Agent 回答)
 
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MemberType {
-    Human,
-    Agent,
-    Executor,
-}
+临时存储当前轮次各 agent 的最终回答，**不包含工具调用过程**：
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MemberRole {
-    Owner,      // 群主，可管理所有成员
-    Admin,      // 管理员，可邀请/移除成员
-    Member,     // 普通成员
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GroupChatMember {
-    pub id: Uuid,
-    pub group_chat_id: Uuid,
-    pub member_type: MemberType,
-    pub member_id: String,              // human_id / agent_id / executor_id
-    pub display_name: String,           // 显示名称
-    pub role: MemberRole,
-    pub joined_at: DateTime<Utc>,
-    pub last_seen_at: Option<DateTime<Utc>>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GroupChatMemberInput {
-    pub member_type: MemberType,
-    pub member_id: String,
-    pub display_name: Option<String>,
-    pub role: Option<MemberRole>,       // 默认 Member
-}
+```jsonl
+{"agent_id":"claude-code","agent_name":"Claude Code","content":"这段代码有几个问题...","timestamp":"2026-02-10T12:05:30Z"}
+{"agent_id":"cursor","agent_name":"Cursor AI","content":"我同意 Claude 的观点，另外...","timestamp":"2026-02-10T12:05:35Z"}
 ```
 
-### GroupChatMessage (群聊消息)
+**生命周期**：
+- 用户发送消息后，`responses.jsonl` 被**清空**
+- 每个 agent 完成回答后，追加到 `responses.jsonl`
+- 下次用户发送消息时，读取 `responses.jsonl` 构建其他 agent 的回答上下文
 
-```rust
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum MessageContentType {
-    Text,
-    Code,
-    File,
-    System,                             // 系统消息 (加入/退出/邀请)
-    ToolCall,                           // 工具调用结果
-}
+### messages.rollout.jsonl (Agent 消息记录)
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GroupChatMessage {
-    pub id: Uuid,
-    pub group_chat_id: Uuid,
-    pub sender_id: String,              // 发送者的 member_id
-    pub sender_type: MemberType,
-    pub sender_name: String,
-    pub content_type: MessageContentType,
-    pub content: String,
-    pub mentions: Vec<String>,          // @mention 的成员 ID 列表
-    pub reply_to: Option<Uuid>,         // 回复的消息 ID
-    pub metadata: Option<serde_json::Value>,
-    pub created_at: DateTime<Utc>,
-}
+Agent 的完整消息记录，包含工具调用。**关键点**：发给某个 agent 的消息会 **prepend 其他 agent 的回答**。
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SendMessageRequest {
-    pub content_type: Option<MessageContentType>,  // 默认 Text
-    pub content: String,
-    pub mentions: Option<Vec<String>>,
-    pub reply_to: Option<Uuid>,
-    pub metadata: Option<serde_json::Value>,
-}
+```jsonl
+{"role":"system","content":"你是 Claude Code，一个代码审查助手..."}
+{"role":"user","content":"请帮我审查这段代码","name":"张三"}
+{"role":"assistant","content":"让我先分析这段代码...","tool_calls":[{"id":"tc-1","type":"function","function":{"name":"read_file","arguments":"{\"path\":\"src/main.rs\"}"}}]}
+{"role":"tool","tool_call_id":"tc-1","content":"fn main() { ... }"}
+{"role":"assistant","content":"这段代码有几个问题..."}
+{"role":"user","content":"[Cursor AI]: 我同意 Claude 的观点，另外...\n\n[用户]: 那具体应该怎么改？"}
+{"role":"assistant","content":"好的，让我给出具体修改建议..."}
 ```
 
----
+**消息构建逻辑**（以发送给 Claude 为例）：
+```
+1. 读取 responses.jsonl 中非 Claude 的回答
+2. 格式化为: "[Cursor AI]: xxx\n\n[用户]: 用户新问句"
+3. 作为新的 user message 追加到 messages.rollout.jsonl
+```
 
-## 数据库 Schema
+### subagents/agent-*.jsonl (子 Agent 消息)
 
-```sql
--- 群聊表
-CREATE TABLE IF NOT EXISTS group_chats (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
-    created_by TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+当主 Agent 调用子 Agent 时（如 Claude Code 的 Task tool），子 Agent 的消息记录在此：
 
--- 群聊成员表
-CREATE TABLE IF NOT EXISTS group_chat_members (
-    id TEXT PRIMARY KEY,
-    group_chat_id TEXT NOT NULL REFERENCES group_chats(id) ON DELETE CASCADE,
-    member_type TEXT NOT NULL,          -- 'human', 'agent', 'executor'
-    member_id TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'member', -- 'owner', 'admin', 'member'
-    joined_at TEXT NOT NULL DEFAULT (datetime('now')),
-    last_seen_at TEXT,
-    UNIQUE(group_chat_id, member_type, member_id)
-);
+```
+agents/claude-code/
+├── messages.rollout.jsonl           # 主 agent 消息
+└── subagents/
+    ├── agent-explore-1.jsonl        # 探索子 agent
+    └── agent-implement-2.jsonl      # 实现子 agent
+```
 
--- 群聊消息表
-CREATE TABLE IF NOT EXISTS group_chat_messages (
-    id TEXT PRIMARY KEY,
-    group_chat_id TEXT NOT NULL REFERENCES group_chats(id) ON DELETE CASCADE,
-    sender_id TEXT NOT NULL,
-    sender_type TEXT NOT NULL,
-    sender_name TEXT NOT NULL,
-    content_type TEXT NOT NULL DEFAULT 'text',
-    content TEXT NOT NULL,
-    mentions TEXT,                       -- JSON array of member_ids
-    reply_to TEXT REFERENCES group_chat_messages(id) ON DELETE SET NULL,
-    metadata TEXT,                       -- JSON object
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
+子 agent 消息格式与主 agent 相同：
 
--- 索引
-CREATE INDEX IF NOT EXISTS idx_group_chat_members_group_id ON group_chat_members(group_chat_id);
-CREATE INDEX IF NOT EXISTS idx_group_chat_messages_group_id ON group_chat_messages(group_chat_id);
-CREATE INDEX IF NOT EXISTS idx_group_chat_messages_created_at ON group_chat_messages(created_at);
+```jsonl
+{"role":"system","content":"你是一个代码探索助手..."}
+{"role":"user","content":"请分析 src/main.rs 的结构"}
+{"role":"assistant","content":"这个文件包含..."}
 ```
 
 ---
@@ -200,29 +251,38 @@ CREATE INDEX IF NOT EXISTS idx_group_chat_messages_created_at ON group_chat_mess
 #### 群聊管理
 
 ```
-POST   /api/group-chats              创建群聊
-GET    /api/group-chats              列出群聊
-GET    /api/group-chats/:id          获取群聊详情
-PATCH  /api/group-chats/:id          更新群聊信息
-DELETE /api/group-chats/:id          删除群聊
+POST   /api/workspaces/:workspace_id/group-chats              创建群聊
+GET    /api/workspaces/:workspace_id/group-chats              列出群聊
+GET    /api/workspaces/:workspace_id/group-chats/:id          获取群聊详情
+PATCH  /api/workspaces/:workspace_id/group-chats/:id          更新群聊配置
+DELETE /api/workspaces/:workspace_id/group-chats/:id          删除群聊
 ```
 
 #### 成员管理
 
 ```
-GET    /api/group-chats/:id/members           列出成员
-POST   /api/group-chats/:id/members           添加成员 (邀请)
-PATCH  /api/group-chats/:id/members/:member_id  更新成员角色
-DELETE /api/group-chats/:id/members/:member_id  移除成员
-POST   /api/group-chats/:id/leave             退出群聊
+GET    /api/group-chats/:id/members                添加成员
+POST   /api/group-chats/:id/members                添加成员
+DELETE /api/group-chats/:id/members/:member_id     移除成员
 ```
 
-#### 消息管理
+#### Session 管理
 
 ```
-GET    /api/group-chats/:id/messages          获取消息历史
-POST   /api/group-chats/:id/messages          发送消息
-DELETE /api/group-chats/:id/messages/:msg_id  删除消息
+POST   /api/group-chats/:id/sessions               创建新 Session
+GET    /api/group-chats/:id/sessions               列出 Sessions
+GET    /api/group-chats/:id/sessions/:session_id   获取 Session 详情
+DELETE /api/group-chats/:id/sessions/:session_id   删除 Session
+```
+
+#### 消息
+
+```
+GET    /api/group-chats/:id/sessions/:session_id/messages
+       ?view=ui|agent&agent_id=xxx&limit=10&before=timestamp
+
+POST   /api/group-chats/:id/sessions/:session_id/messages
+       发送消息（触发所有 agent 响应）
 ```
 
 ### WebSocket Endpoints
@@ -230,42 +290,114 @@ DELETE /api/group-chats/:id/messages/:msg_id  删除消息
 #### 群聊实时通信
 
 ```
-WS /api/group-chats/:id/ws
+WS /api/group-chats/:id/sessions/:session_id/ws
 ```
 
 **连接参数**:
 ```
-?member_type=agent&member_id=claude-code-1
+?member_type=human&member_id=user-1
 ```
 
 **客户端命令**:
 ```typescript
 // 发送消息
-{ "type": "send_message", "content": "Hello everyone!", "mentions": ["agent-2"] }
+{ "type": "send_message", "content": "Hello everyone!" }
 
-// 输入状态
-{ "type": "typing", "is_typing": true }
+// 切换视角
+{ "type": "switch_view", "view": "ui" | "agent", "agent_id": "claude-code" }
 
-// 已读确认
-{ "type": "mark_read", "message_id": "uuid" }
+// 中断 agent 思考
+{ "type": "interrupt", "agent_id": "claude-code" }
 ```
 
 **服务端事件**:
 ```typescript
-// 新消息
-{ "type": "new_message", "message": GroupChatMessage }
+// Agent 开始思考
+{ "type": "agent_thinking", "agent_id": "string", "agent_name": "string" }
 
-// 成员加入
-{ "type": "member_joined", "member": GroupChatMember }
+// Agent 思考进度（可选，用于显示 token 流）
+{ "type": "agent_progress", "agent_id": "string", "delta": "string" }
 
-// 成员退出
-{ "type": "member_left", "member_id": "string" }
+// Agent 完成回复
+{ "type": "agent_response", "agent_id": "string", "agent_name": "string", "content": "string" }
 
-// 输入状态
-{ "type": "typing", "member_id": "string", "is_typing": boolean }
+// Agent 出错
+{ "type": "agent_error", "agent_id": "string", "error": "string" }
 
-// 消息已读
-{ "type": "message_read", "member_id": "string", "message_id": "uuid" }
+// 视角数据（切换视角后返回）
+{ "type": "view_data", "view": "ui" | "agent", "messages": Message[] }
+```
+
+---
+
+## 交互流程
+
+### 用户发送消息
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant G as Gateway
+    participant A1 as Agent 1 (Claude)
+    participant A2 as Agent 2 (Cursor)
+    participant FS as FileSystem
+
+    Note over G,FS: 1. 用户发送消息
+    U->>G: send_message("请审查代码")
+    G->>FS: 清空 responses.jsonl
+    G->>FS: append to messages.ui.jsonl (user msg)
+    G->>FS: 读取 responses.jsonl (上轮其他 agent 回答)
+
+    Note over G,A2: 2. 构建并发送给各 Agent
+    par 并行调用 Agents
+        G->>A1: [Cursor 上轮回答] + 用户问句
+        G->>A2: [Claude 上轮回答] + 用户问句
+    end
+
+    G-->>U: agent_thinking (claude)
+    G-->>U: agent_thinking (cursor)
+
+    Note over G,FS: 3. Agent 响应
+    A1->>G: 开始响应 (streaming)
+    G->>FS: append to agents/claude/messages.rollout.jsonl
+
+    A1->>G: 完成响应
+    G->>FS: append to messages.ui.jsonl (agent_response)
+    G->>FS: append to responses.jsonl (claude 回答)
+    G-->>U: agent_response (claude)
+
+    A2->>G: 完成响应
+    G->>FS: append to messages.ui.jsonl (agent_response)
+    G->>FS: append to responses.jsonl (cursor 回答)
+    G-->>U: agent_response (cursor)
+```
+
+### 切换视角
+
+用户可以在 UI 标题栏右上角切换查看不同视角：
+
+| 视角 | 数据来源 | 可发送消息 | 说明 |
+|------|----------|------------|------|
+| **群聊视角** (默认) | `messages.ui.jsonl` | ✅ 是 | 简洁的消息流，用户正常交互 |
+| **Agent 视角** | `agents/<id>/messages.rollout.jsonl` | ❌ 否（只读） | 查看特定 Agent 的工具调用过程 |
+
+**切换行为**：
+- 切换后保持在**同一消息位置**（同一轮对话）
+- Agent 视角下，消息输入框**禁用**
+- 需要用户**手动切换**，不会自动切换
+
+### Session 切换
+
+标题栏可以切换 Session（类似其他对话页面的 session 切换）：
+
+```
+┌──────────────────────────────────────────────────┐
+│  代码审查讨论  ▼  │  Session 1 ▼  │  👁 群聊视角 ▼  │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│  [消息列表]                                       │
+│                                                  │
+└──────────────────────────────────────────────────┘
 ```
 
 ---
@@ -276,17 +408,16 @@ WS /api/group-chats/:id/ws
 
 **Request**:
 ```http
-POST /api/group-chats
+POST /api/workspaces/ws-1/group-chats
 Content-Type: application/json
 
 {
   "name": "代码审查讨论",
   "description": "PR #123 的代码审查",
-  "task_id": "task-uuid",
-  "initial_members": [
-    { "member_type": "human", "member_id": "user-1", "display_name": "张三", "role": "owner" },
-    { "member_type": "agent", "member_id": "claude-code", "display_name": "Claude Code" },
-    { "member_type": "agent", "member_id": "cursor", "display_name": "Cursor AI" }
+  "members": [
+    { "type": "human", "id": "user-1", "display_name": "张三", "role": "owner" },
+    { "type": "agent", "id": "claude-code", "display_name": "Claude Code", "model": "claude-sonnet-4-20250514" },
+    { "type": "agent", "id": "cursor", "display_name": "Cursor AI", "model": "gpt-4o" }
   ]
 }
 ```
@@ -294,20 +425,15 @@ Content-Type: application/json
 **Response**:
 ```json
 {
-  "group_chat": {
-    "id": "gc-uuid",
-    "name": "代码审查讨论",
-    "description": "PR #123 的代码审查",
-    "task_id": "task-uuid",
-    "created_by": "user-1",
-    "created_at": "2024-02-08T12:00:00Z",
-    "updated_at": "2024-02-08T12:00:00Z"
-  },
+  "id": "gc-uuid",
+  "name": "代码审查讨论",
+  "path": "/workspace/path/.viben/group-chats/gc-uuid",
   "members": [
-    { "member_type": "human", "member_id": "user-1", "display_name": "张三", "role": "owner" },
-    { "member_type": "agent", "member_id": "claude-code", "display_name": "Claude Code", "role": "member" },
-    { "member_type": "agent", "member_id": "cursor", "display_name": "Cursor AI", "role": "member" }
-  ]
+    { "type": "human", "id": "user-1", "display_name": "张三", "role": "owner" },
+    { "type": "agent", "id": "claude-code", "display_name": "Claude Code" },
+    { "type": "agent", "id": "cursor", "display_name": "Cursor AI" }
+  ],
+  "created_at": "2026-02-10T12:00:00Z"
 }
 ```
 
@@ -315,146 +441,251 @@ Content-Type: application/json
 
 **Request**:
 ```http
-POST /api/group-chats/gc-uuid/messages
+POST /api/group-chats/gc-uuid/sessions/session-1/messages
 Content-Type: application/json
 
 {
-  "content": "@claude-code 请审查这个函数的实现",
-  "mentions": ["claude-code"],
-  "metadata": {
-    "file": "src/main.rs",
-    "line_range": [10, 25]
-  }
+  "content": "请帮我审查这段代码"
 }
+```
+
+**Response** (立即返回，agent 响应通过 WebSocket 推送):
+```json
+{
+  "message": {
+    "id": "msg-uuid",
+    "type": "user",
+    "content": "请帮我审查这段代码",
+    "timestamp": "2026-02-10T12:05:00Z"
+  },
+  "agents_triggered": ["claude-code", "cursor"]
+}
+```
+
+### 获取消息历史
+
+**Request**:
+```http
+GET /api/group-chats/gc-uuid/sessions/session-1/messages?view=ui&limit=10
 ```
 
 **Response**:
 ```json
 {
-  "message": {
-    "id": "msg-uuid",
-    "group_chat_id": "gc-uuid",
-    "sender_id": "user-1",
-    "sender_type": "human",
-    "sender_name": "张三",
-    "content_type": "text",
-    "content": "@claude-code 请审查这个函数的实现",
-    "mentions": ["claude-code"],
-    "reply_to": null,
-    "metadata": {
-      "file": "src/main.rs",
-      "line_range": [10, 25]
-    },
-    "created_at": "2024-02-08T12:05:00Z"
-  }
+  "messages": [
+    { "id": "msg-1", "type": "user", "sender_name": "张三", "content": "请帮我审查这段代码", "timestamp": "..." },
+    { "id": "msg-2", "type": "agent_response", "agent_name": "Claude Code", "content": "这段代码有几个问题...", "timestamp": "..." },
+    { "id": "msg-3", "type": "agent_response", "agent_name": "Cursor AI", "content": "我同意...", "timestamp": "..." }
+  ],
+  "has_more": true
 }
 ```
 
-### 邀请成员
+### 切换到 Agent 视角
 
 **Request**:
 ```http
-POST /api/group-chats/gc-uuid/members
-Content-Type: application/json
+GET /api/group-chats/gc-uuid/sessions/session-1/messages?view=agent&agent_id=claude-code&limit=10
+```
 
+**Response**:
+```json
 {
-  "member_type": "executor",
-  "member_id": "pty-session-123",
-  "display_name": "Terminal Session"
+  "messages": [
+    { "role": "system", "content": "你是 Claude Code..." },
+    { "role": "user", "content": "请帮我审查这段代码", "name": "张三" },
+    { "role": "assistant", "content": null, "tool_calls": [{ "id": "tc-1", "function": { "name": "read_file", "arguments": "..." } }] },
+    { "role": "tool", "tool_call_id": "tc-1", "content": "fn main() { ... }" },
+    { "role": "assistant", "content": "这段代码有几个问题..." }
+  ],
+  "has_more": false
 }
 ```
 
 ---
 
-## 事件流 (SSE)
+## 消息构建逻辑
 
-群聊事件通过现有的 EventService 广播：
+### 发送给 Agent 的消息构建
+
+当用户发送消息时，Gateway 需要为每个 Agent 构建独立的上下文：
 
 ```rust
-pub enum GatewayEvent {
-    // ... 现有事件
+/// 为特定 agent 构建发送消息
+fn build_message_for_agent(
+    agent_id: &str,
+    user_message: &str,
+    responses: &[AgentResponse],  // 从 responses.jsonl 读取
+) -> String {
+    // 1. 收集其他 agent 的回答
+    let other_responses: Vec<_> = responses
+        .iter()
+        .filter(|r| r.agent_id != agent_id)
+        .collect();
 
-    // 群聊事件
-    GroupChatCreated(GroupChat),
-    GroupChatUpdated(GroupChat),
-    GroupChatDeleted { id: String },
-
-    GroupChatMemberJoined { group_chat_id: String, member: GroupChatMember },
-    GroupChatMemberLeft { group_chat_id: String, member_id: String },
-
-    GroupChatMessage { group_chat_id: String, message: GroupChatMessage },
+    // 2. 构建消息
+    if other_responses.is_empty() {
+        // 第一轮对话，直接发送用户消息
+        user_message.to_string()
+    } else {
+        // 后续轮次，prepend 其他 agent 回答
+        let mut parts = Vec::new();
+        for resp in other_responses {
+            parts.push(format!("[{}]: {}", resp.agent_name, resp.content));
+        }
+        parts.push(format!("[用户]: {}", user_message));
+        parts.join("\n\n")
+    }
 }
 ```
+
+### 示例：3 个 Agent 的群聊
+
+假设群聊有 Claude、Cursor、Codex 三个 Agent：
+
+**用户第一轮**: "请帮我审查代码"
+- → 发给 Claude: "请帮我审查代码"
+- → 发给 Cursor: "请帮我审查代码"
+- → 发给 Codex: "请帮我审查代码"
+
+**各 Agent 回答后，responses.jsonl**:
+```jsonl
+{"agent_id":"claude","agent_name":"Claude","content":"代码有3个问题..."}
+{"agent_id":"cursor","agent_name":"Cursor","content":"我发现2个bug..."}
+{"agent_id":"codex","agent_name":"Codex","content":"建议重构这部分..."}
+```
+
+**用户第二轮**: "那具体怎么改？"
+- → 发给 Claude:
+  ```
+  [Cursor]: 我发现2个bug...
+
+  [Codex]: 建议重构这部分...
+
+  [用户]: 那具体怎么改？
+  ```
+- → 发给 Cursor:
+  ```
+  [Claude]: 代码有3个问题...
+
+  [Codex]: 建议重构这部分...
+
+  [用户]: 那具体怎么改？
+  ```
+- → 发给 Codex:
+  ```
+  [Claude]: 代码有3个问题...
+
+  [Cursor]: 我发现2个bug...
+
+  [用户]: 那具体怎么改？
+  ```
 
 ---
 
-## 智能体集成
+## 文件操作
 
-### 智能体响应 @mention
+### Rust 实现要点
 
-当智能体被 @mention 时：
+```rust
+use std::path::PathBuf;
+use tokio::fs;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-1. Gateway 通过 WebSocket 向该智能体发送消息
-2. 智能体处理消息并生成响应
-3. 智能体通过 WebSocket 发送响应到群聊
+/// 群聊服务
+pub struct GroupChatService {
+    workspace_path: PathBuf,
+}
 
-```typescript
-// 智能体收到的消息格式
-{
-  "type": "mention",
-  "group_chat_id": "gc-uuid",
-  "message": GroupChatMessage,
-  "context": {
-    "recent_messages": GroupChatMessage[],  // 最近 N 条消息作为上下文
-    "task": Task | null                      // 关联的任务信息
-  }
+impl GroupChatService {
+    /// 获取群聊根目录
+    fn group_chats_dir(&self) -> PathBuf {
+        self.workspace_path.join(".viben/group-chats")
+    }
+
+    /// 获取特定群聊目录
+    fn group_chat_dir(&self, id: &str) -> PathBuf {
+        self.group_chats_dir().join(id)
+    }
+
+    /// 追加消息到 JSONL 文件
+    async fn append_message(&self, path: &PathBuf, message: &impl Serialize) -> Result<()> {
+        let mut file = fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .await?;
+
+        let line = serde_json::to_string(message)?;
+        file.write_all(format!("{}\n", line).as_bytes()).await?;
+        Ok(())
+    }
+
+    /// 读取最后 N 条消息
+    async fn read_last_messages<T: DeserializeOwned>(
+        &self,
+        path: &PathBuf,
+        limit: usize
+    ) -> Result<Vec<T>> {
+        let file = fs::File::open(path).await?;
+        let reader = BufReader::new(file);
+        let mut lines = reader.lines();
+
+        let mut messages = Vec::new();
+        while let Some(line) = lines.next_line().await? {
+            let msg: T = serde_json::from_str(&line)?;
+            messages.push(msg);
+        }
+
+        // 返回最后 limit 条
+        let start = messages.len().saturating_sub(limit);
+        Ok(messages[start..].to_vec())
+    }
 }
 ```
 
-### 执行器集成
+### 文件锁定策略
 
-执行器（如 PTY session）可以将输出发送到群聊：
+使用文件级别的追加写入 (append-only)，无需复杂锁定：
 
-```typescript
-// 执行器发送的消息
-{
-  "type": "send_message",
-  "content_type": "code",
-  "content": "$ npm test\n\n✓ 10 tests passed",
-  "metadata": {
-    "exit_code": 0,
-    "duration_ms": 1234
-  }
-}
+```rust
+// JSONL 追加写入天然支持并发
+// 每次写入一行，原子性由文件系统保证
+fs::OpenOptions::new()
+    .create(true)
+    .append(true)  // 追加模式
+    .open(path)
 ```
 
 ---
 
 ## 实现优先级
 
-### Phase 1: 基础功能
+### Phase 1: 基础框架
 
-- [ ] 数据库模型 (GroupChat, GroupChatMember, GroupChatMessage)
-- [ ] REST API (CRUD)
-- [ ] WebSocket 实时通信
+- [ ] 文件系统目录结构创建
+- [ ] config.yaml 读写
+- [ ] messages.ui.jsonl 读写
+- [ ] REST API: CRUD 群聊
 
-### Phase 2: 成员管理
+### Phase 2: 消息流
 
-- [ ] 邀请/移除成员
-- [ ] 角色权限控制
-- [ ] 成员在线状态
+- [ ] 用户消息发送
+- [ ] Agent 并行调用
+- [ ] messages.agent.jsonl 记录
+- [ ] WebSocket 实时推送
 
-### Phase 3: 智能体集成
+### Phase 3: 视角切换
 
-- [ ] @mention 路由
-- [ ] 智能体自动响应
-- [ ] 执行器输出集成
+- [ ] UI 视角读取
+- [ ] Agent 视角读取
+- [ ] 前端视角切换 UI
 
 ### Phase 4: 高级功能
 
-- [ ] 消息搜索
-- [ ] 文件共享
-- [ ] 消息撤回/编辑
+- [ ] 群文件上传/下载
+- [ ] 群相册管理
+- [ ] 历史 Session 浏览
 
 ---
 
@@ -464,16 +695,28 @@ pub enum GatewayEvent {
 
 | 文件 | 说明 |
 |------|------|
-| `src/db/models/group_chat.rs` | 群聊数据模型 |
-| `src/db/models/group_chat_member.rs` | 成员数据模型 |
-| `src/db/models/group_chat_message.rs` | 消息数据模型 |
+| `src/group_chat/mod.rs` | 群聊模块入口 |
+| `src/group_chat/types.rs` | 数据类型定义 |
+| `src/group_chat/service.rs` | 群聊服务（文件操作） |
+| `src/group_chat/config.rs` | Config YAML 读写 |
+| `src/group_chat/messages.rs` | JSONL 消息读写 |
 | `src/gateway/routes/group_chats.rs` | REST API 路由 |
 
 ### 需要修改
 
 | 文件 | 变更 |
 |------|------|
-| `src/db/mod.rs` | 添加 schema 迁移 |
-| `src/db/models/mod.rs` | 导出新模型 |
+| `src/lib.rs` | 导出 group_chat 模块 |
 | `src/gateway/routes/mod.rs` | 注册新路由 |
-| `src/services/events.rs` | 添加群聊事件类型 |
+
+---
+
+## 与现有系统的区别
+
+| 对比项 | 普通 Chat Session | Group Chat |
+|--------|-------------------|------------|
+| 参与者 | 1 用户 + 1 Agent | 1 用户 + N Agents |
+| Agent 响应 | 串行 | **并行** |
+| 工具调用 | 显示在 UI | **隐藏在后台** |
+| 存储 | 数据库 | **文件系统** |
+| 视角 | 单一 | **可切换** |

@@ -157,6 +157,7 @@ impl ChannelCommand {
                     ChannelType::Telegram => {
                         let config = TelegramConfig {
                             token,
+                            chat_id: String::new(), // Not needed for testing
                             proxy,
                         };
                         test_telegram_channel(&config).await
@@ -234,7 +235,11 @@ impl ChannelCommand {
 
                 let result = match channel_type {
                     ChannelType::Telegram => {
-                        let config = TelegramConfig { token, proxy };
+                        let config = TelegramConfig {
+                            token,
+                            chat_id: options.chat_id.clone(),
+                            proxy,
+                        };
                         send_telegram_message(&config, &options).await
                     }
                     ChannelType::Discord => {
@@ -310,7 +315,11 @@ impl ChannelCommand {
 
                 let result = match channel_type {
                     ChannelType::Telegram => {
-                        let config = TelegramConfig { token, proxy };
+                        let config = TelegramConfig {
+                            token,
+                            chat_id: options.chat_id.clone(),
+                            proxy,
+                        };
                         send_telegram_message(&config, &options).await
                     }
                     ChannelType::Discord => {

@@ -743,9 +743,11 @@ mod tests {
             let pty = crate::services::PtyService::new();
             let history = crate::services::HistoryService::new();
             let session_store = crate::services::SessionStoreService::new();
-            let cron = crate::services::CronService::new(events_arc.clone());
             let channel = crate::channels::ChannelService::new(events_arc.clone());
-            let channel_router = crate::channels::ChannelRouter::new(events_arc.clone(), std::sync::Arc::new(channel.clone()));
+            let channel_arc = std::sync::Arc::new(channel.clone());
+            let cron = crate::services::CronService::new(events_arc.clone())
+                .with_channels(channel_arc.clone());
+            let channel_router = crate::channels::ChannelRouter::new(events_arc.clone(), channel_arc);
 
             let state = AppState::new(db, events, container, pty, history, session_store, cron, channel, channel_router);
 
