@@ -71,6 +71,7 @@ impl AppState {
 
         tracing::debug!(target: "viben::gateway::state", "Initializing ContainerService...");
         let container = ContainerService::new((*events_arc).clone());
+        let container_arc = Arc::new(container);
         tracing::debug!(target: "viben::gateway::state", "ContainerService initialized");
 
         tracing::debug!(target: "viben::gateway::state", "Initializing PtyService...");
@@ -94,8 +95,12 @@ impl AppState {
         let channel_arc = Arc::new(channel);
         tracing::debug!(target: "viben::gateway::state", "ChannelService initialized");
 
-        tracing::debug!(target: "viben::gateway::state", "Initializing ChannelRouter...");
-        let channel_router = ChannelRouter::new(events_arc.clone(), channel_arc.clone());
+        tracing::debug!(target: "viben::gateway::state", "Initializing ChannelRouter with ContainerService...");
+        let channel_router = ChannelRouter::with_container(
+            events_arc.clone(),
+            channel_arc.clone(),
+            container_arc.clone(),
+        );
         tracing::debug!(target: "viben::gateway::state", "ChannelRouter initialized");
 
         tracing::info!(
@@ -106,7 +111,7 @@ impl AppState {
         Ok(Self {
             db: Arc::new(db),
             events: events_arc,
-            container: Arc::new(container),
+            container: container_arc,
             pty: Arc::new(pty),
             history: Arc::new(history),
             session_store: Arc::new(session_store),
