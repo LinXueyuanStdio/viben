@@ -209,6 +209,13 @@ export type { UseGroupNotificationsReturn } from "./use-group-notifications";
 export { useFileBrowser } from "./use-file-browser";
 export type { ViewMode } from "./use-file-browser";
 
+// Executor Sessions
+export { useExecutorSessions, useExecutorSessionMessages } from "./use-executor-sessions";
+export type {
+  UseExecutorSessionsReturn,
+  UseExecutorSessionMessagesReturn,
+} from "./use-executor-sessions";
+
 // Toast Notifications
 export { useToast, toast } from "./use-toast";
 export type {

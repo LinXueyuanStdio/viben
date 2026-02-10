@@ -31,16 +31,17 @@ pub struct ExecutorSession {
     pub executor_type: String,
     /// Workspace path this session belongs to
     pub workspace_path: String,
-    /// File path to the session JSONL
+    /// File path to the session JSONL (internal use)
+    #[serde(skip_serializing)]
     pub file_path: String,
-    /// Last modified timestamp
-    pub modified_at: Option<String>,
-    /// File size in bytes
-    pub file_size: u64,
-    /// Estimated message count (based on file lines)
-    pub message_count: u64,
-    /// First user message preview (truncated)
-    pub prompt_preview: Option<String>,
+    /// When the session was created (approximated from file metadata)
+    pub created_at: String,
+    /// When the session was last updated
+    pub updated_at: String,
+    /// Optional session name or description
+    pub name: Option<String>,
+    /// Number of messages in the session (estimated)
+    pub message_count: Option<u64>,
 }
 
 /// Message from Claude Code JSONL file
@@ -183,36 +184,42 @@ async fn discover_claude_code_sessions(
             if let Some(session_id) = file_path.file_stem().and_then(|s| s.to_str()) {
                 let metadata = entry.metadata().await.ok();
 
-                let modified_at = metadata.as_ref()
+                // Get timestamps from file metadata
+                let updated_at = metadata.as_ref()
                     .and_then(|m| m.modified().ok())
-                    .map(|t| {
-                        DateTime::<Utc>::from(t).to_rfc3339()
-                    });
+                    .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
+                    .unwrap_or_else(|| Utc::now().to_rfc3339());
+
+                let created_at = metadata.as_ref()
+                    .and_then(|m| m.created().ok())
+                    .map(|t| DateTime::<Utc>::from(t).to_rfc3339())
+                    .unwrap_or_else(|| updated_at.clone());
 
                 let file_size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
 
                 // Estimate message count (rough: ~1KB per message average)
-                let message_count = file_size / 1024;
+                let message_count = Some(file_size / 1024);
 
-                // Read first user message for preview
+                // Read first user message for preview/name
                 let prompt_preview = read_first_user_message(&file_path).await;
+                let name = prompt_preview.clone();
 
                 sessions.push(ExecutorSession {
                     id: session_id.to_string(),
                     executor_type: "claude-code".to_string(),
                     workspace_path: workspace_path.to_string(),
                     file_path: file_path.to_string_lossy().to_string(),
-                    modified_at,
-                    file_size,
+                    created_at,
+                    updated_at,
+                    name,
                     message_count,
-                    prompt_preview,
                 });
             }
         }
     }
 
-    // Sort by modified time (newest first)
-    sessions.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    // Sort by updated_at (newest first)
+    sessions.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
 
     tracing::info!(
         target: "viben::gateway::executors",

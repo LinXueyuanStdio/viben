@@ -14,6 +14,7 @@ pub mod channels;
 pub mod config;
 pub mod error;
 pub mod models;
+pub mod notifications;
 pub mod providers;
 
 // Merged from viben-gateway
@@ -97,6 +98,12 @@ pub use db::{DbError, DbService};
 
 // From utils module
 pub use utils::{LogMsg, MsgStore, get_interactive_shell, get_shell_name};
+
+// From notifications module
+pub use notifications::{
+    NotificationUrgency, SystemNotification, notify_agent_completion, notify_channel_message,
+    notify_cron_completion, notify_custom, send_notification,
+};
 
 /// Initialize all managers and ensure directory structure exists
 pub async fn initialize() -> Result<()> {

@@ -3159,4 +3159,304 @@ mod tests {
             }
         }
     }
+
+    // =========================================================================
+    // Executor Tests
+    // =========================================================================
+
+    mod executor_tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn test_discover_sessions_claude_code() {
+            let app = test_app().await;
+
+            // Use current working directory as workspace path
+            let workspace_path = std::env::current_dir()
+                .unwrap()
+                .to_string_lossy()
+                .to_string();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/discover-sessions?workspace_path={}",
+                            urlencoding::encode(&workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Response should have sessions array and total count
+            assert!(json["sessions"].is_array());
+            assert!(json["total"].is_number());
+
+            // Total should match sessions array length
+            let sessions = json["sessions"].as_array().unwrap();
+            let total = json["total"].as_u64().unwrap() as usize;
+            assert_eq!(sessions.len(), total);
+
+            // If there are sessions, verify structure
+            if !sessions.is_empty() {
+                let first = &sessions[0];
+                assert!(first["id"].is_string());
+                assert_eq!(first["executor_type"], "claude-code");
+                assert!(first["workspace_path"].is_string());
+                assert!(first["created_at"].is_string());
+                assert!(first["updated_at"].is_string());
+            }
+        }
+
+        #[tokio::test]
+        async fn test_discover_sessions_with_different_executor_formats() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/test-workspace";
+
+            // Test various executor type formats
+            for executor_type in &["claude-code", "claude_code", "claudecode"] {
+                let response = app
+                    .clone()
+                    .oneshot(
+                        Request::builder()
+                            .uri(&format!(
+                                "/api/executors/{}/discover-sessions?workspace_path={}",
+                                executor_type,
+                                urlencoding::encode(workspace_path)
+                            ))
+                            .body(Body::empty())
+                            .unwrap(),
+                    )
+                    .await
+                    .unwrap();
+
+                assert_eq!(response.status(), StatusCode::OK);
+
+                let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                    .await
+                    .unwrap();
+                let json: Value = serde_json::from_slice(&body).unwrap();
+
+                assert!(json["sessions"].is_array());
+                assert!(json["total"].is_number());
+            }
+        }
+
+        #[tokio::test]
+        async fn test_discover_sessions_codex_returns_empty() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/test-workspace";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/codex/discover-sessions?workspace_path={}",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Codex not implemented yet, should return empty
+            assert_eq!(json["sessions"].as_array().unwrap().len(), 0);
+            assert_eq!(json["total"], 0);
+        }
+
+        #[tokio::test]
+        async fn test_discover_sessions_unknown_executor() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/test-workspace";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/unknown-executor/discover-sessions?workspace_path={}",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
+
+        #[tokio::test]
+        async fn test_discover_sessions_missing_workspace_path() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/executors/claude-code/discover-sessions")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // Missing required query param should return 400
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_get_session_messages_not_found() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/nonexistent-workspace";
+            let session_id = "nonexistent-session-id";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/claude-code/sessions/{}/messages?workspace_path={}",
+                            session_id,
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
+
+        #[tokio::test]
+        async fn test_get_session_messages_unknown_executor() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/test-workspace";
+            let session_id = "some-session-id";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/unknown-executor/sessions/{}/messages?workspace_path={}",
+                            session_id,
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        }
+
+        #[tokio::test]
+        async fn test_get_session_messages_codex_returns_empty() {
+            let app = test_app().await;
+            let workspace_path = "/tmp/test-workspace";
+            let session_id = "some-session-id";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors/codex/sessions/{}/messages?workspace_path={}",
+                            session_id,
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Codex not implemented, should return empty
+            assert_eq!(json["messages"].as_array().unwrap().len(), 0);
+            assert_eq!(json["total"], 0);
+        }
+
+        #[tokio::test]
+        async fn test_executor_session_response_structure() {
+            use crate::gateway::routes::executors::{
+                ExecutorSession, ExecutorUIMessage, DiscoverSessionsResponse, SessionMessagesResponse,
+            };
+
+            // Test ExecutorSession serialization
+            let session = ExecutorSession {
+                id: "test-session-id".to_string(),
+                executor_type: "claude-code".to_string(),
+                workspace_path: "/path/to/workspace".to_string(),
+                file_path: "/hidden/path".to_string(), // Should be skipped
+                created_at: "2024-01-01T00:00:00Z".to_string(),
+                updated_at: "2024-01-02T00:00:00Z".to_string(),
+                name: Some("Test Session".to_string()),
+                message_count: Some(10),
+            };
+
+            let json = serde_json::to_value(&session).unwrap();
+            assert_eq!(json["id"], "test-session-id");
+            assert_eq!(json["executor_type"], "claude-code");
+            assert!(json.get("file_path").is_none()); // file_path should be skipped
+
+            // Test DiscoverSessionsResponse serialization
+            let response = DiscoverSessionsResponse {
+                sessions: vec![session.clone()],
+                total: 1,
+            };
+            let json = serde_json::to_value(&response).unwrap();
+            assert_eq!(json["total"], 1);
+            assert_eq!(json["sessions"].as_array().unwrap().len(), 1);
+
+            // Test ExecutorUIMessage serialization
+            let message = ExecutorUIMessage {
+                id: "msg-1".to_string(),
+                timestamp: "2024-01-01T00:00:00Z".to_string(),
+                msg_type: "text".to_string(),
+                content: Some("Hello, world!".to_string()),
+                tool_use_id: None,
+                tool_name: None,
+                tool_input: None,
+                tool_output: None,
+                is_error: None,
+            };
+
+            let json = serde_json::to_value(&message).unwrap();
+            assert_eq!(json["id"], "msg-1");
+            assert_eq!(json["type"], "text"); // renamed from msg_type
+            assert_eq!(json["content"], "Hello, world!");
+            assert!(json.get("tool_use_id").is_none()); // None should be skipped
+
+            // Test SessionMessagesResponse serialization
+            let response = SessionMessagesResponse {
+                messages: vec![message],
+                total: 1,
+            };
+            let json = serde_json::to_value(&response).unwrap();
+            assert_eq!(json["total"], 1);
+            assert_eq!(json["messages"].as_array().unwrap().len(), 1);
+        }
+    }
 }

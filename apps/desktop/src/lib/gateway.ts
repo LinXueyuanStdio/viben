@@ -865,6 +865,80 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // Executor Session Discovery
+  // ==========================================================================
+
+  /**
+   * Discover sessions for an executor type in a workspace
+   *
+   * @param executorType - The executor type (e.g., "claude-code")
+   * @param workspacePath - Absolute path to the workspace
+   * @returns Array of discovered sessions
+   */
+  async discoverExecutorSessions(
+    executorType: string,
+    workspacePath: string
+  ): Promise<ExecutorSession[]> {
+    const params = new URLSearchParams({ workspace_path: workspacePath });
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${executorType}/discover-sessions?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to discover executor sessions: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.sessions as ExecutorSession[];
+  }
+
+  /**
+   * Get messages for an executor session
+   *
+   * @param executorType - The executor type (e.g., "claude-code")
+   * @param sessionId - The session ID
+   * @param workspacePath - Absolute path to the workspace
+   * @param limit - Optional limit on number of messages to return
+   * @returns Array of UI messages for frontend rendering
+   */
+  async getExecutorSessionMessages(
+    executorType: string,
+    sessionId: string,
+    workspacePath: string,
+    limit?: number
+  ): Promise<ExecutorUIMessage[]> {
+    const params = new URLSearchParams({ workspace_path: workspacePath });
+    if (limit !== undefined) {
+      params.set("limit", String(limit));
+    }
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${executorType}/sessions/${sessionId}/messages?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to get executor session messages: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.messages as ExecutorUIMessage[];
+  }
+
+  // ==========================================================================
   // File-based Session Management
   // ==========================================================================
 
@@ -1475,6 +1549,42 @@ export interface SendGroupChatMessageRequest {
   mentions?: string[];
   reply_to?: string;
   metadata?: Record<string, unknown>;
+}
+
+// ============================================================================
+// Executor Session Types
+// ============================================================================
+
+/** Executor session discovered from workspace */
+export interface ExecutorSession {
+  /** Unique session ID */
+  id: string;
+  /** Executor type (e.g., "claude-code") */
+  executor_type: string;
+  /** Workspace path where this session was found */
+  workspace_path: string;
+  /** When the session was created */
+  created_at: string;
+  /** When the session was last updated */
+  updated_at: string;
+  /** Optional session name or description */
+  name?: string;
+  /** Number of messages in the session */
+  message_count?: number;
+}
+
+/** Executor UI message for frontend rendering */
+export interface ExecutorUIMessage {
+  id: string;
+  timestamp: string;
+  type: "user" | "text" | "tool_use" | "tool_result" | "thinking" | "error";
+  content?: string;
+  tool_use_id?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+  tool_output?: string;
+  is_error?: boolean;
+  attachments?: Record<string, unknown>[];
 }
 
 // ============================================================================
