@@ -2199,6 +2199,7 @@ export function WorkspaceChatPage() {
                 onRejectPlan={rejectPlan}
                 onAnswerQuestions={answerQuestions}
                 className="flex-1 min-w-0 overflow-hidden"
+                maxMessageWidth="100%"
               />
 
               {/* Error display */}
