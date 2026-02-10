@@ -17,6 +17,9 @@ pub mod models;
 pub mod notifications;
 pub mod providers;
 
+// File-based group chat module
+pub mod group_chat;
+
 // Merged from viben-gateway
 pub mod gateway;
 
@@ -104,6 +107,13 @@ pub use notifications::{
     NotificationUrgency, SystemNotification, init_notifications, notify_agent_completion,
     notify_channel_message, notify_cron_completion, notify_custom, send_notification,
     set_app_name,
+};
+
+// From group_chat module
+pub use group_chat::{
+    AgentResponse, AgentRolloutMessage, BroadcastMode, GroupChatConfig, GroupChatError,
+    GroupChatMember, GroupChatService, GroupChatSettings, MemberRole, MemberType, SessionConfig,
+    SessionStatus, UIMessage, UIMessageType,
 };
 
 /// Initialize all managers and ensure directory structure exists

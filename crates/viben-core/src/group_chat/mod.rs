@@ -37,4 +37,7 @@ pub use types::{
     MemberType, MemberRole,
     // Errors
     GroupChatError,
+    // Request types
+    CreateGroupChatRequest, CreateMemberInput, UpdateGroupChatRequest,
+    AddMemberRequest, SendMessageRequest, CreateSessionRequest, ListMessagesQuery,
 };

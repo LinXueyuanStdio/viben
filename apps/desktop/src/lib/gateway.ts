@@ -646,28 +646,32 @@ export class GatewayClient {
 
   /**
    * Get workspace executors with availability and config status
-   * @deprecated Use getExecutors() instead
+   * Uses /api/executors?workspace_path=...&include_global=true
    */
   async getWorkspaceExecutors(
     workspacePath: string
   ): Promise<WorkspaceExecutorsResponse> {
-    const result = await this.getExecutors({
-      workspacePath,
-      includeGlobal: true,
-    });
-    // Convert to legacy format
-    return {
+    const params = new URLSearchParams({
       workspace_path: workspacePath,
-      executors: result.executors.map((e) => ({
-        id: e.id,
-        name: e.name,
-        availability: e.availability,
-        supports_mcp: e.supports_mcp,
-        capabilities: e.capabilities,
-        has_workspace_config: !!e.project_config_path,
-        workspace_config_path: e.project_config_path,
-      })),
-    };
+      include_global: "true",
+    });
+    const response = await fetch(
+      `${this.baseUrl}/api/executors?${params}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace executors: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
   }
 
   /**
@@ -741,20 +745,32 @@ export class GatewayClient {
 
   /**
    * Get workspace agents (Viben + discovered IDE configs)
-   * @deprecated Use getAgents() instead
+   * Uses /api/agents?workspace_path=...&include_global=true
    */
   async getWorkspaceAgents(
     workspacePath: string
   ): Promise<WorkspaceAgentsResponse> {
-    const result = await this.getAgents({
-      workspacePath,
-      includeGlobal: true,
-    });
-    return {
+    const params = new URLSearchParams({
       workspace_path: workspacePath,
-      agents: result.agents,
-      total: result.total,
-    };
+      include_global: "true",
+    });
+    const response = await fetch(
+      `${this.baseUrl}/api/agents?${params}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace agents: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
   }
 
   /**

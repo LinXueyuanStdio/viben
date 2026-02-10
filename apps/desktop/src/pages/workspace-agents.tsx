@@ -76,8 +76,7 @@ import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { useLocalWorkspaces, useVibenAgents, useVibenModels, useExecutors, useGatewayAgents } from "@/hooks";
-import type { ExecutorInfo } from "@/lib/gateway";
+import { useLocalWorkspaces, useVibenAgents, useVibenModels, useWorkspaceAgents, useWorkspaceAgentsFromGateway } from "@/hooks";
 import {
   useWorkspaceMcpServers,
   useWorkspaceSkills,
@@ -88,7 +87,7 @@ import {
 } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { Workspace } from "@/types";
+import type { Workspace, WorkspaceAgent } from "@/types";
 import { homeDir } from "@tauri-apps/api/path";
 import { FolderOpen, Globe } from "lucide-react";
 import { PathPopover } from "@/components/ui/path-popover";
@@ -250,25 +249,19 @@ export function WorkspaceAgentsPage({
   const workspaceId = workspaceOverride?.id ?? routeWorkspaceId;
   const workspace = workspaceOverride ?? (workspaceId ? getWorkspace(workspaceId) : undefined);
 
-  // Executors from Gateway API (merged global + project configs)
+  // Workspace executors (auto-discovered from Tauri)
   const {
-    executors,
-    loading: loadingExecutors,
-    refresh: refreshExecutors,
-  } = useExecutors({
-    workspacePath: workspace?.path,
-    includeGlobal: true,
-  });
+    agents: workspaceExecutorsList,
+    loading: loadingWorkspaceExecutors,
+    loadAgents: loadWorkspaceExecutors,
+  } = useWorkspaceAgents(workspaceId || null);
 
   // All agents from Gateway API (combined global + workspace)
   const {
     loading: loadingGatewayAgents,
     refresh: refreshGatewayAgents,
     getVibenAgents,
-  } = useGatewayAgents({
-    workspacePath: workspace?.path,
-    includeGlobal: true,
-  });
+  } = useWorkspaceAgentsFromGateway(workspace?.path || null);
 
   // Viben agents for CRUD operations (we still need this for create/update/delete)
   const {
@@ -304,27 +297,25 @@ export function WorkspaceAgentsPage({
       setGlobalVibenPath(`${home}.viben/agents/`);
     });
   }, []);
-  const loading = loadingAgents || loadingModels || loadingExecutors || loadingGatewayAgents;
+  const loading = loadingAgents || loadingModels || loadingWorkspaceExecutors || loadingGatewayAgents;
 
   // Refresh all
   const refreshAll = async () => {
-    await Promise.all([refreshVibenAgents(), refreshGatewayAgents(), refreshExecutors()]);
+    await Promise.all([refreshVibenAgents(), refreshGatewayAgents(), loadWorkspaceExecutors()]);
   };
 
-  // Convert executors from Gateway API to list items
+  // Convert workspace executors to list items
   const executorItems: ListItem[] = useMemo(() => {
-    return executors.map((e) => ({
+    return workspaceExecutorsList.map((e) => ({
       id: e.id,
       name: e.name,
       type: "executor" as const,
-      executorType: e.id.toLowerCase().replace(/_/g, "-"), // CLAUDE_CODE -> claude-code
-      source: e.source,
-      projectConfigPath: e.project_config_path,
-      globalConfigPath: e.global_config_path,
-      // Use project config path if available, otherwise global
-      path: e.project_config_path || e.global_config_path,
+      executorType: e.type,
+      path: e.config_path,
+      // Mark as workspace source since these come from workspace discovery
+      source: "project" as const,
     }));
-  }, [executors]);
+  }, [workspaceExecutorsList]);
 
   // Convert gateway agents (combined global + workspace) to list items
   const agentItems: ListItem[] = useMemo(() => {
@@ -335,7 +326,7 @@ export function WorkspaceAgentsPage({
       name: a.name,
       description: undefined, // Gateway API doesn't return description, will load on select
       type: a.source === "workspace" ? "workspace-agent" as const : "agent" as const,
-      source: a.source,
+      source: (a.source === "workspace" ? "workspace" : "global") as "workspace" | "global",
       path: a.config_path,
       workspacePath: a.config_path ? a.config_path.replace(/\/[^/]+\.json$/, "/") : undefined,
     }));
@@ -401,10 +392,10 @@ export function WorkspaceAgentsPage({
     return gatewayAgent?.source === "workspace";
   }, [allVibenAgents, selectedItemId]);
 
-  // Selected executor (from Gateway API)
+  // Selected executor (from workspace discovery)
   const selectedExecutor = useMemo(
-    () => executors.find((e) => e.id === selectedItemId && selectedItemType === "executor"),
-    [executors, selectedItemId, selectedItemType]
+    () => workspaceExecutorsList.find((e) => e.id === selectedItemId && selectedItemType === "executor"),
+    [workspaceExecutorsList, selectedItemId, selectedItemType]
   );
 
   // Auto-select first item when list changes
@@ -669,26 +660,11 @@ export function WorkspaceAgentsPage({
                               <Terminal className="h-2.5 w-2.5 mr-0.5" />
                               {item.executorType}
                             </Badge>
-                            {/* Source badge with config path popover */}
-                            {item.source === "merged" && item.projectConfigPath && (
+                            {/* Config path popover */}
+                            {item.path && (
                               <PathPopover
-                                path={item.projectConfigPath}
+                                path={item.path}
                                 locationType="workspace"
-                                label={t("settingsAgents.mergedConfig", "合并配置")}
-                                side="top"
-                              />
-                            )}
-                            {item.source === "project" && item.projectConfigPath && (
-                              <PathPopover
-                                path={item.projectConfigPath}
-                                locationType="workspace"
-                                side="top"
-                              />
-                            )}
-                            {item.source === "global" && item.globalConfigPath && (
-                              <PathPopover
-                                path={item.globalConfigPath}
-                                locationType="global"
                                 side="top"
                               />
                             )}
@@ -1025,7 +1001,7 @@ export function WorkspaceAgentsPage({
 // ============================================================================
 
 interface ExecutorDetailPanelProps {
-  executor: ExecutorInfo;
+  executor: WorkspaceAgent;
   workspaceId: string;
   onNavigateToEdit: () => void;
 }
@@ -1055,20 +1031,6 @@ function ExecutorDetailPanel({
     executor.id
   );
 
-  // Get source label
-  const getSourceLabel = () => {
-    switch (executor.source) {
-      case "merged":
-        return t("settingsAgents.mergedConfig", "合并配置");
-      case "project":
-        return t("settingsAgents.projectConfig", "项目配置");
-      case "global":
-        return t("settingsAgents.globalConfig", "全局配置");
-      default:
-        return "";
-    }
-  };
-
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
@@ -1087,25 +1049,17 @@ function ExecutorDetailPanel({
                   <Terminal className="h-3 w-3 mr-1" />
                   {t("settingsAgents.executors")}
                 </Badge>
-                {/* Source badge */}
-                {executor.source === "merged" && (
-                  <Badge className="text-[9px] px-1.5 py-0 bg-purple-500/10 text-purple-600 border-purple-500/30">
-                    {getSourceLabel()}
-                  </Badge>
-                )}
-                {executor.source === "project" && (
-                  <Badge className="text-[9px] px-1.5 py-0 bg-blue-500/10 text-blue-600 border-blue-500/30">
-                    {getSourceLabel()}
-                  </Badge>
-                )}
-                {executor.source === "global" && (
-                  <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                    {getSourceLabel()}
-                  </Badge>
+                {/* Config path badge */}
+                {executor.config_path && (
+                  <PathPopover
+                    path={executor.config_path}
+                    locationType="workspace"
+                    side="top"
+                  />
                 )}
               </div>
               <p className="text-muted-foreground text-sm mt-1">
-                {executor.id.toLowerCase().replace(/_/g, "-")}
+                {executor.type}
               </p>
             </div>
           </div>
@@ -1125,33 +1079,15 @@ function ExecutorDetailPanel({
               {t("workspace.configuration")}
             </h4>
 
-            {/* Project Config Path (if exists) */}
-            {executor.project_config_path && (
+            {/* Config Path */}
+            {executor.config_path && (
               <CollapsibleSection
-                title={t("settingsAgents.projectConfigPath", "项目配置路径")}
-                icon={<FolderOpen className="h-4 w-4" />}
-                badge={
-                  <Badge className="text-[9px] px-1.5 py-0 bg-blue-500/10 text-blue-600 border-blue-500/30">
-                    {t("settingsAgents.prioritized", "优先")}
-                  </Badge>
-                }
+                title={t("workspace.configPath")}
+                icon={<Terminal className="h-4 w-4" />}
                 defaultOpen
               >
                 <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                  {executor.project_config_path}
-                </code>
-              </CollapsibleSection>
-            )}
-
-            {/* Global Config Path (if exists) */}
-            {executor.global_config_path && (
-              <CollapsibleSection
-                title={t("settingsAgents.globalConfigPath", "全局配置路径")}
-                icon={<Globe className="h-4 w-4" />}
-                defaultOpen={!executor.project_config_path}
-              >
-                <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                  {executor.global_config_path}
+                  {executor.config_path}
                 </code>
               </CollapsibleSection>
             )}
