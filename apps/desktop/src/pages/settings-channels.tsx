@@ -1074,6 +1074,14 @@ export function SettingsChannelsPage() {
                 onChange={handleFormChange}
               />
             )}
+
+            {/* Agent/Executor Binding */}
+            <AgentBindingSelector
+              value={formState.agent_binding}
+              onChange={(binding) => handleFormChange({ agent_binding: binding })}
+              agents={agents}
+              executorSessions={executorSessions}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={handleCloseCreateDialog}>
@@ -1126,6 +1134,14 @@ export function SettingsChannelsPage() {
                 onChange={handleFormChange}
               />
             )}
+
+            {/* Agent/Executor Binding */}
+            <AgentBindingSelector
+              value={formState.agent_binding}
+              onChange={(binding) => handleFormChange({ agent_binding: binding })}
+              agents={agents}
+              executorSessions={executorSessions}
+            />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingChannel(null)}>
