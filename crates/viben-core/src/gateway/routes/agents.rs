@@ -29,59 +29,45 @@ fn default_include_global() -> bool {
     true
 }
 
-/// Unified response enum for /api/agents endpoint
+/// Response type for /api/agents endpoint (always returns workspace-scoped agents)
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum AgentsResponse {
-    /// Simple list of agent types (when no workspace_path)
-    Types { agents: Vec<&'static str> },
-    /// Workspace-scoped agents (when workspace_path is provided)
+    /// Workspace-scoped agents
     Workspace(WorkspaceAgentsResponse),
 }
 
-/// List agents - returns agent types or workspace-scoped agents based on query params
+/// List agents - returns workspace-scoped agents
 ///
-/// GET /api/agents - Returns list of agent type IDs
+/// GET /api/agents - Returns agents from user home directory (global workspace)
 /// GET /api/agents?workspace_path=/path&include_global=true - Returns workspace-scoped agents
+///
+/// When workspace_path is not provided, defaults to user home directory (~).
+/// When include_global is not provided, defaults to true.
 pub async fn list_agents(
     Query(query): Query<AgentsQuery>,
 ) -> Result<Json<AgentsResponse>, GatewayError> {
-    // If workspace_path is provided, delegate to workspace-scoped logic
-    if let Some(workspace_path) = query.workspace_path {
-        tracing::debug!(
-            target: "viben::gateway::agents",
-            "Listing workspace-scoped agents for: {} (include_global={})",
-            workspace_path, query.include_global
-        );
+    // Use provided workspace_path or default to user home directory
+    let workspace_path = query.workspace_path.unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string())
+    });
 
-        let response = super::workspaces::list_agents(
-            Query(super::workspaces::ResourceQuery {
-                workspace_path,
-                include_global: query.include_global,
-            }),
-        ).await?;
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Listing workspace-scoped agents for: {} (include_global={})",
+        workspace_path, query.include_global
+    );
 
-        return Ok(Json(AgentsResponse::Workspace(response.0)));
-    }
+    let response = super::workspaces::list_agents(
+        Query(super::workspaces::ResourceQuery {
+            workspace_path,
+            include_global: query.include_global,
+        }),
+    ).await?;
 
-    // Default: return simple list of agent types
-    tracing::debug!(target: "viben::gateway::agents", "Listing all available agent types");
-
-    let agents: Vec<&str> = vec![
-        "CLAUDE_CODE",
-        "AMP",
-        "GEMINI",
-        "CODEX",
-        "OPENCODE",
-        "CURSOR_AGENT",
-        "QWEN_CODE",
-        "COPILOT",
-        "DROID",
-    ];
-
-    tracing::trace!(target: "viben::gateway::agents", "Returning {} agent types", agents.len());
-
-    Ok(Json(AgentsResponse::Types { agents }))
+    Ok(Json(AgentsResponse::Workspace(response.0)))
 }
 
 /// Agent details response

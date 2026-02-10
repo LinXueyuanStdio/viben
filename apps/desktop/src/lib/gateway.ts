@@ -645,28 +645,37 @@ export class GatewayClient {
   }
 
   /**
-   * Get workspace executors with availability and config status
-   * Uses /api/executors?workspace_path=...&include_global=true
+   * Get models with availability status
+   *
+   * @param workspacePath - Optional workspace path to scope models (default: user home)
+   * @param includeGlobal - Whether to include global models (default: true)
    */
-  async getWorkspaceExecutors(
-    workspacePath: string
-  ): Promise<WorkspaceExecutorsResponse> {
-    const params = new URLSearchParams({
-      workspace_path: workspacePath,
-      include_global: "true",
+  async getModels(options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }): Promise<WorkspaceModelsResponse> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    if (options?.includeGlobal !== undefined) {
+      params.set("include_global", String(options.includeGlobal));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/models?${queryString}`
+      : `${this.baseUrl}/api/models`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
     });
-    const response = await fetch(
-      `${this.baseUrl}/api/executors?${params}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get workspace executors: ${errorMessage}`,
+        `Failed to get models: ${errorMessage}`,
         response.status
       );
     }
@@ -675,29 +684,21 @@ export class GatewayClient {
   }
 
   /**
-   * Get workspace models with availability status
+   * @deprecated Use getExecutors({ workspacePath }) instead
+   */
+  async getWorkspaceExecutors(
+    workspacePath: string
+  ): Promise<WorkspaceExecutorsResponse> {
+    return this.getExecutors({ workspacePath, includeGlobal: true });
+  }
+
+  /**
+   * @deprecated Use getModels({ workspacePath }) instead
    */
   async getWorkspaceModels(
     workspacePath: string
   ): Promise<WorkspaceModelsResponse> {
-    const params = new URLSearchParams({ workspace_path: workspacePath });
-    const response = await fetch(
-      `${this.baseUrl}/api/workspaces/models?${params}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to get workspace models: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    return response.json();
+    return this.getModels({ workspacePath, includeGlobal: true });
   }
 
   /**
@@ -744,33 +745,12 @@ export class GatewayClient {
   }
 
   /**
-   * Get workspace agents (Viben + discovered IDE configs)
-   * Uses /api/agents?workspace_path=...&include_global=true
+   * @deprecated Use getAgents({ workspacePath }) instead
    */
   async getWorkspaceAgents(
     workspacePath: string
   ): Promise<WorkspaceAgentsResponse> {
-    const params = new URLSearchParams({
-      workspace_path: workspacePath,
-      include_global: "true",
-    });
-    const response = await fetch(
-      `${this.baseUrl}/api/agents?${params}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to get workspace agents: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    return response.json();
+    return this.getAgents({ workspacePath, includeGlobal: true });
   }
 
   /**
@@ -1793,6 +1773,10 @@ export interface ExecutorUIMessage {
   tool_output?: string;
   is_error?: boolean;
   attachments?: Record<string, unknown>[];
+  /** For Task tool calls, the subagent ID (e.g., "a1477d3") */
+  subagent_id?: string;
+  /** For Task tool calls, recursively loaded subagent messages */
+  subagent_messages?: ExecutorUIMessage[];
 }
 
 // ============================================================================
@@ -1907,17 +1891,19 @@ export interface ExecutorInfo {
   supports_mcp: boolean;
   /** Executor capabilities */
   capabilities: string[];
-  /** Source of this executor: "global", "project", or "merged" (both exist) */
-  source: "global" | "project" | "merged";
-  /** Path to project-level config file (prioritized for editing) */
-  project_config_path?: string;
-  /** Path to global config file */
+  /** Workspace-specific config exists */
+  has_workspace_config: boolean;
+  /** The workspace path this executor config belongs to (absolute path) */
+  workspace_path: string;
+  /** Path to workspace/project config file (prioritized for editing) */
+  workspace_config_path?: string;
+  /** Path to global (~) config file */
   global_config_path?: string;
 }
 
 /** Response for executors */
 export interface ExecutorsResponse {
-  workspace_path?: string;
+  workspace_path: string;
   executors: ExecutorInfo[];
   total: number;
 }
@@ -1994,6 +1980,8 @@ export interface AgentInfo {
   agent_type: WorkspaceAgentType;
   /** Source: "global" or "workspace" */
   source: "global" | "workspace";
+  /** The workspace path this agent belongs to (absolute path) */
+  workspace_path: string;
   /** Path to agent config */
   config_path?: string;
   /** MCP config path (if applicable) */
@@ -2006,7 +1994,7 @@ export interface AgentInfo {
 
 /** Response for agents */
 export interface AgentsResponse {
-  workspace_path?: string;
+  workspace_path: string;
   agents: AgentInfo[];
   total: number;
 }

@@ -104,6 +104,35 @@ pub enum GatewayEvent {
         group_chat_id: String,
         message_id: String,
     },
+    /// Group chat agent started thinking
+    GroupChatAgentThinking {
+        group_chat_id: String,
+        session_id: String,
+        agent_id: String,
+        agent_name: String,
+    },
+    /// Group chat agent streaming progress
+    GroupChatAgentProgress {
+        group_chat_id: String,
+        session_id: String,
+        agent_id: String,
+        delta: String,
+    },
+    /// Group chat agent response
+    GroupChatAgentResponse {
+        group_chat_id: String,
+        session_id: String,
+        agent_id: String,
+        agent_name: String,
+        content: String,
+    },
+    /// Group chat agent error
+    GroupChatAgentError {
+        group_chat_id: String,
+        session_id: String,
+        agent_id: String,
+        error: String,
+    },
     // Cron job events
     /// Cron job created
     CronJobCreated { job: super::cron::CronJob },
@@ -180,6 +209,10 @@ impl GatewayEvent {
             GatewayEvent::GroupChatMemberJoined { .. } => "group_chat_member_joined",
             GatewayEvent::GroupChatMemberLeft { .. } => "group_chat_member_left",
             GatewayEvent::GroupChatMessage { .. } => "group_chat_message",
+            GatewayEvent::GroupChatAgentThinking { .. } => "group_chat_agent_thinking",
+            GatewayEvent::GroupChatAgentProgress { .. } => "group_chat_agent_progress",
+            GatewayEvent::GroupChatAgentResponse { .. } => "group_chat_agent_response",
+            GatewayEvent::GroupChatAgentError { .. } => "group_chat_agent_error",
             GatewayEvent::CronJobCreated { .. } => "cron_job_created",
             GatewayEvent::CronJobUpdated { .. } => "cron_job_updated",
             GatewayEvent::CronJobDeleted { .. } => "cron_job_deleted",

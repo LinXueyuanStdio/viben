@@ -558,114 +558,127 @@ export function WorkspaceChatPage() {
   // Convert ExecutorUIMessage to AgentMessage for display
   // Merges tool_use with its matching tool_result
   const executorMessagesAsAgentMessages = React.useMemo(() => {
-    // First, build a map of tool_use_id -> tool_result
-    const toolResultMap = new Map<string, ExecutorUIMessage>();
-    executorMessages.forEach((msg) => {
-      if (msg.type === "tool_result" && msg.tool_use_id) {
-        toolResultMap.set(msg.tool_use_id, msg);
-      }
-    });
+    // Recursive conversion function for handling subagent messages
+    const convertMessages = (messages: ExecutorUIMessage[]): AgentMessage[] => {
+      // First, build a map of tool_use_id -> tool_result
+      const toolResultMap = new Map<string, ExecutorUIMessage>();
+      messages.forEach((msg) => {
+        if (msg.type === "tool_result" && msg.tool_use_id) {
+          toolResultMap.set(msg.tool_use_id, msg);
+        }
+      });
 
-    const result: AgentMessage[] = [];
+      const result: AgentMessage[] = [];
 
-    executorMessages.forEach((msg: ExecutorUIMessage) => {
-      switch (msg.type) {
-        case "user":
-          result.push({
-            id: msg.id,
-            type: "user",
-            content: msg.content || "",
-          });
-          break;
-        case "text":
-          result.push({
-            id: msg.id,
-            type: "text",
-            content: msg.content || "",
-          });
-          break;
-        case "thinking":
-          result.push({
-            id: msg.id,
-            type: "thinking",
-            content: msg.content || "",
-          });
-          break;
-        case "tool_use": {
-          // Find matching tool_result
-          const toolResult = msg.tool_use_id ? toolResultMap.get(msg.tool_use_id) : undefined;
-          const toolName = msg.tool_name || "unknown";
+      messages.forEach((msg: ExecutorUIMessage) => {
+        switch (msg.type) {
+          case "user":
+            result.push({
+              id: msg.id,
+              type: "user",
+              content: msg.content || "",
+            });
+            break;
+          case "text":
+            result.push({
+              id: msg.id,
+              type: "text",
+              content: msg.content || "",
+            });
+            break;
+          case "thinking":
+            result.push({
+              id: msg.id,
+              type: "thinking",
+              content: msg.content || "",
+            });
+            break;
+          case "tool_use": {
+            // Find matching tool_result
+            const toolResult = msg.tool_use_id ? toolResultMap.get(msg.tool_use_id) : undefined;
+            const toolName = msg.tool_name || "unknown";
 
-          // Handle special tool types
-          if (toolName === "AskUserQuestion" && msg.tool_input) {
-            // Parse AskUserQuestion input to extract questions
-            const input = msg.tool_input as { questions?: Array<{
-              question: string;
-              header?: string;
-              options?: Array<{ label: string; description?: string }>;
-              multiSelect?: boolean;
-            }> };
-            if (input.questions && input.questions.length > 0) {
+            // Handle special tool types
+            if (toolName === "AskUserQuestion" && msg.tool_input) {
+              // Parse AskUserQuestion input to extract questions
+              const input = msg.tool_input as { questions?: Array<{
+                question: string;
+                header?: string;
+                options?: Array<{ label: string; description?: string }>;
+                multiSelect?: boolean;
+              }> };
+              if (input.questions && input.questions.length > 0) {
+                result.push({
+                  id: msg.id,
+                  type: "ask_question",
+                  questions: input.questions.map(q => ({
+                    question: q.question,
+                    header: q.header || "",
+                    options: q.options || [],
+                    multiSelect: q.multiSelect || false,
+                  })),
+                });
+                break;
+              }
+            }
+
+            if (toolName === "EnterPlanMode") {
               result.push({
                 id: msg.id,
-                type: "ask_question",
-                questions: input.questions.map(q => ({
-                  question: q.question,
-                  header: q.header || "",
-                  options: q.options || [],
-                  multiSelect: q.multiSelect || false,
-                })),
+                type: "plan_mode",
+                planModeAction: "enter",
               });
               break;
             }
-          }
 
-          if (toolName === "EnterPlanMode") {
+            if (toolName === "ExitPlanMode") {
+              result.push({
+                id: msg.id,
+                type: "plan_mode",
+                planModeAction: "exit",
+              });
+              break;
+            }
+
+            // Convert subagent messages recursively if present
+            const subagentMessages = msg.subagent_messages
+              ? convertMessages(msg.subagent_messages)
+              : undefined;
+
+            // Regular tool_use
             result.push({
               id: msg.id,
-              type: "plan_mode",
-              planModeAction: "enter",
+              type: "tool_use",
+              name: toolName,
+              input: msg.tool_input || {},
+              toolUseId: msg.tool_use_id,
+              // Merge tool_result output into tool_use
+              output: toolResult?.content || toolResult?.tool_output,
+              isError: toolResult?.is_error,
+              // Subagent data for Task tool calls
+              subagentId: msg.subagent_id,
+              subagentMessages,
             });
             break;
           }
-
-          if (toolName === "ExitPlanMode") {
+          case "tool_result":
+            // Skip - already merged into tool_use
+            break;
+          case "error":
             result.push({
               id: msg.id,
-              type: "plan_mode",
-              planModeAction: "exit",
+              type: "error",
+              message: msg.content || "Unknown error",
+              isError: true,
             });
             break;
-          }
-
-          // Regular tool_use
-          result.push({
-            id: msg.id,
-            type: "tool_use",
-            name: toolName,
-            input: msg.tool_input || {},
-            toolUseId: msg.tool_use_id,
-            // Merge tool_result output into tool_use
-            output: toolResult?.content || toolResult?.tool_output,
-            isError: toolResult?.is_error,
-          });
-          break;
         }
-        case "tool_result":
-          // Skip - already merged into tool_use
-          break;
-        case "error":
-          result.push({
-            id: msg.id,
-            type: "error",
-            message: msg.content || "Unknown error",
-            isError: true,
-          });
-          break;
-      }
-    });
+      });
 
-    return result;
+      return result;
+    };
+
+    return convertMessages(executorMessages);
   }, [executorMessages]);
 
   // Compute executor session statistics for config bar

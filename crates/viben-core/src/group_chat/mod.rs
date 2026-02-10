@@ -20,11 +20,13 @@
 
 pub mod config;
 pub mod messages;
+pub mod orchestrator;
 pub mod service;
 pub mod types;
 
 pub use config::{read_config, write_config};
 pub use messages::{append_jsonl, read_jsonl, clear_jsonl};
+pub use orchestrator::{AgentOrchestrator, OrchestratorConfig, OrchestratorEvent, build_message_for_agent};
 pub use service::GroupChatService;
 pub use types::{
     // Group chat types

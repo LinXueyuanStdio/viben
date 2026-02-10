@@ -166,7 +166,7 @@ mod tests {
         use super::*;
 
         #[tokio::test]
-        async fn test_list_agents() {
+        async fn test_list_agents_no_params_defaults_to_home() {
             let app = test_app().await;
 
             let response = app
@@ -186,16 +186,70 @@ mod tests {
                 .unwrap();
             let json: Value = serde_json::from_slice(&body).unwrap();
 
-            let agents = json["agents"].as_array().unwrap();
-            assert!(agents.contains(&json!("CLAUDE_CODE")));
-            assert!(agents.contains(&json!("AMP")));
-            assert!(agents.contains(&json!("GEMINI")));
-            assert!(agents.contains(&json!("CODEX")));
-            assert!(agents.contains(&json!("OPENCODE")));
-            assert!(agents.contains(&json!("CURSOR_AGENT")));
-            assert!(agents.contains(&json!("QWEN_CODE")));
-            assert!(agents.contains(&json!("COPILOT")));
-            assert!(agents.contains(&json!("DROID")));
+            // Should default to user home directory
+            let workspace_path = json["workspace_path"].as_str().unwrap();
+            let home = dirs::home_dir().unwrap();
+            assert_eq!(workspace_path, home.to_string_lossy().as_ref());
+
+            // Should have agents array and total
+            assert!(json["agents"].is_array());
+            assert!(json["total"].is_number());
+        }
+
+        #[tokio::test]
+        async fn test_list_agents_with_workspace_path() {
+            let app = test_app().await;
+
+            // Use temp directory for test
+            let temp_dir = std::env::temp_dir();
+            let workspace_path = temp_dir.to_string_lossy();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!("/api/agents?workspace_path={}&include_global=true", workspace_path))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Should return the specified workspace path
+            assert_eq!(json["workspace_path"].as_str().unwrap(), workspace_path.as_ref());
+            assert!(json["agents"].is_array());
+            assert!(json["total"].is_number());
+
+            // Agents should have workspace_path field
+            if let Some(agents) = json["agents"].as_array() {
+                for agent in agents {
+                    assert!(agent["workspace_path"].is_string(), "Agent should have workspace_path field");
+                    assert!(agent["source"].is_string(), "Agent should have source field");
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn test_list_agents_invalid_workspace_path() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/agents?workspace_path=/nonexistent/path/12345")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
         }
 
         #[tokio::test]
@@ -3649,6 +3703,251 @@ mod tests {
     // Workspace-Scoped API Tests (/api/executors and /api/agents with query params)
     // =========================================================================
 
+    // =========================================================================
+    // Unified Resource API Tests
+    // =========================================================================
+
+    mod unified_resource_api_tests {
+        use super::*;
+
+        // -------------------------------------------------------------------------
+        // /api/agents - Default behavior (no params)
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_agents_default_workspace_is_home() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/agents")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Should default to user home directory
+            let workspace_path = json["workspace_path"].as_str().unwrap();
+            let home = dirs::home_dir().unwrap();
+            assert_eq!(workspace_path, home.to_string_lossy().as_ref());
+        }
+
+        // -------------------------------------------------------------------------
+        // /api/executors - Default behavior (no params)
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_executors_default_workspace_is_home() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/executors")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Should default to user home directory
+            let workspace_path = json["workspace_path"].as_str().unwrap();
+            let home = dirs::home_dir().unwrap();
+            assert_eq!(workspace_path, home.to_string_lossy().as_ref());
+        }
+
+        // -------------------------------------------------------------------------
+        // /api/models - Default behavior (no params)
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_models_default_workspace_is_home() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/models")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Should default to user home directory
+            let workspace_path = json["workspace_path"].as_str().unwrap();
+            let home = dirs::home_dir().unwrap();
+            assert_eq!(workspace_path, home.to_string_lossy().as_ref());
+        }
+
+        // -------------------------------------------------------------------------
+        // Executor workspace_path field
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_executors_have_workspace_path_field() {
+            let app = test_app().await;
+
+            let temp_dir = std::env::temp_dir();
+            let workspace_path = temp_dir.to_string_lossy();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!("/api/executors?workspace_path={}", workspace_path))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let executors = json["executors"].as_array().unwrap();
+            for executor in executors {
+                assert!(
+                    executor["workspace_path"].is_string(),
+                    "Executor should have workspace_path field"
+                );
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // Agent workspace_path field
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_agents_have_workspace_path_field() {
+            let app = test_app().await;
+
+            let temp_dir = std::env::temp_dir();
+            let workspace_path = temp_dir.to_string_lossy();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!("/api/agents?workspace_path={}", workspace_path))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let agents = json["agents"].as_array().unwrap();
+            for agent in agents {
+                assert!(
+                    agent["workspace_path"].is_string(),
+                    "Agent should have workspace_path field"
+                );
+            }
+        }
+
+        // -------------------------------------------------------------------------
+        // include_global parameter default
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_include_global_defaults_to_true() {
+            let app = test_app().await;
+
+            // Get agents from home dir without specifying include_global
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/agents")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // When include_global defaults to true and workspace is ~,
+            // we should get agents from global workspace
+            assert!(json["agents"].is_array());
+            assert!(json["total"].is_number());
+        }
+
+        // -------------------------------------------------------------------------
+        // Invalid workspace_path validation
+        // -------------------------------------------------------------------------
+
+        #[tokio::test]
+        async fn test_invalid_workspace_path_returns_400() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/agents?workspace_path=/definitely/nonexistent/path/xyz")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+
+        #[tokio::test]
+        async fn test_models_invalid_workspace_path_returns_400() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/models?workspace_path=/definitely/nonexistent/path/xyz")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+    }
+
     mod workspace_scoped_api_tests {
         use super::*;
 
@@ -3709,6 +4008,7 @@ mod tests {
                 assert!(executor["supports_mcp"].is_boolean(), "Executor should have supports_mcp");
                 assert!(executor["capabilities"].is_array(), "Executor should have capabilities");
                 assert!(executor["has_workspace_config"].is_boolean(), "Executor should have has_workspace_config");
+                assert!(executor["workspace_path"].is_string(), "Executor should have workspace_path");
             }
 
             println!("✓ /api/executors?workspace_path=...&include_global=true returns correct structure");
@@ -3770,6 +4070,7 @@ mod tests {
                 assert!(agent["name"].is_string(), "Agent should have name");
                 assert!(agent["agent_type"].is_string(), "Agent should have agent_type");
                 assert!(agent["source"].is_string(), "Agent should have source (global/workspace)");
+                assert!(agent["workspace_path"].is_string(), "Agent should have workspace_path");
                 assert!(agent["mcp_server_count"].is_number(), "Agent should have mcp_server_count");
                 assert!(agent["skill_count"].is_number(), "Agent should have skill_count");
             }

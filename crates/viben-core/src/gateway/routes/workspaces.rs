@@ -1,15 +1,22 @@
-//! Workspace-scoped API endpoints
+//! Workspace-scoped resource discovery implementation
 //!
 //! Provides workspace-specific views of executors, models, and agents.
 //! Returns merged data: global availability + workspace-specific configurations.
 //!
-//! URL Pattern: /api/workspaces/executors?workspace_path=/path/to/workspace
-//! workspace_path is a query parameter (absolute path)
+//! This module provides the implementation for the unified API endpoints:
+//! - /api/agents?workspace_path=...&include_global=true
+//! - /api/executors?workspace_path=...&include_global=true
+//! - /api/models?workspace_path=...&include_global=true
+//!
+//! Default behavior:
+//! - workspace_path: defaults to user home directory (~)
+//! - include_global: defaults to true
+//!
+//! Each resource includes a `workspace_path` field indicating which workspace it belongs to.
 
 use axum::{
     Json, Router,
     extract::Query,
-    routing::get,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -32,11 +39,18 @@ pub struct WorkspaceQuery {
 /// Query parameters for the new /api/executors and /api/agents endpoints
 #[derive(Debug, Deserialize)]
 pub struct ResourceQuery {
-    /// Absolute path to the workspace directory
+    /// Absolute path to the workspace directory (default: user home directory)
+    #[serde(default = "default_workspace_path")]
     pub workspace_path: String,
     /// Whether to include global resources (default: true)
     #[serde(default = "default_include_global")]
     pub include_global: bool,
+}
+
+fn default_workspace_path() -> String {
+    dirs::home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "/".to_string())
 }
 
 fn default_include_global() -> bool {
@@ -80,9 +94,14 @@ pub struct WorkspaceExecutor {
     pub capabilities: Vec<String>,
     /// Workspace-specific config exists
     pub has_workspace_config: bool,
-    /// Path to workspace config file (if exists)
+    /// The workspace path this executor config belongs to (absolute path)
+    pub workspace_path: String,
+    /// Path to workspace/project config file (if exists)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace_config_path: Option<String>,
+    /// Path to global (~) config file (if exists)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub global_config_path: Option<String>,
 }
 
 /// Response for workspace executors
@@ -90,6 +109,8 @@ pub struct WorkspaceExecutor {
 pub struct WorkspaceExecutorsResponse {
     pub workspace_path: String,
     pub executors: Vec<WorkspaceExecutor>,
+    /// Total executors found
+    pub total: usize,
 }
 
 /// Executor config folder patterns
@@ -105,70 +126,15 @@ const EXECUTOR_CONFIGS: &[(&str, &str, &[&str])] = &[
     ("DROID", "Droid", &[".droid"]),
 ];
 
-/// List executors available for a workspace
+/// List executors available for a workspace (legacy endpoint)
 pub async fn list_workspace_executors(
     Query(query): Query<WorkspaceQuery>,
 ) -> Result<Json<WorkspaceExecutorsResponse>, GatewayError> {
-    let workspace_path = query.workspace_path;
-    let workspace_dir = validate_workspace_path(&workspace_path)?;
-
-    tracing::debug!(
-        target: "viben::gateway::workspaces",
-        "Listing executors for workspace: {}",
-        workspace_path
-    );
-
-    let mut executors = Vec::new();
-
-    for (id, name, config_folders) in EXECUTOR_CONFIGS {
-        // Check global availability
-        let availability = match create_executor_by_type(id) {
-            Ok(executor) => executor.get_availability_info(),
-            Err(_) => AvailabilityInfo::NotFound,
-        };
-
-        let supports_mcp = create_executor_by_type(id)
-            .map(|e| e.supports_mcp())
-            .unwrap_or(false);
-
-        let capabilities = create_executor_by_type(id)
-            .map(|e| e.capabilities().into_iter().map(|c| format!("{:?}", c)).collect())
-            .unwrap_or_default();
-
-        // Check workspace config
-        let mut has_workspace_config = false;
-        let mut workspace_config_path = None;
-
-        for folder in *config_folders {
-            let config_dir = workspace_dir.join(folder);
-            if config_dir.exists() {
-                has_workspace_config = true;
-                workspace_config_path = Some(config_dir.to_string_lossy().to_string());
-                break;
-            }
-        }
-
-        executors.push(WorkspaceExecutor {
-            id: id.to_string(),
-            name: name.to_string(),
-            availability,
-            supports_mcp,
-            capabilities,
-            has_workspace_config,
-            workspace_config_path,
-        });
-    }
-
-    tracing::debug!(
-        target: "viben::gateway::workspaces",
-        "Found {} executors for workspace",
-        executors.len()
-    );
-
-    Ok(Json(WorkspaceExecutorsResponse {
-        workspace_path,
-        executors,
-    }))
+    // Delegate to the new unified endpoint with include_global=true
+    list_executors(Query(ResourceQuery {
+        workspace_path: query.workspace_path,
+        include_global: true,
+    })).await
 }
 
 // ============================================================================
@@ -320,6 +286,8 @@ pub struct WorkspaceAgent {
     pub agent_type: WorkspaceAgentType,
     /// Source: "global" or "workspace"
     pub source: String,
+    /// The workspace path this agent belongs to (absolute path)
+    pub workspace_path: String,
     /// Path to agent config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config_path: Option<String>,
@@ -341,183 +309,15 @@ pub struct WorkspaceAgentsResponse {
     pub total: usize,
 }
 
-/// Detect agents in a workspace
+/// Detect agents in a workspace (legacy endpoint)
 pub async fn list_workspace_agents(
     Query(query): Query<WorkspaceQuery>,
 ) -> Result<Json<WorkspaceAgentsResponse>, GatewayError> {
-    let workspace_path = query.workspace_path;
-    let workspace_dir = validate_workspace_path(&workspace_path)?;
-
-    tracing::debug!(
-        target: "viben::gateway::workspaces",
-        "Listing agents for workspace: {}",
-        workspace_path
-    );
-
-    let mut agents = Vec::new();
-
-    // 1. Check for Viben agents in workspace
-    let viben_agents_dir = workspace_dir.join(".viben").join("agents");
-    if viben_agents_dir.exists() {
-        if let Ok(entries) = std::fs::read_dir(&viben_agents_dir) {
-            for entry in entries.flatten() {
-                if entry.path().is_dir() {
-                    let agent_id = entry.file_name().to_string_lossy().to_string();
-                    let config_path = entry.path().join("config.yaml");
-
-                    agents.push(WorkspaceAgent {
-                        id: format!("viben:{}", agent_id),
-                        name: agent_id.clone(),
-                        agent_type: WorkspaceAgentType::Viben,
-                        source: "workspace".to_string(),
-                        config_path: Some(config_path.to_string_lossy().to_string()),
-                        mcp_config_path: None,
-                        mcp_server_count: 0,
-                        skill_count: 0,
-                    });
-                }
-            }
-        }
-    }
-
-    // 2. Check for Claude Code config
-    let claude_dir = workspace_dir.join(".claude");
-    if claude_dir.exists() {
-        let mcp_config = find_mcp_config(&claude_dir);
-        let mcp_count = count_mcp_servers(&mcp_config);
-        let skill_count = count_skills(&claude_dir);
-
-        agents.push(WorkspaceAgent {
-            id: "claude_code".to_string(),
-            name: "Claude Code".to_string(),
-            agent_type: WorkspaceAgentType::ClaudeCode,
-            source: "workspace".to_string(),
-            config_path: Some(claude_dir.to_string_lossy().to_string()),
-            mcp_config_path: mcp_config.map(|p| p.to_string_lossy().to_string()),
-            mcp_server_count: mcp_count,
-            skill_count,
-        });
-    }
-
-    // 3. Check for Cursor config
-    let cursor_dir = workspace_dir.join(".cursor");
-    if cursor_dir.exists() {
-        let mcp_config = cursor_dir.join("mcp.json");
-        let mcp_count = if mcp_config.exists() {
-            count_mcp_servers(&Some(mcp_config.clone()))
-        } else {
-            0
-        };
-
-        agents.push(WorkspaceAgent {
-            id: "cursor".to_string(),
-            name: "Cursor".to_string(),
-            agent_type: WorkspaceAgentType::Cursor,
-            source: "workspace".to_string(),
-            config_path: Some(cursor_dir.to_string_lossy().to_string()),
-            mcp_config_path: if mcp_config.exists() {
-                Some(mcp_config.to_string_lossy().to_string())
-            } else {
-                None
-            },
-            mcp_server_count: mcp_count,
-            skill_count: 0,
-        });
-    }
-
-    // 4. Check for VS Code config
-    let vscode_dir = workspace_dir.join(".vscode");
-    if vscode_dir.exists() {
-        let mcp_config = vscode_dir.join("mcp.json");
-        let mcp_count = if mcp_config.exists() {
-            count_mcp_servers(&Some(mcp_config.clone()))
-        } else {
-            0
-        };
-
-        agents.push(WorkspaceAgent {
-            id: "vscode".to_string(),
-            name: "VS Code".to_string(),
-            agent_type: WorkspaceAgentType::VsCode,
-            source: "workspace".to_string(),
-            config_path: Some(vscode_dir.to_string_lossy().to_string()),
-            mcp_config_path: if mcp_config.exists() {
-                Some(mcp_config.to_string_lossy().to_string())
-            } else {
-                None
-            },
-            mcp_server_count: mcp_count,
-            skill_count: 0,
-        });
-    }
-
-    // 5. Check for Continue.dev config
-    let continue_dir = workspace_dir.join(".continue");
-    if continue_dir.exists() {
-        agents.push(WorkspaceAgent {
-            id: "continue".to_string(),
-            name: "Continue.dev".to_string(),
-            agent_type: WorkspaceAgentType::Continue,
-            source: "workspace".to_string(),
-            config_path: Some(continue_dir.to_string_lossy().to_string()),
-            mcp_config_path: None,
-            mcp_server_count: 0,
-            skill_count: 0,
-        });
-    }
-
-    // 6. Check for Windsurf config
-    let windsurf_dir = workspace_dir.join(".windsurf");
-    let codeium_windsurf_dir = workspace_dir.join(".codeium").join("windsurf");
-    let windsurf_path = if windsurf_dir.exists() {
-        Some(windsurf_dir)
-    } else if codeium_windsurf_dir.exists() {
-        Some(codeium_windsurf_dir)
-    } else {
-        None
-    };
-
-    if let Some(ws_dir) = windsurf_path {
-        agents.push(WorkspaceAgent {
-            id: "windsurf".to_string(),
-            name: "Windsurf".to_string(),
-            agent_type: WorkspaceAgentType::Windsurf,
-            source: "workspace".to_string(),
-            config_path: Some(ws_dir.to_string_lossy().to_string()),
-            mcp_config_path: None,
-            mcp_server_count: 0,
-            skill_count: 0,
-        });
-    }
-
-    // 7. Check for Zed config
-    let zed_dir = workspace_dir.join(".zed");
-    if zed_dir.exists() {
-        agents.push(WorkspaceAgent {
-            id: "zed".to_string(),
-            name: "Zed".to_string(),
-            agent_type: WorkspaceAgentType::Zed,
-            source: "workspace".to_string(),
-            config_path: Some(zed_dir.to_string_lossy().to_string()),
-            mcp_config_path: None,
-            mcp_server_count: 0,
-            skill_count: 0,
-        });
-    }
-
-    let total = agents.len();
-
-    tracing::debug!(
-        target: "viben::gateway::workspaces",
-        "Found {} agents for workspace",
-        total
-    );
-
-    Ok(Json(WorkspaceAgentsResponse {
-        workspace_path,
-        agents,
-        total,
-    }))
+    // Delegate to the new unified endpoint with include_global=true
+    list_agents(Query(ResourceQuery {
+        workspace_path: query.workspace_path,
+        include_global: true,
+    })).await
 }
 
 // ============================================================================
@@ -641,6 +441,12 @@ pub async fn list_executors(
         workspace_path, query.include_global
     );
 
+    // Get global workspace path (user home directory)
+    let global_workspace_path = dirs::home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "/".to_string());
+    let global_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+
     let mut executors = Vec::new();
 
     for (id, name, config_folders) in EXECUTOR_CONFIGS {
@@ -658,7 +464,7 @@ pub async fn list_executors(
             .map(|e| e.capabilities().into_iter().map(|c| format!("{:?}", c)).collect())
             .unwrap_or_default();
 
-        // Check workspace config
+        // Check workspace config (project level)
         let mut has_workspace_config = false;
         let mut workspace_config_path = None;
 
@@ -671,6 +477,25 @@ pub async fn list_executors(
             }
         }
 
+        // Check global config (user home level)
+        let mut global_config_path = None;
+        for folder in *config_folders {
+            let config_dir = global_dir.join(folder);
+            if config_dir.exists() {
+                global_config_path = Some(config_dir.to_string_lossy().to_string());
+                break;
+            }
+        }
+
+        // Determine the workspace_path for this executor
+        // - If has project config, it belongs to project workspace
+        // - Otherwise, it belongs to global workspace (if has global config) or just global
+        let executor_workspace_path = if has_workspace_config {
+            workspace_path.clone()
+        } else {
+            global_workspace_path.clone()
+        };
+
         executors.push(WorkspaceExecutor {
             id: id.to_string(),
             name: name.to_string(),
@@ -678,7 +503,9 @@ pub async fn list_executors(
             supports_mcp,
             capabilities,
             has_workspace_config,
+            workspace_path: executor_workspace_path,
             workspace_config_path,
+            global_config_path,
         });
     }
 
@@ -688,9 +515,11 @@ pub async fn list_executors(
         executors.len()
     );
 
+    let total = executors.len();
     Ok(Json(WorkspaceExecutorsResponse {
         workspace_path,
         executors,
+        total,
     }))
 }
 
@@ -716,6 +545,11 @@ pub async fn list_agents(
 
     let mut agents = Vec::new();
 
+    // Get global workspace path (user home directory)
+    let global_workspace_path = dirs::home_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "/".to_string());
+
     // 1. Check for Viben agents in workspace (.viben/agents)
     let viben_agents_dir = workspace_dir.join(".viben").join("agents");
     if viben_agents_dir.exists() {
@@ -730,6 +564,7 @@ pub async fn list_agents(
                         name: agent_id.clone(),
                         agent_type: WorkspaceAgentType::Viben,
                         source: "workspace".to_string(),
+                        workspace_path: workspace_path.clone(),
                         config_path: Some(config_path.to_string_lossy().to_string()),
                         mcp_config_path: None,
                         mcp_server_count: 0,
@@ -763,6 +598,7 @@ pub async fn list_agents(
                                 name: agent_id.clone(),
                                 agent_type: WorkspaceAgentType::Viben,
                                 source: "global".to_string(),
+                                workspace_path: global_workspace_path.clone(),
                                 config_path: Some(config_path.to_string_lossy().to_string()),
                                 mcp_config_path: None,
                                 mcp_server_count: 0,
@@ -787,6 +623,7 @@ pub async fn list_agents(
             name: "Claude Code".to_string(),
             agent_type: WorkspaceAgentType::ClaudeCode,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(claude_dir.to_string_lossy().to_string()),
             mcp_config_path: mcp_config.map(|p| p.to_string_lossy().to_string()),
             mcp_server_count: mcp_count,
@@ -809,6 +646,7 @@ pub async fn list_agents(
             name: "Cursor".to_string(),
             agent_type: WorkspaceAgentType::Cursor,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(cursor_dir.to_string_lossy().to_string()),
             mcp_config_path: if mcp_config.exists() {
                 Some(mcp_config.to_string_lossy().to_string())
@@ -835,6 +673,7 @@ pub async fn list_agents(
             name: "VS Code".to_string(),
             agent_type: WorkspaceAgentType::VsCode,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(vscode_dir.to_string_lossy().to_string()),
             mcp_config_path: if mcp_config.exists() {
                 Some(mcp_config.to_string_lossy().to_string())
@@ -854,6 +693,7 @@ pub async fn list_agents(
             name: "Continue.dev".to_string(),
             agent_type: WorkspaceAgentType::Continue,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(continue_dir.to_string_lossy().to_string()),
             mcp_config_path: None,
             mcp_server_count: 0,
@@ -864,7 +704,7 @@ pub async fn list_agents(
     // 7. Check for Windsurf config
     let windsurf_dir = workspace_dir.join(".windsurf");
     let codeium_windsurf_dir = workspace_dir.join(".codeium").join("windsurf");
-    let windsurf_path = if windsurf_dir.exists() {
+    let windsurf_path_found = if windsurf_dir.exists() {
         Some(windsurf_dir)
     } else if codeium_windsurf_dir.exists() {
         Some(codeium_windsurf_dir)
@@ -872,12 +712,13 @@ pub async fn list_agents(
         None
     };
 
-    if let Some(ws_dir) = windsurf_path {
+    if let Some(ws_dir) = windsurf_path_found {
         agents.push(WorkspaceAgent {
             id: "windsurf".to_string(),
             name: "Windsurf".to_string(),
             agent_type: WorkspaceAgentType::Windsurf,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(ws_dir.to_string_lossy().to_string()),
             mcp_config_path: None,
             mcp_server_count: 0,
@@ -893,6 +734,7 @@ pub async fn list_agents(
             name: "Zed".to_string(),
             agent_type: WorkspaceAgentType::Zed,
             source: "workspace".to_string(),
+            workspace_path: workspace_path.clone(),
             config_path: Some(zed_dir.to_string_lossy().to_string()),
             mcp_config_path: None,
             mcp_server_count: 0,
@@ -924,10 +766,11 @@ pub async fn list_agents(
 /// Note: The main endpoints (/api/agents, /api/executors, /api/models) are handled by their
 /// respective modules (agents.rs, executors.rs, models.rs) which delegate to functions here
 /// when workspace_path query parameter is provided.
+///
+/// Legacy endpoints (/api/workspaces/*) have been removed. Use the unified endpoints instead:
+/// - /api/agents?workspace_path=...&include_global=true
+/// - /api/executors?workspace_path=...&include_global=true
+/// - /api/models?workspace_path=...&include_global=true
 pub fn router() -> Router<AppState> {
     Router::new()
-        // Legacy workspace-scoped endpoints (kept for backwards compatibility)
-        .route("/api/workspaces/executors", get(list_workspace_executors))
-        .route("/api/workspaces/models", get(list_workspace_models))
-        .route("/api/workspaces/agents", get(list_workspace_agents))
 }

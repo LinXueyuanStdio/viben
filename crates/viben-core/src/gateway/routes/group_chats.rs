@@ -20,7 +20,7 @@ use tokio::sync::{broadcast, RwLock};
 use crate::gateway::{AppState, GatewayError};
 use crate::group_chat::{
     GroupChatConfig, GroupChatError, GroupChatMember, GroupChatService, GroupChatSettings,
-    SessionConfig, UIMessage,
+    SessionConfig, UIMessage, AgentOrchestrator, OrchestratorEvent,
     CreateGroupChatRequest as ServiceCreateRequest, CreateMemberInput as ServiceMemberInput,
     UpdateGroupChatRequest as ServiceUpdateRequest, CreateSessionRequest as ServiceCreateSession,
 };
@@ -752,13 +752,28 @@ pub async fn list_messages(
     }))
 }
 
+/// Send message response with triggered agents
+#[derive(Serialize)]
+pub struct SendMessageResponse {
+    pub message: UIMessageResponse,
+    pub agents_triggered: Vec<String>,
+}
+
 /// Send a message to a session
+///
+/// This handler:
+/// 1. Clears responses.jsonl for the new round
+/// 2. Appends user message to messages.ui.jsonl
+/// 3. Triggers all agent members in parallel
+/// 4. Returns immediately with the user message and list of triggered agents
+///
+/// Agent responses will be broadcast via WebSocket as they complete.
 pub async fn send_message(
     State(state): State<AppState>,
     Path((group_chat_id, session_id)): Path<(String, String)>,
     Query(query): Query<WorkspaceQuery>,
     Json(req): Json<SendMessageRequest>,
-) -> Result<Json<UIMessageResponse>, GatewayError> {
+) -> Result<Json<SendMessageResponse>, GatewayError> {
     tracing::info!(
         target: "viben::gateway::group_chats",
         "Sending message to session: group_chat={}, session={}, sender={}",
@@ -792,7 +807,102 @@ pub async fn send_message(
         message_id: msg_id.clone(),
     });
 
-    Ok(Json(UIMessageResponse::from(message)))
+    // Create orchestrator and trigger agents
+    let orchestrator = AgentOrchestrator::new(service);
+
+    // Subscribe to orchestrator events and forward to WebSocket hub and SSE
+    let event_tx = orchestrator.event_sender();
+    let workspace_path = query.workspace_path.clone();
+    let gc_id = group_chat_id.clone();
+    let sess_id = session_id.clone();
+    let events_service = state.events.clone();
+
+    // Spawn a task to forward orchestrator events to WebSocket and SSE
+    tokio::spawn(async move {
+        let mut rx = event_tx.subscribe();
+        while let Ok(event) = rx.recv().await {
+            // Forward to WebSocket hub
+            let channel = GROUP_CHAT_HUB.get_channel(&workspace_path, &gc_id, &sess_id).await;
+            match &event {
+                OrchestratorEvent::AgentThinking { agent_id, agent_name, .. } => {
+                    let ws_msg = WsServerMessage::AgentThinking {
+                        agent_id: agent_id.clone(),
+                        agent_name: agent_name.clone(),
+                    };
+                    let _ = channel.send(ws_msg);
+                    // Also broadcast as SSE event
+                    events_service.broadcast(GatewayEvent::GroupChatAgentThinking {
+                        group_chat_id: gc_id.clone(),
+                        session_id: sess_id.clone(),
+                        agent_id: agent_id.clone(),
+                        agent_name: agent_name.clone(),
+                    });
+                }
+                OrchestratorEvent::AgentProgress { agent_id, delta, .. } => {
+                    // Broadcast as SSE event (WebSocket handles streaming differently)
+                    events_service.broadcast(GatewayEvent::GroupChatAgentProgress {
+                        group_chat_id: gc_id.clone(),
+                        session_id: sess_id.clone(),
+                        agent_id: agent_id.clone(),
+                        delta: delta.clone(),
+                    });
+                }
+                OrchestratorEvent::AgentResponse { agent_id, agent_name, content, .. } => {
+                    let ws_msg = WsServerMessage::AgentResponse {
+                        agent_id: agent_id.clone(),
+                        agent_name: agent_name.clone(),
+                        content: content.clone(),
+                    };
+                    let _ = channel.send(ws_msg);
+                    // Also broadcast as SSE event
+                    events_service.broadcast(GatewayEvent::GroupChatAgentResponse {
+                        group_chat_id: gc_id.clone(),
+                        session_id: sess_id.clone(),
+                        agent_id: agent_id.clone(),
+                        agent_name: agent_name.clone(),
+                        content: content.clone(),
+                    });
+                }
+                OrchestratorEvent::AgentError { agent_id, error, .. } => {
+                    let ws_msg = WsServerMessage::Error {
+                        message: format!("Agent {} error: {}", agent_id, error),
+                    };
+                    let _ = channel.send(ws_msg);
+                    // Also broadcast as SSE event
+                    events_service.broadcast(GatewayEvent::GroupChatAgentError {
+                        group_chat_id: gc_id.clone(),
+                        session_id: sess_id.clone(),
+                        agent_id: agent_id.clone(),
+                        error: error.clone(),
+                    });
+                }
+            }
+        }
+    });
+
+    // Trigger all agents (non-blocking)
+    let agents_triggered = orchestrator
+        .trigger_agents(&group_chat_id, &session_id, &req.content, &req.sender_name)
+        .await
+        .unwrap_or_else(|e| {
+            tracing::warn!(
+                target: "viben::gateway::group_chats",
+                "Failed to trigger agents: {}",
+                e
+            );
+            Vec::new()
+        });
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Triggered {} agents: {:?}",
+        agents_triggered.len(), agents_triggered
+    );
+
+    Ok(Json(SendMessageResponse {
+        message: UIMessageResponse::from(message),
+        agents_triggered,
+    }))
 }
 
 // ============================================================================
@@ -988,6 +1098,64 @@ async fn handle_group_chat_ws(
                                         message: UIMessageResponse::from(message),
                                     };
                                     let _ = channel.send(broadcast_msg);
+
+                                    // Trigger agents in parallel
+                                    let orchestrator = AgentOrchestrator::new(service.clone());
+                                    let event_tx = orchestrator.event_sender();
+                                    let channel_clone = channel.clone();
+
+                                    // Spawn task to forward orchestrator events to WebSocket
+                                    tokio::spawn({
+                                        let mut rx = event_tx.subscribe();
+                                        async move {
+                                            while let Ok(event) = rx.recv().await {
+                                                match event {
+                                                    OrchestratorEvent::AgentThinking { agent_id, agent_name, .. } => {
+                                                        let ws_msg = WsServerMessage::AgentThinking {
+                                                            agent_id,
+                                                            agent_name,
+                                                        };
+                                                        let _ = channel_clone.send(ws_msg);
+                                                    }
+                                                    OrchestratorEvent::AgentProgress { .. } => {
+                                                        // WebSocket streaming handled differently
+                                                    }
+                                                    OrchestratorEvent::AgentResponse { agent_id, agent_name, content, .. } => {
+                                                        let ws_msg = WsServerMessage::AgentResponse {
+                                                            agent_id,
+                                                            agent_name,
+                                                            content,
+                                                        };
+                                                        let _ = channel_clone.send(ws_msg);
+                                                    }
+                                                    OrchestratorEvent::AgentError { agent_id, error, .. } => {
+                                                        let ws_msg = WsServerMessage::Error {
+                                                            message: format!("Agent {} error: {}", agent_id, error),
+                                                        };
+                                                        let _ = channel_clone.send(ws_msg);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+
+                                    // Trigger all agents (non-blocking)
+                                    let gc_id = group_chat_id.clone();
+                                    let sess_id = session_id.clone();
+                                    let content_clone = content.clone();
+                                    let sender_clone = sender_name.clone();
+                                    tokio::spawn(async move {
+                                        if let Err(e) = orchestrator
+                                            .trigger_agents(&gc_id, &sess_id, &content_clone, &sender_clone)
+                                            .await
+                                        {
+                                            tracing::warn!(
+                                                target: "viben::gateway::group_chats",
+                                                "Failed to trigger agents via WS: {}",
+                                                e
+                                            );
+                                        }
+                                    });
                                 }
                                 Err(e) => {
                                     let error_msg = WsServerMessage::Error {
