@@ -13,7 +13,7 @@ import { useNotificationStore } from "@/stores/notification-store";
 import { toast } from "@/hooks/use-toast";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import { useTranslation } from "react-i18next";
-import type { GroupChatMessage, GroupChatMember } from "@/lib/gateway";
+import type { GroupChatUIMessage, GroupChatMember } from "@/lib/gateway";
 
 export interface UseGroupNotificationsReturn {
   /**
@@ -26,7 +26,7 @@ export interface UseGroupNotificationsReturn {
   notifyGroupMessage: (
     groupId: string,
     groupName: string,
-    message: GroupChatMessage,
+    message: GroupChatUIMessage,
     currentUserId: string
   ) => Promise<void>;
 
@@ -98,11 +98,14 @@ export function useGroupNotifications(): UseGroupNotificationsReturn {
    * Check if the message mentions the current user
    */
   const checkIsMentioned = useCallback(
-    (message: GroupChatMessage, currentUserId: string): boolean => {
-      if (!message.mentions || message.mentions.length === 0) {
+    (message: GroupChatUIMessage, currentUserId: string): boolean => {
+      // GroupChatUIMessage doesn't have mentions field
+      // Check if the content contains @mentions
+      if (!message.content) {
         return false;
       }
-      return message.mentions.includes(currentUserId);
+      // Check for @currentUserId pattern in content
+      return message.content.includes(`@${currentUserId}`);
     },
     []
   );
@@ -124,7 +127,7 @@ export function useGroupNotifications(): UseGroupNotificationsReturn {
     async (
       groupId: string,
       groupName: string,
-      message: GroupChatMessage,
+      message: GroupChatUIMessage,
       currentUserId: string
     ) => {
       console.log("[GroupNotifications] notifyGroupMessage called:", {
@@ -148,7 +151,7 @@ export function useGroupNotifications(): UseGroupNotificationsReturn {
       }
 
       const isMentioned = checkIsMentioned(message, currentUserId);
-      const truncatedContent = truncateContent(message.content);
+      const truncatedContent = truncateContent(message.content || "");
 
       let title: string;
       let body: string;

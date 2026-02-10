@@ -49,3 +49,15 @@ export { GroupChatMessageList } from "./group-chat-message-list";
 export { GroupChatListItem } from "./group-chat-list-item";
 export { GroupChatMembersDialog } from "./group-chat-members-dialog";
 export { GroupChatSidebar } from "./group-chat-sidebar";
+
+// List Item components
+export { ListItem, getGradientByName, formatRelativeTime, gradients } from "./list-item";
+export type { ListItemProps, ListItemAction, ListItemBadge, ListItemSource } from "./list-item";
+export { AgentListItem } from "./agent-list-item";
+export type { AgentListItemProps } from "./agent-list-item";
+export { ExecutorListItem, getExecutorDisplayName, getExecutorGradient } from "./executor-list-item";
+export type { ExecutorListItemProps } from "./executor-list-item";
+
+// Source Tooltip
+export { SourceTooltip, SourceBadge } from "./source-tooltip";
+export type { SourceTooltipProps, SourceBadgeProps, SourceType } from "./source-tooltip";

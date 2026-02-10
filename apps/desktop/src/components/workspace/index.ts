@@ -3,13 +3,14 @@ export { WorkspaceHeader } from "./workspace-header";
 export { TaskDetailPanel, type TaskDetailPanelProps, type TaskForPanel } from "./task-detail-panel";
 
 // Executor components
+export { ExecutorList, type ExecutorListProps } from "./executor-list";
+// Re-export from chat for convenience
 export {
-  ExecutorList,
+  ExecutorListItem,
   getExecutorDisplayName,
   getExecutorGradient,
-  type ExecutorListProps,
   type ExecutorListItemProps,
-} from "./executor-list";
+} from "@/components/chat";
 
 // Kanban components
 export {

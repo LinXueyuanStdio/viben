@@ -224,7 +224,7 @@ export type {
 
 // Group Chat
 export { useGroupChat } from "./use-group-chat";
-export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks } from "./use-group-chat";
+export type { UseGroupChatOptions, UseGroupChatReturn, GroupChatNotificationCallbacks, GroupChatViewMode } from "./use-group-chat";
 
 // Group Chat Notifications
 export { useGroupNotifications } from "./use-group-notifications";

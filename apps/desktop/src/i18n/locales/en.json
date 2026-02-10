@@ -602,7 +602,12 @@
     "addModelDescription": "Manually add a model ID to this provider",
     "modelId": "Model ID",
     "modelIdPlaceholder": "e.g. gpt-4o, claude-3-opus-20240229",
-    "modelIdHint": "Enter the model ID supported by the API"
+    "modelIdHint": "Enter the model ID supported by the API",
+    "noModelsMatchSearch": "No models match your search",
+    "addModelManually": "Add Model Manually",
+    "sourceDiscovered": "Discovered from API",
+    "sourcePredefined": "Predefined model",
+    "sourceManual": "Manually added"
   },
   "providers": {
     "title": "Data Sources",
