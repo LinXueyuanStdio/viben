@@ -74,6 +74,8 @@ export interface AgentMessage {
   attachments?: MessageAttachment[]; // For user messages with attachments
   questions?: AgentQuestion[]; // For ask_question type (AskUserQuestion tool)
   planModeAction?: "enter" | "exit"; // For plan_mode type
+  subagentId?: string; // For Task tool, the subagent ID
+  subagentMessages?: AgentMessage[]; // For Task tool, recursively loaded subagent messages
 }
 
 /** Agent phase */

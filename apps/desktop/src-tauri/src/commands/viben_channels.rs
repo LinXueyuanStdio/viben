@@ -31,6 +31,7 @@ pub enum ChannelType {
 #[derive(Debug, Clone, Deserialize)]
 pub struct TelegramConfigInput {
     pub token: String,
+    pub chat_id: Option<String>,
     pub proxy: Option<String>,
 }
 
@@ -123,6 +124,7 @@ pub async fn viben_send_telegram_message(
 ) -> Result<SendMessageResultOutput, String> {
     let telegram_config = TelegramConfig {
         token: Some(config.token),
+        chat_id: chat_id.clone(),
         proxy: config.proxy,
     };
 
@@ -149,6 +151,7 @@ pub async fn viben_test_telegram_channel(
 ) -> Result<TestChannelResultOutput, String> {
     let telegram_config = TelegramConfig {
         token: Some(config.token),
+        chat_id: config.chat_id.unwrap_or_default(),
         proxy: config.proxy,
     };
 
@@ -383,6 +386,7 @@ pub async fn viben_send_test_message(
                 .map_err(|e| format!("Invalid Telegram config: {}", e))?;
             let telegram_config = TelegramConfig {
                 token: Some(cfg.token),
+                chat_id: options.chat_id.clone(),
                 proxy: cfg.proxy,
             };
             channels::send_telegram_message(&telegram_config, &options).await

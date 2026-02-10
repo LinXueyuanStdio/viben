@@ -116,6 +116,12 @@ pub struct ExecutorUIMessage {
     pub tool_output: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_error: Option<bool>,
+    /// For Task tool calls, the subagent ID (e.g., "a1477d3")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagent_id: Option<String>,
+    /// For Task tool calls, recursively loaded subagent messages
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagent_messages: Option<Vec<ExecutorUIMessage>>,
 }
 
 /// Response for session messages
@@ -261,9 +267,11 @@ async fn read_first_user_message(file_path: &PathBuf) -> Option<String> {
 }
 
 /// Read messages from a Claude Code session file
+/// If load_subagents is true, also loads subagent messages for Task tool calls
 async fn read_claude_code_session_messages(
     file_path: &str,
     limit: Option<usize>,
+    load_subagents: bool,
 ) -> Result<Vec<ExecutorUIMessage>, GatewayError> {
     let path = PathBuf::from(file_path);
 
@@ -280,15 +288,56 @@ async fn read_claude_code_session_messages(
     let mut messages = Vec::new();
     let mut line_count = 0;
 
+    // Map to track Task tool_use_id -> agentId from progress messages
+    let mut task_agent_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+
+    // First pass: collect all lines and extract agentId mappings from progress messages
+    let mut all_lines: Vec<String> = Vec::new();
     while let Ok(Some(line)) = lines.next_line().await {
         if line.trim().is_empty() {
             continue;
         }
+        all_lines.push(line);
+    }
+
+    // Extract agentId from progress messages
+    for line in &all_lines {
+        if let Ok(msg) = serde_json::from_str::<ClaudeCodeMessage>(line) {
+            if msg.msg_type == "progress" {
+                // Check for agent_progress type with agentId
+                if let Some(data) = msg.extra.get("data") {
+                    if data.get("type").and_then(|t| t.as_str()) == Some("agent_progress") {
+                        if let (Some(agent_id), Some(parent_tool_use_id)) = (
+                            data.get("agentId").and_then(|a| a.as_str()),
+                            msg.extra.get("parentToolUseID").and_then(|p| p.as_str()),
+                        ) {
+                            task_agent_map.insert(parent_tool_use_id.to_string(), agent_id.to_string());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Second pass: convert messages
+    for line in &all_lines {
         line_count += 1;
 
-        if let Ok(msg) = serde_json::from_str::<ClaudeCodeMessage>(&line) {
+        if let Ok(msg) = serde_json::from_str::<ClaudeCodeMessage>(line) {
             // Convert can produce multiple UI messages from one source message
-            let ui_msgs = convert_claude_message_to_ui(&msg);
+            let mut ui_msgs = convert_claude_message_to_ui(&msg);
+
+            // For Task tool_use messages, add subagent_id
+            for ui_msg in &mut ui_msgs {
+                if ui_msg.msg_type == "tool_use" && ui_msg.tool_name.as_deref() == Some("Task") {
+                    if let Some(tool_use_id) = &ui_msg.tool_use_id {
+                        if let Some(agent_id) = task_agent_map.get(tool_use_id) {
+                            ui_msg.subagent_id = Some(agent_id.clone());
+                        }
+                    }
+                }
+            }
+
             messages.extend(ui_msgs);
         }
 
@@ -296,6 +345,40 @@ async fn read_claude_code_session_messages(
         if let Some(max) = limit {
             if messages.len() >= max {
                 break;
+            }
+        }
+    }
+
+    // Load subagent messages if requested
+    if load_subagents {
+        // Get session directory (parent of the .jsonl file)
+        let session_dir = path.parent().ok_or_else(|| {
+            GatewayError::Internal("Cannot determine session directory".to_string())
+        })?;
+        let subagents_dir = session_dir.join("subagents");
+
+        for msg in &mut messages {
+            if let Some(agent_id) = &msg.subagent_id {
+                let subagent_file = subagents_dir.join(format!("agent-{}.jsonl", agent_id));
+                if subagent_file.exists() {
+                    // Recursively load subagent messages (with depth limit to prevent infinite loops)
+                    match Box::pin(read_claude_code_session_messages(
+                        &subagent_file.to_string_lossy(),
+                        None, // No limit for subagent messages
+                        true, // Also load nested subagents
+                    )).await {
+                        Ok(subagent_msgs) => {
+                            msg.subagent_messages = Some(subagent_msgs);
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                target: "viben::gateway::executors",
+                                "Failed to load subagent {}: {}",
+                                agent_id, e
+                            );
+                        }
+                    }
+                }
             }
         }
     }
@@ -344,6 +427,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                                     tool_input: None,
                                     tool_output: None,
                                     is_error,
+                                    subagent_id: None,
+                                    subagent_messages: None,
                                 })
                             } else {
                                 None
@@ -362,6 +447,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                         tool_input: None,
                         tool_output: None,
                         is_error: None,
+                        subagent_id: None,
+                        subagent_messages: None,
                     }]
                 } else {
                     vec![]
@@ -399,6 +486,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                                     tool_input: None,
                                     tool_output: None,
                                     is_error: None,
+                                    subagent_id: None,
+                                    subagent_messages: None,
                                 })
                             }
                             "text" => {
@@ -416,6 +505,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                                     tool_input: None,
                                     tool_output: None,
                                     is_error: None,
+                                    subagent_id: None,
+                                    subagent_messages: None,
                                 })
                             }
                             "tool_use" => {
@@ -433,6 +524,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                                     tool_input,
                                     tool_output: None,
                                     is_error: None,
+                                    subagent_id: None,
+                                    subagent_messages: None,
                                 })
                             }
                             _ => None,
@@ -464,6 +557,8 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
                 tool_input: None,
                 tool_output: None,
                 is_error: None,
+                subagent_id: None,
+                subagent_messages: None,
             }]
         }
         // Skip progress, queue-operation, and other internal messages
@@ -479,9 +574,9 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
 /// Query parameters for /api/executors endpoint
 #[derive(Debug, Deserialize, Default)]
 pub struct ExecutorsQuery {
-    /// If provided, returns workspace-scoped executors
+    /// Workspace path (default: user home directory)
     pub workspace_path: Option<String>,
-    /// Whether to include global executors (only used when workspace_path is provided)
+    /// Whether to include global executors (default: true)
     #[serde(default = "default_include_global")]
     pub include_global: bool,
 }
@@ -490,16 +585,22 @@ fn default_include_global() -> bool {
     true
 }
 
-/// List executors - returns workspace-scoped executors when workspace_path is provided
+/// List executors - returns workspace-scoped executors
 ///
+/// GET /api/executors - Returns executors from user home directory (global workspace)
 /// GET /api/executors?workspace_path=/path&include_global=true - Returns workspace-scoped executors
+///
+/// When workspace_path is not provided, defaults to user home directory (~).
+/// When include_global is not provided, defaults to true.
 pub async fn list_executors(
     Query(query): Query<ExecutorsQuery>,
 ) -> Result<Json<WorkspaceExecutorsResponse>, GatewayError> {
-    // Require workspace_path for this endpoint
-    let workspace_path = query.workspace_path.ok_or_else(|| {
-        GatewayError::BadRequest("workspace_path query parameter is required".to_string())
-    })?;
+    // Use provided workspace_path or default to user home directory
+    let workspace_path = query.workspace_path.unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string())
+    });
 
     tracing::debug!(
         target: "viben::gateway::executors",
@@ -584,6 +685,7 @@ pub async fn get_session_messages(
             read_claude_code_session_messages(
                 &file_path.to_string_lossy(),
                 query.limit,
+                true, // Load subagent messages for Task tool calls
             ).await?
         }
         "codex" => {

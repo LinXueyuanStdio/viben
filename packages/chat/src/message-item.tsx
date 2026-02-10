@@ -513,6 +513,17 @@ export function MessageItem({
   else if (message.type === "tool_use") {
     // If output is present, the tool has completed (merged from tool_result)
     const hasOutput = message.output !== undefined;
+
+    // Recursive render function for subagent messages
+    const renderSubagentMessage = (msg: AgentMessage, idx: number) => (
+      <MessageItem
+        key={msg.id || idx}
+        message={msg}
+        onLinkClick={onLinkClick}
+        // Don't pass maxWidth to nested messages - they should fill their container
+      />
+    );
+
     content = (
       <ToolExecutionItem
         name={message.name || "unknown"}
@@ -520,6 +531,9 @@ export function MessageItem({
         output={message.output}
         isExecuting={!hasOutput}
         isError={message.isError}
+        subagentId={message.subagentId}
+        subagentMessages={message.subagentMessages}
+        renderMessage={renderSubagentMessage}
       />
     );
   }

@@ -100,18 +100,19 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
     );
   }, [executors]);
 
+  /** Get executors that have workspace-level config */
   const getProjectExecutors = useCallback(() => {
-    return executors.filter(
-      (e) => e.source === "project" || e.source === "merged"
-    );
+    return executors.filter((e) => e.has_workspace_config);
   }, [executors]);
 
+  /** Get executors that only have global config (no workspace config) */
   const getGlobalOnlyExecutors = useCallback(() => {
-    return executors.filter((e) => e.source === "global");
+    return executors.filter((e) => !e.has_workspace_config && e.global_config_path);
   }, [executors]);
 
+  /** Get executors that have both workspace and global config */
   const getMergedExecutors = useCallback(() => {
-    return executors.filter((e) => e.source === "merged");
+    return executors.filter((e) => e.has_workspace_config && e.global_config_path);
   }, [executors]);
 
   return {
@@ -168,7 +169,7 @@ export function useWorkspaceExecutors(
 
     try {
       const client = getGatewayClient();
-      const response = await client.getWorkspaceExecutors(workspacePath);
+      const response = await client.getExecutors({ workspacePath, includeGlobal: true });
       setExecutors(response.executors);
     } catch (err) {
       const message =
@@ -251,7 +252,7 @@ export function useWorkspaceModels(
 
     try {
       const client = getGatewayClient();
-      const response = await client.getWorkspaceModels(workspacePath);
+      const response = await client.getModels({ workspacePath, includeGlobal: true });
       setModels(response.models);
       setTotal(response.total);
     } catch (err) {
@@ -455,7 +456,7 @@ export function useWorkspaceAgentsFromGateway(
 
     try {
       const client = getGatewayClient();
-      const response = await client.getWorkspaceAgents(workspacePath);
+      const response = await client.getAgents({ workspacePath, includeGlobal: true });
       setAgents(response.agents);
       setTotal(response.total);
     } catch (err) {

@@ -125,7 +125,11 @@ fn event_to_channel(event: &GatewayEvent) -> String {
         | GatewayEvent::GroupChatDeleted { .. }
         | GatewayEvent::GroupChatMemberJoined { .. }
         | GatewayEvent::GroupChatMemberLeft { .. }
-        | GatewayEvent::GroupChatMessage { .. } => "group".to_string(),
+        | GatewayEvent::GroupChatMessage { .. }
+        | GatewayEvent::GroupChatAgentThinking { .. }
+        | GatewayEvent::GroupChatAgentProgress { .. }
+        | GatewayEvent::GroupChatAgentResponse { .. }
+        | GatewayEvent::GroupChatAgentError { .. } => "group".to_string(),
 
         // Task events
         GatewayEvent::TaskCreated { .. }

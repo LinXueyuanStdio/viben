@@ -11,6 +11,7 @@ import {
   Bot,
 } from "lucide-react";
 import { cn } from "@viben/ui";
+import type { AgentMessage } from "./types";
 
 export interface ToolExecutionItemProps {
   name: string;
@@ -22,6 +23,12 @@ export interface ToolExecutionItemProps {
   className?: string;
   /** Compact mode for use within task groups */
   compact?: boolean;
+  /** Subagent ID for Task tool calls */
+  subagentId?: string;
+  /** Recursively loaded subagent messages for Task tool calls */
+  subagentMessages?: AgentMessage[];
+  /** Render function for subagent messages */
+  renderMessage?: (message: AgentMessage, index: number) => React.ReactNode;
 }
 
 export function ToolExecutionItem({
@@ -33,11 +40,15 @@ export function ToolExecutionItem({
   isError,
   className,
   compact = false,
+  subagentId,
+  subagentMessages,
+  renderMessage,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = React.useState(false);
 
-  const hasDetails = input || output;
+  const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
+  const hasDetails = input || output || hasSubagentMessages;
   const status = isExecuting
     ? "executing"
     : isError
@@ -230,8 +241,31 @@ export function ToolExecutionItem({
                       </div>
                     )}
 
-                    {/* Output */}
-                    {output && (
+                    {/* Subagent ID */}
+                    {subagentId && (
+                      <div className="text-xs text-muted-foreground">
+                        {t("chat.subAgentId", "Agent ID")}: <span className="font-mono">{subagentId}</span>
+                      </div>
+                    )}
+
+                    {/* Subagent messages (recursive rendering) */}
+                    {hasSubagentMessages && renderMessage && (
+                      <div className="min-w-0 overflow-hidden">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">
+                          {t("chat.subAgentConversation", "Sub-Agent Conversation")}
+                        </p>
+                        <div className="space-y-2 pl-2 border-l-2 border-violet-500/20">
+                          {subagentMessages.map((msg, idx) => (
+                            <div key={msg.id || idx} className="min-w-0">
+                              {renderMessage(msg, idx)}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Output (fallback when no subagent messages) */}
+                    {output && !hasSubagentMessages && (
                       <div className="min-w-0 overflow-hidden">
                         <p className="text-xs font-medium text-muted-foreground mb-1">
                           {t("chat.subAgentResult", "Sub-Agent Result")}
