@@ -2,9 +2,71 @@
 //!
 //! Provides cross-platform system notification support using notify-rust.
 //! Supports macOS, Windows, and Linux.
+//!
+//! ## macOS Notes
+//!
+//! On macOS, notifications require a valid bundle identifier. By default,
+//! this module uses "com.viben.desktop". You can customize this by calling
+//! `set_app_bundle_id()` before sending notifications.
+//!
+//! ## Usage
+//!
+//! ```rust,ignore
+//! use viben_core::notifications::{send_notification, SystemNotification};
+//!
+//! let notif = SystemNotification::new("Title", "Body");
+//! send_notification(&notif)?;
+//! ```
 
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 use ts_rs::TS;
+
+/// Default bundle identifier for macOS notifications
+const DEFAULT_BUNDLE_ID: &str = "com.viben.desktop";
+
+/// Global app bundle ID for macOS notifications
+static APP_BUNDLE_ID: OnceLock<String> = OnceLock::new();
+
+/// Set the application bundle identifier for macOS notifications.
+/// Must be called before sending any notifications.
+/// If not called, defaults to "com.viben.desktop".
+///
+/// On macOS, this calls notify_rust::set_application() internally.
+pub fn set_app_bundle_id(bundle_id: impl Into<String>) {
+    let id = bundle_id.into();
+    let _ = APP_BUNDLE_ID.set(id.clone());
+
+    // On macOS, also set the application for notify-rust
+    #[cfg(all(feature = "system-notifications", target_os = "macos"))]
+    {
+        notify_rust::set_application(&id);
+    }
+}
+
+/// Get the current app bundle ID
+#[allow(dead_code)]
+fn get_app_bundle_id() -> &'static str {
+    APP_BUNDLE_ID.get().map(|s| s.as_str()).unwrap_or(DEFAULT_BUNDLE_ID)
+}
+
+/// Initialize notifications for macOS.
+/// This sets the application bundle ID for the notification system.
+/// Call this once at application startup.
+#[cfg(target_os = "macos")]
+pub fn init_notifications() {
+    #[cfg(feature = "system-notifications")]
+    {
+        let bundle_id = get_app_bundle_id();
+        notify_rust::set_application(bundle_id);
+    }
+}
+
+/// Initialize notifications (no-op on non-macOS platforms)
+#[cfg(not(target_os = "macos"))]
+pub fn init_notifications() {
+    // No-op on non-macOS platforms
+}
 
 /// Notification urgency level
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, TS)]
@@ -75,20 +137,40 @@ impl SystemNotification {
     }
 }
 
-/// Send a system notification
+/// Send a system notification using notify-rust
 ///
 /// Returns Ok(()) if the notification was sent successfully,
 /// or an error message if it failed.
+///
+/// ## macOS
+///
+/// On macOS, notifications are sent via the native notification center.
+/// The notification will appear from "Script Editor" or "Terminal" depending
+/// on how the application is run.
 #[cfg(feature = "system-notifications")]
 pub fn send_notification(notification: &SystemNotification) -> Result<(), String> {
     use notify_rust::Notification;
 
     let mut builder = Notification::new();
+
     builder
         .summary(&notification.title)
         .body(&notification.body);
 
-    // Urgency is only supported on Linux/freedesktop
+    // macOS specific settings
+    #[cfg(target_os = "macos")]
+    {
+        // Set subtitle if provided
+        if let Some(subtitle) = &notification.subtitle {
+            builder.subtitle(subtitle);
+        }
+        // Set sound if provided
+        if let Some(sound) = &notification.sound {
+            builder.sound_name(sound);
+        }
+    }
+
+    // Linux/freedesktop specific settings
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         use notify_rust::Urgency;
@@ -98,31 +180,17 @@ pub fn send_notification(notification: &SystemNotification) -> Result<(), String
             NotificationUrgency::Critical => Urgency::Critical,
         };
         builder.urgency(urgency);
-    }
 
-    // Set subtitle for macOS
-    #[cfg(target_os = "macos")]
-    if let Some(subtitle) = &notification.subtitle {
-        builder.subtitle(subtitle);
-    }
-
-    // Set icon if provided (Linux/Windows)
-    #[cfg(not(target_os = "macos"))]
-    if let Some(icon) = &notification.icon {
-        builder.icon(icon);
-    }
-
-    // Set sound if provided (macOS)
-    #[cfg(target_os = "macos")]
-    if let Some(sound) = &notification.sound {
-        builder.sound_name(sound);
+        if let Some(icon) = &notification.icon {
+            builder.icon(icon);
+        }
     }
 
     builder.show().map_err(|e| e.to_string())?;
 
     tracing::debug!(
         target: "viben::notifications",
-        "System notification sent: {}",
+        "System notification sent via notify-rust: {}",
         notification.title
     );
 
@@ -256,9 +324,12 @@ mod tests {
     }
 
     #[test]
+    #[ignore] // This test actually sends a system notification, run manually with --ignored
     fn test_send_notification_no_panic() {
         // Just ensure it doesn't panic
-        let notif = SystemNotification::new("Test", "Body");
-        let _ = send_notification(&notif);
+        let notif = SystemNotification::new("Viben Test", "This is a test notification");
+        let result = send_notification(&notif);
+        // Note: result may be Err on headless systems, that's OK
+        println!("Notification result: {:?}", result);
     }
 }

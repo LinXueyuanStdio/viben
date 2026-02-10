@@ -101,8 +101,9 @@ pub use utils::{LogMsg, MsgStore, get_interactive_shell, get_shell_name};
 
 // From notifications module
 pub use notifications::{
-    NotificationUrgency, SystemNotification, notify_agent_completion, notify_channel_message,
-    notify_cron_completion, notify_custom, send_notification,
+    NotificationUrgency, SystemNotification, init_notifications, notify_agent_completion,
+    notify_channel_message, notify_cron_completion, notify_custom, send_notification,
+    set_app_bundle_id,
 };
 
 /// Initialize all managers and ensure directory structure exists

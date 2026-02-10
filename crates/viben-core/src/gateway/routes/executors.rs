@@ -134,9 +134,8 @@ pub struct SessionMessagesResponse {
 /// Encode a workspace path to Claude's project folder format
 /// /Users/lxy/Documents/GitHub/LinXueyuanStdio/viben -> -Users-lxy-Documents-GitHub-LinXueyuanStdio-viben
 fn encode_workspace_path(path: &str) -> String {
+    // Claude Code replaces / with - but keeps the leading -
     path.replace("/", "-")
-        .trim_start_matches('-')
-        .to_string()
 }
 
 /// Get the Claude Code projects directory
@@ -245,11 +244,12 @@ async fn read_first_user_message(file_path: &PathBuf) -> Option<String> {
             if msg.msg_type == "user" {
                 if let Some(user_msg) = &msg.message {
                     let content = &user_msg.content;
-                    // Truncate to first 100 chars
-                    let preview = if content.len() > 100 {
-                        format!("{}...", &content[..100])
+                    // Truncate to first 100 chars (handle multi-byte UTF-8 safely)
+                    let preview: String = content.chars().take(100).collect();
+                    let preview = if content.chars().count() > 100 {
+                        format!("{}...", preview)
                     } else {
-                        content.clone()
+                        preview
                     };
                     return Some(preview);
                 }
