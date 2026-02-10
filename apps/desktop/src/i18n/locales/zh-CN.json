@@ -142,6 +142,7 @@
     "sendTest": "发送测试",
     "testing": "测试中...",
     "telegram": {
+      "name": "Telegram",
       "description": "通过 Telegram Bot 接收消息",
       "token": "Bot Token",
       "tokenDescription": "从 @BotFather 获取",
@@ -155,6 +156,7 @@
       "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID"
     },
     "discord": {
+      "name": "Discord",
       "description": "通过 Discord Bot 接收消息",
       "token": "Bot Token",
       "tokenDescription": "从 Discord Developer Portal 获取",
@@ -180,6 +182,7 @@
       "chatIdHint": "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱地址"
     },
     "whatsapp": {
+      "name": "WhatsApp",
       "description": "通过 WhatsApp Bridge 接收消息",
       "bridgeUrl": "Bridge URL",
       "bridgeDescription": "WhatsApp Web Bridge WebSocket 地址",
@@ -415,7 +418,18 @@
     "gatewayRequired": "需要网关连接才能检测执行器状态。请先启动网关服务。",
     "summary": "执行器状态",
     "summaryText": "{{installed}}/{{total}} 个执行器可用",
-    "installHint": "安装命令:"
+    "installHint": "安装命令:",
+    "executors": {
+      "CLAUDE_CODE": "Anthropic 官方 Claude CLI - 强大的编程智能体",
+      "AMP": "Sourcegraph 的 AI 代码导航和编辑工具",
+      "GEMINI": "Google Gemini AI 编程助手",
+      "CODEX": "OpenAI Codex 编程助手",
+      "OPENCODE": "开源 AI 编程助手",
+      "CURSOR_AGENT": "Cursor 后台 AI 智能体，用于自主编程",
+      "QWEN_CODE": "阿里巴巴 Qwen 编程模型 CLI",
+      "COPILOT": "GitHub AI 结对编程终端工具",
+      "DROID": "Android 开发 AI 助手"
+    }
   },
   "settingsAgents": {
     "title": "AI 智能体",

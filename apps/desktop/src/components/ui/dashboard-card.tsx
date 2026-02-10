@@ -142,10 +142,9 @@ export function DashboardCard({
   className,
   disabled = false,
 }: DashboardCardProps) {
-  const { t: _t } = useTranslation();
+  const { t } = useTranslation();
   const config = colorConfig[color];
-  // Note: displayActionLabel is available for future use
-  const _displayActionLabel = actionLabel;
+  const displayActionLabel = actionLabel ?? t("common.open");
 
   const cardContent = (
     <Card
