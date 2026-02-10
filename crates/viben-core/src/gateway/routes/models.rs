@@ -22,6 +22,10 @@ pub struct ModelsQuery {
     /// Whether to include global models (default: true)
     #[serde(default = "default_include_global")]
     pub include_global: bool,
+    /// Whether to include provider predefined models (default: false)
+    /// Used in Settings > Models page to help users add supported models
+    #[serde(default)]
+    pub include_provider_predefined: bool,
 }
 
 fn default_include_global() -> bool {
@@ -32,9 +36,11 @@ fn default_include_global() -> bool {
 ///
 /// GET /api/models - Returns models from user home directory (global workspace)
 /// GET /api/models?workspace_path=/path&include_global=true - Returns workspace-scoped models
+/// GET /api/models?include_provider_predefined=true - Include predefined models for reference
 ///
 /// When workspace_path is not provided, defaults to user home directory (~).
 /// When include_global is not provided, defaults to true.
+/// When include_provider_predefined is not provided, defaults to false.
 pub async fn list_models(
     Query(query): Query<ModelsQuery>,
 ) -> Result<Json<WorkspaceModelsResponse>, GatewayError> {
@@ -47,13 +53,14 @@ pub async fn list_models(
 
     tracing::debug!(
         target: "viben::gateway::models",
-        "Listing workspace-scoped models for: {} (include_global={})",
-        workspace_path, query.include_global
+        "Listing workspace-scoped models for: {} (include_global={}, include_provider_predefined={})",
+        workspace_path, query.include_global, query.include_provider_predefined
     );
 
-    let response = super::workspaces::list_workspace_models(
-        Query(super::workspaces::WorkspaceQuery {
+    let response = super::workspaces::list_workspace_models_with_predefined(
+        Query(super::workspaces::ModelsQueryInternal {
             workspace_path,
+            include_provider_predefined: query.include_provider_predefined,
         }),
     ).await?;
 

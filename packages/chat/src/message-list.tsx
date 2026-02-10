@@ -607,7 +607,6 @@ export function MessageList({
       if (containerRef.current) {
         const width = containerRef.current.getBoundingClientRect().width;
         setContainerWidth(width);
-        console.log('[MessageList] Container width:', width);
       }
     };
 
