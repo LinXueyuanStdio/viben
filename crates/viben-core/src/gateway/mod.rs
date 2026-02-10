@@ -45,32 +45,20 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         }
     };
 
-    // Start cron scheduler with timeout (prevent hang)
+    // Start cron scheduler
     tracing::info!(target: "viben::gateway", "Starting cron scheduler...");
-    let cron_start = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        state.cron.start()
-    ).await;
-
-    match cron_start {
-        Ok(Ok(())) => {
-            let jobs = state.cron.list_jobs().await;
-            let enabled_count = jobs.iter().filter(|j| j.enabled).count();
-            tracing::info!(
-                target: "viben::gateway",
-                "Cron scheduler started with {} jobs ({} enabled)",
-                jobs.len(),
-                enabled_count
-            );
-        }
-        Ok(Err(e)) => {
-            tracing::error!(target: "viben::gateway", "Failed to start cron scheduler: {}", e);
-            tracing::warn!(target: "viben::gateway", "Gateway will run without cron scheduling");
-        }
-        Err(_) => {
-            tracing::error!(target: "viben::gateway", "Cron scheduler startup timed out (5s)");
-            tracing::warn!(target: "viben::gateway", "Gateway will run without cron scheduling");
-        }
+    if let Err(e) = state.cron.start().await {
+        tracing::error!(target: "viben::gateway", "Failed to start cron scheduler: {}", e);
+        tracing::warn!(target: "viben::gateway", "Gateway will run without cron scheduling");
+    } else {
+        let jobs = state.cron.list_jobs().await;
+        let enabled_count = jobs.iter().filter(|j| j.enabled).count();
+        tracing::info!(
+            target: "viben::gateway",
+            "Cron scheduler started with {} jobs ({} enabled)",
+            jobs.len(),
+            enabled_count
+        );
     }
 
     // Build router

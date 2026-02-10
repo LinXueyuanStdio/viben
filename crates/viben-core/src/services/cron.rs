@@ -358,17 +358,25 @@ impl CronService {
         // Create scheduler
         let sched = JobScheduler::new().await?;
 
-        // Schedule all enabled jobs
-        let jobs = self.jobs.read().await;
-        for job in jobs.values() {
-            if job.enabled {
-                if let Err(e) = self.schedule_job_to_scheduler(&sched, job.clone()).await {
-                    tracing::error!(
-                        target: "viben::services::cron",
-                        "Failed to schedule job {}: {}",
-                        job.id, e
-                    );
-                }
+        // Collect enabled jobs first (release read lock before scheduling)
+        let enabled_jobs: Vec<CronJob> = {
+            let jobs = self.jobs.read().await;
+            jobs.values()
+                .filter(|j| j.enabled)
+                .cloned()
+                .collect()
+        };
+
+        let job_count = enabled_jobs.len();
+
+        // Schedule all enabled jobs (now without holding jobs lock)
+        for job in enabled_jobs {
+            if let Err(e) = self.schedule_job_to_scheduler(&sched, job.clone()).await {
+                tracing::error!(
+                    target: "viben::services::cron",
+                    "Failed to schedule job {}: {}",
+                    job.id, e
+                );
             }
         }
 
@@ -384,7 +392,7 @@ impl CronService {
         tracing::info!(
             target: "viben::services::cron",
             "CronService started with {} jobs",
-            jobs.len()
+            job_count
         );
 
         Ok(())
