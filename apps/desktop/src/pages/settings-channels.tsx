@@ -52,9 +52,6 @@ import type {
   ChannelType,
   GatewayChannel,
   ChannelConfig,
-  UpdateChannelRequest,
-  NotificationMode,
-  AgentBinding,
 } from "@/types/channel";
 import { getChannelTypeName } from "@/types/channel";
 
@@ -101,12 +98,6 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
 };
 
 const CHANNEL_TYPES: ChannelType[] = ["telegram", "discord", "feishu", "whatsapp"];
-
-// Helper to extract config value from GatewayChannel
-function getConfigValue<T>(config: ChannelConfig, key: string): T | undefined {
-  if (config.type === "none") return undefined;
-  return (config as Record<string, unknown>)[key] as T | undefined;
-}
 
 // Password input with toggle visibility
 interface SecretInputProps {
@@ -237,7 +228,7 @@ function formatChannelError(error: string | undefined, channelType: ChannelType)
  * Test channel connection via gateway API (no Chat ID required)
  */
 async function testChannelConnection(
-  instance: ChannelInstance
+  channel: GatewayChannel
 ): Promise<{ success: boolean; details?: string; error?: string }> {
   try {
     const gatewayUrl = getGatewayUrl();
@@ -245,8 +236,8 @@ async function testChannelConnection(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        channel_type: instance.type,
-        config: buildChannelConfig(instance),
+        channel_type: channel.channel_type,
+        config: buildChannelConfig(channel),
       }),
     });
 
@@ -261,13 +252,13 @@ async function testChannelConnection(
     return {
       success: data.success,
       details: data.details,
-      error: data.error ? formatChannelError(data.error, instance.type) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, instance.type),
+      error: formatChannelError(errorMsg, channel.channel_type),
     };
   }
 }
@@ -276,10 +267,10 @@ async function testChannelConnection(
  * Send a test message via gateway API (requires Chat ID)
  */
 async function sendTestMessage(
-  instance: ChannelInstance,
+  channel: GatewayChannel,
   chatId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  if (!chatId && instance.type !== "whatsapp") {
+  if (!chatId && channel.channel_type !== "whatsapp") {
     return { success: false, error: "Chat ID is required to send test message" };
   }
 
@@ -289,8 +280,8 @@ async function sendTestMessage(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        channel_type: instance.type,
-        config: buildChannelConfig(instance),
+        channel_type: channel.channel_type,
+        config: buildChannelConfig(channel),
         chat_id: chatId || "",
       }),
     });
@@ -305,20 +296,20 @@ async function sendTestMessage(
     const data = await response.json();
     return {
       success: data.success,
-      error: data.error ? formatChannelError(data.error, instance.type) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, instance.type),
+      error: formatChannelError(errorMsg, channel.channel_type),
     };
   }
 }
 
 // Instance card component
 interface InstanceCardProps {
-  instance: ChannelInstance;
+  channel: GatewayChannel;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -329,7 +320,7 @@ interface InstanceCardProps {
 }
 
 function InstanceCard({
-  instance,
+  channel,
   onToggle,
   onEdit,
   onDelete,
@@ -346,7 +337,7 @@ function InstanceCard({
         <div
           className={cn(
             "h-8 w-8 rounded-full flex items-center justify-center",
-            instance.enabled
+            channel.enabled
               ? "bg-green-100 dark:bg-green-900/30"
               : "bg-muted"
           )}
@@ -354,28 +345,35 @@ function InstanceCard({
           <div
             className={cn(
               "h-4 w-4",
-              instance.enabled
+              channel.enabled
                 ? "text-green-600 dark:text-green-400"
                 : "text-muted-foreground"
             )}
           >
-            {CHANNEL_ICONS[instance.type]}
+            {CHANNEL_ICONS[channel.channel_type]}
           </div>
         </div>
-        <div>
-          <p className="text-sm font-medium">{instance.name}</p>
-          <p className="text-xs text-muted-foreground">
-            {getChannelTypeName(instance.type)}
-          </p>
+        <div className="flex items-center gap-2">
+          <div>
+            <p className="text-sm font-medium">{channel.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {getChannelTypeName(channel.channel_type as ChannelType)}
+            </p>
+          </div>
+          {channel.is_default && (
+            <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+              {t("channels.default", "默认")}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {instance.enabled ? (
+        {channel.enabled ? (
           <CheckCircle2 className="h-4 w-4 text-green-600" />
         ) : (
           <XCircle className="h-4 w-4 text-muted-foreground" />
         )}
-        <Switch checked={instance.enabled} onCheckedChange={onToggle} />
+        <Switch checked={channel.enabled} onCheckedChange={onToggle} />
         <Button
           variant="ghost"
           size="icon"
@@ -420,22 +418,36 @@ function InstanceCard({
   );
 }
 
+// Form state for editing channels
+interface ChannelFormState {
+  name: string;
+  channel_type: ChannelType;
+  // Telegram
+  token?: string;
+  proxy?: string;
+  // Feishu
+  app_id?: string;
+  app_secret?: string;
+}
+
 // Telegram config form
 function TelegramForm({
-  instance,
+  formState,
   onChange,
 }: {
-  instance: TelegramInstance;
-  onChange: (update: Partial<TelegramInstance>) => void;
+  formState: ChannelFormState;
+  onChange: (update: Partial<ChannelFormState>) => void;
 }) {
   const { t } = useTranslation();
+  const token = formState.token ?? "";
+  const proxy = formState.proxy ?? "";
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>{t("channels.instanceName", "实例名称")}</Label>
         <Input
-          value={instance.name}
+          value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="My Telegram Bot"
         />
@@ -443,7 +455,7 @@ function TelegramForm({
       <SecretInput
         label={t("channels.telegram.token", "Bot Token")}
         description={t("channels.telegram.tokenDescription", "从 @BotFather 获取")}
-        value={instance.token}
+        value={token}
         onChange={(token) => onChange({ token })}
         placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
       />
@@ -452,26 +464,9 @@ function TelegramForm({
           {t("channels.telegram.proxy", "代理 (可选)")}
         </Label>
         <Input
-          value={instance.proxy || ""}
+          value={proxy}
           onChange={(e) => onChange({ proxy: e.target.value || undefined })}
           placeholder="http://127.0.0.1:7890"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {t("channels.telegram.allowFrom", "允许的用户 (可选)")}
-        </Label>
-        <Input
-          value={instance.allow_from.join(", ")}
-          onChange={(e) =>
-            onChange({
-              allow_from: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-          placeholder="user_id1, username2"
         />
       </div>
     </div>
@@ -480,20 +475,21 @@ function TelegramForm({
 
 // Discord config form
 function DiscordForm({
-  instance,
+  formState,
   onChange,
 }: {
-  instance: DiscordInstance;
-  onChange: (update: Partial<DiscordInstance>) => void;
+  formState: ChannelFormState;
+  onChange: (update: Partial<ChannelFormState>) => void;
 }) {
   const { t } = useTranslation();
+  const token = formState.token ?? "";
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>{t("channels.instanceName", "实例名称")}</Label>
         <Input
-          value={instance.name}
+          value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="My Discord Bot"
         />
@@ -501,47 +497,32 @@ function DiscordForm({
       <SecretInput
         label={t("channels.discord.token", "Bot Token")}
         description={t("channels.discord.tokenDescription", "从 Discord Developer Portal 获取")}
-        value={instance.token}
+        value={token}
         onChange={(token) => onChange({ token })}
         placeholder="MTIzNDU2Nzg5..."
       />
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {t("channels.discord.allowFrom", "允许的用户 (可选)")}
-        </Label>
-        <Input
-          value={instance.allow_from.join(", ")}
-          onChange={(e) =>
-            onChange({
-              allow_from: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-          placeholder="user_id1, user_id2"
-        />
-      </div>
     </div>
   );
 }
 
 // Feishu config form
 function FeishuForm({
-  instance,
+  formState,
   onChange,
 }: {
-  instance: FeishuInstance;
-  onChange: (update: Partial<FeishuInstance>) => void;
+  formState: ChannelFormState;
+  onChange: (update: Partial<ChannelFormState>) => void;
 }) {
   const { t } = useTranslation();
+  const app_id = formState.app_id ?? "";
+  const app_secret = formState.app_secret ?? "";
 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
         <Label>{t("channels.instanceName", "实例名称")}</Label>
         <Input
-          value={instance.name}
+          value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="My Feishu Bot"
         />
@@ -549,56 +530,27 @@ function FeishuForm({
       <SecretInput
         label={t("channels.feishu.appId", "App ID")}
         description={t("channels.feishu.appIdDescription", "从飞书开放平台获取")}
-        value={instance.app_id}
+        value={app_id}
         onChange={(app_id) => onChange({ app_id })}
         placeholder="cli_xxxxx"
       />
       <SecretInput
         label={t("channels.feishu.appSecret", "App Secret")}
-        value={instance.app_secret}
+        value={app_secret}
         onChange={(app_secret) => onChange({ app_secret })}
         placeholder="xxxxxxxx"
       />
-      <SecretInput
-        label={t("channels.feishu.encryptKey", "Encrypt Key (可选)")}
-        value={instance.encrypt_key}
-        onChange={(encrypt_key) => onChange({ encrypt_key })}
-        placeholder=""
-      />
-      <SecretInput
-        label={t("channels.feishu.verificationToken", "Verification Token (可选)")}
-        value={instance.verification_token}
-        onChange={(verification_token) => onChange({ verification_token })}
-        placeholder=""
-      />
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {t("channels.feishu.allowFrom", "允许的用户 (可选)")}
-        </Label>
-        <Input
-          value={instance.allow_from.join(", ")}
-          onChange={(e) =>
-            onChange({
-              allow_from: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-          placeholder="ou_xxxxx"
-        />
-      </div>
     </div>
   );
 }
 
 // WhatsApp config form
 function WhatsAppForm({
-  instance,
+  formState,
   onChange,
 }: {
-  instance: WhatsAppInstance;
-  onChange: (update: Partial<WhatsAppInstance>) => void;
+  formState: ChannelFormState;
+  onChange: (update: Partial<ChannelFormState>) => void;
 }) {
   const { t } = useTranslation();
 
@@ -607,88 +559,93 @@ function WhatsAppForm({
       <div className="space-y-1.5">
         <Label>{t("channels.instanceName", "实例名称")}</Label>
         <Input
-          value={instance.name}
+          value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="My WhatsApp Bridge"
         />
       </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {t("channels.whatsapp.bridgeUrl", "Bridge URL")}
-        </Label>
-        <Input
-          value={instance.bridge_url}
-          onChange={(e) => onChange({ bridge_url: e.target.value })}
-          placeholder="ws://localhost:3001"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <Label className="text-xs text-muted-foreground">
-          {t("channels.whatsapp.allowFrom", "允许的手机号 (可选)")}
-        </Label>
-        <Input
-          value={instance.allow_from.join(", ")}
-          onChange={(e) =>
-            onChange({
-              allow_from: e.target.value
-                .split(",")
-                .map((s) => s.trim())
-                .filter(Boolean),
-            })
-          }
-          placeholder="+86138xxxx, +1555xxxx"
-        />
+      <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+        <p>{t("channels.whatsapp.note", "WhatsApp 需要配置 Bridge 服务器。")}</p>
       </div>
     </div>
   );
 }
 
 // Validation helper - check if all required fields are filled
-function isInstanceValid(instance: Partial<ChannelInstance>): boolean {
-  if (!instance.name?.trim()) return false;
+function isFormValid(formState: ChannelFormState): boolean {
+  if (!formState.name?.trim()) return false;
 
-  switch (instance.type) {
+  switch (formState.channel_type) {
     case "telegram":
-      return !!(instance as Partial<TelegramInstance>).token?.trim();
+      return !!formState.token?.trim();
     case "discord":
-      return !!(instance as Partial<DiscordInstance>).token?.trim();
-    case "feishu": {
-      const feishu = instance as Partial<FeishuInstance>;
-      return !!(feishu.app_id?.trim() && feishu.app_secret?.trim());
-    }
+      return !!formState.token?.trim();
+    case "feishu":
+      return !!(formState.app_id?.trim() && formState.app_secret?.trim());
     case "whatsapp":
-      return !!(instance as Partial<WhatsAppInstance>).bridge_url?.trim();
+      return true; // WhatsApp doesn't require config for now
     default:
       return false;
   }
 }
 
-// Get default empty instance for a channel type
-function getDefaultInstance(type: ChannelType, name: string): ChannelInstance {
-  const base = {
-    id: "",
+// Get default form state for a channel type
+function getDefaultFormState(type: ChannelType, name: string = ""): ChannelFormState {
+  return {
     name,
-    type,
-    enabled: true,
-    created_at: Date.now(),
+    channel_type: type,
+    token: "",
+    proxy: "",
+    app_id: "",
+    app_secret: "",
   };
+}
 
-  switch (type) {
+// Build ChannelConfig from form state
+function buildConfigFromForm(formState: ChannelFormState): ChannelConfig {
+  switch (formState.channel_type) {
     case "telegram":
-      return { ...base, type: "telegram", token: "", proxy: undefined, allow_from: [] } as TelegramInstance;
+      return {
+        type: "telegram",
+        token: formState.token || undefined,
+        proxy: formState.proxy || undefined,
+      };
     case "discord":
       return {
-        ...base,
         type: "discord",
-        token: "",
-        allow_from: [],
-        gateway_url: "wss://gateway.discord.gg/?v=10&encoding=json",
-        intents: 37377,
-      } as DiscordInstance;
+        token: formState.token || undefined,
+      };
     case "feishu":
-      return { ...base, type: "feishu", app_id: "", app_secret: "", encrypt_key: "", verification_token: "", allow_from: [] } as FeishuInstance;
+      return {
+        type: "feishu",
+        app_id: formState.app_id || undefined,
+        app_secret: formState.app_secret || undefined,
+      };
     case "whatsapp":
-      return { ...base, type: "whatsapp", bridge_url: "ws://localhost:3001", allow_from: [] } as WhatsAppInstance;
+      return {
+        type: "whatsapp",
+      };
+    default:
+      return { type: "none" };
+  }
+}
+
+// Initialize form state from existing channel
+function initFormStateFromChannel(channel: GatewayChannel): ChannelFormState {
+  const base: ChannelFormState = {
+    name: channel.name,
+    channel_type: channel.channel_type as ChannelType,
+  };
+
+  switch (channel.config.type) {
+    case "telegram":
+      return { ...base, token: channel.config.token, proxy: channel.config.proxy };
+    case "discord":
+      return { ...base, token: channel.config.token };
+    case "feishu":
+      return { ...base, app_id: channel.config.app_id, app_secret: channel.config.app_secret };
+    default:
+      return base;
   }
 }
 
@@ -705,97 +662,93 @@ export function SettingsChannelsPage() {
   } = useChannelInstances();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [editingInstance, setEditingInstance] = useState<ChannelInstance | null>(null);
-  const [newInstance, setNewInstance] = useState<ChannelInstance>(() => getDefaultInstance("telegram", ""));
+  const [editingChannel, setEditingChannel] = useState<GatewayChannel | null>(null);
+  const [formState, setFormState] = useState<ChannelFormState>(() => getDefaultFormState("telegram"));
   const [testDialogOpen, setTestDialogOpen] = useState(false);
-  const [testingInstance, setTestingInstance] = useState<ChannelInstance | null>(null);
+  const [testingChannel, setTestingChannel] = useState<GatewayChannel | null>(null);
   const [testChatId, setTestChatId] = useState("");
   const [isSendingTestMessage, setIsSendingTestMessage] = useState(false);
   const [sendingTestMessageId, setSendingTestMessageId] = useState<string | null>(null);
   const [testingConnectionId, setTestingConnectionId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  // Reset new instance when dialog opens/closes
+  // Reset form state when dialog opens/closes
   const handleOpenCreateDialog = () => {
-    setNewInstance(getDefaultInstance("telegram", ""));
+    setFormState(getDefaultFormState("telegram"));
     setCreateDialogOpen(true);
   };
 
   const handleCloseCreateDialog = () => {
     setCreateDialogOpen(false);
-    setNewInstance(getDefaultInstance("telegram", ""));
+    setFormState(getDefaultFormState("telegram"));
   };
 
   const handleTypeChange = (type: ChannelType) => {
-    setNewInstance(getDefaultInstance(type, newInstance.name));
+    setFormState(getDefaultFormState(type, formState.name));
   };
 
-  const handleNewInstanceChange = (update: Partial<ChannelInstance>) => {
-    setNewInstance((prev) => ({ ...prev, ...update }) as ChannelInstance);
+  const handleFormChange = (update: Partial<ChannelFormState>) => {
+    setFormState((prev) => ({ ...prev, ...update }));
   };
 
-  const handleCreate = () => {
-    if (!isInstanceValid(newInstance)) return;
+  const handleCreate = async () => {
+    if (!isFormValid(formState)) return;
 
-    // Create instance with all required fields already filled
-    const instance = createInstance(newInstance.type, newInstance.name.trim());
-
-    // Update with the filled-in details
-    switch (newInstance.type) {
-      case "telegram": {
-        const telegram = newInstance as TelegramInstance;
-        updateInstance(instance.id, {
-          token: telegram.token,
-          proxy: telegram.proxy,
-          allow_from: telegram.allow_from,
-        });
-        break;
-      }
-      case "discord": {
-        const discord = newInstance as DiscordInstance;
-        updateInstance(instance.id, {
-          token: discord.token,
-          allow_from: discord.allow_from,
-        });
-        break;
-      }
-      case "feishu": {
-        const feishu = newInstance as FeishuInstance;
-        updateInstance(instance.id, {
-          app_id: feishu.app_id,
-          app_secret: feishu.app_secret,
-          encrypt_key: feishu.encrypt_key,
-          verification_token: feishu.verification_token,
-          allow_from: feishu.allow_from,
-        });
-        break;
-      }
-      case "whatsapp": {
-        const whatsapp = newInstance as WhatsAppInstance;
-        updateInstance(instance.id, {
-          bridge_url: whatsapp.bridge_url,
-          allow_from: whatsapp.allow_from,
-        });
-        break;
-      }
+    setIsCreating(true);
+    try {
+      const config = buildConfigFromForm(formState);
+      await createInstance(formState.channel_type, formState.name.trim(), config);
+      handleCloseCreateDialog();
+      toast.success(t("channels.createSuccess", "渠道创建成功"));
+    } catch (err) {
+      toast.error(t("channels.createFailed", "创建失败"), {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsCreating(false);
     }
-
-    handleCloseCreateDialog();
   };
 
-  const handleDelete = (instance: ChannelInstance) => {
-    if (!confirm(t("channels.deleteConfirm", { name: instance.name }))) return;
-    deleteInstance(instance.id);
+  const handleDelete = async (channel: GatewayChannel) => {
+    if (!confirm(t("channels.deleteConfirm", { name: channel.name }))) return;
+    const success = await deleteInstance(channel.id);
+    if (success) {
+      toast.success(t("channels.deleteSuccess", "渠道已删除"));
+    }
   };
 
-  const handleSaveEdit = () => {
-    setEditingInstance(null);
+  const handleOpenEditDialog = (channel: GatewayChannel) => {
+    setEditingChannel(channel);
+    setFormState(initFormStateFromChannel(channel));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingChannel || !isFormValid(formState)) return;
+
+    setIsSaving(true);
+    try {
+      const config = buildConfigFromForm(formState);
+      await updateInstance(editingChannel.id, {
+        name: formState.name,
+        config,
+      });
+      setEditingChannel(null);
+      toast.success(t("channels.updateSuccess", "渠道已更新"));
+    } catch (err) {
+      toast.error(t("channels.updateFailed", "更新失败"), {
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Test connection (no Chat ID required)
-  const handleTestConnection = async (instance: ChannelInstance) => {
-    setTestingConnectionId(instance.id);
+  const handleTestConnection = async (channel: GatewayChannel) => {
+    setTestingConnectionId(channel.id);
 
-    const result = await testChannelConnection(instance);
+    const result = await testChannelConnection(channel);
 
     setTestingConnectionId(null);
 
@@ -805,7 +758,7 @@ export function SettingsChannelsPage() {
       });
     } else {
       toast.error(
-        `${t("channels.connectionFailed", "Connection failed")} - ${instance.name}`,
+        `${t("channels.connectionFailed", "Connection failed")} - ${channel.name}`,
         {
           description: result.error,
           duration: 8000, // Show longer for errors
@@ -815,20 +768,20 @@ export function SettingsChannelsPage() {
   };
 
   // Open test message dialog
-  const handleOpenTestDialog = (instance: ChannelInstance) => {
-    setTestingInstance(instance);
+  const handleOpenTestDialog = (channel: GatewayChannel) => {
+    setTestingChannel(channel);
     setTestChatId("");
     setTestDialogOpen(true);
   };
 
   // Send test message
   const handleSendTestMessage = async () => {
-    if (!testingInstance) return;
+    if (!testingChannel) return;
 
     setIsSendingTestMessage(true);
-    setSendingTestMessageId(testingInstance.id);
+    setSendingTestMessageId(testingChannel.id);
 
-    const result = await sendTestMessage(testingInstance, testChatId || undefined);
+    const result = await sendTestMessage(testingChannel, testChatId || undefined);
 
     setIsSendingTestMessage(false);
     setSendingTestMessageId(null);
@@ -838,7 +791,7 @@ export function SettingsChannelsPage() {
       setTestDialogOpen(false);
     } else {
       toast.error(
-        `${t("channels.testFailed", "Failed to send test message")} - ${testingInstance.name}`,
+        `${t("channels.testFailed", "Failed to send test message")} - ${testingChannel.name}`,
         {
           description: result.error,
           duration: 8000, // Show longer for errors
@@ -848,7 +801,7 @@ export function SettingsChannelsPage() {
   };
 
   // Get placeholder text for chat ID based on channel type
-  const getTestChatIdPlaceholder = (type: ChannelType): string => {
+  const getTestChatIdPlaceholder = (type: string): string => {
     switch (type) {
       case "telegram":
         return t("channels.telegram.chatIdPlaceholder", "Enter Chat ID (e.g., 123456789 or @channel_username)");
@@ -898,8 +851,8 @@ export function SettingsChannelsPage() {
 
       {/* Channel Instances by Type */}
       {CHANNEL_TYPES.map((type) => {
-        const typeInstances = instances.filter((i) => i.type === type);
-        if (typeInstances.length === 0) return null;
+        const typeChannels = instances.filter((i) => i.channel_type === type);
+        if (typeChannels.length === 0) return null;
 
         return (
           <div key={type} className="space-y-2">
@@ -909,21 +862,21 @@ export function SettingsChannelsPage() {
               </div>
               <h3 className="font-medium">{getChannelTypeName(type)}</h3>
               <span className="text-xs text-muted-foreground">
-                ({typeInstances.length})
+                ({typeChannels.length})
               </span>
             </div>
             <div className="space-y-2 pl-8">
-              {typeInstances.map((instance) => (
+              {typeChannels.map((channel) => (
                 <InstanceCard
-                  key={instance.id}
-                  instance={instance}
-                  onToggle={() => toggleInstance(instance.id)}
-                  onEdit={() => setEditingInstance(instance)}
-                  onDelete={() => handleDelete(instance)}
-                  onTestConnection={() => handleTestConnection(instance)}
-                  onSendTestMessage={() => handleOpenTestDialog(instance)}
-                  isTestingConnection={testingConnectionId === instance.id}
-                  isSendingTestMessage={sendingTestMessageId === instance.id}
+                  key={channel.id}
+                  channel={channel}
+                  onToggle={() => toggleInstance(channel.id)}
+                  onEdit={() => handleOpenEditDialog(channel)}
+                  onDelete={() => handleDelete(channel)}
+                  onTestConnection={() => handleTestConnection(channel)}
+                  onSendTestMessage={() => handleOpenTestDialog(channel)}
+                  isTestingConnection={testingConnectionId === channel.id}
+                  isSendingTestMessage={sendingTestMessageId === channel.id}
                 />
               ))}
             </div>
@@ -955,7 +908,7 @@ export function SettingsChannelsPage() {
             <div className="space-y-2">
               <Label>{t("channels.channelType", "渠道类型")}</Label>
               <Select
-                value={newInstance.type}
+                value={formState.channel_type}
                 onValueChange={(v) => handleTypeChange(v as ChannelType)}
               >
                 <SelectTrigger>
@@ -975,28 +928,28 @@ export function SettingsChannelsPage() {
             </div>
 
             {/* Type-specific form fields */}
-            {newInstance.type === "telegram" && (
+            {formState.channel_type === "telegram" && (
               <TelegramForm
-                instance={newInstance as TelegramInstance}
-                onChange={handleNewInstanceChange}
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {newInstance.type === "discord" && (
+            {formState.channel_type === "discord" && (
               <DiscordForm
-                instance={newInstance as DiscordInstance}
-                onChange={handleNewInstanceChange}
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {newInstance.type === "feishu" && (
+            {formState.channel_type === "feishu" && (
               <FeishuForm
-                instance={newInstance as FeishuInstance}
-                onChange={handleNewInstanceChange}
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {newInstance.type === "whatsapp" && (
+            {formState.channel_type === "whatsapp" && (
               <WhatsAppForm
-                instance={newInstance as WhatsAppInstance}
-                onChange={handleNewInstanceChange}
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
           </div>
@@ -1004,58 +957,67 @@ export function SettingsChannelsPage() {
             <Button variant="outline" onClick={handleCloseCreateDialog}>
               {t("common.cancel", "取消")}
             </Button>
-            <Button onClick={handleCreate} disabled={!isInstanceValid(newInstance)}>
-              {t("common.create", "创建")}
+            <Button onClick={handleCreate} disabled={!isFormValid(formState) || isCreating}>
+              {isCreating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("common.creating", "创建中...")}
+                </>
+              ) : (
+                t("common.create", "创建")
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingInstance} onOpenChange={(open) => !open && setEditingInstance(null)}>
+      <Dialog open={!!editingChannel} onOpenChange={(open) => !open && setEditingChannel(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {t("channels.editChannel", "编辑渠道")} - {editingInstance?.name}
+              {t("channels.editChannel", "编辑渠道")} - {editingChannel?.name}
             </DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            {editingInstance?.type === "telegram" && (
+            {editingChannel?.channel_type === "telegram" && (
               <TelegramForm
-                instance={editingInstance as TelegramInstance}
-                onChange={(update) =>
-                  updateInstance(editingInstance.id, update)
-                }
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {editingInstance?.type === "discord" && (
+            {editingChannel?.channel_type === "discord" && (
               <DiscordForm
-                instance={editingInstance as DiscordInstance}
-                onChange={(update) =>
-                  updateInstance(editingInstance.id, update)
-                }
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {editingInstance?.type === "feishu" && (
+            {editingChannel?.channel_type === "feishu" && (
               <FeishuForm
-                instance={editingInstance as FeishuInstance}
-                onChange={(update) =>
-                  updateInstance(editingInstance.id, update)
-                }
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
-            {editingInstance?.type === "whatsapp" && (
+            {editingChannel?.channel_type === "whatsapp" && (
               <WhatsAppForm
-                instance={editingInstance as WhatsAppInstance}
-                onChange={(update) =>
-                  updateInstance(editingInstance.id, update)
-                }
+                formState={formState}
+                onChange={handleFormChange}
               />
             )}
           </div>
           <DialogFooter>
-            <Button onClick={handleSaveEdit}>
-              {t("common.save", "保存")}
+            <Button variant="outline" onClick={() => setEditingChannel(null)}>
+              {t("common.cancel", "取消")}
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={!isFormValid(formState) || isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("common.saving", "保存中...")}
+                </>
+              ) : (
+                t("common.save", "保存")
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1073,48 +1035,48 @@ export function SettingsChannelsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {testingInstance && (
+            {testingChannel && (
               <>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
                     <div className="h-4 w-4 text-primary">
-                      {CHANNEL_ICONS[testingInstance.type]}
+                      {CHANNEL_ICONS[testingChannel.channel_type]}
                     </div>
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{testingInstance.name}</p>
+                    <p className="text-sm font-medium">{testingChannel.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {getChannelTypeName(testingInstance.type)}
+                      {getChannelTypeName(testingChannel.channel_type as ChannelType)}
                     </p>
                   </div>
                 </div>
 
-                {testingInstance.type !== "whatsapp" && (
+                {testingChannel.channel_type !== "whatsapp" && (
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">
-                      {testingInstance.type === "telegram"
+                      {testingChannel.channel_type === "telegram"
                         ? t("channels.telegram.chatId", "Chat ID")
-                        : testingInstance.type === "discord"
+                        : testingChannel.channel_type === "discord"
                         ? t("channels.discord.channelId", "Channel ID")
                         : t("channels.feishu.chatId", "接收者 ID")}
                     </Label>
                     <Input
                       value={testChatId}
                       onChange={(e) => setTestChatId(e.target.value)}
-                      placeholder={getTestChatIdPlaceholder(testingInstance.type)}
+                      placeholder={getTestChatIdPlaceholder(testingChannel.channel_type)}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {testingInstance.type === "telegram" &&
+                      {testingChannel.channel_type === "telegram" &&
                         t("channels.telegram.chatIdHint", "你可以从 @userinfobot 获取你的 Chat ID")}
-                      {testingInstance.type === "discord" &&
+                      {testingChannel.channel_type === "discord" &&
                         t("channels.discord.channelIdHint", "右键点击频道 > 复制频道 ID (需开启开发者模式)")}
-                      {testingInstance.type === "feishu" &&
+                      {testingChannel.channel_type === "feishu" &&
                         t("channels.feishu.chatIdHint", "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱")}
                     </p>
                   </div>
                 )}
 
-                {testingInstance.type === "whatsapp" && (
+                {testingChannel.channel_type === "whatsapp" && (
                   <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
                     <p>{t("channels.whatsapp.testNote", "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。")}</p>
                   </div>
@@ -1128,7 +1090,7 @@ export function SettingsChannelsPage() {
             </Button>
             <Button
               onClick={handleSendTestMessage}
-              disabled={isSendingTestMessage || (testingInstance?.type !== "whatsapp" && !testChatId.trim())}
+              disabled={isSendingTestMessage || (testingChannel?.channel_type !== "whatsapp" && !testChatId.trim())}
             >
               {isSendingTestMessage ? (
                 <>

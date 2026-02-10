@@ -264,16 +264,18 @@ export function getChannelTypeName(type: ChannelType): string {
     discord: "Discord",
     feishu: "飞书",
     whatsapp: "WhatsApp",
+    slack: "Slack",
+    webhook: "Webhook",
   };
   return names[type];
 }
 
-/** Create default instance config for a channel type */
+/** Create default instance config for a channel type (legacy) */
 export function createDefaultInstance(
   type: ChannelType,
   id: string,
   name: string
-): ChannelInstance {
+): ChannelInstance | null {
   const now = Date.now();
   const base = { id, name, type, enabled: false, created_at: now };
 
@@ -306,5 +308,7 @@ export function createDefaultInstance(
         bridge_url: "ws://localhost:3001",
         allow_from: [],
       };
+    default:
+      return null;
   }
 }

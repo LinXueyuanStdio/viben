@@ -13,8 +13,6 @@ import type {
   CreateChannelRequest,
   UpdateChannelRequest,
   ListChannelsResponse,
-  NotificationMode,
-  AgentBinding,
   ChannelConfig,
 } from "@/types/channel";
 
