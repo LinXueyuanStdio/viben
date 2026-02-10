@@ -31,6 +31,11 @@ export interface MessageListProps {
    * Useful for read-only executor session viewing where messages are already structured.
    */
   simpleMode?: boolean;
+  /**
+   * Maximum width for message cards. Can be a CSS value like "800px", "100%", or "calc(100% - 32px)".
+   * If not provided, messages will fill the available width.
+   */
+  maxMessageWidth?: string;
 }
 
 // Types for message grouping
@@ -463,6 +468,7 @@ export function MessageList({
   welcomeContent,
   autoScroll,
   simpleMode,
+  maxMessageWidth,
 }: MessageListProps) {
   const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);

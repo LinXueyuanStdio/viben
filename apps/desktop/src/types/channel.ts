@@ -31,7 +31,7 @@ export interface AgentBinding {
 /** Channel config union type (matches backend ChannelConfig) */
 export type ChannelConfig =
   | { type: "none" }
-  | { type: "telegram"; token?: string; proxy?: string }
+  | { type: "telegram"; token?: string; chat_id: string; proxy?: string }
   | { type: "discord"; token?: string }
   | { type: "feishu"; app_id?: string; app_secret?: string }
   | { type: "whatsapp"; bridge_url?: string }

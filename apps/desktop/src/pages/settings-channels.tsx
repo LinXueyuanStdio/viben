@@ -44,7 +44,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useChannelInstances } from "@/hooks";
+import { useChannelInstances, useVibenAgents } from "@/hooks";
+import { useExecutorSessions } from "@/hooks/use-executor-sessions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getGatewayUrl } from "@/lib/gateway";
@@ -52,6 +53,8 @@ import type {
   ChannelType,
   GatewayChannel,
   ChannelConfig,
+  AgentBinding,
+  BindingType,
 } from "@/types/channel";
 import { getChannelTypeName } from "@/types/channel";
 
@@ -424,10 +427,13 @@ interface ChannelFormState {
   channel_type: ChannelType;
   // Telegram
   token?: string;
+  chat_id?: string;
   proxy?: string;
   // Feishu
   app_id?: string;
   app_secret?: string;
+  // Agent/Executor binding
+  agent_binding?: AgentBinding | null;
 }
 
 // Telegram config form
@@ -440,6 +446,7 @@ function TelegramForm({
 }) {
   const { t } = useTranslation();
   const token = formState.token ?? "";
+  const chat_id = formState.chat_id ?? "";
   const proxy = formState.proxy ?? "";
 
   return (
@@ -459,6 +466,20 @@ function TelegramForm({
         onChange={(token) => onChange({ token })}
         placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
       />
+      <div className="space-y-1.5">
+        <Label className="text-xs text-muted-foreground">
+          {t("channels.telegram.chatId", "Chat ID")}
+          <span className="text-destructive ml-1">*</span>
+        </Label>
+        <p className="text-xs text-muted-foreground/70">
+          {t("channels.telegram.chatIdDescription", "消息发送的目标聊天 ID，可从 @userinfobot 获取")}
+        </p>
+        <Input
+          value={chat_id}
+          onChange={(e) => onChange({ chat_id: e.target.value })}
+          placeholder="123456789"
+        />
+      </div>
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">
           {t("channels.telegram.proxy", "代理 (可选)")}
@@ -571,13 +592,103 @@ function WhatsAppForm({
   );
 }
 
+// Agent/Executor binding selector
+function AgentBindingSelector({
+  value,
+  onChange,
+  agents,
+  executorSessions,
+}: {
+  value: AgentBinding | null | undefined;
+  onChange: (binding: AgentBinding | null) => void;
+  agents: { id: string; name: string }[];
+  executorSessions: { id: string; name?: string; workspace_path: string }[];
+}) {
+  const { t } = useTranslation();
+
+  // Build options list
+  const options: { type: BindingType; id: string; name: string; workspace_path?: string }[] = [
+    // Add agents
+    ...agents.map((a) => ({ type: "agent" as BindingType, id: a.id, name: a.name })),
+    // Add executors
+    ...executorSessions.map((e) => ({
+      type: "executor" as BindingType,
+      id: e.id,
+      name: e.name || `Claude Code (${e.workspace_path.split("/").pop()})`,
+      workspace_path: e.workspace_path,
+    })),
+  ];
+
+  const selectedValue = value ? `${value.binding_type}:${value.id}` : "none";
+
+  const handleChange = (v: string) => {
+    if (v === "none") {
+      onChange(null);
+      return;
+    }
+    const [type, id] = v.split(":");
+    const option = options.find((o) => o.type === type && o.id === id);
+    if (option) {
+      onChange({
+        binding_type: option.type,
+        id: option.id,
+        name: option.name,
+        workspace_path: option.workspace_path,
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">
+        {t("channels.agentBinding", "绑定智能体/执行器")}
+      </Label>
+      <p className="text-xs text-muted-foreground/70">
+        {t("channels.agentBindingDescription", "接收到消息时自动路由给指定的智能体或执行器")}
+      </p>
+      <Select value={selectedValue} onValueChange={handleChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={t("channels.noBinding", "不绑定")} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">{t("channels.noBinding", "不绑定")}</SelectItem>
+          {agents.length > 0 && (
+            <>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
+                {t("channels.agents", "智能体")}
+              </div>
+              {agents.map((agent) => (
+                <SelectItem key={`agent:${agent.id}`} value={`agent:${agent.id}`}>
+                  🤖 {agent.name}
+                </SelectItem>
+              ))}
+            </>
+          )}
+          {executorSessions.length > 0 && (
+            <>
+              <div className="px-2 py-1.5 text-xs text-muted-foreground font-medium">
+                {t("channels.executors", "执行器 (Claude Code)")}
+              </div>
+              {executorSessions.map((exec) => (
+                <SelectItem key={`executor:${exec.id}`} value={`executor:${exec.id}`}>
+                  ⚡ {exec.name || exec.workspace_path.split("/").pop()}
+                </SelectItem>
+              ))}
+            </>
+          )}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 // Validation helper - check if all required fields are filled
 function isFormValid(formState: ChannelFormState): boolean {
   if (!formState.name?.trim()) return false;
 
   switch (formState.channel_type) {
     case "telegram":
-      return !!formState.token?.trim();
+      return !!(formState.token?.trim() && formState.chat_id?.trim());
     case "discord":
       return !!formState.token?.trim();
     case "feishu":
@@ -595,9 +706,11 @@ function getDefaultFormState(type: ChannelType, name: string = ""): ChannelFormS
     name,
     channel_type: type,
     token: "",
+    chat_id: "",
     proxy: "",
     app_id: "",
     app_secret: "",
+    agent_binding: null,
   };
 }
 
@@ -608,6 +721,7 @@ function buildConfigFromForm(formState: ChannelFormState): ChannelConfig {
       return {
         type: "telegram",
         token: formState.token || undefined,
+        chat_id: formState.chat_id || "",
         proxy: formState.proxy || undefined,
       };
     case "discord":
@@ -635,11 +749,12 @@ function initFormStateFromChannel(channel: GatewayChannel): ChannelFormState {
   const base: ChannelFormState = {
     name: channel.name,
     channel_type: channel.channel_type as ChannelType,
+    agent_binding: channel.agent_binding || null,
   };
 
   switch (channel.config.type) {
     case "telegram":
-      return { ...base, token: channel.config.token, proxy: channel.config.proxy };
+      return { ...base, token: channel.config.token, chat_id: channel.config.chat_id, proxy: channel.config.proxy };
     case "discord":
       return { ...base, token: channel.config.token };
     case "feishu":
@@ -660,6 +775,12 @@ export function SettingsChannelsPage() {
     deleteInstance,
     toggleInstance,
   } = useChannelInstances();
+
+  // Load agents for binding selector
+  const { agents } = useVibenAgents();
+
+  // Load executor sessions for binding selector (global workspace)
+  const { sessions: executorSessions } = useExecutorSessions("claude-code", null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<GatewayChannel | null>(null);
@@ -698,7 +819,7 @@ export function SettingsChannelsPage() {
     setIsCreating(true);
     try {
       const config = buildConfigFromForm(formState);
-      await createInstance(formState.channel_type, formState.name.trim(), config);
+      await createInstance(formState.channel_type, formState.name.trim(), config, formState.agent_binding || undefined);
       handleCloseCreateDialog();
       toast.success(t("channels.createSuccess", "渠道创建成功"));
     } catch (err) {
@@ -732,6 +853,7 @@ export function SettingsChannelsPage() {
       await updateInstance(editingChannel.id, {
         name: formState.name,
         config,
+        agent_binding: formState.agent_binding,
       });
       setEditingChannel(null);
       toast.success(t("channels.updateSuccess", "渠道已更新"));
