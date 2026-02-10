@@ -1767,7 +1767,7 @@ export function WorkspaceChatPage() {
         </div>
 
         {/* Middle: Chat Area */}
-        <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <div className="flex flex-1 w-0 flex-col min-w-0 overflow-hidden">
           {/* Group Chat Mode */}
           {isGroupChatMode && currentGroupChat ? (
             <>

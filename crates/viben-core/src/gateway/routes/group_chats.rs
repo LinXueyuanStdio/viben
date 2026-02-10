@@ -17,12 +17,19 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
+use axum::{
+    http::{header, StatusCode},
+    response::Response,
+};
+use axum_extra::extract::Multipart;
+
 use crate::gateway::{AppState, GatewayError};
 use crate::group_chat::{
     GroupChatConfig, GroupChatError, GroupChatMember, GroupChatService, GroupChatSettings,
-    SessionConfig, UIMessage, AgentOrchestrator, OrchestratorEvent,
+    SessionConfig, UIMessage, AgentOrchestrator, OrchestratorEvent, AgentRolloutMessage,
     CreateGroupChatRequest as ServiceCreateRequest, CreateMemberInput as ServiceMemberInput,
     UpdateGroupChatRequest as ServiceUpdateRequest, CreateSessionRequest as ServiceCreateSession,
+    FileInfo, FileUploadMeta,
 };
 use crate::services::GatewayEvent;
 
@@ -65,6 +72,9 @@ impl From<GroupChatError> for GatewayError {
             GroupChatError::InvalidWorkspace(msg) => GatewayError::BadRequest(format!("Invalid workspace: {}", msg)),
             GroupChatError::InvalidMemberType(msg) => GatewayError::BadRequest(format!("Invalid member type: {}", msg)),
             GroupChatError::InvalidMemberRole(msg) => GatewayError::BadRequest(format!("Invalid member role: {}", msg)),
+            GroupChatError::FileNotFound(name) => GatewayError::NotFound(format!("File not found: {}", name)),
+            GroupChatError::InvalidFileType(msg) => GatewayError::BadRequest(format!("Invalid file type: {}", msg)),
+            GroupChatError::FileExists(name) => GatewayError::BadRequest(format!("File already exists: {}", name)),
             GroupChatError::Io(e) => GatewayError::Internal(format!("IO error: {}", e)),
             GroupChatError::Yaml(e) => GatewayError::Internal(format!("YAML error: {}", e)),
             GroupChatError::Json(e) => GatewayError::Internal(format!("JSON error: {}", e)),
@@ -86,6 +96,28 @@ pub struct GroupChatResponse {
     pub created_at: String,
     pub updated_at: String,
     pub settings: GroupChatSettings,
+    /// The workspace path where this group chat is stored
+    /// Used by frontend to distinguish global vs workspace group chats
+    pub workspace_path: String,
+    /// Whether this is a global group chat (from ~/.viben/)
+    pub is_global: bool,
+}
+
+impl GroupChatResponse {
+    /// Create response from config with workspace path info
+    pub fn from_config(gc: GroupChatConfig, workspace_path: String, is_global: bool) -> Self {
+        Self {
+            id: gc.id,
+            name: gc.name,
+            description: gc.description,
+            created_by: gc.created_by,
+            created_at: gc.created_at.to_rfc3339(),
+            updated_at: gc.updated_at.to_rfc3339(),
+            settings: gc.settings,
+            workspace_path,
+            is_global,
+        }
+    }
 }
 
 impl From<GroupChatConfig> for GroupChatResponse {
@@ -98,6 +130,8 @@ impl From<GroupChatConfig> for GroupChatResponse {
             created_at: gc.created_at.to_rfc3339(),
             updated_at: gc.updated_at.to_rfc3339(),
             settings: gc.settings,
+            workspace_path: String::new(),
+            is_global: false,
         }
     }
 }
@@ -200,7 +234,9 @@ impl From<UIMessage> for UIMessageResponse {
 /// List group chats response
 #[derive(Serialize)]
 pub struct ListGroupChatsResponse {
-    pub workspace_path: String,
+    /// The workspace path that was queried (if provided)
+    pub workspace_path: Option<String>,
+    /// List of group chats (each includes its own workspace_path and is_global flag)
     pub group_chats: Vec<GroupChatResponse>,
 }
 
@@ -227,7 +263,97 @@ pub struct ListSessionsResponse {
 #[derive(Serialize)]
 pub struct ListMessagesResponse {
     pub messages: Vec<UIMessageResponse>,
+    pub view: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_id: Option<String>,
     pub has_more: bool,
+}
+
+/// Agent rollout message response (for agent view)
+#[derive(Debug, Clone, Serialize)]
+pub struct AgentRolloutMessageResponse {
+    pub timestamp: String,
+    pub role: String,
+    pub content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
+}
+
+impl From<AgentRolloutMessage> for AgentRolloutMessageResponse {
+    fn from(m: AgentRolloutMessage) -> Self {
+        Self {
+            timestamp: m.timestamp.to_rfc3339(),
+            role: m.role,
+            content: m.content,
+            name: m.name,
+            tool_calls: m.tool_calls,
+            tool_call_id: m.tool_call_id,
+        }
+    }
+}
+
+/// Agent view messages response
+#[derive(Serialize)]
+pub struct ListAgentMessagesResponse {
+    pub messages: Vec<AgentRolloutMessageResponse>,
+    pub view: String,
+    pub agent_id: String,
+    pub has_more: bool,
+}
+
+/// Available agents in a session
+#[derive(Serialize)]
+pub struct ListSessionAgentsResponse {
+    pub agents: Vec<String>,
+}
+
+// ============================================================================
+// File/Picture Response Types
+// ============================================================================
+
+/// File info response
+#[derive(Debug, Clone, Serialize)]
+pub struct FileInfoResponse {
+    pub filename: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_name: Option<String>,
+    pub size_bytes: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uploaded_by: Option<String>,
+    pub uploaded_at: String,
+}
+
+impl From<FileInfo> for FileInfoResponse {
+    fn from(f: FileInfo) -> Self {
+        Self {
+            filename: f.filename,
+            original_name: f.original_name,
+            size_bytes: f.size_bytes,
+            mime_type: f.mime_type,
+            uploaded_by: f.uploaded_by,
+            uploaded_at: f.uploaded_at.to_rfc3339(),
+        }
+    }
+}
+
+/// List files response
+#[derive(Serialize)]
+pub struct ListFilesResponse {
+    pub files: Vec<FileInfoResponse>,
+    pub total: usize,
+}
+
+/// List pictures response
+#[derive(Serialize)]
+pub struct ListPicturesResponse {
+    pub pictures: Vec<FileInfoResponse>,
+    pub total: usize,
 }
 
 // ============================================================================
@@ -244,10 +370,17 @@ pub struct WorkspaceQuery {
 /// Query parameters for listing group chats
 #[derive(Debug, Deserialize)]
 pub struct ListGroupChatsQuery {
-    /// Workspace path (required)
-    pub workspace_path: String,
+    /// Workspace path (optional, defaults to user home directory ~)
+    pub workspace_path: Option<String>,
     /// Filter by creator
     pub created_by: Option<String>,
+    /// Include global group chats from ~/.viben/group-chats/ (default: true)
+    #[serde(default = "default_include_global")]
+    pub include_global: bool,
+}
+
+fn default_include_global() -> bool {
+    true
 }
 
 /// Create group chat request
@@ -303,6 +436,14 @@ pub struct CreateSessionRequest {
     pub active_agents: Vec<String>,
 }
 
+/// Update session request
+#[derive(Debug, Deserialize)]
+pub struct UpdateSessionRequest {
+    pub title: Option<String>,
+    pub status: Option<String>,
+    pub active_agents: Option<Vec<String>>,
+}
+
 /// Send message request
 #[derive(Debug, Deserialize)]
 pub struct SendMessageRequest {
@@ -334,25 +475,72 @@ pub struct WsQuery {
 // ============================================================================
 
 /// List all group chats in a workspace
+///
+/// Query parameters:
+/// - `workspace_path` (optional): The workspace path to list group chats from. Defaults to user home directory (~)
+/// - `include_global` (optional, default true): Also include global group chats from ~/.viben/group-chats/
+/// - `created_by` (optional): Filter by creator
 pub async fn list_group_chats(
     State(_state): State<AppState>,
     Query(query): Query<ListGroupChatsQuery>,
 ) -> Result<Json<ListGroupChatsResponse>, GatewayError> {
+    // Default workspace_path to home directory
+    let home_dir = dirs::home_dir().ok_or_else(|| {
+        GatewayError::Internal("Could not determine home directory".to_string())
+    })?;
+    let workspace_path = query.workspace_path
+        .as_ref()
+        .map(|p| PathBuf::from(p))
+        .unwrap_or_else(|| home_dir.clone());
+    let workspace_path_str = workspace_path.to_string_lossy().to_string();
+
     tracing::debug!(
         target: "viben::gateway::group_chats",
-        "Listing group chats for workspace: {}",
-        query.workspace_path
+        "Listing group chats for workspace: {}, include_global: {}",
+        workspace_path_str, query.include_global
     );
 
-    let service = create_service(&query.workspace_path)?;
-    let mut group_chats = service.list_group_chats().await?;
+    let mut responses: Vec<GroupChatResponse> = Vec::new();
+
+    // Get global group chats first (from ~/.viben/)
+    let global_path = home_dir.join(".viben");
+    let global_path_str = global_path.to_string_lossy().to_string();
+
+    if query.include_global && global_path.exists() {
+        let global_service = GroupChatService::new(global_path.clone());
+        if let Ok(global_chats) = global_service.list_group_chats().await {
+            for gc in global_chats {
+                responses.push(GroupChatResponse::from_config(
+                    gc,
+                    global_path_str.clone(),
+                    true, // is_global = true
+                ));
+            }
+        }
+    }
+
+    // Get workspace group chats (if workspace_path is different from global)
+    let is_workspace_global = workspace_path == home_dir || workspace_path == global_path;
+    if !is_workspace_global && workspace_path.exists() {
+        let service = GroupChatService::new(workspace_path.clone());
+        if let Ok(workspace_chats) = service.list_group_chats().await {
+            for gc in workspace_chats {
+                // Avoid duplicates (by id)
+                if !responses.iter().any(|existing| existing.id == gc.id) {
+                    responses.push(GroupChatResponse::from_config(
+                        gc,
+                        workspace_path_str.clone(),
+                        false, // is_global = false
+                    ));
+                }
+            }
+        }
+    }
 
     // Filter by creator if specified
     if let Some(created_by) = &query.created_by {
-        group_chats.retain(|gc| &gc.created_by == created_by);
+        responses.retain(|gc| &gc.created_by == created_by);
     }
-
-    let responses: Vec<GroupChatResponse> = group_chats.into_iter().map(GroupChatResponse::from).collect();
 
     tracing::debug!(
         target: "viben::gateway::group_chats",
@@ -687,6 +875,56 @@ pub async fn get_session(
     Ok(Json(SessionResponse::from(session)))
 }
 
+/// Update a session (PATCH)
+pub async fn update_session(
+    State(_state): State<AppState>,
+    Path((group_chat_id, session_id)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+    Json(req): Json<UpdateSessionRequest>,
+) -> Result<Json<SessionResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Updating session: group_chat={}, session={} in workspace: {}",
+        group_chat_id, session_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+
+    let session = service.update_session(
+        &group_chat_id,
+        &session_id,
+        req.title.as_deref(),
+        req.status.as_deref(),
+        req.active_agents,
+    ).await?;
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Session updated: id={}, status={}",
+        session.id, format!("{:?}", session.status).to_lowercase()
+    );
+
+    Ok(Json(SessionResponse::from(session)))
+}
+
+/// List available agents in a session
+pub async fn list_session_agents(
+    State(_state): State<AppState>,
+    Path((group_chat_id, session_id)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Json<ListSessionAgentsResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Listing agents for session: group_chat={}, session={} in workspace: {}",
+        group_chat_id, session_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    let agents = service.list_session_agents(&group_chat_id, &session_id).await?;
+
+    Ok(Json(ListSessionAgentsResponse { agents }))
+}
+
 /// Delete a session
 pub async fn delete_session(
     State(_state): State<AppState>,
@@ -714,42 +952,394 @@ pub async fn delete_session(
 }
 
 // ============================================================================
+// File Management Handlers
+// ============================================================================
+
+/// Upload a file to a group chat
+///
+/// Accepts multipart/form-data with:
+/// - `file`: The file content (required)
+/// - `uploaded_by`: User ID who is uploading (optional)
+pub async fn upload_file(
+    State(_state): State<AppState>,
+    Path(group_chat_id): Path<String>,
+    Query(query): Query<WorkspaceQuery>,
+    mut multipart: Multipart,
+) -> Result<Json<FileInfoResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Uploading file to group chat: {} in workspace: {}",
+        group_chat_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+
+    let mut file_data: Option<(String, Vec<u8>, Option<String>)> = None;
+    let mut uploaded_by: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        GatewayError::BadRequest(format!("Failed to read multipart field: {}", e))
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+
+        match name.as_str() {
+            "file" => {
+                let filename = field
+                    .file_name()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "unnamed".to_string());
+                let content_type = field.content_type().map(|s| s.to_string());
+                let data = field.bytes().await.map_err(|e| {
+                    GatewayError::BadRequest(format!("Failed to read file data: {}", e))
+                })?;
+                file_data = Some((filename, data.to_vec(), content_type));
+            }
+            "uploaded_by" => {
+                let value = field.text().await.map_err(|e| {
+                    GatewayError::BadRequest(format!("Failed to read uploaded_by: {}", e))
+                })?;
+                uploaded_by = Some(value);
+            }
+            _ => {
+                // Ignore unknown fields
+            }
+        }
+    }
+
+    let (filename, data, content_type) = file_data.ok_or_else(|| {
+        GatewayError::BadRequest("No file provided in multipart form".to_string())
+    })?;
+
+    let meta = FileUploadMeta {
+        original_name: Some(filename.clone()),
+        mime_type: content_type,
+        uploaded_by,
+    };
+
+    let file_info = service
+        .upload_file(&group_chat_id, &filename, &data, Some(meta))
+        .await?;
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "File uploaded: filename={}, size={}",
+        file_info.filename, file_info.size_bytes
+    );
+
+    Ok(Json(FileInfoResponse::from(file_info)))
+}
+
+/// List all files in a group chat
+pub async fn list_files(
+    State(_state): State<AppState>,
+    Path(group_chat_id): Path<String>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Json<ListFilesResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Listing files for group chat: {} in workspace: {}",
+        group_chat_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    let files = service.list_files(&group_chat_id).await?;
+
+    let total = files.len();
+    let files: Vec<FileInfoResponse> = files.into_iter().map(FileInfoResponse::from).collect();
+
+    Ok(Json(ListFilesResponse { files, total }))
+}
+
+/// Download a file from a group chat
+pub async fn download_file(
+    State(_state): State<AppState>,
+    Path((group_chat_id, filename)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Response<axum::body::Body>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Downloading file: group_chat={}, filename={} in workspace: {}",
+        group_chat_id, filename, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    let data = service.get_file(&group_chat_id, &filename).await?;
+
+    // Try to get file info for content-type
+    let file_info = service.get_file_info(&group_chat_id, &filename).await.ok();
+    let content_type = file_info
+        .and_then(|f| f.mime_type)
+        .unwrap_or_else(|| "application/octet-stream".to_string());
+
+    let body = axum::body::Body::from(data);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename=\"{}\"", filename),
+        )
+        .body(body)
+        .unwrap())
+}
+
+/// Delete a file from a group chat
+pub async fn delete_file(
+    State(_state): State<AppState>,
+    Path((group_chat_id, filename)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Deleting file: group_chat={}, filename={} in workspace: {}",
+        group_chat_id, filename, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    service.delete_file(&group_chat_id, &filename).await?;
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "File deleted: {}",
+        filename
+    );
+
+    Ok(Json(json!({
+        "deleted": filename
+    })))
+}
+
+// ============================================================================
+// Picture Management Handlers
+// ============================================================================
+
+/// Upload a picture to a group chat
+///
+/// Accepts multipart/form-data with:
+/// - `file`: The picture content (required, must be image/*)
+/// - `uploaded_by`: User ID who is uploading (optional)
+///
+/// Only accepts image files (jpg, jpeg, png, gif, webp, bmp, svg, ico, tiff).
+pub async fn upload_picture(
+    State(_state): State<AppState>,
+    Path(group_chat_id): Path<String>,
+    Query(query): Query<WorkspaceQuery>,
+    mut multipart: Multipart,
+) -> Result<Json<FileInfoResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Uploading picture to group chat: {} in workspace: {}",
+        group_chat_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+
+    let mut file_data: Option<(String, Vec<u8>, Option<String>)> = None;
+    let mut uploaded_by: Option<String> = None;
+
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        GatewayError::BadRequest(format!("Failed to read multipart field: {}", e))
+    })? {
+        let name = field.name().unwrap_or("").to_string();
+
+        match name.as_str() {
+            "file" => {
+                let filename = field
+                    .file_name()
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(|| "unnamed".to_string());
+                let content_type = field.content_type().map(|s| s.to_string());
+                let data = field.bytes().await.map_err(|e| {
+                    GatewayError::BadRequest(format!("Failed to read file data: {}", e))
+                })?;
+                file_data = Some((filename, data.to_vec(), content_type));
+            }
+            "uploaded_by" => {
+                let value = field.text().await.map_err(|e| {
+                    GatewayError::BadRequest(format!("Failed to read uploaded_by: {}", e))
+                })?;
+                uploaded_by = Some(value);
+            }
+            _ => {
+                // Ignore unknown fields
+            }
+        }
+    }
+
+    let (filename, data, content_type) = file_data.ok_or_else(|| {
+        GatewayError::BadRequest("No file provided in multipart form".to_string())
+    })?;
+
+    let meta = FileUploadMeta {
+        original_name: Some(filename.clone()),
+        mime_type: content_type,
+        uploaded_by,
+    };
+
+    let file_info = service
+        .upload_picture(&group_chat_id, &filename, &data, Some(meta))
+        .await?;
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Picture uploaded: filename={}, size={}",
+        file_info.filename, file_info.size_bytes
+    );
+
+    Ok(Json(FileInfoResponse::from(file_info)))
+}
+
+/// List all pictures in a group chat
+pub async fn list_pictures(
+    State(_state): State<AppState>,
+    Path(group_chat_id): Path<String>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Json<ListPicturesResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Listing pictures for group chat: {} in workspace: {}",
+        group_chat_id, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    let pictures = service.list_pictures(&group_chat_id).await?;
+
+    let total = pictures.len();
+    let pictures: Vec<FileInfoResponse> = pictures.into_iter().map(FileInfoResponse::from).collect();
+
+    Ok(Json(ListPicturesResponse { pictures, total }))
+}
+
+/// Download a picture from a group chat
+pub async fn download_picture(
+    State(_state): State<AppState>,
+    Path((group_chat_id, filename)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Response<axum::body::Body>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Downloading picture: group_chat={}, filename={} in workspace: {}",
+        group_chat_id, filename, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    let data = service.get_picture(&group_chat_id, &filename).await?;
+
+    // Try to get picture info for content-type
+    let file_info = service.get_picture_info(&group_chat_id, &filename).await.ok();
+    let content_type = file_info
+        .and_then(|f| f.mime_type)
+        .unwrap_or_else(|| "image/jpeg".to_string());
+
+    let body = axum::body::Body::from(data);
+
+    Ok(Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, content_type)
+        .header(header::CACHE_CONTROL, "public, max-age=86400") // Cache images for 1 day
+        .body(body)
+        .unwrap())
+}
+
+/// Delete a picture from a group chat
+pub async fn delete_picture(
+    State(_state): State<AppState>,
+    Path((group_chat_id, filename)): Path<(String, String)>,
+    Query(query): Query<WorkspaceQuery>,
+) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Deleting picture: group_chat={}, filename={} in workspace: {}",
+        group_chat_id, filename, query.workspace_path
+    );
+
+    let service = create_service(&query.workspace_path)?;
+    service.delete_picture(&group_chat_id, &filename).await?;
+
+    tracing::info!(
+        target: "viben::gateway::group_chats",
+        "Picture deleted: {}",
+        filename
+    );
+
+    Ok(Json(json!({
+        "deleted": filename
+    })))
+}
+
+// ============================================================================
 // Message Handlers
 // ============================================================================
 
 /// List messages in a session
+///
+/// Supports two view modes:
+/// - `view=ui` (default): Returns user-facing messages from messages.ui.jsonl
+/// - `view=agent&agent_id=<id>`: Returns agent rollout messages with tool calls
+///
+/// Agent view is READ-ONLY.
 pub async fn list_messages(
     State(_state): State<AppState>,
     Path((group_chat_id, session_id)): Path<(String, String)>,
     Query(query): Query<MessagesQuery>,
-) -> Result<Json<ListMessagesResponse>, GatewayError> {
-    tracing::debug!(
-        target: "viben::gateway::group_chats",
-        "Listing messages for session: group_chat={}, session={}, view={:?}",
-        group_chat_id, session_id, query.view
-    );
-
-    let service = create_service(&query.workspace_path)?;
+) -> Result<Json<Value>, GatewayError> {
     let view = query.view.as_deref().unwrap_or("ui");
     let limit = query.limit.unwrap_or(50);
 
-    let messages = if view == "ui" {
-        service.read_ui_messages_last(&group_chat_id, &session_id, limit).await?
+    tracing::debug!(
+        target: "viben::gateway::group_chats",
+        "Listing messages for session: group_chat={}, session={}, view={}, agent_id={:?}",
+        group_chat_id, session_id, view, query.agent_id
+    );
+
+    let service = create_service(&query.workspace_path)?;
+
+    if view == "agent" {
+        // Agent view - read from agents/<agent_id>/messages.rollout.jsonl
+        let agent_id = query.agent_id.as_ref().ok_or_else(|| {
+            GatewayError::BadRequest("agent_id is required for agent view".to_string())
+        })?;
+
+        let messages = service
+            .read_agent_rollout_messages_last(&group_chat_id, &session_id, agent_id, limit)
+            .await?;
+
+        let has_more = messages.len() >= limit;
+        let responses: Vec<AgentRolloutMessageResponse> = messages
+            .into_iter()
+            .map(AgentRolloutMessageResponse::from)
+            .collect();
+
+        let response = ListAgentMessagesResponse {
+            messages: responses,
+            view: "agent".to_string(),
+            agent_id: agent_id.clone(),
+            has_more,
+        };
+
+        Ok(Json(serde_json::to_value(response).unwrap()))
     } else {
-        // For agent view, we'd need to read agent rollout messages
-        // For now, return UI messages
-        service.read_ui_messages_last(&group_chat_id, &session_id, limit).await?
-    };
+        // UI view (default) - read from messages.ui.jsonl
+        let messages = service
+            .read_ui_messages_last(&group_chat_id, &session_id, limit)
+            .await?;
 
-    let has_more = messages.len() >= limit;
-    let responses: Vec<UIMessageResponse> = messages.into_iter()
-        .map(UIMessageResponse::from)
-        .collect();
+        let has_more = messages.len() >= limit;
+        let responses: Vec<UIMessageResponse> = messages
+            .into_iter()
+            .map(UIMessageResponse::from)
+            .collect();
 
-    Ok(Json(ListMessagesResponse {
-        messages: responses,
-        has_more,
-    }))
+        let response = ListMessagesResponse {
+            messages: responses,
+            view: "ui".to_string(),
+            agent_id: None,
+            has_more,
+        };
+
+        Ok(Json(serde_json::to_value(response).unwrap()))
+    }
 }
 
 /// Send message response with triggered agents
@@ -921,6 +1511,12 @@ pub enum WsClientCommand {
     },
     /// Typing indicator
     Typing { is_typing: bool },
+    /// Switch view (ui or agent)
+    SwitchView {
+        view: String,
+        #[serde(default)]
+        agent_id: Option<String>,
+    },
 }
 
 /// WebSocket message types sent from server
@@ -941,6 +1537,13 @@ pub enum WsServerMessage {
     MemberLeft { member_id: String },
     /// Typing indicator
     Typing { member_id: String, is_typing: bool },
+    /// View data (sent when switching views)
+    ViewData {
+        view: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        agent_id: Option<String>,
+        messages: Value,
+    },
     /// Error message
     Error { message: String },
 }
@@ -1172,6 +1775,75 @@ async fn handle_group_chat_ws(
                             };
                             let _ = channel.send(typing_msg);
                         }
+                        WsClientCommand::SwitchView { view, agent_id } => {
+                            tracing::debug!(
+                                target: "viben::gateway::group_chats",
+                                "Switching view to: view={}, agent_id={:?}",
+                                view, agent_id
+                            );
+
+                            let view_data_result = if view == "agent" {
+                                if let Some(ref agent_id) = agent_id {
+                                    // Read agent rollout messages
+                                    match service.read_agent_rollout_messages_last(
+                                        &group_chat_id,
+                                        &session_id,
+                                        agent_id,
+                                        50,
+                                    ).await {
+                                        Ok(messages) => {
+                                            let responses: Vec<AgentRolloutMessageResponse> = messages
+                                                .into_iter()
+                                                .map(AgentRolloutMessageResponse::from)
+                                                .collect();
+                                            Ok(WsServerMessage::ViewData {
+                                                view: "agent".to_string(),
+                                                agent_id: Some(agent_id.clone()),
+                                                messages: serde_json::to_value(responses).unwrap_or_default(),
+                                            })
+                                        }
+                                        Err(e) => Err(format!("Failed to read agent messages: {}", e)),
+                                    }
+                                } else {
+                                    Err("agent_id is required for agent view".to_string())
+                                }
+                            } else {
+                                // UI view (default)
+                                match service.read_ui_messages_last(
+                                    &group_chat_id,
+                                    &session_id,
+                                    50,
+                                ).await {
+                                    Ok(messages) => {
+                                        let responses: Vec<UIMessageResponse> = messages
+                                            .into_iter()
+                                            .map(UIMessageResponse::from)
+                                            .collect();
+                                        Ok(WsServerMessage::ViewData {
+                                            view: "ui".to_string(),
+                                            agent_id: None,
+                                            messages: serde_json::to_value(responses).unwrap_or_default(),
+                                        })
+                                    }
+                                    Err(e) => Err(format!("Failed to read UI messages: {}", e)),
+                                }
+                            };
+
+                            match view_data_result {
+                                Ok(view_data) => {
+                                    // Send view data directly to this client only
+                                    // Note: We're using channel.send which broadcasts to all clients
+                                    // For a proper implementation, we'd need a direct send mechanism
+                                    let _ = channel.send(view_data);
+                                }
+                                Err(error_msg) => {
+                                    let error = WsServerMessage::Error {
+                                        message: error_msg,
+                                    };
+                                    let _ = channel.send(error);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1212,11 +1884,24 @@ pub fn router() -> Router<AppState> {
         .route("/api/group-chats/:id/members", get(list_members))
         .route("/api/group-chats/:id/members", post(add_member))
         .route("/api/group-chats/:id/members/:member_id", delete(remove_member))
+        // File management
+        .route("/api/group-chats/:id/files", get(list_files))
+        .route("/api/group-chats/:id/files", post(upload_file))
+        .route("/api/group-chats/:id/files/:filename", get(download_file))
+        .route("/api/group-chats/:id/files/:filename", delete(delete_file))
+        // Picture management
+        .route("/api/group-chats/:id/pictures", get(list_pictures))
+        .route("/api/group-chats/:id/pictures", post(upload_picture))
+        .route("/api/group-chats/:id/pictures/:filename", get(download_picture))
+        .route("/api/group-chats/:id/pictures/:filename", delete(delete_picture))
         // Session management
         .route("/api/group-chats/:id/sessions", get(list_sessions))
         .route("/api/group-chats/:id/sessions", post(create_session))
         .route("/api/group-chats/:id/sessions/:session_id", get(get_session))
+        .route("/api/group-chats/:id/sessions/:session_id", patch(update_session))
         .route("/api/group-chats/:id/sessions/:session_id", delete(delete_session))
+        // Session agents (for view switching)
+        .route("/api/group-chats/:id/sessions/:session_id/agents", get(list_session_agents))
         // Messages (within sessions)
         .route("/api/group-chats/:id/sessions/:session_id/messages", get(list_messages))
         .route("/api/group-chats/:id/sessions/:session_id/messages", post(send_message))

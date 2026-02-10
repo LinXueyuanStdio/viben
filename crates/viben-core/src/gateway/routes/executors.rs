@@ -311,6 +311,11 @@ async fn read_claude_code_session_messages(
                             data.get("agentId").and_then(|a| a.as_str()),
                             msg.extra.get("parentToolUseID").and_then(|p| p.as_str()),
                         ) {
+                            tracing::debug!(
+                                target: "viben::gateway::executors",
+                                "Found agent mapping: parentToolUseID={} -> agentId={}",
+                                parent_tool_use_id, agent_id
+                            );
                             task_agent_map.insert(parent_tool_use_id.to_string(), agent_id.to_string());
                         }
                     }
@@ -318,6 +323,12 @@ async fn read_claude_code_session_messages(
             }
         }
     }
+
+    tracing::debug!(
+        target: "viben::gateway::executors",
+        "Agent mapping complete: {} Task tool calls found",
+        task_agent_map.len()
+    );
 
     // Second pass: convert messages
     for line in &all_lines {
@@ -331,8 +342,24 @@ async fn read_claude_code_session_messages(
             for ui_msg in &mut ui_msgs {
                 if ui_msg.msg_type == "tool_use" && ui_msg.tool_name.as_deref() == Some("Task") {
                     if let Some(tool_use_id) = &ui_msg.tool_use_id {
+                        tracing::debug!(
+                            target: "viben::gateway::executors",
+                            "Looking for agent mapping: tool_use_id={}",
+                            tool_use_id
+                        );
                         if let Some(agent_id) = task_agent_map.get(tool_use_id) {
+                            tracing::info!(
+                                target: "viben::gateway::executors",
+                                "Found subagent for Task tool: tool_use_id={} -> agent_id={}",
+                                tool_use_id, agent_id
+                            );
                             ui_msg.subagent_id = Some(agent_id.clone());
+                        } else {
+                            tracing::warn!(
+                                target: "viben::gateway::executors",
+                                "No agent mapping found for Task tool: tool_use_id={}",
+                                tool_use_id
+                            );
                         }
                     }
                 }

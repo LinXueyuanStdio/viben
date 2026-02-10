@@ -23,7 +23,6 @@ use std::path::PathBuf;
 
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor, executors as exec};
-use crate::models::ModelManager;
 
 // ============================================================================
 // Common Types
@@ -174,6 +173,9 @@ pub struct WorkspaceModelsResponse {
 }
 
 /// List models available for a workspace
+///
+/// Models are loaded from user-configured providers in ~/.viben/providers/
+/// Each provider has its own models.yaml with enabled_models list.
 pub async fn list_workspace_models(
     Query(query): Query<WorkspaceQuery>,
 ) -> Result<Json<WorkspaceModelsResponse>, GatewayError> {
@@ -186,53 +188,67 @@ pub async fn list_workspace_models(
         workspace_path
     );
 
-    // Get global models from ModelManager
-    let global_models = match ModelManager::list_models().await {
-        Ok(models) => models,
-        Err(e) => {
-            tracing::warn!(
-                target: "viben::gateway::workspaces",
-                "Failed to load models: {}",
-                e
-            );
-            Vec::new()
-        }
-    };
-
     // Check for workspace-specific model config
     let workspace_models_config = workspace_dir.join(".viben").join("models.yaml");
     let has_workspace_config = workspace_models_config.exists();
 
-    // TODO: Load workspace overrides if config exists
-    // For now, return global models with workspace context flag
+    // Get state directory (~/.viben)
+    let state_dir = dirs::home_dir()
+        .map(|p| p.join(".viben"))
+        .unwrap_or_else(|| PathBuf::from("/.viben"));
 
-    let models: Vec<WorkspaceModel> = global_models
-        .iter()
-        .map(|m| {
-            let provider_id = m.provider.to_string();
+    let providers_dir = state_dir.join("providers");
+    let mut models: Vec<WorkspaceModel> = Vec::new();
 
-            // Check if model has API key configured (simplified check)
-            let is_available = match provider_id.to_lowercase().as_str() {
-                "anthropic" => std::env::var("ANTHROPIC_API_KEY").is_ok(),
-                "openai" => std::env::var("OPENAI_API_KEY").is_ok(),
-                "google" | "gemini" => std::env::var("GOOGLE_API_KEY").is_ok() || std::env::var("GEMINI_API_KEY").is_ok(),
-                "groq" => std::env::var("GROQ_API_KEY").is_ok(),
-                "deepseek" => std::env::var("DEEPSEEK_API_KEY").is_ok(),
-                _ => m.enabled, // Use enabled status for unknown providers
-            };
+    // Read providers.yaml to get provider list and their types
+    let providers_yaml = state_dir.join("providers.yaml");
+    if providers_yaml.exists() {
+        if let Ok(content) = std::fs::read_to_string(&providers_yaml) {
+            if let Ok(providers_config) = serde_yaml::from_str::<serde_yaml::Value>(&content) {
+                if let Some(providers) = providers_config.get("providers").and_then(|p| p.as_mapping()) {
+                    for (provider_id, provider_config) in providers {
+                        let provider_id = provider_id.as_str().unwrap_or_default().to_string();
+                        let _provider_type = provider_config
+                            .get("provider_type")
+                            .or_else(|| provider_config.get("type"))
+                            .and_then(|t| t.as_str())
+                            .unwrap_or("custom")
+                            .to_string();
+                        let provider_name = provider_config
+                            .get("name")
+                            .and_then(|n| n.as_str())
+                            .unwrap_or(&provider_id)
+                            .to_string();
+                        let provider_enabled = provider_config
+                            .get("enabled")
+                            .and_then(|e| e.as_bool())
+                            .unwrap_or(true);
 
-            WorkspaceModel {
-                id: m.id.clone(),
-                name: m.name.clone(),
-                provider_id: provider_id.clone(),
-                provider_name: provider_id,
-                capabilities: None, // Model struct doesn't have capabilities
-                context_window: m.context_window,
-                is_available,
-                has_workspace_override: has_workspace_config,
+                        // Read provider's models.yaml
+                        let provider_models_path = providers_dir.join(&provider_id).join("models.yaml");
+                        if provider_models_path.exists() {
+                            if let Ok(models_content) = std::fs::read_to_string(&provider_models_path) {
+                                if let Ok(models_config) = serde_yaml::from_str::<crate::models::types::ProviderModelsConfig>(&models_content) {
+                                    for model_id in models_config.enabled_models {
+                                        models.push(WorkspaceModel {
+                                            id: model_id.clone(),
+                                            name: model_id.clone(), // Use ID as name
+                                            provider_id: provider_id.clone(),
+                                            provider_name: provider_name.clone(),
+                                            capabilities: None,
+                                            context_window: None, // User can configure in models.yaml if needed
+                                            is_available: provider_enabled,
+                                            has_workspace_override: has_workspace_config,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-        })
-        .collect();
+        }
+    }
 
     let total = models.len();
 
