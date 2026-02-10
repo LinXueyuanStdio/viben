@@ -14,7 +14,7 @@ import {
   Bell,
   BellOff,
 } from "lucide-react";
-import type { GroupChat, GroupChatMember } from "@/lib/gateway";
+import type { GroupChat, GroupChatMember, ChatListItem } from "@/lib/gateway";
 import {
   ListItem,
   getGradientByName,
@@ -27,9 +27,17 @@ import {
 // Types
 // ============================================================================
 
+/** GroupChatListItem can accept either GroupChat or ChatListItem type */
+export type GroupChatItemData = GroupChat | ChatListItem;
+
+/** Type guard to check if data is ChatListItem */
+function isChatListItem(data: GroupChatItemData): data is ChatListItem {
+  return "item_type" in data;
+}
+
 interface GroupChatListItemProps {
-  /** The group chat to display */
-  groupChat: GroupChat;
+  /** The group chat to display (GroupChat or ChatListItem) */
+  groupChat: GroupChatItemData;
   /** Members of the group chat */
   members?: GroupChatMember[];
   /** Whether this group chat is selected */
@@ -116,12 +124,25 @@ export function GroupChatListItem({
     });
   }
 
+  // Extract data from GroupChat or ChatListItem
+  const isGlobal = isChatListItem(groupChat)
+    ? (groupChat.metadata?.is_global as boolean) ?? groupChat.source === "global"
+    : groupChat.is_global;
+
+  const updatedAt = isChatListItem(groupChat)
+    ? (groupChat.metadata?.created_at as string) ?? ""
+    : groupChat.updated_at;
+
+  const description = isChatListItem(groupChat)
+    ? groupChat.description
+    : groupChat.description;
+
   return (
     <ListItem
       name={groupChat.name}
       description={
         lastMessage ||
-        groupChat.description ||
+        description ||
         t("groupChat.noMessages", "No messages yet")
       }
       avatar={{
@@ -133,12 +154,12 @@ export function GroupChatListItem({
         source,
       }}
       badges={
-        groupChat.is_global
+        isGlobal
           ? [{ label: t("groupChat.global", "Global"), variant: "primary" }]
           : undefined
       }
       meta={{
-        text: formatRelativeTime(groupChat.updated_at),
+        text: updatedAt ? formatRelativeTime(updatedAt) : undefined,
         count: unreadCount,
         icon: isMuted ? BellOff : undefined,
       }}

@@ -2,7 +2,7 @@
  * Group Chat Sidebar
  *
  * A sliding panel from the right side that displays group chat details,
- * members list, and management actions.
+ * members list, sessions management, and settings.
  */
 
 import * as React from "react";
@@ -23,6 +23,14 @@ import {
   Calendar,
   LogOut,
   Trash2,
+  Globe,
+  FolderOpen,
+  MessageSquare,
+  Plus,
+  Settings,
+  Clock,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 import {
   Sheet,
@@ -53,10 +61,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import type {
   GroupChat,
   GroupChatMember,
+  GroupChatSession,
   MemberType,
   MemberRole,
   AddMemberRequest,
@@ -71,8 +86,12 @@ interface GroupChatSidebarProps {
   groupChat: GroupChat;
   /** Current members of the group */
   members: GroupChatMember[];
+  /** Sessions for this group chat */
+  sessions?: GroupChatSession[];
+  /** Currently active session ID */
+  activeSessionId?: string;
   /** Available agents that can be added to the group */
-  availableAgents: Array<{ id: string; name: string }>;
+  availableAgents: Array<{ id: string; name: string; model?: string }>;
   /** Current user's member ID */
   currentUserId: string;
   /** Current user's role in the group */
@@ -91,6 +110,12 @@ interface GroupChatSidebarProps {
   onLeaveGroup: () => Promise<void>;
   /** Called when the group is deleted */
   onDeleteGroup: () => Promise<void>;
+  /** Called when a session is selected */
+  onSelectSession?: (sessionId: string) => void;
+  /** Called when a new session is created */
+  onCreateSession?: () => Promise<void>;
+  /** Called when a session is deleted */
+  onDeleteSession?: (sessionId: string) => Promise<void>;
   /** Whether operations are loading */
   isLoading?: boolean;
 }
@@ -367,11 +392,19 @@ function MemberListItem({
             />
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {member.role === "owner" && t("groupChat.owner", "Owner")}
-          {member.role === "admin" && t("groupChat.admin", "Admin")}
-          {member.role === "member" && t("groupChat.member", "Member")}
-        </p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-xs text-muted-foreground">
+            {member.role === "owner" && t("groupChat.owner", "Owner")}
+            {member.role === "admin" && t("groupChat.admin", "Admin")}
+            {member.role === "member" && t("groupChat.member", "Member")}
+          </p>
+          {member.member_type === "agent" && member.model && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground flex items-center gap-0.5">
+              <Sparkles className="h-2.5 w-2.5" />
+              {member.model}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Remove button */}
@@ -485,12 +518,264 @@ function AddMemberSection({
 }
 
 // ============================================================================
+// Session List Section
+// ============================================================================
+
+interface SessionListSectionProps {
+  sessions: GroupChatSession[];
+  activeSessionId?: string;
+  onSelect: (sessionId: string) => void;
+  onCreate: () => Promise<void>;
+  onDelete: (sessionId: string) => Promise<void>;
+  isLoading?: boolean;
+  canManage: boolean;
+}
+
+function SessionListSection({
+  sessions,
+  activeSessionId,
+  onSelect,
+  onCreate,
+  onDelete,
+  isLoading,
+  canManage,
+}: SessionListSectionProps) {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = React.useState(true);
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  const handleCreate = async () => {
+    setIsCreating(true);
+    try {
+      await onCreate();
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDelete = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDeletingId(sessionId);
+    try {
+      await onDelete(sessionId);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatSessionDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="flex items-center justify-between w-full py-2 hover:bg-muted/50 rounded-md px-2 -mx-2">
+        <div className="flex items-center gap-2">
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform",
+              isOpen && "rotate-90"
+            )}
+          />
+          <MessageSquare className="h-4 w-4" />
+          <span className="text-sm font-medium">
+            {t("groupChat.sessions", "Sessions")} ({sessions.length})
+          </span>
+        </div>
+        {canManage && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCreate();
+            }}
+            disabled={isCreating || isLoading}
+          >
+            {isCreating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
+          </Button>
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-1 mt-2">
+        {sessions.length === 0 ? (
+          <div className="text-center py-4 text-sm text-muted-foreground">
+            {t("groupChat.noSessions", "No sessions yet")}
+          </div>
+        ) : (
+          sessions.map((session) => (
+            <div
+              key={session.id}
+              className={cn(
+                "group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors",
+                session.id === activeSessionId
+                  ? "bg-primary/10 text-primary"
+                  : "hover:bg-muted/50"
+              )}
+              onClick={() => onSelect(session.id)}
+            >
+              <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {session.title || t("groupChat.defaultSessionTitle", "Session")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatSessionDate(session.created_at)}
+                </p>
+              </div>
+              {canManage && sessions.length > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                  onClick={(e) => handleDelete(session.id, e)}
+                  disabled={deletingId === session.id}
+                >
+                  {deletingId === session.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+            </div>
+          ))
+        )}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ============================================================================
+// Workspace Info Section
+// ============================================================================
+
+interface WorkspaceInfoProps {
+  workspacePath: string;
+  isGlobal: boolean;
+}
+
+function WorkspaceInfo({ workspacePath, isGlobal }: WorkspaceInfoProps) {
+  const { t } = useTranslation();
+
+  // Get displayable path (last 2 segments or full path if short)
+  const displayPath = React.useMemo(() => {
+    const parts = workspacePath.split("/").filter(Boolean);
+    if (parts.length <= 2) return workspacePath;
+    return ".../" + parts.slice(-2).join("/");
+  }, [workspacePath]);
+
+  return (
+    <div className="flex items-center gap-2 px-2 py-1.5 bg-muted/50 rounded-lg text-xs">
+      {isGlobal ? (
+        <>
+          <Globe className="h-3.5 w-3.5 text-primary" />
+          <span className="text-muted-foreground">
+            {t("groupChat.globalChat", "Global")}
+          </span>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+            ~
+          </Badge>
+        </>
+      ) : (
+        <>
+          <FolderOpen className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="text-muted-foreground truncate" title={workspacePath}>
+            {displayPath}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Settings Section
+// ============================================================================
+
+interface SettingsSectionProps {
+  settings?: {
+    broadcast_mode: "all" | "mention_only";
+    show_thinking: boolean;
+    history_limit: number;
+  };
+  canManage: boolean;
+}
+
+function SettingsSection({ settings, canManage: _canManage }: SettingsSectionProps) {
+  const { t } = useTranslation();
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  if (!settings) return null;
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded-md px-2 -mx-2">
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 transition-transform",
+            isOpen && "rotate-90"
+          )}
+        />
+        <Settings className="h-4 w-4" />
+        <span className="text-sm font-medium">
+          {t("groupChat.settings", "Settings")}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2 mt-2 px-1">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            {t("groupChat.broadcastMode", "Broadcast")}
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {settings.broadcast_mode === "all"
+              ? t("groupChat.broadcastAll", "All")
+              : t("groupChat.broadcastMention", "Mentions")}
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            {t("groupChat.showThinking", "Show thinking")}
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {settings.show_thinking
+              ? t("common.yes", "Yes")
+              : t("common.no", "No")}
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            {t("groupChat.historyLimit", "History limit")}
+          </span>
+          <Badge variant="outline" className="text-xs">
+            {settings.history_limit}
+          </Badge>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
 export function GroupChatSidebar({
   groupChat,
   members,
+  sessions = [],
+  activeSessionId,
   availableAgents,
   currentUserId,
   currentUserRole,
@@ -501,6 +786,9 @@ export function GroupChatSidebar({
   onUpdateGroupChat,
   onLeaveGroup,
   onDeleteGroup,
+  onSelectSession,
+  onCreateSession,
+  onDeleteSession,
   isLoading,
 }: GroupChatSidebarProps) {
   const { t } = useTranslation();
@@ -634,9 +922,42 @@ export function GroupChatSidebar({
                     {t("groupChat.created", "Created")} {formatDate(groupChat.created_at)}
                   </span>
                 </div>
+
+                {/* Workspace Info */}
+                <WorkspaceInfo
+                  workspacePath={groupChat.workspace_path}
+                  isGlobal={groupChat.is_global}
+                />
               </div>
 
               <Separator />
+
+              {/* Sessions Section */}
+              {onSelectSession && onCreateSession && onDeleteSession && (
+                <>
+                  <SessionListSection
+                    sessions={sessions}
+                    activeSessionId={activeSessionId}
+                    onSelect={onSelectSession}
+                    onCreate={onCreateSession}
+                    onDelete={onDeleteSession}
+                    isLoading={isLoading}
+                    canManage={canManageMembers(currentUserRole)}
+                  />
+                  <Separator />
+                </>
+              )}
+
+              {/* Settings Section */}
+              {groupChat.settings && (
+                <>
+                  <SettingsSection
+                    settings={groupChat.settings}
+                    canManage={canManageMembers(currentUserRole)}
+                  />
+                  <Separator />
+                </>
+              )}
 
               {/* Members Section */}
               <div className="space-y-3">

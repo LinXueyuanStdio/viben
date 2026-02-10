@@ -69,6 +69,7 @@ import { WorkspaceHeader, ExecutorList } from "@/components/workspace";
 import {
   useAgent,
   useVibenAgents,
+  useVibenModels,
   useLocalWorkspaces,
   useChatConfig,
   useGroupChat,
@@ -79,7 +80,6 @@ import {
   useChatList,
 } from "@/hooks";
 import type { AgentMessage } from "@/types";
-import type { ChatListItem } from "@/lib/gateway";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -383,7 +383,7 @@ export function WorkspaceChatPage() {
   // Aggregated chat list from Gateway API (group chats, executors, agents)
   // This is the single source of truth for the left sidebar list
   const {
-    groupChats: chatListGroupChats,
+    groupChats: _chatListGroupChats, // Not used yet - using useGroupChat for full data
     executors: chatListExecutors,
     agents: chatListAgents,
     loading: isLoadingChatList,
@@ -597,7 +597,7 @@ export function WorkspaceChatPage() {
 
   // Get models supported by the selected executor type
   const executorModels = React.useMemo(() => {
-    if (!selectedSidebarExecutor?.type) return [];
+    if (!selectedExecutorType) return [];
 
     // Define models per executor type
     const modelsByExecutor: Record<string, Array<{ id: string; name: string; provider: string }>> = {
@@ -619,8 +619,8 @@ export function WorkspaceChatPage() {
       ],
     };
 
-    return modelsByExecutor[selectedSidebarExecutor.type] || [];
-  }, [selectedSidebarExecutor?.type]);
+    return modelsByExecutor[selectedExecutorType] || [];
+  }, [selectedExecutorType]);
 
   // Selected model state for executor (display only, executor sessions are read-only)
   const [selectedExecutorModelId, setSelectedExecutorModelId] = React.useState<string | null>(null);
@@ -634,10 +634,19 @@ export function WorkspaceChatPage() {
       setSelectedExecutorModelId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSidebarExecutor?.type]); // Only trigger on executor type change, executorModels is derived from it
+  }, [selectedExecutorType]); // Only trigger on executor type change, executorModels is derived from it
 
   // Agents
-  const { agents, defaultAgentId, setDefaultAgent } = useVibenAgents();
+  const { agents, defaultAgentId, setDefaultAgent, updateAgent } = useVibenAgents();
+
+  // Models for agent detail panel
+  const { models: vibenModels } = useVibenModels();
+  const agentModelsForPanel = vibenModels.map((m) => ({
+    id: m.id,
+    name: m.name,
+    provider: m.provider,
+    enabled: m.enabled,
+  }));
 
   // Get chat config for executor and agent selection
   const { selectedExecutor, selectedAgentId: configSelectedAgentId } = useChatConfig();
@@ -1054,27 +1063,43 @@ export function WorkspaceChatPage() {
     // This effect is kept for potential future use or manual persistence
   }, [selectedConversationId, messages]);
 
-  // Filter agents by search query
-  const filteredAgents = React.useMemo(() => {
-    if (!searchQuery.trim()) return agents;
+  // Filter group chats by search query (from useChatList)
+  const filteredGroupChats = React.useMemo(() => {
+    // Use groupChats from useGroupChat since it has full data
+    // ChatListItem doesn't have enough data for GroupChatListItem
+    if (!searchQuery.trim()) return groupChats;
     const query = searchQuery.toLowerCase();
-    return agents.filter(
+    return groupChats.filter(
+      (g) =>
+        g.name.toLowerCase().includes(query) ||
+        (g.description?.toLowerCase().includes(query) ?? false)
+    );
+  }, [groupChats, searchQuery]);
+
+  // Filter agents by search query (from useChatList)
+  const filteredChatListAgents = React.useMemo(() => {
+    if (!searchQuery.trim()) return chatListAgents;
+    const query = searchQuery.toLowerCase();
+    return chatListAgents.filter(
       (a) =>
         a.name.toLowerCase().includes(query) ||
-        a.description?.toLowerCase().includes(query)
+        (a.description?.toLowerCase().includes(query) ?? false)
     );
-  }, [agents, searchQuery]);
+  }, [chatListAgents, searchQuery]);
 
-  // Filter executors by search query
+  // Note: filteredAgents from useVibenAgents is no longer used in the sidebar
+  // The sidebar now uses filteredChatListAgents from useChatList which includes both workspace and global agents
+
+  // Filter executors by search query (from useChatList)
   const filteredExecutors = React.useMemo(() => {
-    if (!searchQuery.trim()) return workspaceExecutors;
+    if (!searchQuery.trim()) return chatListExecutors;
     const query = searchQuery.toLowerCase();
-    return workspaceExecutors.filter(
+    return chatListExecutors.filter(
       (e) =>
         e.name.toLowerCase().includes(query) ||
-        e.type.toLowerCase().includes(query)
+        (e.icon_type?.toLowerCase().includes(query) ?? false)
     );
-  }, [workspaceExecutors, searchQuery]);
+  }, [chatListExecutors, searchQuery]);
 
   // Get sessions/conversations for the selected agent
   const agentConversations = React.useMemo(() => {
@@ -1240,7 +1265,7 @@ export function WorkspaceChatPage() {
       } : undefined;
 
       const newSession = await client.createAgentSession(selectedAgentId, {
-        prompt: `${original.title} (副本)`,
+        prompt: t("chat.copyName", { name: original.title }),
         agent_config: agentConfigSnapshot,
         workspace_path: workspace?.path,
       });
@@ -1673,12 +1698,12 @@ export function WorkspaceChatPage() {
           <ScrollArea className="flex-1" ref={leftPanelScrollRef}>
             <div className="p-2 space-y-1" style={leftPanelContentStyle}>
               {/* Group Chats Section */}
-              {groupChats.length > 0 && (
+              {filteredGroupChats.length > 0 && (
                 <>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     {t("groupChat.groupChats", "Group Chats")}
                   </div>
-                  {groupChats.map((groupChat) => (
+                  {filteredGroupChats.map((groupChat) => (
                     <GroupChatListItem
                       key={groupChat.id}
                       groupChat={groupChat}
@@ -1719,35 +1744,49 @@ export function WorkspaceChatPage() {
                 className="px-0"
               />
 
-              {/* Agents Section (if any agents exist) */}
-              {filteredAgents.length > 0 && (
+              {/* Agents Section (from useChatList - includes both workspace and global agents) */}
+              {filteredChatListAgents.length > 0 && (
                 <>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">
                     {t("agent.agents", "Agents")}
                   </div>
-                  {filteredAgents.map((agent) => (
-                    <AgentListItem
-                      key={agent.id}
-                      agent={agent}
-                      isSelected={agent.id === selectedAgentId && !isGroupChatMode && !selectedSidebarExecutorId}
-                      isDefault={agent.id === defaultAgentId}
-                      sessionCount={conversations.filter((c) => c.agentId === agent.id).length}
-                      source={workspace?.path ? { type: "workspace", path: workspace.path } : undefined}
-                      onSelect={() => {
-                        // Exit group chat mode and executor mode, select agent
-                        setSelectedGroupChatId(null);
-                        setSelectedGroupSessionId(null);
-                        setSelectedSidebarExecutorId(null);
-                        setSelectedAgentId(agent.id);
-                      }}
-                      onSettings={() => {
-                        if (workspaceId) {
-                          navigate(`/workspace/${workspaceId}/agent/${agent.id}`);
+                  {filteredChatListAgents.map((chatListAgent) => {
+                    // Get full agent data from useVibenAgents for default status and session count
+                    const fullAgent = agents.find((a) => a.id === chatListAgent.id);
+                    return (
+                      <AgentListItem
+                        key={chatListAgent.id}
+                        agent={{
+                          id: chatListAgent.id,
+                          name: chatListAgent.name,
+                          description: chatListAgent.description,
+                        }}
+                        isSelected={chatListAgent.id === selectedAgentId && !isGroupChatMode && !selectedSidebarExecutorId}
+                        isDefault={chatListAgent.id === defaultAgentId}
+                        sessionCount={fullAgent ? conversations.filter((c) => c.agentId === chatListAgent.id).length : undefined}
+                        source={
+                          chatListAgent.source === "global"
+                            ? { type: "global", path: "~/.viben/agents" }
+                            : workspace?.path
+                              ? { type: "workspace", path: workspace.path }
+                              : undefined
                         }
-                      }}
-                      onSetDefault={() => setDefaultAgent(agent.id)}
-                    />
-                  ))}
+                        onSelect={() => {
+                          // Exit group chat mode and executor mode, select agent
+                          setSelectedGroupChatId(null);
+                          setSelectedGroupSessionId(null);
+                          setSelectedSidebarExecutorId(null);
+                          setSelectedAgentId(chatListAgent.id);
+                        }}
+                        onSettings={fullAgent ? () => {
+                          if (workspaceId) {
+                            navigate(`/workspace/${workspaceId}/agent/${chatListAgent.id}`);
+                          }
+                        } : undefined}
+                        onSetDefault={fullAgent ? () => setDefaultAgent(chatListAgent.id) : undefined}
+                      />
+                    );
+                  })}
                 </>
               )}
             </div>
@@ -1978,7 +2017,7 @@ export function WorkspaceChatPage() {
                       setRightSidebarExecutorDetail({
                         id: selectedSidebarExecutor.id,
                         name: selectedSidebarExecutor.name,
-                        type: selectedSidebarExecutor.type,
+                        type: (selectedSidebarExecutor.icon_type || "unknown") as import("@/types").ExecutorType,
                         status: gatewayConnected ? "online" : "offline",
                       });
                       setRightSidebarAgentDetail(null);
@@ -2028,7 +2067,7 @@ export function WorkspaceChatPage() {
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {selectedSidebarExecutor.name} - {selectedSidebarExecutor.type}
+                      {selectedSidebarExecutor.name} - {selectedSidebarExecutor.icon_type || "unknown"}
                     </p>
                   </div>
                 </div>
@@ -2162,9 +2201,9 @@ export function WorkspaceChatPage() {
                         setRightSidebarAgentDetail({
                           id: currentAgent.id,
                           name: currentAgent.name,
-                          type: currentAgent.type,
+                          type: currentAgent.executor_type || "viben",
                           model: currentAgent.model,
-                          description: currentAgent.systemPrompt?.substring(0, 200),
+                          description: currentAgent.system_prompt?.substring(0, 200),
                         });
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);
@@ -2432,6 +2471,7 @@ export function WorkspaceChatPage() {
           // Agent/Executor detail props
           agentDetail={rightSidebarAgentDetail}
           executorDetail={rightSidebarExecutorDetail}
+          workspaceId={workspaceId}
           onAgentSettings={(agentId) => {
             if (workspaceId) {
               navigate(`/workspace/${workspaceId}/agent/${agentId}`);
@@ -2441,6 +2481,19 @@ export function WorkspaceChatPage() {
             // Navigate to executor settings or show modal
             console.log("[WorkspaceChat] Executor settings:", executorId);
           }}
+          // Agent detail panel props (for full editing support)
+          isAgentDefault={rightSidebarAgentDetail?.id === defaultAgentId}
+          agentModels={agentModelsForPanel}
+          onAgentUpdate={async (id, updates) => {
+            await updateAgent(id, updates);
+          }}
+          onAgentSetDefault={rightSidebarAgentDetail ? () => {
+            setDefaultAgent(rightSidebarAgentDetail.id);
+          } : undefined}
+          onAgentDelete={rightSidebarAgentDetail ? () => {
+            // Agent deletion logic - could navigate to agents page or show confirmation
+            console.log("[WorkspaceChat] Delete agent:", rightSidebarAgentDetail.id);
+          } : undefined}
         />
       </div>
 

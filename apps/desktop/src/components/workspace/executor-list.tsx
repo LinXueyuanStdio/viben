@@ -10,11 +10,11 @@ import { Terminal, Bot, RefreshCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import type { Executor } from "@/types";
 import {
   ExecutorListItem,
   getExecutorDisplayName,
   getExecutorGradient,
+  type ExecutorItemData,
 } from "@/components/chat/executor-list-item";
 import type { ListItemSource } from "@/components/chat/list-item";
 
@@ -23,14 +23,14 @@ import type { ListItemSource } from "@/components/chat/list-item";
 // ============================================================================
 
 export interface ExecutorListProps {
-  /** List of executors to display */
-  executors: Executor[];
+  /** List of executors to display (ChatListItem or legacy Executor type) */
+  executors: ExecutorItemData[];
   /** Currently selected executor ID */
   selectedExecutorId: string | null;
   /** Called when an executor is selected */
-  onSelect: (executor: Executor) => void;
+  onSelect: (executor: ExecutorItemData) => void;
   /** Called when executor settings are requested */
-  onSettings?: (executor: Executor) => void;
+  onSettings?: (executor: ExecutorItemData) => void;
   /** Called when refresh is requested */
   onRefresh?: () => void;
   /** Whether executors are loading */

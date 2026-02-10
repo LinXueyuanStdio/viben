@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Copy, Check, Folder, Globe, FolderGit2 } from "lucide-react";
 import {
   Tooltip,
@@ -43,21 +44,21 @@ export interface SourceTooltipProps {
 
 const sourceConfig: Record<
   SourceType,
-  { icon: typeof Folder; label: string; color: string }
+  { icon: typeof Folder; labelKey: string; color: string }
 > = {
   workspace: {
     icon: Folder,
-    label: "工作空间",
+    labelKey: "agent.sourceWorkspace",
     color: "text-blue-500",
   },
   global: {
     icon: Globe,
-    label: "全局",
+    labelKey: "agent.sourceGlobal",
     color: "text-green-500",
   },
   project: {
     icon: FolderGit2,
-    label: "项目",
+    labelKey: "agent.sourceProject",
     color: "text-orange-500",
   },
 };
@@ -74,10 +75,11 @@ export function SourceTooltip({
   side = "right",
   className,
 }: SourceTooltipProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = React.useState(false);
   const config = sourceConfig[type];
   const Icon = config.icon;
-  const displayLabel = label || config.label;
+  const displayLabel = label || t(config.labelKey);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -56,6 +56,7 @@
     "disable": "禁用",
     "back": "返回",
     "view": "查看",
+    "open": "打开",
     "search": "搜索...",
     "selectAll": "全选",
     "selected": "已选",
@@ -562,7 +563,20 @@
     "workspaceLocation": "当前工作空间",
     "globalLocation": "全局工作空间",
     "workspaceAgents": "工作空间智能体",
-    "globalAgents": "全局智能体"
+    "globalAgents": "全局智能体",
+    "templates": {
+      "blank": "空白创建",
+      "blankDesc": "从零开始创建智能体",
+      "general": "通用结构",
+      "generalDesc": "适用于多种场景的提示词结构",
+      "task": "任务执行",
+      "taskDesc": "适用于明确工作步骤的任务执行",
+      "roleplay": "角色扮演",
+      "roleplayDesc": "适用于聊天场景",
+      "coding": "编程助手",
+      "codingDesc": "专为代码开发优化"
+    },
+    "copyName": "{{name}} (副本)"
   },
   "settingsModels": {
     "title": "AI 模型",
@@ -678,7 +692,14 @@
     "createAgent": "创建智能体",
     "createAgentDesc": "创建一个新的智能体来处理特定任务",
     "createAgentHint": "请前往智能体管理页面创建新智能体",
-    "goToAgents": "前往管理"
+    "goToAgents": "前往管理",
+    "sourceWorkspace": "工作空间",
+    "sourceGlobal": "全局",
+    "sourceProject": "项目",
+    "roleExecutor": "执行器",
+    "roleAgent": "智能体",
+    "unnamedExecutor": "未命名执行器",
+    "unnamedAgent": "未命名智能体"
   },
   "agents": {
     "title": "智能体",
@@ -1690,6 +1711,7 @@
     "starSession": "收藏",
     "unstarSession": "取消收藏",
     "duplicateSession": "复制会话",
+    "copyName": "{{name}} (副本)",
     "pinnedSessions": "置顶",
     "olderSessions": "更早",
     "totalSessions": "个会话",
@@ -1916,7 +1938,18 @@
     "leaveConfirmTitle": "退出群聊？",
     "leaveConfirmDesc": "确定要退出此群聊吗？退出后将无法接收此群聊的消息。",
     "deleteConfirmTitle": "删除群聊？",
-    "deleteConfirmDesc": "确定要删除此群聊吗？此操作无法撤销，所有消息将被永久删除。"
+    "deleteConfirmDesc": "确定要删除此群聊吗？此操作无法撤销，所有消息将被永久删除。",
+    "sessions": "会话",
+    "noSessions": "暂无会话",
+    "defaultSessionTitle": "会话",
+    "globalChat": "全局",
+    "settings": "设置",
+    "broadcastMode": "广播模式",
+    "broadcastAll": "全部",
+    "broadcastMention": "仅@提及",
+    "showThinking": "显示思考过程",
+    "historyLimit": "历史记录限制",
+    "isThinking": "正在思考..."
   },
   "notifications": {
     "title": "通知",

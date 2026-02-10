@@ -8,6 +8,7 @@
 import { useTranslation } from "react-i18next";
 import { Terminal, Settings } from "lucide-react";
 import type { Executor, ExecutorType } from "@/types";
+import type { ChatListItem } from "@/lib/gateway";
 import {
   ListItem,
   gradients,
@@ -19,9 +20,12 @@ import {
 // Types
 // ============================================================================
 
+/** ExecutorListItem can accept either ChatListItem or legacy Executor type */
+export type ExecutorItemData = ChatListItem | Executor;
+
 export interface ExecutorListItemProps {
-  /** The executor to display */
-  executor: Executor;
+  /** The executor to display (ChatListItem or legacy Executor type) */
+  executor: ExecutorItemData;
   /** Whether this executor is selected */
   isSelected: boolean;
   /** Number of sessions for this executor */
@@ -78,6 +82,11 @@ export function getExecutorDisplayName(type: ExecutorType): string {
 // Component
 // ============================================================================
 
+/** Type guard to check if executor is ChatListItem */
+function isChatListItem(executor: ExecutorItemData): executor is ChatListItem {
+  return "item_type" in executor;
+}
+
 export function ExecutorListItem({
   executor,
   isSelected,
@@ -89,11 +98,15 @@ export function ExecutorListItem({
 }: ExecutorListItemProps) {
   const { t } = useTranslation();
 
-  const displayName = executor.name || getExecutorDisplayName(executor.type);
+  // Get executor type from icon_type (ChatListItem) or type (legacy Executor)
+  const executorType = isChatListItem(executor)
+    ? (executor.icon_type || "unknown") as ExecutorType
+    : executor.type;
+  const displayName = executor.name || getExecutorDisplayName(executorType);
 
   // Build badges
   const badges: ListItemBadge[] = [
-    { label: executor.type, variant: "outline" },
+    { label: executorType, variant: "outline" },
   ];
   if (additionalBadges) {
     badges.push(...additionalBadges);
@@ -111,7 +124,7 @@ export function ExecutorListItem({
       }
       avatar={{
         icon: Terminal,
-        gradient: getExecutorGradient(executor.type),
+        gradient: getExecutorGradient(executorType),
       }}
       indicators={{
         online: true,
