@@ -101,8 +101,8 @@ pub struct ListChannelsResponse {
 pub struct CreateChannelRequest {
     pub channel_type: ChannelType,
     pub name: String,
-    #[serde(flatten)]
-    pub config: ChannelConfig,
+    #[serde(default)]
+    pub config: Option<ChannelConfig>,
     #[serde(default)]
     pub set_as_default: bool,
     #[serde(default)]
@@ -204,10 +204,26 @@ pub async fn create_channel(
         _ => NotificationMode::None,
     };
 
+    // Use the provided config or create a default config based on channel_type
+    let config = req.config.unwrap_or_else(|| {
+        match req.channel_type {
+            ChannelType::Telegram => ChannelConfig::Telegram(TelegramConfig { token: None, proxy: None }),
+            ChannelType::Discord => ChannelConfig::Discord(DiscordConfig { token: None }),
+            ChannelType::Feishu => ChannelConfig::Feishu(FeishuConfig { app_id: None, app_secret: None }),
+            ChannelType::WhatsApp => ChannelConfig::WhatsApp(WhatsAppConfig { bridge_url: None }),
+            ChannelType::Slack => ChannelConfig::Slack(SlackConfig { token: None }),
+            ChannelType::Webhook => ChannelConfig::Webhook(WebhookConfig {
+                url: None,
+                method: "POST".to_string(),
+                headers: std::collections::HashMap::new(),
+            }),
+        }
+    });
+
     let options = CreateChannelOptions {
         channel_type: req.channel_type,
         name: req.name.clone(),
-        config: req.config,
+        config,
         set_as_default: req.set_as_default,
         notification_mode,
         agent_binding: req.agent_binding.map(AgentBinding::from),
