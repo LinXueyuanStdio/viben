@@ -109,7 +109,7 @@ export function PlanApproval({
           <ListChecks className="h-4 w-4 text-primary" />
         )}
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-w-0 overflow-hidden">
         <div className={containerStyle}>
           {/* Header */}
           <div className="px-4 py-3 border-b border-inherit">

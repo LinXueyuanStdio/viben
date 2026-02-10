@@ -149,6 +149,7 @@
       "allowFrom": "允许的用户 (可选)",
       "allowFromDescription": "留空允许所有用户，用逗号分隔",
       "chatId": "Chat ID",
+      "chatIdDescription": "消息发送的目标聊天 ID，可从 @userinfobot 获取",
       "chatIdPlaceholder": "输入 Chat ID（如 123456789 或 @频道用户名）",
       "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID"
     },
@@ -184,7 +185,12 @@
       "allowFrom": "允许的手机号 (可选)",
       "allowFromDescription": "留空允许所有用户",
       "testNote": "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。"
-    }
+    },
+    "agentBinding": "绑定智能体/执行器",
+    "agentBindingDescription": "接收到消息时自动路由给指定的智能体或执行器",
+    "noBinding": "不绑定",
+    "agents": "智能体",
+    "executors": "执行器 (Claude Code)"
   },
   "dashboard": {
     "title": "仪表盘",

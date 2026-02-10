@@ -147,6 +147,7 @@
       "allowFrom": "Allowed Users (optional)",
       "allowFromDescription": "Leave empty to allow all users, separate with comma",
       "chatId": "Chat ID",
+      "chatIdDescription": "Target chat ID for sending messages, get from @userinfobot",
       "chatIdPlaceholder": "Enter Chat ID (e.g., 123456789 or @channel_username)",
       "chatIdHint": "You can get your Chat ID from @userinfobot"
     },
@@ -182,7 +183,12 @@
       "allowFrom": "Allowed Phone Numbers (optional)",
       "allowFromDescription": "Leave empty to allow all users",
       "testNote": "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication."
-    }
+    },
+    "agentBinding": "Bind Agent/Executor",
+    "agentBindingDescription": "Automatically route incoming messages to the specified agent or executor",
+    "noBinding": "No binding",
+    "agents": "Agents",
+    "executors": "Executors (Claude Code)"
   },
   "dashboard": {
     "title": "Dashboard",

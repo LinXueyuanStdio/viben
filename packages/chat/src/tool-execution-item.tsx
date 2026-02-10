@@ -120,7 +120,7 @@ export function ToolExecutionItem({
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolInput", "Input")}
                     </p>
-                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted p-2 text-xs max-h-[150px] w-full">
+                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted p-2 text-xs max-h-[150px] max-w-full">
                       <code className="text-xs break-all">{JSON.stringify(input, null, 2)}</code>
                     </pre>
                   </div>
@@ -132,7 +132,7 @@ export function ToolExecutionItem({
                     </p>
                     <pre
                       className={cn(
-                        "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[150px] w-full",
+                        "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[150px] max-w-full",
                         isError ? "bg-destructive/10 text-destructive" : "bg-muted"
                       )}
                     >
@@ -217,7 +217,7 @@ export function ToolExecutionItem({
                         <p className="text-xs font-medium text-muted-foreground mb-1">
                           {t("chat.taskPrompt", "Task Prompt")}
                         </p>
-                        <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] w-full">
+                        <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] max-w-full">
                           <code className="whitespace-pre-wrap break-all text-xs">{taskInput.prompt}</code>
                         </pre>
                       </div>
@@ -238,7 +238,7 @@ export function ToolExecutionItem({
                         </p>
                         <pre
                           className={cn(
-                            "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] w-full",
+                            "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] max-w-full",
                             isError
                               ? "bg-destructive/10 text-destructive"
                               : "bg-muted"
@@ -327,7 +327,7 @@ export function ToolExecutionItem({
                       <p className="text-xs font-medium text-muted-foreground mb-1">
                         {t("chat.toolInput", "Input")}
                       </p>
-                      <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] w-full">
+                      <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] max-w-full">
                         <code className="text-xs break-all">{JSON.stringify(input, null, 2)}</code>
                       </pre>
                     </div>
@@ -341,7 +341,7 @@ export function ToolExecutionItem({
                       </p>
                       <pre
                         className={cn(
-                          "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] w-full",
+                          "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] max-w-full",
                           isError
                             ? "bg-destructive/10 text-destructive"
                             : "bg-muted"

@@ -598,7 +598,7 @@ export function MessageList({
     : undefined;
 
   return (
-    <div className={cn("relative flex-1 min-h-0 min-w-0 overflow-hidden", className)}>
+    <div className={cn("relative flex-1 w-0 min-h-0 min-w-0 overflow-hidden", className)}>
       <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden [&>[data-radix-scroll-area-viewport]]:!min-w-0" viewportRef={viewportRef}>
         <div
           className="space-y-4 p-4 pb-8 w-full min-w-0 overflow-hidden"
