@@ -15,6 +15,7 @@ use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
 use ts_rs::TS;
 
 use super::EventService;
+use crate::channels::{send_channel_message, ChannelService, SendMessageOptions};
 
 /// Cron service errors
 #[derive(Debug, thiserror::Error)]
@@ -254,6 +255,7 @@ struct CronConfig {
 pub struct CronService {
     config_path: PathBuf,
     events: Arc<EventService>,
+    channels: Option<Arc<ChannelService>>,
     jobs: Arc<RwLock<HashMap<String, CronJob>>>,
     scheduler: Arc<RwLock<Option<JobScheduler>>>,
     scheduled_jobs: Arc<RwLock<HashMap<String, uuid::Uuid>>>,
@@ -281,10 +283,22 @@ impl CronService {
         Self {
             config_path,
             events,
+            channels: None,
             jobs: Arc::new(RwLock::new(HashMap::new())),
             scheduler: Arc::new(RwLock::new(None)),
             scheduled_jobs: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Set channel service for sending notifications to external channels
+    pub fn with_channels(mut self, channels: Arc<ChannelService>) -> Self {
+        self.channels = Some(channels);
+        self
+    }
+
+    /// Set channel service (mutable reference version)
+    pub fn set_channels(&mut self, channels: Arc<ChannelService>) {
+        self.channels = Some(channels);
     }
 
     /// Load jobs from config file
@@ -614,9 +628,17 @@ impl CronService {
             job_type: job.job_type.to_string(),
             status: status.clone(),
             duration_ms,
-            output: truncated_output,
+            output: truncated_output.clone(),
             completed_at,
         });
+
+        // Send notifications to external channels if configured
+        if let Some(ref notifications) = job.notifications {
+            if !notifications.channel_ids.is_empty() {
+                self.send_channel_notifications(&job, &status, truncated_output.as_deref())
+                    .await;
+            }
+        }
 
         // Note: System notifications are now handled by the application layer
         // (desktop/cli) by listening to the CronJobCompleted WebSocket event.
@@ -627,6 +649,121 @@ impl CronService {
             "Job {} execution completed",
             job_id
         );
+    }
+
+    /// Send notifications to configured external channels
+    async fn send_channel_notifications(
+        &self,
+        job: &CronJob,
+        status: &JobStatus,
+        output: Option<&str>,
+    ) {
+        let channels = match &self.channels {
+            Some(c) => c,
+            None => {
+                tracing::warn!(
+                    target: "viben::services::cron",
+                    "Cannot send channel notifications: ChannelService not configured"
+                );
+                return;
+            }
+        };
+
+        let notifications = match &job.notifications {
+            Some(n) => n,
+            None => return,
+        };
+
+        // Format the notification message
+        let status_emoji = match status {
+            JobStatus::Success => "✅",
+            JobStatus::Failure => "❌",
+            JobStatus::Running => "🔄",
+        };
+
+        let status_text = match status {
+            JobStatus::Success => "completed successfully",
+            JobStatus::Failure => "failed",
+            JobStatus::Running => "is running",
+        };
+
+        let mut message = format!(
+            "{} Scheduled Task: {}\n\nStatus: {}\nTask: {}",
+            status_emoji,
+            job.name,
+            status_text,
+            job.name
+        );
+
+        if let Some(output_text) = output {
+            if !output_text.is_empty() {
+                message.push_str(&format!("\n\nOutput:\n{}", output_text));
+            }
+        }
+
+        // Send to each configured channel
+        for channel_id in &notifications.channel_ids {
+            match channels.get_channel(channel_id).await {
+                Some(channel) => {
+                    // Get chat_id from channel config
+                    let chat_id = match &channel.config {
+                        crate::channels::ChannelConfig::Telegram(cfg) => cfg.chat_id.clone(),
+                        crate::channels::ChannelConfig::Webhook(_) => String::new(),
+                        // Other channel types not yet supported for cron notifications
+                        _ => {
+                            tracing::warn!(
+                                target: "viben::services::cron",
+                                "Channel type {:?} not supported for cron notifications",
+                                channel.channel_type
+                            );
+                            continue;
+                        }
+                    };
+
+                    if chat_id.is_empty() && !matches!(channel.channel_type, crate::channels::ChannelType::Webhook) {
+                        tracing::warn!(
+                            target: "viben::services::cron",
+                            "Channel {} has no chat_id configured, skipping",
+                            channel_id
+                        );
+                        continue;
+                    }
+
+                    let options = SendMessageOptions {
+                        chat_id,
+                        message: message.clone(),
+                        parse_mode: None,
+                    };
+
+                    match send_channel_message(channel.channel_type, &channel.config, &options).await
+                    {
+                        result if result.success => {
+                            tracing::info!(
+                                target: "viben::services::cron",
+                                "Sent notification to channel {} for job {}",
+                                channel_id,
+                                job.id
+                            );
+                        }
+                        result => {
+                            tracing::error!(
+                                target: "viben::services::cron",
+                                "Failed to send notification to channel {}: {}",
+                                channel_id,
+                                result.error.unwrap_or_else(|| "Unknown error".to_string())
+                            );
+                        }
+                    }
+                }
+                None => {
+                    tracing::error!(
+                        target: "viben::services::cron",
+                        "Channel {} not found",
+                        channel_id
+                    );
+                }
+            }
+        }
     }
 
     /// Execute a script-type job

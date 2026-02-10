@@ -3,9 +3,9 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight, HelpCircle, FileEdit } from "lucide-react";
 import { cn } from "@viben/ui";
-import type { AgentMessage, MessageAttachment } from "./types";
+import type { AgentMessage, MessageAttachment, AgentQuestion } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
 import { PlanApproval } from "./plan-approval";
 
@@ -196,7 +196,7 @@ function UserMessage({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex justify-end min-w-0"
+      className="flex justify-end w-full min-w-0"
     >
       <div className="flex max-w-[85%] gap-3 min-w-0">
         <div className="flex flex-col items-end min-w-0 overflow-hidden">
@@ -225,7 +225,7 @@ function ErrorMessage({ errorMessage }: { errorMessage: string }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3"
+      className="flex gap-3 w-full min-w-0"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-destructive/10">
         <AlertCircle className="h-4 w-4 text-destructive" />
@@ -266,7 +266,7 @@ function ThinkingMessage({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3"
+      className="flex gap-3 w-full min-w-0"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
         <Brain className="h-4 w-4 text-purple-500" />
@@ -277,18 +277,18 @@ function ThinkingMessage({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-purple-500/10 transition-colors cursor-pointer"
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-purple-500/10 transition-colors cursor-pointer min-w-0"
           >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 shrink-0 text-purple-500" />
             ) : (
               <ChevronRight className="h-4 w-4 shrink-0 text-purple-500" />
             )}
-            <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+            <span className="text-sm font-medium text-purple-600 dark:text-purple-400 shrink-0">
               {t("chat.thinking", "Thinking")}
             </span>
             {!isExpanded && (
-              <span className="text-xs text-muted-foreground truncate ml-2">
+              <span className="text-xs text-muted-foreground truncate flex-1 min-w-0">
                 {truncatedContent}
               </span>
             )}
@@ -296,7 +296,7 @@ function ThinkingMessage({
 
           {/* Expandable content */}
           {isExpanded && (
-            <div className="px-4 pb-3 border-t border-purple-500/10">
+            <div className="px-4 pb-3 border-t border-purple-500/10 overflow-hidden">
               <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/80 overflow-hidden break-words mt-2">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -336,7 +336,7 @@ function AssistantMessage({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex gap-3"
+      className="flex gap-3 w-full min-w-0"
     >
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary">
         <Bot className="h-4 w-4 text-secondary-foreground" />
@@ -359,6 +359,108 @@ function AssistantMessage({
           {isStreaming && (
             <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
           )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * AskUserQuestion message display - shows interactive questions from agent
+ */
+function AskQuestionMessage({ questions }: { questions: AgentQuestion[] }) {
+  const { t } = useTranslation();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3 w-full min-w-0"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10">
+        <HelpCircle className="h-4 w-4 text-blue-500" />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="rounded-2xl rounded-tl-md border border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-3">
+          <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+            {t("chat.questionFromAgent", "Question from Agent")}
+          </p>
+          {questions.map((q, idx) => (
+            <div key={idx} className="space-y-2">
+              {q.header && (
+                <span className="inline-block text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  {q.header}
+                </span>
+              )}
+              <p className="text-sm text-foreground">{q.question}</p>
+              {q.options.length > 0 && (
+                <div className="space-y-1.5 mt-2">
+                  {q.options.map((opt, optIdx) => (
+                    <div
+                      key={optIdx}
+                      className="flex items-start gap-2 p-2 rounded-lg bg-muted/50 text-sm"
+                    >
+                      <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full bg-blue-500/10 text-blue-500 text-xs font-medium">
+                        {optIdx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-medium">{opt.label}</p>
+                        {opt.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{opt.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Plan mode indicator - shows when agent enters/exits plan mode
+ */
+function PlanModeMessage({ action }: { action: "enter" | "exit" }) {
+  const { t } = useTranslation();
+
+  const isEnter = action === "enter";
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3 w-full min-w-0"
+    >
+      <div className={cn(
+        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+        isEnter ? "bg-amber-500/10" : "bg-green-500/10"
+      )}>
+        <FileEdit className={cn("h-4 w-4", isEnter ? "text-amber-500" : "text-green-500")} />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className={cn(
+          "rounded-2xl rounded-tl-md border px-4 py-3",
+          isEnter
+            ? "border-amber-500/20 bg-amber-500/5"
+            : "border-green-500/20 bg-green-500/5"
+        )}>
+          <p className={cn(
+            "text-sm font-medium",
+            isEnter ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"
+          )}>
+            {isEnter
+              ? t("chat.enterPlanMode", "Entering Plan Mode")
+              : t("chat.exitPlanMode", "Exiting Plan Mode")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {isEnter
+              ? t("chat.planModeDescription", "Agent is planning the approach before implementation")
+              : t("chat.planModeComplete", "Planning complete, ready for implementation")}
+          </p>
         </div>
       </div>
     </motion.div>
@@ -433,6 +535,14 @@ export function MessageItem({
         isPending={isPlanPending}
       />
     );
+  }
+  // AskUserQuestion message - interactive questions
+  else if (message.type === "ask_question" && message.questions) {
+    content = <AskQuestionMessage questions={message.questions} />;
+  }
+  // Plan mode indicator
+  else if (message.type === "plan_mode" && message.planModeAction) {
+    content = <PlanModeMessage action={message.planModeAction} />;
   }
   // Text/Result message from agent
   else {

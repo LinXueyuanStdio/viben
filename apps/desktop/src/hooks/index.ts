@@ -86,6 +86,30 @@ export {
   useCommandContent,
 } from "./use-agent-configs";
 
+// Workspace Resources (Gateway API)
+export {
+  // New API hooks
+  useExecutors,
+  useAgents as useGatewayAgents,
+  // Legacy hooks (deprecated)
+  useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
+  useWorkspaceModels,
+  useWorkspaceAgentsFromGateway,
+  useWorkspaceResources,
+} from "./use-workspace-resources";
+export type {
+  // New API types
+  UseExecutorsOptions,
+  UseExecutorsReturn,
+  UseAgentsOptions,
+  UseAgentsReturn,
+  // Legacy types (deprecated)
+  UseWorkspaceExecutorsReturn,
+  UseWorkspaceModelsReturn,
+  UseWorkspaceAgentsFromGatewayReturn,
+  UseWorkspaceResourcesReturn,
+} from "./use-workspace-resources";
+
 // Official MCP Registry Integration
 export {
   useOfficialRegistryServers,

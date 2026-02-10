@@ -594,10 +594,55 @@ export function WorkspaceChatPage() {
         case "tool_use": {
           // Find matching tool_result
           const toolResult = msg.tool_use_id ? toolResultMap.get(msg.tool_use_id) : undefined;
+          const toolName = msg.tool_name || "unknown";
+
+          // Handle special tool types
+          if (toolName === "AskUserQuestion" && msg.tool_input) {
+            // Parse AskUserQuestion input to extract questions
+            const input = msg.tool_input as { questions?: Array<{
+              question: string;
+              header?: string;
+              options?: Array<{ label: string; description?: string }>;
+              multiSelect?: boolean;
+            }> };
+            if (input.questions && input.questions.length > 0) {
+              result.push({
+                id: msg.id,
+                type: "ask_question",
+                questions: input.questions.map(q => ({
+                  question: q.question,
+                  header: q.header || "",
+                  options: q.options || [],
+                  multiSelect: q.multiSelect || false,
+                })),
+              });
+              break;
+            }
+          }
+
+          if (toolName === "EnterPlanMode") {
+            result.push({
+              id: msg.id,
+              type: "plan_mode",
+              planModeAction: "enter",
+            });
+            break;
+          }
+
+          if (toolName === "ExitPlanMode") {
+            result.push({
+              id: msg.id,
+              type: "plan_mode",
+              planModeAction: "exit",
+            });
+            break;
+          }
+
+          // Regular tool_use
           result.push({
             id: msg.id,
             type: "tool_use",
-            name: msg.tool_name || "unknown",
+            name: toolName,
             input: msg.tool_input || {},
             toolUseId: msg.tool_use_id,
             // Merge tool_result output into tool_use
@@ -1587,7 +1632,7 @@ export function WorkspaceChatPage() {
       />
 
       {/* Main content - WeChat style layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Left: Executor List (resizable) */}
         <div
           className="relative border-r flex flex-col bg-background shrink-0 overflow-visible"
@@ -1709,7 +1754,7 @@ export function WorkspaceChatPage() {
         </div>
 
         {/* Middle: Chat Area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
           {/* Group Chat Mode */}
           {isGroupChatMode && currentGroupChat ? (
             <>

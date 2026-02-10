@@ -8,16 +8,127 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   getGatewayClient,
-  type WorkspaceExecutor,
+  type ExecutorInfo,
+  type AgentInfo,
   type WorkspaceModel,
+  // Legacy types for backwards compatibility
+  type WorkspaceExecutor,
   type WorkspaceAgent,
-  type WorkspaceExecutorsResponse,
-  type WorkspaceModelsResponse,
-  type WorkspaceAgentsResponse,
 } from "@/lib/gateway";
 
 // ============================================================================
-// Workspace Executors Hook
+// Executors Hook (New API: /api/executors)
+// ============================================================================
+
+export interface UseExecutorsOptions {
+  /** Workspace path to scope executors */
+  workspacePath?: string | null;
+  /** Include global executors (default: true) */
+  includeGlobal?: boolean;
+}
+
+export interface UseExecutorsReturn {
+  /** List of executors (merged if both workspace and global exist) */
+  executors: ExecutorInfo[];
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Total count */
+  total: number;
+  /** Refresh executors */
+  refresh: () => Promise<void>;
+  /** Get available executors (installed or logged in) */
+  getAvailableExecutors: () => ExecutorInfo[];
+  /** Get executors with project config */
+  getProjectExecutors: () => ExecutorInfo[];
+  /** Get executors with global config only */
+  getGlobalOnlyExecutors: () => ExecutorInfo[];
+  /** Get merged executors (both project and global configs) */
+  getMergedExecutors: () => ExecutorInfo[];
+}
+
+/**
+ * Hook to get executors with optional workspace scope
+ *
+ * When workspacePath is provided with includeGlobal=true (default):
+ * - Returns merged executors (same-name executors are combined)
+ * - source="merged" means both project and global configs exist
+ * - project_config_path is prioritized for editing
+ */
+export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn {
+  const workspacePath = options?.workspacePath;
+  const includeGlobal = options?.includeGlobal ?? true;
+
+  const [executors, setExecutors] = useState<ExecutorInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+
+  const loadExecutors = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getGatewayClient();
+      const response = await client.getExecutors({
+        workspacePath: workspacePath || undefined,
+        includeGlobal,
+      });
+      setExecutors(response.executors);
+      setTotal(response.total);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load executors";
+      setError(message);
+      console.error("[useExecutors] Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, includeGlobal]);
+
+  // Load on mount and when options change
+  useEffect(() => {
+    loadExecutors();
+  }, [loadExecutors]);
+
+  const getAvailableExecutors = useCallback(() => {
+    return executors.filter(
+      (e) =>
+        e.availability.type === "LOGIN_DETECTED" ||
+        e.availability.type === "INSTALLATION_FOUND"
+    );
+  }, [executors]);
+
+  const getProjectExecutors = useCallback(() => {
+    return executors.filter(
+      (e) => e.source === "project" || e.source === "merged"
+    );
+  }, [executors]);
+
+  const getGlobalOnlyExecutors = useCallback(() => {
+    return executors.filter((e) => e.source === "global");
+  }, [executors]);
+
+  const getMergedExecutors = useCallback(() => {
+    return executors.filter((e) => e.source === "merged");
+  }, [executors]);
+
+  return {
+    executors,
+    loading,
+    error,
+    total,
+    refresh: loadExecutors,
+    getAvailableExecutors,
+    getProjectExecutors,
+    getGlobalOnlyExecutors,
+    getMergedExecutors,
+  };
+}
+
+// ============================================================================
+// Workspace Executors Hook (Legacy - uses new API internally)
 // ============================================================================
 
 export interface UseWorkspaceExecutorsReturn {
@@ -37,6 +148,7 @@ export interface UseWorkspaceExecutorsReturn {
 
 /**
  * Hook to get executors available for a workspace
+ * @deprecated Use useExecutors() instead for more detailed config info
  */
 export function useWorkspaceExecutors(
   workspacePath: string | null
@@ -182,7 +294,121 @@ export function useWorkspaceModels(
 }
 
 // ============================================================================
-// Workspace Agents Hook
+// Agents Hook (New API: /api/agents)
+// ============================================================================
+
+export interface UseAgentsOptions {
+  /** Workspace path to scope agents */
+  workspacePath?: string | null;
+  /** Include global agents (default: true) */
+  includeGlobal?: boolean;
+}
+
+export interface UseAgentsReturn {
+  /** List of agents (both workspace and global if includeGlobal=true) */
+  agents: AgentInfo[];
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Total count */
+  total: number;
+  /** Refresh agents */
+  refresh: () => Promise<void>;
+  /** Get Viben agents */
+  getVibenAgents: () => AgentInfo[];
+  /** Get IDE agents (Claude Code, Cursor, etc.) */
+  getIdeAgents: () => AgentInfo[];
+  /** Get agent by ID */
+  getAgent: (id: string) => AgentInfo | undefined;
+  /** Get workspace-scoped agents */
+  getWorkspaceAgents: () => AgentInfo[];
+  /** Get global agents */
+  getGlobalAgents: () => AgentInfo[];
+}
+
+/**
+ * Hook to get agents with optional workspace scope
+ *
+ * When workspacePath is provided with includeGlobal=true (default):
+ * - Returns both workspace-scoped and global agents
+ * - source field indicates "workspace" or "global"
+ */
+export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
+  const workspacePath = options?.workspacePath;
+  const includeGlobal = options?.includeGlobal ?? true;
+
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [total, setTotal] = useState(0);
+
+  const loadAgents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getGatewayClient();
+      const response = await client.getAgents({
+        workspacePath: workspacePath || undefined,
+        includeGlobal,
+      });
+      setAgents(response.agents);
+      setTotal(response.total);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load agents";
+      setError(message);
+      console.error("[useAgents] Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, includeGlobal]);
+
+  // Load on mount and when options change
+  useEffect(() => {
+    loadAgents();
+  }, [loadAgents]);
+
+  const getVibenAgents = useCallback(() => {
+    return agents.filter((a) => a.agent_type === "viben");
+  }, [agents]);
+
+  const getIdeAgents = useCallback(() => {
+    return agents.filter((a) => a.agent_type !== "viben");
+  }, [agents]);
+
+  const getAgent = useCallback(
+    (id: string) => {
+      return agents.find((a) => a.id === id);
+    },
+    [agents]
+  );
+
+  const getWorkspaceAgents = useCallback(() => {
+    return agents.filter((a) => a.source === "workspace");
+  }, [agents]);
+
+  const getGlobalAgents = useCallback(() => {
+    return agents.filter((a) => a.source === "global");
+  }, [agents]);
+
+  return {
+    agents,
+    loading,
+    error,
+    total,
+    refresh: loadAgents,
+    getVibenAgents,
+    getIdeAgents,
+    getAgent,
+    getWorkspaceAgents,
+    getGlobalAgents,
+  };
+}
+
+// ============================================================================
+// Workspace Agents Hook (Legacy - uses new API internally)
 // ============================================================================
 
 export interface UseWorkspaceAgentsFromGatewayReturn {
@@ -207,6 +433,7 @@ export interface UseWorkspaceAgentsFromGatewayReturn {
 /**
  * Hook to get agents available for a workspace (from Gateway API)
  * This returns agents discovered in the workspace including IDE configs
+ * @deprecated Use useAgents() instead for more detailed source info
  */
 export function useWorkspaceAgentsFromGateway(
   workspacePath: string | null

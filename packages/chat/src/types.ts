@@ -29,7 +29,9 @@ export type AgentMessageType =
   | "tool_result"
   | "plan"
   | "result"
-  | "error";
+  | "error"
+  | "ask_question"  // AskUserQuestion tool call
+  | "plan_mode";    // EnterPlanMode/ExitPlanMode tool calls
 
 /** Task plan step */
 export interface TaskPlanStep {
@@ -78,6 +80,8 @@ export interface AgentMessage {
   message?: string; // Error message
   plan?: TaskPlan; // For plan type
   attachments?: MessageAttachment[]; // For user messages with attachments
+  questions?: AgentQuestion[]; // For ask_question type (AskUserQuestion tool)
+  planModeAction?: "enter" | "exit"; // For plan_mode type
 }
 
 // ============================================================================

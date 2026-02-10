@@ -207,7 +207,7 @@ pub async fn create_channel(
     // Use the provided config or create a default config based on channel_type
     let config = req.config.unwrap_or_else(|| {
         match req.channel_type {
-            ChannelType::Telegram => ChannelConfig::Telegram(TelegramConfig { token: None, proxy: None }),
+            ChannelType::Telegram => ChannelConfig::Telegram(TelegramConfig { token: None, chat_id: String::new(), proxy: None }),
             ChannelType::Discord => ChannelConfig::Discord(DiscordConfig { token: None }),
             ChannelType::Feishu => ChannelConfig::Feishu(FeishuConfig { app_id: None, app_secret: None }),
             ChannelType::WhatsApp => ChannelConfig::WhatsApp(WhatsAppConfig { bridge_url: None }),
@@ -436,6 +436,7 @@ pub async fn send_message(
         ChannelConfigRequest::Telegram { token, proxy } => {
             let config = TelegramConfig {
                 token: Some(token),
+                chat_id: options.chat_id.clone(),
                 proxy,
             };
             send_telegram_message(&config, &options).await
@@ -502,6 +503,7 @@ pub async fn test_channel(
         ChannelConfigRequest::Telegram { token, proxy } => {
             let config = TelegramConfig {
                 token: Some(token),
+                chat_id: String::new(), // Not needed for testing connection
                 proxy,
             };
             test_telegram_channel(&config).await
@@ -573,7 +575,7 @@ pub async fn send_test_message(
     );
 
     let options = SendMessageOptions {
-        chat_id: req.chat_id,
+        chat_id: req.chat_id.clone(),
         message: test_message,
         parse_mode: None,
     };
@@ -582,6 +584,7 @@ pub async fn send_test_message(
         ChannelConfigRequest::Telegram { token, proxy } => {
             let config = TelegramConfig {
                 token: Some(token),
+                chat_id: req.chat_id.clone(),
                 proxy,
             };
             send_telegram_message(&config, &options).await

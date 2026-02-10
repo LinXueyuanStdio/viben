@@ -596,33 +596,78 @@ export class GatewayClient {
   }
 
   // ==========================================================================
-  // Workspace APIs
+  // Workspace Resource APIs
   // ==========================================================================
 
   /**
-   * Get workspace executors with availability and config status
+   * Get executors with availability and config status
+   *
+   * @param workspacePath - Optional workspace path to scope executors
+   * @param includeGlobal - Whether to include global executors (default: true)
+   *
+   * When workspacePath is provided with includeGlobal=true:
+   * - Returns merged executors (same-name executors are combined)
+   * - project_config_path points to workspace-level config
+   * - global_config_path points to global config
+   * - Editing should prioritize project-level config
    */
-  async getWorkspaceExecutors(
-    workspacePath: string
-  ): Promise<WorkspaceExecutorsResponse> {
-    const params = new URLSearchParams({ workspace_path: workspacePath });
-    const response = await fetch(
-      `${this.baseUrl}/api/workspaces/executors?${params}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
+  async getExecutors(options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }): Promise<ExecutorsResponse> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    if (options?.includeGlobal !== undefined) {
+      params.set("include_global", String(options.includeGlobal));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/executors?${queryString}`
+      : `${this.baseUrl}/api/executors`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get workspace executors: ${errorMessage}`,
+        `Failed to get executors: ${errorMessage}`,
         response.status
       );
     }
 
     return response.json();
+  }
+
+  /**
+   * Get workspace executors with availability and config status
+   * @deprecated Use getExecutors() instead
+   */
+  async getWorkspaceExecutors(
+    workspacePath: string
+  ): Promise<WorkspaceExecutorsResponse> {
+    const result = await this.getExecutors({
+      workspacePath,
+      includeGlobal: true,
+    });
+    // Convert to legacy format
+    return {
+      workspace_path: workspacePath,
+      executors: result.executors.map((e) => ({
+        id: e.id,
+        name: e.name,
+        availability: e.availability,
+        supports_mcp: e.supports_mcp,
+        capabilities: e.capabilities,
+        has_workspace_config: !!e.project_config_path,
+        workspace_config_path: e.project_config_path,
+      })),
+    };
   }
 
   /**
@@ -652,29 +697,64 @@ export class GatewayClient {
   }
 
   /**
-   * Get workspace agents (Viben + discovered IDE configs)
+   * Get agents (Viben + discovered IDE configs)
+   *
+   * @param workspacePath - Optional workspace path to scope agents
+   * @param includeGlobal - Whether to include global agents (default: true)
+   *
+   * When workspacePath is provided with includeGlobal=true:
+   * - Returns both workspace-scoped and global agents
+   * - source field indicates "workspace" or "global"
    */
-  async getWorkspaceAgents(
-    workspacePath: string
-  ): Promise<WorkspaceAgentsResponse> {
-    const params = new URLSearchParams({ workspace_path: workspacePath });
-    const response = await fetch(
-      `${this.baseUrl}/api/workspaces/agents?${params}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
+  async getAgents(options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }): Promise<AgentsResponse> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    if (options?.includeGlobal !== undefined) {
+      params.set("include_global", String(options.includeGlobal));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/agents?${queryString}`
+      : `${this.baseUrl}/api/agents`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get workspace agents: ${errorMessage}`,
+        `Failed to get agents: ${errorMessage}`,
         response.status
       );
     }
 
     return response.json();
+  }
+
+  /**
+   * Get workspace agents (Viben + discovered IDE configs)
+   * @deprecated Use getAgents() instead
+   */
+  async getWorkspaceAgents(
+    workspacePath: string
+  ): Promise<WorkspaceAgentsResponse> {
+    const result = await this.getAgents({
+      workspacePath,
+      includeGlobal: true,
+    });
+    return {
+      workspace_path: workspacePath,
+      agents: result.agents,
+      total: result.total,
+    };
   }
 
   /**
@@ -1799,7 +1879,34 @@ export function sseEventToAgentMessage(
 // Workspace API Types
 // ============================================================================
 
-/** Workspace executor info */
+/** Executor info with merged configs */
+export interface ExecutorInfo {
+  /** Executor ID (e.g., "CLAUDE_CODE") */
+  id: BaseCodingAgent;
+  /** Display name */
+  name: string;
+  /** Global availability info */
+  availability: AvailabilityInfo;
+  /** Whether this executor supports MCP */
+  supports_mcp: boolean;
+  /** Executor capabilities */
+  capabilities: string[];
+  /** Source of this executor: "global", "project", or "merged" (both exist) */
+  source: "global" | "project" | "merged";
+  /** Path to project-level config file (prioritized for editing) */
+  project_config_path?: string;
+  /** Path to global config file */
+  global_config_path?: string;
+}
+
+/** Response for executors */
+export interface ExecutorsResponse {
+  workspace_path?: string;
+  executors: ExecutorInfo[];
+  total: number;
+}
+
+/** @deprecated Use ExecutorInfo instead */
 export interface WorkspaceExecutor {
   /** Executor ID (e.g., "CLAUDE_CODE") */
   id: BaseCodingAgent;
@@ -1817,7 +1924,7 @@ export interface WorkspaceExecutor {
   workspace_config_path?: string;
 }
 
-/** Response for workspace executors */
+/** @deprecated Use ExecutorsResponse instead */
 export interface WorkspaceExecutorsResponse {
   workspace_path: string;
   executors: WorkspaceExecutor[];
@@ -1861,7 +1968,34 @@ export type WorkspaceAgentType =
   | "windsurf"
   | "other";
 
-/** Workspace agent info */
+/** Agent info */
+export interface AgentInfo {
+  /** Agent ID */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Agent type */
+  agent_type: WorkspaceAgentType;
+  /** Source: "global" or "workspace" */
+  source: "global" | "workspace";
+  /** Path to agent config */
+  config_path?: string;
+  /** MCP config path (if applicable) */
+  mcp_config_path?: string;
+  /** Number of MCP servers configured */
+  mcp_server_count: number;
+  /** Number of skills/commands configured */
+  skill_count: number;
+}
+
+/** Response for agents */
+export interface AgentsResponse {
+  workspace_path?: string;
+  agents: AgentInfo[];
+  total: number;
+}
+
+/** @deprecated Use AgentInfo instead */
 export interface WorkspaceAgent {
   /** Agent ID */
   id: string;
@@ -1881,7 +2015,7 @@ export interface WorkspaceAgent {
   skill_count: number;
 }
 
-/** Response for workspace agents */
+/** @deprecated Use AgentsResponse instead */
 export interface WorkspaceAgentsResponse {
   workspace_path: string;
   agents: WorkspaceAgent[];

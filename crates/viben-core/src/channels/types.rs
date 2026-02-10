@@ -139,6 +139,9 @@ pub struct TelegramConfig {
     /// Bot token from @BotFather
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token: Option<String>,
+    /// Chat ID to send messages to (required for outgoing messages)
+    /// Get this by messaging the bot and checking /getUpdates API
+    pub chat_id: String,
     /// Optional proxy URL for regions where Telegram is blocked
     #[serde(skip_serializing_if = "Option::is_none")]
     pub proxy: Option<String>,

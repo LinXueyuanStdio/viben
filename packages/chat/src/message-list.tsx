@@ -588,7 +588,7 @@ export function MessageList({
 
   return (
     <div className={cn("relative flex-1 min-h-0 min-w-0 overflow-hidden", className)}>
-      <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden" viewportRef={viewportRef}>
+      <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden [&>[data-radix-scroll-area-viewport]]:!min-w-0" viewportRef={viewportRef}>
         <div className="space-y-4 p-4 pb-8 max-w-4xl mx-auto w-full min-w-0 overflow-hidden">
           {groups.map((group, index) => {
             if (group.type === "task") {
