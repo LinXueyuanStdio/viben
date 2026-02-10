@@ -50,6 +50,7 @@
     "next": "下一页",
     "previous": "上一页",
     "disabled": "已禁用",
+    "enabled": "已启用",
     "default": "默认",
     "enable": "启用",
     "disable": "禁用",
@@ -60,6 +61,8 @@
     "selected": "已选",
     "noResults": "未找到结果",
     "rename": "重命名",
+    "path": "路径",
+    "copyPath": "复制路径",
     "yesterday": "昨天",
     "overview": "概览",
     "created": "创建",
@@ -542,7 +545,12 @@
     "noClaudeMd": "暂无 CLAUDE.md 文件",
     "noClaudeMdHint": "在工作空间根目录创建 CLAUDE.md 文件",
     "tools": "工具",
-    "openFolder": "在文件管理器中打开"
+    "openFolder": "在文件管理器中打开",
+    "createLocation": "存储位置",
+    "workspaceLocation": "当前工作空间",
+    "globalLocation": "全局工作空间",
+    "workspaceAgents": "工作空间智能体",
+    "globalAgents": "全局智能体"
   },
   "settingsModels": {
     "title": "AI 模型",
@@ -1725,6 +1733,15 @@
     "myPackages": "我的包",
     "analytics": "数据分析"
   },
+  "executor": {
+    "noSessions": "暂无会话",
+    "noSessionsHint": "使用此执行器后，会话将显示在此处",
+    "noMessages": "此会话无消息",
+    "noMessagesHint": "此会话似乎为空",
+    "selectSession": "选择会话",
+    "selectSessionHint": "从上方下拉菜单中选择一个会话",
+    "readOnlyHint": "执行器会话为只读"
+  },
   "cron": {
     "title": "定时任务",
     "createJob": "创建任务",
@@ -1766,7 +1783,9 @@
     "enabled": "启用任务",
     "notifications": "通知设置",
     "notifyInApp": "应用内通知",
+    "notifyInAppShort": "应用内",
     "notifySystem": "系统通知（应用外）",
+    "notifySystemShort": "系统",
     "notifyChannels": "渠道通知",
     "noChannelsConfigured": "暂无已启用的渠道。前往设置 > 消息渠道添加。",
     "presets": {
@@ -1811,7 +1830,8 @@
     "scriptOptionalHint": "可选。如不填写，将使用任务名称",
     "preScript": "前置脚本",
     "preScriptPlaceholder": "#!/bin/bash\n# 发送消息前运行的脚本...",
-    "preScriptHint": "可选脚本，在发送消息给智能体前执行"
+    "preScriptHint": "可选脚本，在发送消息给智能体前执行",
+    "channels": "消息渠道"
   },
   "preview": {
     "livePreview": "实时预览",
@@ -1914,8 +1934,12 @@
       "cronJobStartedDesc": "任务 \"{{name}}\" 已开始执行",
       "cronJobCompleted": "定时任务完成",
       "cronJobCompletedDesc": "任务 \"{{name}}\" 已完成",
+      "cronJobCompletedDetail": "\"{{name}}\"（{{type}}）执行完成，耗时 {{duration}}",
       "cronJobFailed": "定时任务失败",
       "cronJobFailedDesc": "任务 \"{{name}}\" 执行失败",
+      "cronJobFailedDetail": "\"{{name}}\"（{{type}}）执行失败，耗时 {{duration}}",
+      "jobTypeAgent": "智能体",
+      "jobTypeScript": "脚本",
       "agentNeedsInput": "智能体需要输入",
       "agentNeedsInputDesc": "{{name}} 需要您的关注",
       "agentCompleted": "智能体完成",

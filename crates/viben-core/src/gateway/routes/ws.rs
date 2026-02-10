@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::gateway::AppState;
+use crate::services::GatewayEvent;
 
 /// WebSocket message types
 #[derive(Debug, Serialize, Deserialize)]
@@ -51,8 +52,10 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
     // Spawn task to forward events to WebSocket
     let send_task = tokio::spawn(async move {
         while let Ok(event) = event_rx.recv().await {
+            // Determine channel based on event type
+            let channel = event_to_channel(&event);
             let msg = WsMessage::Event {
-                channel: "gateway".to_string(),
+                channel,
                 payload: serde_json::to_value(&event).unwrap_or(json!({})),
             };
 
@@ -96,6 +99,55 @@ async fn handle_socket(socket: WebSocket, state: AppState) {
 
     // Cleanup
     send_task.abort();
+}
+
+/// Map GatewayEvent to channel name
+fn event_to_channel(event: &GatewayEvent) -> String {
+    match event {
+        // Cron events
+        GatewayEvent::CronJobCreated { .. }
+        | GatewayEvent::CronJobUpdated { .. }
+        | GatewayEvent::CronJobDeleted { .. }
+        | GatewayEvent::CronJobTriggered { .. }
+        | GatewayEvent::CronJobCompleted { .. }
+        | GatewayEvent::CronJobMessage { .. } => "cron".to_string(),
+
+        // Channel events
+        GatewayEvent::ChannelMessageReceived { .. }
+        | GatewayEvent::ChannelConnectionStatus { .. }
+        | GatewayEvent::ChannelCreated { .. }
+        | GatewayEvent::ChannelUpdated { .. }
+        | GatewayEvent::ChannelDeleted { .. } => "channels".to_string(),
+
+        // Group chat events
+        GatewayEvent::GroupChatCreated { .. }
+        | GatewayEvent::GroupChatUpdated { .. }
+        | GatewayEvent::GroupChatDeleted { .. }
+        | GatewayEvent::GroupChatMemberJoined { .. }
+        | GatewayEvent::GroupChatMemberLeft { .. }
+        | GatewayEvent::GroupChatMessage { .. } => "group".to_string(),
+
+        // Task events
+        GatewayEvent::TaskCreated { .. }
+        | GatewayEvent::TaskUpdated { .. }
+        | GatewayEvent::TaskDeleted { .. }
+        | GatewayEvent::TaskStatusChanged { .. } => "tasks".to_string(),
+
+        // Session events
+        GatewayEvent::SessionCreated { .. }
+        | GatewayEvent::SessionUpdated { .. }
+        | GatewayEvent::SessionDeleted { .. }
+        | GatewayEvent::SessionMessage { .. }
+        | GatewayEvent::ExecutionLog { .. } => "sessions".to_string(),
+
+        // Agent events
+        GatewayEvent::AgentSpawned { .. }
+        | GatewayEvent::AgentCompleted { .. } => "agents".to_string(),
+
+        // Other events go to gateway channel
+        GatewayEvent::JsonPatch { .. }
+        | GatewayEvent::Error { .. } => "gateway".to_string(),
+    }
 }
 
 /// Create the WebSocket router

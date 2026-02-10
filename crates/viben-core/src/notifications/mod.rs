@@ -22,50 +22,39 @@ use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
 use ts_rs::TS;
 
-/// Default bundle identifier for macOS notifications
-const DEFAULT_BUNDLE_ID: &str = "com.viben.desktop";
+/// Default application name for macOS notifications
+const DEFAULT_APP_NAME: &str = "Viben";
 
-/// Global app bundle ID for macOS notifications
-static APP_BUNDLE_ID: OnceLock<String> = OnceLock::new();
+/// Global app name for macOS notifications (used with osascript)
+static APP_NAME: OnceLock<String> = OnceLock::new();
 
-/// Set the application bundle identifier for macOS notifications.
-/// Must be called before sending any notifications.
-/// If not called, defaults to "com.viben.desktop".
+/// Set the application name for macOS notifications.
 ///
-/// On macOS, this calls notify_rust::set_application() internally.
-pub fn set_app_bundle_id(bundle_id: impl Into<String>) {
-    let id = bundle_id.into();
-    let _ = APP_BUNDLE_ID.set(id.clone());
-
-    // On macOS, also set the application for notify-rust
-    #[cfg(all(feature = "system-notifications", target_os = "macos"))]
-    {
-        notify_rust::set_application(&id);
-    }
+/// On macOS, this determines which application's icon appears with the notification.
+/// The application must be installed on the system.
+///
+/// Common values:
+/// - "Viben" (default) - will use Script Editor icon
+/// - "Terminal" - will use Terminal.app icon
+/// - Custom app name - will use that app's icon if installed
+///
+/// Note: For the notification to show your app's icon, your app must be
+/// a proper macOS application bundle with the correct Info.plist.
+pub fn set_app_name(name: impl Into<String>) {
+    let _ = APP_NAME.set(name.into());
 }
 
-/// Get the current app bundle ID
-#[allow(dead_code)]
-fn get_app_bundle_id() -> &'static str {
-    APP_BUNDLE_ID.get().map(|s| s.as_str()).unwrap_or(DEFAULT_BUNDLE_ID)
+/// Get the current app name for notifications
+fn get_app_name() -> &'static str {
+    APP_NAME.get().map(|s| s.as_str()).unwrap_or(DEFAULT_APP_NAME)
 }
 
-/// Initialize notifications for macOS.
-/// This sets the application bundle ID for the notification system.
-/// Call this once at application startup.
-#[cfg(target_os = "macos")]
+/// Initialize notifications (call at app startup)
+///
+/// On macOS, this is a no-op as osascript handles everything.
+/// On other platforms, this may initialize the notification system.
 pub fn init_notifications() {
-    #[cfg(feature = "system-notifications")]
-    {
-        let bundle_id = get_app_bundle_id();
-        notify_rust::set_application(bundle_id);
-    }
-}
-
-/// Initialize notifications (no-op on non-macOS platforms)
-#[cfg(not(target_os = "macos"))]
-pub fn init_notifications() {
-    // No-op on non-macOS platforms
+    // Currently a no-op, but kept for API consistency
 }
 
 /// Notification urgency level
@@ -137,60 +126,153 @@ impl SystemNotification {
     }
 }
 
-/// Send a system notification using notify-rust
+/// Send a system notification
 ///
 /// Returns Ok(()) if the notification was sent successfully,
 /// or an error message if it failed.
 ///
-/// ## macOS
+/// ## Platform Support
 ///
-/// On macOS, notifications are sent via the native notification center.
-/// The notification will appear from "Script Editor" or "Terminal" depending
-/// on how the application is run.
+/// - **macOS**: Uses osascript for reliable native notifications
+/// - **Linux**: Uses notify-rust with freedesktop notifications
+/// - **Windows**: Uses notify-rust with Windows toast notifications
 #[cfg(feature = "system-notifications")]
 pub fn send_notification(notification: &SystemNotification) -> Result<(), String> {
-    use notify_rust::Notification;
-
-    let mut builder = Notification::new();
-
-    builder
-        .summary(&notification.title)
-        .body(&notification.body);
-
-    // macOS specific settings
     #[cfg(target_os = "macos")]
     {
-        // Set subtitle if provided
-        if let Some(subtitle) = &notification.subtitle {
-            builder.subtitle(subtitle);
-        }
-        // Set sound if provided
-        if let Some(sound) = &notification.sound {
-            builder.sound_name(sound);
-        }
+        send_notification_macos(notification)
     }
 
-    // Linux/freedesktop specific settings
     #[cfg(all(unix, not(target_os = "macos")))]
     {
-        use notify_rust::Urgency;
-        let urgency = match notification.urgency {
-            NotificationUrgency::Low => Urgency::Low,
-            NotificationUrgency::Normal => Urgency::Normal,
-            NotificationUrgency::Critical => Urgency::Critical,
-        };
-        builder.urgency(urgency);
+        send_notification_linux(notification)
+    }
 
-        if let Some(icon) = &notification.icon {
-            builder.icon(icon);
-        }
+    #[cfg(target_os = "windows")]
+    {
+        send_notification_windows(notification)
+    }
+}
+
+/// macOS implementation using osascript for reliable notifications
+///
+/// Uses `tell application` to send notification with the specified app's icon.
+/// Falls back to direct `display notification` if the app is not found.
+#[cfg(all(feature = "system-notifications", target_os = "macos"))]
+fn send_notification_macos(notification: &SystemNotification) -> Result<(), String> {
+    use std::process::Command;
+
+    let app_name = get_app_name();
+
+    // Build the notification command
+    let mut notif_cmd = format!(
+        r#"display notification "{}" with title "{}""#,
+        escape_applescript(&notification.body),
+        escape_applescript(&notification.title)
+    );
+
+    if let Some(subtitle) = &notification.subtitle {
+        notif_cmd.push_str(&format!(r#" subtitle "{}""#, escape_applescript(subtitle)));
+    }
+
+    if let Some(sound) = &notification.sound {
+        notif_cmd.push_str(&format!(r#" sound name "{}""#, escape_applescript(sound)));
+    }
+
+    // Try with application context first (shows app icon)
+    // Fall back to direct notification if app not found
+    let script = format!(
+        r#"
+        try
+            tell application "{}"
+                {}
+            end tell
+        on error
+            {}
+        end try
+        "#,
+        escape_applescript(app_name),
+        notif_cmd,
+        notif_cmd
+    );
+
+    let output = Command::new("osascript")
+        .arg("-e")
+        .arg(&script)
+        .output()
+        .map_err(|e| format!("Failed to execute osascript: {}", e))?;
+
+    if output.status.success() {
+        tracing::debug!(
+            target: "viben::notifications",
+            "macOS notification sent (app: {}): {}",
+            app_name,
+            notification.title
+        );
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(format!("osascript failed: {}", stderr))
+    }
+}
+
+/// Escape special characters for AppleScript strings
+#[cfg(all(feature = "system-notifications", target_os = "macos"))]
+fn escape_applescript(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// Linux implementation using notify-rust
+#[cfg(all(feature = "system-notifications", all(unix, not(target_os = "macos"))))]
+fn send_notification_linux(notification: &SystemNotification) -> Result<(), String> {
+    use notify_rust::{Notification, Urgency};
+
+    let urgency = match notification.urgency {
+        NotificationUrgency::Low => Urgency::Low,
+        NotificationUrgency::Normal => Urgency::Normal,
+        NotificationUrgency::Critical => Urgency::Critical,
+    };
+
+    let mut builder = Notification::new();
+    builder
+        .summary(&notification.title)
+        .body(&notification.body)
+        .urgency(urgency);
+
+    if let Some(icon) = &notification.icon {
+        builder.icon(icon);
     }
 
     builder.show().map_err(|e| e.to_string())?;
 
     tracing::debug!(
         target: "viben::notifications",
-        "System notification sent via notify-rust: {}",
+        "Linux notification sent: {}",
+        notification.title
+    );
+
+    Ok(())
+}
+
+/// Windows implementation using notify-rust
+#[cfg(all(feature = "system-notifications", target_os = "windows"))]
+fn send_notification_windows(notification: &SystemNotification) -> Result<(), String> {
+    use notify_rust::Notification;
+
+    let mut builder = Notification::new();
+    builder
+        .summary(&notification.title)
+        .body(&notification.body);
+
+    if let Some(icon) = &notification.icon {
+        builder.icon(icon);
+    }
+
+    builder.show().map_err(|e| e.to_string())?;
+
+    tracing::debug!(
+        target: "viben::notifications",
+        "Windows notification sent: {}",
         notification.title
     );
 
@@ -229,23 +311,17 @@ pub fn notify_channel_message(
 pub fn notify_cron_completion(
     job_name: &str,
     success: bool,
-    output: Option<&str>,
+    _output: Option<&str>,
 ) -> Result<(), String> {
-    let title = if success {
-        format!("Cron: {} completed", job_name)
-    } else {
-        format!("Cron: {} failed", job_name)
-    };
+    // Use job name as title for cleaner notification
+    let title = format!("⏰ {}", job_name);
 
-    let body = output
-        .map(|o| truncate_message(o, 200))
-        .unwrap_or_else(|| {
-            if success {
-                "Job completed successfully".to_string()
-            } else {
-                "Job execution failed".to_string()
-            }
-        });
+    // Use human-friendly status message instead of raw output
+    let body = if success {
+        "✅ 定时任务执行完成".to_string()
+    } else {
+        "❌ 定时任务执行失败".to_string()
+    };
 
     let urgency = if success {
         NotificationUrgency::Normal

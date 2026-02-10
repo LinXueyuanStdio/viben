@@ -77,6 +77,15 @@ pub enum CronJobType {
     Script,
 }
 
+impl std::fmt::Display for CronJobType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CronJobType::Agent => write!(f, "agent"),
+            CronJobType::Script => write!(f, "script"),
+        }
+    }
+}
+
 /// Notification settings for cron jobs
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -585,31 +594,33 @@ impl CronService {
             );
         }
 
-        // Broadcast completed event
-        self.events.broadcast(super::GatewayEvent::CronJobCompleted {
-            job_id: job_id.to_string(),
-            status: status.clone(),
-            completed_at: Utc::now().timestamp_millis(),
+        // Calculate execution duration
+        let completed_at = Utc::now().timestamp_millis();
+        let duration_ms = completed_at - now;
+
+        // Truncate output for notification (keep first 200 chars)
+        let truncated_output = output.as_ref().map(|o| {
+            if o.len() > 200 {
+                format!("{}...", &o[..200])
+            } else {
+                o.clone()
+            }
         });
 
-        // Send system notification if enabled
-        if let Some(ref notifications) = job.notifications {
-            if notifications.system {
-                let success = matches!(status, JobStatus::Success);
-                if let Err(e) = crate::notifications::notify_cron_completion(
-                    &job.name,
-                    success,
-                    output.as_deref(),
-                ) {
-                    tracing::warn!(
-                        target: "viben::services::cron",
-                        "Failed to send system notification for job {}: {}",
-                        job_id,
-                        e
-                    );
-                }
-            }
-        }
+        // Broadcast completed event (includes details for application layer notifications)
+        self.events.broadcast(super::GatewayEvent::CronJobCompleted {
+            job_id: job_id.to_string(),
+            job_name: job.name.clone(),
+            job_type: job.job_type.to_string(),
+            status: status.clone(),
+            duration_ms,
+            output: truncated_output,
+            completed_at,
+        });
+
+        // Note: System notifications are now handled by the application layer
+        // (desktop/cli) by listening to the CronJobCompleted WebSocket event.
+        // This ensures proper i18n and platform-specific notification display.
 
         tracing::info!(
             target: "viben::services::cron",

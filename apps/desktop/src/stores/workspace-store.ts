@@ -175,8 +175,10 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     {
       name: "workspace-storage",
       partialize: (state) => ({
+        // Persist workspaces and active workspace ID
+        workspaces: state.workspaces,
         activeWorkspaceId: state.activeWorkspaceId,
-        // Don't persist workspaces or discovery tasks - load from backend
+        // Don't persist discovery tasks or loading state
       }),
     }
   )

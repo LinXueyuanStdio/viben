@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { User, Bot, AlertCircle, FileText, Image as ImageIcon } from "lucide-react";
+import { User, Bot, AlertCircle, FileText, Image as ImageIcon, Brain, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage, MessageAttachment } from "./types";
 import { ToolExecutionItem } from "./tool-execution-item";
@@ -28,7 +28,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   // Code blocks
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2"
+      className="bg-muted w-full max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block [&>code]:w-max [&>code]:min-w-full"
       {...props}
     >
       {children}
@@ -196,12 +196,12 @@ function UserMessage({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex justify-end"
+      className="flex justify-end min-w-0"
     >
-      <div className="flex max-w-[85%] gap-3">
-        <div className="flex flex-col items-end">
-          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground">
-            <p className="whitespace-pre-wrap text-sm">{content}</p>
+      <div className="flex max-w-[85%] gap-3 min-w-0">
+        <div className="flex flex-col items-end min-w-0 overflow-hidden">
+          <div className="rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground overflow-hidden">
+            <p className="whitespace-pre-wrap text-sm break-words">{content}</p>
             {attachments?.map((attachment) => (
               <AttachmentPreview key={attachment.id} attachment={attachment} />
             ))}
@@ -243,6 +243,77 @@ function ErrorMessage({ errorMessage }: { errorMessage: string }) {
 }
 
 /**
+ * Thinking message display - shows Claude's reasoning process
+ */
+function ThinkingMessage({
+  content,
+  onLinkClick,
+}: {
+  content: string;
+  onLinkClick?: (href: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const markdownComponents = React.useMemo(
+    () => createMarkdownComponents(onLinkClick),
+    [onLinkClick]
+  );
+
+  // Truncate content for collapsed view
+  const truncatedContent = content.length > 200 ? content.slice(0, 200) + "..." : content;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex gap-3"
+    >
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/10">
+        <Brain className="h-4 w-4 text-purple-500" />
+      </div>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="rounded-2xl rounded-tl-md border border-purple-500/20 bg-purple-500/5 overflow-hidden">
+          {/* Header - clickable to expand/collapse */}
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-left hover:bg-purple-500/10 transition-colors cursor-pointer"
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-purple-500" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0 text-purple-500" />
+            )}
+            <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+              {t("chat.thinking", "Thinking")}
+            </span>
+            {!isExpanded && (
+              <span className="text-xs text-muted-foreground truncate ml-2">
+                {truncatedContent}
+              </span>
+            )}
+          </button>
+
+          {/* Expandable content */}
+          {isExpanded && (
+            <div className="px-4 pb-3 border-t border-purple-500/10">
+              <div className="prose prose-sm dark:prose-invert max-w-none text-foreground/80 overflow-hidden break-words mt-2">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={markdownComponents}
+                >
+                  {content || ""}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
  * Assistant text message with markdown rendering
  */
 function AssistantMessage({
@@ -273,11 +344,11 @@ function AssistantMessage({
       <div className="flex-1 min-w-0 overflow-hidden">
         <div
           className={cn(
-            "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3",
+            "rounded-2xl rounded-tl-md border border-border bg-card px-4 py-3 overflow-hidden",
             isResult && "border-primary/30 bg-primary/5"
           )}
         >
-          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground">
+          <div className="prose prose-sm dark:prose-invert max-w-none text-foreground overflow-hidden break-words">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={markdownComponents}
@@ -319,18 +390,30 @@ export function MessageItem({
   else if (message.type === "error") {
     content = <ErrorMessage errorMessage={message.message || ""} />;
   }
-  // Tool use message - handled by task groups in MessageList
-  // Only render standalone if not grouped
+  // Thinking message - Claude's reasoning process
+  else if (message.type === "thinking") {
+    content = (
+      <ThinkingMessage
+        content={message.content || ""}
+        onLinkClick={onLinkClick}
+      />
+    );
+  }
+  // Tool use message - with optional merged result
   else if (message.type === "tool_use") {
+    // If output is present, the tool has completed (merged from tool_result)
+    const hasOutput = message.output !== undefined;
     content = (
       <ToolExecutionItem
         name={message.name || "unknown"}
         input={message.input}
-        isExecuting
+        output={message.output}
+        isExecuting={!hasOutput}
+        isError={message.isError}
       />
     );
   }
-  // Tool result message - handled by task groups in MessageList
+  // Tool result message - only shown if not merged with tool_use
   else if (message.type === "tool_result") {
     content = (
       <ToolExecutionItem

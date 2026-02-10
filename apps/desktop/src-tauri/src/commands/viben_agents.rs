@@ -8,7 +8,7 @@ use viben_core::{
     CreateAgentOptions,
 };
 
-/// List all agents
+/// List all agents from global directory
 #[tauri::command]
 pub async fn viben_list_agents() -> Result<Vec<Agent>, String> {
     AgentManager::list_agents()
@@ -16,10 +16,29 @@ pub async fn viben_list_agents() -> Result<Vec<Agent>, String> {
         .map_err(|e| e.to_string())
 }
 
-/// Get an agent by ID
+/// List agents from a specific base path (e.g., workspace path)
+#[tauri::command]
+pub async fn viben_list_agents_from_path(base_path: Option<String>) -> Result<Vec<Agent>, String> {
+    AgentManager::list_agents_from_path(base_path.as_deref())
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Get an agent by ID from global directory
 #[tauri::command]
 pub async fn viben_get_agent(id: String) -> Result<Option<Agent>, String> {
     AgentManager::get_agent(&id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Get an agent by ID from a specific base path
+#[tauri::command]
+pub async fn viben_get_agent_from_path(
+    id: String,
+    base_path: Option<String>,
+) -> Result<Option<Agent>, String> {
+    AgentManager::get_agent_from_path(&id, base_path.as_deref())
         .await
         .map_err(|e| e.to_string())
 }

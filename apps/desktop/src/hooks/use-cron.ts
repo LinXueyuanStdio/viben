@@ -2,58 +2,25 @@
  * Cron Job Management Hooks
  *
  * Provides React hooks for managing cron jobs via the gateway API.
- * Supports real-time updates via WebSocket.
+ * Supports real-time updates via WebSocket with heartbeat and auto-reconnect.
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { getGatewayClient } from "@/lib/gateway";
+import { useGatewayWebSocket, type GatewayEventPayload } from "./use-gateway-websocket";
 import type { CronJob, CreateCronJob, UpdateCronJob, JobStatus } from "@/types/cron";
 
 // ============================================================================
 // WebSocket Event Types
 // ============================================================================
 
-/** WebSocket message from gateway */
-interface WsMessage {
-  type: "Event";
-  data: {
-    channel: string;
-    payload: CronGatewayEvent;
-  };
+interface CronJobData {
+  job?: CronJob;
+  job_id?: string;
+  status?: JobStatus;
+  triggered_at?: number;
+  completed_at?: number;
 }
-
-/** Gateway event (matches Rust GatewayEvent enum with tag="type", content="data") */
-interface CronJobCreatedEvent {
-  type: "CronJobCreated";
-  data: { job: CronJob };
-}
-
-interface CronJobUpdatedEvent {
-  type: "CronJobUpdated";
-  data: { job: CronJob };
-}
-
-interface CronJobDeletedEvent {
-  type: "CronJobDeleted";
-  data: { job_id: string };
-}
-
-interface CronJobTriggeredEvent {
-  type: "CronJobTriggered";
-  data: { job_id: string; triggered_at: number };
-}
-
-interface CronJobCompletedEvent {
-  type: "CronJobCompleted";
-  data: { job_id: string; status: JobStatus; completed_at: number };
-}
-
-type CronGatewayEvent =
-  | CronJobCreatedEvent
-  | CronJobUpdatedEvent
-  | CronJobDeletedEvent
-  | CronJobTriggeredEvent
-  | CronJobCompletedEvent;
 
 /**
  * Helper to make API requests to the gateway
@@ -100,8 +67,6 @@ export function useCronJobs() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const loadJobs = useCallback(async () => {
     setLoading(true);
@@ -119,123 +84,97 @@ export function useCronJobs() {
   }, []);
 
   // Handle WebSocket events
-  const handleWsEvent = useCallback((event: CronGatewayEvent) => {
-    switch (event.type) {
+  const handleWsEvent = useCallback((channel: string, payload: GatewayEventPayload) => {
+    if (channel !== "cron") return;
+
+    const data = payload.data as unknown as CronJobData;
+
+    switch (payload.type) {
       case "CronJobCreated": {
-        const { job } = event.data;
-        setJobs((prev) => {
-          // Avoid duplicates
-          if (prev.some((j) => j.id === job.id)) {
-            return prev.map((j) => (j.id === job.id ? job : j));
-          }
-          return [...prev, job];
-        });
+        const job = data?.job;
+        if (job) {
+          setJobs((prev) => {
+            // Avoid duplicates
+            if (prev.some((j) => j.id === job.id)) {
+              return prev.map((j) => (j.id === job.id ? job : j));
+            }
+            return [...prev, job];
+          });
+        }
         break;
       }
 
       case "CronJobUpdated": {
-        const { job } = event.data;
-        setJobs((prev) =>
-          prev.map((j) => (j.id === job.id ? job : j))
-        );
+        const job = data?.job;
+        if (job) {
+          setJobs((prev) =>
+            prev.map((j) => (j.id === job.id ? job : j))
+          );
+        }
         break;
       }
 
       case "CronJobDeleted": {
-        const { job_id } = event.data;
-        setJobs((prev) => prev.filter((j) => j.id !== job_id));
+        const job_id = data?.job_id;
+        if (job_id) {
+          setJobs((prev) => prev.filter((j) => j.id !== job_id));
+        }
         break;
       }
 
       case "CronJobTriggered": {
-        const { job_id, triggered_at } = event.data;
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === job_id
-              ? { ...j, last_status: "running" as JobStatus, last_run: triggered_at }
-              : j
-          )
-        );
+        const { job_id, triggered_at } = data || {};
+        if (job_id && triggered_at) {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === job_id
+                ? { ...j, last_status: "running" as JobStatus, last_run: triggered_at }
+                : j
+            )
+          );
+        }
         break;
       }
 
       case "CronJobCompleted": {
-        const { job_id, status, completed_at } = event.data;
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === job_id
-              ? { ...j, last_status: status, last_run: completed_at }
-              : j
-          )
-        );
+        const { job_id, status, completed_at } = data || {};
+        if (job_id && status && completed_at) {
+          setJobs((prev) =>
+            prev.map((j) =>
+              j.id === job_id
+                ? { ...j, last_status: status, last_run: completed_at }
+                : j
+            )
+          );
+        }
         break;
       }
     }
   }, []);
 
-  // Connect to WebSocket
-  const connectWebSocket = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
-
-    const client = getGatewayClient();
-    const baseUrl = client.getBaseUrl();
-    const wsUrl = baseUrl.replace(/^http/, "ws");
-    const ws = new WebSocket(`${wsUrl}/ws`);
-
-    ws.onopen = () => {
-      console.log("[CronJobs] WebSocket connected");
-      // Subscribe to cron events
-      ws.send(JSON.stringify({
-        type: "Subscribe",
-        data: { channels: ["cron"] }
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data) as WsMessage;
-        if (msg.type === "Event" && msg.data?.payload?.type?.startsWith("CronJob")) {
-          handleWsEvent(msg.data.payload);
-        }
-      } catch (err) {
-        console.error("[CronJobs] Failed to parse WebSocket message:", err);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log("[CronJobs] WebSocket disconnected");
-      wsRef.current = null;
-      // Reconnect after 3 seconds
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connectWebSocket();
-      }, 3000);
-    };
-
-    ws.onerror = (err) => {
-      console.error("[CronJobs] WebSocket error:", err);
-    };
-
-    wsRef.current = ws;
-  }, [handleWsEvent]);
-
-  // Initial load and WebSocket connection
-  useEffect(() => {
-    loadJobs();
-    connectWebSocket();
-
+  // Memoize onOpen callback to load jobs when connected
+  const handleOpen = useMemo(() => {
     return () => {
-      // Cleanup
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      loadJobs();
     };
-  }, [loadJobs, connectWebSocket]);
+  }, [loadJobs]);
+
+  // Use gateway WebSocket with heartbeat and auto-reconnect
+  useGatewayWebSocket({
+    channels: ["cron"],
+    onEvent: handleWsEvent,
+    onOpen: handleOpen,
+    // Heartbeat every 30 seconds
+    heartbeatInterval: 30000,
+    // Timeout after 10 seconds of no response
+    heartbeatTimeout: 10000,
+    // Start reconnect at 1 second
+    reconnectDelay: 1000,
+    // Max reconnect delay of 30 seconds
+    maxReconnectDelay: 30000,
+    // Unlimited reconnect attempts
+    maxReconnectAttempts: Infinity,
+  });
 
   return {
     jobs,

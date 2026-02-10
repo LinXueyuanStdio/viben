@@ -104,29 +104,29 @@ export function ToolExecutionItem({
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="px-3 py-2 space-y-2">
+              <div className="px-3 py-2 space-y-2 min-w-0 overflow-hidden">
                 {input && (
-                  <div>
+                  <div className="min-w-0 overflow-hidden">
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolInput", "Input")}
                     </p>
-                    <pre className="overflow-x-auto rounded-md bg-muted p-2 text-xs max-h-[150px]">
-                      <code>{JSON.stringify(input, null, 2)}</code>
+                    <pre className="overflow-x-auto overflow-y-auto rounded-md bg-muted p-2 text-xs max-h-[150px] w-full">
+                      <code className="text-xs break-all">{JSON.stringify(input, null, 2)}</code>
                     </pre>
                   </div>
                 )}
                 {output && (
-                  <div>
+                  <div className="min-w-0 overflow-hidden">
                     <p className="text-xs font-medium text-muted-foreground mb-1">
                       {t("chat.toolOutput", "Output")}
                     </p>
                     <pre
                       className={cn(
-                        "overflow-x-auto rounded-md p-2 text-xs max-h-[150px]",
+                        "overflow-x-auto overflow-y-auto rounded-md p-2 text-xs max-h-[150px] w-full",
                         isError ? "bg-destructive/10 text-destructive" : "bg-muted"
                       )}
                     >
-                      <code className="whitespace-pre-wrap break-all">{output}</code>
+                      <code className="whitespace-pre-wrap break-all text-xs">{output}</code>
                     </pre>
                   </div>
                 )}
@@ -147,8 +147,8 @@ export function ToolExecutionItem({
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
         <Wrench className="h-4 w-4 text-muted-foreground" />
       </div>
-      <div className="flex-1 overflow-hidden">
-        <div className="rounded-xl border border-border bg-card">
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           {/* Header */}
           <button
             type="button"
@@ -198,34 +198,34 @@ export function ToolExecutionItem({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="border-t border-border px-4 py-3 space-y-3">
+                <div className="border-t border-border px-4 py-3 space-y-3 min-w-0 overflow-hidden">
                   {/* Input */}
                   {input && (
-                    <div>
+                    <div className="min-w-0 overflow-hidden">
                       <p className="text-xs font-medium text-muted-foreground mb-1">
                         {t("chat.toolInput", "Input")}
                       </p>
-                      <pre className="overflow-x-auto rounded-lg bg-muted p-3 text-xs">
-                        <code>{JSON.stringify(input, null, 2)}</code>
+                      <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] w-full">
+                        <code className="text-xs break-all">{JSON.stringify(input, null, 2)}</code>
                       </pre>
                     </div>
                   )}
 
                   {/* Output */}
                   {output && (
-                    <div>
+                    <div className="min-w-0 overflow-hidden">
                       <p className="text-xs font-medium text-muted-foreground mb-1">
                         {t("chat.toolOutput", "Output")}
                       </p>
                       <pre
                         className={cn(
-                          "overflow-x-auto rounded-lg p-3 text-xs max-h-[300px]",
+                          "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] w-full",
                           isError
                             ? "bg-destructive/10 text-destructive"
                             : "bg-muted"
                         )}
                       >
-                        <code className="whitespace-pre-wrap break-all">
+                        <code className="whitespace-pre-wrap break-all text-xs">
                           {output}
                         </code>
                       </pre>

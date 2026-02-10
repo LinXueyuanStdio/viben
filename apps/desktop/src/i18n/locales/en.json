@@ -50,6 +50,7 @@
     "next": "Next",
     "previous": "Previous",
     "disabled": "Disabled",
+    "enabled": "Enabled",
     "default": "Default",
     "enable": "Enable",
     "disable": "Disable",
@@ -60,6 +61,8 @@
     "selected": "selected",
     "noResults": "No results found",
     "rename": "Rename",
+    "path": "Path",
+    "copyPath": "Copy path",
     "yesterday": "Yesterday",
     "justNow": "Just now",
     "minutesAgo": " min ago",
@@ -524,7 +527,12 @@
     "noMcpServersHint": "Create MCP servers to provide tools for your agent",
     "noSkillsHint": "Install skills from the marketplace to extend your agent",
     "gatewayNotRunningHint": "Gateway service is not running. Please start Gateway in Settings first.",
-    "openFolder": "Open in File Manager"
+    "openFolder": "Open in File Manager",
+    "createLocation": "Storage Location",
+    "workspaceLocation": "Current Workspace",
+    "globalLocation": "Global Workspace",
+    "workspaceAgents": "Workspace Agents",
+    "globalAgents": "Global Agents"
   },
   "settingsModels": {
     "title": "AI Models",
@@ -1704,6 +1712,15 @@
     "myPackages": "My Packages",
     "analytics": "Analytics"
   },
+  "executor": {
+    "noSessions": "No sessions found",
+    "noSessionsHint": "Sessions will appear when you use this executor",
+    "noMessages": "No messages in this session",
+    "noMessagesHint": "This session appears to be empty",
+    "selectSession": "Select a session",
+    "selectSessionHint": "Choose a session from the dropdown above",
+    "readOnlyHint": "Executor sessions are read-only"
+  },
   "cron": {
     "title": "Scheduled Tasks",
     "createJob": "Create Task",
@@ -1745,7 +1762,9 @@
     "enabled": "Enable Task",
     "notifications": "Notification Settings",
     "notifyInApp": "In-app notifications",
+    "notifyInAppShort": "In-app",
     "notifySystem": "System notifications (external)",
+    "notifySystemShort": "System",
     "notifyChannels": "Channel notifications",
     "noChannelsConfigured": "No channels configured. Go to Settings > Channels to add one.",
     "presets": {
@@ -1790,7 +1809,8 @@
     "scriptOptionalHint": "Optional. If not provided, the task name will be used",
     "preScript": "Pre-run Script",
     "preScriptPlaceholder": "#!/bin/bash\n# Script to run before sending message...",
-    "preScriptHint": "Optional script to execute before sending the message to the agent"
+    "preScriptHint": "Optional script to execute before sending the message to the agent",
+    "channels": "Channels"
   },
   "preview": {
     "livePreview": "Live Preview",
@@ -1893,8 +1913,12 @@
       "cronJobStartedDesc": "Task \"{{name}}\" has started",
       "cronJobCompleted": "Scheduled Task Completed",
       "cronJobCompletedDesc": "Task \"{{name}}\" has completed",
+      "cronJobCompletedDetail": "\"{{name}}\" ({{type}}) completed in {{duration}}",
       "cronJobFailed": "Scheduled Task Failed",
       "cronJobFailedDesc": "Task \"{{name}}\" has failed",
+      "cronJobFailedDetail": "\"{{name}}\" ({{type}}) failed after {{duration}}",
+      "jobTypeAgent": "Agent",
+      "jobTypeScript": "Script",
       "agentNeedsInput": "Agent Needs Input",
       "agentNeedsInputDesc": "{{name}} requires your attention",
       "agentCompleted": "Agent Completed",

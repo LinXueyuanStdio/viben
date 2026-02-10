@@ -24,7 +24,7 @@ import {
   RefreshCcw,
   Terminal,
 } from "lucide-react";
-import { getGatewayClient, type FileSession, type UIMessage } from "@/lib/gateway";
+import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -75,7 +75,9 @@ import {
   useChatNotifications,
   useGroupNotifications,
   useExecutorSessions,
+  useExecutorSessionMessages,
 } from "@/hooks";
+import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -540,6 +542,156 @@ export function WorkspaceChatPage() {
       setSelectedExecutorSessionId(null);
     }
   }, [executorSessions, selectedExecutorSessionId]);
+
+  // Get messages for the selected executor session
+  const {
+    messages: executorMessages,
+    isLoading: isLoadingExecutorMessages,
+    error: _executorMessagesError,
+    refresh: _refreshExecutorMessages,
+  } = useExecutorSessionMessages(
+    selectedSidebarExecutor?.type || null,
+    selectedExecutorSessionId,
+    workspace?.path || null
+  );
+
+  // Convert ExecutorUIMessage to AgentMessage for display
+  // Merges tool_use with its matching tool_result
+  const executorMessagesAsAgentMessages = React.useMemo(() => {
+    // First, build a map of tool_use_id -> tool_result
+    const toolResultMap = new Map<string, ExecutorUIMessage>();
+    executorMessages.forEach((msg) => {
+      if (msg.type === "tool_result" && msg.tool_use_id) {
+        toolResultMap.set(msg.tool_use_id, msg);
+      }
+    });
+
+    const result: AgentMessage[] = [];
+
+    executorMessages.forEach((msg: ExecutorUIMessage) => {
+      switch (msg.type) {
+        case "user":
+          result.push({
+            id: msg.id,
+            type: "user",
+            content: msg.content || "",
+          });
+          break;
+        case "text":
+          result.push({
+            id: msg.id,
+            type: "text",
+            content: msg.content || "",
+          });
+          break;
+        case "thinking":
+          result.push({
+            id: msg.id,
+            type: "thinking",
+            content: msg.content || "",
+          });
+          break;
+        case "tool_use": {
+          // Find matching tool_result
+          const toolResult = msg.tool_use_id ? toolResultMap.get(msg.tool_use_id) : undefined;
+          result.push({
+            id: msg.id,
+            type: "tool_use",
+            name: msg.tool_name || "unknown",
+            input: msg.tool_input || {},
+            toolUseId: msg.tool_use_id,
+            // Merge tool_result output into tool_use
+            output: toolResult?.content || toolResult?.tool_output,
+            isError: toolResult?.is_error,
+          });
+          break;
+        }
+        case "tool_result":
+          // Skip - already merged into tool_use
+          break;
+        case "error":
+          result.push({
+            id: msg.id,
+            type: "error",
+            message: msg.content || "Unknown error",
+            isError: true,
+          });
+          break;
+      }
+    });
+
+    return result;
+  }, [executorMessages]);
+
+  // Compute executor session statistics for config bar
+  const executorSessionStats = React.useMemo(() => {
+    // Count unique tools used in this session
+    const toolNames = new Set<string>();
+    let totalContentLength = 0;
+
+    executorMessages.forEach((msg) => {
+      if (msg.type === "tool_use" && msg.tool_name) {
+        toolNames.add(msg.tool_name);
+      }
+      // Estimate content length for token approximation
+      if (msg.content) {
+        totalContentLength += msg.content.length;
+      }
+      if (msg.tool_output) {
+        totalContentLength += msg.tool_output.length;
+      }
+    });
+
+    // Rough token estimate: ~4 chars per token
+    const estimatedTokens = Math.round(totalContentLength / 4);
+
+    return {
+      toolsCount: toolNames.size,
+      skillsCount: 0, // Skills are not tracked in executor sessions
+      estimatedTokens,
+    };
+  }, [executorMessages]);
+
+  // Get models supported by the selected executor type
+  const executorModels = React.useMemo(() => {
+    if (!selectedSidebarExecutor?.type) return [];
+
+    // Define models per executor type
+    const modelsByExecutor: Record<string, Array<{ id: string; name: string; provider: string }>> = {
+      "claude-code": [
+        { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4", provider: "Anthropic" },
+        { id: "claude-4-opus-20250514", name: "Claude Opus 4", provider: "Anthropic" },
+        { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet", provider: "Anthropic" },
+        { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku", provider: "Anthropic" },
+      ],
+      "codex": [
+        { id: "codex-mini-latest", name: "Codex Mini", provider: "OpenAI" },
+        { id: "o3", name: "o3", provider: "OpenAI" },
+        { id: "o4-mini", name: "o4-mini", provider: "OpenAI" },
+      ],
+      "cursor": [
+        { id: "cursor-small", name: "Cursor Small", provider: "Cursor" },
+        { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI" },
+        { id: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", provider: "Anthropic" },
+      ],
+    };
+
+    return modelsByExecutor[selectedSidebarExecutor.type] || [];
+  }, [selectedSidebarExecutor?.type]);
+
+  // Selected model state for executor (display only, executor sessions are read-only)
+  const [selectedExecutorModelId, setSelectedExecutorModelId] = React.useState<string | null>(null);
+
+  // Auto-select first model when executor changes
+  React.useEffect(() => {
+    if (executorModels.length > 0) {
+      // Reset to first model when executor type changes
+      setSelectedExecutorModelId(executorModels[0].id);
+    } else {
+      setSelectedExecutorModelId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSidebarExecutor?.type]); // Only trigger on executor type change, executorModels is derived from it
 
   // Agents
   const { agents, defaultAgentId, setDefaultAgent } = useVibenAgents();
@@ -1732,14 +1884,16 @@ export function WorkspaceChatPage() {
                 </div>
               </div>
 
-              {/* Executor Messages - for now show placeholder */}
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                {isLoadingExecutorSessions ? (
+              {/* Executor Messages */}
+              {isLoadingExecutorSessions ? (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin opacity-50" />
                     <p className="text-sm">{t("common.loading", "Loading sessions...")}</p>
                   </div>
-                ) : executorSessions.length === 0 ? (
+                </div>
+              ) : executorSessions.length === 0 ? (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <Terminal className="h-16 w-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium mb-2">
@@ -1749,18 +1903,39 @@ export function WorkspaceChatPage() {
                       {t("executor.noSessionsHint", "Sessions will appear when you use this executor")}
                     </p>
                   </div>
-                ) : selectedExecutorSessionId ? (
-                  <DesktopMessageList
-                    messages={messages}
-                    isStreaming={isStreaming}
-                    pendingPlan={pendingPlan}
-                    pendingQuestions={pendingQuestions}
-                    onApprovePlan={approvePlan}
-                    onRejectPlan={rejectPlan}
-                    onAnswerQuestions={answerQuestions}
-                    className="flex-1 w-full h-full"
-                  />
-                ) : (
+                </div>
+              ) : selectedExecutorSessionId ? (
+                <>
+                  {isLoadingExecutorMessages ? (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin opacity-50" />
+                        <p className="text-sm">{t("common.loading", "Loading messages...")}</p>
+                      </div>
+                    </div>
+                  ) : executorMessagesAsAgentMessages.length === 0 ? (
+                    <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                      <div className="text-center">
+                        <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                        <p className="text-lg font-medium mb-2">
+                          {t("executor.noMessages", "No messages in this session")}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {t("executor.noMessagesHint", "This session appears to be empty")}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <DesktopMessageList
+                      messages={executorMessagesAsAgentMessages}
+                      isStreaming={false}
+                      className="flex-1 w-full h-full min-w-0 overflow-hidden"
+                      simpleMode
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground">
                   <div className="text-center">
                     <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium mb-2">
@@ -1770,14 +1945,29 @@ export function WorkspaceChatPage() {
                       {t("executor.selectSessionHint", "Choose a session from the dropdown above")}
                     </p>
                   </div>
-                )}
-              </div>
-
-              {/* Input (read-only for executor sessions - they're historical) */}
-              <div className="border-t border-border p-4">
-                <div className="text-center text-xs text-muted-foreground">
-                  {t("executor.readOnlyHint", "Executor sessions are read-only. Use the executor directly to create new sessions.")}
                 </div>
+              )}
+
+              {/* Input (read-only for executor sessions - config bar display) */}
+              <div className="border-t border-border">
+                <DesktopChatInput
+                  onSend={() => {}}
+                  disabled
+                  placeholder={t("executor.readOnlyHint", "Executor sessions are read-only")}
+                  showConfigBar
+                  hideAgentSelector
+                  hideExecutorSelector
+                  // Show model selector with executor-specific models
+                  models={executorModels}
+                  selectedModelId={selectedExecutorModelId}
+                  onModelChange={setSelectedExecutorModelId}
+                  // Show session statistics - provide onClick handlers to display the buttons
+                  enabledToolsCount={executorSessionStats.toolsCount}
+                  onToolsClick={() => {}} // Show tools button (count only, no interaction)
+                  enabledSkillsCount={executorSessionStats.skillsCount}
+                  onSkillsClick={() => {}} // Show skills button (count only, no interaction)
+                  contextTokens={executorSessionStats.estimatedTokens}
+                />
               </div>
             </>
           ) : selectedConversationId ? (
@@ -1962,7 +2152,7 @@ export function WorkspaceChatPage() {
                 onApprovePlan={approvePlan}
                 onRejectPlan={rejectPlan}
                 onAnswerQuestions={answerQuestions}
-                className="flex-1"
+                className="flex-1 min-w-0 overflow-hidden"
               />
 
               {/* Error display */}

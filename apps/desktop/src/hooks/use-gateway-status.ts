@@ -6,7 +6,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
+import { useWorkspaceStore } from "@/stores";
+import type { Workspace } from "@/types";
 
 export type GatewayStatus = "connected" | "disconnected" | "connecting" | "error";
 
@@ -41,15 +44,44 @@ function notifyListeners() {
   globalListeners.forEach((listener) => listener());
 }
 
+// Load workspaces when gateway connects (only if no persisted data)
+async function loadWorkspacesOnConnect() {
+  const store = useWorkspaceStore.getState();
+
+  // Skip if already have workspaces (persisted data) or if already loading
+  if (store.workspaces.length > 0 || store.isLoading) {
+    return;
+  }
+
+  try {
+    store.setLoading(true);
+    const result = await invoke<Workspace[]>("list_workspaces");
+    if (Array.isArray(result)) {
+      store.setWorkspaces(result);
+    }
+  } catch (err) {
+    console.error("Failed to load workspaces on gateway connect:", err);
+  } finally {
+    store.setLoading(false);
+  }
+}
+
 // Ping the gateway and update global state
 async function pingGateway(): Promise<boolean> {
   const client = getGatewayClient();
+  const wasConnected = globalStatus === "connected";
+
   try {
     const isOnline = await client.ping();
     if (isOnline) {
       globalStatus = "connected";
       globalLastConnected = Date.now();
       globalError = null;
+
+      // Load workspaces on first connect or reconnect
+      if (!wasConnected) {
+        loadWorkspacesOnConnect();
+      }
     } else {
       globalStatus = "disconnected";
       globalError = null;

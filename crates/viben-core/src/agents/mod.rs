@@ -7,6 +7,7 @@ use crate::config::{
     get_agent_sessions_dir, get_agents_dir, get_template_dir, get_templates_dir, read_yaml,
     write_yaml, ConfigManager,
 };
+use std::path::PathBuf;
 use crate::error::{Error, Result};
 use chrono::Utc;
 use tokio::fs;
@@ -25,9 +26,20 @@ impl AgentManager {
         Ok(())
     }
 
-    /// List all agents
+    /// List all agents from global directory
     pub async fn list_agents() -> Result<Vec<Agent>> {
-        let agents_dir = get_agents_dir();
+        Self::list_agents_from_path(None).await
+    }
+
+    /// List all agents from a specific base path
+    /// If base_path is None, uses global ~/.viben/agents/
+    /// If base_path is Some, uses {base_path}/.viben/agents/
+    pub async fn list_agents_from_path(base_path: Option<&str>) -> Result<Vec<Agent>> {
+        let agents_dir = match base_path {
+            Some(path) => PathBuf::from(path).join(".viben").join("agents"),
+            None => get_agents_dir(),
+        };
+
         if !file_exists(&agents_dir) {
             return Ok(Vec::new());
         }
@@ -38,7 +50,7 @@ impl AgentManager {
         while let Some(entry) = entries.next_entry().await? {
             if entry.file_type().await?.is_dir() {
                 let id = entry.file_name().to_string_lossy().to_string();
-                if let Some(agent) = Self::get_agent(&id).await? {
+                if let Some(agent) = Self::get_agent_from_path(&id, base_path).await? {
                     agents.push(agent);
                 }
             }
@@ -47,10 +59,21 @@ impl AgentManager {
         Ok(agents)
     }
 
-    /// Get an agent by ID
+    /// Get an agent by ID from global directory
     pub async fn get_agent(id: &str) -> Result<Option<Agent>> {
-        let agent_dir = get_agent_dir(id);
-        let config_path = get_agent_config_path(id);
+        Self::get_agent_from_path(id, None).await
+    }
+
+    /// Get an agent by ID from a specific base path
+    /// If base_path is None, uses global ~/.viben/agents/
+    /// If base_path is Some, uses {base_path}/.viben/agents/
+    pub async fn get_agent_from_path(id: &str, base_path: Option<&str>) -> Result<Option<Agent>> {
+        let agent_dir = match base_path {
+            Some(path) => PathBuf::from(path).join(".viben").join("agents").join(id),
+            None => get_agent_dir(id),
+        };
+        let config_path = agent_dir.join("config.yaml");
+
         if !file_exists(&config_path) {
             return Ok(None);
         }
@@ -71,7 +94,13 @@ impl AgentManager {
             .id
             .clone()
             .unwrap_or_else(|| Self::generate_agent_id(&options.name));
-        let agent_dir = get_agent_dir(&id);
+
+        // Use custom base_path if provided, otherwise use default ~/.viben/agents/
+        let agent_dir = if let Some(ref base_path) = options.base_path {
+            PathBuf::from(base_path).join(".viben").join("agents").join(&id)
+        } else {
+            get_agent_dir(&id)
+        };
 
         // Check if agent already exists
         if file_exists(&agent_dir) {
@@ -117,11 +146,14 @@ impl AgentManager {
 
         // Create agent directory and config
         ensure_dir(&agent_dir).await?;
-        write_yaml(&get_agent_config_path(&id), &config).await?;
+        let config_path = agent_dir.join("config.yaml");
+        write_yaml(&config_path, &config).await?;
 
         // Create subdirectories
-        ensure_dir(&get_agent_sessions_dir(&id)).await?;
-        ensure_dir(&get_agent_memory_dir(&id)).await?;
+        let sessions_dir = agent_dir.join(".agent_sessions");
+        let memory_dir = agent_dir.join("memory");
+        ensure_dir(&sessions_dir).await?;
+        ensure_dir(&memory_dir).await?;
 
         let mut agent: Agent = config.into();
         agent.id = id;
@@ -327,6 +359,7 @@ impl AgentManager {
             temperature: None,
             max_tokens: None,
             from_template: Some(template_id.to_string()),
+            base_path: None,
         })
         .await
     }

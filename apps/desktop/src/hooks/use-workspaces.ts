@@ -24,12 +24,10 @@ export function useLocalWorkspaces() {
     isLoading,
     error,
     discoveryTasks,
-    setWorkspaces,
     addWorkspace: addWorkspaceToStore,
     removeWorkspace: removeWorkspaceFromStore,
     setActiveWorkspace,
     setSelectedAgentId,
-    setLoading,
     setError,
     getWorkspace,
     getActiveWorkspace,
@@ -40,30 +38,28 @@ export function useLocalWorkspaces() {
     hasRunningDiscovery,
   } = useWorkspaceStore();
 
-  // Load workspaces on mount (without auto-discovery - that happens on workspace detail page)
+  // Load workspaces from backend
+  // This should only be called:
+  // 1. When connecting to gateway
+  // 2. When gateway sends workspace change event
   const loadWorkspaces = useCallback(async () => {
-    // Don't reload if already loading
-    if (useWorkspaceStore.getState().isLoading) {
-      return;
-    }
+    const { setLoading, setError, setWorkspaces } = useWorkspaceStore.getState();
 
     setLoading(true);
     setError(null);
     try {
       const result = await invoke<Workspace[]>("list_workspaces");
-      // Only update if we got valid results
       if (Array.isArray(result)) {
         setWorkspaces(result);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
-      // Don't clear workspaces on error - keep existing data
       console.error("Failed to load workspaces:", message);
     } finally {
       setLoading(false);
     }
-  }, [setWorkspaces, setLoading, setError]);
+  }, []);
 
   // Run auto-discovery for a workspace
   const runDiscovery = useCallback(
@@ -140,10 +136,7 @@ export function useLocalWorkspaces() {
     [setActiveWorkspace, setError]
   );
 
-  // Load on mount
-  useEffect(() => {
-    loadWorkspaces();
-  }, [loadWorkspaces]);
+  // No auto-loading - workspaces are persisted and loaded via gateway events
 
   return {
     // State

@@ -5,6 +5,7 @@ import { usePython } from "@/hooks/use-python";
 import { useTrayStatusSync } from "@/hooks/use-tray-status";
 import { useMainWindowStoreSync } from "@/hooks/use-store-sync";
 import { useChannelNotifications } from "@/hooks/use-channel-notifications";
+import { useCronNotificationAdapter } from "@/hooks/use-cron-notification-adapter";
 import { useAppStore } from "@/stores";
 
 export function AppLayout() {
@@ -21,6 +22,10 @@ export function AppLayout() {
   // This maintains a persistent connection to receive notifications from
   // external channels (Telegram, Discord, etc.)
   useChannelNotifications();
+
+  // Initialize cron job notification adapter
+  // This listens for cron job completion events and displays notifications
+  useCronNotificationAdapter();
 
   // Setup status detection - updates whenever browseMcpInfo changes
   // This ensures status is updated when user installs browse-mcp

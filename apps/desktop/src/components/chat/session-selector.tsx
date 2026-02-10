@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   Plus,
-  Clock,
   Check,
   MoreHorizontal,
   Pencil,
@@ -25,7 +24,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -71,6 +69,14 @@ interface SessionSelectorProps {
   showCreateButton?: boolean;
   /** Current agent name for display */
   agentName?: string;
+  /** Whether there are more sessions to load */
+  hasMore?: boolean;
+  /** Called when user scrolls to bottom to load more */
+  onLoadMore?: () => void;
+  /** Whether loading more sessions */
+  isLoadingMore?: boolean;
+  /** Total session count (for display) */
+  totalCount?: number;
 }
 
 // ============================================================================
@@ -132,31 +138,31 @@ function SessionCard({
   return (
     <div
       className={cn(
-        "group relative flex gap-3 p-3 cursor-pointer transition-all rounded-lg border",
+        "group relative flex items-center gap-2.5 px-2.5 py-2 cursor-pointer transition-all rounded-md",
         isSelected
-          ? "bg-primary/5 border-primary/30"
-          : "hover:bg-accent/50 border-transparent hover:border-border"
+          ? "bg-primary/10 text-primary"
+          : "hover:bg-accent/50"
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
       onClick={onSelect}
     >
-      {/* Session icon */}
+      {/* Session icon - smaller */}
       <div
         className={cn(
-          "shrink-0 w-10 h-10 rounded-lg flex items-center justify-center",
+          "shrink-0 w-7 h-7 rounded-md flex items-center justify-center",
           isSelected
-            ? "bg-primary/10 text-primary"
+            ? "bg-primary/20 text-primary"
             : "bg-muted/50 text-muted-foreground"
         )}
       >
-        <MessageSquare className="h-5 w-5" />
+        <MessageSquare className="h-3.5 w-3.5" />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {/* Title row */}
-        <div className="flex items-center gap-2">
+      {/* Content - compact layout */}
+      <div className="flex-1 min-w-0 overflow-hidden">
+        {/* Title row with badges */}
+        <div className="flex items-center gap-1.5">
           {session.isPinned && (
             <Pin className="h-3 w-3 text-primary shrink-0" />
           )}
@@ -164,43 +170,35 @@ function SessionCard({
             <Star className="h-3 w-3 text-yellow-500 fill-yellow-500 shrink-0" />
           )}
           <span className={cn(
-            "font-medium text-sm truncate",
-            isSelected && "text-primary"
+            "text-sm truncate flex-1 min-w-0",
+            isSelected ? "font-medium" : "font-normal"
           )}>
-            {truncateText(session.name, 28)}
+            {session.name}
           </span>
-          {isSelected && (
-            <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-auto" />
-          )}
         </div>
 
-        {/* Last message preview */}
-        {session.lastMessage && (
-          <p className="text-xs text-muted-foreground truncate mt-1">
-            {truncateText(session.lastMessage, 40)}
-          </p>
-        )}
-
-        {/* Meta row - only show time and message count, not agent name */}
-        <div className="flex items-center gap-3 mt-1.5">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            <span>{formatRelativeTime(session.updatedAt, t)}</span>
-          </div>
+        {/* Meta row - compact */}
+        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
+          <span>{formatRelativeTime(session.updatedAt, t)}</span>
           {session.messageCount !== undefined && session.messageCount > 0 && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MessageSquare className="h-3 w-3" />
-              <span>{session.messageCount}</span>
-            </div>
+            <span className="flex items-center gap-0.5">
+              <MessageSquare className="h-2.5 w-2.5" />
+              {session.messageCount}
+            </span>
           )}
         </div>
       </div>
 
+      {/* Selected check */}
+      {isSelected && (
+        <Check className="h-4 w-4 text-primary shrink-0" />
+      )}
+
       {/* More actions button */}
-      {hasActions && (
+      {hasActions && !isSelected && (
         <div
           className={cn(
-            "absolute right-2 top-2 transition-opacity",
+            "shrink-0 transition-opacity",
             showActions ? "opacity-100" : "opacity-0"
           )}
           onClick={(e) => e.stopPropagation()}
@@ -210,52 +208,52 @@ function SessionCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 bg-background/80 hover:bg-background shadow-sm"
+                className="h-6 w-6"
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-40">
               {onRename && (
-                <DropdownMenuItem onClick={onRename}>
-                  <Pencil className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={onRename} className="text-xs">
+                  <Pencil className="h-3.5 w-3.5 mr-2" />
                   {t("chat.renameSession", "重命名")}
                 </DropdownMenuItem>
               )}
               {onStar && (
-                <DropdownMenuItem onClick={onStar}>
+                <DropdownMenuItem onClick={onStar} className="text-xs">
                   {session.isStarred ? (
                     <>
-                      <StarOff className="h-4 w-4 mr-2" />
+                      <StarOff className="h-3.5 w-3.5 mr-2" />
                       {t("chat.unstarSession", "取消收藏")}
                     </>
                   ) : (
                     <>
-                      <Star className="h-4 w-4 mr-2" />
+                      <Star className="h-3.5 w-3.5 mr-2" />
                       {t("chat.starSession", "收藏")}
                     </>
                   )}
                 </DropdownMenuItem>
               )}
               {onPin && (
-                <DropdownMenuItem onClick={onPin}>
-                  <Pin className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={onPin} className="text-xs">
+                  <Pin className="h-3.5 w-3.5 mr-2" />
                   {session.isPinned
                     ? t("chat.unpinSession", "取消置顶")
                     : t("chat.pinSession", "置顶")}
                 </DropdownMenuItem>
               )}
               {onDuplicate && (
-                <DropdownMenuItem onClick={onDuplicate}>
-                  <Copy className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={onDuplicate} className="text-xs">
+                  <Copy className="h-3.5 w-3.5 mr-2" />
                   {t("chat.duplicateSession", "复制会话")}
                 </DropdownMenuItem>
               )}
               {onArchive && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={onArchive}>
-                    <Archive className="h-4 w-4 mr-2" />
+                  <DropdownMenuItem onClick={onArchive} className="text-xs">
+                    <Archive className="h-3.5 w-3.5 mr-2" />
                     {t("chat.archiveSession", "归档")}
                   </DropdownMenuItem>
                 </>
@@ -265,9 +263,9 @@ function SessionCard({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onDelete}
-                    className="text-destructive focus:text-destructive"
+                    className="text-destructive focus:text-destructive text-xs"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
+                    <Trash2 className="h-3.5 w-3.5 mr-2" />
                     {t("chat.deleteSession", "删除")}
                   </DropdownMenuItem>
                 </>
@@ -298,12 +296,28 @@ export function SessionSelector({
   className,
   showCreateButton = true,
   agentName,
+  hasMore,
+  onLoadMore,
+  isLoadingMore,
+  totalCount,
 }: SessionSelectorProps) {
   const { t } = useTranslation();
   const [renameSessionId, setRenameSessionId] = React.useState<string | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Handle scroll to bottom for infinite loading
+  const handleScroll = React.useCallback(() => {
+    if (!scrollRef.current || !hasMore || isLoadingMore || !onLoadMore) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    // Load more when scrolled to within 100px of bottom
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      onLoadMore();
+    }
+  }, [hasMore, isLoadingMore, onLoadMore]);
 
   // Sort sessions: pinned first, starred second, then by updatedAt descending
   const sortedSessions = React.useMemo(() => {
@@ -397,6 +411,9 @@ export function SessionSelector({
     setRenameValue("");
   };
 
+  // Display count - use totalCount if provided, otherwise sessions.length
+  const displayCount = totalCount ?? sessions.length;
+
   return (
     <div className={cn("flex items-center gap-0.5", className)}>
       {/* Session dropdown */}
@@ -405,18 +422,18 @@ export function SessionSelector({
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 px-2 gap-1 font-medium text-sm hover:bg-muted/80"
+            className="h-7 px-2 gap-1 font-medium text-sm hover:bg-muted/80 max-w-[200px]"
           >
-            <span className="max-w-[180px] truncate">{displayName}</span>
+            <span className="truncate">{displayName}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="w-[400px] p-0"
+          className="w-[320px] p-0"
         >
           {/* Header with search */}
-          <div className="p-3 border-b">
+          <div className="px-3 py-2.5 border-b">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium text-sm">
                 {agentName
@@ -424,25 +441,29 @@ export function SessionSelector({
                   : t("chat.recentSessions", "最近会话")}
               </h3>
               <span className="text-xs text-muted-foreground">
-                {sessions.length} {t("chat.totalSessions", "个会话")}
+                {displayCount} {t("chat.totalSessions", "个会话")}
               </span>
             </div>
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder={t("chat.searchSessions", "搜索会话...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-8 text-sm"
+                className="pl-8 h-7 text-sm"
               />
             </div>
           </div>
 
-          {/* Session list */}
-          <ScrollArea className="max-h-[400px]">
+          {/* Session list with infinite scroll */}
+          <div
+            ref={scrollRef}
+            className="max-h-[350px] overflow-y-auto"
+            onScroll={handleScroll}
+          >
             {filteredSessions.length === 0 ? (
-              <div className="py-12 text-center">
-                <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <div className="py-10 text-center">
+                <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">
                   {searchQuery
                     ? t("chat.noSearchResults", "未找到匹配的会话")
@@ -450,13 +471,13 @@ export function SessionSelector({
                 </p>
               </div>
             ) : (
-              <div className="p-2 space-y-3">
+              <div className="p-1.5 space-y-2">
                 {groupedSessions.map((group) => (
                   <div key={group.label}>
-                    <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
                       {group.label}
                     </div>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       {group.sessions.map((session) => (
                         <SessionCard
                           key={session.id}
@@ -477,24 +498,50 @@ export function SessionSelector({
                     </div>
                   </div>
                 ))}
+
+                {/* Load more indicator */}
+                {isLoadingMore && (
+                  <div className="py-2 text-center">
+                    <span className="text-xs text-muted-foreground">
+                      {t("common.loading", "加载中...")}
+                    </span>
+                  </div>
+                )}
+
+                {/* Load more trigger when scrolled to bottom */}
+                {hasMore && !isLoadingMore && (
+                  <div className="py-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-muted-foreground"
+                      onClick={onLoadMore}
+                    >
+                      {t("common.loadMore", "加载更多")}
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
-          </ScrollArea>
+          </div>
 
           {/* Footer with create button */}
-          <div className="p-2 border-t">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-2 text-primary hover:text-primary hover:bg-primary/5"
-              onClick={() => {
-                onCreateNew();
-                setIsOpen(false);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              {t("chat.createNewSession", "新建会话")}
-            </Button>
-          </div>
+          {showCreateButton && (
+            <div className="p-1.5 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start gap-2 h-8 text-primary hover:text-primary hover:bg-primary/5"
+                onClick={() => {
+                  onCreateNew();
+                  setIsOpen(false);
+                }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t("chat.createNewSession", "新建会话")}
+              </Button>
+            </div>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 
