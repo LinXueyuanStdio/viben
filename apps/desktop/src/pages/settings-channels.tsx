@@ -368,6 +368,12 @@ function InstanceCard({
               {t("channels.default", "默认")}
             </span>
           )}
+          {channel.agent_binding && (
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+              {channel.agent_binding.binding_type === "agent" ? "🤖" : "⚡"}
+              {channel.agent_binding.name}
+            </span>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-2">
