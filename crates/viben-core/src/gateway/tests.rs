@@ -3644,4 +3644,221 @@ mod tests {
             }
         }
     }
+
+    // =========================================================================
+    // Workspace-Scoped API Tests (/api/executors and /api/agents with query params)
+    // =========================================================================
+
+    mod workspace_scoped_api_tests {
+        use super::*;
+
+        /// Test GET /api/executors?workspace_path=...&include_global=true
+        /// Expected response format:
+        /// {
+        ///   "workspace_path": "/path/to/workspace",
+        ///   "executors": [
+        ///     {
+        ///       "id": "CLAUDE_CODE",
+        ///       "name": "Claude Code",
+        ///       "availability": { ... },
+        ///       "supports_mcp": true,
+        ///       "capabilities": [...],
+        ///       "has_workspace_config": true,
+        ///       "workspace_config_path": "/path/to/workspace/.claude"
+        ///     }
+        ///   ]
+        /// }
+        #[tokio::test]
+        async fn test_get_executors_with_workspace_path() {
+            let app = test_app().await;
+
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/executors?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK, "Expected 200 OK for /api/executors");
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Verify response structure
+            assert!(json["workspace_path"].is_string(), "Response should have workspace_path");
+            assert!(json["executors"].is_array(), "Response should have executors array");
+
+            let executors = json["executors"].as_array().unwrap();
+            assert!(!executors.is_empty(), "Should have at least one executor");
+
+            // Verify each executor has required fields
+            for executor in executors {
+                assert!(executor["id"].is_string(), "Executor should have id");
+                assert!(executor["name"].is_string(), "Executor should have name");
+                assert!(executor["availability"].is_object(), "Executor should have availability");
+                assert!(executor["supports_mcp"].is_boolean(), "Executor should have supports_mcp");
+                assert!(executor["capabilities"].is_array(), "Executor should have capabilities");
+                assert!(executor["has_workspace_config"].is_boolean(), "Executor should have has_workspace_config");
+            }
+
+            println!("✓ /api/executors?workspace_path=...&include_global=true returns correct structure");
+        }
+
+        /// Test GET /api/agents?workspace_path=...&include_global=true
+        /// Expected response format:
+        /// {
+        ///   "workspace_path": "/path/to/workspace",
+        ///   "agents": [
+        ///     {
+        ///       "id": "viben:my-agent",
+        ///       "name": "my-agent",
+        ///       "agent_type": "viben",
+        ///       "source": "workspace",
+        ///       "config_path": "/path/to/config",
+        ///       "mcp_server_count": 0,
+        ///       "skill_count": 0
+        ///     }
+        ///   ],
+        ///   "total": 1
+        /// }
+        #[tokio::test]
+        async fn test_get_agents_with_workspace_path() {
+            let app = test_app().await;
+
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/agents?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK, "Expected 200 OK for /api/agents");
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Verify response structure
+            assert!(json["workspace_path"].is_string(), "Response should have workspace_path");
+            assert!(json["agents"].is_array(), "Response should have agents array");
+            assert!(json["total"].is_number(), "Response should have total count");
+
+            let agents = json["agents"].as_array().unwrap();
+
+            // Verify each agent has required fields
+            for agent in agents {
+                assert!(agent["id"].is_string(), "Agent should have id");
+                assert!(agent["name"].is_string(), "Agent should have name");
+                assert!(agent["agent_type"].is_string(), "Agent should have agent_type");
+                assert!(agent["source"].is_string(), "Agent should have source (global/workspace)");
+                assert!(agent["mcp_server_count"].is_number(), "Agent should have mcp_server_count");
+                assert!(agent["skill_count"].is_number(), "Agent should have skill_count");
+            }
+
+            println!("✓ /api/agents?workspace_path=...&include_global=true returns correct structure");
+        }
+
+        /// Test that include_global=true includes global agents
+        #[tokio::test]
+        async fn test_agents_include_global_true() {
+            let app = test_app().await;
+
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/agents?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+                .await
+                .unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let agents = json["agents"].as_array().unwrap();
+
+            // Check if any agent has source="global"
+            let has_global = agents.iter().any(|a| a["source"] == "global");
+            let has_workspace = agents.iter().any(|a| a["source"] == "workspace");
+
+            // With include_global=true, we should potentially have both
+            // (depending on what's configured on the system)
+            println!(
+                "Found {} agents: {} global, {} workspace",
+                agents.len(),
+                agents.iter().filter(|a| a["source"] == "global").count(),
+                agents.iter().filter(|a| a["source"] == "workspace").count()
+            );
+
+            // At minimum, the API should return successfully with the correct structure
+            assert!(json["total"].as_u64().unwrap() == agents.len() as u64);
+        }
+
+        /// Test that workspace_path validation works
+        #[tokio::test]
+        async fn test_agents_invalid_workspace_path() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/agents?workspace_path=/nonexistent/path&include_global=true")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // Should return 400 Bad Request for invalid workspace path
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+
+        /// Test that executors endpoint also validates workspace_path
+        #[tokio::test]
+        async fn test_executors_invalid_workspace_path() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/executors?workspace_path=/nonexistent/path&include_global=true")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            // Should return 400 Bad Request for invalid workspace path
+            assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+    }
 }

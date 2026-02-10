@@ -913,7 +913,7 @@ pub async fn group_chat_ws(
 /// Handle group chat WebSocket connection
 async fn handle_group_chat_ws(
     socket: WebSocket,
-    state: AppState,
+    _state: AppState,
     workspace_path: String,
     group_chat_id: String,
     session_id: String,
