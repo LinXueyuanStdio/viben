@@ -70,6 +70,7 @@ mod tests {
     async fn test_telegram_missing_token() {
         let config = TelegramConfig {
             token: None,
+            chat_id: "123456".to_string(),
             proxy: None,
         };
         let options = SendMessageOptions {
@@ -87,6 +88,7 @@ mod tests {
     async fn test_telegram_empty_token() {
         let config = TelegramConfig {
             token: Some("".to_string()),
+            chat_id: "123456".to_string(),
             proxy: None,
         };
         let options = SendMessageOptions {
@@ -104,6 +106,7 @@ mod tests {
     async fn test_telegram_test_missing_token() {
         let config = TelegramConfig {
             token: None,
+            chat_id: "123456".to_string(),
             proxy: None,
         };
 
@@ -116,6 +119,7 @@ mod tests {
     async fn test_telegram_invalid_token() {
         let config = TelegramConfig {
             token: Some("invalid_token".to_string()),
+            chat_id: "123456".to_string(),
             proxy: None,
         };
 

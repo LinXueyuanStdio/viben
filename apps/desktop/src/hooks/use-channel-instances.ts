@@ -19,6 +19,7 @@ import type {
   UpdateChannelRequest,
   ListChannelsResponse,
   ChannelConfig,
+  AgentBinding,
 } from "@/types/channel";
 
 /**
@@ -119,7 +120,8 @@ export interface UseChannelInstancesReturn {
   createInstance: (
     type: ChannelType,
     name: string,
-    config?: ChannelConfig
+    config?: ChannelConfig,
+    agentBinding?: AgentBinding
   ) => Promise<GatewayChannel | null>;
   /** Update instance */
   updateInstance: (
@@ -193,13 +195,15 @@ export function useChannelInstances(): UseChannelInstancesReturn {
     async (
       type: ChannelType,
       name: string,
-      config?: ChannelConfig
+      config?: ChannelConfig,
+      agentBinding?: AgentBinding
     ): Promise<GatewayChannel | null> => {
       try {
         const request: CreateChannelRequest = {
           channel_type: type,
           name,
           config,
+          agent_binding: agentBinding,
         };
         const result = await gatewayFetch<GatewayChannel>("/api/channels", {
           method: "POST",

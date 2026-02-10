@@ -592,10 +592,18 @@ export function MessageList({
     );
   }
 
+  // Style object for CSS variable
+  const containerStyle = maxMessageWidth
+    ? { "--message-max-width": maxMessageWidth } as React.CSSProperties
+    : undefined;
+
   return (
     <div className={cn("relative flex-1 min-h-0 min-w-0 overflow-hidden", className)}>
       <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden [&>[data-radix-scroll-area-viewport]]:!min-w-0" viewportRef={viewportRef}>
-        <div className="space-y-4 p-4 pb-8 w-full min-w-0 overflow-hidden">
+        <div
+          className="space-y-4 p-4 pb-8 w-full min-w-0 overflow-hidden"
+          style={containerStyle}
+        >
           {groups.map((group, index) => {
             if (group.type === "task") {
               return (
@@ -626,7 +634,7 @@ export function MessageList({
                 onRejectPlan={onRejectPlan}
                 isPlanPending={isPlanMessage && pendingPlan !== null}
                 onLinkClick={onLinkClick}
-                className="min-w-0 overflow-hidden"
+                maxWidth={maxMessageWidth}
               />
             );
           })}

@@ -1976,6 +1976,7 @@ export function WorkspaceChatPage() {
                       isStreaming={false}
                       className="flex-1 w-full h-full min-w-0 overflow-hidden"
                       simpleMode
+                      maxMessageWidth="100%"
                     />
                   )}
                 </>

@@ -19,6 +19,8 @@ export interface MessageItemProps {
   onLinkClick?: (href: string) => void;
   /** Additional CSS class name */
   className?: string;
+  /** Maximum width for the message card */
+  maxWidth?: string;
 }
 
 /**
@@ -475,7 +477,13 @@ export function MessageItem({
   isPlanPending,
   onLinkClick,
   className,
+  maxWidth,
 }: MessageItemProps) {
+  // Style for max width constraint
+  const maxWidthStyle = maxWidth
+    ? { maxWidth } as React.CSSProperties
+    : undefined;
+
   // Determine the content based on message type
   let content: React.ReactNode;
 
@@ -556,9 +564,13 @@ export function MessageItem({
     );
   }
 
-  // Wrap in div with className if provided
-  if (className) {
-    return <div className={className}>{content}</div>;
+  // Wrap in div with className and/or maxWidth style
+  if (className || maxWidthStyle) {
+    return (
+      <div className={className} style={maxWidthStyle}>
+        {content}
+      </div>
+    );
   }
 
   return content;
