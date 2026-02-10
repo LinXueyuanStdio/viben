@@ -2,6 +2,7 @@
  * useGroupChat Hook
  *
  * Manages group chat state and real-time WebSocket communication.
+ * Updated to support file-based storage with sessions and view switching.
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -9,12 +10,14 @@ import {
   getGatewayClient,
   type GroupChat,
   type GroupChatMember,
-  type GroupChatMessage,
+  type GroupChatSession,
+  type GroupChatUIMessage,
+  type AgentRolloutMessage,
   type GroupChatWithMembers,
   type CreateGroupChatRequest,
   type AddMemberRequest,
   type SendGroupChatMessageRequest,
-  type MessageContentType,
+  type ListGroupChatsParams,
 } from "@/lib/gateway";
 
 // ============================================================================
@@ -22,9 +25,27 @@ import {
 // ============================================================================
 
 /** WebSocket event types from server */
+interface WsConnectedEvent {
+  type: "connected";
+  member_id: string;
+}
+
 interface WsNewMessageEvent {
   type: "new_message";
-  message: GroupChatMessage;
+  message: GroupChatUIMessage;
+}
+
+interface WsAgentThinkingEvent {
+  type: "agent_thinking";
+  agent_id: string;
+  agent_name: string;
+}
+
+interface WsAgentResponseEvent {
+  type: "agent_response";
+  agent_id: string;
+  agent_name: string;
+  content: string;
 }
 
 interface WsMemberJoinedEvent {
@@ -43,18 +64,28 @@ interface WsTypingEvent {
   is_typing: boolean;
 }
 
-interface WsMessageReadEvent {
-  type: "message_read";
-  member_id: string;
-  message_id: string;
+interface WsViewDataEvent {
+  type: "view_data";
+  view: string;
+  agent_id?: string;
+  messages: GroupChatUIMessage[] | AgentRolloutMessage[];
+}
+
+interface WsErrorEvent {
+  type: "error";
+  message: string;
 }
 
 type GroupChatWsEvent =
+  | WsConnectedEvent
   | WsNewMessageEvent
+  | WsAgentThinkingEvent
+  | WsAgentResponseEvent
   | WsMemberJoinedEvent
   | WsMemberLeftEvent
   | WsTypingEvent
-  | WsMessageReadEvent;
+  | WsViewDataEvent
+  | WsErrorEvent;
 
 /** Notification callbacks for group chat events */
 export interface GroupChatNotificationCallbacks {
@@ -62,7 +93,7 @@ export interface GroupChatNotificationCallbacks {
   onNewMessage?: (
     groupId: string,
     groupName: string,
-    message: GroupChatMessage,
+    message: GroupChatUIMessage,
     currentUserId: string
   ) => void;
   /** Called when a member joins the group */
@@ -78,7 +109,25 @@ export interface GroupChatNotificationCallbacks {
     memberId: string,
     memberName?: string
   ) => void;
+  /** Called when an agent starts thinking */
+  onAgentThinking?: (
+    groupId: string,
+    groupName: string,
+    agentId: string,
+    agentName: string
+  ) => void;
+  /** Called when an agent responds */
+  onAgentResponse?: (
+    groupId: string,
+    groupName: string,
+    agentId: string,
+    agentName: string,
+    content: string
+  ) => void;
 }
+
+/** View mode for messages */
+export type GroupChatViewMode = "ui" | "agent";
 
 /** Hook options */
 export interface UseGroupChatOptions {
@@ -86,7 +135,9 @@ export interface UseGroupChatOptions {
   userId?: string;
   /** Current user's display name */
   userDisplayName?: string;
-  /** Auto-connect to WebSocket when groupChatId is provided */
+  /** Workspace path for API calls */
+  workspacePath?: string;
+  /** Auto-connect to WebSocket when groupChatId and sessionId are provided */
   autoConnect?: boolean;
   /** Optional notification callbacks for group chat events */
   notificationCallbacks?: GroupChatNotificationCallbacks;
@@ -97,9 +148,18 @@ export interface UseGroupChatReturn {
   // Data
   groupChats: GroupChat[];
   currentGroupChat: GroupChatWithMembers | null;
-  messages: GroupChatMessage[];
+  sessions: GroupChatSession[];
+  currentSession: GroupChatSession | null;
+  messages: GroupChatUIMessage[];
+  agentMessages: AgentRolloutMessage[];
   members: GroupChatMember[];
   typingMembers: string[];
+  thinkingAgents: string[];
+  sessionAgents: string[];
+
+  // View state
+  viewMode: GroupChatViewMode;
+  viewAgentId: string | null;
 
   // Connection state
   isConnected: boolean;
@@ -107,34 +167,38 @@ export interface UseGroupChatReturn {
   error: string | null;
 
   // Group Chat CRUD
-  loadGroupChats: () => Promise<void>;
-  createGroupChat: (data: Omit<CreateGroupChatRequest, "created_by">) => Promise<GroupChatWithMembers>;
+  loadGroupChats: (params?: ListGroupChatsParams) => Promise<void>;
+  createGroupChat: (data: Omit<CreateGroupChatRequest, "created_by" | "workspace_path">) => Promise<GroupChatWithMembers>;
   loadGroupChat: (groupChatId: string) => Promise<void>;
   updateGroupChat: (groupChatId: string, data: { name?: string; description?: string }) => Promise<void>;
   deleteGroupChat: (groupChatId: string) => Promise<void>;
 
+  // Sessions
+  loadSessions: (groupChatId: string) => Promise<void>;
+  createSession: (groupChatId: string, title?: string) => Promise<GroupChatSession>;
+  selectSession: (sessionId: string) => void;
+  deleteSession: (sessionId: string) => Promise<void>;
+
   // Members
   addMember: (member: AddMemberRequest) => Promise<void>;
   removeMember: (memberId: string) => Promise<void>;
-  leaveGroupChat: () => Promise<void>;
 
   // Messages
   loadMessages: (limit?: number) => Promise<void>;
-  sendMessage: (content: string, options?: {
-    contentType?: MessageContentType;
-    mentions?: string[];
-    replyTo?: string;
-    metadata?: Record<string, unknown>;
-  }) => Promise<void>;
-  deleteMessage: (messageId: string) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+
+  // View switching
+  switchView: (view: GroupChatViewMode, agentId?: string) => void;
+  loadSessionAgents: () => Promise<void>;
 
   // WebSocket
-  connect: (groupChatId: string) => void;
+  connect: (groupChatId: string, sessionId: string) => void;
   disconnect: () => void;
   sendTyping: (isTyping: boolean) => void;
 
   // Utilities
   clearError: () => void;
+  setWorkspacePath: (path: string) => void;
 }
 
 // ============================================================================
@@ -143,11 +207,13 @@ export interface UseGroupChatReturn {
 
 export function useGroupChat(
   groupChatId?: string,
+  sessionId?: string,
   options?: UseGroupChatOptions
 ): UseGroupChatReturn {
   const {
     userId = "user-1",
     userDisplayName = "User",
+    workspacePath: initialWorkspacePath,
     autoConnect = true,
     notificationCallbacks,
   } = options || {};
@@ -155,16 +221,25 @@ export function useGroupChat(
   // State
   const [groupChats, setGroupChats] = useState<GroupChat[]>([]);
   const [currentGroupChat, setCurrentGroupChat] = useState<GroupChatWithMembers | null>(null);
-  const [messages, setMessages] = useState<GroupChatMessage[]>([]);
+  const [sessions, setSessions] = useState<GroupChatSession[]>([]);
+  const [currentSession, setCurrentSession] = useState<GroupChatSession | null>(null);
+  const [messages, setMessages] = useState<GroupChatUIMessage[]>([]);
+  const [agentMessages, setAgentMessages] = useState<AgentRolloutMessage[]>([]);
   const [members, setMembers] = useState<GroupChatMember[]>([]);
   const [typingMembers, setTypingMembers] = useState<string[]>([]);
+  const [thinkingAgents, setThinkingAgents] = useState<string[]>([]);
+  const [sessionAgents, setSessionAgents] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<GroupChatViewMode>("ui");
+  const [viewAgentId, setViewAgentId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [workspacePath, setWorkspacePath] = useState<string>(initialWorkspacePath || "");
 
   // Refs
   const wsRef = useRef<WebSocket | null>(null);
   const currentGroupChatIdRef = useRef<string | null>(null);
+  const currentSessionIdRef = useRef<string | null>(null);
   const currentGroupChatNameRef = useRef<string>("");
   const typingTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
   const membersMapRef = useRef<Map<string, string>>(new Map()); // member_id -> display_name
@@ -184,6 +259,10 @@ export function useGroupChat(
     const groupName = currentGroupChatNameRef.current;
 
     switch (event.type) {
+      case "connected":
+        console.log("[useGroupChat] WebSocket connected, member_id:", event.member_id);
+        break;
+
       case "new_message":
         setMessages((prev) => [...prev, event.message]);
         // Trigger notification callback for new messages (not from self)
@@ -192,10 +271,37 @@ export function useGroupChat(
         }
         break;
 
+      case "agent_thinking":
+        setThinkingAgents((prev) =>
+          prev.includes(event.agent_id) ? prev : [...prev, event.agent_id]
+        );
+        if (notificationCallbacks?.onAgentThinking && groupId) {
+          notificationCallbacks.onAgentThinking(groupId, groupName, event.agent_id, event.agent_name);
+        }
+        break;
+
+      case "agent_response":
+        // Remove from thinking agents
+        setThinkingAgents((prev) => prev.filter((id) => id !== event.agent_id));
+        // Add response as a message
+        const responseMsg: GroupChatUIMessage = {
+          id: `agent-${event.agent_id}-${Date.now()}`,
+          type: "agent_response",
+          timestamp: new Date().toISOString(),
+          agent_id: event.agent_id,
+          agent_name: event.agent_name,
+          content: event.content,
+        };
+        setMessages((prev) => [...prev, responseMsg]);
+        if (notificationCallbacks?.onAgentResponse && groupId) {
+          notificationCallbacks.onAgentResponse(groupId, groupName, event.agent_id, event.agent_name, event.content);
+        }
+        break;
+
       case "member_joined":
         setMembers((prev) => [...prev, event.member]);
         // Update members map
-        membersMapRef.current.set(event.member.member_id, event.member.display_name);
+        membersMapRef.current.set(event.member.id, event.member.display_name);
         // Trigger notification callback
         if (notificationCallbacks?.onMemberJoined && groupId) {
           notificationCallbacks.onMemberJoined(groupId, groupName, event.member);
@@ -205,7 +311,7 @@ export function useGroupChat(
       case "member_left": {
         // Get member name before removing
         const memberName = membersMapRef.current.get(event.member_id);
-        setMembers((prev) => prev.filter((m) => m.member_id !== event.member_id));
+        setMembers((prev) => prev.filter((m) => m.id !== event.member_id));
         // Remove from members map
         membersMapRef.current.delete(event.member_id);
         // Trigger notification callback
@@ -234,8 +340,22 @@ export function useGroupChat(
         break;
       }
 
-      case "message_read":
-        // Could track read receipts here
+      case "view_data":
+        // Handle view data from server (when switching views)
+        if (event.view === "agent" && event.agent_id) {
+          setAgentMessages(event.messages as AgentRolloutMessage[]);
+          setViewMode("agent");
+          setViewAgentId(event.agent_id);
+        } else {
+          setMessages(event.messages as GroupChatUIMessage[]);
+          setViewMode("ui");
+          setViewAgentId(null);
+        }
+        break;
+
+      case "error":
+        console.error("[useGroupChat] WebSocket error:", event.message);
+        setError(event.message);
         break;
     }
   }, [notificationCallbacks, userId]);
@@ -243,16 +363,22 @@ export function useGroupChat(
   /**
    * Connect to WebSocket
    */
-  const connect = useCallback((chatId: string) => {
+  const connect = useCallback((chatId: string, sessId: string) => {
     // Close existing connection
     if (wsRef.current) {
       wsRef.current.close();
     }
 
+    if (!workspacePath) {
+      console.warn("[useGroupChat] Cannot connect without workspacePath");
+      return;
+    }
+
     currentGroupChatIdRef.current = chatId;
+    currentSessionIdRef.current = sessId;
 
     try {
-      const ws = client.connectGroupChatWs(chatId, "human", userId);
+      const ws = client.connectGroupChatWs(chatId, sessId, workspacePath, "human", userId);
 
       ws.onopen = () => {
         console.log("[useGroupChat] WebSocket connected");
@@ -283,7 +409,7 @@ export function useGroupChat(
       console.error("[useGroupChat] Failed to connect:", err);
       setError(err instanceof Error ? err.message : "Failed to connect");
     }
-  }, [client, userId, handleWsEvent]);
+  }, [client, userId, workspacePath, handleWsEvent]);
 
   /**
    * Disconnect from WebSocket
@@ -295,6 +421,7 @@ export function useGroupChat(
     }
     setIsConnected(false);
     currentGroupChatIdRef.current = null;
+    currentSessionIdRef.current = null;
     currentGroupChatNameRef.current = "";
     membersMapRef.current.clear();
   }, []);
@@ -318,11 +445,15 @@ export function useGroupChat(
   /**
    * Load all group chats
    */
-  const loadGroupChats = useCallback(async () => {
+  const loadGroupChats = useCallback(async (params?: ListGroupChatsParams) => {
     setIsLoading(true);
     setError(null);
     try {
-      const chats = await client.listGroupChats();
+      const effectiveParams = {
+        ...params,
+        workspace_path: params?.workspace_path || workspacePath,
+      };
+      const chats = await client.listGroupChats(effectiveParams);
       setGroupChats(chats);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load group chats";
@@ -331,30 +462,35 @@ export function useGroupChat(
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, workspacePath]);
 
   /**
    * Create a new group chat
    */
-  const createGroupChat = useCallback(async (data: Omit<CreateGroupChatRequest, "created_by">): Promise<GroupChatWithMembers> => {
+  const createGroupChat = useCallback(async (data: Omit<CreateGroupChatRequest, "created_by" | "workspace_path">): Promise<GroupChatWithMembers> => {
+    if (!workspacePath) {
+      throw new Error("Workspace path is required to create a group chat");
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      // Add current user as owner if not in initial_members
-      const hasCurrentUser = data.initial_members?.some(
-        (m) => m.member_type === "human" && m.member_id === userId
+      // Add current user as owner if not in members
+      const hasCurrentUser = data.members?.some(
+        (m) => m.type === "human" && m.member_id === userId
       );
       const requestData: CreateGroupChatRequest = {
         ...data,
+        workspace_path: workspacePath,
         created_by: userId,
-        initial_members: hasCurrentUser ? data.initial_members : [
+        members: hasCurrentUser ? data.members : [
           {
-            member_type: "human" as const,
+            type: "human" as const,
             member_id: userId,
             display_name: userDisplayName,
             role: "owner" as const,
           },
-          ...(data.initial_members || []),
+          ...(data.members || []),
         ],
       };
 
@@ -368,16 +504,21 @@ export function useGroupChat(
     } finally {
       setIsLoading(false);
     }
-  }, [client, userId, userDisplayName]);
+  }, [client, userId, userDisplayName, workspacePath]);
 
   /**
    * Load a specific group chat with members
    */
   const loadGroupChat = useCallback(async (chatId: string) => {
+    if (!workspacePath) {
+      console.warn("[useGroupChat] Cannot load group chat without workspacePath");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const result = await client.getGroupChat(chatId);
+      const result = await client.getGroupChat(chatId, workspacePath);
       setCurrentGroupChat(result);
       setMembers(result.members);
       // Store group name for notifications
@@ -385,7 +526,7 @@ export function useGroupChat(
       // Build members map for looking up display names
       membersMapRef.current.clear();
       for (const member of result.members) {
-        membersMapRef.current.set(member.member_id, member.display_name);
+        membersMapRef.current.set(member.id, member.display_name);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load group chat";
@@ -394,7 +535,7 @@ export function useGroupChat(
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, workspacePath]);
 
   /**
    * Update a group chat
@@ -403,9 +544,13 @@ export function useGroupChat(
     chatId: string,
     data: { name?: string; description?: string }
   ) => {
+    if (!workspacePath) {
+      throw new Error("Workspace path is required to update a group chat");
+    }
+
     setError(null);
     try {
-      const updated = await client.updateGroupChat(chatId, data);
+      const updated = await client.updateGroupChat(chatId, workspacePath, data);
       setGroupChats((prev) =>
         prev.map((c) => (c.id === chatId ? updated : c))
       );
@@ -421,20 +566,26 @@ export function useGroupChat(
       setError(message);
       throw err;
     }
-  }, [client, currentGroupChat]);
+  }, [client, currentGroupChat, workspacePath]);
 
   /**
    * Delete a group chat
    */
   const deleteGroupChat = useCallback(async (chatId: string) => {
+    if (!workspacePath) {
+      throw new Error("Workspace path is required to delete a group chat");
+    }
+
     setError(null);
     try {
-      await client.deleteGroupChat(chatId);
+      await client.deleteGroupChat(chatId, workspacePath);
       setGroupChats((prev) => prev.filter((c) => c.id !== chatId));
       if (currentGroupChat?.group_chat.id === chatId) {
         setCurrentGroupChat(null);
         setMessages([]);
         setMembers([]);
+        setSessions([]);
+        setCurrentSession(null);
         disconnect();
       }
     } catch (err) {
@@ -442,7 +593,110 @@ export function useGroupChat(
       setError(message);
       throw err;
     }
-  }, [client, currentGroupChat, disconnect]);
+  }, [client, currentGroupChat, disconnect, workspacePath]);
+
+  // ============================================================================
+  // Sessions
+  // ============================================================================
+
+  /**
+   * Load sessions for a group chat
+   */
+  const loadSessions = useCallback(async (chatId: string) => {
+    if (!workspacePath) {
+      console.warn("[useGroupChat] Cannot load sessions without workspacePath");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const sessionList = await client.listGroupChatSessions(chatId, workspacePath);
+      setSessions(sessionList);
+      // Auto-select first session if none selected
+      if (sessionList.length > 0 && !currentSessionIdRef.current) {
+        setCurrentSession(sessionList[0]);
+        currentSessionIdRef.current = sessionList[0].id;
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load sessions";
+      setError(message);
+      console.error("[useGroupChat] Failed to load sessions:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, workspacePath]);
+
+  /**
+   * Create a new session
+   */
+  const createSession = useCallback(async (chatId: string, title?: string): Promise<GroupChatSession> => {
+    if (!workspacePath) {
+      throw new Error("Workspace path is required to create a session");
+    }
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      const session = await client.createGroupChatSession(chatId, workspacePath, { title });
+      setSessions((prev) => [session, ...prev]);
+      setCurrentSession(session);
+      currentSessionIdRef.current = session.id;
+      setMessages([]);
+      return session;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create session";
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client, workspacePath]);
+
+  /**
+   * Select a session
+   */
+  const selectSession = useCallback((sessId: string) => {
+    const session = sessions.find((s) => s.id === sessId);
+    if (session) {
+      setCurrentSession(session);
+      currentSessionIdRef.current = sessId;
+      setMessages([]);
+      setAgentMessages([]);
+      setViewMode("ui");
+      setViewAgentId(null);
+    }
+  }, [sessions]);
+
+  /**
+   * Delete a session
+   */
+  const deleteSession = useCallback(async (sessId: string) => {
+    if (!workspacePath || !currentGroupChatIdRef.current) {
+      throw new Error("Workspace path and group chat ID are required");
+    }
+
+    setError(null);
+    try {
+      await client.deleteGroupChatSession(currentGroupChatIdRef.current, sessId, workspacePath);
+      setSessions((prev) => prev.filter((s) => s.id !== sessId));
+      if (currentSession?.id === sessId) {
+        const remaining = sessions.filter((s) => s.id !== sessId);
+        if (remaining.length > 0) {
+          setCurrentSession(remaining[0]);
+          currentSessionIdRef.current = remaining[0].id;
+        } else {
+          setCurrentSession(null);
+          currentSessionIdRef.current = null;
+        }
+        setMessages([]);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete session";
+      setError(message);
+      throw err;
+    }
+  }, [client, currentSession, sessions, workspacePath]);
 
   // ============================================================================
   // Members
@@ -452,14 +706,15 @@ export function useGroupChat(
    * Add a member to the current group chat
    */
   const addMember = useCallback(async (member: AddMemberRequest) => {
-    if (!currentGroupChatIdRef.current) {
-      setError("No group chat selected");
+    if (!currentGroupChatIdRef.current || !workspacePath) {
+      setError("No group chat selected or workspace path not set");
       return;
     }
     setError(null);
     try {
       const newMember = await client.addGroupChatMember(
         currentGroupChatIdRef.current,
+        workspacePath,
         member
       );
       setMembers((prev) => [...prev, newMember]);
@@ -468,68 +723,57 @@ export function useGroupChat(
       setError(message);
       throw err;
     }
-  }, [client]);
+  }, [client, workspacePath]);
 
   /**
    * Remove a member from the current group chat
    */
   const removeMember = useCallback(async (memberId: string) => {
-    if (!currentGroupChatIdRef.current) {
-      setError("No group chat selected");
+    if (!currentGroupChatIdRef.current || !workspacePath) {
+      setError("No group chat selected or workspace path not set");
       return;
     }
     setError(null);
     try {
-      await client.removeGroupChatMember(currentGroupChatIdRef.current, memberId);
+      await client.removeGroupChatMember(currentGroupChatIdRef.current, workspacePath, memberId);
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to remove member";
       setError(message);
       throw err;
     }
-  }, [client]);
-
-  /**
-   * Leave the current group chat
-   */
-  const leaveGroupChat = useCallback(async () => {
-    if (!currentGroupChatIdRef.current) {
-      setError("No group chat selected");
-      return;
-    }
-    setError(null);
-    try {
-      await client.leaveGroupChat(currentGroupChatIdRef.current);
-      disconnect();
-      setCurrentGroupChat(null);
-      setMessages([]);
-      setMembers([]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to leave group chat";
-      setError(message);
-      throw err;
-    }
-  }, [client, disconnect]);
+  }, [client, workspacePath]);
 
   // ============================================================================
   // Messages
   // ============================================================================
 
   /**
-   * Load messages for the current group chat
+   * Load messages for the current session
    */
   const loadMessages = useCallback(async (limit?: number) => {
-    if (!currentGroupChatIdRef.current) {
+    if (!currentGroupChatIdRef.current || !currentSessionIdRef.current || !workspacePath) {
       return;
     }
     setIsLoading(true);
     setError(null);
     try {
-      const msgs = await client.listGroupChatMessages(
+      const params = viewMode === "agent" && viewAgentId
+        ? { view: "agent" as const, agent_id: viewAgentId, limit }
+        : { view: "ui" as const, limit };
+
+      const result = await client.listGroupChatMessages(
         currentGroupChatIdRef.current,
-        limit ? { limit } : undefined
+        currentSessionIdRef.current,
+        workspacePath,
+        params
       );
-      setMessages(msgs);
+
+      if (result.view === "agent") {
+        setAgentMessages((result as { messages: AgentRolloutMessage[] }).messages);
+      } else {
+        setMessages((result as { messages: GroupChatUIMessage[] }).messages);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to load messages";
       setError(message);
@@ -537,22 +781,14 @@ export function useGroupChat(
     } finally {
       setIsLoading(false);
     }
-  }, [client]);
+  }, [client, viewMode, viewAgentId, workspacePath]);
 
   /**
-   * Send a message to the current group chat
+   * Send a message to the current session
    */
-  const sendMessage = useCallback(async (
-    content: string,
-    options?: {
-      contentType?: MessageContentType;
-      mentions?: string[];
-      replyTo?: string;
-      metadata?: Record<string, unknown>;
-    }
-  ) => {
-    if (!currentGroupChatIdRef.current) {
-      setError("No group chat selected");
+  const sendMessage = useCallback(async (content: string) => {
+    if (!currentGroupChatIdRef.current || !currentSessionIdRef.current || !workspacePath) {
+      setError("No group chat or session selected");
       return;
     }
     if (!content.trim()) {
@@ -563,66 +799,108 @@ export function useGroupChat(
     try {
       const request: SendGroupChatMessageRequest = {
         content: content.trim(),
-        content_type: options?.contentType,
-        mentions: options?.mentions,
-        reply_to: options?.replyTo,
-        metadata: options?.metadata,
+        sender_id: userId,
+        sender_name: userDisplayName,
       };
-      const newMessage = await client.sendGroupChatMessage(
+      const result = await client.sendGroupChatMessage(
         currentGroupChatIdRef.current,
+        currentSessionIdRef.current,
+        workspacePath,
         request
       );
+
       // Optimistically add the message (WebSocket will also send it back)
       setMessages((prev) => {
         // Avoid duplicates
-        if (prev.some((m) => m.id === newMessage.id)) {
+        if (prev.some((m) => m.id === result.message.id)) {
           return prev;
         }
-        return [...prev, newMessage];
+        return [...prev, result.message];
       });
+
+      // Mark triggered agents as thinking
+      if (result.agents_triggered.length > 0) {
+        setThinkingAgents((prev) => [
+          ...prev,
+          ...result.agents_triggered.filter((id) => !prev.includes(id)),
+        ]);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send message";
       setError(message);
       throw err;
     }
-  }, [client]);
+  }, [client, userId, userDisplayName, workspacePath]);
+
+  // ============================================================================
+  // View Switching
+  // ============================================================================
 
   /**
-   * Delete a message
+   * Switch between UI view and Agent view
    */
-  const deleteMessage = useCallback(async (messageId: string) => {
-    if (!currentGroupChatIdRef.current) {
-      setError("No group chat selected");
+  const switchView = useCallback((view: GroupChatViewMode, agentId?: string) => {
+    if (view === "agent" && !agentId) {
+      console.warn("[useGroupChat] agent_id is required for agent view");
       return;
     }
-    setError(null);
-    try {
-      await client.deleteGroupChatMessage(currentGroupChatIdRef.current, messageId);
-      setMessages((prev) => prev.filter((m) => m.id !== messageId));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete message";
-      setError(message);
-      throw err;
+
+    setViewMode(view);
+    setViewAgentId(view === "agent" ? agentId || null : null);
+
+    // Send view switch command via WebSocket if connected
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "switch_view",
+        view,
+        agent_id: agentId,
+      }));
+    } else {
+      // Otherwise load messages via REST API
+      loadMessages();
     }
-  }, [client]);
+  }, [loadMessages]);
+
+  /**
+   * Load available agents for the current session
+   */
+  const loadSessionAgents = useCallback(async () => {
+    if (!currentGroupChatIdRef.current || !currentSessionIdRef.current || !workspacePath) {
+      return;
+    }
+
+    try {
+      const agents = await client.listSessionAgents(
+        currentGroupChatIdRef.current,
+        currentSessionIdRef.current,
+        workspacePath
+      );
+      setSessionAgents(agents);
+    } catch (err) {
+      console.error("[useGroupChat] Failed to load session agents:", err);
+    }
+  }, [client, workspacePath]);
 
   // ============================================================================
   // Effects
   // ============================================================================
 
-  // Connect to WebSocket when groupChatId changes
+  // Connect to WebSocket when groupChatId and sessionId change
   useEffect(() => {
-    if (groupChatId && autoConnect) {
+    if (groupChatId && sessionId && workspacePath && autoConnect) {
       currentGroupChatIdRef.current = groupChatId;
-      connect(groupChatId);
+      currentSessionIdRef.current = sessionId;
+      connect(groupChatId, sessionId);
       loadGroupChat(groupChatId);
+      loadSessions(groupChatId);
       loadMessages();
+      loadSessionAgents();
     }
 
     return () => {
       disconnect();
     };
-  }, [groupChatId, autoConnect, connect, disconnect, loadGroupChat, loadMessages]);
+  }, [groupChatId, sessionId, workspacePath, autoConnect, connect, disconnect, loadGroupChat, loadSessions, loadMessages, loadSessionAgents]);
 
   // Cleanup typing timeouts on unmount
   useEffect(() => {
@@ -639,9 +917,18 @@ export function useGroupChat(
     // Data
     groupChats,
     currentGroupChat,
+    sessions,
+    currentSession,
     messages,
+    agentMessages,
     members,
     typingMembers,
+    thinkingAgents,
+    sessionAgents,
+
+    // View state
+    viewMode,
+    viewAgentId,
 
     // Connection state
     isConnected,
@@ -655,15 +942,23 @@ export function useGroupChat(
     updateGroupChat,
     deleteGroupChat,
 
+    // Sessions
+    loadSessions,
+    createSession,
+    selectSession,
+    deleteSession,
+
     // Members
     addMember,
     removeMember,
-    leaveGroupChat,
 
     // Messages
     loadMessages,
     sendMessage,
-    deleteMessage,
+
+    // View switching
+    switchView,
+    loadSessionAgents,
 
     // WebSocket
     connect,
@@ -672,5 +967,6 @@ export function useGroupChat(
 
     // Utilities
     clearError: () => setError(null),
+    setWorkspacePath,
   };
 }

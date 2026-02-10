@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SidebarSection } from "./sidebar-section";
@@ -50,29 +51,31 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
 
   // Add workspace button
   const addButton = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-5 w-5"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleAddWorkspace();
-          }}
-          disabled={isAdding}
-        >
-          {isAdding ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Plus className="h-3 w-3" />
-          )}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right">
-        {t("workspace.addWorkspace")}
-      </TooltipContent>
-    </Tooltip>
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAddWorkspace();
+            }}
+            disabled={isAdding}
+          >
+            {isAdding ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Plus className="h-3 w-3" />
+            )}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          {t("workspace.addWorkspace")}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 
   if (collapsed) {

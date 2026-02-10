@@ -7,15 +7,14 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, User, Terminal, ArrowDown, MessageSquare, Reply } from "lucide-react";
+import { Bot, User, ArrowDown, MessageSquare, Reply } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type {
-  GroupChatMessage,
+  GroupChatUIMessage,
   GroupChatMember,
-  MemberType,
 } from "@/lib/gateway";
 
 // ============================================================================
@@ -24,7 +23,7 @@ import type {
 
 interface GroupChatMessageListProps {
   /** Messages to display */
-  messages: GroupChatMessage[];
+  messages: GroupChatUIMessage[];
   /** Members of the group chat (for display names and avatars) */
   members: GroupChatMember[];
   /** Current user's ID (for styling own messages) */
@@ -34,7 +33,7 @@ interface GroupChatMessageListProps {
   /** Callback when a mention is clicked */
   onMentionClick?: (memberId: string) => void;
   /** Callback when reply button is clicked */
-  onReply?: (message: GroupChatMessage) => void;
+  onReply?: (message: GroupChatUIMessage) => void;
   /** Additional className */
   className?: string;
 }
@@ -82,16 +81,17 @@ function getAvatarGradient(name: string): string {
 }
 
 /**
- * Get icon for member type
+ * Get icon for message type
  */
-function MemberIcon({ type, className }: { type: MemberType; className?: string }) {
+function MessageTypeIcon({ type, className }: { type: string; className?: string }) {
   switch (type) {
-    case "human":
+    case "user":
       return <User className={className} />;
-    case "agent":
+    case "agent_thinking":
+    case "agent_response":
       return <Bot className={className} />;
-    case "executor":
-      return <Terminal className={className} />;
+    case "system":
+      return <MessageSquare className={className} />;
     default:
       return <User className={className} />;
   }
@@ -99,8 +99,10 @@ function MemberIcon({ type, className }: { type: MemberType; className?: string 
 
 /**
  * Parse content and highlight @mentions
+ * @internal Reserved for future mention highlighting feature
+ * @public Exported for potential use in other components
  */
-function renderContentWithMentions(
+export function renderContentWithMentions(
   content: string,
   mentions: string[] | undefined,
   members: GroupChatMember[],
@@ -165,29 +167,36 @@ function renderContentWithMentions(
 // ============================================================================
 
 interface MessageItemProps {
-  message: GroupChatMessage;
+  message: GroupChatUIMessage;
   members: GroupChatMember[];
   isOwn: boolean;
   showAvatar: boolean;
   showName: boolean;
   onMentionClick?: (memberId: string) => void;
-  onReply?: (message: GroupChatMessage) => void;
+  onReply?: (message: GroupChatUIMessage) => void;
 }
 
 function MessageItem({
   message,
-  members,
+  members: _members,
   isOwn,
   showAvatar,
   showName,
-  onMentionClick,
+  onMentionClick: _onMentionClick,
   onReply,
 }: MessageItemProps) {
+  // Mark as reserved for future use
+  void _members;
+  void _onMentionClick;
+
   const { t } = useTranslation();
   const [showActions, setShowActions] = React.useState(false);
 
+  // Get sender name from message or agent_name
+  const senderName = message.sender_name || message.agent_name || "Unknown";
+
   // System message styling
-  if (message.content_type === "system") {
+  if (message.type === "system") {
     return (
       <div className="flex justify-center py-2">
         <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
@@ -197,8 +206,24 @@ function MessageItem({
     );
   }
 
-  // Code message styling
-  const isCode = message.content_type === "code";
+  // Agent thinking message styling
+  if (message.type === "agent_thinking") {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2">
+        <div
+          className={cn(
+            "w-6 h-6 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
+            getAvatarGradient(senderName)
+          )}
+        >
+          <Bot className="h-3 w-3 text-white" />
+        </div>
+        <span className="text-xs text-muted-foreground italic">
+          {senderName} {t("groupChat.isThinking", "is thinking...")}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -218,19 +243,19 @@ function MessageItem({
                 <div
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm cursor-default",
-                    getAvatarGradient(message.sender_name)
+                    getAvatarGradient(senderName)
                   )}
                 >
-                  <MemberIcon
-                    type={message.sender_type}
+                  <MessageTypeIcon
+                    type={message.type}
                     className="h-4 w-4 text-white"
                   />
                 </div>
               </TooltipTrigger>
               <TooltipContent side={isOwn ? "left" : "right"}>
-                <p className="font-medium">{message.sender_name}</p>
+                <p className="font-medium">{senderName}</p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {message.sender_type}
+                  {message.type === "user" ? "human" : "agent"}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -250,16 +275,8 @@ function MessageItem({
         {/* Sender name */}
         {showName && !isOwn && (
           <span className="text-xs font-medium text-muted-foreground mb-1 px-1">
-            {message.sender_name}
+            {senderName}
           </span>
-        )}
-
-        {/* Reply reference */}
-        {message.reply_to && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1 px-1">
-            <Reply className="h-3 w-3" />
-            <span>{t("groupChat.replyingTo", "Replying to message")}</span>
-          </div>
         )}
 
         {/* Message bubble */}
@@ -269,24 +286,12 @@ function MessageItem({
               "px-3 py-2 rounded-2xl",
               isOwn
                 ? "bg-primary text-primary-foreground rounded-br-md"
-                : "bg-muted rounded-bl-md",
-              isCode && "font-mono text-sm bg-muted/80"
+                : "bg-muted rounded-bl-md"
             )}
           >
-            {isCode ? (
-              <pre className="whitespace-pre-wrap break-words overflow-x-auto">
-                {message.content}
-              </pre>
-            ) : (
-              <p className="whitespace-pre-wrap break-words">
-                {renderContentWithMentions(
-                  message.content,
-                  message.mentions,
-                  members,
-                  onMentionClick
-                )}
-              </p>
-            )}
+            <p className="whitespace-pre-wrap break-words">
+              {message.content || ""}
+            </p>
           </div>
 
           {/* Hover actions */}
@@ -311,7 +316,7 @@ function MessageItem({
 
         {/* Timestamp */}
         <span className="text-[10px] text-muted-foreground mt-1 px-1">
-          {formatMessageTime(message.created_at)}
+          {formatMessageTime(message.timestamp)}
         </span>
       </div>
     </div>
@@ -375,6 +380,10 @@ export function GroupChatMessageList({
   onReply,
   className,
 }: GroupChatMessageListProps) {
+  // Mark as reserved for future use
+  void renderContentWithMentions;
+  void onMentionClick;
+
   const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
@@ -440,18 +449,22 @@ export function GroupChatMessageList({
     const current = messages[index];
     const prev = messages[index - 1];
 
-    // System messages don't need avatars
-    if (current.content_type === "system") {
+    // System and thinking messages don't need avatars
+    if (current.type === "system" || current.type === "agent_thinking") {
       return { showAvatar: false, showName: false };
     }
 
+    // Get sender id from message
+    const currentSenderId = current.sender_id || current.agent_id;
+    const prevSenderId = prev.sender_id || prev.agent_id;
+
     // Show if sender changed
-    if (prev.sender_id !== current.sender_id) {
+    if (prevSenderId !== currentSenderId) {
       return { showAvatar: true, showName: true };
     }
 
     // Show if more than 5 minutes apart
-    const timeDiff = new Date(current.created_at).getTime() - new Date(prev.created_at).getTime();
+    const timeDiff = new Date(current.timestamp).getTime() - new Date(prev.timestamp).getTime();
     if (timeDiff > 5 * 60 * 1000) {
       return { showAvatar: true, showName: true };
     }
@@ -486,7 +499,7 @@ export function GroupChatMessageList({
         <div className="space-y-3 p-4 pb-8">
           {messages.map((message, index) => {
             const { showAvatar, showName } = shouldShowMeta(index);
-            const isOwn = message.sender_type === "human" && message.sender_id === currentUserId;
+            const isOwn = message.type === "user" && message.sender_id === currentUserId;
 
             return (
               <MessageItem

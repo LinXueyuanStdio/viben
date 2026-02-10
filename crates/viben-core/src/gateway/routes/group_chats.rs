@@ -141,6 +141,7 @@ impl From<GroupChatConfig> for GroupChatResponse {
 pub struct GroupChatMemberResponse {
     pub id: String,
     pub member_type: String,
+    pub member_id: String,
     pub display_name: String,
     pub role: String,
     pub model: Option<String>,
@@ -151,8 +152,10 @@ pub struct GroupChatMemberResponse {
 impl From<GroupChatMember> for GroupChatMemberResponse {
     fn from(m: GroupChatMember) -> Self {
         Self {
-            id: m.id,
+            // In GroupChatMember from types.rs, `id` is the user/agent ID
+            id: m.id.clone(),
             member_type: m.member_type.to_string(),
+            member_id: m.id,
             display_name: m.display_name,
             role: m.role.to_string(),
             model: m.model,

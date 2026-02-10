@@ -20,6 +20,9 @@ import {
   Cpu,
   Search,
   X,
+  Sparkles,
+  Globe,
+  PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +45,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
@@ -101,6 +109,11 @@ const PROVIDER_TYPES: ProviderType[] = [
   "openrouter",
   "custom",
 ];
+
+// Extended model type with source information
+interface ExtendedModel extends DiscoveredModel {
+  source: "discovered" | "predefined" | "manual";
+}
 
 export function SettingsModelPage() {
   const { t } = useTranslation();
@@ -164,20 +177,41 @@ export function SettingsModelPage() {
   const loadProviderModels = useCallback(async (providerId: string) => {
     setDiscoveringModels(true);
     setDiscoveredModels([]);
+    setPredefinedModels([]);
     setEnabledModelIds([]);
     try {
+      // Load enabled models and try to discover from provider API
       const [discovered, enabled] = await Promise.all([
-        discoverProviderModels(providerId),
+        discoverProviderModels(providerId).catch(() => [] as DiscoveredModel[]),
         listProviderEnabledModels(providerId),
       ]);
       setDiscoveredModels(discovered);
       setEnabledModelIds(enabled);
+
+      // Also load predefined models from Gateway for reference
+      try {
+        const client = getGatewayClient();
+        const response = await client.getModels({ includeProviderPredefined: true });
+        // Filter predefined models by provider type if possible
+        const provider = providers.find((p) => p.id === providerId);
+        if (provider) {
+          const filtered = response.models.filter(
+            (m) => m.provider_id.toLowerCase() === provider.provider_type.toLowerCase() ||
+                   m.provider_name.toLowerCase().includes(provider.provider_type.toLowerCase())
+          );
+          setPredefinedModels(filtered);
+        } else {
+          setPredefinedModels(response.models);
+        }
+      } catch (gatewayErr) {
+        console.warn("Failed to load predefined models from Gateway:", gatewayErr);
+      }
     } catch (err) {
       console.error("Failed to load provider models:", err);
     } finally {
       setDiscoveringModels(false);
     }
-  }, [discoverProviderModels, listProviderEnabledModels]);
+  }, [discoverProviderModels, listProviderEnabledModels, providers]);
 
   useEffect(() => {
     if (selectedProviderId) {
@@ -185,34 +219,84 @@ export function SettingsModelPage() {
     }
   }, [selectedProviderId, loadProviderModels]);
 
-  // Combine discovered models with manually added models
-  const allModels = useMemo(() => {
-    const discoveredIds = new Set(discoveredModels.map((m) => m.id));
-    const manuallyAddedModels: DiscoveredModel[] = enabledModelIds
-      .filter((id) => !discoveredIds.has(id))
-      .map((id) => ({
-        id,
-        name: id,
-        description: undefined,
-        context_window: undefined,
-        max_output_tokens: undefined,
-        owned_by: undefined,
-        created: undefined,
-      }));
-    return [...discoveredModels, ...manuallyAddedModels];
-  }, [discoveredModels, enabledModelIds]);
+  // Combine discovered models, predefined models, and manually added models with source info
+  const allModels = useMemo((): ExtendedModel[] => {
+    const existingIds = new Set<string>();
+    const result: ExtendedModel[] = [];
+
+    // First add discovered models
+    for (const m of discoveredModels) {
+      existingIds.add(m.id);
+      result.push({ ...m, source: "discovered" });
+    }
+
+    // Then add predefined models (if not already discovered)
+    for (const m of predefinedModels) {
+      if (!existingIds.has(m.id)) {
+        existingIds.add(m.id);
+        result.push({
+          id: m.id,
+          name: m.name,
+          description: undefined,
+          context_window: m.context_window ?? undefined,
+          max_output_tokens: undefined,
+          owned_by: undefined,
+          created: undefined,
+          source: "predefined",
+        });
+      }
+    }
+
+    // Finally add manually enabled models (not in discovered or predefined)
+    for (const id of enabledModelIds) {
+      if (!existingIds.has(id)) {
+        existingIds.add(id);
+        result.push({
+          id,
+          name: id,
+          description: undefined,
+          context_window: undefined,
+          max_output_tokens: undefined,
+          owned_by: undefined,
+          created: undefined,
+          source: "manual",
+        });
+      }
+    }
+
+    return result;
+  }, [discoveredModels, predefinedModels, enabledModelIds]);
+
+  // Sort models: enabled first, then by source (discovered > predefined > manual), then by name
+  const sortedModels = useMemo(() => {
+    const sourceOrder = { discovered: 0, predefined: 1, manual: 2 };
+    return [...allModels].sort((a, b) => {
+      const aEnabled = enabledModelIds.includes(a.id);
+      const bEnabled = enabledModelIds.includes(b.id);
+      // Enabled models first
+      if (aEnabled !== bEnabled) return aEnabled ? -1 : 1;
+      // Then by source
+      if (a.source !== b.source) return sourceOrder[a.source] - sourceOrder[b.source];
+      // Then by name
+      return a.name.localeCompare(b.name);
+    });
+  }, [allModels, enabledModelIds]);
 
   // Filtered models based on search
   const filteredModels = useMemo(() => {
-    if (!modelSearchQuery.trim()) return allModels;
+    if (!modelSearchQuery.trim()) return sortedModels;
     const query = modelSearchQuery.toLowerCase();
-    return allModels.filter(
+    return sortedModels.filter(
       (m) =>
         m.id.toLowerCase().includes(query) ||
         m.name.toLowerCase().includes(query) ||
         m.description?.toLowerCase().includes(query)
     );
-  }, [allModels, modelSearchQuery]);
+  }, [sortedModels, modelSearchQuery]);
+
+  // Model counts
+  const enabledCount = enabledModelIds.length;
+  const totalCount = allModels.length;
 
   // Open add provider dialog
   const openAddProviderDialog = () => {
@@ -335,6 +419,30 @@ export function SettingsModelPage() {
       setEnabledModelIds((prev) => prev.filter((id) => id !== modelId));
     } catch (err) {
       console.error("Failed to delete model:", err);
+    }
+  };
+
+  // Get source icon and tooltip
+  const getSourceInfo = (source: ExtendedModel["source"]) => {
+    switch (source) {
+      case "discovered":
+        return {
+          icon: Globe,
+          tooltip: t("settingsModel.sourceDiscovered"),
+          className: "text-blue-500",
+        };
+      case "predefined":
+        return {
+          icon: Sparkles,
+          tooltip: t("settingsModel.sourcePredefined"),
+          className: "text-amber-500",
+        };
+      case "manual":
+        return {
+          icon: PenLine,
+          tooltip: t("settingsModel.sourceManual"),
+          className: "text-muted-foreground",
+        };
     }
   };
 
@@ -527,7 +635,12 @@ export function SettingsModelPage() {
               {/* Models Section */}
               <div className="flex-1 flex flex-col min-h-0">
                 <div className="p-4 border-b flex items-center justify-between">
-                  <h4 className="font-semibold text-sm">{t("settingsModel.models")}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm">{t("settingsModel.models")}</h4>
+                    <Badge variant="secondary" className="text-xs">
+                      {enabledCount}/{totalCount}
+                    </Badge>
+                  </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -584,11 +697,28 @@ export function SettingsModelPage() {
                     ) : filteredModels.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <Cpu className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">{t("settingsModel.noModelsFound")}</p>
+                        <p className="text-sm">
+                          {modelSearchQuery
+                            ? t("settingsModel.noModelsMatchSearch")
+                            : t("settingsModel.noModelsFound")}
+                        </p>
+                        {!modelSearchQuery && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => setShowAddModelDialog(true)}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            {t("settingsModel.addModelManually")}
+                          </Button>
+                        )}
                       </div>
                     ) : (
                       filteredModels.map((model) => {
                         const isEnabled = enabledModelIds.includes(model.id);
+                        const sourceInfo = getSourceInfo(model.source);
+                        const SourceIcon = sourceInfo.icon;
                         return (
                           <div
                             key={model.id}
@@ -603,15 +733,27 @@ export function SettingsModelPage() {
                             <div className="flex items-center justify-between">
                               <button
                                 onClick={() => handleToggleModel(model.id)}
-                                className="flex items-center gap-2 flex-1"
+                                className="flex items-center gap-2 flex-1 min-w-0"
                               >
-                                <Cpu className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-sm">{model.name}</span>
-                                {isEnabled && (
-                                  <Check className="h-4 w-4 text-primary" />
-                                )}
+                                <div className={cn(
+                                  "w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors",
+                                  isEnabled
+                                    ? "bg-primary border-primary"
+                                    : "border-muted-foreground/30"
+                                )}>
+                                  {isEnabled && <Check className="h-3 w-3 text-primary-foreground" />}
+                                </div>
+                                <span className="font-medium text-sm truncate">{model.name}</span>
                               </button>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <SourceIcon className={cn("h-3.5 w-3.5", sourceInfo.className)} />
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    <p className="text-xs">{sourceInfo.tooltip}</p>
+                                  </TooltipContent>
+                                </Tooltip>
                                 {model.context_window && (
                                   <Badge variant="outline" className="text-xs">
                                     {(model.context_window / 1000).toFixed(0)}K
@@ -635,11 +777,11 @@ export function SettingsModelPage() {
                               className="w-full text-left"
                             >
                               {model.description && (
-                                <p className="text-xs text-muted-foreground mt-1 ml-6">
+                                <p className="text-xs text-muted-foreground mt-1 ml-7 line-clamp-1">
                                   {model.description}
                                 </p>
                               )}
-                              <div className="text-xs text-muted-foreground mt-1 ml-6">
+                              <div className="text-xs text-muted-foreground/70 mt-0.5 ml-7 font-mono">
                                 {model.id}
                               </div>
                             </button>

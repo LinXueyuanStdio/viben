@@ -1,30 +1,30 @@
 import * as React from "react";
-import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
-  Settings,
   PanelRightOpen,
   PanelRightClose,
+  PanelLeftOpen,
+  PanelLeftClose,
   Trash2,
   Loader2,
   Plus,
   MessageSquare,
   Search,
-  MoreHorizontal,
   Bot,
   GripVertical,
-  Pin,
   Users,
-  History,
   FileText,
   Share2,
   Archive,
   RefreshCcw,
   Terminal,
+  MoreHorizontal,
+  History,
+  Settings,
 } from "lucide-react";
-import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage } from "@/lib/gateway";
+import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -63,6 +63,7 @@ import {
   GroupChatMessageList,
   GroupChatListItem,
   GroupChatMembersDialog,
+  AgentListItem,
 } from "@/components/chat";
 import { WorkspaceHeader, ExecutorList } from "@/components/workspace";
 import {
@@ -268,177 +269,6 @@ function uiMessageToAgentMessage(msg: UIMessage): import("@/types").AgentMessage
 }
 
 // ============================================================================
-// Agent List Item (for left sidebar)
-// ============================================================================
-
-interface AgentListItemProps {
-  agent: {
-    id: string;
-    name: string;
-    description?: string;
-    model?: string;
-    updated_at: string;
-  };
-  isSelected: boolean;
-  isDefault?: boolean;
-  sessionCount?: number;
-  onSelect: () => void;
-  onSettings: () => void;
-  onSetDefault?: () => void;
-}
-
-function AgentListItem({
-  agent,
-  isSelected,
-  isDefault,
-  sessionCount = 0,
-  onSelect,
-  onSettings,
-  onSetDefault,
-}: AgentListItemProps) {
-  const { t } = useTranslation();
-
-  // Get avatar colors based on agent name
-  const getAvatarGradient = () => {
-    const colors = [
-      "from-blue-500 to-cyan-400",
-      "from-purple-500 to-pink-400",
-      "from-green-500 to-emerald-400",
-      "from-orange-500 to-yellow-400",
-      "from-red-500 to-rose-400",
-      "from-indigo-500 to-violet-400",
-    ];
-    const index = (agent.name?.charCodeAt(0) || 0) % colors.length;
-    return colors[index];
-  };
-
-  // Menu items component for reuse in both dropdown and context menu
-  const MenuItemsDropdown = () => (
-    <>
-      <DropdownMenuItem onClick={onSettings}>
-        <Settings className="h-4 w-4 mr-2" />
-        {t("agent.settings", "智能体设置")}
-      </DropdownMenuItem>
-      {onSetDefault && !isDefault && (
-        <DropdownMenuItem onClick={onSetDefault}>
-          <Pin className="h-4 w-4 mr-2" />
-          {t("agent.setAsDefault", "设为默认")}
-        </DropdownMenuItem>
-      )}
-      <DropdownMenuSeparator />
-      <DropdownMenuItem disabled className="text-muted-foreground">
-        <History className="h-4 w-4 mr-2" />
-        {sessionCount} {t("agent.sessions", "个会话")}
-      </DropdownMenuItem>
-    </>
-  );
-
-  // Context menu item styles
-  const contextMenuItemClass = cn(
-    "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-    "transition-colors focus:bg-accent focus:text-accent-foreground",
-    "data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-  );
-
-  return (
-    <ContextMenuPrimitive.Root>
-      <ContextMenuPrimitive.Trigger asChild>
-        <div
-          className={cn(
-            "group relative flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all rounded-lg",
-            isSelected
-              ? "bg-accent"
-              : "hover:bg-muted/50"
-          )}
-          onClick={onSelect}
-        >
-          {/* Avatar */}
-          <div
-            className={cn(
-              "relative shrink-0 w-11 h-11 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-sm",
-              getAvatarGradient()
-            )}
-          >
-            <Bot className="h-5 w-5 text-white" />
-            {/* Online indicator */}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 min-w-0 py-0.5">
-            <div className="flex items-center gap-1.5">
-              <span className="font-medium text-sm truncate">
-                {agent.name}
-              </span>
-              {isDefault && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary shrink-0">
-                  {t("agent.default", "默认")}
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
-              {agent.description || agent.model || t("agent.noDescription", "暂无描述")}
-            </p>
-          </div>
-
-          {/* Hover actions - More button */}
-          <div
-            className={cn(
-              "absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity",
-              "bg-background/80 backdrop-blur-sm rounded-md px-1 py-0.5"
-            )}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
-                  <MoreHorizontal className="h-3.5 w-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <MenuItemsDropdown />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </ContextMenuPrimitive.Trigger>
-
-      {/* Context menu (right-click) - using Radix UI */}
-      <ContextMenuPrimitive.Portal>
-        <ContextMenuPrimitive.Content
-          className="z-50 min-w-[12rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md animate-in fade-in-80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
-        >
-          <ContextMenuPrimitive.Item
-            className={contextMenuItemClass}
-            onClick={onSettings}
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            {t("agent.settings", "智能体设置")}
-          </ContextMenuPrimitive.Item>
-          {onSetDefault && !isDefault && (
-            <ContextMenuPrimitive.Item
-              className={contextMenuItemClass}
-              onClick={onSetDefault}
-            >
-              <Pin className="h-4 w-4 mr-2" />
-              {t("agent.setAsDefault", "设为默认")}
-            </ContextMenuPrimitive.Item>
-          )}
-          <ContextMenuPrimitive.Separator className="-mx-1 my-1 h-px bg-muted" />
-          <ContextMenuPrimitive.Item
-            className={cn(contextMenuItemClass, "text-muted-foreground")}
-            disabled
-          >
-            <History className="h-4 w-4 mr-2" />
-            {sessionCount} {t("agent.sessions", "个会话")}
-          </ContextMenuPrimitive.Item>
-        </ContextMenuPrimitive.Content>
-      </ContextMenuPrimitive.Portal>
-    </ContextMenuPrimitive.Root>
-  );
-}
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -465,6 +295,7 @@ export function WorkspaceChatPage() {
   // Resizable panel widths
   const [leftPanelWidth, setLeftPanelWidth] = React.useState(320); // Default 320px (w-80)
   const [rightPanelWidth, setRightPanelWidth] = React.useState(320); // Default 320px (w-80)
+  const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
 
   // Panel width constraints
   const MIN_LEFT_PANEL_WIDTH = 240;
@@ -521,12 +352,28 @@ export function WorkspaceChatPage() {
 
   // Group Chat State
   const [selectedGroupChatId, setSelectedGroupChatId] = React.useState<string | null>(null);
+  const [selectedGroupSessionId, setSelectedGroupSessionId] = React.useState<string | null>(null);
   const [isCreatingGroupChat, setIsCreatingGroupChat] = React.useState(false);
   const [groupChatInput, setGroupChatInput] = React.useState("");
   const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false);
   const [renameGroupChatId, setRenameGroupChatId] = React.useState<string | null>(null);
   const [renameGroupChatName, setRenameGroupChatName] = React.useState("");
   const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
+
+  // Right sidebar detail views
+  const [rightSidebarAgentDetail, setRightSidebarAgentDetail] = React.useState<{
+    id: string;
+    name: string;
+    type?: string;
+    model?: string;
+    description?: string;
+  } | null>(null);
+  const [rightSidebarExecutorDetail, setRightSidebarExecutorDetail] = React.useState<{
+    id: string;
+    name: string;
+    type: string;
+    status?: "online" | "offline" | "unknown";
+  } | null>(null);
 
   // Get workspace info
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
@@ -822,13 +669,19 @@ export function WorkspaceChatPage() {
     notifyMemberLeft,
   } = useGroupNotifications();
 
-  // Group Chat hook
+  // Group Chat hook - now uses session-based API
   const {
     groupChats,
     currentGroupChat,
+    sessions: groupChatSessions,
+    currentSession: currentGroupChatSession,
     messages: groupChatMessages,
     members: groupChatMembers,
     typingMembers,
+    thinkingAgents,
+    sessionAgents,
+    viewMode: groupChatViewMode,
+    viewAgentId: groupChatViewAgentId,
     isConnected: groupChatConnected,
     isLoading: isLoadingGroupChat,
     error: groupChatError,
@@ -837,14 +690,19 @@ export function WorkspaceChatPage() {
     loadGroupChat,
     updateGroupChat,
     deleteGroupChat,
-    leaveGroupChat,
+    loadSessions: loadGroupChatSessions,
+    createSession: createGroupChatSession,
+    selectSession: selectGroupChatSession,
     addMember: addGroupChatMember,
     removeMember: removeGroupChatMember,
     sendMessage: sendGroupChatMessage,
+    switchView: switchGroupChatView,
     sendTyping,
-  } = useGroupChat(selectedGroupChatId || undefined, {
+    setWorkspacePath: setGroupChatWorkspacePath,
+  } = useGroupChat(selectedGroupChatId || undefined, selectedGroupSessionId || undefined, {
     userId: "user-1", // TODO: Get from auth context
     userDisplayName: "User",
+    workspacePath: workspace?.path,
     autoConnect: true,
     notificationCallbacks: {
       onNewMessage: (groupId, groupName, message, currentUserId) => {
@@ -862,10 +720,19 @@ export function WorkspaceChatPage() {
     },
   });
 
-  // Load group chats on mount
+  // Set workspace path when it becomes available
   React.useEffect(() => {
-    loadGroupChats();
-  }, [loadGroupChats]);
+    if (workspace?.path) {
+      setGroupChatWorkspacePath(workspace.path);
+    }
+  }, [workspace?.path, setGroupChatWorkspacePath]);
+
+  // Load group chats when workspace path is available
+  React.useEffect(() => {
+    if (workspace?.path) {
+      loadGroupChats({ workspace_path: workspace.path });
+    }
+  }, [workspace?.path, loadGroupChats]);
 
   // Check if we're in group chat mode
   const isGroupChatMode = selectedGroupChatId !== null;
@@ -1485,23 +1352,43 @@ export function WorkspaceChatPage() {
     name: string;
     description?: string;
     initial_members: Array<{
-      member_type: "human" | "agent" | "executor";
+      member_type: "human" | "agent";
       member_id: string;
       display_name: string;
       role?: "owner" | "admin" | "member";
+      model?: string;
     }>;
   }) => {
     setIsCreatingGroupChat(true);
     try {
+      // Convert initial_members to CreateMemberInput format
+      const members = data.initial_members.map((m) => ({
+        type: m.member_type,
+        member_id: m.member_id,
+        display_name: m.display_name,
+        role: m.role,
+        model: m.model,
+      }));
+
       const result = await createGroupChat({
         name: data.name,
         description: data.description,
-        initial_members: data.initial_members,
+        members,
       });
       // Switch to the new group chat
       setSelectedGroupChatId(result.group_chat.id);
       setSelectedConversationId(null);
       setIsCreateGroupDialogOpen(false);
+
+      // Create initial session for the new group chat
+      if (result.group_chat.id) {
+        try {
+          const session = await createGroupChatSession(result.group_chat.id, "Initial Session");
+          setSelectedGroupSessionId(session.id);
+        } catch (err) {
+          console.error("[WorkspaceChat] Failed to create initial session:", err);
+        }
+      }
     } catch (error) {
       console.error("[WorkspaceChat] Failed to create group chat:", error);
       throw error;
@@ -1511,15 +1398,22 @@ export function WorkspaceChatPage() {
   };
 
   // Handle selecting a group chat
-  const handleSelectGroupChat = (groupChatId: string) => {
+  const handleSelectGroupChat = async (groupChatId: string) => {
     setSelectedGroupChatId(groupChatId);
     setSelectedConversationId(null);
-    loadGroupChat(groupChatId);
+    setSelectedGroupSessionId(null);
+    await loadGroupChat(groupChatId);
+    await loadGroupChatSessions(groupChatId);
+
+    // Auto-select first session or create one if none exist
+    if (groupChatSessions.length > 0) {
+      setSelectedGroupSessionId(groupChatSessions[0].id);
+    }
   };
 
   // Handle sending message in group chat
   const handleSendGroupChatMessage = async (content: string) => {
-    if (!selectedGroupChatId || !content.trim()) return;
+    if (!selectedGroupChatId || !selectedGroupSessionId || !content.trim()) return;
     try {
       await sendGroupChatMessage(content);
     } catch (error) {
@@ -1533,21 +1427,46 @@ export function WorkspaceChatPage() {
       await deleteGroupChat(groupChatId);
       if (selectedGroupChatId === groupChatId) {
         setSelectedGroupChatId(null);
+        setSelectedGroupSessionId(null);
       }
     } catch (error) {
       console.error("[WorkspaceChat] Failed to delete group chat:", error);
     }
   };
 
-  // Handle leaving a group chat
+  // Handle leaving a group chat (remove self from members)
   const handleLeaveGroupChat = async () => {
     if (!selectedGroupChatId) return;
     try {
-      await leaveGroupChat();
+      // Remove self from group chat
+      await removeGroupChatMember("user-1");
       setSelectedGroupChatId(null);
+      setSelectedGroupSessionId(null);
     } catch (error) {
       console.error("[WorkspaceChat] Failed to leave group chat:", error);
     }
+  };
+
+  // Handle creating a new group chat session
+  const handleCreateGroupChatSession = async () => {
+    if (!selectedGroupChatId) return;
+    try {
+      const session = await createGroupChatSession(selectedGroupChatId, `Session ${groupChatSessions.length + 1}`);
+      setSelectedGroupSessionId(session.id);
+    } catch (error) {
+      console.error("[WorkspaceChat] Failed to create group chat session:", error);
+    }
+  };
+
+  // Handle selecting a group chat session
+  const handleSelectGroupChatSession = (sessionId: string) => {
+    setSelectedGroupSessionId(sessionId);
+    selectGroupChatSession(sessionId);
+  };
+
+  // Handle switching view mode in group chat
+  const handleSwitchGroupChatView = (view: "ui" | "agent", agentId?: string) => {
+    switchGroupChatView(view, agentId);
   };
 
   // Handle renaming a group chat
@@ -1582,7 +1501,13 @@ export function WorkspaceChatPage() {
   };
 
   // Handle adding a member to the current group chat
-  const handleAddGroupChatMember = async (member: import("@/lib/gateway").AddMemberRequest) => {
+  const handleAddGroupChatMember = async (member: {
+    type: MemberType;
+    member_id: string;
+    display_name: string;
+    role?: MemberRole;
+    model?: string;
+  }) => {
     try {
       await addGroupChatMember(member);
     } catch (error) {
@@ -1671,7 +1596,21 @@ export function WorkspaceChatPage() {
 
       {/* Main content - WeChat style layout */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Left: Executor List (resizable) */}
+        {/* Left: Executor List (resizable) - collapsible */}
+        {isLeftPanelCollapsed ? (
+          /* Collapsed state - show expand button */
+          <div className="border-r flex flex-col items-center py-3 px-1 bg-background shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9"
+              onClick={() => setIsLeftPanelCollapsed(false)}
+              title={t("chat.showPanel", "Show Panel")}
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
         <div
           className="relative border-r flex flex-col bg-background shrink-0 overflow-visible"
           style={{ width: leftPanelWidth }}
@@ -1679,8 +1618,8 @@ export function WorkspaceChatPage() {
           {/* Resize handle */}
           <ResizeHandle side="left" onResize={handleLeftPanelResize} />
           {/* Header with search and + button */}
-          <div className="p-3 border-b">
-            <div className="flex items-center gap-2">
+          <div className="px-3 py-2.5 border-b h-[57px] flex items-center">
+            <div className="flex items-center gap-2 flex-1">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1706,6 +1645,11 @@ export function WorkspaceChatPage() {
                     <Users className="h-4 w-4 mr-2" />
                     {t("chat.createGroup", "Create Group")}
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsLeftPanelCollapsed(true)}>
+                    <PanelLeftClose className="h-4 w-4 mr-2" />
+                    {t("chat.hidePanel", "Hide Panel")}
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -1726,6 +1670,7 @@ export function WorkspaceChatPage() {
                       groupChat={groupChat}
                       isSelected={groupChat.id === selectedGroupChatId}
                       isMuted={mutedGroupChats.has(groupChat.id)}
+                      source={workspace?.path ? { type: "workspace", path: workspace.path } : undefined}
                       onClick={() => handleSelectGroupChat(groupChat.id)}
                       onRename={() => handleOpenRenameDialog(groupChat.id, groupChat.name)}
                       onToggleMute={() => handleToggleMuteGroupChat(groupChat.id)}
@@ -1743,9 +1688,11 @@ export function WorkspaceChatPage() {
               <ExecutorList
                 executors={filteredExecutors}
                 selectedExecutorId={selectedSidebarExecutorId}
+                source={workspace?.path ? { type: "workspace", path: workspace.path } : undefined}
                 onSelect={(executor) => {
                   // Exit group chat mode and select executor
                   setSelectedGroupChatId(null);
+                  setSelectedGroupSessionId(null);
                   setSelectedSidebarExecutorId(executor.id);
                 }}
                 onSettings={(executor) => {
@@ -1771,9 +1718,11 @@ export function WorkspaceChatPage() {
                       isSelected={agent.id === selectedAgentId && !isGroupChatMode && !selectedSidebarExecutorId}
                       isDefault={agent.id === defaultAgentId}
                       sessionCount={conversations.filter((c) => c.agentId === agent.id).length}
+                      source={workspace?.path ? { type: "workspace", path: workspace.path } : undefined}
                       onSelect={() => {
                         // Exit group chat mode and executor mode, select agent
                         setSelectedGroupChatId(null);
+                        setSelectedGroupSessionId(null);
                         setSelectedSidebarExecutorId(null);
                         setSelectedAgentId(agent.id);
                       }}
@@ -1790,6 +1739,7 @@ export function WorkspaceChatPage() {
             </div>
           </ScrollArea>
         </div>
+        )}
 
         {/* Middle: Chat Area */}
         <div className="flex flex-1 w-0 flex-col min-w-0 overflow-hidden">
@@ -1797,7 +1747,7 @@ export function WorkspaceChatPage() {
           {isGroupChatMode && currentGroupChat ? (
             <>
               {/* Group Chat Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+              <div className="flex items-center justify-between px-4 border-b bg-background h-[57px]">
                 <div className="flex items-center gap-3">
                   {/* Group avatar */}
                   <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-sm">
@@ -1808,6 +1758,13 @@ export function WorkspaceChatPage() {
                       <span className="font-medium text-sm">
                         {currentGroupChat.group_chat.name}
                       </span>
+                      {/* Global badge */}
+                      {currentGroupChat.group_chat.is_global && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600">
+                          {t("groupChat.global", "Global")}
+                        </span>
+                      )}
+                      {/* Connection status */}
                       {groupChatConnected ? (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
                           {t("groupChat.connected", "Connected")}
@@ -1827,18 +1784,112 @@ export function WorkspaceChatPage() {
                 </div>
 
                 {/* Group Chat action buttons */}
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  {/* Session Selector */}
+                  <SessionSelector
+                    currentSession={
+                      currentGroupChatSession
+                        ? {
+                            id: currentGroupChatSession.id,
+                            name: currentGroupChatSession.title || `Session ${currentGroupChatSession.id.slice(0, 8)}`,
+                            createdAt: currentGroupChatSession.created_at,
+                            updatedAt: currentGroupChatSession.updated_at,
+                            messageCount: 0,
+                          }
+                        : undefined
+                    }
+                    sessions={groupChatSessions.map((s) => ({
+                      id: s.id,
+                      name: s.title || `Session ${s.id.slice(0, 8)}`,
+                      createdAt: s.created_at,
+                      updatedAt: s.updated_at,
+                      messageCount: 0,
+                    }))}
+                    onSelect={(session) => handleSelectGroupChatSession(session.id)}
+                    onCreateNew={handleCreateGroupChatSession}
+                    showCreateButton={true}
+                    agentName={currentGroupChat.group_chat.name}
+                  />
+
+                  {/* View Toggle */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 gap-1.5">
+                        {groupChatViewMode === "ui" ? (
+                          <>
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            {t("groupChat.viewUI", "Chat View")}
+                          </>
+                        ) : (
+                          <>
+                            <Bot className="h-3.5 w-3.5" />
+                            {t("groupChat.viewAgent", "Agent View")}
+                          </>
+                        )}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem
+                        onClick={() => handleSwitchGroupChatView("ui")}
+                        className={cn(groupChatViewMode === "ui" && "bg-accent")}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        {t("groupChat.viewUI", "Chat View")}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                        {t("groupChat.agentViews", "Agent Views")}
+                      </div>
+                      {sessionAgents.map((agentId) => {
+                        const agentMember = groupChatMembers.find(
+                          (m) => m.member_type === "agent" && m.id === agentId
+                        );
+                        return (
+                          <DropdownMenuItem
+                            key={agentId}
+                            onClick={() => handleSwitchGroupChatView("agent", agentId)}
+                            className={cn(
+                              groupChatViewMode === "agent" && groupChatViewAgentId === agentId && "bg-accent"
+                            )}
+                          >
+                            <Bot className="h-4 w-4 mr-2" />
+                            {agentMember?.display_name || agentId}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      {sessionAgents.length === 0 && (
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                          {t("groupChat.noAgents", "No agents in session")}
+                        </div>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
                     title={t("groupChat.viewDetails", "View Details")}
-                    onClick={() => setIsSidebarOpen(true)}
+                    onClick={() => setIsMembersDialogOpen(true)}
                   >
                     <Users className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
+
+              {/* Thinking agents indicator */}
+              {thinkingAgents.length > 0 && (
+                <div className="px-4 py-2 bg-muted/30 border-b flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {thinkingAgents.map((agentId) => {
+                      const agent = groupChatMembers.find((m) => m.id === agentId);
+                      return agent?.display_name || agentId;
+                    }).join(", ")}{" "}
+                    {t("groupChat.thinking", "thinking...")}
+                  </span>
+                </div>
+              )}
 
               {/* Group Chat Messages */}
               <GroupChatMessageList
@@ -1856,45 +1907,73 @@ export function WorkspaceChatPage() {
                 </div>
               )}
 
-              {/* Group Chat Input */}
-              <div className="border-t border-border p-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={t("groupChat.inputPlaceholder", "Type a message...")}
-                    value={groupChatInput}
-                    onChange={(e) => setGroupChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
+              {/* Group Chat Input - disabled in agent view */}
+              {groupChatViewMode === "ui" ? (
+                <div className="border-t border-border p-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("groupChat.inputPlaceholder", "Type a message...")}
+                      value={groupChatInput}
+                      onChange={(e) => setGroupChatInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendGroupChatMessage(groupChatInput);
+                          setGroupChatInput("");
+                        }
+                      }}
+                      onFocus={() => sendTyping(true)}
+                      onBlur={() => sendTyping(false)}
+                      className="flex-1"
+                      disabled={!selectedGroupSessionId}
+                    />
+                    <Button
+                      onClick={() => {
                         handleSendGroupChatMessage(groupChatInput);
                         setGroupChatInput("");
-                      }
-                    }}
-                    onFocus={() => sendTyping(true)}
-                    onBlur={() => sendTyping(false)}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={() => {
-                      handleSendGroupChatMessage(groupChatInput);
-                      setGroupChatInput("");
-                    }}
-                    disabled={!groupChatInput.trim() || isLoadingGroupChat}
-                  >
-                    {t("common.send", "Send")}
-                  </Button>
+                      }}
+                      disabled={!groupChatInput.trim() || isLoadingGroupChat || !selectedGroupSessionId}
+                    >
+                      {t("common.send", "Send")}
+                    </Button>
+                  </div>
+                  {!selectedGroupSessionId && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {t("groupChat.selectSession", "Select or create a session to start chatting")}
+                    </p>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="border-t border-border p-4 bg-muted/20">
+                  <p className="text-sm text-muted-foreground text-center">
+                    {t("groupChat.agentViewReadOnly", "Agent view is read-only. Switch to Chat View to send messages.")}
+                  </p>
+                </div>
+              )}
             </>
           ) : selectedSidebarExecutorId && selectedSidebarExecutor ? (
             <>
               {/* Executor Chat Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+              <div className="flex items-center justify-between px-4 border-b bg-background h-[57px]">
                 <div className="flex items-center gap-3">
-                  {/* Executor avatar */}
-                  <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center shadow-sm">
+                  {/* Executor avatar - clickable to show details */}
+                  <button
+                    type="button"
+                    className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
+                    onClick={() => {
+                      setRightSidebarExecutorDetail({
+                        id: selectedSidebarExecutor.id,
+                        name: selectedSidebarExecutor.name,
+                        type: selectedSidebarExecutor.type,
+                        status: gatewayConnected ? "online" : "offline",
+                      });
+                      setRightSidebarAgentDetail(null);
+                      setIsSidebarOpen(true);
+                    }}
+                    title={t("executor.showDetails", "Show executor details")}
+                  >
                     <Terminal className="h-5 w-5 text-white" />
-                  </div>
+                  </button>
                   <div>
                     <div className="flex items-center gap-2">
                       {/* Session Selector for Executor */}
@@ -2015,6 +2094,7 @@ export function WorkspaceChatPage() {
                       className="flex-1 w-full h-full min-w-0 overflow-hidden"
                       simpleMode
                       maxMessageWidth="100%"
+                      autoScroll
                     />
                   )}
                 </>
@@ -2057,12 +2137,29 @@ export function WorkspaceChatPage() {
           ) : selectedConversationId ? (
             <>
               {/* Chat Header - WeChat style */}
-              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+              <div className="flex items-center justify-between px-4 border-b bg-background h-[57px]">
                 <div className="flex items-center gap-3">
-                  {/* Agent avatar */}
-                  <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm">
+                  {/* Agent avatar - clickable to show details */}
+                  <button
+                    type="button"
+                    className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
+                    onClick={() => {
+                      if (currentAgent) {
+                        setRightSidebarAgentDetail({
+                          id: currentAgent.id,
+                          name: currentAgent.name,
+                          type: currentAgent.type,
+                          model: currentAgent.model,
+                          description: currentAgent.systemPrompt?.substring(0, 200),
+                        });
+                        setRightSidebarExecutorDetail(null);
+                        setIsSidebarOpen(true);
+                      }
+                    }}
+                    title={t("agent.showDetails", "Show agent details")}
+                  >
                     <Bot className="h-5 w-5 text-white" />
-                  </div>
+                  </button>
                   <div>
                     <div className="flex items-center gap-2">
                       {/* Session Selector */}
@@ -2315,9 +2412,21 @@ export function WorkspaceChatPage() {
           onAddMember={addGroupChatMember}
           onRemoveMember={removeGroupChatMember}
           onUpdateGroupChat={(data) => updateGroupChat(selectedGroupChatId!, data)}
-          onLeaveGroupChat={leaveGroupChat}
+          onLeaveGroupChat={handleLeaveGroupChat}
           onDeleteGroupChat={() => deleteGroupChat(selectedGroupChatId!)}
           isGroupChatLoading={isLoadingGroupChat}
+          // Agent/Executor detail props
+          agentDetail={rightSidebarAgentDetail}
+          executorDetail={rightSidebarExecutorDetail}
+          onAgentSettings={(agentId) => {
+            if (workspaceId) {
+              navigate(`/workspace/${workspaceId}/agent/${agentId}`);
+            }
+          }}
+          onExecutorSettings={(executorId) => {
+            // Navigate to executor settings or show modal
+            console.log("[WorkspaceChat] Executor settings:", executorId);
+          }}
         />
       </div>
 

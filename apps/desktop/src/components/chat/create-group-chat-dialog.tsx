@@ -28,17 +28,18 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/hooks/use-viben-agents";
-import type { MemberType, MemberRole } from "@/lib/gateway";
+import type { MemberRole } from "@/lib/gateway";
 
 // ============================================================================
 // Types
 // ============================================================================
 
 interface MemberInput {
-  member_type: MemberType;
+  member_type: "human" | "agent";
   member_id: string;
   display_name: string;
   role?: MemberRole;
+  model?: string;
 }
 
 interface CreateGroupChatDialogProps {
@@ -116,6 +117,7 @@ export function CreateGroupChatDialog({
         member_type: "agent" as const,
         member_id: agentId,
         display_name: agent?.name || agentId,
+        model: agent?.model,
       };
     });
 

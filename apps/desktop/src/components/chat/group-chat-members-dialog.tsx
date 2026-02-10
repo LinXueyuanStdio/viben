@@ -10,7 +10,6 @@ import {
   Users,
   User,
   Bot,
-  Terminal,
   Crown,
   Shield,
   UserMinus,
@@ -59,10 +58,11 @@ interface GroupChatMembersDialogProps {
   onRemoveMember?: (memberId: string) => Promise<void>;
   /** Called when a member is added */
   onAddMember?: (member: {
-    member_type: MemberType;
+    type: MemberType;
     member_id: string;
     display_name: string;
     role?: MemberRole;
+    model?: string;
   }) => Promise<void>;
   /** Whether member operations are loading */
   isLoading?: boolean;
@@ -81,8 +81,6 @@ function getMemberTypeIcon(type: MemberType) {
       return User;
     case "agent":
       return Bot;
-    case "executor":
-      return Terminal;
     default:
       return User;
   }
@@ -202,7 +200,6 @@ function MemberListItem({
           <span>
             {member.member_type === "human" && t("groupChat.human", "Human")}
             {member.member_type === "agent" && t("groupChat.agent", "Agent")}
-            {member.member_type === "executor" && t("groupChat.executor", "Executor")}
           </span>
           <span className="text-muted-foreground/50">-</span>
           <span>
@@ -238,13 +235,14 @@ function MemberListItem({
 // ============================================================================
 
 interface AddMemberSectionProps {
-  availableAgents: Array<{ id: string; name: string }>;
+  availableAgents: Array<{ id: string; name: string; model?: string }>;
   existingMemberIds: string[];
   onAdd: (member: {
-    member_type: MemberType;
+    type: MemberType;
     member_id: string;
     display_name: string;
     role?: MemberRole;
+    model?: string;
   }) => Promise<void>;
   isLoading?: boolean;
 }
@@ -273,10 +271,11 @@ function AddMemberSection({
     setIsAdding(true);
     try {
       await onAdd({
-        member_type: "agent",
+        type: "agent",
         member_id: agent.id,
         display_name: agent.name,
         role: "member",
+        model: agent.model,
       });
       setSelectedAgentId("");
     } finally {
@@ -367,7 +366,7 @@ export function GroupChatMembersDialog({
   }, [members]);
 
   // Get existing member IDs for filtering add options
-  const existingMemberIds = members.map((m) => m.member_id);
+  const existingMemberIds = members.map((m) => m.id);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -390,11 +389,11 @@ export function GroupChatMembersDialog({
               <MemberListItem
                 key={member.id}
                 member={member}
-                isCurrentUser={member.member_id === currentUserId}
+                isCurrentUser={member.id === currentUserId}
                 canRemove={canRemoveMember(
                   currentUserRole,
                   member.role,
-                  member.member_id,
+                  member.id,
                   currentUserId
                 )}
                 onRemove={() => handleRemoveMember(member.id)}

@@ -17,7 +17,6 @@ import {
   Loader2,
   Star,
   Search,
-  Copy,
   ArrowLeft,
   Settings2,
   MessageSquare,
@@ -26,7 +25,6 @@ import {
   Code2,
   ChevronDown,
   ChevronRight,
-  MoreHorizontal,
   Server,
   Save,
   X,
@@ -75,6 +73,7 @@ import {
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Badge } from "@/components/ui/badge";
+import { AgentListItem, ExecutorListItem } from "@/components/chat";
 import { Separator } from "@/components/ui/separator";
 import { useLocalWorkspaces, useVibenAgents, useVibenModels, useWorkspaceAgents, useWorkspaceAgentsFromGateway } from "@/hooks";
 import {
@@ -625,72 +624,24 @@ export function WorkspaceAgentsPage({
                         {filteredExecutors.length}
                       </Badge>
                     </div>
-                    {filteredExecutors.map((item) => (
-                      <div
-                        key={`executor-${item.id}`}
-                        className={cn(
-                          "group relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
-                          selectedItemId === item.id && selectedItemType === "executor"
-                            ? "bg-orange-500/10 border border-orange-500/30 shadow-sm"
-                            : "hover:bg-muted/60 border border-transparent"
-                        )}
-                        onClick={() => {
-                          setSelectedItemId(item.id);
-                          setSelectedItemType("executor");
-                        }}
-                      >
-                        <Avatar className="h-11 w-11 shrink-0 ring-2 ring-orange-500/20">
-                          <AvatarFallback
-                            className={cn(
-                              "text-sm font-semibold",
-                              selectedItemId === item.id && selectedItemType === "executor"
-                                ? "bg-orange-500/20 text-orange-600"
-                                : "bg-orange-500/10 text-orange-600/70"
-                            )}
-                          >
-                            {item.name.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium truncate text-sm">{item.name}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                            <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-orange-500/30 text-orange-600">
-                              <Terminal className="h-2.5 w-2.5 mr-0.5" />
-                              {item.executorType}
-                            </Badge>
-                            {/* Config path popover */}
-                            {item.path && (
-                              <PathPopover
-                                path={item.path}
-                                locationType="workspace"
-                                side="top"
-                              />
-                            )}
-                          </div>
-                        </div>
-                        {/* Actions on hover */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditItem(item.id, "executor")}>
-                              <Settings2 className="h-4 w-4 mr-2" />
-                              {t("settingsAgents.configuration")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))}
+                    {filteredExecutors.map((item) => {
+                      // Find the original executor from workspaceExecutorsList
+                      const executor = workspaceExecutorsList.find((e) => e.id === item.id);
+                      if (!executor) return null;
+                      return (
+                        <ExecutorListItem
+                          key={`executor-${item.id}`}
+                          executor={executor}
+                          isSelected={selectedItemId === item.id && selectedItemType === "executor"}
+                          source={item.path ? { type: "workspace", path: item.path } : undefined}
+                          onSelect={() => {
+                            setSelectedItemId(item.id);
+                            setSelectedItemType("executor");
+                          }}
+                          onSettings={() => handleEditItem(item.id, "executor")}
+                        />
+                      );
+                    })}
                   </>
                 )}
 
@@ -712,117 +663,32 @@ export function WorkspaceAgentsPage({
                       </Badge>
                     </div>
                     {filteredAllAgents.map((item) => {
-                      // Check if this agent is based on a template
-                      const template = AGENT_TEMPLATES.find(
-                        (t) => t.id !== "blank" && item.name.includes(t.name)
-                      );
                       const isDefault = item.id === defaultAgentId;
                       const isWorkspaceAgent = item.type === "workspace-agent";
 
                       return (
-                        <div
+                        <AgentListItem
                           key={`${item.type}-${item.id}`}
-                          className={cn(
-                            "group relative flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all",
-                            selectedItemId === item.id && selectedItemType === item.type
-                              ? "bg-primary/10 border border-primary/30 shadow-sm"
-                              : "hover:bg-muted/60 border border-transparent"
-                          )}
-                          onClick={() => {
+                          agent={{
+                            id: item.id,
+                            name: item.name,
+                            description: item.description,
+                          }}
+                          isSelected={selectedItemId === item.id && selectedItemType === item.type}
+                          isDefault={isDefault}
+                          source={item.workspacePath ? {
+                            type: isWorkspaceAgent ? "workspace" : "global",
+                            path: item.workspacePath,
+                          } : undefined}
+                          onSelect={() => {
                             setSelectedItemId(item.id);
                             setSelectedItemType(item.type);
                           }}
-                        >
-                          {/* Default indicator */}
-                          {isDefault && (
-                            <div className="absolute -top-1 -right-1 z-10">
-                              <div className="bg-yellow-500 rounded-full p-0.5 shadow-sm">
-                                <Star className="h-2.5 w-2.5 text-white fill-white" />
-                              </div>
-                            </div>
-                          )}
-
-                          <Avatar className="h-11 w-11 shrink-0 ring-2 ring-primary/20">
-                            <AvatarFallback
-                              className={cn(
-                                "text-sm font-semibold",
-                                selectedItemId === item.id && selectedItemType === item.type
-                                  ? "bg-primary/20 text-primary"
-                                  : "bg-primary/10 text-primary/70"
-                              )}
-                            >
-                              {item.name.slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-medium truncate text-sm">{item.name}</span>
-                            </div>
-                            {item.description && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">
-                                {item.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-1">
-                              {/* Location badge with path popover (hover to show path) */}
-                              {item.workspacePath && (
-                                <PathPopover
-                                  path={item.workspacePath}
-                                  locationType={isWorkspaceAgent ? "workspace" : "global"}
-                                  side="top"
-                                />
-                              )}
-                              {isDefault && (
-                                <Badge className="text-[9px] px-1.5 py-0 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
-                                  {t("common.default")}
-                                </Badge>
-                              )}
-                              {template && (
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                                  <Sparkles className="h-2.5 w-2.5 mr-0.5" />
-                                  {t("settingsAgents.templates")}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          {/* Actions on hover */}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEditItem(item.id, item.type)}>
-                                <Settings2 className="h-4 w-4 mr-2" />
-                                {t("settingsAgents.configuration")}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCopyAgent(item.id, item.name)}>
-                                <Copy className="h-4 w-4 mr-2" />
-                                {t("common.copy")}
-                              </DropdownMenuItem>
-                              {!isDefault && !isWorkspaceAgent && (
-                                <DropdownMenuItem onClick={() => setDefaultAgent(item.id)}>
-                                  <Star className="h-4 w-4 mr-2" />
-                                  {t("agents.setDefault")}
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => handleDeleteAgent(item.id, item.name)}
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {t("common.delete")}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                          onSettings={() => handleEditItem(item.id, item.type)}
+                          onCopy={() => handleCopyAgent(item.id, item.name)}
+                          onSetDefault={!isDefault && !isWorkspaceAgent ? () => setDefaultAgent(item.id) : undefined}
+                          onDelete={() => handleDeleteAgent(item.id, item.name)}
+                        />
                       );
                     })}
                   </>

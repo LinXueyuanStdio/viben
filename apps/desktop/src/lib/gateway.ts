@@ -1318,9 +1318,29 @@ export class GatewayClient {
 
   /**
    * List all group chats
+   *
+   * @param params - Optional parameters for filtering
+   * @param params.workspace_path - Workspace path to list group chats from
+   * @param params.include_global - Whether to include global group chats (default: true)
    */
-  async listGroupChats(): Promise<GroupChat[]> {
-    const response = await fetch(`${this.baseUrl}/api/group-chats`, {
+  async listGroupChats(params?: ListGroupChatsParams): Promise<GroupChat[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.workspace_path) {
+      searchParams.set("workspace_path", params.workspace_path);
+    }
+    if (params?.include_global !== undefined) {
+      searchParams.set("include_global", String(params.include_global));
+    }
+    if (params?.created_by) {
+      searchParams.set("created_by", params.created_by);
+    }
+
+    const queryString = searchParams.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/group-chats?${queryString}`
+      : `${this.baseUrl}/api/group-chats`;
+
+    const response = await fetch(url, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -1352,8 +1372,9 @@ export class GatewayClient {
     });
 
     if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to create group chat: ${response.statusText}`,
+        `Failed to create group chat: ${errorMessage}`,
         response.status
       );
     }
@@ -1363,10 +1384,19 @@ export class GatewayClient {
 
   /**
    * Get a group chat by ID with its members
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
    */
-  async getGroupChat(groupChatId: string): Promise<GroupChatWithMembers> {
+  async getGroupChat(
+    groupChatId: string,
+    workspacePath: string
+  ): Promise<GroupChatWithMembers> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}?${searchParams.toString()}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -1385,13 +1415,21 @@ export class GatewayClient {
 
   /**
    * Update a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param request - Update request data
    */
   async updateGroupChat(
     groupChatId: string,
+    workspacePath: string,
     request: UpdateGroupChatRequest
   ): Promise<GroupChat> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}?${searchParams.toString()}`,
       {
         method: "PATCH",
         headers: {
@@ -1414,10 +1452,19 @@ export class GatewayClient {
 
   /**
    * Delete a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
    */
-  async deleteGroupChat(groupChatId: string): Promise<void> {
+  async deleteGroupChat(
+    groupChatId: string,
+    workspacePath: string
+  ): Promise<void> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}?${searchParams.toString()}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -1438,10 +1485,19 @@ export class GatewayClient {
 
   /**
    * List members of a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
    */
-  async listGroupChatMembers(groupChatId: string): Promise<GroupChatMember[]> {
+  async listGroupChatMembers(
+    groupChatId: string,
+    workspacePath: string
+  ): Promise<GroupChatMember[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/members`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members?${searchParams.toString()}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -1461,13 +1517,21 @@ export class GatewayClient {
 
   /**
    * Add a member to a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param request - Add member request data
    */
   async addGroupChatMember(
     groupChatId: string,
+    workspacePath: string,
     request: AddMemberRequest
   ): Promise<GroupChatMember> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/members`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members?${searchParams.toString()}`,
       {
         method: "POST",
         headers: {
@@ -1490,13 +1554,21 @@ export class GatewayClient {
 
   /**
    * Remove a member from a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param memberId - The member ID to remove
    */
   async removeGroupChatMember(
     groupChatId: string,
+    workspacePath: string,
     memberId: string
   ): Promise<void> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/members/${memberId}`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}/members/${memberId}?${searchParams.toString()}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -1511,24 +1583,175 @@ export class GatewayClient {
     }
   }
 
+  // ==========================================================================
+  // Group Chat Sessions
+  // ==========================================================================
+
   /**
-   * Leave a group chat
+   * List sessions for a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
    */
-  async leaveGroupChat(groupChatId: string): Promise<void> {
+  async listGroupChatSessions(
+    groupChatId: string,
+    workspacePath: string
+  ): Promise<GroupChatSession[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/leave`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions?${searchParams.toString()}`,
       {
-        method: "POST",
+        method: "GET",
         headers: { Accept: "application/json" },
       }
     );
 
     if (!response.ok) {
       throw new GatewayError(
-        `Failed to leave group chat: ${response.statusText}`,
+        `Failed to list group chat sessions: ${response.statusText}`,
         response.status
       );
     }
+
+    const data = await response.json();
+    return data.sessions as GroupChatSession[];
+  }
+
+  /**
+   * Create a new session for a group chat
+   *
+   * @param groupChatId - The group chat ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param request - Optional session creation request
+   */
+  async createGroupChatSession(
+    groupChatId: string,
+    workspacePath: string,
+    request?: CreateGroupChatSessionRequest
+  ): Promise<GroupChatSession> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions?${searchParams.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(request || {}),
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to create group chat session: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a group chat session by ID
+   *
+   * @param groupChatId - The group chat ID
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   */
+  async getGroupChatSession(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string
+  ): Promise<GroupChatSession> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to get group chat session: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a group chat session
+   *
+   * @param groupChatId - The group chat ID
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   */
+  async deleteGroupChatSession(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string
+  ): Promise<void> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}?${searchParams.toString()}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to delete group chat session: ${response.statusText}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * List available agents in a session (for view switching)
+   *
+   * @param groupChatId - The group chat ID
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   */
+  async listSessionAgents(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string
+  ): Promise<string[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}/agents?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      throw new GatewayError(
+        `Failed to list session agents: ${response.statusText}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.agents as string[];
   }
 
   // ==========================================================================
@@ -1536,26 +1759,33 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * List messages in a group chat
+   * List messages in a group chat session
+   *
+   * @param groupChatId - The group chat ID
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param params - Optional parameters for filtering
    */
   async listGroupChatMessages(
     groupChatId: string,
+    sessionId: string,
+    workspacePath: string,
     params?: ListGroupChatMessagesParams
-  ): Promise<GroupChatMessage[]> {
+  ): Promise<ListGroupChatMessagesResponse | ListAgentMessagesResponse> {
     const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+    if (params?.view) searchParams.set("view", params.view);
+    if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.before) searchParams.set("before", params.before);
-    if (params?.after) searchParams.set("after", params.after);
 
-    const queryString = searchParams.toString();
-    const url = queryString
-      ? `${this.baseUrl}/api/group-chats/${groupChatId}/messages?${queryString}`
-      : `${this.baseUrl}/api/group-chats/${groupChatId}/messages`;
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
+    const response = await fetch(
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}/messages?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
 
     if (!response.ok) {
       throw new GatewayError(
@@ -1564,19 +1794,28 @@ export class GatewayClient {
       );
     }
 
-    const data = await response.json();
-    return data.messages as GroupChatMessage[];
+    return response.json();
   }
 
   /**
-   * Send a message to a group chat
+   * Send a message to a group chat session
+   *
+   * @param groupChatId - The group chat ID
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param request - The message to send
    */
   async sendGroupChatMessage(
     groupChatId: string,
+    sessionId: string,
+    workspacePath: string,
     request: SendGroupChatMessageRequest
-  ): Promise<GroupChatMessage> {
+  ): Promise<SendGroupChatMessageResponse> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+
     const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/messages`,
+      `${this.baseUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}/messages?${searchParams.toString()}`,
       {
         method: "POST",
         headers: {
@@ -1594,31 +1833,7 @@ export class GatewayClient {
       );
     }
 
-    const data = await response.json();
-    return data.message as GroupChatMessage;
-  }
-
-  /**
-   * Delete a message from a group chat
-   */
-  async deleteGroupChatMessage(
-    groupChatId: string,
-    messageId: string
-  ): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/api/group-chats/${groupChatId}/messages/${messageId}`,
-      {
-        method: "DELETE",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      throw new GatewayError(
-        `Failed to delete message: ${response.statusText}`,
-        response.status
-      );
-    }
+    return response.json();
   }
 
   // ==========================================================================
@@ -1626,20 +1841,28 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * Connect to a group chat WebSocket for real-time updates
+   * Connect to a group chat session WebSocket for real-time updates
    *
    * @param groupChatId - The group chat ID
-   * @param memberType - Type of the connecting member (human/agent/executor)
+   * @param sessionId - The session ID
+   * @param workspacePath - The workspace path where the group chat is stored
+   * @param memberType - Type of the connecting member (human/agent)
    * @param memberId - ID of the connecting member
    * @returns WebSocket connection
    */
   connectGroupChatWs(
     groupChatId: string,
+    sessionId: string,
+    workspacePath: string,
     memberType: string,
     memberId: string
   ): WebSocket {
     const wsUrl = this.baseUrl.replace(/^http/, "ws");
-    const url = `${wsUrl}/api/group-chats/${groupChatId}/ws?member_type=${encodeURIComponent(memberType)}&member_id=${encodeURIComponent(memberId)}`;
+    const searchParams = new URLSearchParams();
+    searchParams.set("workspace_path", workspacePath);
+    searchParams.set("member_type", memberType);
+    searchParams.set("member_id", memberId);
+    const url = `${wsUrl}/api/group-chats/${groupChatId}/sessions/${sessionId}/ws?${searchParams.toString()}`;
     return new WebSocket(url);
   }
 }
@@ -1648,15 +1871,26 @@ export class GatewayClient {
 // Group Chat Types (for gateway client)
 // ============================================================================
 
+/** Group chat settings */
+export interface GroupChatSettings {
+  broadcast_mode: "all" | "mention_only";
+  show_thinking: boolean;
+  history_limit: number;
+}
+
 /** Group chat entity */
 export interface GroupChat {
   id: string;
   name: string;
   description?: string;
-  task_id?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
+  settings?: GroupChatSettings;
+  /** The workspace path where this group chat is stored */
+  workspace_path: string;
+  /** Whether this is a global group chat (from ~/.viben/) */
+  is_global: boolean;
 }
 
 /** Member type in a group chat */
@@ -1668,19 +1902,62 @@ export type MemberRole = "owner" | "admin" | "member";
 /** Member of a group chat */
 export interface GroupChatMember {
   id: string;
-  group_chat_id: string;
   member_type: MemberType;
   member_id: string;
   display_name: string;
   role: MemberRole;
+  model?: string;
   joined_at: string;
   last_seen_at?: string;
+}
+
+/** Group chat session */
+export interface GroupChatSession {
+  id: string;
+  group_chat_id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
+  active_agents: string[];
+  status: "active" | "archived";
+}
+
+/** UI Message type for group chat (user-facing view) */
+export type GroupChatUIMessageType =
+  | "user"
+  | "agent_thinking"
+  | "agent_response"
+  | "system";
+
+/** UI Message in a group chat session (user-facing view) */
+export interface GroupChatUIMessage {
+  id: string;
+  type: GroupChatUIMessageType;
+  timestamp: string;
+  sender_id?: string;
+  sender_name?: string;
+  content?: string;
+  agent_id?: string;
+  agent_name?: string;
+  status?: string;
+  event?: string;
+  data?: Record<string, unknown>;
+}
+
+/** Agent rollout message (agent view with tool calls) */
+export interface AgentRolloutMessage {
+  timestamp: string;
+  role: string;
+  content: string;
+  name?: string;
+  tool_calls?: Record<string, unknown>;
+  tool_call_id?: string;
 }
 
 /** Type of message content */
 export type MessageContentType = "text" | "code" | "file" | "system" | "tool_call";
 
-/** Message in a group chat */
+/** Message in a group chat (legacy format, kept for compatibility) */
 export interface GroupChatMessage {
   id: string;
   group_chat_id: string;
@@ -1695,18 +1972,22 @@ export interface GroupChatMessage {
   created_at: string;
 }
 
+/** Input for creating a member in a group chat */
+export interface CreateMemberInput {
+  type: "human" | "agent";
+  member_id: string;
+  display_name?: string;
+  role?: MemberRole;
+  model?: string;
+}
+
 /** Request to create a group chat */
 export interface CreateGroupChatRequest {
   name: string;
   description?: string;
-  task_id?: string;
+  workspace_path: string;
   created_by: string;
-  initial_members?: {
-    member_type: MemberType;
-    member_id: string;
-    display_name?: string;
-    role?: MemberRole;
-  }[];
+  members?: CreateMemberInput[];
 }
 
 /** Response containing group chat with members */
@@ -1723,26 +2004,61 @@ export interface UpdateGroupChatRequest {
 
 /** Request to add a member */
 export interface AddMemberRequest {
-  member_type: MemberType;
+  type: MemberType;
   member_id: string;
-  display_name?: string;
+  display_name: string;
   role?: MemberRole;
+  model?: string;
+}
+
+/** Request to create a session */
+export interface CreateGroupChatSessionRequest {
+  title?: string;
+  active_agents?: string[];
+}
+
+/** Parameters for listing group chats */
+export interface ListGroupChatsParams {
+  workspace_path?: string;
+  include_global?: boolean;
+  created_by?: string;
 }
 
 /** Parameters for listing messages */
 export interface ListGroupChatMessagesParams {
+  view?: "ui" | "agent";
+  agent_id?: string;
   limit?: number;
   before?: string;
-  after?: string;
+}
+
+/** Response for listing UI messages */
+export interface ListGroupChatMessagesResponse {
+  messages: GroupChatUIMessage[];
+  view: string;
+  agent_id?: string;
+  has_more: boolean;
+}
+
+/** Response for listing agent messages */
+export interface ListAgentMessagesResponse {
+  messages: AgentRolloutMessage[];
+  view: string;
+  agent_id: string;
+  has_more: boolean;
+}
+
+/** Response for sending a message */
+export interface SendGroupChatMessageResponse {
+  message: GroupChatUIMessage;
+  agents_triggered: string[];
 }
 
 /** Request to send a message */
 export interface SendGroupChatMessageRequest {
-  content_type?: MessageContentType;
   content: string;
-  mentions?: string[];
-  reply_to?: string;
-  metadata?: Record<string, unknown>;
+  sender_id: string;
+  sender_name: string;
 }
 
 // ============================================================================

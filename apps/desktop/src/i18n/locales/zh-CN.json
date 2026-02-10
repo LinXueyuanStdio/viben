@@ -620,7 +620,12 @@
     "addModelDescription": "手动添加模型 ID 到此服务商",
     "modelId": "模型 ID",
     "modelIdPlaceholder": "例如 gpt-4o, claude-3-opus-20240229",
-    "modelIdHint": "输入 API 所支持的模型 ID"
+    "modelIdHint": "输入 API 所支持的模型 ID",
+    "noModelsMatchSearch": "没有匹配搜索的模型",
+    "addModelManually": "手动添加模型",
+    "sourceDiscovered": "从 API 发现",
+    "sourcePredefined": "预定义模型",
+    "sourceManual": "手动添加"
   },
   "providers": {
     "title": "数据源",
