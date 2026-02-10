@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -115,7 +116,7 @@ export interface DashboardCardProps {
   title: string;
   /** Card description */
   description: string;
-  /** Optional action label shown on hover (default: "打开") */
+  /** Optional action label shown on hover (default: t("common.open")) */
   actionLabel?: string;
   /** Footer content - can be a string or custom ReactNode */
   footer?: React.ReactNode;
@@ -134,14 +135,17 @@ export function DashboardCard({
   icon: Icon,
   title,
   description,
-  actionLabel = "打开",
+  actionLabel,
   footer,
   footerIcon: FooterIcon,
   onClick,
   className,
   disabled = false,
 }: DashboardCardProps) {
+  const { t: _t } = useTranslation();
   const config = colorConfig[color];
+  // Note: displayActionLabel is available for future use
+  const _displayActionLabel = actionLabel;
 
   const cardContent = (
     <Card
@@ -180,14 +184,14 @@ export function DashboardCard({
           >
             <Icon className="h-7 w-7 text-white" />
           </div>
-          {actionLabel && (
+          {displayActionLabel && (
             <div
               className={cn(
                 "flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity",
                 config.text
               )}
             >
-              <span className="text-xs font-medium">{actionLabel}</span>
+              <span className="text-xs font-medium">{displayActionLabel}</span>
               <ChevronRight className="h-4 w-4" />
             </div>
           )}

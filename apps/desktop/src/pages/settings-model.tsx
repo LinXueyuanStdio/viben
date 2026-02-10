@@ -48,6 +48,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
@@ -746,14 +747,16 @@ export function SettingsModelPage() {
                                 <span className="font-medium text-sm truncate">{model.name}</span>
                               </button>
                               <div className="flex items-center gap-2 flex-shrink-0">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <SourceIcon className={cn("h-3.5 w-3.5", sourceInfo.className)} />
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    <p className="text-xs">{sourceInfo.tooltip}</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <SourceIcon className={cn("h-3.5 w-3.5", sourceInfo.className)} />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      <p className="text-xs">{sourceInfo.tooltip}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 {model.context_window && (
                                   <Badge variant="outline" className="text-xs">
                                     {(model.context_window / 1000).toFixed(0)}K

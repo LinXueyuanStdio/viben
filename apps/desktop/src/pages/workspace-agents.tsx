@@ -70,43 +70,14 @@ interface AgentTemplate {
   color: string;
 }
 
-const AGENT_TEMPLATES: AgentTemplate[] = [
-  {
-    id: "blank",
-    name: "空白创建",
-    description: "从零开始创建智能体",
-    icon: <Plus className="h-5 w-5" />,
-    color: "bg-muted",
-  },
-  {
-    id: "general",
-    name: "通用结构",
-    description: "适用于多种场景的提示词结构",
-    icon: <Sparkles className="h-5 w-5" />,
-    color: "bg-purple-500/10 text-purple-500",
-  },
-  {
-    id: "task",
-    name: "任务执行",
-    description: "适用于明确工作步骤的任务执行",
-    icon: <Workflow className="h-5 w-5" />,
-    color: "bg-blue-500/10 text-blue-500",
-  },
-  {
-    id: "roleplay",
-    name: "角色扮演",
-    description: "适用于聊天场景",
-    icon: <MessageSquare className="h-5 w-5" />,
-    color: "bg-green-500/10 text-green-500",
-  },
-  {
-    id: "coding",
-    name: "编程助手",
-    description: "专为代码开发优化",
-    icon: <Code2 className="h-5 w-5" />,
-    color: "bg-orange-500/10 text-orange-500",
-  },
-];
+// Template definitions - names/descriptions are i18n keys
+const AGENT_TEMPLATE_DEFS = [
+  { id: "blank", nameKey: "settingsAgents.templates.blank", descKey: "settingsAgents.templates.blankDesc", icon: <Plus className="h-5 w-5" />, color: "bg-muted" },
+  { id: "general", nameKey: "settingsAgents.templates.general", descKey: "settingsAgents.templates.generalDesc", icon: <Sparkles className="h-5 w-5" />, color: "bg-purple-500/10 text-purple-500" },
+  { id: "task", nameKey: "settingsAgents.templates.task", descKey: "settingsAgents.templates.taskDesc", icon: <Workflow className="h-5 w-5" />, color: "bg-blue-500/10 text-blue-500" },
+  { id: "roleplay", nameKey: "settingsAgents.templates.roleplay", descKey: "settingsAgents.templates.roleplayDesc", icon: <MessageSquare className="h-5 w-5" />, color: "bg-green-500/10 text-green-500" },
+  { id: "coding", nameKey: "settingsAgents.templates.coding", descKey: "settingsAgents.templates.codingDesc", icon: <Code2 className="h-5 w-5" />, color: "bg-orange-500/10 text-orange-500" },
+] as const;
 
 // ============================================================================
 // Main Component
@@ -168,6 +139,16 @@ export function WorkspaceAgentsPage({
 }: WorkspaceAgentsPageProps = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  // Translate agent templates
+  const AGENT_TEMPLATES: AgentTemplate[] = useMemo(() =>
+    AGENT_TEMPLATE_DEFS.map(def => ({
+      id: def.id,
+      name: t(def.nameKey),
+      description: t(def.descKey),
+      icon: def.icon,
+      color: def.color,
+    })), [t]);
   const { workspaceId: routeWorkspaceId } = useParams<{ workspaceId: string }>();
   const { getWorkspace, isLoading: isLoadingWorkspaces, workspaces } = useLocalWorkspaces();
 
@@ -381,7 +362,7 @@ export function WorkspaceAgentsPage({
   const handleCopyAgent = async (_agentId: string, agentName: string) => {
     try {
       const newAgent = await createAgent({
-        name: `${agentName} (副本)`,
+        name: t("settingsAgents.copyName", { name: agentName }),
       });
       setSelectedItemId(newAgent.id);
       setSelectedItemType("agent");

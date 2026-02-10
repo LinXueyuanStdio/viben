@@ -3049,6 +3049,8 @@ mod tests {
                 created_at: "2024-01-01T00:00:00Z".to_string(),
                 updated_at: "2024-01-01T00:00:00Z".to_string(),
                 settings: GroupChatSettings::default(),
+                workspace_path: "/tmp/test".to_string(),
+                is_global: false,
             };
 
             let json = serde_json::to_string(&response).unwrap();
@@ -3064,6 +3066,7 @@ mod tests {
             let response = GroupChatMemberResponse {
                 id: "member-1".to_string(),
                 member_type: "human".to_string(),
+                member_id: "user-1".to_string(),
                 display_name: "User One".to_string(),
                 role: "owner".to_string(),
                 model: None,
@@ -4162,6 +4165,571 @@ mod tests {
 
             // Should return 400 Bad Request for invalid workspace path
             assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        }
+    }
+
+    // =========================================================================
+    // Chat List API Tests (/api/chat-list)
+    // =========================================================================
+
+    mod chat_list_tests {
+        use super::*;
+        use axum::body::to_bytes;
+
+        /// Test GET /api/chat-list returns proper structure
+        ///
+        /// Expected response:
+        /// {
+        ///   "workspace_path": "/path/to/workspace",
+        ///   "items": [
+        ///     {
+        ///       "id": "group-123",
+        ///       "name": "Group Chat Name",
+        ///       "item_type": "group_chat",
+        ///       "source": "global",
+        ///       "workspace_path": "~/.viben",
+        ///       "description": "Optional description",
+        ///       "icon_type": "group",
+        ///       "metadata": {...}
+        ///     },
+        ///     {
+        ///       "id": "claude-code",
+        ///       "name": "Claude Code",
+        ///       "item_type": "executor",
+        ///       "source": "workspace",
+        ///       "workspace_path": "/path/to/workspace",
+        ///       "icon_type": "claude-code",
+        ///       "metadata": {"is_installed": true, "executor_type": "claude-code"}
+        ///     },
+        ///     {
+        ///       "id": "viben:my-agent",
+        ///       "name": "my-agent",
+        ///       "item_type": "agent",
+        ///       "source": "workspace",
+        ///       "workspace_path": "/path/to/workspace",
+        ///       "icon_type": "viben",
+        ///       "metadata": {"agent_type": "viben"}
+        ///     }
+        ///   ],
+        ///   "total": 3,
+        ///   "counts": {
+        ///     "group_chats": 1,
+        ///     "executors": 1,
+        ///     "agents": 1
+        ///   }
+        /// }
+        #[tokio::test]
+        async fn test_chat_list_basic_structure() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Check response structure
+            assert!(json["workspace_path"].is_string(), "Response should have workspace_path");
+            assert!(json["items"].is_array(), "Response should have items array");
+            assert!(json["total"].is_number(), "Response should have total count");
+            assert!(json["counts"].is_object(), "Response should have counts object");
+
+            // Check counts structure
+            let counts = &json["counts"];
+            assert!(counts["group_chats"].is_number(), "Counts should have group_chats");
+            assert!(counts["executors"].is_number(), "Counts should have executors");
+            assert!(counts["agents"].is_number(), "Counts should have agents");
+
+            println!("✓ /api/chat-list basic structure is correct");
+            println!("  Total items: {}", json["total"]);
+            println!("  Group chats: {}", counts["group_chats"]);
+            println!("  Executors: {}", counts["executors"]);
+            println!("  Agents: {}", counts["agents"]);
+        }
+
+        /// Test that each item in chat-list has required fields including workspace_path
+        #[tokio::test]
+        async fn test_chat_list_items_have_workspace_path() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().expect("items should be array");
+
+            for (i, item) in items.iter().enumerate() {
+                // Required fields
+                assert!(
+                    item["id"].is_string(),
+                    "Item {} should have id field", i
+                );
+                assert!(
+                    item["name"].is_string(),
+                    "Item {} should have name field", i
+                );
+                assert!(
+                    item["item_type"].is_string(),
+                    "Item {} should have item_type field", i
+                );
+                assert!(
+                    item["source"].is_string(),
+                    "Item {} should have source field (global/workspace)", i
+                );
+                assert!(
+                    item["workspace_path"].is_string(),
+                    "Item {} should have workspace_path field", i
+                );
+
+                // Validate item_type values
+                let item_type = item["item_type"].as_str().unwrap();
+                assert!(
+                    ["group_chat", "executor", "agent"].contains(&item_type),
+                    "Item {} has invalid item_type: {}", i, item_type
+                );
+
+                // Validate source values
+                let source = item["source"].as_str().unwrap();
+                assert!(
+                    ["global", "workspace"].contains(&source),
+                    "Item {} has invalid source: {}", i, source
+                );
+
+                // workspace_path should not be empty
+                let ws_path = item["workspace_path"].as_str().unwrap();
+                assert!(
+                    !ws_path.is_empty(),
+                    "Item {} workspace_path should not be empty", i
+                );
+
+                println!(
+                    "  ✓ Item {}: {} ({}) from {} at {}",
+                    i,
+                    item["name"].as_str().unwrap_or(""),
+                    item_type,
+                    source,
+                    ws_path
+                );
+            }
+
+            println!("✓ All {} items have required fields including workspace_path", items.len());
+        }
+
+        /// Test that executors have correct metadata
+        #[tokio::test]
+        async fn test_chat_list_executor_metadata() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+            let executors: Vec<_> = items
+                .iter()
+                .filter(|i| i["item_type"] == "executor")
+                .collect();
+
+            for executor in &executors {
+                // Check icon_type
+                assert!(
+                    executor["icon_type"].is_string(),
+                    "Executor should have icon_type"
+                );
+
+                // Check metadata
+                let metadata = &executor["metadata"];
+                assert!(
+                    metadata.is_object(),
+                    "Executor should have metadata object"
+                );
+                assert!(
+                    metadata["is_installed"].is_boolean(),
+                    "Executor metadata should have is_installed"
+                );
+                assert!(
+                    metadata["executor_type"].is_string(),
+                    "Executor metadata should have executor_type"
+                );
+
+                println!(
+                    "  ✓ Executor: {} (type: {}, installed: {})",
+                    executor["name"].as_str().unwrap_or(""),
+                    executor["icon_type"].as_str().unwrap_or(""),
+                    metadata["is_installed"].as_bool().unwrap_or(false)
+                );
+            }
+
+            println!("✓ Found {} executors with correct metadata", executors.len());
+        }
+
+        /// Test that agents have correct metadata
+        #[tokio::test]
+        async fn test_chat_list_agent_metadata() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+            let agents: Vec<_> = items
+                .iter()
+                .filter(|i| i["item_type"] == "agent")
+                .collect();
+
+            for agent in &agents {
+                // Check icon_type
+                assert!(
+                    agent["icon_type"].is_string(),
+                    "Agent should have icon_type"
+                );
+
+                // Check metadata
+                let metadata = &agent["metadata"];
+                assert!(
+                    metadata.is_object(),
+                    "Agent should have metadata object"
+                );
+                assert!(
+                    metadata["agent_type"].is_string(),
+                    "Agent metadata should have agent_type"
+                );
+
+                println!(
+                    "  ✓ Agent: {} (type: {}, source: {})",
+                    agent["name"].as_str().unwrap_or(""),
+                    metadata["agent_type"].as_str().unwrap_or(""),
+                    agent["source"].as_str().unwrap_or("")
+                );
+            }
+
+            println!("✓ Found {} agents with correct metadata", agents.len());
+        }
+
+        /// Test chat-list with include_global=false (explicitly disabled)
+        #[tokio::test]
+        async fn test_chat_list_without_include_global() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=false",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+
+            // With include_global=false, all items should be from workspace
+            for item in items {
+                let source = item["source"].as_str().unwrap();
+                assert_eq!(
+                    source, "workspace",
+                    "With include_global=false, all items should be from workspace, found: {}",
+                    source
+                );
+            }
+
+            println!("✓ With include_global=false, returned {} workspace-only items", items.len());
+        }
+
+        /// Test chat-list with include_global=true includes global items
+        #[tokio::test]
+        async fn test_chat_list_with_include_global() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+
+            let global_count = items.iter().filter(|i| i["source"] == "global").count();
+            let workspace_count = items.iter().filter(|i| i["source"] == "workspace").count();
+
+            println!("✓ With include_global=true:");
+            println!("  Global items: {}", global_count);
+            println!("  Workspace items: {}", workspace_count);
+        }
+
+        /// Test chat-list with invalid workspace_path returns 400
+        #[tokio::test]
+        async fn test_chat_list_invalid_workspace_path() {
+            let app = test_app().await;
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri("/api/chat-list?workspace_path=/nonexistent/path/xyz")
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(
+                response.status(),
+                StatusCode::BAD_REQUEST,
+                "Invalid workspace_path should return 400"
+            );
+
+            println!("✓ Invalid workspace_path correctly returns 400 Bad Request");
+        }
+
+        /// Test chat-list total count matches items length
+        #[tokio::test]
+        async fn test_chat_list_total_count_matches() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+            let total = json["total"].as_u64().unwrap() as usize;
+            let counts = &json["counts"];
+
+            assert_eq!(
+                items.len(),
+                total,
+                "items.len() should equal total"
+            );
+
+            let group_chats_count = counts["group_chats"].as_u64().unwrap() as usize;
+            let executors_count = counts["executors"].as_u64().unwrap() as usize;
+            let agents_count = counts["agents"].as_u64().unwrap() as usize;
+
+            assert_eq!(
+                group_chats_count + executors_count + agents_count,
+                total,
+                "sum of counts should equal total"
+            );
+
+            // Verify actual counts
+            let actual_group_chats = items.iter().filter(|i| i["item_type"] == "group_chat").count();
+            let actual_executors = items.iter().filter(|i| i["item_type"] == "executor").count();
+            let actual_agents = items.iter().filter(|i| i["item_type"] == "agent").count();
+
+            assert_eq!(actual_group_chats, group_chats_count, "group_chats count mismatch");
+            assert_eq!(actual_executors, executors_count, "executors count mismatch");
+            assert_eq!(actual_agents, agents_count, "agents count mismatch");
+
+            println!("✓ Total count matches: {} items", total);
+            println!("  Group chats: {}, Executors: {}, Agents: {}",
+                group_chats_count, executors_count, agents_count);
+        }
+
+        /// Test that global items have correct workspace_path
+        #[tokio::test]
+        async fn test_chat_list_global_items_workspace_path() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+            let home_dir = dirs::home_dir().unwrap_or_default();
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            let items = json["items"].as_array().unwrap();
+
+            for item in items {
+                let source = item["source"].as_str().unwrap();
+                let item_workspace_path = item["workspace_path"].as_str().unwrap();
+
+                if source == "global" {
+                    // Global items should have workspace_path pointing to home or ~/.viben
+                    assert!(
+                        item_workspace_path.starts_with(home_dir.to_string_lossy().as_ref()),
+                        "Global item {} should have workspace_path under home dir, got: {}",
+                        item["name"].as_str().unwrap_or(""),
+                        item_workspace_path
+                    );
+                } else {
+                    // Workspace items should have the specified workspace_path
+                    assert_eq!(
+                        item_workspace_path, workspace_path,
+                        "Workspace item {} should have workspace_path = {}, got: {}",
+                        item["name"].as_str().unwrap_or(""),
+                        workspace_path,
+                        item_workspace_path
+                    );
+                }
+            }
+
+            println!("✓ All items have correct workspace_path based on their source");
+        }
+
+        /// Integration test: verify chat-list can be used to populate sidebar
+        #[tokio::test]
+        async fn test_chat_list_integration_sidebar_data() {
+            let app = test_app().await;
+            let workspace_path = "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben";
+
+            let response = app
+                .oneshot(
+                    Request::builder()
+                        .uri(&format!(
+                            "/api/chat-list?workspace_path={}&include_global=true",
+                            urlencoding::encode(workspace_path)
+                        ))
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+
+            let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+            let json: Value = serde_json::from_slice(&body).unwrap();
+
+            // Simulate frontend filtering
+            let items = json["items"].as_array().unwrap();
+
+            let group_chats: Vec<_> = items
+                .iter()
+                .filter(|i| i["item_type"] == "group_chat")
+                .collect();
+
+            let executors: Vec<_> = items
+                .iter()
+                .filter(|i| i["item_type"] == "executor")
+                .collect();
+
+            let agents: Vec<_> = items
+                .iter()
+                .filter(|i| i["item_type"] == "agent")
+                .collect();
+
+            println!("✓ Chat List Integration Test (Sidebar Data):");
+            println!("  └── Group Chats ({}):", group_chats.len());
+            for gc in &group_chats {
+                println!("      - {} [{}]",
+                    gc["name"].as_str().unwrap_or(""),
+                    gc["source"].as_str().unwrap_or("")
+                );
+            }
+            println!("  └── Executors ({}):", executors.len());
+            for exec in &executors {
+                let installed = exec["metadata"]["is_installed"].as_bool().unwrap_or(false);
+                println!("      - {} [{}] {}",
+                    exec["name"].as_str().unwrap_or(""),
+                    exec["source"].as_str().unwrap_or(""),
+                    if installed { "✓" } else { "✗" }
+                );
+            }
+            println!("  └── Agents ({}):", agents.len());
+            for agent in &agents {
+                println!("      - {} [{}]",
+                    agent["name"].as_str().unwrap_or(""),
+                    agent["source"].as_str().unwrap_or("")
+                );
+            }
         }
     }
 }

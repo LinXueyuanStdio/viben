@@ -12,6 +12,7 @@ import {
   sendNotification,
   type Options,
 } from '@tauri-apps/plugin-notification';
+import i18n from '@/i18n';
 
 // ============================================
 // Types
@@ -186,8 +187,8 @@ export async function notifyCronCompletion(
 
   // Use human-friendly status message
   const body = success
-    ? '✅ 定时任务执行完成'
-    : '❌ 定时任务执行失败';
+    ? `✅ ${i18n.t('notifications.system.cronJobCompleted')}`
+    : `❌ ${i18n.t('notifications.system.cronJobFailed')}`;
 
   return notify({ title, body });
 }

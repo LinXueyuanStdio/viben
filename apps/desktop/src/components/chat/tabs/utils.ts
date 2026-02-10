@@ -3,7 +3,6 @@
  */
 import {
   FileText,
-  Folder,
   FileCode,
   FileJson,
   ImageIcon,

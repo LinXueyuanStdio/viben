@@ -181,24 +181,25 @@ export function isGlobalAgent(agent: UnifiedAgent): boolean {
 // ============================================================================
 
 /**
- * 获取来源标签
+ * 获取来源标签的 i18n key
  */
-export function getAgentSourceLabel(agent: UnifiedAgent): string {
-  return agent.source === "workspace" ? "工作空间" : "全局";
+export function getAgentSourceLabelKey(agent: UnifiedAgent): string {
+  return agent.source === "workspace" ? "agent.sourceWorkspace" : "agent.sourceGlobal";
 }
 
 /**
- * 获取角色标签
+ * 获取角色标签的 i18n key
  */
-export function getAgentRoleLabel(agent: UnifiedAgent): string {
-  return agent.role === "executor" ? "执行器" : "智能体";
+export function getAgentRoleLabelKey(agent: UnifiedAgent): string {
+  return agent.role === "executor" ? "agent.roleExecutor" : "agent.roleAgent";
 }
 
 /**
- * 获取显示的简短名称
+ * 获取显示名称的 i18n key (如果名称为空)
  */
-export function getAgentDisplayName(agent: UnifiedAgent): string {
-  return agent.name || (agent.role === "executor" ? "未命名执行器" : "未命名智能体");
+export function getAgentDisplayNameKey(agent: UnifiedAgent): string | null {
+  if (agent.name) return null; // 有名称时返回 null，调用者直接使用 agent.name
+  return agent.role === "executor" ? "agent.unnamedExecutor" : "agent.unnamedAgent";
 }
 
 /**
