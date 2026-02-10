@@ -588,9 +588,28 @@ impl CronService {
         // Broadcast completed event
         self.events.broadcast(super::GatewayEvent::CronJobCompleted {
             job_id: job_id.to_string(),
-            status,
+            status: status.clone(),
             completed_at: Utc::now().timestamp_millis(),
         });
+
+        // Send system notification if enabled
+        if let Some(ref notifications) = job.notifications {
+            if notifications.system {
+                let success = matches!(status, JobStatus::Success);
+                if let Err(e) = crate::notifications::notify_cron_completion(
+                    &job.name,
+                    success,
+                    output.as_deref(),
+                ) {
+                    tracing::warn!(
+                        target: "viben::services::cron",
+                        "Failed to send system notification for job {}: {}",
+                        job_id,
+                        e
+                    );
+                }
+            }
+        }
 
         tracing::info!(
             target: "viben::services::cron",

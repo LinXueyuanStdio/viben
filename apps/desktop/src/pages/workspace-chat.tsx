@@ -22,6 +22,7 @@ import {
   Share2,
   Archive,
   RefreshCcw,
+  Terminal,
 } from "lucide-react";
 import { getGatewayClient, type FileSession, type UIMessage } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
@@ -63,15 +64,17 @@ import {
   GroupChatListItem,
   GroupChatMembersDialog,
 } from "@/components/chat";
-import { WorkspaceHeader } from "@/components/workspace";
+import { WorkspaceHeader, ExecutorList } from "@/components/workspace";
 import {
   useAgent,
   useVibenAgents,
   useLocalWorkspaces,
+  useWorkspaceAgents,
   useChatConfig,
   useGroupChat,
   useChatNotifications,
   useGroupNotifications,
+  useExecutorSessions,
 } from "@/hooks";
 import { cn } from "@/lib/utils";
 
@@ -502,6 +505,42 @@ export function WorkspaceChatPage() {
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
+  // Workspace Executors (auto-discovered backends like Claude Code, Cursor, etc.)
+  const {
+    agents: workspaceExecutors,
+    loading: isLoadingExecutors,
+    error: _executorsError,
+    loadAgents: loadExecutors,
+  } = useWorkspaceAgents(workspaceId || null);
+
+  // Selected executor for left sidebar (different from config bar executor)
+  const [selectedSidebarExecutorId, setSelectedSidebarExecutorId] = React.useState<string | null>(null);
+  // Selected executor session ID (from the session selector dropdown)
+  const [selectedExecutorSessionId, setSelectedExecutorSessionId] = React.useState<string | null>(null);
+
+  // Get executor sessions for the selected sidebar executor
+  const selectedSidebarExecutor = workspaceExecutors.find((e) => e.id === selectedSidebarExecutorId);
+  const {
+    sessions: executorSessions,
+    isLoading: isLoadingExecutorSessions,
+    error: _executorSessionsError,
+    refresh: refreshExecutorSessions,
+  } = useExecutorSessions(
+    selectedSidebarExecutor?.type || null,
+    workspace?.path || null
+  );
+
+  // Auto-select first executor session when sessions load
+  React.useEffect(() => {
+    if (executorSessions.length > 0 && !selectedExecutorSessionId) {
+      setSelectedExecutorSessionId(executorSessions[0].id);
+    }
+    // Clear selection when executor changes and has no sessions
+    if (executorSessions.length === 0 && selectedExecutorSessionId) {
+      setSelectedExecutorSessionId(null);
+    }
+  }, [executorSessions, selectedExecutorSessionId]);
+
   // Agents
   const { agents, defaultAgentId, setDefaultAgent } = useVibenAgents();
 
@@ -910,11 +949,33 @@ export function WorkspaceChatPage() {
     );
   }, [agents, searchQuery]);
 
+  // Filter executors by search query
+  const filteredExecutors = React.useMemo(() => {
+    if (!searchQuery.trim()) return workspaceExecutors;
+    const query = searchQuery.toLowerCase();
+    return workspaceExecutors.filter(
+      (e) =>
+        e.name.toLowerCase().includes(query) ||
+        e.type.toLowerCase().includes(query)
+    );
+  }, [workspaceExecutors, searchQuery]);
+
   // Get sessions/conversations for the selected agent
   const agentConversations = React.useMemo(() => {
     if (!selectedAgentId) return conversations;
     return conversations.filter((c) => c.agentId === selectedAgentId);
   }, [conversations, selectedAgentId]);
+
+  // Convert executor sessions to Session format for SessionSelector
+  const executorSessionsForSelector = React.useMemo(() => {
+    return executorSessions.map((session) => ({
+      id: session.id,
+      name: session.name || `Session ${session.id.slice(0, 8)}`,
+      createdAt: session.created_at,
+      updatedAt: session.updated_at,
+      messageCount: session.message_count,
+    }));
+  }, [executorSessions]);
 
   // Create new conversation for the selected agent
   const handleCreateConversation = async () => {
@@ -1375,7 +1436,7 @@ export function WorkspaceChatPage() {
 
       {/* Main content - WeChat style layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left: Agent List (resizable) */}
+        {/* Left: Executor List (resizable) */}
         <div
           className="relative border-r flex flex-col bg-background shrink-0 overflow-visible"
           style={{ width: leftPanelWidth }}
@@ -1388,7 +1449,7 @@ export function WorkspaceChatPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t("agent.searchAgents", "搜索智能体...")}
+                  placeholder={t("executor.searchExecutors", "Search executors...")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-9"
@@ -1404,18 +1465,18 @@ export function WorkspaceChatPage() {
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem onClick={() => setIsCreateAgentDialogOpen(true)}>
                     <Bot className="h-4 w-4 mr-2" />
-                    {t("agent.createAgent", "创建智能体")}
+                    {t("agent.createAgent", "Create Agent")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsCreateGroupDialogOpen(true)}>
                     <Users className="h-4 w-4 mr-2" />
-                    {t("chat.createGroup", "创建群聊")}
+                    {t("chat.createGroup", "Create Group")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
 
-          {/* Agent List */}
+          {/* Executor List */}
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
               {/* Group Chats Section */}
@@ -1437,37 +1498,59 @@ export function WorkspaceChatPage() {
                       onLeave={handleLeaveGroupChat}
                     />
                   ))}
+                </>
+              )}
+
+              {/* Executors Section */}
+              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t("executor.executors", "Executors")}
+              </div>
+              <ExecutorList
+                executors={filteredExecutors}
+                selectedExecutorId={selectedSidebarExecutorId}
+                onSelect={(executor) => {
+                  // Exit group chat mode and select executor
+                  setSelectedGroupChatId(null);
+                  setSelectedSidebarExecutorId(executor.id);
+                }}
+                onSettings={(executor) => {
+                  if (workspaceId) {
+                    navigate(`/workspace/${workspaceId}/executor/${executor.id}`);
+                  }
+                }}
+                onRefresh={loadExecutors}
+                isLoading={isLoadingExecutors}
+                className="px-0"
+              />
+
+              {/* Agents Section (if any agents exist) */}
+              {filteredAgents.length > 0 && (
+                <>
                   <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider mt-2">
                     {t("agent.agents", "Agents")}
                   </div>
+                  {filteredAgents.map((agent) => (
+                    <AgentListItem
+                      key={agent.id}
+                      agent={agent}
+                      isSelected={agent.id === selectedAgentId && !isGroupChatMode && !selectedSidebarExecutorId}
+                      isDefault={agent.id === defaultAgentId}
+                      sessionCount={conversations.filter((c) => c.agentId === agent.id).length}
+                      onSelect={() => {
+                        // Exit group chat mode and executor mode, select agent
+                        setSelectedGroupChatId(null);
+                        setSelectedSidebarExecutorId(null);
+                        setSelectedAgentId(agent.id);
+                      }}
+                      onSettings={() => {
+                        if (workspaceId) {
+                          navigate(`/workspace/${workspaceId}/agent/${agent.id}`);
+                        }
+                      }}
+                      onSetDefault={() => setDefaultAgent(agent.id)}
+                    />
+                  ))}
                 </>
-              )}
-              {filteredAgents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <Bot className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-sm">{t("agent.noAgents", "暂无智能体")}</p>
-                </div>
-              ) : (
-                filteredAgents.map((agent) => (
-                  <AgentListItem
-                    key={agent.id}
-                    agent={agent}
-                    isSelected={agent.id === selectedAgentId && !isGroupChatMode}
-                    isDefault={agent.id === defaultAgentId}
-                    sessionCount={conversations.filter((c) => c.agentId === agent.id).length}
-                    onSelect={() => {
-                      // Exit group chat mode and select agent
-                      setSelectedGroupChatId(null);
-                      setSelectedAgentId(agent.id);
-                    }}
-                    onSettings={() => {
-                      if (workspaceId) {
-                        navigate(`/workspace/${workspaceId}/agent/${agent.id}`);
-                      }
-                    }}
-                    onSetDefault={() => setDefaultAgent(agent.id)}
-                  />
-                ))
               )}
             </div>
           </ScrollArea>
@@ -1568,6 +1651,135 @@ export function WorkspaceChatPage() {
                 </div>
               </div>
             </>
+          ) : selectedSidebarExecutorId && selectedSidebarExecutor ? (
+            <>
+              {/* Executor Chat Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background">
+                <div className="flex items-center gap-3">
+                  {/* Executor avatar */}
+                  <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-amber-500 to-orange-400 flex items-center justify-center shadow-sm">
+                    <Terminal className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      {/* Session Selector for Executor */}
+                      <SessionSelector
+                        currentSession={
+                          selectedExecutorSessionId && executorSessionsForSelector.find(s => s.id === selectedExecutorSessionId)
+                            ? executorSessionsForSelector.find(s => s.id === selectedExecutorSessionId)
+                            : undefined
+                        }
+                        sessions={executorSessionsForSelector}
+                        onSelect={(session) => {
+                          setSelectedExecutorSessionId(session.id);
+                        }}
+                        onCreateNew={() => {
+                          // For executors, we typically don't create sessions from the UI
+                          // Sessions are created by the executor itself
+                          console.log("[WorkspaceChat] Create new executor session not implemented");
+                        }}
+                        showCreateButton={false}
+                        agentName={selectedSidebarExecutor.name}
+                      />
+                      {gatewayConnected === true ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-600">
+                          Gateway
+                        </span>
+                      ) : gatewayConnected === false ? (
+                        <span
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 cursor-pointer"
+                          onClick={checkGatewayConnection}
+                          title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
+                        >
+                          Offline
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          ...
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedSidebarExecutor.name} - {selectedSidebarExecutor.type}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex items-center gap-1">
+                  {/* Refresh sessions button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title={t("chat.refreshSessions", "Refresh sessions")}
+                    onClick={refreshExecutorSessions}
+                    disabled={isLoadingExecutorSessions}
+                  >
+                    <RefreshCcw className={cn("h-4 w-4", isLoadingExecutorSessions && "animate-spin")} />
+                  </Button>
+
+                  {/* Search in conversation */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title={t("chat.searchInConversation")}
+                    onClick={() => setIsSearchDialogOpen(true)}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Executor Messages - for now show placeholder */}
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                {isLoadingExecutorSessions ? (
+                  <div className="text-center">
+                    <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin opacity-50" />
+                    <p className="text-sm">{t("common.loading", "Loading sessions...")}</p>
+                  </div>
+                ) : executorSessions.length === 0 ? (
+                  <div className="text-center">
+                    <Terminal className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-2">
+                      {t("executor.noSessions", "No sessions found")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("executor.noSessionsHint", "Sessions will appear when you use this executor")}
+                    </p>
+                  </div>
+                ) : selectedExecutorSessionId ? (
+                  <DesktopMessageList
+                    messages={messages}
+                    isStreaming={isStreaming}
+                    pendingPlan={pendingPlan}
+                    pendingQuestions={pendingQuestions}
+                    onApprovePlan={approvePlan}
+                    onRejectPlan={rejectPlan}
+                    onAnswerQuestions={answerQuestions}
+                    className="flex-1 w-full h-full"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-2">
+                      {t("executor.selectSession", "Select a session")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {t("executor.selectSessionHint", "Choose a session from the dropdown above")}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Input (read-only for executor sessions - they're historical) */}
+              <div className="border-t border-border p-4">
+                <div className="text-center text-xs text-muted-foreground">
+                  {t("executor.readOnlyHint", "Executor sessions are read-only. Use the executor directly to create new sessions.")}
+                </div>
+              </div>
+            </>
           ) : selectedConversationId ? (
             <>
               {/* Chat Header - WeChat style */}
@@ -1628,7 +1840,7 @@ export function WorkspaceChatPage() {
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-600 cursor-pointer"
                           onClick={checkGatewayConnection}
-                          title={t("chat.gatewayOfflineHint", "Gateway 未连接，点击重试")}
+                          title={t("chat.gatewayOfflineHint", "Gateway offline, click to retry")}
                         >
                           Mock
                         </span>
@@ -1651,7 +1863,7 @@ export function WorkspaceChatPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    title={t("chat.refreshSessions", "刷新会话")}
+                    title={t("chat.refreshSessions", "Refresh sessions")}
                     onClick={refreshAgentSessions}
                     disabled={isLoadingSessions}
                   >
