@@ -485,6 +485,31 @@ export function WorkspaceChatPage() {
     );
   }, []);
 
+  // Left panel ScrollArea ref and width tracking for overflow fix
+  const leftPanelScrollRef = React.useRef<HTMLDivElement>(null);
+  const [leftPanelScrollWidth, setLeftPanelScrollWidth] = React.useState<number | null>(null);
+
+  // Track left panel scroll area width using ResizeObserver
+  React.useEffect(() => {
+    const scrollArea = leftPanelScrollRef.current;
+    if (!scrollArea) return;
+
+    const updateWidth = () => {
+      const width = scrollArea.getBoundingClientRect().width;
+      setLeftPanelScrollWidth(width);
+    };
+
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(scrollArea);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Constrain left panel content width to prevent overflow
+  const leftPanelContentStyle: React.CSSProperties = leftPanelScrollWidth
+    ? { width: leftPanelScrollWidth, maxWidth: leftPanelScrollWidth }
+    : {};
+
   // Conversation State
   const [conversations, setConversations] = React.useState<Conversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = React.useState<string | null>(null);
@@ -1687,8 +1712,8 @@ export function WorkspaceChatPage() {
           </div>
 
           {/* Executor List */}
-          <ScrollArea className="flex-1">
-            <div className="p-2 space-y-1">
+          <ScrollArea className="flex-1" ref={leftPanelScrollRef}>
+            <div className="p-2 space-y-1" style={leftPanelContentStyle}>
               {/* Group Chats Section */}
               {groupChats.length > 0 && (
                 <>

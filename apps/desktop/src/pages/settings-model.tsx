@@ -55,6 +55,7 @@ import {
   useVibenModels,
   type DiscoveredModel,
 } from "@/hooks/use-viben-models";
+import { getGatewayClient, type WorkspaceModel } from "@/lib/gateway";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -131,6 +132,7 @@ export function SettingsModelPage() {
 
   // Model discovery state
   const [discoveredModels, setDiscoveredModels] = useState<DiscoveredModel[]>([]);
+  const [predefinedModels, setPredefinedModels] = useState<WorkspaceModel[]>([]);
   const [enabledModelIds, setEnabledModelIds] = useState<string[]>([]);
   const [discoveringModels, setDiscoveringModels] = useState(false);
   const [modelSearchQuery, setModelSearchQuery] = useState("");

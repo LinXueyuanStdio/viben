@@ -649,10 +649,13 @@ export class GatewayClient {
    *
    * @param workspacePath - Optional workspace path to scope models (default: user home)
    * @param includeGlobal - Whether to include global models (default: true)
+   * @param includeProviderPredefined - Include predefined models for reference (default: false, used in Settings > Models)
    */
   async getModels(options?: {
     workspacePath?: string;
     includeGlobal?: boolean;
+    /** Include predefined models for reference (used in Settings > Models) */
+    includeProviderPredefined?: boolean;
   }): Promise<WorkspaceModelsResponse> {
     const params = new URLSearchParams();
     if (options?.workspacePath) {
@@ -660,6 +663,9 @@ export class GatewayClient {
     }
     if (options?.includeGlobal !== undefined) {
       params.set("include_global", String(options.includeGlobal));
+    }
+    if (options?.includeProviderPredefined) {
+      params.set("include_provider_predefined", "true");
     }
 
     const queryString = params.toString();

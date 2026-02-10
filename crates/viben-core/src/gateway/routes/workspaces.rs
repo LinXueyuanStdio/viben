@@ -23,6 +23,7 @@ use std::path::PathBuf;
 
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor, executors as exec};
+use crate::models::ModelManager;
 
 // ============================================================================
 // Common Types
@@ -263,6 +264,69 @@ pub async fn list_workspace_models(
         models,
         total,
     }))
+}
+
+/// Internal query for models with predefined option
+#[derive(Debug, Deserialize)]
+pub struct ModelsQueryInternal {
+    pub workspace_path: String,
+    pub include_provider_predefined: bool,
+}
+
+/// List models with optional predefined models
+///
+/// When include_provider_predefined=true, also returns predefined models from ModelManager
+/// for use in Settings > Models page to help users discover and add supported models.
+pub async fn list_workspace_models_with_predefined(
+    Query(query): Query<ModelsQueryInternal>,
+) -> Result<Json<WorkspaceModelsResponse>, GatewayError> {
+    let _workspace_path = query.workspace_path.clone();
+
+    // First get user-configured models
+    let mut response = list_workspace_models(
+        Query(WorkspaceQuery { workspace_path: query.workspace_path.clone() }),
+    ).await?.0;
+
+    // If include_provider_predefined=true, add predefined models from ModelManager
+    if query.include_provider_predefined {
+        let predefined_models = match ModelManager::list_models().await {
+            Ok(models) => models,
+            Err(e) => {
+                tracing::warn!(
+                    target: "viben::gateway::workspaces",
+                    "Failed to load predefined models: {}",
+                    e
+                );
+                Vec::new()
+            }
+        };
+
+        // Collect existing model IDs to avoid duplicates
+        let existing_ids: std::collections::HashSet<_> = response.models.iter()
+            .map(|m| m.id.clone())
+            .collect();
+
+        // Add predefined models that aren't already in the list
+        for m in predefined_models {
+            if !existing_ids.contains(&m.id) {
+                let provider_id = m.provider.to_string();
+                response.models.push(WorkspaceModel {
+                    id: m.id.clone(),
+                    name: m.name.clone(),
+                    provider_id: provider_id.clone(),
+                    provider_name: provider_id,
+                    capabilities: None,
+                    context_window: m.context_window,
+                    is_available: false, // Predefined but not user-configured
+                    has_workspace_override: false,
+                });
+            }
+        }
+
+        response.total = response.models.len();
+    }
+
+    Ok(Json(response))
 }
 
 // ============================================================================

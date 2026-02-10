@@ -479,49 +479,6 @@ export function MessageItem({
   className,
   maxWidth,
 }: MessageItemProps) {
-  // Debug: Track message card width
-  const cardRef = React.useRef<HTMLDivElement>(null);
-
-  React.useEffect(() => {
-    const logWidth = () => {
-      if (cardRef.current) {
-        const cardWidth = cardRef.current.getBoundingClientRect().width;
-        const parentWidth = cardRef.current.parentElement?.getBoundingClientRect().width;
-        const scrollWidth = cardRef.current.scrollWidth;
-
-        // Find overflowing children
-        const findOverflow = (el: Element, depth = 0): void => {
-          const rect = el.getBoundingClientRect();
-          const elScrollWidth = (el as HTMLElement).scrollWidth;
-          if (elScrollWidth > rect.width + 1) {
-            console.warn(`[MessageItem] Overflow at depth ${depth}:`, {
-              tagName: el.tagName,
-              className: el.className.substring(0, 100),
-              width: rect.width,
-              scrollWidth: elScrollWidth,
-            });
-          }
-          Array.from(el.children).forEach(child => findOverflow(child, depth + 1));
-        };
-
-        if (scrollWidth > (parentWidth || 0) + 1) {
-          console.warn('[MessageItem] Card overflow!', {
-            messageType: message.type,
-            messageId: message.id,
-            cardWidth,
-            scrollWidth,
-            parentWidth,
-            maxWidth,
-          });
-          findOverflow(cardRef.current);
-        }
-      }
-    };
-
-    // Log after render
-    requestAnimationFrame(logWidth);
-  }, [message.type, message.id, maxWidth]);
-
   // Style for max width constraint
   const maxWidthStyle = maxWidth
     ? { maxWidth } as React.CSSProperties
@@ -621,9 +578,8 @@ export function MessageItem({
     );
   }
 
-  // Always wrap in div with ref for width tracking
   return (
-    <div ref={cardRef} className={className} style={maxWidthStyle}>
+    <div className={className} style={maxWidthStyle}>
       {content}
     </div>
   );
