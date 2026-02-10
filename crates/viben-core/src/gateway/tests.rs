@@ -3493,6 +3493,8 @@ mod tests {
                 tool_input: None,
                 tool_output: None,
                 is_error: None,
+                subagent_id: None,
+                subagent_messages: None,
             };
 
             let json = serde_json::to_value(&message).unwrap();
