@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "preToolUse": [],
+    "postToolUse": [],
+    "onSessionStart": [],
+    "onSessionEnd": []
+  },
+  "permissions": {
+    "allow": [],
+    "deny": []
+  },
+  "env": {}
+}

@@ -1,0 +1,22 @@
+# Developer identity (local to each machine)
+.developer
+
+# Current task pointer (session state)
+.current-task
+
+# Ralph Loop state
+.ralph-state.json
+
+# Agent registry (runtime state)
+agents/
+
+# Log files
+*.log
+.agent-log
+.plan-log
+
+# Runner scripts (temporary)
+.agent-runner.sh
+
+# Session ID files
+.session-id
