@@ -351,11 +351,19 @@ async fn read_claude_code_session_messages(
 
     // Load subagent messages if requested
     if load_subagents {
-        // Get session directory (parent of the .jsonl file)
-        let session_dir = path.parent().ok_or_else(|| {
-            GatewayError::Internal("Cannot determine session directory".to_string())
+        // Directory structure: <project-path>/<session-id>.jsonl and <project-path>/<session-id>/subagents/
+        // Get the session ID from the filename (without .jsonl extension)
+        let session_id = path.file_stem()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| GatewayError::Internal("Cannot determine session ID".to_string()))?;
+
+        // Get project directory (parent of the .jsonl file)
+        let project_dir = path.parent().ok_or_else(|| {
+            GatewayError::Internal("Cannot determine project directory".to_string())
         })?;
-        let subagents_dir = session_dir.join("subagents");
+
+        // Subagents are in <project-dir>/<session-id>/subagents/
+        let subagents_dir = project_dir.join(session_id).join("subagents");
 
         for msg in &mut messages {
             if let Some(agent_id) = &msg.subagent_id {
@@ -378,6 +386,12 @@ async fn read_claude_code_session_messages(
                             );
                         }
                     }
+                } else {
+                    tracing::debug!(
+                        target: "viben::gateway::executors",
+                        "Subagent file not found: {}",
+                        subagent_file.display()
+                    );
                 }
             }
         }
