@@ -70,15 +70,16 @@ import {
   useAgent,
   useVibenAgents,
   useLocalWorkspaces,
-  useWorkspaceAgents,
   useChatConfig,
   useGroupChat,
   useChatNotifications,
   useGroupNotifications,
   useExecutorSessions,
   useExecutorSessionMessages,
+  useChatList,
 } from "@/hooks";
 import type { AgentMessage } from "@/types";
+import type { ChatListItem } from "@/lib/gateway";
 import { cn } from "@/lib/utils";
 
 // ============================================================================
@@ -379,13 +380,22 @@ export function WorkspaceChatPage() {
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
-  // Workspace Executors (auto-discovered backends like Claude Code, Cursor, etc.)
+  // Aggregated chat list from Gateway API (group chats, executors, agents)
+  // This is the single source of truth for the left sidebar list
   const {
-    agents: workspaceExecutors,
-    loading: isLoadingExecutors,
-    error: _executorsError,
-    loadAgents: loadExecutors,
-  } = useWorkspaceAgents(workspaceId || null);
+    groupChats: chatListGroupChats,
+    executors: chatListExecutors,
+    agents: chatListAgents,
+    loading: isLoadingChatList,
+    refresh: refreshChatList,
+  } = useChatList({
+    workspacePath: workspace?.path,
+    includeGlobal: true,
+  });
+
+  // Alias for backwards compatibility
+  const isLoadingExecutors = isLoadingChatList;
+  const loadExecutors = refreshChatList;
 
   // Selected executor for left sidebar (different from config bar executor)
   const [selectedSidebarExecutorId, setSelectedSidebarExecutorId] = React.useState<string | null>(null);
@@ -393,14 +403,17 @@ export function WorkspaceChatPage() {
   const [selectedExecutorSessionId, setSelectedExecutorSessionId] = React.useState<string | null>(null);
 
   // Get executor sessions for the selected sidebar executor
-  const selectedSidebarExecutor = workspaceExecutors.find((e) => e.id === selectedSidebarExecutorId);
+  const selectedSidebarExecutor = chatListExecutors.find((e) => e.id === selectedSidebarExecutorId);
+  // Get executor type from ChatListItem (stored in icon_type or metadata)
+  const selectedExecutorType = selectedSidebarExecutor?.icon_type || null;
+
   const {
     sessions: executorSessions,
     isLoading: isLoadingExecutorSessions,
     error: _executorSessionsError,
     refresh: refreshExecutorSessions,
   } = useExecutorSessions(
-    selectedSidebarExecutor?.type || null,
+    selectedExecutorType,
     workspace?.path || null
   );
 
@@ -422,7 +435,7 @@ export function WorkspaceChatPage() {
     error: _executorMessagesError,
     refresh: _refreshExecutorMessages,
   } = useExecutorSessionMessages(
-    selectedSidebarExecutor?.type || null,
+    selectedExecutorType,
     selectedExecutorSessionId,
     workspace?.path || null
   );
@@ -728,9 +741,10 @@ export function WorkspaceChatPage() {
   }, [workspace?.path, setGroupChatWorkspacePath]);
 
   // Load group chats when workspace path is available
+  // Include global group chats from ~/.viben/group-chats/
   React.useEffect(() => {
     if (workspace?.path) {
-      loadGroupChats({ workspace_path: workspace.path });
+      loadGroupChats({ workspace_path: workspace.path, include_global: true });
     }
   }, [workspace?.path, loadGroupChats]);
 

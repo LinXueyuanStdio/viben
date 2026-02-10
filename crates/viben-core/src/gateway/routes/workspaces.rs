@@ -7,6 +7,7 @@
 //! - /api/agents?workspace_path=...&include_global=true
 //! - /api/executors?workspace_path=...&include_global=true
 //! - /api/models?workspace_path=...&include_global=true
+//! - /api/chat-list?workspace_path=...&include_global=true (aggregated list)
 //!
 //! Default behavior:
 //! - workspace_path: defaults to user home directory (~)
@@ -17,6 +18,7 @@
 use axum::{
     Json, Router,
     extract::Query,
+    routing::get,
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -24,6 +26,7 @@ use std::path::PathBuf;
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor, executors as exec};
 use crate::models::ModelManager;
+use crate::group_chat::GroupChatService;
 
 // ============================================================================
 // Common Types
@@ -838,6 +841,276 @@ pub async fn list_agents(
 }
 
 // ============================================================================
+// Chat List API (Aggregated)
+// ============================================================================
+
+/// Item type in chat list
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChatListItemType {
+    GroupChat,
+    Executor,
+    Agent,
+}
+
+/// A unified chat list item that can represent group chat, executor, or agent
+#[derive(Debug, Clone, Serialize)]
+pub struct ChatListItem {
+    /// Unique identifier
+    pub id: String,
+    /// Display name
+    pub name: String,
+    /// Item type
+    pub item_type: ChatListItemType,
+    /// Source: "global" or "workspace"
+    pub source: String,
+    /// The workspace path this item belongs to
+    pub workspace_path: String,
+    /// Description (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    /// Icon/avatar hint (e.g., executor type, agent type)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon_type: Option<String>,
+    /// Additional metadata
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
+}
+
+/// Response for chat list
+#[derive(Debug, Serialize)]
+pub struct ChatListResponse {
+    pub workspace_path: String,
+    pub items: Vec<ChatListItem>,
+    pub total: usize,
+    /// Counts by type
+    pub counts: ChatListCounts,
+}
+
+/// Counts by item type
+#[derive(Debug, Serialize)]
+pub struct ChatListCounts {
+    pub group_chats: usize,
+    pub executors: usize,
+    pub agents: usize,
+}
+
+/// List all chat-related items (group chats, executors, agents) for a workspace
+/// GET /api/chat-list?workspace_path=...&include_global=true
+///
+/// Returns a unified list of items that can be shown in a chat sidebar.
+/// Includes:
+/// - Group chats (from workspace + global if include_global=true)
+/// - Executors with workspace config (Claude Code, Cursor, etc.)
+/// - Viben agents (from workspace + global if include_global=true)
+pub async fn list_chat_items(
+    Query(query): Query<ResourceQuery>,
+) -> Result<Json<ChatListResponse>, GatewayError> {
+    let workspace_path = query.workspace_path;
+    let workspace_dir = validate_workspace_path(&workspace_path)?;
+    let include_global = query.include_global;
+
+    tracing::debug!(
+        target: "viben::gateway::workspaces",
+        "Listing chat items for workspace: {} (include_global={})",
+        workspace_path, include_global
+    );
+
+    let mut items: Vec<ChatListItem> = Vec::new();
+
+    // Get global workspace path
+    let home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/"));
+    let global_workspace_path = home_dir.to_string_lossy().to_string();
+    let global_viben_path = home_dir.join(".viben");
+    let global_viben_path_str = global_viben_path.to_string_lossy().to_string();
+
+    // 1. Load Group Chats
+    // Global group chats
+    if include_global && global_viben_path.exists() {
+        let global_service = GroupChatService::new(global_viben_path.clone());
+        if let Ok(global_chats) = global_service.list_group_chats().await {
+            for gc in global_chats {
+                items.push(ChatListItem {
+                    id: gc.id.clone(),
+                    name: gc.name.clone(),
+                    item_type: ChatListItemType::GroupChat,
+                    source: "global".to_string(),
+                    workspace_path: global_viben_path_str.clone(),
+                    description: gc.description.clone(),
+                    icon_type: Some("group".to_string()),
+                    metadata: Some(serde_json::json!({
+                        "is_global": true,
+                        "created_at": gc.created_at.to_rfc3339(),
+                    })),
+                });
+            }
+        }
+    }
+
+    // Workspace group chats
+    let is_workspace_global = workspace_dir == home_dir || workspace_dir == global_viben_path;
+    if !is_workspace_global && workspace_dir.exists() {
+        let workspace_viben_path = workspace_dir.join(".viben");
+        if workspace_viben_path.exists() {
+            let service = GroupChatService::new(workspace_viben_path.clone());
+            if let Ok(workspace_chats) = service.list_group_chats().await {
+                for gc in workspace_chats {
+                    // Avoid duplicates
+                    if !items.iter().any(|i| i.id == gc.id) {
+                        items.push(ChatListItem {
+                            id: gc.id.clone(),
+                            name: gc.name.clone(),
+                            item_type: ChatListItemType::GroupChat,
+                            source: "workspace".to_string(),
+                            workspace_path: workspace_path.clone(),
+                            description: gc.description.clone(),
+                            icon_type: Some("group".to_string()),
+                            metadata: Some(serde_json::json!({
+                                "is_global": false,
+                                "created_at": gc.created_at.to_rfc3339(),
+                            })),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Load Executors (only those with workspace config)
+    for (id, name, config_folders) in EXECUTOR_CONFIGS {
+        let mut has_workspace_config = false;
+        let mut executor_source = "global".to_string();
+        let mut executor_workspace_path = global_workspace_path.clone();
+
+        // Check workspace config
+        for folder in *config_folders {
+            let config_dir = workspace_dir.join(folder);
+            if config_dir.exists() {
+                has_workspace_config = true;
+                executor_source = "workspace".to_string();
+                executor_workspace_path = workspace_path.clone();
+                break;
+            }
+        }
+
+        // Check global config if not found in workspace
+        if !has_workspace_config && include_global {
+            for folder in *config_folders {
+                let config_dir = home_dir.join(folder);
+                if config_dir.exists() {
+                    has_workspace_config = true;
+                    break;
+                }
+            }
+        }
+
+        // Only include executors that have config
+        if has_workspace_config {
+            // Check if installed
+            let availability = match create_executor_by_type(id) {
+                Ok(executor) => executor.get_availability_info(),
+                Err(_) => AvailabilityInfo::NotFound,
+            };
+
+            let is_installed = matches!(availability, AvailabilityInfo::LoginDetected { .. } | AvailabilityInfo::InstallationFound);
+
+            items.push(ChatListItem {
+                id: id.to_string(),
+                name: name.to_string(),
+                item_type: ChatListItemType::Executor,
+                source: executor_source,
+                workspace_path: executor_workspace_path,
+                description: None,
+                icon_type: Some(id.to_lowercase()),
+                metadata: Some(serde_json::json!({
+                    "is_installed": is_installed,
+                    "executor_type": id,
+                })),
+            });
+        }
+    }
+
+    // 3. Load Viben Agents
+    // Workspace agents
+    let viben_agents_dir = workspace_dir.join(".viben").join("agents");
+    if viben_agents_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&viben_agents_dir) {
+            for entry in entries.flatten() {
+                if entry.path().is_dir() {
+                    let agent_id = entry.file_name().to_string_lossy().to_string();
+                    items.push(ChatListItem {
+                        id: format!("viben:{}", agent_id),
+                        name: agent_id.clone(),
+                        item_type: ChatListItemType::Agent,
+                        source: "workspace".to_string(),
+                        workspace_path: workspace_path.clone(),
+                        description: None,
+                        icon_type: Some("viben".to_string()),
+                        metadata: Some(serde_json::json!({
+                            "agent_type": "viben",
+                        })),
+                    });
+                }
+            }
+        }
+    }
+
+    // Global agents
+    if include_global {
+        let global_agents_dir = home_dir.join(".viben").join("agents");
+        if global_agents_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&global_agents_dir) {
+                for entry in entries.flatten() {
+                    if entry.path().is_dir() {
+                        let agent_id = entry.file_name().to_string_lossy().to_string();
+                        let full_id = format!("viben:{}", agent_id);
+
+                        // Skip if already exists from workspace
+                        if !items.iter().any(|i| i.id == full_id) {
+                            items.push(ChatListItem {
+                                id: full_id,
+                                name: agent_id.clone(),
+                                item_type: ChatListItemType::Agent,
+                                source: "global".to_string(),
+                                workspace_path: global_workspace_path.clone(),
+                                description: None,
+                                icon_type: Some("viben".to_string()),
+                                metadata: Some(serde_json::json!({
+                                    "agent_type": "viben",
+                                })),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Calculate counts
+    let group_chats_count = items.iter().filter(|i| matches!(i.item_type, ChatListItemType::GroupChat)).count();
+    let executors_count = items.iter().filter(|i| matches!(i.item_type, ChatListItemType::Executor)).count();
+    let agents_count = items.iter().filter(|i| matches!(i.item_type, ChatListItemType::Agent)).count();
+    let total = items.len();
+
+    tracing::debug!(
+        target: "viben::gateway::workspaces",
+        "Found {} chat items: {} group chats, {} executors, {} agents",
+        total, group_chats_count, executors_count, agents_count
+    );
+
+    Ok(Json(ChatListResponse {
+        workspace_path,
+        items,
+        total,
+        counts: ChatListCounts {
+            group_chats: group_chats_count,
+            executors: executors_count,
+            agents: agents_count,
+        },
+    }))
+}
+
+// ============================================================================
 // Router
 // ============================================================================
 
@@ -847,10 +1120,12 @@ pub async fn list_agents(
 /// respective modules (agents.rs, executors.rs, models.rs) which delegate to functions here
 /// when workspace_path query parameter is provided.
 ///
-/// Legacy endpoints (/api/workspaces/*) have been removed. Use the unified endpoints instead:
+/// Endpoints:
+/// - /api/chat-list?workspace_path=...&include_global=true - Aggregated chat list
 /// - /api/agents?workspace_path=...&include_global=true
 /// - /api/executors?workspace_path=...&include_global=true
 /// - /api/models?workspace_path=...&include_global=true
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/api/chat-list", get(list_chat_items))
 }

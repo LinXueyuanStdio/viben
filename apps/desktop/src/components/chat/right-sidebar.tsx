@@ -164,10 +164,23 @@ interface RightSidebarProps {
   agentDetail?: AgentDetailInfo | null;
   /** Executor detail info - when provided, shows the executor detail tab */
   executorDetail?: ExecutorDetailInfo | null;
+  /** Workspace ID for loading executor capabilities (MCP, skills, commands) */
+  workspaceId?: string;
   /** Called when agent settings button is clicked */
   onAgentSettings?: (agentId: string) => void;
   /** Called when executor settings button is clicked */
   onExecutorSettings?: (executorId: string) => void;
+  // Agent detail panel props (for full editing support)
+  /** Whether the agent is the default agent */
+  isAgentDefault?: boolean;
+  /** Available models for agent selection */
+  agentModels?: Array<{ id: string; name: string; provider: string; enabled: boolean }>;
+  /** Called when agent is updated */
+  onAgentUpdate?: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
+  /** Called when agent is set as default */
+  onAgentSetDefault?: () => void;
+  /** Called when agent is deleted */
+  onAgentDelete?: () => void;
 }
 
 /**
@@ -268,8 +281,15 @@ export function RightSidebar({
   // Agent/Executor detail props
   agentDetail,
   executorDetail,
+  workspaceId,
   onAgentSettings,
   onExecutorSettings,
+  // Agent detail panel props
+  isAgentDefault,
+  agentModels,
+  onAgentUpdate,
+  onAgentSetDefault,
+  onAgentDelete,
 }: RightSidebarProps) {
   const { t } = useTranslation();
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
@@ -601,6 +621,11 @@ export function RightSidebar({
           <div className="p-3">
             <AgentDetailTabContent
               agent={agentDetail}
+              isDefault={isAgentDefault}
+              models={agentModels}
+              onUpdate={onAgentUpdate}
+              onSetDefault={onAgentSetDefault}
+              onDelete={onAgentDelete}
               onSettings={onAgentSettings}
             />
           </div>
@@ -610,6 +635,7 @@ export function RightSidebar({
           <div className="p-3">
             <ExecutorDetailTabContent
               executor={executorDetail}
+              workspaceId={workspaceId}
               onSettings={onExecutorSettings}
             />
           </div>

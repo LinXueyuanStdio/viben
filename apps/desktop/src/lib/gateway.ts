@@ -760,6 +760,47 @@ export class GatewayClient {
   }
 
   /**
+   * Get aggregated chat list (group chats, executors, agents)
+   *
+   * @param workspacePath - Workspace path to scope items
+   * @param includeGlobal - Whether to include global items (default: true)
+   *
+   * Returns a unified list of items that can be shown in a chat sidebar.
+   */
+  async getChatList(options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }): Promise<ChatListResponse> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    if (options?.includeGlobal !== undefined) {
+      params.set("include_global", String(options.includeGlobal));
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/chat-list?${queryString}`
+      : `${this.baseUrl}/api/chat-list`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get chat list: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
    * Helper to parse error message from response
    */
   private async parseErrorMessage(response: Response): Promise<string> {
@@ -2346,6 +2387,48 @@ export interface WorkspaceAgentsResponse {
   workspace_path: string;
   agents: WorkspaceAgent[];
   total: number;
+}
+
+// ============================================================================
+// Chat List Types (Aggregated sidebar list)
+// ============================================================================
+
+/** Item type in chat list */
+export type ChatListItemType = "group_chat" | "executor" | "agent";
+
+/** A unified chat list item that can represent group chat, executor, or agent */
+export interface ChatListItem {
+  /** Unique identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Item type */
+  item_type: ChatListItemType;
+  /** Source: "global" or "workspace" */
+  source: string;
+  /** The workspace path this item belongs to */
+  workspace_path: string;
+  /** Description (optional) */
+  description?: string;
+  /** Icon/avatar hint (e.g., executor type, agent type) */
+  icon_type?: string;
+  /** Additional metadata */
+  metadata?: Record<string, unknown>;
+}
+
+/** Counts by item type */
+export interface ChatListCounts {
+  group_chats: number;
+  executors: number;
+  agents: number;
+}
+
+/** Response for chat list */
+export interface ChatListResponse {
+  workspace_path: string;
+  items: ChatListItem[];
+  total: number;
+  counts: ChatListCounts;
 }
 
 /**

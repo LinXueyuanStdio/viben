@@ -1,23 +1,50 @@
 /**
  * Executor detail tab content for the right sidebar
+ *
+ * Uses the ExecutorDetailPanel component with compact mode for sidebar display.
  */
-import * as React from "react";
 import { useTranslation } from "react-i18next";
 import { Terminal, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { ExecutorDetailPanel } from "@/components/chat/executor-detail-panel";
 import type { ExecutorDetailTabContentProps } from "./types";
 
 /**
  * Executor detail tab content
+ *
+ * Shows executor details in compact mode for the sidebar.
+ * If workspaceId is provided, uses the full ExecutorDetailPanel with capabilities.
+ * Otherwise falls back to a simple display.
  */
 export function ExecutorDetailTabContent({
   executor,
+  workspaceId,
   onSettings,
 }: ExecutorDetailTabContentProps) {
   const { t } = useTranslation();
 
+  // If workspaceId is provided, use the full ExecutorDetailPanel
+  if (workspaceId) {
+    return (
+      <ExecutorDetailPanel
+        executor={{
+          id: executor.id,
+          name: executor.name,
+          type: executor.type,
+          config_path: undefined, // Not available in ExecutorDetailInfo
+        }}
+        workspaceId={workspaceId}
+        onNavigateToEdit={onSettings ? () => onSettings(executor.id) : undefined}
+        showHeader={true}
+        showConfigButton={!!onSettings}
+        compact={true}
+      />
+    );
+  }
+
+  // Fallback simple display when workspaceId is not available
   const getStatusColor = () => {
     switch (executor.status) {
       case "online":

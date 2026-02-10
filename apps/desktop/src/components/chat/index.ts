@@ -61,3 +61,13 @@ export type { ExecutorListItemProps } from "./executor-list-item";
 // Source Tooltip
 export { SourceTooltip, SourceBadge } from "./source-tooltip";
 export type { SourceTooltipProps, SourceBadgeProps, SourceType } from "./source-tooltip";
+
+// Collapsible Section
+export { CollapsibleSection } from "./collapsible-section";
+export type { CollapsibleSectionProps } from "./collapsible-section";
+
+// Detail Panels
+export { ExecutorDetailPanel } from "./executor-detail-panel";
+export type { ExecutorDetailPanelProps, ExecutorDetailData } from "./executor-detail-panel";
+export { AgentDetailPanel } from "./agent-detail-panel";
+export type { AgentDetailPanelProps, AgentDetailData, ModelOption } from "./agent-detail-panel";
