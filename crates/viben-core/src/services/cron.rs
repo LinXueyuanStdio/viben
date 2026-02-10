@@ -674,32 +674,40 @@ impl CronService {
             None => return,
         };
 
-        // Format the notification message
-        let status_emoji = match status {
-            JobStatus::Success => "✅",
-            JobStatus::Failure => "❌",
-            JobStatus::Running => "🔄",
-        };
+        // Format a human-friendly notification message
+        let message = match status {
+            JobStatus::Success => {
+                // For agent jobs, show the message that was sent
+                if job.job_type == CronJobType::Agent {
+                    let agent_message = job.message.as_deref().unwrap_or(&job.name);
+                    format!("✅ 【{}】已执行\n\n📝 {}", job.name, agent_message)
+                } else {
+                    // For script jobs, show a brief summary
+                    let output_preview = output
+                        .map(|o| {
+                            let trimmed = o.trim();
+                            if trimmed.len() > 100 {
+                                format!("{}...", &trimmed[..100])
+                            } else {
+                                trimmed.to_string()
+                            }
+                        })
+                        .filter(|o| !o.is_empty());
 
-        let status_text = match status {
-            JobStatus::Success => "completed successfully",
-            JobStatus::Failure => "failed",
-            JobStatus::Running => "is running",
-        };
-
-        let mut message = format!(
-            "{} Scheduled Task: {}\n\nStatus: {}\nTask: {}",
-            status_emoji,
-            job.name,
-            status_text,
-            job.name
-        );
-
-        if let Some(output_text) = output {
-            if !output_text.is_empty() {
-                message.push_str(&format!("\n\nOutput:\n{}", output_text));
+                    match output_preview {
+                        Some(preview) => format!("✅ 【{}】执行成功\n\n{}", job.name, preview),
+                        None => format!("✅ 【{}】执行成功", job.name),
+                    }
+                }
             }
-        }
+            JobStatus::Failure => {
+                let error_info = job.last_error.as_deref().unwrap_or("未知错误");
+                format!("❌ 【{}】执行失败\n\n错误: {}", job.name, error_info)
+            }
+            JobStatus::Running => {
+                format!("🔄 【{}】正在执行...", job.name)
+            }
+        };
 
         // Send to each configured channel
         for channel_id in &notifications.channel_ids {

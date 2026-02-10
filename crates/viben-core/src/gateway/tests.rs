@@ -2985,15 +2985,16 @@ mod tests {
         #[test]
         fn test_group_chat_response_serialize() {
             use crate::gateway::routes::group_chats::GroupChatResponse;
+            use crate::group_chat::GroupChatSettings;
 
             let response = GroupChatResponse {
                 id: "gc-1".to_string(),
                 name: "Test Chat".to_string(),
                 description: Some("Description".to_string()),
-                task_id: None,
                 created_by: "user-1".to_string(),
                 created_at: "2024-01-01T00:00:00Z".to_string(),
                 updated_at: "2024-01-01T00:00:00Z".to_string(),
+                settings: GroupChatSettings::default(),
             };
 
             let json = serde_json::to_string(&response).unwrap();
@@ -3008,11 +3009,10 @@ mod tests {
 
             let response = GroupChatMemberResponse {
                 id: "member-1".to_string(),
-                group_chat_id: "gc-1".to_string(),
                 member_type: "human".to_string(),
-                member_id: "user-1".to_string(),
                 display_name: "User One".to_string(),
                 role: "owner".to_string(),
+                model: None,
                 joined_at: "2024-01-01T00:00:00Z".to_string(),
                 last_seen_at: None,
             };
@@ -3024,27 +3024,27 @@ mod tests {
         }
 
         #[test]
-        fn test_group_chat_message_response_serialize() {
-            use crate::gateway::routes::group_chats::GroupChatMessageResponse;
+        fn test_ui_message_response_serialize() {
+            use crate::gateway::routes::group_chats::UIMessageResponse;
 
-            let response = GroupChatMessageResponse {
+            let response = UIMessageResponse {
                 id: "msg-1".to_string(),
-                group_chat_id: "gc-1".to_string(),
-                sender_id: "user-1".to_string(),
-                sender_type: "human".to_string(),
-                sender_name: "User One".to_string(),
-                content_type: "text".to_string(),
-                content: "Hello".to_string(),
-                mentions: vec![],
-                reply_to: None,
-                metadata: None,
-                created_at: "2024-01-01T00:00:00Z".to_string(),
+                msg_type: "user".to_string(),
+                timestamp: "2024-01-01T00:00:00Z".to_string(),
+                sender_id: Some("user-1".to_string()),
+                sender_name: Some("User One".to_string()),
+                content: Some("Hello".to_string()),
+                agent_id: None,
+                agent_name: None,
+                status: None,
+                event: None,
+                data: None,
             };
 
             let json = serde_json::to_string(&response).unwrap();
             assert!(json.contains("msg-1"));
             assert!(json.contains("Hello"));
-            assert!(json.contains("text"));
+            assert!(json.contains("user"));
         }
 
         // =====================================================================
@@ -3055,8 +3055,9 @@ mod tests {
         fn test_create_group_chat_request_deserialize() {
             use crate::gateway::routes::group_chats::CreateGroupChatRequest;
 
-            let json = r#"{"name":"Test","created_by":"user-1","description":"Desc"}"#;
+            let json = r#"{"workspace_path":"/tmp/test","name":"Test","created_by":"user-1","description":"Desc"}"#;
             let req: CreateGroupChatRequest = serde_json::from_str(json).unwrap();
+            assert_eq!(req.workspace_path, "/tmp/test");
             assert_eq!(req.name, "Test");
             assert_eq!(req.created_by, "user-1");
             assert_eq!(req.description, Some("Desc".to_string()));
@@ -3076,7 +3077,7 @@ mod tests {
         fn test_add_member_request_deserialize() {
             use crate::gateway::routes::group_chats::AddMemberRequest;
 
-            let json = r#"{"member_type":"human","member_id":"user-2","display_name":"User Two","role":"member"}"#;
+            let json = r#"{"type":"human","member_id":"user-2","display_name":"User Two","role":"member"}"#;
             let req: AddMemberRequest = serde_json::from_str(json).unwrap();
             assert_eq!(req.member_type, "human");
             assert_eq!(req.member_id, "user-2");
@@ -3088,11 +3089,11 @@ mod tests {
         fn test_send_message_request_deserialize() {
             use crate::gateway::routes::group_chats::SendMessageRequest;
 
-            let json = r#"{"content":"Hello","content_type":"text","mentions":["user-2"]}"#;
+            let json = r#"{"content":"Hello","sender_id":"user-1","sender_name":"User One"}"#;
             let req: SendMessageRequest = serde_json::from_str(json).unwrap();
             assert_eq!(req.content, "Hello");
-            assert_eq!(req.content_type, Some("text".to_string()));
-            assert_eq!(req.mentions, Some(vec!["user-2".to_string()]));
+            assert_eq!(req.sender_id, "user-1");
+            assert_eq!(req.sender_name, "User One");
         }
 
         // =====================================================================
@@ -3135,11 +3136,13 @@ mod tests {
         fn test_ws_client_command_deserialize() {
             use crate::gateway::routes::group_chats::WsClientCommand;
 
-            let json = r#"{"type":"send_message","content":"Hello"}"#;
+            let json = r#"{"type":"send_message","content":"Hello","sender_id":"user-1","sender_name":"User One"}"#;
             let cmd: WsClientCommand = serde_json::from_str(json).unwrap();
             match cmd {
-                WsClientCommand::SendMessage { content, .. } => {
+                WsClientCommand::SendMessage { content, sender_id, sender_name } => {
                     assert_eq!(content, "Hello");
+                    assert_eq!(sender_id, "user-1");
+                    assert_eq!(sender_name, "User One");
                 }
                 _ => panic!("Expected SendMessage command"),
             }
@@ -3151,15 +3154,6 @@ mod tests {
                     assert!(is_typing);
                 }
                 _ => panic!("Expected Typing command"),
-            }
-
-            let json = r#"{"type":"mark_read","message_id":"msg-1"}"#;
-            let cmd: WsClientCommand = serde_json::from_str(json).unwrap();
-            match cmd {
-                WsClientCommand::MarkRead { message_id } => {
-                    assert_eq!(message_id, "msg-1");
-                }
-                _ => panic!("Expected MarkRead command"),
             }
         }
     }

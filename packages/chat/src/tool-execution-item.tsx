@@ -8,6 +8,7 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Bot,
 } from "lucide-react";
 import { cn } from "@viben/ui";
 
@@ -44,6 +45,15 @@ export function ToolExecutionItem({
       : output
         ? "completed"
         : "pending";
+
+  // Check if this is a Task tool (sub-agent)
+  const isTaskTool = name === "Task";
+  const taskInput = isTaskTool && input ? input as {
+    subagent_type?: string;
+    description?: string;
+    prompt?: string;
+    model?: string;
+  } : null;
 
   const StatusIcon = {
     executing: Loader2,
@@ -135,6 +145,118 @@ export function ToolExecutionItem({
           )}
         </AnimatePresence>
       </div>
+    );
+  }
+
+  // Task tool gets a special display
+  if (isTaskTool && taskInput) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={cn("flex gap-3 w-full min-w-0", className)}
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
+          <Bot className="h-4 w-4 text-violet-500" />
+        </div>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 overflow-hidden">
+            {/* Header */}
+            <button
+              type="button"
+              onClick={() => hasDetails && setIsExpanded(!isExpanded)}
+              disabled={!hasDetails}
+              className={cn(
+                "flex w-full items-center gap-3 px-4 py-3 text-left",
+                hasDetails && "cursor-pointer hover:bg-violet-500/10",
+                "transition-colors"
+              )}
+            >
+              {hasDetails && (
+                <span className="shrink-0 text-violet-500">
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </span>
+              )}
+              <div className="flex flex-1 items-center gap-2 min-w-0">
+                <StatusIcon
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    status === "executing" ? "text-violet-500" : statusColor,
+                    status === "executing" && "animate-spin"
+                  )}
+                />
+                <span className="truncate font-medium text-sm text-violet-600 dark:text-violet-400">
+                  {t("chat.subAgent", "Sub-Agent")}: {taskInput.subagent_type || "unknown"}
+                </span>
+                {taskInput.description && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    — {taskInput.description}
+                  </span>
+                )}
+              </div>
+            </button>
+
+            {/* Expandable details */}
+            <AnimatePresence>
+              {isExpanded && hasDetails && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-violet-500/10 px-4 py-3 space-y-3 min-w-0 overflow-hidden">
+                    {/* Task prompt */}
+                    {taskInput.prompt && (
+                      <div className="min-w-0 overflow-hidden">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          {t("chat.taskPrompt", "Task Prompt")}
+                        </p>
+                        <pre className="overflow-x-auto overflow-y-auto rounded-lg bg-muted p-3 text-xs max-h-[200px] w-full">
+                          <code className="whitespace-pre-wrap break-all text-xs">{taskInput.prompt}</code>
+                        </pre>
+                      </div>
+                    )}
+
+                    {/* Model if specified */}
+                    {taskInput.model && (
+                      <div className="text-xs text-muted-foreground">
+                        {t("chat.model", "Model")}: <span className="font-medium">{taskInput.model}</span>
+                      </div>
+                    )}
+
+                    {/* Output */}
+                    {output && (
+                      <div className="min-w-0 overflow-hidden">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">
+                          {t("chat.subAgentResult", "Sub-Agent Result")}
+                        </p>
+                        <pre
+                          className={cn(
+                            "overflow-x-auto overflow-y-auto rounded-lg p-3 text-xs max-h-[300px] w-full",
+                            isError
+                              ? "bg-destructive/10 text-destructive"
+                              : "bg-muted"
+                          )}
+                        >
+                          <code className="whitespace-pre-wrap break-all text-xs">
+                            {output}
+                          </code>
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </motion.div>
     );
   }
 
