@@ -78,7 +78,7 @@ import {
   CreateTaskDialog,
   type CreateTaskData,
 } from "@/components/workspace";
-import { useLocalWorkspaces, useVibenAgents, useVibenModels } from "@/hooks";
+import { useLocalWorkspaces, useAgents, useModels } from "@/hooks";
 import {
   useVibeKanbanTasks,
   useVibeKanbanProjects,
@@ -322,16 +322,18 @@ export function WorkspaceKanbanPage() {
 
   // Fetch available agents and models for task creation
   const {
-    agents: vibenAgents,
     defaultAgentId,
     loading: isLoadingAgents,
-  } = useVibenAgents();
+    getVibenAgents,
+  } = useAgents({ workspacePath: workspace?.path });
+  // Filter to only viben agents for task assignment
+  const vibenAgents = getVibenAgents();
 
   const {
     models: vibenModels,
     defaultModelId,
     loading: isLoadingModels,
-  } = useVibenModels();
+  } = useModels();
 
   // Transform agents and models for CreateTaskDialog
   const availableAgents = useMemo(() =>
@@ -345,12 +347,12 @@ export function WorkspaceKanbanPage() {
 
   const availableModels = useMemo(() =>
     vibenModels
-      .filter((m) => m.enabled)
+      .filter((m) => m.is_available)
       .map((m) => ({
         id: m.id,
         name: m.name,
-        description: m.description,
-        provider: m.provider,
+        description: undefined, // WorkspaceModel doesn't have description
+        provider: m.provider_id,
       })),
     [vibenModels]
   );

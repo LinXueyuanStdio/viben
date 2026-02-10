@@ -68,8 +68,8 @@ import {
 import { WorkspaceHeader, ExecutorList } from "@/components/workspace";
 import {
   useAgent,
-  useVibenAgents,
-  useVibenModels,
+  useAgents,
+  useModels,
   useLocalWorkspaces,
   useChatConfig,
   useGroupChat,
@@ -362,18 +362,27 @@ export function WorkspaceChatPage() {
   const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
 
   // Right sidebar detail views
+  // Right sidebar detail views - using full data types from panel components
   const [rightSidebarAgentDetail, setRightSidebarAgentDetail] = React.useState<{
     id: string;
     name: string;
-    type?: string;
-    model?: string;
+    path?: string;
     description?: string;
+    model?: string;
+    provider?: string;
+    system_prompt?: string;
+    temperature?: number;
+    max_tokens?: number;
+    mcp_servers?: string[];
+    skills?: string[];
+    created_at?: string;
+    updated_at?: string;
   } | null>(null);
   const [rightSidebarExecutorDetail, setRightSidebarExecutorDetail] = React.useState<{
     id: string;
     name: string;
     type: string;
-    status?: "online" | "offline" | "unknown";
+    config_path?: string;
   } | null>(null);
 
   // Get workspace info
@@ -636,16 +645,16 @@ export function WorkspaceChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedExecutorType]); // Only trigger on executor type change, executorModels is derived from it
 
-  // Agents
-  const { agents, defaultAgentId, setDefaultAgent, updateAgent } = useVibenAgents();
+  // Agents (using Gateway API)
+  const { agents, defaultAgentId, setDefaultAgent, updateAgent, removeAgent } = useAgents({ workspacePath: workspace?.path });
 
   // Models for agent detail panel
-  const { models: vibenModels } = useVibenModels();
+  const { models: vibenModels } = useModels();
   const agentModelsForPanel = vibenModels.map((m) => ({
     id: m.id,
     name: m.name,
-    provider: m.provider,
-    enabled: m.enabled,
+    provider: m.provider_id,
+    enabled: m.is_available,
   }));
 
   // Get chat config for executor and agent selection
@@ -1784,6 +1793,7 @@ export function WorkspaceChatPage() {
                           }
                         } : undefined}
                         onSetDefault={fullAgent ? () => setDefaultAgent(chatListAgent.id) : undefined}
+                        onDelete={fullAgent ? () => removeAgent(chatListAgent.id) : undefined}
                       />
                     );
                   })}
@@ -2017,8 +2027,8 @@ export function WorkspaceChatPage() {
                       setRightSidebarExecutorDetail({
                         id: selectedSidebarExecutor.id,
                         name: selectedSidebarExecutor.name,
-                        type: (selectedSidebarExecutor.icon_type || "unknown") as import("@/types").ExecutorType,
-                        status: gatewayConnected ? "online" : "offline",
+                        type: selectedSidebarExecutor.icon_type || "unknown",
+                        config_path: (selectedSidebarExecutor.metadata?.config_path as string) || undefined,
                       });
                       setRightSidebarAgentDetail(null);
                       setIsSidebarOpen(true);
@@ -2201,9 +2211,17 @@ export function WorkspaceChatPage() {
                         setRightSidebarAgentDetail({
                           id: currentAgent.id,
                           name: currentAgent.name,
-                          type: currentAgent.executor_type || "viben",
+                          path: currentAgent.config_path,
+                          description: currentAgent.description,
                           model: currentAgent.model,
-                          description: currentAgent.system_prompt?.substring(0, 200),
+                          provider: currentAgent.provider,
+                          system_prompt: currentAgent.system_prompt,
+                          temperature: currentAgent.temperature,
+                          max_tokens: currentAgent.max_tokens,
+                          mcp_servers: currentAgent.mcp_servers,
+                          skills: currentAgent.skills,
+                          created_at: currentAgent.created_at,
+                          updated_at: currentAgent.updated_at,
                         });
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);

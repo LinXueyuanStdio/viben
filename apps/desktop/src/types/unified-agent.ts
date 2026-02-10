@@ -7,7 +7,10 @@
  */
 
 import type { Executor, ExecutorType } from "./index";
-import type { Agent } from "@/hooks/use-viben-agents";
+import type { AgentInfo } from "@/lib/gateway";
+
+// Legacy Agent type for backwards compatibility
+export type Agent = AgentInfo;
 
 // ============================================================================
 // Agent Source Types
@@ -85,7 +88,7 @@ export interface UnifiedAgent {
   /** 原始数据 - 执行器 */
   rawExecutor?: Executor;
   /** 原始数据 - 全局智能体 */
-  rawVibenAgent?: Agent;
+  rawVibenAgent?: AgentInfo;
 }
 
 // ============================================================================
@@ -119,15 +122,17 @@ export function executorToUnified(
 export const workspaceAgentToExecutor = executorToUnified;
 
 /**
- * 将 Viben Agent 转换为统一智能体
+ * 将 Viben Agent (AgentInfo from Gateway API) 转换为统一智能体
  */
-export function vibenAgentToUnified(agent: Agent): UnifiedAgent {
+export function vibenAgentToUnified(agent: AgentInfo): UnifiedAgent {
   return {
     id: agent.id,
     name: agent.name,
     description: agent.description,
-    source: "global",
+    source: agent.source === "workspace" ? "workspace" : "global",
     role: "agent",
+    workspacePath: agent.workspace_path,
+    configPath: agent.config_path,
     model: agent.model,
     provider: agent.provider,
     systemPrompt: agent.system_prompt,

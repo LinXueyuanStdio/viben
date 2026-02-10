@@ -71,8 +71,11 @@ export interface AgentDetailData {
 export interface ModelOption {
   id: string;
   name: string;
+  /** Provider display name (provider_name from WorkspaceModel) */
   provider: string;
-  enabled: boolean;
+  /** Provider ID (provider_id from WorkspaceModel) */
+  provider_id?: string;
+  enabled?: boolean;
 }
 
 export interface AgentDetailPanelProps {
@@ -142,7 +145,7 @@ export function AgentDetailPanel({
     setEditingField(null);
   }, [agent.id, agent.name, agent.description, agent.system_prompt, agent.temperature]);
 
-  const enabledModels = models.filter((m) => m.enabled);
+  const enabledModels = models.filter((m) => m.enabled !== false);
   const agentModel = models.find((m) => m.id === agent.model);
 
   const handleSave = async (field: string, value: unknown) => {

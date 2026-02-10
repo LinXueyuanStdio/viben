@@ -27,7 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { Agent } from "@/hooks/use-viben-agents";
+import type { AgentInfo } from "@/lib/gateway";
 import type { MemberRole } from "@/lib/gateway";
 
 // ============================================================================
@@ -48,7 +48,7 @@ interface CreateGroupChatDialogProps {
   /** Called when the dialog should close */
   onOpenChange: (open: boolean) => void;
   /** Available agents to add as members */
-  agents: Agent[];
+  agents: AgentInfo[];
   /** Called when the group chat is created */
   onCreate: (data: {
     name: string;

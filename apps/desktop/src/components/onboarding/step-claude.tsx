@@ -3,9 +3,45 @@ import { useTranslation } from "react-i18next";
 import { Check, AlertCircle, Loader2, ExternalLink, Bot } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { cn } from "@/lib/utils";
-import { useAgents } from "@/hooks/use-agents";
+import { getGatewayClient, type IdeAgentInfo } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+
+/**
+ * Hook for detecting IDE agents via Gateway API.
+ * This is a local hook for this component since the global useIdeAgents was removed.
+ */
+function useIdeAgents() {
+  const [agents, setAgents] = React.useState<IdeAgentInfo[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const detectAgents = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const gateway = getGatewayClient();
+      const detected = await gateway.listIdeAgents();
+      setAgents(detected);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Auto-detect on mount
+  React.useEffect(() => {
+    detectAgents();
+  }, [detectAgents]);
+
+  return {
+    agents,
+    loading,
+    error,
+    detectAgents,
+  };
+}
 
 interface StepClaudeProps {
   onComplete: () => void;
@@ -46,7 +82,7 @@ const AI_CLIENTS = [
 
 export function StepClaude({ onComplete, onBack }: StepClaudeProps) {
   const { t } = useTranslation();
-  const { agents, loading, error, detectAgents } = useAgents();
+  const { agents, loading, error, detectAgents } = useIdeAgents();
 
   // Map detected agents to AI clients
   const detectedClients = React.useMemo(() => {

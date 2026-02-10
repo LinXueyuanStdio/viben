@@ -10,25 +10,15 @@ import type {
   AddMemberRequest,
 } from "@/lib/gateway";
 
+// Re-export detail data types from panel components
+export type {
+  AgentDetailData,
+  ModelOption,
+} from "@/components/chat/agent-detail-panel";
+export type { ExecutorDetailData } from "@/components/chat/executor-detail-panel";
+
 // Tab types for the sidebar
 export type SidebarTab = "workspace" | "artifacts" | "tools" | "skills" | "groupChat" | "agentDetail" | "executorDetail";
-
-// Agent info for detail display
-export interface AgentDetailInfo {
-  id: string;
-  name: string;
-  type?: string;
-  model?: string;
-  description?: string;
-}
-
-// Executor info for detail display
-export interface ExecutorDetailInfo {
-  id: string;
-  name: string;
-  type: string;
-  status?: "online" | "offline" | "unknown";
-}
 
 // Skill info extracted from messages
 export interface SkillInfo {
@@ -72,35 +62,31 @@ export interface SkillsTabContentProps {
   skills: SkillInfo[];
 }
 
-// Model option for agent detail panel
-export interface ModelOption {
-  id: string;
-  name: string;
-  provider: string;
-  enabled: boolean;
-}
-
 export interface AgentDetailTabContentProps {
-  agent: AgentDetailInfo;
+  /** Agent data to display (uses AgentDetailData from panel) */
+  agent: import("@/components/chat/agent-detail-panel").AgentDetailData;
   /** Whether this is the default agent */
   isDefault?: boolean;
   /** Available models for selection */
-  models?: ModelOption[];
+  models?: import("@/components/chat/agent-detail-panel").ModelOption[];
   /** Called when agent is updated */
   onUpdate?: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
   /** Called when set as default is requested */
   onSetDefault?: () => void;
   /** Called when delete is requested */
   onDelete?: () => void;
-  /** Called when settings is clicked */
+  /** Called when settings is clicked (navigate to edit page) */
   onSettings?: (agentId: string) => void;
+  /** Whether this is a workspace-scoped agent */
+  isWorkspaceScoped?: boolean;
 }
 
 export interface ExecutorDetailTabContentProps {
-  executor: ExecutorDetailInfo;
-  /** Workspace ID for loading related data (MCP, skills, commands) */
-  workspaceId?: string;
-  /** Called when settings is clicked */
+  /** Executor data to display (uses ExecutorDetailData from panel) */
+  executor: import("@/components/chat/executor-detail-panel").ExecutorDetailData;
+  /** Workspace ID for loading related data (MCP, skills, commands) - required */
+  workspaceId: string;
+  /** Called when settings is clicked (navigate to edit page) */
   onSettings?: (executorId: string) => void;
 }
 

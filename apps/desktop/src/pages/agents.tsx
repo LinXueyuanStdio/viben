@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Check,
   X,
@@ -10,16 +10,67 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAgents } from "@/hooks/use-agents";
+import { getGatewayClient, type IdeAgentInfo } from "@/lib/gateway";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
-import type { AgentInfo, McpServerInstance } from "@/types";
+import type { McpServerInstance } from "@/types";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Hook for detecting IDE agents and configuring browse-mcp via Gateway API.
+ */
+function useIdeAgents() {
+  const [agents, setAgents] = useState<IdeAgentInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const detectAgents = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const gateway = getGatewayClient();
+      const detected = await gateway.listIdeAgents();
+      setAgents(detected);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const configureBrowseMcp = useCallback(async (
+    agentId: string,
+    options?: {
+      pythonPath?: string;
+      transport?: "stdio" | "sse" | "http";
+      port?: number;
+      apiKey?: string;
+    }
+  ) => {
+    const gateway = getGatewayClient();
+    await gateway.configureBrowseMcp(agentId, options);
+    // Re-detect agents to refresh status
+    await detectAgents();
+  }, [detectAgents]);
+
+  // Auto-detect on mount
+  useEffect(() => {
+    detectAgents();
+  }, [detectAgents]);
+
+  return {
+    agents,
+    loading,
+    error,
+    detectAgents,
+    configureBrowseMcp,
+  };
+}
 
 export function AgentsPage() {
   const { t } = useTranslation();
   const { agents, loading, error, detectAgents, configureBrowseMcp } =
-    useAgents();
+    useIdeAgents();
   const { selectedPython } = usePython();
   const {
     mcpServers,
@@ -38,10 +89,11 @@ export function AgentsPage() {
 
     try {
       // Pass server config to the configure function
-      await configureBrowseMcp(agentId, selectedPython?.path, {
+      await configureBrowseMcp(agentId, {
+        pythonPath: selectedPython?.path,
         transport: server.transport,
         port: server.port,
-        apiKeyId,
+        apiKey: apiKeyId,
       });
       // Save the assignment
       setAgentAssignment(agentId, serverId, apiKeyId);
@@ -111,7 +163,7 @@ export function AgentsPage() {
 }
 
 interface AgentCardProps {
-  agent: AgentInfo;
+  agent: IdeAgentInfo;
   servers: McpServerInstance[];
   assignment?: { serverId: string; apiKeyId?: string };
   onConfigure: (agentId: string, serverId: string, apiKeyId?: string) => void;
@@ -179,8 +231,8 @@ function AgentCard({
               />
               {agent.installed && (
                 <StatusBadge
-                  label={agent.configured ? t("common.configured") : t("common.notConfigured")}
-                  active={agent.configured}
+                  label={agent.has_mcp_config ? t("common.configured") : t("common.notConfigured")}
+                  active={agent.has_mcp_config}
                 />
               )}
             </div>
