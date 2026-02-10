@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::channels::ChannelService;
+use crate::channels::{ChannelRouter, ChannelService};
 use crate::db::DbService;
 use crate::services::{
     ContainerService, CronService, EventService, HistoryService, PtyService, SessionStoreService,
@@ -27,6 +27,8 @@ pub struct AppState {
     pub cron: Arc<CronService>,
     /// Channel service for channel instance management
     pub channel: Arc<ChannelService>,
+    /// Channel message router
+    pub channel_router: Arc<ChannelRouter>,
 }
 
 impl AppState {
@@ -40,6 +42,7 @@ impl AppState {
         session_store: SessionStoreService,
         cron: CronService,
         channel: ChannelService,
+        channel_router: ChannelRouter,
     ) -> Self {
         let events = Arc::new(events);
         Self {
@@ -51,6 +54,7 @@ impl AppState {
             session_store: Arc::new(session_store),
             cron: Arc::new(cron),
             channel: Arc::new(channel),
+            channel_router: Arc::new(channel_router),
         }
     }
 
@@ -87,11 +91,16 @@ impl AppState {
 
         tracing::debug!(target: "viben::gateway::state", "Initializing ChannelService...");
         let channel = ChannelService::new(events_arc.clone());
+        let channel_arc = Arc::new(channel);
         tracing::debug!(target: "viben::gateway::state", "ChannelService initialized");
+
+        tracing::debug!(target: "viben::gateway::state", "Initializing ChannelRouter...");
+        let channel_router = ChannelRouter::new(events_arc.clone(), channel_arc.clone());
+        tracing::debug!(target: "viben::gateway::state", "ChannelRouter initialized");
 
         tracing::info!(
             target: "viben::gateway::state",
-            "All services initialized: db, events, container, pty, history, session_store, cron, channel"
+            "All services initialized: db, events, container, pty, history, session_store, cron, channel, channel_router"
         );
 
         Ok(Self {
@@ -102,7 +111,8 @@ impl AppState {
             history: Arc::new(history),
             session_store: Arc::new(session_store),
             cron: Arc::new(cron),
-            channel: Arc::new(channel),
+            channel: channel_arc,
+            channel_router: Arc::new(channel_router),
         })
     }
 }
