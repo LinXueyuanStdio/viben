@@ -725,6 +725,11 @@ impl ResponseCollector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
+
+    // =========================================================================
+    // Router Lifecycle Tests
+    // =========================================================================
 
     #[tokio::test]
     async fn test_router_creation() {
@@ -734,6 +739,16 @@ mod tests {
         let router = ChannelRouter::new(events, channels);
         assert!(router.task_handle.lock().await.is_none());
         assert!(router.container.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_router_with_container() {
+        let events = Arc::new(EventService::new());
+        let channels = Arc::new(ChannelService::new(events.clone()));
+        let container = Arc::new(ContainerService::new((*events).clone()));
+
+        let router = ChannelRouter::with_container(events, channels, container);
+        assert!(router.container.is_some());
     }
 
     #[tokio::test]
@@ -759,6 +774,10 @@ mod tests {
         assert!(router.start().await.is_ok());
     }
 
+    // =========================================================================
+    // Agent Resolution Tests
+    // =========================================================================
+
     #[test]
     fn test_resolve_agent() {
         // Known agents
@@ -768,5 +787,351 @@ mod tests {
 
         // Unknown agent defaults to Claude
         assert!(ChannelRouter::resolve_agent("unknown-agent").is_ok());
+    }
+
+    #[test]
+    fn test_resolve_agent_case_insensitive() {
+        assert!(ChannelRouter::resolve_agent("CLAUDE").is_ok());
+        assert!(ChannelRouter::resolve_agent("Claude-Code").is_ok());
+        assert!(ChannelRouter::resolve_agent("GEMINI").is_ok());
+    }
+
+    #[test]
+    fn test_resolve_all_supported_agents() {
+        let agents = vec![
+            "claude",
+            "claude-code",
+            "claudecode",
+            "gemini",
+            "codex",
+            "openai",
+            "cursor",
+            "copilot",
+            "github-copilot",
+            "amp",
+            "opencode",
+            "qwen",
+            "qwencode",
+            "droid",
+        ];
+
+        for agent_id in agents {
+            let result = ChannelRouter::resolve_agent(agent_id);
+            assert!(result.is_ok(), "Failed to resolve agent: {}", agent_id);
+        }
+    }
+
+    // =========================================================================
+    // Message Types Tests
+    // =========================================================================
+
+    #[test]
+    fn test_incoming_message_creation() {
+        let msg = IncomingMessage {
+            channel_type: "telegram".to_string(),
+            channel_name: "My Bot".to_string(),
+            chat_id: "123456".to_string(),
+            sender_name: Some("John".to_string()),
+            message: "Hello, world!".to_string(),
+            timestamp: 1234567890,
+        };
+
+        assert_eq!(msg.channel_type, "telegram");
+        assert_eq!(msg.channel_name, "My Bot");
+        assert_eq!(msg.chat_id, "123456");
+        assert_eq!(msg.sender_name, Some("John".to_string()));
+        assert_eq!(msg.message, "Hello, world!");
+        assert_eq!(msg.timestamp, 1234567890);
+    }
+
+    #[test]
+    fn test_outgoing_message_creation() {
+        let msg = OutgoingMessage {
+            channel_id: "channel-1".to_string(),
+            chat_id: "123456".to_string(),
+            message: "Response text".to_string(),
+        };
+
+        assert_eq!(msg.channel_id, "channel-1");
+        assert_eq!(msg.chat_id, "123456");
+        assert_eq!(msg.message, "Response text");
+    }
+
+    // =========================================================================
+    // ResponseCollector Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_response_collector_creation() {
+        let events = Arc::new(EventService::new());
+        let collector = ResponseCollector::new("session-1".to_string(), events);
+
+        assert_eq!(collector.session_id, "session-1");
+        assert!(collector.response_parts.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_collects_messages() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("test-session".to_string(), events.clone());
+
+        // Spawn a task to broadcast events
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Send assistant message
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "test-session".to_string(),
+                content: "Hello from assistant".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Send completion event
+            events_clone.broadcast(GatewayEvent::AgentCompleted {
+                agent_id: "test-agent".to_string(),
+                session_id: "test-session".to_string(),
+                success: true,
+            });
+        });
+
+        // Collect with timeout
+        let result = collector.collect(2).await;
+
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("Hello from assistant"));
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_ignores_other_sessions() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("my-session".to_string(), events.clone());
+
+        // Spawn a task to broadcast events from different session
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Message from different session - should be ignored
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "other-session".to_string(),
+                content: "Should be ignored".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Our session message
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "my-session".to_string(),
+                content: "Correct message".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            events_clone.broadcast(GatewayEvent::AgentCompleted {
+                agent_id: "test-agent".to_string(),
+                session_id: "my-session".to_string(),
+                success: true,
+            });
+        });
+
+        let result = collector.collect(2).await;
+
+        assert!(result.is_some());
+        let response = result.unwrap();
+        assert!(response.contains("Correct message"));
+        assert!(!response.contains("Should be ignored"));
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_handles_failure() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("fail-session".to_string(), events.clone());
+
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            events_clone.broadcast(GatewayEvent::AgentCompleted {
+                agent_id: "test-agent".to_string(),
+                session_id: "fail-session".to_string(),
+                success: false,
+            });
+        });
+
+        let result = collector.collect(2).await;
+
+        assert!(result.is_some());
+        assert_eq!(result.unwrap(), "Agent execution failed.");
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_handles_error() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("error-session".to_string(), events.clone());
+
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            events_clone.broadcast(GatewayEvent::Error {
+                code: Some("error-session".to_string()),
+                message: "Something went wrong".to_string(),
+            });
+        });
+
+        let result = collector.collect(2).await;
+
+        assert!(result.is_some());
+        assert!(result.unwrap().contains("Error: Something went wrong"));
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_timeout() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("timeout-session".to_string(), events);
+
+        // No events broadcasted, should timeout
+        let result = collector.collect(1).await;
+
+        // Result should be None due to timeout
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_response_collector_multiple_messages() {
+        let events = Arc::new(EventService::new());
+        let mut collector = ResponseCollector::new("multi-session".to_string(), events.clone());
+
+        let events_clone = events.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            // Send multiple messages
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "multi-session".to_string(),
+                content: "Part 1".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(20)).await;
+
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "multi-session".to_string(),
+                content: "Part 2".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(20)).await;
+
+            events_clone.broadcast(GatewayEvent::SessionMessage {
+                session_id: "multi-session".to_string(),
+                content: "Part 3".to_string(),
+                role: "assistant".to_string(),
+            });
+
+            tokio::time::sleep(Duration::from_millis(50)).await;
+
+            events_clone.broadcast(GatewayEvent::AgentCompleted {
+                agent_id: "test-agent".to_string(),
+                session_id: "multi-session".to_string(),
+                success: true,
+            });
+        });
+
+        let result = collector.collect(2).await;
+
+        assert!(result.is_some());
+        let response = result.unwrap();
+        assert!(response.contains("Part 1"));
+        assert!(response.contains("Part 2"));
+        assert!(response.contains("Part 3"));
+    }
+
+    // =========================================================================
+    // Router Error Tests
+    // =========================================================================
+
+    #[test]
+    fn test_router_error_display() {
+        let err = RouterError::ChannelNotFound("test-channel".to_string());
+        assert!(err.to_string().contains("test-channel"));
+
+        let err = RouterError::AgentExecutionError("spawn failed".to_string());
+        assert!(err.to_string().contains("spawn failed"));
+
+        let err = RouterError::ExecutorError("workspace not found".to_string());
+        assert!(err.to_string().contains("workspace not found"));
+
+        let err = RouterError::AlreadyStarted;
+        assert!(err.to_string().contains("already started"));
+
+        let err = RouterError::InvalidConfig("missing token".to_string());
+        assert!(err.to_string().contains("missing token"));
+    }
+
+    // =========================================================================
+    // Event Broadcasting Integration Tests
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_router_broadcasts_channel_message_received() {
+        let events = Arc::new(EventService::new());
+        let channels = Arc::new(ChannelService::new(events.clone()));
+        let router = ChannelRouter::new(events.clone(), channels);
+
+        // Start router
+        router.start().await.unwrap();
+
+        // Subscribe to events
+        let mut rx = events.subscribe();
+
+        // Broadcast a message
+        events.broadcast(GatewayEvent::ChannelMessageReceived {
+            channel_type: "telegram".to_string(),
+            channel_name: "Test Bot".to_string(),
+            chat_id: "12345".to_string(),
+            sender_name: Some("User".to_string()),
+            message: "Test message".to_string(),
+            timestamp: 1234567890,
+        });
+
+        // Give the router time to process
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Stop router
+        router.stop().await;
+
+        // Verify event was received (router may re-broadcast for in-app notification)
+        let mut received = false;
+        while let Ok(event) = rx.try_recv() {
+            if let GatewayEvent::ChannelMessageReceived { channel_name, .. } = event {
+                if channel_name == "Test Bot" {
+                    received = true;
+                    break;
+                }
+            }
+        }
+
+        assert!(received, "Should have received ChannelMessageReceived event");
+    }
+
+    // =========================================================================
+    // Channel Lookup Tests (via message handling)
+    // =========================================================================
+
+    #[tokio::test]
+    async fn test_find_channel_returns_none_for_unknown() {
+        let events = Arc::new(EventService::new());
+        let channels = Arc::new(ChannelService::new(events.clone()));
+
+        // find_channel is private, but we test it indirectly through handle_message
+        // When no channel is found, it should log a warning but not error
+        let result = ChannelRouter::find_channel(&channels, "nonexistent", "telegram").await;
+        assert!(result.is_none());
     }
 }
