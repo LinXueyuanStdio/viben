@@ -91,6 +91,7 @@ export {
   // New API hooks
   useExecutors,
   useAgents as useGatewayAgents,
+  useChatList,
   // Legacy hooks (deprecated)
   useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
   useWorkspaceModels,
@@ -103,6 +104,8 @@ export type {
   UseExecutorsReturn,
   UseAgentsOptions,
   UseAgentsReturn,
+  UseChatListOptions,
+  UseChatListReturn,
   // Legacy types (deprecated)
   UseWorkspaceExecutorsReturn,
   UseWorkspaceModelsReturn,

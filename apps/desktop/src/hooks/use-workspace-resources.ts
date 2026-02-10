@@ -11,6 +11,8 @@ import {
   type ExecutorInfo,
   type AgentInfo,
   type WorkspaceModel,
+  type ChatListItem,
+  type ChatListCounts,
   // Legacy types for backwards compatibility
   type WorkspaceExecutor,
   type WorkspaceAgent,
@@ -541,5 +543,101 @@ export function useWorkspaceResources(
     agents,
     refreshAll,
     isLoading,
+  };
+}
+
+// ============================================================================
+// Chat List Hook (Aggregated)
+// ============================================================================
+
+export interface UseChatListOptions {
+  /** Workspace path to scope items */
+  workspacePath?: string | null;
+  /** Include global items (default: true) */
+  includeGlobal?: boolean;
+}
+
+export interface UseChatListReturn {
+  /** All chat list items (group chats, executors, agents) */
+  items: ChatListItem[];
+  /** Items filtered by type */
+  groupChats: ChatListItem[];
+  executors: ChatListItem[];
+  agents: ChatListItem[];
+  /** Counts by type */
+  counts: ChatListCounts;
+  /** Total count */
+  total: number;
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Refresh chat list */
+  refresh: () => Promise<void>;
+}
+
+/**
+ * Hook to get aggregated chat list (group chats, executors, agents)
+ *
+ * This provides a unified view for the chat sidebar, combining:
+ * - Group chats (from workspace + global)
+ * - Executors (with config)
+ * - Viben agents (from workspace + global)
+ */
+export function useChatList(options?: UseChatListOptions): UseChatListReturn {
+  const workspacePath = options?.workspacePath;
+  const includeGlobal = options?.includeGlobal ?? true;
+
+  const [items, setItems] = useState<ChatListItem[]>([]);
+  const [counts, setCounts] = useState<ChatListCounts>({
+    group_chats: 0,
+    executors: 0,
+    agents: 0,
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadChatList = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getGatewayClient();
+      const response = await client.getChatList({
+        workspacePath: workspacePath || undefined,
+        includeGlobal,
+      });
+      setItems(response.items);
+      setCounts(response.counts);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load chat list";
+      setError(message);
+      console.error("[useChatList] Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, includeGlobal]);
+
+  // Load on mount and when options change
+  useEffect(() => {
+    loadChatList();
+  }, [loadChatList]);
+
+  // Filter items by type
+  const groupChats = items.filter((item) => item.item_type === "group_chat");
+  const executors = items.filter((item) => item.item_type === "executor");
+  const agents = items.filter((item) => item.item_type === "agent");
+
+  return {
+    items,
+    groupChats,
+    executors,
+    agents,
+    counts,
+    total: items.length,
+    loading,
+    error,
+    refresh: loadChatList,
   };
 }

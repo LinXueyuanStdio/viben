@@ -72,13 +72,35 @@ export interface SkillsTabContentProps {
   skills: SkillInfo[];
 }
 
+// Model option for agent detail panel
+export interface ModelOption {
+  id: string;
+  name: string;
+  provider: string;
+  enabled: boolean;
+}
+
 export interface AgentDetailTabContentProps {
   agent: AgentDetailInfo;
+  /** Whether this is the default agent */
+  isDefault?: boolean;
+  /** Available models for selection */
+  models?: ModelOption[];
+  /** Called when agent is updated */
+  onUpdate?: (id: string, updates: Record<string, unknown>) => Promise<unknown>;
+  /** Called when set as default is requested */
+  onSetDefault?: () => void;
+  /** Called when delete is requested */
+  onDelete?: () => void;
+  /** Called when settings is clicked */
   onSettings?: (agentId: string) => void;
 }
 
 export interface ExecutorDetailTabContentProps {
   executor: ExecutorDetailInfo;
+  /** Workspace ID for loading related data (MCP, skills, commands) */
+  workspaceId?: string;
+  /** Called when settings is clicked */
   onSettings?: (executorId: string) => void;
 }
 
