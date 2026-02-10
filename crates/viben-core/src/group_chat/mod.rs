@@ -42,4 +42,7 @@ pub use types::{
     // Request types
     CreateGroupChatRequest, CreateMemberInput, UpdateGroupChatRequest,
     AddMemberRequest, SendMessageRequest, CreateSessionRequest, ListMessagesQuery,
+    UpdateSessionRequest,
+    // File types
+    FileInfo, FileUploadMeta,
 };

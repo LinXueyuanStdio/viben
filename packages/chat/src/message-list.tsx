@@ -597,12 +597,45 @@ export function MessageList({
     ? { "--message-max-width": maxMessageWidth } as React.CSSProperties
     : undefined;
 
+  // Track container width for content constraint
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.getBoundingClientRect().width;
+        setContainerWidth(width);
+        console.log('[MessageList] Container width:', width);
+      }
+    };
+
+    // Update on mount and resize
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Constrain content width to container width
+  const contentStyle: React.CSSProperties = {
+    ...containerStyle,
+    ...(containerWidth ? { width: containerWidth, maxWidth: containerWidth } : {}),
+  };
+
   return (
-    <div className={cn("relative flex-1 w-0 min-h-0 min-w-0 overflow-hidden", className)}>
-      <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden [&>[data-radix-scroll-area-viewport]]:!min-w-0" viewportRef={viewportRef}>
+    <div ref={containerRef} className={cn("relative flex-1 w-0 min-h-0 min-w-0 overflow-hidden", className)}>
+      <ScrollArea
+        className="h-full w-full"
+        viewportRef={viewportRef}
+      >
         <div
-          className="space-y-4 p-4 pb-8 w-full min-w-0 overflow-hidden"
-          style={containerStyle}
+          ref={contentRef}
+          className="space-y-4 p-4 pb-8 min-w-0 overflow-hidden box-border"
+          style={contentStyle}
         >
           {groups.map((group, index) => {
             if (group.type === "task") {

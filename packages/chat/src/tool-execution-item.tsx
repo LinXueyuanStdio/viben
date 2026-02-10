@@ -45,15 +45,17 @@ export function ToolExecutionItem({
   renderMessage,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = React.useState(false);
-
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
+  // Default to expanded when there are subagent messages
+  const [isExpanded, setIsExpanded] = React.useState(hasSubagentMessages);
   const hasDetails = input || output || hasSubagentMessages;
+
+  // Determine status - subagent messages loaded means completed
   const status = isExecuting
     ? "executing"
     : isError
       ? "error"
-      : output
+      : (output || hasSubagentMessages)
         ? "completed"
         : "pending";
 

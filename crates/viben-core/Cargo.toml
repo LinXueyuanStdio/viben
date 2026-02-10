@@ -33,6 +33,7 @@ which = "7.0"
 
 # Web framework
 axum = { workspace = true }
+axum-extra = { version = "0.9", features = ["multipart"] }
 tower-http = { workspace = true }
 
 # Serialization

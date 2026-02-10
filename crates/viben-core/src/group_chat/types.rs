@@ -42,6 +42,15 @@ pub enum GroupChatError {
 
     #[error("Invalid member role: {0}")]
     InvalidMemberRole(String),
+
+    #[error("File not found: {0}")]
+    FileNotFound(String),
+
+    #[error("Invalid file type: {0}")]
+    InvalidFileType(String),
+
+    #[error("File already exists: {0}")]
+    FileExists(String),
 }
 
 // ============================================================================
@@ -690,6 +699,84 @@ pub struct ListMessagesQuery {
 
 fn default_view() -> String {
     "ui".to_string()
+}
+
+/// Update session request
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct UpdateSessionRequest {
+    /// Session title
+    pub title: Option<String>,
+    /// Session status (active, archived)
+    pub status: Option<String>,
+    /// Active agents
+    pub active_agents: Option<Vec<String>>,
+}
+
+// ============================================================================
+// File Management Types
+// ============================================================================
+
+/// File information for files and pictures in group chat
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileInfo {
+    /// File name (unique within directory)
+    pub filename: String,
+    /// Original file name (before sanitization)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_name: Option<String>,
+    /// File size in bytes
+    pub size_bytes: u64,
+    /// MIME type
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    /// User who uploaded the file
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uploaded_by: Option<String>,
+    /// Upload timestamp
+    pub uploaded_at: DateTime<Utc>,
+}
+
+impl FileInfo {
+    /// Create a new FileInfo
+    pub fn new(filename: impl Into<String>, size_bytes: u64) -> Self {
+        Self {
+            filename: filename.into(),
+            original_name: None,
+            size_bytes,
+            mime_type: None,
+            uploaded_by: None,
+            uploaded_at: Utc::now(),
+        }
+    }
+
+    /// Create FileInfo with all details
+    pub fn with_details(
+        filename: impl Into<String>,
+        original_name: Option<String>,
+        size_bytes: u64,
+        mime_type: Option<String>,
+        uploaded_by: Option<String>,
+    ) -> Self {
+        Self {
+            filename: filename.into(),
+            original_name,
+            size_bytes,
+            mime_type,
+            uploaded_by,
+            uploaded_at: Utc::now(),
+        }
+    }
+}
+
+/// File upload request metadata
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FileUploadMeta {
+    /// Original file name
+    pub original_name: Option<String>,
+    /// MIME type
+    pub mime_type: Option<String>,
+    /// User who is uploading
+    pub uploaded_by: Option<String>,
 }
 
 #[cfg(test)]

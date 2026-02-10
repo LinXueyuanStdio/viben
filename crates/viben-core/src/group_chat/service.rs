@@ -483,6 +483,87 @@ impl GroupChatService {
         Ok(session_config)
     }
 
+    /// Update a session
+    pub async fn update_session(
+        &self,
+        group_chat_id: &str,
+        session_id: &str,
+        title: Option<&str>,
+        status: Option<&str>,
+        active_agents: Option<Vec<String>>,
+    ) -> Result<SessionConfig, GroupChatError> {
+        let mut session_config = self.get_session(group_chat_id, session_id).await?;
+
+        if let Some(t) = title {
+            session_config.title = Some(t.to_string());
+        }
+
+        if let Some(s) = status {
+            session_config.status = match s {
+                "active" => SessionStatus::Active,
+                "archived" => SessionStatus::Archived,
+                _ => session_config.status,
+            };
+        }
+
+        if let Some(agents) = active_agents {
+            session_config.active_agents = agents;
+        }
+
+        session_config.updated_at = chrono::Utc::now();
+
+        let session_config_path = self.session_config_path(group_chat_id, session_id);
+        write_config(&session_config_path, &session_config).await?;
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Session updated: group_chat={}, session={}",
+            group_chat_id, session_id
+        );
+
+        Ok(session_config)
+    }
+
+    /// Read agent rollout messages with limit (last N messages)
+    pub async fn read_agent_rollout_messages_last(
+        &self,
+        group_chat_id: &str,
+        session_id: &str,
+        agent_id: &str,
+        limit: usize,
+    ) -> Result<Vec<AgentRolloutMessage>, GroupChatError> {
+        let path = self.agent_rollout_path(group_chat_id, session_id, agent_id);
+        read_jsonl_last(&path, limit).await
+    }
+
+    /// List available agents that have rollout messages in a session
+    pub async fn list_session_agents(
+        &self,
+        group_chat_id: &str,
+        session_id: &str,
+    ) -> Result<Vec<String>, GroupChatError> {
+        let agents_dir = self.agents_dir(group_chat_id, session_id);
+        if !agents_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut agents = Vec::new();
+        let mut entries = fs::read_dir(&agents_dir).await?;
+
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_dir() {
+                let agent_id = entry.file_name().to_string_lossy().to_string();
+                // Check if messages.rollout.jsonl exists
+                let rollout_path = self.agent_rollout_path(group_chat_id, session_id, &agent_id);
+                if rollout_path.exists() {
+                    agents.push(agent_id);
+                }
+            }
+        }
+
+        Ok(agents)
+    }
+
     // ========================================================================
     // UI Messages (messages.ui.jsonl)
     // ========================================================================
@@ -629,6 +710,484 @@ impl GroupChatService {
             parts.push(format!("[User]: {}", user_message));
             Ok(parts.join("\n\n"))
         }
+    }
+
+    // ========================================================================
+    // File Management (files/)
+    // ========================================================================
+
+    /// Get the files directory for a group chat
+    fn files_dir(&self, group_chat_id: &str) -> PathBuf {
+        self.group_chat_dir(group_chat_id).join("files")
+    }
+
+    /// Get a specific file path
+    fn file_path(&self, group_chat_id: &str, filename: &str) -> PathBuf {
+        self.files_dir(group_chat_id).join(filename)
+    }
+
+    /// Sanitize filename to prevent path traversal attacks
+    fn sanitize_filename(filename: &str) -> String {
+        // Remove path separators and keep only the filename
+        let name = std::path::Path::new(filename)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unnamed");
+
+        // Replace problematic characters
+        name.chars()
+            .map(|c| match c {
+                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+                _ => c,
+            })
+            .collect()
+    }
+
+    /// Upload a file to the group chat
+    pub async fn upload_file(
+        &self,
+        group_chat_id: &str,
+        filename: &str,
+        data: &[u8],
+        meta: Option<super::types::FileUploadMeta>,
+    ) -> Result<super::types::FileInfo, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let files_dir = self.files_dir(group_chat_id);
+        fs::create_dir_all(&files_dir).await?;
+
+        // Sanitize filename
+        let safe_filename = Self::sanitize_filename(filename);
+
+        // Generate unique filename if file already exists
+        let mut final_filename = safe_filename.clone();
+        let file_path = self.file_path(group_chat_id, &final_filename);
+
+        if file_path.exists() {
+            // Add timestamp suffix to make it unique
+            let timestamp = chrono::Utc::now().timestamp_millis();
+            let (name, ext) = if let Some(pos) = safe_filename.rfind('.') {
+                (&safe_filename[..pos], &safe_filename[pos..])
+            } else {
+                (safe_filename.as_str(), "")
+            };
+            final_filename = format!("{}_{}{}", name, timestamp, ext);
+        }
+
+        let final_path = self.file_path(group_chat_id, &final_filename);
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Uploading file: group_chat={}, filename={}",
+            group_chat_id, final_filename
+        );
+
+        // Write file
+        fs::write(&final_path, data).await?;
+
+        let meta = meta.unwrap_or_default();
+        let file_info = super::types::FileInfo::with_details(
+            &final_filename,
+            meta.original_name.or_else(|| Some(filename.to_string())),
+            data.len() as u64,
+            meta.mime_type,
+            meta.uploaded_by,
+        );
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "File uploaded: filename={}, size={}",
+            final_filename, data.len()
+        );
+
+        Ok(file_info)
+    }
+
+    /// List all files in the group chat
+    pub async fn list_files(&self, group_chat_id: &str) -> Result<Vec<super::types::FileInfo>, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let files_dir = self.files_dir(group_chat_id);
+        if !files_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut files = Vec::new();
+        let mut entries = fs::read_dir(&files_dir).await?;
+
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
+                let filename = entry.file_name().to_string_lossy().to_string();
+                let metadata = entry.metadata().await?;
+
+                let file_info = super::types::FileInfo {
+                    filename,
+                    original_name: None,
+                    size_bytes: metadata.len(),
+                    mime_type: None,
+                    uploaded_by: None,
+                    uploaded_at: metadata
+                        .modified()
+                        .ok()
+                        .map(|t| chrono::DateTime::from(t))
+                        .unwrap_or_else(chrono::Utc::now),
+                };
+
+                files.push(file_info);
+            }
+        }
+
+        // Sort by uploaded_at descending
+        files.sort_by(|a, b| b.uploaded_at.cmp(&a.uploaded_at));
+
+        tracing::debug!(
+            target: "viben::group_chat::service",
+            "Listed {} files for group_chat={}",
+            files.len(), group_chat_id
+        );
+
+        Ok(files)
+    }
+
+    /// Get a file's content
+    pub async fn get_file(&self, group_chat_id: &str, filename: &str) -> Result<Vec<u8>, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let file_path = self.file_path(group_chat_id, &safe_filename);
+
+        if !file_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        tracing::debug!(
+            target: "viben::group_chat::service",
+            "Getting file: group_chat={}, filename={}",
+            group_chat_id, safe_filename
+        );
+
+        let data = fs::read(&file_path).await?;
+        Ok(data)
+    }
+
+    /// Get file info without content
+    pub async fn get_file_info(&self, group_chat_id: &str, filename: &str) -> Result<super::types::FileInfo, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let file_path = self.file_path(group_chat_id, &safe_filename);
+
+        if !file_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        let metadata = fs::metadata(&file_path).await?;
+
+        Ok(super::types::FileInfo {
+            filename: safe_filename,
+            original_name: None,
+            size_bytes: metadata.len(),
+            mime_type: None,
+            uploaded_by: None,
+            uploaded_at: metadata
+                .modified()
+                .ok()
+                .map(|t| chrono::DateTime::from(t))
+                .unwrap_or_else(chrono::Utc::now),
+        })
+    }
+
+    /// Delete a file
+    pub async fn delete_file(&self, group_chat_id: &str, filename: &str) -> Result<(), GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let file_path = self.file_path(group_chat_id, &safe_filename);
+
+        if !file_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Deleting file: group_chat={}, filename={}",
+            group_chat_id, safe_filename
+        );
+
+        fs::remove_file(&file_path).await?;
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "File deleted: filename={}",
+            safe_filename
+        );
+
+        Ok(())
+    }
+
+    // ========================================================================
+    // Picture Management (pictures/)
+    // ========================================================================
+
+    /// Get the pictures directory for a group chat
+    fn pictures_dir(&self, group_chat_id: &str) -> PathBuf {
+        self.group_chat_dir(group_chat_id).join("pictures")
+    }
+
+    /// Get a specific picture path
+    fn picture_path(&self, group_chat_id: &str, filename: &str) -> PathBuf {
+        self.pictures_dir(group_chat_id).join(filename)
+    }
+
+    /// Check if a MIME type is a valid image type
+    fn is_valid_image_type(mime_type: Option<&str>) -> bool {
+        match mime_type {
+            Some(mime) => {
+                mime.starts_with("image/")
+                    || mime == "application/octet-stream" // Allow for browsers that don't detect type
+            }
+            None => true, // Allow unknown types (will be determined by extension)
+        }
+    }
+
+    /// Check if filename has a valid image extension
+    fn is_valid_image_extension(filename: &str) -> bool {
+        let extensions = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "ico", "tiff", "tif"];
+        if let Some(ext) = filename.rsplit('.').next() {
+            extensions.contains(&ext.to_lowercase().as_str())
+        } else {
+            false
+        }
+    }
+
+    /// Upload a picture to the group chat
+    pub async fn upload_picture(
+        &self,
+        group_chat_id: &str,
+        filename: &str,
+        data: &[u8],
+        meta: Option<super::types::FileUploadMeta>,
+    ) -> Result<super::types::FileInfo, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let meta = meta.unwrap_or_default();
+
+        // Validate image type
+        if !Self::is_valid_image_type(meta.mime_type.as_deref()) {
+            return Err(GroupChatError::InvalidFileType(format!(
+                "Invalid image type: {:?}. Only image/* types are allowed.",
+                meta.mime_type
+            )));
+        }
+
+        // Validate image extension
+        if !Self::is_valid_image_extension(filename) {
+            return Err(GroupChatError::InvalidFileType(format!(
+                "Invalid image extension: {}. Allowed: jpg, jpeg, png, gif, webp, bmp, svg, ico, tiff",
+                filename
+            )));
+        }
+
+        let pictures_dir = self.pictures_dir(group_chat_id);
+        fs::create_dir_all(&pictures_dir).await?;
+
+        // Sanitize filename
+        let safe_filename = Self::sanitize_filename(filename);
+
+        // Generate unique filename if file already exists
+        let mut final_filename = safe_filename.clone();
+        let picture_path = self.picture_path(group_chat_id, &final_filename);
+
+        if picture_path.exists() {
+            // Add timestamp suffix to make it unique
+            let timestamp = chrono::Utc::now().timestamp_millis();
+            let (name, ext) = if let Some(pos) = safe_filename.rfind('.') {
+                (&safe_filename[..pos], &safe_filename[pos..])
+            } else {
+                (safe_filename.as_str(), "")
+            };
+            final_filename = format!("{}_{}{}", name, timestamp, ext);
+        }
+
+        let final_path = self.picture_path(group_chat_id, &final_filename);
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Uploading picture: group_chat={}, filename={}",
+            group_chat_id, final_filename
+        );
+
+        // Write file
+        fs::write(&final_path, data).await?;
+
+        let file_info = super::types::FileInfo::with_details(
+            &final_filename,
+            meta.original_name.or_else(|| Some(filename.to_string())),
+            data.len() as u64,
+            meta.mime_type,
+            meta.uploaded_by,
+        );
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Picture uploaded: filename={}, size={}",
+            final_filename, data.len()
+        );
+
+        Ok(file_info)
+    }
+
+    /// List all pictures in the group chat
+    pub async fn list_pictures(&self, group_chat_id: &str) -> Result<Vec<super::types::FileInfo>, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let pictures_dir = self.pictures_dir(group_chat_id);
+        if !pictures_dir.exists() {
+            return Ok(Vec::new());
+        }
+
+        let mut pictures = Vec::new();
+        let mut entries = fs::read_dir(&pictures_dir).await?;
+
+        while let Some(entry) = entries.next_entry().await? {
+            if entry.file_type().await?.is_file() {
+                let filename = entry.file_name().to_string_lossy().to_string();
+                let metadata = entry.metadata().await?;
+
+                // Guess MIME type from extension
+                let mime_type = Self::guess_image_mime_type(&filename);
+
+                let file_info = super::types::FileInfo {
+                    filename,
+                    original_name: None,
+                    size_bytes: metadata.len(),
+                    mime_type,
+                    uploaded_by: None,
+                    uploaded_at: metadata
+                        .modified()
+                        .ok()
+                        .map(|t| chrono::DateTime::from(t))
+                        .unwrap_or_else(chrono::Utc::now),
+                };
+
+                pictures.push(file_info);
+            }
+        }
+
+        // Sort by uploaded_at descending
+        pictures.sort_by(|a, b| b.uploaded_at.cmp(&a.uploaded_at));
+
+        tracing::debug!(
+            target: "viben::group_chat::service",
+            "Listed {} pictures for group_chat={}",
+            pictures.len(), group_chat_id
+        );
+
+        Ok(pictures)
+    }
+
+    /// Guess MIME type from filename extension
+    fn guess_image_mime_type(filename: &str) -> Option<String> {
+        let ext = filename.rsplit('.').next()?.to_lowercase();
+        let mime = match ext.as_str() {
+            "jpg" | "jpeg" => "image/jpeg",
+            "png" => "image/png",
+            "gif" => "image/gif",
+            "webp" => "image/webp",
+            "bmp" => "image/bmp",
+            "svg" => "image/svg+xml",
+            "ico" => "image/x-icon",
+            "tiff" | "tif" => "image/tiff",
+            _ => return None,
+        };
+        Some(mime.to_string())
+    }
+
+    /// Get a picture's content
+    pub async fn get_picture(&self, group_chat_id: &str, filename: &str) -> Result<Vec<u8>, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let picture_path = self.picture_path(group_chat_id, &safe_filename);
+
+        if !picture_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        tracing::debug!(
+            target: "viben::group_chat::service",
+            "Getting picture: group_chat={}, filename={}",
+            group_chat_id, safe_filename
+        );
+
+        let data = fs::read(&picture_path).await?;
+        Ok(data)
+    }
+
+    /// Get picture info without content
+    pub async fn get_picture_info(&self, group_chat_id: &str, filename: &str) -> Result<super::types::FileInfo, GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let picture_path = self.picture_path(group_chat_id, &safe_filename);
+
+        if !picture_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        let metadata = fs::metadata(&picture_path).await?;
+        let mime_type = Self::guess_image_mime_type(&safe_filename);
+
+        Ok(super::types::FileInfo {
+            filename: safe_filename,
+            original_name: None,
+            size_bytes: metadata.len(),
+            mime_type,
+            uploaded_by: None,
+            uploaded_at: metadata
+                .modified()
+                .ok()
+                .map(|t| chrono::DateTime::from(t))
+                .unwrap_or_else(chrono::Utc::now),
+        })
+    }
+
+    /// Delete a picture
+    pub async fn delete_picture(&self, group_chat_id: &str, filename: &str) -> Result<(), GroupChatError> {
+        // Verify group chat exists
+        let _config = self.get_group_chat(group_chat_id).await?;
+
+        let safe_filename = Self::sanitize_filename(filename);
+        let picture_path = self.picture_path(group_chat_id, &safe_filename);
+
+        if !picture_path.exists() {
+            return Err(GroupChatError::FileNotFound(filename.to_string()));
+        }
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Deleting picture: group_chat={}, filename={}",
+            group_chat_id, safe_filename
+        );
+
+        fs::remove_file(&picture_path).await?;
+
+        tracing::info!(
+            target: "viben::group_chat::service",
+            "Picture deleted: filename={}",
+            safe_filename
+        );
+
+        Ok(())
     }
 
     // ========================================================================
@@ -944,6 +1503,130 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_update_session() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat and session
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+        let sess_req = CreateSessionRequest {
+            title: Some("Initial Title".to_string()),
+            active_agents: vec!["claude".to_string()],
+        };
+        let session = service.create_session(&gc.id, sess_req).await.unwrap();
+        assert_eq!(session.title, Some("Initial Title".to_string()));
+        assert_eq!(session.status, SessionStatus::Active);
+        assert_eq!(session.active_agents, vec!["claude".to_string()]);
+
+        // Update title only
+        let updated = service.update_session(
+            &gc.id,
+            &session.id,
+            Some("Updated Title"),
+            None,
+            None,
+        ).await.unwrap();
+        assert_eq!(updated.title, Some("Updated Title".to_string()));
+        assert_eq!(updated.status, SessionStatus::Active);
+
+        // Update status to archived
+        let updated = service.update_session(
+            &gc.id,
+            &session.id,
+            None,
+            Some("archived"),
+            None,
+        ).await.unwrap();
+        assert_eq!(updated.status, SessionStatus::Archived);
+
+        // Update active agents
+        let updated = service.update_session(
+            &gc.id,
+            &session.id,
+            None,
+            None,
+            Some(vec!["claude".to_string(), "cursor".to_string()]),
+        ).await.unwrap();
+        assert_eq!(updated.active_agents, vec!["claude".to_string(), "cursor".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn test_list_session_agents() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat and session
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+        let sess_req = CreateSessionRequest {
+            title: None,
+            active_agents: vec![],
+        };
+        let session = service.create_session(&gc.id, sess_req).await.unwrap();
+
+        // Initially no agents
+        let agents = service.list_session_agents(&gc.id, &session.id).await.unwrap();
+        assert!(agents.is_empty());
+
+        // Add rollout messages for claude
+        let msg = AgentRolloutMessage::system("Test");
+        service.append_agent_rollout_message(&gc.id, &session.id, "claude", &msg).await.unwrap();
+
+        // Add rollout messages for cursor
+        service.append_agent_rollout_message(&gc.id, &session.id, "cursor", &msg).await.unwrap();
+
+        // Now should list both agents
+        let agents = service.list_session_agents(&gc.id, &session.id).await.unwrap();
+        assert_eq!(agents.len(), 2);
+        assert!(agents.contains(&"claude".to_string()));
+        assert!(agents.contains(&"cursor".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_read_agent_rollout_messages_last() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Setup
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+        let sess_req = CreateSessionRequest {
+            title: None,
+            active_agents: vec![],
+        };
+        let session = service.create_session(&gc.id, sess_req).await.unwrap();
+
+        // Add 10 messages
+        for i in 0..10 {
+            let msg = AgentRolloutMessage::user(format!("Message {}", i), None);
+            service.append_agent_rollout_message(&gc.id, &session.id, "claude", &msg).await.unwrap();
+        }
+
+        // Read last 3
+        let messages = service.read_agent_rollout_messages_last(&gc.id, &session.id, "claude", 3).await.unwrap();
+        assert_eq!(messages.len(), 3);
+        assert!(messages[0].content.contains("Message 7"));
+        assert!(messages[1].content.contains("Message 8"));
+        assert!(messages[2].content.contains("Message 9"));
+    }
+
+    #[tokio::test]
     async fn test_member_management() {
         let temp = tempdir().unwrap();
         let service = GroupChatService::new(temp.path());
@@ -996,5 +1679,279 @@ mod tests {
         // Verify removed
         let gc = service.get_group_chat(&gc.id).await.unwrap();
         assert_eq!(gc.members.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_file_upload_and_download() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Upload a file
+        let file_content = b"Hello, this is test file content!";
+        let meta = crate::group_chat::types::FileUploadMeta {
+            original_name: Some("test.txt".to_string()),
+            mime_type: Some("text/plain".to_string()),
+            uploaded_by: Some("user-1".to_string()),
+        };
+
+        let file_info = service
+            .upload_file(&gc.id, "test.txt", file_content, Some(meta))
+            .await
+            .unwrap();
+
+        assert_eq!(file_info.filename, "test.txt");
+        assert_eq!(file_info.size_bytes, file_content.len() as u64);
+        assert_eq!(file_info.mime_type, Some("text/plain".to_string()));
+        assert_eq!(file_info.uploaded_by, Some("user-1".to_string()));
+
+        // List files
+        let files = service.list_files(&gc.id).await.unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].filename, "test.txt");
+
+        // Download file
+        let downloaded = service.get_file(&gc.id, "test.txt").await.unwrap();
+        assert_eq!(downloaded, file_content.to_vec());
+
+        // Get file info
+        let info = service.get_file_info(&gc.id, "test.txt").await.unwrap();
+        assert_eq!(info.filename, "test.txt");
+        assert_eq!(info.size_bytes, file_content.len() as u64);
+
+        // Delete file
+        service.delete_file(&gc.id, "test.txt").await.unwrap();
+
+        // Verify deleted
+        let files = service.list_files(&gc.id).await.unwrap();
+        assert!(files.is_empty());
+
+        // Verify file not found
+        let result = service.get_file(&gc.id, "test.txt").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_file_unique_naming() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Upload same filename twice
+        let file1 = service
+            .upload_file(&gc.id, "doc.txt", b"First file", None)
+            .await
+            .unwrap();
+        assert_eq!(file1.filename, "doc.txt");
+
+        let file2 = service
+            .upload_file(&gc.id, "doc.txt", b"Second file", None)
+            .await
+            .unwrap();
+        // Second file should have a unique name (with timestamp)
+        assert_ne!(file2.filename, "doc.txt");
+        assert!(file2.filename.starts_with("doc_"));
+        assert!(file2.filename.ends_with(".txt"));
+
+        // List should show both files
+        let files = service.list_files(&gc.id).await.unwrap();
+        assert_eq!(files.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_filename_sanitization() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Upload file with path traversal attempt
+        let file_info = service
+            .upload_file(&gc.id, "../../../etc/passwd", b"malicious", None)
+            .await
+            .unwrap();
+
+        // Filename should be sanitized
+        assert_eq!(file_info.filename, "passwd");
+        assert!(!file_info.filename.contains(".."));
+    }
+
+    #[tokio::test]
+    async fn test_picture_upload_and_download() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Create a minimal PNG file (1x1 transparent pixel)
+        let png_data: &[u8] = &[
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1 dimensions
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, // 8-bit RGBA
+            0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, // IDAT chunk
+            0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, // compressed data
+            0x05, 0x00, 0x01, 0x0D, 0x0A, 0x2D, 0xB4, 0x00, // data cont.
+            0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, // IEND chunk
+            0x42, 0x60, 0x82,                               // IEND CRC
+        ];
+
+        let meta = crate::group_chat::types::FileUploadMeta {
+            original_name: Some("test_image.png".to_string()),
+            mime_type: Some("image/png".to_string()),
+            uploaded_by: Some("user-1".to_string()),
+        };
+
+        let pic_info = service
+            .upload_picture(&gc.id, "test.png", png_data, Some(meta))
+            .await
+            .unwrap();
+
+        assert_eq!(pic_info.filename, "test.png");
+        assert_eq!(pic_info.size_bytes, png_data.len() as u64);
+
+        // List pictures
+        let pictures = service.list_pictures(&gc.id).await.unwrap();
+        assert_eq!(pictures.len(), 1);
+        assert_eq!(pictures[0].mime_type, Some("image/png".to_string()));
+
+        // Download picture
+        let downloaded = service.get_picture(&gc.id, "test.png").await.unwrap();
+        assert_eq!(downloaded, png_data.to_vec());
+
+        // Get picture info
+        let info = service.get_picture_info(&gc.id, "test.png").await.unwrap();
+        assert_eq!(info.filename, "test.png");
+        assert_eq!(info.mime_type, Some("image/png".to_string()));
+
+        // Delete picture
+        service.delete_picture(&gc.id, "test.png").await.unwrap();
+
+        // Verify deleted
+        let pictures = service.list_pictures(&gc.id).await.unwrap();
+        assert!(pictures.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_picture_invalid_extension() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Try to upload a .txt file as picture
+        let result = service
+            .upload_picture(&gc.id, "document.txt", b"not an image", None)
+            .await;
+
+        assert!(result.is_err());
+        if let Err(GroupChatError::InvalidFileType(msg)) = result {
+            assert!(msg.contains("Invalid image extension"));
+        } else {
+            panic!("Expected InvalidFileType error");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_picture_valid_extensions() {
+        let temp = tempdir().unwrap();
+        let service = GroupChatService::new(temp.path());
+
+        // Create group chat
+        let gc_req = CreateGroupChatRequest {
+            name: "Test Group".to_string(),
+            description: None,
+            created_by: "user-1".to_string(),
+            members: vec![],
+        };
+        let gc = service.create_group_chat(gc_req).await.unwrap();
+
+        // Test various valid extensions
+        let extensions = vec!["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg", "ico"];
+
+        for ext in extensions {
+            let filename = format!("test.{}", ext);
+            let result = service
+                .upload_picture(&gc.id, &filename, b"fake image data", None)
+                .await;
+            assert!(result.is_ok(), "Should accept .{} files", ext);
+        }
+
+        // Verify all were uploaded
+        let pictures = service.list_pictures(&gc.id).await.unwrap();
+        assert_eq!(pictures.len(), 8);
+    }
+
+    #[tokio::test]
+    async fn test_guess_image_mime_type() {
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("photo.jpg"),
+            Some("image/jpeg".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("photo.JPEG"),
+            Some("image/jpeg".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("image.png"),
+            Some("image/png".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("animation.gif"),
+            Some("image/gif".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("modern.webp"),
+            Some("image/webp".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("icon.svg"),
+            Some("image/svg+xml".to_string())
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("document.pdf"),
+            None
+        );
+        assert_eq!(
+            GroupChatService::guess_image_mime_type("noextension"),
+            None
+        );
     }
 }
