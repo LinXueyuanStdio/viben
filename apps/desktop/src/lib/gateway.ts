@@ -497,8 +497,8 @@ export class GatewayClient {
   private async testWebSocket(): Promise<boolean> {
     return new Promise((resolve) => {
       const wsUrl = this.baseUrl.replace(/^http/, "ws");
-      // Use a simple test endpoint - try events stream
-      const ws = new WebSocket(`${wsUrl}/api/events`);
+      // The Gateway WebSocket endpoint is at /ws (not /api/events)
+      const ws = new WebSocket(`${wsUrl}/ws`);
       const timeout = setTimeout(() => {
         ws.close();
         resolve(false);
@@ -514,6 +514,15 @@ export class GatewayClient {
         clearTimeout(timeout);
         ws.close();
         resolve(false);
+      };
+
+      ws.onclose = (event) => {
+        // If closed without opening, it's an error
+        // onclose can fire after onopen, so only resolve(false) if not already resolved
+        if (event.code !== 1000) {
+          clearTimeout(timeout);
+          resolve(false);
+        }
       };
     });
   }
@@ -585,6 +594,109 @@ export class GatewayClient {
 
     return response.json();
   }
+
+  // ==========================================================================
+  // Workspace APIs
+  // ==========================================================================
+
+  /**
+   * Get workspace executors with availability and config status
+   */
+  async getWorkspaceExecutors(
+    workspacePath: string
+  ): Promise<WorkspaceExecutorsResponse> {
+    const params = new URLSearchParams({ workspace_path: workspacePath });
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/executors?${params}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace executors: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get workspace models with availability status
+   */
+  async getWorkspaceModels(
+    workspacePath: string
+  ): Promise<WorkspaceModelsResponse> {
+    const params = new URLSearchParams({ workspace_path: workspacePath });
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/models?${params}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace models: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get workspace agents (Viben + discovered IDE configs)
+   */
+  async getWorkspaceAgents(
+    workspacePath: string
+  ): Promise<WorkspaceAgentsResponse> {
+    const params = new URLSearchParams({ workspace_path: workspacePath });
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/agents?${params}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace agents: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Helper to parse error message from response
+   */
+  private async parseErrorMessage(response: Response): Promise<string> {
+    let errorMessage = response.statusText;
+    try {
+      const errorBody = await response.json();
+      errorMessage =
+        errorBody?.error?.message ||
+        errorBody?.message ||
+        JSON.stringify(errorBody);
+    } catch {
+      // Keep statusText as fallback
+    }
+    return errorMessage;
+  }
+
+  // ==========================================================================
+  // Agent APIs
+  // ==========================================================================
 
   /**
    * Spawn a new agent process
@@ -1681,6 +1793,99 @@ export function sseEventToAgentMessage(
     default:
       return null;
   }
+}
+
+// ============================================================================
+// Workspace API Types
+// ============================================================================
+
+/** Workspace executor info */
+export interface WorkspaceExecutor {
+  /** Executor ID (e.g., "CLAUDE_CODE") */
+  id: BaseCodingAgent;
+  /** Display name */
+  name: string;
+  /** Global availability info */
+  availability: AvailabilityInfo;
+  /** Whether this executor supports MCP */
+  supports_mcp: boolean;
+  /** Executor capabilities */
+  capabilities: string[];
+  /** Workspace-specific config exists */
+  has_workspace_config: boolean;
+  /** Path to workspace config file (if exists) */
+  workspace_config_path?: string;
+}
+
+/** Response for workspace executors */
+export interface WorkspaceExecutorsResponse {
+  workspace_path: string;
+  executors: WorkspaceExecutor[];
+}
+
+/** Workspace model info */
+export interface WorkspaceModel {
+  /** Model ID */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Provider ID */
+  provider_id: string;
+  /** Provider name */
+  provider_name: string;
+  /** Model capabilities */
+  capabilities?: string[];
+  /** Context window size */
+  context_window?: number;
+  /** Whether model is available (API key configured) */
+  is_available: boolean;
+  /** Workspace-specific override exists */
+  has_workspace_override: boolean;
+}
+
+/** Response for workspace models */
+export interface WorkspaceModelsResponse {
+  workspace_path: string;
+  models: WorkspaceModel[];
+  total: number;
+}
+
+/** Workspace agent type */
+export type WorkspaceAgentType =
+  | "viben"
+  | "claude_code"
+  | "cursor"
+  | "vscode"
+  | "continue"
+  | "zed"
+  | "windsurf"
+  | "other";
+
+/** Workspace agent info */
+export interface WorkspaceAgent {
+  /** Agent ID */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Agent type */
+  agent_type: WorkspaceAgentType;
+  /** Source: "global" or "workspace" */
+  source: string;
+  /** Path to agent config */
+  config_path?: string;
+  /** MCP config path (if applicable) */
+  mcp_config_path?: string;
+  /** Number of MCP servers configured */
+  mcp_server_count: number;
+  /** Number of skills/commands configured */
+  skill_count: number;
+}
+
+/** Response for workspace agents */
+export interface WorkspaceAgentsResponse {
+  workspace_path: string;
+  agents: WorkspaceAgent[];
+  total: number;
 }
 
 /**

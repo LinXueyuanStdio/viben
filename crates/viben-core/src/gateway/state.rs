@@ -92,6 +92,14 @@ impl AppState {
 
         tracing::debug!(target: "viben::gateway::state", "Initializing ChannelService...");
         let channel = ChannelService::new(events_arc.clone());
+        // Load channels from config file
+        if let Err(e) = channel.load().await {
+            tracing::warn!(
+                target: "viben::gateway::state",
+                "Failed to load channel config: {}",
+                e
+            );
+        }
         let channel_arc = Arc::new(channel);
         tracing::debug!(target: "viben::gateway::state", "ChannelService initialized");
 

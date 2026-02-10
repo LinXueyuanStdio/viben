@@ -26,6 +26,11 @@ export interface MessageListProps {
   welcomeContent?: React.ReactNode;
   /** Enable auto-scroll to bottom on new messages (default: true when streaming) */
   autoScroll?: boolean;
+  /**
+   * Simple mode - displays messages in order without complex grouping.
+   * Useful for read-only executor session viewing where messages are already structured.
+   */
+  simpleMode?: boolean;
 }
 
 // Types for message grouping
@@ -337,6 +342,14 @@ function groupMessages(
       }
       pushCurrentGroup(true);
       groups.push({ type: "other", message });
+    } else if (message.type === "thinking") {
+      // Thinking messages are rendered as standalone collapsible items
+      if (pendingTextMessage) {
+        groups.push({ type: "other", message: pendingTextMessage });
+        pendingTextMessage = null;
+      }
+      pushCurrentGroup(true);
+      groups.push({ type: "other", message });
     }
   });
 
@@ -449,6 +462,7 @@ export function MessageList({
   welcomeDescription,
   welcomeContent,
   autoScroll,
+  simpleMode,
 }: MessageListProps) {
   const { t } = useTranslation();
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -460,9 +474,12 @@ export function MessageList({
   const lastScrollTopRef = React.useRef(0);
 
   // Group messages for display - must be called before any conditional returns
+  // In simpleMode, skip grouping and just create "other" groups for each message
   const groups = React.useMemo(
-    () => groupMessages(messages, isStreaming || false),
-    [messages, isStreaming]
+    () => simpleMode
+      ? messages.map((msg): OtherMessageGroup => ({ type: "other", message: msg }))
+      : groupMessages(messages, isStreaming || false),
+    [messages, isStreaming, simpleMode]
   );
 
   // Scroll to bottom function
@@ -570,9 +587,9 @@ export function MessageList({
   }
 
   return (
-    <div className={cn("relative flex-1 min-h-0 overflow-hidden", className)}>
-      <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
-        <div className="space-y-4 p-4 pb-8 max-w-4xl mx-auto">
+    <div className={cn("relative flex-1 min-h-0 min-w-0 overflow-hidden", className)}>
+      <ScrollArea className="h-full w-full [&>div]:!overflow-x-hidden" viewportRef={viewportRef}>
+        <div className="space-y-4 p-4 pb-8 max-w-4xl mx-auto w-full min-w-0 overflow-hidden">
           {groups.map((group, index) => {
             if (group.type === "task") {
               return (
@@ -603,6 +620,7 @@ export function MessageList({
                 onRejectPlan={onRejectPlan}
                 isPlanPending={isPlanMessage && pendingPlan !== null}
                 onLinkClick={onLinkClick}
+                className="min-w-0 overflow-hidden"
               />
             );
           })}

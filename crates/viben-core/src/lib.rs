@@ -103,7 +103,7 @@ pub use utils::{LogMsg, MsgStore, get_interactive_shell, get_shell_name};
 pub use notifications::{
     NotificationUrgency, SystemNotification, init_notifications, notify_agent_completion,
     notify_channel_message, notify_cron_completion, notify_custom, send_notification,
-    set_app_bundle_id,
+    set_app_name,
 };
 
 /// Initialize all managers and ensure directory structure exists

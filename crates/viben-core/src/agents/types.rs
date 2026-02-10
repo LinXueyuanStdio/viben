@@ -127,6 +127,10 @@ pub struct CreateAgentOptions {
     pub max_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from_template: Option<String>,
+    /// Custom base path for storing the agent (e.g., workspace path)
+    /// If not specified, defaults to ~/.viben/agents/
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_path: Option<String>,
 }
 
 /// Options for updating an agent

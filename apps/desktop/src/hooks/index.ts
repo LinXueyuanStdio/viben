@@ -111,8 +111,8 @@ export type {
 } from "./use-official-registry";
 
 // Viben-core Agents and Models
-export { useVibenAgents } from "./use-viben-agents";
-export type { Agent, CreateAgentOptions, AgentUpdate, AgentTemplate, AgentSession, AgentMemory, UseVibenAgentsReturn } from "./use-viben-agents";
+export { useVibenAgents, useWorkspaceVibenAgents } from "./use-viben-agents";
+export type { Agent, CreateAgentOptions, AgentUpdate, AgentTemplate, AgentSession, AgentMemory, UseVibenAgentsReturn, UseWorkspaceVibenAgentsReturn } from "./use-viben-agents";
 export { useVibenModels } from "./use-viben-models";
 export type { Model, CreateModelOptions, ModelUpdate, DiscoveredModel, UseVibenModelsReturn } from "./use-viben-models";
 
@@ -161,7 +161,7 @@ export type {
 // Channel Management
 export { useChannels } from "./use-channels";
 export type { UseChannelsReturn } from "./use-channels";
-export { useChannelInstances } from "./use-channel-instances";
+export { useChannelInstances, syncChannels } from "./use-channel-instances";
 export type { UseChannelInstancesReturn } from "./use-channel-instances";
 export { useChannelNotifications } from "./use-channel-notifications";
 export type { UseChannelNotificationsReturn } from "./use-channel-notifications";
@@ -189,6 +189,7 @@ export {
 } from "./use-cron";
 export { useCronNotifications } from "./use-cron-notifications";
 export type { CronJobStatus, UseCronNotificationsReturn } from "./use-cron-notifications";
+export { useCronNotificationAdapter } from "./use-cron-notification-adapter";
 
 // Chat Notifications
 export { useChatNotifications } from "./use-chat-notifications";
@@ -237,3 +238,13 @@ export type {
   SystemNotificationOptions,
   UseSystemNotificationReturn,
 } from "./use-system-notification";
+
+// WebSocket with heartbeat and auto-reconnect
+export { useWebSocket } from "./use-websocket";
+export type { WebSocketState, UseWebSocketOptions, UseWebSocketReturn } from "./use-websocket";
+export { useGatewayWebSocket } from "./use-gateway-websocket";
+export type {
+  GatewayEventPayload,
+  GatewayWsMessage,
+  UseGatewayWebSocketOptions,
+} from "./use-gateway-websocket";

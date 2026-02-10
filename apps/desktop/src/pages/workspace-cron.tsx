@@ -2,9 +2,13 @@
  * Workspace Cron Jobs Management Page
  *
  * Provides UI for managing scheduled tasks (cron jobs) in a workspace.
+ * Features:
+ * - Real-time status updates via WebSocket
+ * - Auto-calculated next execution time
+ * - Display of notification channels
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Clock,
@@ -17,7 +21,6 @@ import {
   ArrowLeft,
   RefreshCw,
   CheckCircle2,
-  XCircle,
   AlertCircle,
   Pencil,
   ChevronLeft,
@@ -25,6 +28,8 @@ import {
   Terminal,
   Bell,
   Settings2,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +67,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import {
@@ -163,8 +174,20 @@ export function WorkspaceCronPage() {
   const { notifyCronStatus } = useCronNotifications();
 
   // Channel instances for notification
-  const { getEnabledInstances } = useChannelInstances();
+  const { instances: allChannels, getEnabledInstances } = useChannelInstances();
   const enabledChannels = getEnabledInstances();
+
+  // Create a map of channel IDs to channel info for quick lookup
+  const channelMap = useMemo(() => {
+    const map = new Map<string, { name: string; type: ChannelType }>();
+    allChannels.forEach((channel) => {
+      map.set(channel.id, {
+        name: channel.name,
+        type: channel.channel_type as ChannelType,
+      });
+    });
+    return map;
+  }, [allChannels]);
 
   // UI state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -173,6 +196,15 @@ export function WorkspaceCronPage() {
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
   const [wizardStep, setWizardStep] = useState(1);
   const totalSteps = 3;
+
+  // Real-time countdown state - update every second
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
   const loading = loadingJobs || isLoadingWorkspaces || loadingAgents;
@@ -298,18 +330,37 @@ export function WorkspaceCronPage() {
     return "-";
   };
 
-  const formatNextRun = (timestamp?: number): string => {
+  const formatNextRun = (timestamp?: number): { text: string; isUrgent: boolean; isOverdue: boolean } => {
+    if (!timestamp) return { text: "-", isUrgent: false, isOverdue: false };
+    const now = Date.now();
+    const diff = timestamp - now;
+
+    if (diff < 0) {
+      return { text: t("cron.overdue"), isUrgent: true, isOverdue: true };
+    }
+    if (diff < 60000) {
+      const seconds = Math.floor(diff / 1000);
+      return { text: `${seconds}s`, isUrgent: true, isOverdue: false };
+    }
+    if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      return { text: `${minutes}m ${secs}s`, isUrgent: diff < 300000, isOverdue: false };
+    }
+    if (diff < 86400000) {
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      return { text: `${hours}h ${mins}m`, isUrgent: false, isOverdue: false };
+    }
+
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    return { text: `${days}d ${hours}h`, isUrgent: false, isOverdue: false };
+  };
+
+  const formatNextRunTooltip = (timestamp?: number): string => {
     if (!timestamp) return "-";
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = timestamp - now.getTime();
-
-    if (diff < 0) return t("cron.overdue");
-    if (diff < 60000) return t("cron.inLessThanMinute");
-    if (diff < 3600000) return `${Math.floor(diff / 60000)} ${t("cron.minutesShort")}`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)} ${t("cron.hoursShort")}`;
-
-    return date.toLocaleString();
+    return new Date(timestamp).toLocaleString();
   };
 
   const formatLastRun = (timestamp?: number): string => {
@@ -319,14 +370,7 @@ export function WorkspaceCronPage() {
   };
 
   const getStatusBadge = (job: CronJob) => {
-    if (!job.enabled) {
-      return (
-        <Badge variant="secondary" className="text-xs">
-          <Pause className="h-3 w-3 mr-1" />
-          {t("common.disabled")}
-        </Badge>
-      );
-    }
+    // Show running state when actively executing
     if (job.last_status === "running") {
       return (
         <Badge variant="default" className="text-xs bg-blue-500">
@@ -335,28 +379,35 @@ export function WorkspaceCronPage() {
         </Badge>
       );
     }
-    if (job.last_status === "success") {
+    // Show enabled/disabled status
+    if (job.enabled) {
       return (
         <Badge variant="default" className="text-xs bg-green-500">
           <CheckCircle2 className="h-3 w-3 mr-1" />
-          {t("logs.success")}
-        </Badge>
-      );
-    }
-    if (job.last_status === "failure") {
-      return (
-        <Badge variant="destructive" className="text-xs">
-          <XCircle className="h-3 w-3 mr-1" />
-          {t("logs.failed")}
+          {t("common.enabled")}
         </Badge>
       );
     }
     return (
-      <Badge variant="outline" className="text-xs">
-        <AlertCircle className="h-3 w-3 mr-1" />
-        {t("cron.pending")}
+      <Badge variant="secondary" className="text-xs">
+        <Pause className="h-3 w-3 mr-1" />
+        {t("common.disabled")}
       </Badge>
     );
+  };
+
+  // Get notification channels display for a job
+  const getNotificationChannels = (job: CronJob): { id: string; name: string; type: ChannelType }[] => {
+    if (!job.notifications?.channel_ids?.length) return [];
+    return job.notifications.channel_ids
+      .map((id) => {
+        const channel = channelMap.get(id);
+        if (channel) {
+          return { id, name: channel.name, type: channel.type };
+        }
+        return null;
+      })
+      .filter((c): c is { id: string; name: string; type: ChannelType } => c !== null);
   };
 
   // Loading state
@@ -426,7 +477,7 @@ export function WorkspaceCronPage() {
       />
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6 max-w-5xl mx-auto w-full">
+      <div className="flex-1 overflow-auto p-6 max-w-6xl mx-auto w-full">
         {jobsError ? (
           <Card>
             <CardContent className="py-12 text-center">
@@ -458,103 +509,186 @@ export function WorkspaceCronPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px]">{t("common.name")}</TableHead>
-                  <TableHead className="w-[100px]">{t("common.status")}</TableHead>
-                  <TableHead className="w-[120px]">{t("cron.schedule")}</TableHead>
-                  <TableHead className="w-[150px]">{t("cron.nextRun")}</TableHead>
-                  <TableHead className="w-[150px]">{t("cron.lastRun")}</TableHead>
-                  <TableHead className="w-[100px] text-right">{t("common.actions")}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {jobs.map((job) => (
-                  <TableRow key={job.id}>
-                    <TableCell>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-medium">{job.name}</p>
-                          <Badge variant="outline" className="text-[10px] px-1 py-0">
-                            {job.job_type === "script" ? t("cron.scriptType") : t("cron.agentType")}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate max-w-[180px]">
-                          {job.message || job.script || job.name}
-                        </p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(job)}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {formatSchedule(job)}
-                      </code>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatNextRun(job.next_run)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatLastRun(job.last_run)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleRunNow(job)}
-                          disabled={runningJobId === job.id}
-                          title={t("cron.runNow")}
-                        >
-                          {runningJobId === job.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="z-50">
-                            <DropdownMenuItem onClick={() => setEditingJob(job)}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              {t("common.edit")}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleEnabled(job)}>
-                              {job.enabled ? (
-                                <>
-                                  <Pause className="h-4 w-4 mr-2" />
-                                  {t("common.disable")}
-                                </>
-                              ) : (
-                                <>
-                                  <Play className="h-4 w-4 mr-2" />
-                                  {t("common.enable")}
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => handleDelete(job)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              {t("common.delete")}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
+          <TooltipProvider>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">{t("common.name")}</TableHead>
+                    <TableHead className="w-[100px]">{t("common.status")}</TableHead>
+                    <TableHead className="w-[100px]">{t("cron.schedule")}</TableHead>
+                    <TableHead className="w-[120px]">{t("cron.nextRun")}</TableHead>
+                    <TableHead className="w-[150px]">{t("cron.lastRun")}</TableHead>
+                    <TableHead className="w-[120px]">{t("cron.channels")}</TableHead>
+                    <TableHead className="w-[100px] text-right">{t("common.actions")}</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {jobs.map((job) => {
+                    const nextRunInfo = formatNextRun(job.next_run);
+                    const notificationChannels = getNotificationChannels(job);
+                    const hasNotifications = job.notifications?.in_app || job.notifications?.system || notificationChannels.length > 0;
+
+                    return (
+                      <TableRow key={job.id}>
+                        <TableCell>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium">{job.name}</p>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                {job.job_type === "script" ? t("cron.scriptType") : t("cron.agentType")}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                              {job.message || job.script || job.name}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(job)}</TableCell>
+                        <TableCell>
+                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                            {formatSchedule(job)}
+                          </code>
+                        </TableCell>
+                        <TableCell>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className={`text-sm font-mono tabular-nums ${
+                                nextRunInfo.isOverdue
+                                  ? "text-destructive font-medium"
+                                  : nextRunInfo.isUrgent
+                                  ? "text-orange-500 font-medium"
+                                  : "text-muted-foreground"
+                              }`}>
+                                {nextRunInfo.text}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{formatNextRunTooltip(job.next_run)}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatLastRun(job.last_run)}
+                        </TableCell>
+                        <TableCell>
+                          {hasNotifications ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                  {/* Build human-readable summary */}
+                                  {(() => {
+                                    const parts: string[] = [];
+                                    if (job.notifications?.in_app) parts.push(t("cron.notifyInAppShort"));
+                                    if (job.notifications?.system) parts.push(t("cron.notifySystemShort"));
+                                    if (notificationChannels.length > 0) {
+                                      parts.push(notificationChannels.map(c => c.name).join(", "));
+                                    }
+                                    return (
+                                      <span className="truncate max-w-[100px]">
+                                        {parts.join(" · ")}
+                                      </span>
+                                    );
+                                  })()}
+                                  <Bell className="h-3 w-3 flex-shrink-0 text-muted-foreground/60" />
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="left">
+                                <div className="space-y-1.5 text-xs">
+                                  <p className="font-medium">{t("cron.notifications")}</p>
+                                  {job.notifications?.in_app && (
+                                    <div className="flex items-center gap-1.5">
+                                      <Bell className="h-3 w-3" />
+                                      <span>{t("cron.notifyInApp")}</span>
+                                    </div>
+                                  )}
+                                  {job.notifications?.system && (
+                                    <div className="flex items-center gap-1.5">
+                                      <MessageSquare className="h-3 w-3" />
+                                      <span>{t("cron.notifySystem")}</span>
+                                    </div>
+                                  )}
+                                  {notificationChannels.length > 0 && (
+                                    <>
+                                      <div className="border-t pt-1.5 mt-1.5">
+                                        {notificationChannels.map((channel) => (
+                                          <div key={channel.id} className="flex items-center gap-1.5">
+                                            <Send className="h-3 w-3" />
+                                            <span>{channel.name}</span>
+                                            <span className="text-muted-foreground">
+                                              ({getChannelTypeName(channel.type)})
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleRunNow(job)}
+                              disabled={runningJobId === job.id}
+                              title={t("cron.runNow")}
+                            >
+                              {runningJobId === job.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="z-50">
+                                <DropdownMenuItem onClick={() => setEditingJob(job)}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  {t("common.edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleEnabled(job)}>
+                                  {job.enabled ? (
+                                    <>
+                                      <Pause className="h-4 w-4 mr-2" />
+                                      {t("common.disable")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Play className="h-4 w-4 mr-2" />
+                                      {t("common.enable")}
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => handleDelete(job)}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  {t("common.delete")}
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </TooltipProvider>
         )}
       </div>
 

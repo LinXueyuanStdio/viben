@@ -3,10 +3,15 @@
  *
  * Supports multiple instances of the same channel type.
  * Data is stored in ~/.viben/channels.yaml via Gateway.
+ *
+ * Uses a Zustand store for caching to enable pre-loading:
+ * - Call syncChannels() to pre-load data before entering the page
+ * - useChannelInstances() uses cached data when available
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { getGatewayClient } from "@/lib/gateway";
+import { useChannelStore } from "@/stores/channel-store";
 import type {
   ChannelType,
   GatewayChannel,
@@ -57,6 +62,42 @@ async function gatewayFetch<T>(
   return JSON.parse(text) as T;
 }
 
+/**
+ * Sync channels from gateway to store
+ * Call this to pre-load channel data before entering the settings page
+ *
+ * @param force - If true, fetch even if already loaded
+ */
+export async function syncChannels(force = false): Promise<void> {
+  const store = useChannelStore.getState();
+
+  // Skip if already loading
+  if (store.syncTask.status === "loading") {
+    console.log("[syncChannels] Already loading, skipping...");
+    return;
+  }
+
+  // Skip if already loaded (unless forced)
+  if (!force && store.hasLoadedOnce()) {
+    console.log("[syncChannels] Already loaded, skipping...");
+    return;
+  }
+
+  console.log("[syncChannels] Starting channel sync...");
+  store.startSync();
+
+  try {
+    const data = await gatewayFetch<ListChannelsResponse>("/api/channels");
+    console.log("[syncChannels] Loaded channels:", data.channels?.length ?? 0);
+    store.completeSync(data.channels || []);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to sync channels";
+    console.error("[syncChannels] Failed:", message);
+    store.failSync(message);
+  }
+}
+
 export interface UseChannelInstancesReturn {
   /** All channel instances */
   instances: GatewayChannel[];
@@ -94,31 +135,39 @@ export interface UseChannelInstancesReturn {
 }
 
 export function useChannelInstances(): UseChannelInstancesReturn {
-  const [instances, setInstances] = useState<GatewayChannel[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load from Gateway API
+  // Get data from store
+  const instances = useChannelStore((s) => s.channels);
+  const syncStatus = useChannelStore((s) => s.syncTask.status);
+  const syncError = useChannelStore((s) => s.syncTask.error);
+
+  // Consider loading if:
+  // - status is "loading", OR
+  // - status is "idle" and we haven't loaded yet (show loading until first sync completes)
+  const isLoading = syncStatus === "loading" || syncStatus === "idle";
+
+  // Load instances (uses store sync)
   const loadInstances = useCallback(async () => {
-    setIsLoading(true);
     setError(null);
-    try {
-      const data = await gatewayFetch<ListChannelsResponse>("/api/channels");
-      setInstances(data.channels || []);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load channel instances";
-      setError(message);
-      console.error("Failed to load channel instances:", err);
-    } finally {
-      setIsLoading(false);
+    await syncChannels(true); // Force refresh
+  }, []);
+
+  // Initialize: load on mount if not already loaded
+  useEffect(() => {
+    const store = useChannelStore.getState();
+    if (!store.hasLoadedOnce() && store.syncTask.status !== "loading") {
+      console.log("[useChannelInstances] Initial load...");
+      syncChannels();
     }
   }, []);
 
-  // Load on mount
+  // Sync error state from store
   useEffect(() => {
-    loadInstances();
-  }, [loadInstances]);
+    if (syncError) {
+      setError(syncError);
+    }
+  }, [syncError]);
 
   const getInstancesByType = useCallback(
     (type: ChannelType) => instances.filter((i) => i.channel_type === type),
@@ -157,7 +206,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
           body: JSON.stringify(request),
         });
         // Refresh the list
-        await loadInstances();
+        await syncChannels(true);
         return result;
       } catch (err) {
         const message =
@@ -167,7 +216,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return null;
       }
     },
-    [loadInstances]
+    []
   );
 
   const updateInstance = useCallback(
@@ -184,7 +233,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
           }
         );
         // Refresh the list
-        await loadInstances();
+        await syncChannels(true);
         return result;
       } catch (err) {
         const message =
@@ -194,28 +243,25 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return null;
       }
     },
-    [loadInstances]
+    []
   );
 
-  const deleteInstance = useCallback(
-    async (id: string): Promise<boolean> => {
-      try {
-        await gatewayFetch(`/api/channels/${id}`, {
-          method: "DELETE",
-        });
-        // Refresh the list
-        await loadInstances();
-        return true;
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Failed to delete channel";
-        setError(message);
-        console.error("Failed to delete channel instance:", err);
-        return false;
-      }
-    },
-    [loadInstances]
-  );
+  const deleteInstance = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      await gatewayFetch(`/api/channels/${id}`, {
+        method: "DELETE",
+      });
+      // Refresh the list
+      await syncChannels(true);
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete channel";
+      setError(message);
+      console.error("Failed to delete channel instance:", err);
+      return false;
+    }
+  }, []);
 
   const toggleInstance = useCallback(
     async (id: string): Promise<boolean> => {
@@ -238,7 +284,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
           }
         );
         // Refresh the list
-        await loadInstances();
+        await syncChannels(true);
         return result;
       } catch (err) {
         const message =
@@ -248,7 +294,7 @@ export function useChannelInstances(): UseChannelInstancesReturn {
         return null;
       }
     },
-    [loadInstances]
+    []
   );
 
   return {
@@ -288,6 +334,8 @@ export function useCreateChannel() {
           method: "POST",
           body: JSON.stringify(data),
         });
+        // Sync to store
+        await syncChannels(true);
         return result;
       } catch (err) {
         const message =
@@ -326,6 +374,8 @@ export function useUpdateChannel() {
             body: JSON.stringify(data),
           }
         );
+        // Sync to store
+        await syncChannels(true);
         return result;
       } catch (err) {
         const message =
@@ -356,6 +406,8 @@ export function useDeleteChannel() {
       await gatewayFetch(`/api/channels/${id}`, {
         method: "DELETE",
       });
+      // Sync to store
+      await syncChannels(true);
       return true;
     } catch (err) {
       const message =

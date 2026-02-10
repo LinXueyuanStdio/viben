@@ -40,6 +40,8 @@ export interface CreateAgentOptions {
   temperature?: number;
   max_tokens?: number;
   from_template?: string;
+  /** Custom base path for storing the agent (e.g., workspace path) */
+  base_path?: string;
 }
 
 export interface AgentUpdate {
@@ -374,5 +376,79 @@ export function useVibenAgents(): UseVibenAgentsReturn {
     removeSession,
     getMemory,
     appendMemory,
+  };
+}
+
+// ============================================================================
+// Hook for workspace-scoped agents
+// ============================================================================
+
+export interface UseWorkspaceVibenAgentsReturn {
+  agents: Agent[];
+  loading: boolean;
+  error: string | null;
+  refresh: () => Promise<void>;
+  getAgent: (id: string) => Promise<Agent | null>;
+}
+
+/**
+ * Hook for managing workspace-scoped viben agents
+ * These are agents stored in {workspacePath}/.viben/agents/
+ */
+export function useWorkspaceVibenAgents(workspacePath: string | null): UseWorkspaceVibenAgentsReturn {
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load agents from workspace path
+  const refresh = useCallback(async () => {
+    if (!workspacePath) {
+      setAgents([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const agentsList = await invoke<Agent[]>("viben_list_agents_from_path", {
+        base_path: workspacePath,
+      });
+      setAgents(agentsList);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      setAgents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath]);
+
+  // Get single agent from workspace
+  const getAgent = useCallback(async (id: string): Promise<Agent | null> => {
+    if (!workspacePath) return null;
+    try {
+      return await invoke<Agent | null>("viben_get_agent_from_path", {
+        id,
+        base_path: workspacePath,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
+      throw new Error(message);
+    }
+  }, [workspacePath]);
+
+  // Initial load and reload when workspace changes
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    agents,
+    loading,
+    error,
+    refresh,
+    getAgent,
   };
 }

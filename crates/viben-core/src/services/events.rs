@@ -116,7 +116,13 @@ pub enum GatewayEvent {
     /// Cron job completed
     CronJobCompleted {
         job_id: String,
+        job_name: String,
+        job_type: String,
         status: super::cron::JobStatus,
+        /// Duration in milliseconds
+        duration_ms: i64,
+        /// Output message (truncated)
+        output: Option<String>,
         completed_at: i64,
     },
     /// Cron job message (for agent-type jobs)

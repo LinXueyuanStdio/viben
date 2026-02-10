@@ -30,6 +30,10 @@ export interface NotificationMetadata {
   workspaceId?: string;
   /** URL path to navigate when notification is clicked */
   actionUrl?: string;
+  /** Job type for cron notifications (agent or script) */
+  jobType?: "agent" | "script";
+  /** Duration in milliseconds for cron notifications */
+  durationMs?: number;
 }
 
 /**

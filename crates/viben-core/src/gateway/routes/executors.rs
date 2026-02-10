@@ -60,19 +60,14 @@ pub struct ClaudeCodeMessage {
     /// Timestamp
     #[serde(default)]
     pub timestamp: Option<String>,
-    /// User message content (for type=user)
+    /// Message content - structure varies by type:
+    /// - For user: { role: "user", content: "string" }
+    /// - For assistant: { role: "assistant", content: [{ type: "text"|"tool_use"|"thinking", ... }] }
     #[serde(default)]
-    pub message: Option<ClaudeCodeUserMessage>,
+    pub message: Option<Value>,
     /// Raw message data for other types
     #[serde(flatten)]
     pub extra: Value,
-}
-
-/// User message structure in Claude Code
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClaudeCodeUserMessage {
-    pub role: String,
-    pub content: String,
 }
 
 /// Query parameters for session discovery
@@ -243,7 +238,9 @@ async fn read_first_user_message(file_path: &PathBuf) -> Option<String> {
         if let Ok(msg) = serde_json::from_str::<ClaudeCodeMessage>(&line) {
             if msg.msg_type == "user" {
                 if let Some(user_msg) = &msg.message {
-                    let content = &user_msg.content;
+                    // Get content as string (may be in message.content)
+                    let content = user_msg.get("content")
+                        .and_then(|c| c.as_str())?;
                     // Truncate to first 100 chars (handle multi-byte UTF-8 safely)
                     let preview: String = content.chars().take(100).collect();
                     let preview = if content.chars().count() > 100 {
@@ -287,9 +284,9 @@ async fn read_claude_code_session_messages(
         line_count += 1;
 
         if let Ok(msg) = serde_json::from_str::<ClaudeCodeMessage>(&line) {
-            if let Some(ui_msg) = convert_claude_message_to_ui(&msg) {
-                messages.push(ui_msg);
-            }
+            // Convert can produce multiple UI messages from one source message
+            let ui_msgs = convert_claude_message_to_ui(&msg);
+            messages.extend(ui_msgs);
         }
 
         // Check limit
@@ -310,63 +307,138 @@ async fn read_claude_code_session_messages(
 }
 
 /// Convert a Claude Code message to UI message format
-fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Option<ExecutorUIMessage> {
-    let id = msg.uuid.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+/// Returns a Vec because one assistant message can contain multiple content blocks
+fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessage> {
+    let base_id = msg.uuid.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let timestamp = msg.timestamp.clone().unwrap_or_else(|| Utc::now().to_rfc3339());
 
     match msg.msg_type.as_str() {
         "user" => {
-            let content = msg.message.as_ref().map(|m| m.content.clone());
-            Some(ExecutorUIMessage {
-                id,
-                timestamp,
-                msg_type: "user".to_string(),
-                content,
-                tool_use_id: None,
-                tool_name: None,
-                tool_input: None,
-                tool_output: None,
-                is_error: None,
-            })
+            // User message can be a string or an array of tool_result blocks
+            if let Some(m) = &msg.message {
+                // Check if content is an array (tool results)
+                if let Some(arr) = m.get("content").and_then(|c| c.as_array()) {
+                    // Process tool_result blocks
+                    arr.iter()
+                        .enumerate()
+                        .filter_map(|(i, block)| {
+                            let block_type = block.get("type")?.as_str()?;
+                            if block_type == "tool_result" {
+                                let tool_use_id = block.get("tool_use_id")?.as_str()?.to_string();
+                                let content = block.get("content")
+                                    .and_then(|c| c.as_str())
+                                    .map(|s| s.to_string());
+                                let is_error = block.get("is_error")
+                                    .and_then(|e| e.as_bool());
+
+                                Some(ExecutorUIMessage {
+                                    id: format!("{}-{}", base_id, i),
+                                    timestamp: timestamp.clone(),
+                                    msg_type: "tool_result".to_string(),
+                                    content,
+                                    tool_use_id: Some(tool_use_id),
+                                    tool_name: None,
+                                    tool_input: None,
+                                    tool_output: None,
+                                    is_error,
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                } else if let Some(content) = m.get("content").and_then(|c| c.as_str()) {
+                    // Plain text user message (content is a string)
+                    vec![ExecutorUIMessage {
+                        id: base_id,
+                        timestamp,
+                        msg_type: "user".to_string(),
+                        content: Some(content.to_string()),
+                        tool_use_id: None,
+                        tool_name: None,
+                        tool_input: None,
+                        tool_output: None,
+                        is_error: None,
+                    }]
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
+            }
         }
         "assistant" => {
-            // Extract text content from assistant message
-            let content = msg.extra.get("message")
+            // Assistant message contains content array with thinking, text, tool_use blocks
+            let content_arr = msg.message.as_ref()
                 .and_then(|m| m.get("content"))
-                .and_then(|c| {
-                    if let Some(arr) = c.as_array() {
-                        // Find text content blocks
-                        arr.iter()
-                            .filter_map(|block| {
-                                if block.get("type")?.as_str()? == "text" {
-                                    block.get("text")?.as_str().map(|s| s.to_string())
-                                } else {
-                                    None
+                .and_then(|c| c.as_array());
+
+            if let Some(arr) = content_arr {
+                arr.iter()
+                    .enumerate()
+                    .filter_map(|(i, block)| {
+                        let block_type = block.get("type")?.as_str()?;
+                        match block_type {
+                            "thinking" => {
+                                // Get thinking content (may be in "thinking" or "content" field)
+                                let thinking_content = block.get("thinking")
+                                    .and_then(|t| t.as_str())
+                                    .or_else(|| block.get("content").and_then(|c| c.as_str()))
+                                    .map(|s| s.to_string())?;
+
+                                Some(ExecutorUIMessage {
+                                    id: format!("{}-{}", base_id, i),
+                                    timestamp: timestamp.clone(),
+                                    msg_type: "thinking".to_string(),
+                                    content: Some(thinking_content),
+                                    tool_use_id: None,
+                                    tool_name: None,
+                                    tool_input: None,
+                                    tool_output: None,
+                                    is_error: None,
+                                })
+                            }
+                            "text" => {
+                                let text = block.get("text")?.as_str()?.to_string();
+                                if text.is_empty() {
+                                    return None;
                                 }
-                            })
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                            .into()
-                    } else {
-                        c.as_str().map(|s| s.to_string())
-                    }
-                });
+                                Some(ExecutorUIMessage {
+                                    id: format!("{}-{}", base_id, i),
+                                    timestamp: timestamp.clone(),
+                                    msg_type: "text".to_string(),
+                                    content: Some(text),
+                                    tool_use_id: None,
+                                    tool_name: None,
+                                    tool_input: None,
+                                    tool_output: None,
+                                    is_error: None,
+                                })
+                            }
+                            "tool_use" => {
+                                let tool_id = block.get("id")?.as_str()?.to_string();
+                                let tool_name = block.get("name")?.as_str()?.to_string();
+                                let tool_input = block.get("input").cloned();
 
-            if content.is_none() || content.as_ref().map(|c| c.is_empty()).unwrap_or(true) {
-                return None;
+                                Some(ExecutorUIMessage {
+                                    id: format!("{}-{}", base_id, i),
+                                    timestamp: timestamp.clone(),
+                                    msg_type: "tool_use".to_string(),
+                                    content: None,
+                                    tool_use_id: Some(tool_id),
+                                    tool_name: Some(tool_name),
+                                    tool_input,
+                                    tool_output: None,
+                                    is_error: None,
+                                })
+                            }
+                            _ => None,
+                        }
+                    })
+                    .collect()
+            } else {
+                vec![]
             }
-
-            Some(ExecutorUIMessage {
-                id,
-                timestamp,
-                msg_type: "text".to_string(),
-                content,
-                tool_use_id: None,
-                tool_name: None,
-                tool_input: None,
-                tool_output: None,
-                is_error: None,
-            })
         }
         "result" => {
             // Final result message
@@ -379,21 +451,21 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Option<ExecutorUIMes
                         .map(|s| format!("[{}]", s))
                 });
 
-            Some(ExecutorUIMessage {
-                id,
+            vec![ExecutorUIMessage {
+                id: base_id,
                 timestamp,
-                msg_type: "result".to_string(),
+                msg_type: "text".to_string(), // Display result as text
                 content,
                 tool_use_id: None,
                 tool_name: None,
                 tool_input: None,
                 tool_output: None,
                 is_error: None,
-            })
+            }]
         }
         // Skip progress, queue-operation, and other internal messages
-        "progress" | "queue-operation" | "init" => None,
-        _ => None,
+        "progress" | "queue-operation" | "init" | "file-history-snapshot" => vec![],
+        _ => vec![],
     }
 }
 

@@ -15,6 +15,7 @@ pub mod history;
 pub mod sessions;
 pub mod tasks;
 pub mod terminal;
+pub mod workspaces;
 pub mod ws;
 
 /// Create the main router with all routes
@@ -33,6 +34,7 @@ pub fn router(state: AppState) -> Router {
         .merge(history::router())
         .merge(group_chats::router())
         .merge(cron::router())
+        .merge(workspaces::router())
         .merge(ws::router())
         .with_state(state);
 

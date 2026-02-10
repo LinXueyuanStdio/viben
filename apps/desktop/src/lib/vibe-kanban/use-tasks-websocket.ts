@@ -1,5 +1,6 @@
 /**
  * WebSocket hook for real-time task streaming with JSON Patch
+ * Includes heartbeat mechanism and auto-reconnect for stability
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -16,23 +17,30 @@ import {
 interface UseTasksWebSocketOptions {
   /** Enable automatic reconnection (default: true) */
   autoReconnect?: boolean;
-  /** Maximum reconnection attempts (default: 10) */
+  /** Maximum reconnection attempts (default: Infinity) */
   maxReconnectAttempts?: number;
   /** Base delay for exponential backoff in ms (default: 1000) */
   baseReconnectDelay?: number;
-  /** Maximum reconnection delay in ms (default: 8000) */
+  /** Maximum reconnection delay in ms (default: 30000) */
   maxReconnectDelay?: number;
+  /** Heartbeat interval in ms (default: 30000) */
+  heartbeatInterval?: number;
+  /** Heartbeat timeout in ms (default: 10000) */
+  heartbeatTimeout?: number;
 }
 
 const DEFAULT_OPTIONS: Required<UseTasksWebSocketOptions> = {
   autoReconnect: true,
-  maxReconnectAttempts: 10,
+  maxReconnectAttempts: Infinity,
   baseReconnectDelay: 1000,
-  maxReconnectDelay: 8000,
+  maxReconnectDelay: 30000,
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
 };
 
 /**
  * Hook for streaming task updates via WebSocket with JSON Patch
+ * Includes heartbeat mechanism and auto-reconnect for stability
  *
  * @param projectId - Project ID to stream tasks for (null to disable)
  * @param options - Configuration options
@@ -54,9 +62,10 @@ export function useTasksWebSocket(
   // Refs for managing connection
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttemptRef = useRef(0);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heartbeatTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heartbeatTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPongTimeRef = useRef(0);
   const isMountedRef = useRef(true);
 
   // Clear reconnect timeout
@@ -64,6 +73,18 @@ export function useTasksWebSocket(
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Clear heartbeat timers
+  const clearHeartbeat = useCallback(() => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
     }
   }, []);
 
@@ -79,14 +100,44 @@ export function useTasksWebSocket(
   // Disconnect WebSocket
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
+    clearHeartbeat();
     if (wsRef.current) {
-      wsRef.current.close();
+      wsRef.current.close(1000, "Manual disconnect");
       wsRef.current = null;
     }
     if (isMountedRef.current) {
       setConnectionState("disconnected");
     }
-  }, [clearReconnectTimeout]);
+  }, [clearReconnectTimeout, clearHeartbeat]);
+
+  // Start heartbeat
+  const startHeartbeat = useCallback(() => {
+    clearHeartbeat();
+
+    heartbeatTimerRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // Send ping (JSON format for compatibility)
+        wsRef.current.send(JSON.stringify({ type: "ping" }));
+
+        // Set timeout for pong response
+        heartbeatTimeoutRef.current = setTimeout(() => {
+          console.warn("[TasksWebSocket] Heartbeat timeout - reconnecting");
+          if (wsRef.current) {
+            wsRef.current.close(4000, "Heartbeat timeout");
+          }
+        }, opts.heartbeatTimeout);
+      }
+    }, opts.heartbeatInterval);
+  }, [clearHeartbeat, opts.heartbeatInterval, opts.heartbeatTimeout]);
+
+  // Reset heartbeat timeout (called when any message is received)
+  const resetHeartbeatTimeout = useCallback(() => {
+    if (heartbeatTimeoutRef.current) {
+      clearTimeout(heartbeatTimeoutRef.current);
+      heartbeatTimeoutRef.current = null;
+    }
+    lastPongTimeRef.current = Date.now();
+  }, []);
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -107,18 +158,29 @@ export function useTasksWebSocket(
 
       ws.onopen = () => {
         if (!isMountedRef.current) return;
+        console.log("[TasksWebSocket] Connected to", url);
         setConnectionState("connected");
         reconnectAttemptRef.current = 0;
         // Reset data to receive fresh snapshot
         setData(null);
         setIsInitialized(false);
+        // Start heartbeat
+        startHeartbeat();
       };
 
       ws.onmessage = (event) => {
         if (!isMountedRef.current) return;
 
+        // Reset heartbeat timeout on any message
+        resetHeartbeatTimeout();
+
         try {
           const message = JSON.parse(event.data);
+
+          // Handle pong messages
+          if (message.type === "pong" || message === "pong") {
+            return;
+          }
 
           if (isStreamFinishedMessage(message)) {
             // Initial snapshot complete
@@ -146,7 +208,7 @@ export function useTasksWebSocket(
                 return result.newDocument;
               } catch (patchError) {
                 console.error(
-                  "[useTasksWebSocket] Failed to apply patch:",
+                  "[TasksWebSocket] Failed to apply patch:",
                   patchError,
                   operations
                 );
@@ -157,7 +219,7 @@ export function useTasksWebSocket(
           }
         } catch (parseError) {
           console.error(
-            "[useTasksWebSocket] Failed to parse message:",
+            "[TasksWebSocket] Failed to parse message:",
             parseError
           );
         }
@@ -165,7 +227,7 @@ export function useTasksWebSocket(
 
       ws.onerror = (event) => {
         if (!isMountedRef.current) return;
-        console.error("[useTasksWebSocket] WebSocket error:", event);
+        console.error("[TasksWebSocket] WebSocket error:", event);
         setError(new Error("WebSocket connection error"));
         setConnectionState("error");
       };
@@ -174,6 +236,7 @@ export function useTasksWebSocket(
         if (!isMountedRef.current) return;
 
         wsRef.current = null;
+        clearHeartbeat();
 
         // Check if this was a clean close or an error
         if (event.code !== 1000 && event.code !== 1001) {
@@ -192,6 +255,7 @@ export function useTasksWebSocket(
         ) {
           const delay = getReconnectDelay();
           reconnectAttemptRef.current += 1;
+          console.log(`[TasksWebSocket] Reconnecting in ${delay}ms (attempt ${reconnectAttemptRef.current})`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
@@ -210,6 +274,9 @@ export function useTasksWebSocket(
     opts.autoReconnect,
     opts.maxReconnectAttempts,
     getReconnectDelay,
+    startHeartbeat,
+    resetHeartbeatTimeout,
+    clearHeartbeat,
   ]);
 
   // Manual reconnect
@@ -235,12 +302,13 @@ export function useTasksWebSocket(
     return () => {
       isMountedRef.current = false;
       clearReconnectTimeout();
+      clearHeartbeat();
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     };
-  }, [projectId, connect, disconnect, clearReconnectTimeout]);
+  }, [projectId, connect, disconnect, clearReconnectTimeout, clearHeartbeat]);
 
   return {
     data,

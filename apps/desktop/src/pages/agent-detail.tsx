@@ -75,6 +75,7 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   useVibenAgents,
+  useWorkspaceVibenAgents,
   useVibenModels,
   useAgent,
   useCloudSkillPackages,
@@ -249,6 +250,12 @@ export function AgentDetailPage() {
   // Determine if this is a workspace-scoped agent
   const isWorkspaceScoped = Boolean(workspaceId);
 
+  // Get workspace info first (needed for workspace agent hook)
+  const { workspaces, isLoading: workspacesLoading } = useLocalWorkspaces();
+  const workspace = isWorkspaceScoped
+    ? workspaces.find((w) => w.id === workspaceId)
+    : null;
+
   const {
     agents: vibenAgents,
     loading: agentsLoading,
@@ -256,7 +263,13 @@ export function AgentDetailPage() {
     updateAgent,
   } = useVibenAgents();
 
-  // Workspace executors (auto-discovered)
+  // Workspace-scoped viben agents (stored in workspace/.viben/agents/)
+  const {
+    agents: workspaceVibenAgents,
+    loading: workspaceAgentsLoading,
+  } = useWorkspaceVibenAgents(workspace?.path || null);
+
+  // Workspace executors (auto-discovered from .claude, .cursor, etc.)
   const {
     agents: workspaceExecutors,
     loading: executorsLoading,
@@ -265,12 +278,6 @@ export function AgentDetailPage() {
   const { models } = useVibenModels();
   const mcpServers = useAppStore((state) => state.mcpServers);
   const { packages: skillPackages } = useCloudSkillPackages();
-
-  // Get workspace info for workspace-scoped agents
-  const { workspaces } = useLocalWorkspaces();
-  const workspace = isWorkspaceScoped
-    ? workspaces.find((w) => w.id === workspaceId)
-    : null;
 
   // Determine workdir: workspace path for workspace-scoped, ~/.viben for global
   const [globalVibenDir, setGlobalVibenDir] = useState<string>("");
@@ -283,10 +290,16 @@ export function AgentDetailPage() {
   }, [isWorkspaceScoped]);
 
   // Find the current agent or executor
-  // First try to find in Viben Agents (global storage)
-  const vibenAgent = useMemo(
+  // First try to find in global Viben Agents
+  const globalVibenAgent = useMemo(
     () => vibenAgents.find((a) => a.id === agentId) || null,
     [vibenAgents, agentId]
+  );
+
+  // Then try to find in workspace-scoped Viben Agents
+  const workspaceVibenAgent = useMemo(
+    () => workspaceVibenAgents.find((a) => a.id === agentId) || null,
+    [workspaceVibenAgents, agentId]
   );
 
   // Then try to find in workspace executors (auto-discovered)
@@ -294,6 +307,9 @@ export function AgentDetailPage() {
     () => workspaceExecutors.find((a) => a.id === agentId) || null,
     [workspaceExecutors, agentId]
   );
+
+  // Use workspace agent if found, otherwise fall back to global
+  const vibenAgent = workspaceVibenAgent || globalVibenAgent;
 
   // Determine if we're viewing an executor or an agent
   const isExecutor = Boolean(workspaceExecutor && !vibenAgent);
@@ -573,7 +589,7 @@ export function AgentDetailPage() {
     }
   }, [clearMessages]);
 
-  if (agentsLoading || executorsLoading) {
+  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || executorsLoading) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

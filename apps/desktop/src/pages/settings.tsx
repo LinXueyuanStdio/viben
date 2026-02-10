@@ -46,6 +46,7 @@ import {
 import { ThemeSwitcher } from "@/components/settings/theme-switcher";
 import { CacheManager } from "@/components/offline/cache-manager";
 import { usePython } from "@/hooks/use-python";
+import { syncChannels } from "@/hooks";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n/languages";
@@ -174,9 +175,15 @@ export function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>(getSectionFromPath);
 
   // Sync URL with active section (used in sidebar navigation)
+  // Pre-load data when navigating to certain sections
   const handleSectionChange = useCallback((section: SettingsSection) => {
     setActiveSection(section);
     navigate(`/settings/${section}`, { replace: true });
+
+    // Pre-sync channel data when navigating to channels section
+    if (section === "channels") {
+      syncChannels();
+    }
   }, [navigate]);
 
   // Update active section when URL changes
@@ -184,6 +191,10 @@ export function SettingsPage() {
     const sectionFromPath = getSectionFromPath();
     if (sectionFromPath !== activeSection) {
       setActiveSection(sectionFromPath);
+    }
+    // Pre-sync data for specific sections on URL change (deep link support)
+    if (sectionFromPath === "channels") {
+      syncChannels();
     }
   }, [location.pathname]);
 

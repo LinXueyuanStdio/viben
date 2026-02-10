@@ -114,6 +114,7 @@ impl AgentCommand {
                     temperature: None,
                     max_tokens: None,
                     from_template: None,
+                    base_path: None,
                 })
                 .await?;
 
