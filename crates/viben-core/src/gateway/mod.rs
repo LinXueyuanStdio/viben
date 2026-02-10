@@ -61,6 +61,15 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         );
     }
 
+    // Start channel message router
+    tracing::info!(target: "viben::gateway", "Starting channel message router...");
+    if let Err(e) = state.channel_router.start().await {
+        tracing::error!(target: "viben::gateway", "Failed to start channel router: {}", e);
+        tracing::warn!(target: "viben::gateway", "Gateway will run without channel message routing");
+    } else {
+        tracing::info!(target: "viben::gateway", "Channel message router started");
+    }
+
     // Build router
     tracing::debug!(target: "viben::gateway", "Building router with routes and middleware...");
     let app = Router::new()
@@ -124,12 +133,17 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         }
     };
 
-    // Clone cron service for shutdown
+    // Clone services for shutdown
     let cron_for_shutdown = state.cron.clone();
+    let channel_router_for_shutdown = state.channel_router.clone();
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
+
+    // Shutdown channel router
+    tracing::info!(target: "viben::gateway", "Stopping channel router...");
+    channel_router_for_shutdown.stop().await;
 
     // Shutdown cron scheduler
     tracing::info!(target: "viben::gateway", "Stopping cron scheduler...");

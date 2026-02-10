@@ -5,6 +5,7 @@
 
 pub mod types;
 pub mod service;
+pub mod router;
 pub mod telegram;
 pub mod discord;
 pub mod feishu;
@@ -17,6 +18,7 @@ mod tests;
 
 pub use types::*;
 pub use service::{ChannelError, ChannelService};
+pub use router::{ChannelRouter, IncomingMessage, RouterError};
 pub use telegram::{send_telegram_message, test_telegram_channel};
 pub use discord::{send_discord_message, test_discord_channel};
 pub use feishu::{send_feishu_message, test_feishu_channel};
