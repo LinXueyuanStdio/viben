@@ -348,7 +348,7 @@ export function SettingsExecutorsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {executor.info.description}
+                    {t(`settingsExecutors.executors.${executor.info.id}`, executor.info.description)}
                   </p>
 
                   {/* Install command for not-found executors */}

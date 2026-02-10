@@ -257,12 +257,22 @@ export const DEFAULT_CHANNELS_CONFIG: ChannelsConfig = {
 // Helper functions
 // ============================================================================
 
-/** Get channel type display name */
+/** Get channel type i18n key for display name */
+export function getChannelTypeNameKey(type: ChannelType): string {
+  // Returns the i18n key - caller should use t() to get the translated value
+  // Special case: feishu has a name key, others use the type as name
+  if (type === "feishu") {
+    return "channels.feishu.name";
+  }
+  return `channels.${type}.name`;
+}
+
+/** Get channel type display name (fallback for non-i18n contexts) */
 export function getChannelTypeName(type: ChannelType): string {
   const names: Record<ChannelType, string> = {
     telegram: "Telegram",
     discord: "Discord",
-    feishu: "飞书",
+    feishu: "Feishu",
     whatsapp: "WhatsApp",
     slack: "Slack",
     webhook: "Webhook",

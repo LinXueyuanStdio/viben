@@ -142,6 +142,7 @@
     "sendTest": "Send Test",
     "testing": "Testing...",
     "telegram": {
+      "name": "Telegram",
       "description": "Receive messages via Telegram Bot",
       "token": "Bot Token",
       "tokenDescription": "Get from @BotFather",
@@ -155,6 +156,7 @@
       "chatIdHint": "You can get your Chat ID from @userinfobot"
     },
     "discord": {
+      "name": "Discord",
       "description": "Receive messages via Discord Bot",
       "token": "Bot Token",
       "tokenDescription": "Get from Discord Developer Portal",
@@ -180,6 +182,7 @@
       "chatIdHint": "You can use Open ID (ou_xxx), Chat ID (oc_xxx), or email address"
     },
     "whatsapp": {
+      "name": "WhatsApp",
       "description": "Receive messages via WhatsApp Bridge",
       "bridgeUrl": "Bridge URL",
       "bridgeDescription": "WhatsApp Web Bridge WebSocket address",
@@ -415,7 +418,18 @@
     "gatewayRequired": "Gateway connection required to check executor status. Please start the gateway service first.",
     "summary": "Executor Status",
     "summaryText": "{{installed}}/{{total}} executors available",
-    "installHint": "Install command:"
+    "installHint": "Install command:",
+    "executors": {
+      "CLAUDE_CODE": "Anthropic's official CLI for Claude - powerful coding agent",
+      "AMP": "Sourcegraph's AI-powered code navigation and editing",
+      "GEMINI": "Google's Gemini AI assistant for coding tasks",
+      "CODEX": "OpenAI's Codex-powered coding assistant",
+      "OPENCODE": "Open-source AI coding assistant",
+      "CURSOR_AGENT": "Cursor's background AI agent for autonomous coding",
+      "QWEN_CODE": "Alibaba's Qwen coding model CLI",
+      "COPILOT": "GitHub's AI pair programmer in the terminal",
+      "DROID": "Android development AI assistant"
+    }
   },
   "settingsAgents": {
     "title": "AI Agents",
