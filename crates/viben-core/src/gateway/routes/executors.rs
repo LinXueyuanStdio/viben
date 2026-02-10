@@ -18,6 +18,9 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::gateway::{AppState, GatewayError};
 
+// Re-export workspace types for the unified endpoint
+pub use super::workspaces::{WorkspaceExecutorsResponse, WorkspaceExecutor};
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -470,6 +473,51 @@ fn convert_claude_message_to_ui(msg: &ClaudeCodeMessage) -> Vec<ExecutorUIMessag
 }
 
 // ============================================================================
+// Unified /api/executors endpoint
+// ============================================================================
+
+/// Query parameters for /api/executors endpoint
+#[derive(Debug, Deserialize, Default)]
+pub struct ExecutorsQuery {
+    /// If provided, returns workspace-scoped executors
+    pub workspace_path: Option<String>,
+    /// Whether to include global executors (only used when workspace_path is provided)
+    #[serde(default = "default_include_global")]
+    pub include_global: bool,
+}
+
+fn default_include_global() -> bool {
+    true
+}
+
+/// List executors - returns workspace-scoped executors when workspace_path is provided
+///
+/// GET /api/executors?workspace_path=/path&include_global=true - Returns workspace-scoped executors
+pub async fn list_executors(
+    Query(query): Query<ExecutorsQuery>,
+) -> Result<Json<WorkspaceExecutorsResponse>, GatewayError> {
+    // Require workspace_path for this endpoint
+    let workspace_path = query.workspace_path.ok_or_else(|| {
+        GatewayError::BadRequest("workspace_path query parameter is required".to_string())
+    })?;
+
+    tracing::debug!(
+        target: "viben::gateway::executors",
+        "Listing workspace-scoped executors for: {} (include_global={})",
+        workspace_path, query.include_global
+    );
+
+    let response = super::workspaces::list_executors(
+        Query(super::workspaces::ResourceQuery {
+            workspace_path,
+            include_global: query.include_global,
+        }),
+    ).await?;
+
+    Ok(Json(response.0))
+}
+
+// ============================================================================
 // API Handlers
 // ============================================================================
 
@@ -565,6 +613,9 @@ pub async fn get_session_messages(
 /// Create the executors router
 pub fn router() -> Router<AppState> {
     Router::new()
+        // Unified endpoint (must come before parameterized routes)
+        .route("/api/executors", get(list_executors))
+        // Session discovery and management
         .route("/api/executors/:type/discover-sessions", get(discover_sessions))
         .route("/api/executors/:type/sessions/:session_id/messages", get(get_session_messages))
 }

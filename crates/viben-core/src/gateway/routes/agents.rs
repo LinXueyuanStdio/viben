@@ -2,7 +2,7 @@
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::{delete, get, post},
 };
 use serde::{Deserialize, Serialize};
@@ -12,8 +12,59 @@ use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor};
 use crate::services::session_store::{SessionConfig, SessionMessage, UIMessage};
 
-/// List all available agent types
-pub async fn list_agents() -> Json<Value> {
+// Re-export workspace types for the merged endpoint
+pub use super::workspaces::{WorkspaceAgentsResponse, WorkspaceAgent, WorkspaceAgentType};
+
+/// Query parameters for /api/agents endpoint
+#[derive(Debug, Deserialize, Default)]
+pub struct AgentsQuery {
+    /// If provided, returns workspace-scoped agents instead of agent types
+    pub workspace_path: Option<String>,
+    /// Whether to include global agents (only used when workspace_path is provided)
+    #[serde(default = "default_include_global")]
+    pub include_global: bool,
+}
+
+fn default_include_global() -> bool {
+    true
+}
+
+/// Unified response enum for /api/agents endpoint
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum AgentsResponse {
+    /// Simple list of agent types (when no workspace_path)
+    Types { agents: Vec<&'static str> },
+    /// Workspace-scoped agents (when workspace_path is provided)
+    Workspace(WorkspaceAgentsResponse),
+}
+
+/// List agents - returns agent types or workspace-scoped agents based on query params
+///
+/// GET /api/agents - Returns list of agent type IDs
+/// GET /api/agents?workspace_path=/path&include_global=true - Returns workspace-scoped agents
+pub async fn list_agents(
+    Query(query): Query<AgentsQuery>,
+) -> Result<Json<AgentsResponse>, GatewayError> {
+    // If workspace_path is provided, delegate to workspace-scoped logic
+    if let Some(workspace_path) = query.workspace_path {
+        tracing::debug!(
+            target: "viben::gateway::agents",
+            "Listing workspace-scoped agents for: {} (include_global={})",
+            workspace_path, query.include_global
+        );
+
+        let response = super::workspaces::list_agents(
+            Query(super::workspaces::ResourceQuery {
+                workspace_path,
+                include_global: query.include_global,
+            }),
+        ).await?;
+
+        return Ok(Json(AgentsResponse::Workspace(response.0)));
+    }
+
+    // Default: return simple list of agent types
     tracing::debug!(target: "viben::gateway::agents", "Listing all available agent types");
 
     let agents: Vec<&str> = vec![
@@ -30,9 +81,7 @@ pub async fn list_agents() -> Json<Value> {
 
     tracing::trace!(target: "viben::gateway::agents", "Returning {} agent types", agents.len());
 
-    Json(json!({
-        "agents": agents
-    }))
+    Ok(Json(AgentsResponse::Types { agents }))
 }
 
 /// Agent details response

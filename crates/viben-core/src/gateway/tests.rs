@@ -3807,8 +3807,8 @@ mod tests {
             let agents = json["agents"].as_array().unwrap();
 
             // Check if any agent has source="global"
-            let has_global = agents.iter().any(|a| a["source"] == "global");
-            let has_workspace = agents.iter().any(|a| a["source"] == "workspace");
+            let _has_global = agents.iter().any(|a| a["source"] == "global");
+            let _has_workspace = agents.iter().any(|a| a["source"] == "workspace");
 
             // With include_global=true, we should potentially have both
             // (depending on what's configured on the system)

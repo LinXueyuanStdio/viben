@@ -363,6 +363,7 @@ mod tests {
     async fn test_send_channel_message_telegram() {
         let config = ChannelConfig::Telegram(TelegramConfig {
             token: None,
+            chat_id: "123".to_string(),
             proxy: None,
         });
         let options = SendMessageOptions {

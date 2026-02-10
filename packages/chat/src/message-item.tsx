@@ -30,7 +30,7 @@ const createMarkdownComponents = (onLinkClick?: (href: string) => void) => ({
   // Code blocks
   pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
     <pre
-      className="bg-muted w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
+      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2 [&>code]:block"
       {...props}
     >
       {children}
