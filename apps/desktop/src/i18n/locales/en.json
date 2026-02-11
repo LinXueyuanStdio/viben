@@ -70,7 +70,11 @@
     "justNow": "Just now",
     "minutesAgo": " min ago",
     "hoursAgo": " hr ago",
-    "daysAgo": " days ago"
+    "daysAgo": " days ago",
+    "comingSoon": "Coming Soon",
+    "retry": "Retry",
+    "forward": "Forward",
+    "developer": "Developer"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -372,11 +376,12 @@
     "authorName": "LinXueyuan",
     "authorGithub": "GitHub",
     "authorHomepage": "Personal Homepage",
-    "systemStatus": "System Status",
+    "systemStatus": "SYSTEM STATUS",
     "systemReady": "System ready",
     "setupRequired": "Setup required",
     "showBanner": "Show banner",
-    "updates": "Updates"
+    "updates": "UPDATES",
+    "developer": "Developer"
   },
   "settingsProviders": {
     "title": "API Providers",
@@ -1482,7 +1487,22 @@
       "navigation": "Navigation",
       "action": "Action",
       "view": "View",
-      "filter": "Filter"
+      "filter": "Filter",
+      "arrowKeys": "Arrow keys",
+      "enter": "Enter",
+      "escape": "Escape"
+    },
+    "connectionError": "Connection Error",
+    "noProjectFound": "No Project Found",
+    "noProjectFoundDesc": "No vibe-kanban project found for this workspace path:",
+    "createProjectFirst": "Create a project in vibe-kanban first.",
+    "stats": "Stats",
+    "keyboardShortcuts": "Keyboard Shortcuts",
+    "shortcut": {
+      "navigate": "Navigate",
+      "open": "Open task",
+      "close": "Close panel",
+      "command": "Commands"
     },
     "createTaskDialog": {
       "title": "Create Task",
@@ -1784,7 +1804,13 @@
     "title": "Creator",
     "publish": "Publish",
     "myPackages": "My Packages",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "publishDescription": "Publish your MCP servers and skills to the marketplace",
+    "publishComingSoonDesc": "The publish wizard is currently under development. You will be able to publish your MCP servers and skills packages here.",
+    "myPackagesDescription": "Manage your published MCP servers and skills",
+    "myPackagesComingSoonDesc": "Package management is currently under development. You will be able to manage your published packages here.",
+    "analyticsDescription": "Track downloads and usage statistics for your packages",
+    "analyticsComingSoonDesc": "Analytics dashboard is currently under development. You will be able to track your package performance here."
   },
   "executor": {
     "noSessions": "No sessions found",
@@ -2082,10 +2108,14 @@
     "groupSmall": "Small (100KB-1MB)",
     "groupTiny": "Tiny (<100KB)",
     "emptyFolder": "Empty folder",
+    "emptyFolderHint": "Drop files here or create new ones",
     "noSelection": "No selection",
     "type": "Type",
     "size": "Size",
+    "sizeLabel": "Size:",
     "modified": "Modified",
+    "modifiedLabel": "Modified:",
+    "created": "Created",
     "path": "Path",
     "folder": "Folder",
     "file": "File",
@@ -2105,6 +2135,109 @@
     "filenamePlaceholder": "filename.txt",
     "foldernamePlaceholder": "folder name",
     "newNamePlaceholder": "New name",
-    "unableToPreview": "Unable to preview this file"
+    "unableToPreview": "Unable to preview this file",
+    "selectToPreview": "Select a file to preview",
+    "unknownFileType": "Unknown file type",
+    "back": "Back",
+    "forward": "Forward",
+    "up": "Up",
+    "goToParent": "Go to Parent",
+    "workspace": "Workspace",
+    "workspaceRoot": "Workspace Root",
+    "preview": "Preview",
+    "errorLoadingDirectory": "Error loading directory",
+    "failedToLoadImage": "Failed to load image",
+    "previewNotAvailable": "Preview not available",
+    "errorLoadingFile": "Error loading file",
+    "closePreviewHint": "Press Space or Esc to close",
+    "favorites": "Favorites",
+    "locations": "Locations",
+    "recent": "Recent",
+    "viewModes": {
+      "list": "List",
+      "icon": "Icon",
+      "column": "Column",
+      "gallery": "Gallery"
+    },
+    "viewLabel": "{{label}} View",
+    "fileTypes": {
+      "ts": "TypeScript source file",
+      "tsx": "TypeScript React component",
+      "js": "JavaScript source file",
+      "jsx": "JavaScript React component",
+      "py": "Python source file",
+      "rs": "Rust source file",
+      "go": "Go source file",
+      "json": "JSON configuration file",
+      "yaml": "YAML configuration file",
+      "yml": "YAML configuration file",
+      "toml": "TOML configuration file",
+      "md": "Markdown document",
+      "txt": "Plain text file",
+      "png": "PNG image",
+      "jpg": "JPEG image",
+      "jpeg": "JPEG image",
+      "gif": "GIF image",
+      "svg": "SVG vector image",
+      "mp3": "MP3 audio file",
+      "mp4": "MP4 video file",
+      "zip": "ZIP archive",
+      "tar": "TAR archive",
+      "gz": "Gzip compressed file"
+    },
+    "languages": {
+      "javascript": "JavaScript",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "rust": "Rust",
+      "go": "Go",
+      "java": "Java",
+      "json": "JSON",
+      "markdown": "Markdown",
+      "html": "HTML",
+      "css": "CSS",
+      "yaml": "YAML",
+      "shell": "Shell",
+      "plaintext": "Plain Text"
+    }
+  },
+  "codeEditor": {
+    "saving": "Saving...",
+    "saved": "Saved",
+    "saveFailed": "Save failed",
+    "unsaved": "Unsaved"
+  },
+  "artifacts": {
+    "noContentAvailable": "No content available",
+    "noAudioPath": "No audio file path available",
+    "loadingAudio": "Loading audio...",
+    "audio": "Audio",
+    "rewind10s": "Rewind 10s",
+    "forward10s": "Forward 10s",
+    "noSearchResults": "No search results",
+    "showRawContent": "Show raw content",
+    "openInEditor": "Open in Editor"
+  },
+  "inspector": {
+    "taskStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "progress": "Progress",
+    "messageRole": {
+      "user": "User",
+      "system": "System"
+    },
+    "tokenTypes": {
+      "bearer": "Bearer Token",
+      "apiKey": "API Key"
+    },
+    "metadata": {
+      "protocol": "Protocol",
+      "vendor": "Vendor",
+      "homepage": "Homepage"
+    }
   }
 }

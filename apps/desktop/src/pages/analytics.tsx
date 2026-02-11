@@ -44,7 +44,7 @@ export function AnalyticsPage() {
         </div>
         <h1 className="text-2xl font-bold">{t("creator.analytics")}</h1>
         <p className="text-muted-foreground mt-2">
-          Track downloads and usage statistics for your packages
+          {t("creator.analyticsDescription")}
         </p>
       </motion.div>
 
@@ -53,10 +53,9 @@ export function AnalyticsPage() {
         variants={itemVariants}
       >
         <Construction className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-lg font-semibold mb-2">Coming Soon</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("common.comingSoon")}</h2>
         <p className="text-muted-foreground text-sm">
-          Analytics dashboard is currently under development. You will be able to
-          view download statistics and usage metrics for your packages here.
+          {t("creator.analyticsComingSoonDesc")}
         </p>
       </motion.div>
     </motion.div>

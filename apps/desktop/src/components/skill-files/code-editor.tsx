@@ -4,6 +4,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { Loader2, Save, Check, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { SaveStatus } from "@/hooks";
+import { useTranslation } from "react-i18next";
 
 interface CodeEditorProps {
   value: string;
@@ -181,6 +182,7 @@ export function CodeEditor({
   onSave,
   saveStatus = "idle",
 }: CodeEditorProps) {
+  const { t } = useTranslation();
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
   const language = getLanguage(filename);
@@ -248,25 +250,25 @@ export function CodeEditor({
         {saveStatus === "saving" && (
           <>
             <Loader2 className="h-3 w-3 animate-spin" />
-            <span>Saving...</span>
+            <span>{t("codeEditor.saving")}</span>
           </>
         )}
         {saveStatus === "saved" && (
           <>
             <Check className="h-3 w-3" />
-            <span>Saved</span>
+            <span>{t("codeEditor.saved")}</span>
           </>
         )}
         {saveStatus === "error" && (
           <>
             <AlertCircle className="h-3 w-3" />
-            <span>Save failed</span>
+            <span>{t("codeEditor.saveFailed")}</span>
           </>
         )}
         {saveStatus === "idle" && isDirty && (
           <>
             <Save className="h-3 w-3" />
-            <span>Unsaved</span>
+            <span>{t("codeEditor.unsaved")}</span>
           </>
         )}
       </div>

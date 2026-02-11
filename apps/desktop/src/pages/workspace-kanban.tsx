@@ -229,15 +229,16 @@ function ErrorState({
   message: string;
   onRetry?: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
       <AlertCircle className="h-12 w-12 text-destructive mb-4" />
-      <h2 className="text-xl font-semibold mb-2">Connection Error</h2>
+      <h2 className="text-xl font-semibold mb-2">{t("workspace.connectionError")}</h2>
       <p className="text-muted-foreground mb-4 max-w-md">{message}</p>
       {onRetry && (
         <Button onClick={onRetry}>
           <RefreshCw className="h-4 w-4 mr-2" />
-          Retry
+          {t("common.retry")}
         </Button>
       )}
     </div>
@@ -246,16 +247,17 @@ function ErrorState({
 
 // No project found state
 function NoProjectState({ workspacePath }: { workspacePath: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
       <Circle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h2 className="text-xl font-semibold mb-2">No Project Found</h2>
+      <h2 className="text-xl font-semibold mb-2">{t("workspace.noProjectFound")}</h2>
       <p className="text-muted-foreground mb-4 max-w-md">
-        No vibe-kanban project found for this workspace path:
+        {t("workspace.noProjectFoundDesc")}
       </p>
       <code className="text-sm bg-muted px-3 py-1 rounded">{workspacePath}</code>
       <p className="text-muted-foreground mt-4 text-sm">
-        Create a project in vibe-kanban first.
+        {t("workspace.createProjectFirst")}
       </p>
     </div>
   );
@@ -907,7 +909,7 @@ export function WorkspaceKanbanPage() {
             onClick={() => setShowStats((s) => !s)}
           >
             <BarChart3 className="h-4 w-4 mr-1" />
-            {t("workspace.stats", "Stats")}
+            {t("workspace.stats")}
           </Button>
 
           {/* Keyboard Shortcuts Help */}
@@ -925,16 +927,16 @@ export function WorkspaceKanbanPage() {
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-xs">
                 <div className="text-xs space-y-1">
-                  <p className="font-medium">{t("workspace.keyboardShortcuts", "Keyboard Shortcuts")}</p>
+                  <p className="font-medium">{t("workspace.keyboardShortcuts")}</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
-                    <span>Arrow keys</span>
-                    <span>{t("workspace.shortcut.navigate", "Navigate")}</span>
-                    <span>Enter</span>
-                    <span>{t("workspace.shortcut.open", "Open task")}</span>
-                    <span>Escape</span>
-                    <span>{t("workspace.shortcut.close", "Close panel")}</span>
+                    <span>{t("workspace.commandPalette.arrowKeys")}</span>
+                    <span>{t("workspace.shortcut.navigate")}</span>
+                    <span>{t("workspace.commandPalette.enter")}</span>
+                    <span>{t("workspace.shortcut.open")}</span>
+                    <span>{t("workspace.commandPalette.escape")}</span>
+                    <span>{t("workspace.shortcut.close")}</span>
                     <span>Cmd/Ctrl + K</span>
-                    <span>{t("workspace.shortcut.command", "Commands")}</span>
+                    <span>{t("workspace.shortcut.command")}</span>
                   </div>
                 </div>
               </TooltipContent>
