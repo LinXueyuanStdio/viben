@@ -274,3 +274,6 @@ coverage/
 
 TODO.md
 Cargo.lock
+.viben/group-chats
+.viben/agents
+test

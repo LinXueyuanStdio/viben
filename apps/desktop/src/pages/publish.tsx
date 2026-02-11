@@ -44,7 +44,7 @@ export function PublishPage() {
         </div>
         <h1 className="text-2xl font-bold">{t("creator.publish")}</h1>
         <p className="text-muted-foreground mt-2">
-          Publish your MCP servers and skills to the marketplace
+          {t("creator.publishDescription")}
         </p>
       </motion.div>
 
@@ -53,10 +53,9 @@ export function PublishPage() {
         variants={itemVariants}
       >
         <Construction className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-lg font-semibold mb-2">Coming Soon</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("common.comingSoon")}</h2>
         <p className="text-muted-foreground text-sm">
-          The publish wizard is currently under development. You will be able to
-          publish your MCP servers and skills packages here.
+          {t("creator.publishComingSoonDesc")}
         </p>
       </motion.div>
     </motion.div>

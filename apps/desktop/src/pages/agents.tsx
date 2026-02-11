@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Check,
   X,
@@ -10,68 +10,41 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getGatewayClient, type IdeAgentInfo } from "@/lib/gateway";
-import { usePython } from "@/hooks/use-python";
+import { useExecutors } from "@/hooks/use-workspace-resources";
+import type { ExecutorInfo } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
 import type { McpServerInstance } from "@/types";
 import { useTranslation } from "react-i18next";
 
-/**
- * Hook for detecting IDE agents and configuring browse-mcp via Gateway API.
- */
-function useIdeAgents() {
-  const [agents, setAgents] = useState<IdeAgentInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+/** Mapped executor info to match the legacy IdeAgentInfo interface */
+interface ExecutorDisplayInfo {
+  id: string;
+  name: string;
+  installed: boolean;
+  config_path: string | null;
+  has_mcp_config: boolean;
+  mcp_server_count?: number;
+}
 
-  const detectAgents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const gateway = getGatewayClient();
-      const detected = await gateway.listIdeAgents();
-      setAgents(detected);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const configureBrowseMcp = useCallback(async (
-    agentId: string,
-    options?: {
-      pythonPath?: string;
-      transport?: "stdio" | "sse" | "http";
-      port?: number;
-      apiKey?: string;
-    }
-  ) => {
-    const gateway = getGatewayClient();
-    await gateway.configureBrowseMcp(agentId, options);
-    // Re-detect agents to refresh status
-    await detectAgents();
-  }, [detectAgents]);
-
-  // Auto-detect on mount
-  useEffect(() => {
-    detectAgents();
-  }, [detectAgents]);
+/** Convert ExecutorInfo to display format */
+function mapExecutorToDisplay(executor: ExecutorInfo): ExecutorDisplayInfo {
+  const isInstalled =
+    executor.availability.type === "LOGIN_DETECTED" ||
+    executor.availability.type === "INSTALLATION_FOUND";
 
   return {
-    agents,
-    loading,
-    error,
-    detectAgents,
-    configureBrowseMcp,
+    id: executor.id.toLowerCase().replace("_", "-"),
+    name: executor.name,
+    installed: isInstalled,
+    config_path: executor.workspace_config_path || executor.global_config_path || null,
+    has_mcp_config: executor.supports_mcp && executor.has_workspace_config,
+    mcp_server_count: undefined, // Not available from executors API
   };
 }
 
 export function AgentsPage() {
   const { t } = useTranslation();
-  const { agents, loading, error, detectAgents, configureBrowseMcp } =
-    useIdeAgents();
-  const { selectedPython } = usePython();
+  const { executors, loading, error, refresh } = useExecutors();
   const {
     mcpServers,
     setAgentAssignment,
@@ -79,6 +52,11 @@ export function AgentsPage() {
     getAgentAssignment,
   } = useAppStore();
 
+  // Map executors to display format
+  const agents = executors.map(mapExecutorToDisplay);
+
+  // Note: MCP configuration is no longer handled via Gateway API
+  // The configureBrowseMcp functionality has been removed
   const handleConfigure = async (
     agentId: string,
     serverId: string,
@@ -88,15 +66,9 @@ export function AgentsPage() {
     if (!server) return;
 
     try {
-      // Pass server config to the configure function
-      await configureBrowseMcp(agentId, {
-        pythonPath: selectedPython?.path,
-        transport: server.transport,
-        port: server.port,
-        apiKey: apiKeyId,
-      });
-      // Save the assignment
+      // Save the assignment locally (actual MCP config must be done manually)
       setAgentAssignment(agentId, serverId, apiKeyId);
+      console.log("[AgentsPage] Note: MCP configuration must be done manually. Assignment saved locally.");
     } catch (err) {
       console.error("Failed to configure:", err);
     }
@@ -114,7 +86,7 @@ export function AgentsPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={detectAgents}
+          onClick={refresh}
           disabled={loading}
         >
           {loading ? (
@@ -163,7 +135,7 @@ export function AgentsPage() {
 }
 
 interface AgentCardProps {
-  agent: IdeAgentInfo;
+  agent: ExecutorDisplayInfo;
   servers: McpServerInstance[];
   assignment?: { serverId: string; apiKeyId?: string };
   onConfigure: (agentId: string, serverId: string, apiKeyId?: string) => void;

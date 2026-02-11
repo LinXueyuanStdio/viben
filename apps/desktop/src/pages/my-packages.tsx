@@ -44,7 +44,7 @@ export function MyPackagesPage() {
         </div>
         <h1 className="text-2xl font-bold">{t("creator.myPackages")}</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your published MCP servers and skills
+          {t("creator.myPackagesDescription")}
         </p>
       </motion.div>
 
@@ -53,10 +53,9 @@ export function MyPackagesPage() {
         variants={itemVariants}
       >
         <Construction className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h2 className="text-lg font-semibold mb-2">Coming Soon</h2>
+        <h2 className="text-lg font-semibold mb-2">{t("common.comingSoon")}</h2>
         <p className="text-muted-foreground text-sm">
-          Package management is currently under development. You will be able to
-          view and manage your published packages here.
+          {t("creator.myPackagesComingSoonDesc")}
         </p>
       </motion.div>
     </motion.div>

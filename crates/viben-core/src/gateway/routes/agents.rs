@@ -7,7 +7,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::path::PathBuf;
 
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor};
@@ -82,7 +81,7 @@ pub struct AgentDetails {
     pub capabilities: Vec<String>,
 }
 
-/// Get agent details by type
+/// Get agent details by type (executor agent only)
 pub async fn get_agent(
     Path(agent_type): Path<String>,
 ) -> Result<Json<AgentDetails>, GatewayError> {
@@ -109,6 +108,87 @@ pub async fn get_agent(
     );
 
     Ok(Json(details))
+}
+
+/// Combined response type for agent details (executor or Viben)
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum AgentOrVibenResponse {
+    Executor(AgentDetails),
+    Viben(VibenAgentResponse),
+}
+
+/// Get agent details - checks if ID is a Viben agent first, otherwise returns executor details
+///
+/// GET /api/agents/:id
+pub async fn get_agent_or_viben_agent(
+    Path(id): Path<String>,
+) -> Result<Json<AgentOrVibenResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Getting agent details: id={}",
+        id
+    );
+
+    // First, try to get as a Viben agent
+    match AgentManager::get_agent(&id).await {
+        Ok(Some(agent)) => {
+            tracing::debug!(
+                target: "viben::gateway::agents",
+                "Found Viben agent: id={}",
+                id
+            );
+            return Ok(Json(AgentOrVibenResponse::Viben(VibenAgentResponse::from(agent))));
+        }
+        Ok(None) => {
+            // Not a Viben agent, try as executor
+            tracing::trace!(
+                target: "viben::gateway::agents",
+                "Not a Viben agent, trying as executor: id={}",
+                id
+            );
+        }
+        Err(e) => {
+            tracing::trace!(
+                target: "viben::gateway::agents",
+                "Error checking Viben agent, trying as executor: id={}, error={}",
+                id, e
+            );
+        }
+    }
+
+    // Try as executor agent
+    match create_agent_by_type(&id) {
+        Ok(agent) => {
+            let details = AgentDetails {
+                id: id.clone(),
+                name: id.clone(),
+                availability: agent.get_availability_info(),
+                supports_mcp: agent.supports_mcp(),
+                capabilities: agent
+                    .capabilities()
+                    .into_iter()
+                    .map(|c| format!("{:?}", c))
+                    .collect(),
+            };
+
+            tracing::trace!(
+                target: "viben::gateway::agents",
+                "Found executor agent: id={}, available={}",
+                id, details.availability.is_available()
+            );
+
+            Ok(Json(AgentOrVibenResponse::Executor(details)))
+        }
+        Err(_) => {
+            tracing::warn!(
+                target: "viben::gateway::agents",
+                "Agent not found: id={}",
+                id
+            );
+            Err(GatewayError::NotFound(format!("Agent not found: {}", id)))
+        }
+    }
 }
 
 /// Check agent availability
@@ -776,7 +856,7 @@ impl From<Agent> for VibenAgentResponse {
 
 /// Create a new Viben agent
 ///
-/// POST /api/agents/viben
+/// POST /api/agents
 pub async fn create_viben_agent(
     Json(req): Json<CreateVibenAgentRequest>,
 ) -> Result<Json<VibenAgentResponse>, GatewayError> {
@@ -821,7 +901,8 @@ pub async fn create_viben_agent(
 
 /// Get a Viben agent by ID
 ///
-/// GET /api/agents/viben/:id
+/// GET /api/agents/:id (when ID is a Viben agent)
+/// Note: Use get_agent_or_viben_agent instead for the combined endpoint
 pub async fn get_viben_agent(
     Path(id): Path<String>,
 ) -> Result<Json<VibenAgentResponse>, GatewayError> {
@@ -888,7 +969,7 @@ pub struct UpdateVibenAgentRequest {
 
 /// Update a Viben agent
 ///
-/// PATCH /api/agents/viben/:id
+/// PATCH /api/agents/:id
 pub async fn update_viben_agent(
     Path(id): Path<String>,
     Json(req): Json<UpdateVibenAgentRequest>,
@@ -943,7 +1024,7 @@ pub async fn update_viben_agent(
 
 /// Delete a Viben agent
 ///
-/// DELETE /api/agents/viben/:id
+/// DELETE /api/agents/:id
 pub async fn delete_viben_agent(
     Path(id): Path<String>,
 ) -> Result<Json<Value>, GatewayError> {
@@ -1240,20 +1321,14 @@ pub async fn instantiate_template(
 /// Create the agents router
 pub fn router() -> Router<AppState> {
     Router::new()
-        // Agent type endpoints
+        // Agent list endpoint
         .route("/api/agents", get(list_agents))
-        // IDE Agent detection - must come before :id routes
-        .route("/api/agents/ide", get(list_ide_agents))
-        .route("/api/agents/ide/:id", get(get_ide_agent))
-        // Viben Agent CRUD - must come before :id routes
-        .route("/api/agents/viben", post(create_viben_agent))
-        .route("/api/agents/viben/:id", get(get_viben_agent))
-        .route("/api/agents/viben/:id", patch(update_viben_agent))
-        .route("/api/agents/viben/:id", delete(delete_viben_agent))
-        // Default agent management
+        // Agent CRUD - POST creates a new Viben agent
+        .route("/api/agents", post(create_viben_agent))
+        // Default agent management - must come before :id routes
         .route("/api/agents/default", get(get_default_agent))
         .route("/api/agents/default", put(set_default_agent))
-        // Agent templates
+        // Agent templates - must come before :id routes
         .route("/api/agents/templates", get(list_templates))
         .route("/api/agents/templates", post(create_template))
         .route("/api/agents/templates/:id", get(get_template))
@@ -1273,5 +1348,9 @@ pub fn router() -> Router<AppState> {
         .route("/api/agents/:id/availability", get(check_availability))
         .route("/api/agents/:id/spawn", post(spawn_agent))
         .route("/api/agents/:id/stop", post(stop_agent))
-        .route("/api/agents/:id", get(get_agent))
+        // Agent CRUD - GET returns agent details, PATCH updates, DELETE removes
+        // Note: get_agent_or_viben_agent handles both executor agents and Viben agents
+        .route("/api/agents/:id", get(get_agent_or_viben_agent))
+        .route("/api/agents/:id", patch(update_viben_agent))
+        .route("/api/agents/:id", delete(delete_viben_agent))
 }

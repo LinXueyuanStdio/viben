@@ -70,7 +70,7 @@ export function AboutPage() {
       {/* System Status */}
       <motion.section className="mb-6" variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-          SYSTEM STATUS
+          {t("about.systemStatus")}
         </h2>
         <div className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           {/* Python Status */}
@@ -99,7 +99,7 @@ export function AboutPage() {
               <span className="text-sm">browse-mcp package</span>
             </div>
             <span className="text-xs text-muted-foreground">
-              {mcpInstalled ? browseMcpInfo?.version || "Installed" : "Not installed"}
+              {mcpInstalled ? browseMcpInfo?.version || t("common.installed") : t("common.notInstalled")}
             </span>
           </div>
 
@@ -109,12 +109,12 @@ export function AboutPage() {
               {isSetupComplete ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">System ready</span>
+                  <span className="text-sm font-medium">{t("about.systemReady")}</span>
                 </>
               ) : (
                 <>
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm font-medium">Setup required</span>
+                  <span className="text-sm font-medium">{t("about.setupRequired")}</span>
                   {setupBannerDismissed && (
                     <Button
                       variant="ghost"
@@ -122,7 +122,7 @@ export function AboutPage() {
                       className="ml-auto text-xs h-6"
                       onClick={() => setSetupBannerDismissed(false)}
                     >
-                      Show banner
+                      {t("about.showBanner")}
                     </Button>
                   )}
                 </>
@@ -135,7 +135,7 @@ export function AboutPage() {
       {/* Update */}
       <motion.section className="mb-6" variants={itemVariants}>
         <h2 className="text-sm font-semibold text-muted-foreground mb-3">
-          UPDATES
+          {t("about.updates")}
         </h2>
         <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
           {updateAvailable ? (
@@ -207,7 +207,7 @@ export function AboutPage() {
             </div>
             <div>
               <p className="font-medium">{t("about.authorName")}</p>
-              <p className="text-xs text-muted-foreground">Developer</p>
+              <p className="text-xs text-muted-foreground">{t("about.developer")}</p>
             </div>
           </div>
           <div className="space-y-2">

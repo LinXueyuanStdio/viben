@@ -3,45 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Check, AlertCircle, Loader2, ExternalLink, Bot } from "lucide-react";
 import { open } from "@tauri-apps/plugin-shell";
 import { cn } from "@/lib/utils";
-import { getGatewayClient, type IdeAgentInfo } from "@/lib/gateway";
+import { useExecutors } from "@/hooks/use-workspace-resources";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-
-/**
- * Hook for detecting IDE agents via Gateway API.
- * This is a local hook for this component since the global useIdeAgents was removed.
- */
-function useIdeAgents() {
-  const [agents, setAgents] = React.useState<IdeAgentInfo[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const detectAgents = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const gateway = getGatewayClient();
-      const detected = await gateway.listIdeAgents();
-      setAgents(detected);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Auto-detect on mount
-  React.useEffect(() => {
-    detectAgents();
-  }, [detectAgents]);
-
-  return {
-    agents,
-    loading,
-    error,
-    detectAgents,
-  };
-}
 
 interface StepClaudeProps {
   onComplete: () => void;
@@ -82,22 +46,40 @@ const AI_CLIENTS = [
 
 export function StepClaude({ onComplete, onBack }: StepClaudeProps) {
   const { t } = useTranslation();
-  const { agents, loading, error, detectAgents } = useIdeAgents();
+  const { executors, loading, error, refresh } = useExecutors();
 
-  // Map detected agents to AI clients
+  // Map detected executors to AI clients
   const detectedClients = React.useMemo(() => {
     const detected = new Set<string>();
-    for (const agent of agents) {
-      // Check which client this agent belongs to based on config path
-      if (!agent.config_path) continue;
-      for (const client of AI_CLIENTS) {
-        if (agent.config_path.includes(client.configFolder)) {
-          detected.add(client.id);
+    for (const executor of executors) {
+      const isInstalled =
+        executor.availability.type === "LOGIN_DETECTED" ||
+        executor.availability.type === "INSTALLATION_FOUND";
+      if (!isInstalled) continue;
+
+      // Map executor IDs to client IDs
+      const executorId = executor.id.toLowerCase();
+      if (executorId.includes("claude")) {
+        // CLAUDE_CODE -> claude for Claude Desktop detection
+        if (executor.global_config_path?.includes("Claude")) {
+          detected.add("claude");
+        }
+      }
+      if (executorId.includes("cursor")) {
+        detected.add("cursor");
+      }
+      // Check config paths for other clients
+      const configPath = executor.workspace_config_path || executor.global_config_path;
+      if (configPath) {
+        for (const client of AI_CLIENTS) {
+          if (configPath.includes(client.configFolder)) {
+            detected.add(client.id);
+          }
         }
       }
     }
     return detected;
-  }, [agents]);
+  }, [executors]);
 
   const handleOpenDownload = async (url: string) => {
     await open(url);
@@ -125,7 +107,7 @@ export function StepClaude({ onComplete, onBack }: StepClaudeProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label>{t("onboarding.claude.aiClients")}</Label>
-          <Button variant="ghost" size="sm" onClick={detectAgents} disabled={loading}>
+          <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.refresh")}
           </Button>
         </div>

@@ -70,7 +70,11 @@
     "justNow": "刚刚",
     "minutesAgo": "分钟前",
     "hoursAgo": "小时前",
-    "daysAgo": "天前"
+    "daysAgo": "天前",
+    "comingSoon": "即将推出",
+    "retry": "重试",
+    "forward": "前进",
+    "developer": "开发者"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -376,7 +380,8 @@
     "systemReady": "系统就绪",
     "setupRequired": "需要设置",
     "showBanner": "显示提示",
-    "updates": "更新"
+    "updates": "更新",
+    "developer": "开发者"
   },
   "settingsProviders": {
     "title": "API 提供商",
@@ -1482,7 +1487,22 @@
       "navigation": "导航",
       "action": "操作",
       "view": "视图",
-      "filter": "筛选"
+      "filter": "筛选",
+      "arrowKeys": "方向键",
+      "enter": "回车",
+      "escape": "Esc"
+    },
+    "connectionError": "连接错误",
+    "noProjectFound": "未找到项目",
+    "noProjectFoundDesc": "未找到此工作区路径的 vibe-kanban 项目：",
+    "createProjectFirst": "请先在 vibe-kanban 中创建项目。",
+    "stats": "统计",
+    "keyboardShortcuts": "键盘快捷键",
+    "shortcut": {
+      "navigate": "导航",
+      "open": "打开任务",
+      "close": "关闭面板",
+      "command": "命令"
     },
     "createTaskDialog": {
       "title": "创建任务",
@@ -1784,7 +1804,13 @@
     "title": "创作者",
     "publish": "发布",
     "myPackages": "我的包",
-    "analytics": "数据分析"
+    "analytics": "数据分析",
+    "publishDescription": "将您的 MCP 服务器和技能发布到市场",
+    "publishComingSoonDesc": "发布向导正在开发中。您将能够在这里发布您的 MCP 服务器和技能包。",
+    "myPackagesDescription": "管理您已发布的 MCP 服务器和技能",
+    "myPackagesComingSoonDesc": "包管理功能正在开发中。您将能够在这里管理您的已发布包。",
+    "analyticsDescription": "跟踪您的包的下载量和使用统计",
+    "analyticsComingSoonDesc": "数据分析仪表盘正在开发中。您将能够在这里跟踪您的包性能。"
   },
   "executor": {
     "noSessions": "暂无会话",
@@ -2082,10 +2108,14 @@
     "groupSmall": "小型 (100KB-1MB)",
     "groupTiny": "微型 (<100KB)",
     "emptyFolder": "空文件夹",
+    "emptyFolderHint": "拖拽文件到这里或创建新文件",
     "noSelection": "未选择",
     "type": "类型",
     "size": "大小",
+    "sizeLabel": "大小：",
     "modified": "修改时间",
+    "modifiedLabel": "修改时间：",
+    "created": "创建时间",
     "path": "路径",
     "folder": "文件夹",
     "file": "文件",
@@ -2105,6 +2135,109 @@
     "filenamePlaceholder": "文件名.txt",
     "foldernamePlaceholder": "文件夹名称",
     "newNamePlaceholder": "新名称",
-    "unableToPreview": "无法预览此文件"
+    "unableToPreview": "无法预览此文件",
+    "selectToPreview": "选择文件以预览",
+    "unknownFileType": "未知文件类型",
+    "back": "后退",
+    "forward": "前进",
+    "up": "上级",
+    "goToParent": "转到父目录",
+    "workspace": "工作区",
+    "workspaceRoot": "工作区根目录",
+    "preview": "预览",
+    "errorLoadingDirectory": "加载目录出错",
+    "failedToLoadImage": "加载图片失败",
+    "previewNotAvailable": "预览不可用",
+    "errorLoadingFile": "加载文件出错",
+    "closePreviewHint": "按空格键或 Esc 关闭",
+    "favorites": "收藏",
+    "locations": "位置",
+    "recent": "最近",
+    "viewModes": {
+      "list": "列表",
+      "icon": "图标",
+      "column": "分栏",
+      "gallery": "画廊"
+    },
+    "viewLabel": "{{label}} 视图",
+    "fileTypes": {
+      "ts": "TypeScript 源文件",
+      "tsx": "TypeScript React 组件",
+      "js": "JavaScript 源文件",
+      "jsx": "JavaScript React 组件",
+      "py": "Python 源文件",
+      "rs": "Rust 源文件",
+      "go": "Go 源文件",
+      "json": "JSON 配置文件",
+      "yaml": "YAML 配置文件",
+      "yml": "YAML 配置文件",
+      "toml": "TOML 配置文件",
+      "md": "Markdown 文档",
+      "txt": "纯文本文件",
+      "png": "PNG 图片",
+      "jpg": "JPEG 图片",
+      "jpeg": "JPEG 图片",
+      "gif": "GIF 图片",
+      "svg": "SVG 矢量图",
+      "mp3": "MP3 音频文件",
+      "mp4": "MP4 视频文件",
+      "zip": "ZIP 压缩包",
+      "tar": "TAR 归档",
+      "gz": "Gzip 压缩文件"
+    },
+    "languages": {
+      "javascript": "JavaScript",
+      "typescript": "TypeScript",
+      "python": "Python",
+      "rust": "Rust",
+      "go": "Go",
+      "java": "Java",
+      "json": "JSON",
+      "markdown": "Markdown",
+      "html": "HTML",
+      "css": "CSS",
+      "yaml": "YAML",
+      "shell": "Shell",
+      "plaintext": "纯文本"
+    }
+  },
+  "codeEditor": {
+    "saving": "保存中...",
+    "saved": "已保存",
+    "saveFailed": "保存失败",
+    "unsaved": "未保存"
+  },
+  "artifacts": {
+    "noContentAvailable": "无可用内容",
+    "noAudioPath": "无可用音频文件路径",
+    "loadingAudio": "加载音频中...",
+    "audio": "音频",
+    "rewind10s": "后退 10 秒",
+    "forward10s": "前进 10 秒",
+    "noSearchResults": "无搜索结果",
+    "showRawContent": "显示原始内容",
+    "openInEditor": "在编辑器中打开"
+  },
+  "inspector": {
+    "taskStatus": {
+      "pending": "待处理",
+      "running": "运行中",
+      "done": "已完成",
+      "failed": "失败"
+    },
+    "progress": "进度",
+    "messageRole": {
+      "user": "用户",
+      "system": "系统"
+    },
+    "tokenTypes": {
+      "bearer": "Bearer 令牌",
+      "apiKey": "API 密钥"
+    },
+    "metadata": {
+      "protocol": "协议",
+      "vendor": "供应商",
+      "homepage": "主页"
+    }
   }
 }

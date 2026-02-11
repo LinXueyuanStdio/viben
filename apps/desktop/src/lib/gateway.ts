@@ -1920,7 +1920,7 @@ export class GatewayClient {
   async createVibenAgent(
     options: CreateVibenAgentOptions
   ): Promise<VibenAgentResponse> {
-    const response = await fetch(`${this.baseUrl}/api/agents/viben`, {
+    const response = await fetch(`${this.baseUrl}/api/agents`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1948,7 +1948,7 @@ export class GatewayClient {
    */
   async getVibenAgent(agentId: string): Promise<VibenAgentResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -1978,7 +1978,7 @@ export class GatewayClient {
     options: UpdateVibenAgentOptions
   ): Promise<VibenAgentResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
       {
         method: "PATCH",
         headers: {
@@ -2007,7 +2007,7 @@ export class GatewayClient {
    */
   async deleteVibenAgent(agentId: string): Promise<void> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/viben/${encodeURIComponent(agentId)}`,
+      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -2510,197 +2510,6 @@ export class GatewayClient {
     }
   }
 
-  // ==========================================================================
-  // IDE Agent Detection
-  // ==========================================================================
-
-  /**
-   * List all detected IDE agents (Claude Desktop, Cursor, etc.)
-   *
-   * @returns List of detected IDE agents
-   */
-  async listIdeAgents(): Promise<IdeAgentInfo[]> {
-    const response = await fetch(`${this.baseUrl}/api/agents/ide`, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to list IDE agents: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    const data: ListIdeAgentsResponse = await response.json();
-    return data.agents;
-  }
-
-  /**
-   * Get a specific IDE agent
-   *
-   * @param agentId - The IDE agent ID (e.g., "claude", "cursor", "windsurf")
-   * @returns IDE agent information
-   */
-  async getIdeAgent(agentId: string): Promise<IdeAgentInfo> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/ide/${encodeURIComponent(agentId)}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to get IDE agent: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    return response.json();
-  }
-
-  // ==========================================================================
-  // MCP Configuration
-  // ==========================================================================
-
-  /**
-   * Read MCP configuration for an agent (IDE)
-   *
-   * @param agentId - The agent ID
-   * @returns MCP configuration or null if not configured
-   */
-  async readMcpConfig(agentId: string): Promise<IdeAgentMcpConfig | null> {
-    const response = await fetch(
-      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to read MCP config: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    const data: McpConfigResponse = await response.json();
-    return data.config;
-  }
-
-  /**
-   * Write MCP configuration for an agent (IDE)
-   *
-   * @param agentId - The agent ID
-   * @param config - MCP configuration to write
-   */
-  async writeMcpConfig(
-    agentId: string,
-    config: IdeAgentMcpConfig
-  ): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ config }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to write MCP config: ${errorMessage}`,
-        response.status
-      );
-    }
-  }
-
-  /**
-   * Configure browse-mcp for an agent
-   *
-   * @param agentId - The agent ID
-   * @param options - Configuration options
-   */
-  async configureBrowseMcp(
-    agentId: string,
-    options?: ConfigureBrowseMcpOptions
-  ): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}/browse-mcp`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          python_path: options?.pythonPath,
-          transport: options?.transport,
-          port: options?.port,
-          api_key: options?.apiKey,
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to configure browse-mcp: ${errorMessage}`,
-        response.status
-      );
-    }
-  }
-
-  /**
-   * Check if browse-mcp is configured for an agent
-   *
-   * @param agentId - The agent ID
-   * @returns Whether browse-mcp is configured
-   */
-  async isBrowseMcpConfigured(agentId: string): Promise<boolean> {
-    const response = await fetch(
-      `${this.baseUrl}/api/mcp/configs/${encodeURIComponent(agentId)}/browse-mcp`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to check browse-mcp status: ${errorMessage}`,
-        response.status
-      );
-    }
-
-    const data: BrowseMcpStatusResponse = await response.json();
-    return data.configured;
-  }
-
-  // Legacy aliases for backwards compatibility
-  /** @deprecated Use readMcpConfig instead */
-  async readIdeAgentConfig(agentId: string): Promise<IdeAgentMcpConfig | null> {
-    return this.readMcpConfig(agentId);
-  }
-
-  /** @deprecated Use writeMcpConfig instead */
-  async writeIdeAgentConfig(
-    agentId: string,
-    config: IdeAgentMcpConfig
-  ): Promise<void> {
-    return this.writeMcpConfig(agentId, config);
-  }
 }
 
 // ============================================================================
@@ -3423,64 +3232,6 @@ export interface ChatListResponse {
   counts: ChatListCounts;
 }
 
-// ============================================================================
-// IDE Agent Types (for detecting IDE agents like Claude Desktop, Cursor, etc.)
-// ============================================================================
-
-/** IDE Agent information (Claude Desktop, Cursor, etc.) */
-export interface IdeAgentInfo {
-  id: string;
-  name: string;
-  installed: boolean;
-  config_path: string | null;
-  has_mcp_config: boolean;
-  mcp_server_count?: number;
-  version?: string;
-}
-
-/** MCP Server configuration for IDE agents */
-export interface IdeMcpServerConfig {
-  command?: string;
-  args?: string[];
-  env?: Record<string, string>;
-  url?: string;
-  transport?: string;
-  headers?: Record<string, string>;
-}
-
-/** IDE Agent MCP configuration */
-export interface IdeAgentMcpConfig {
-  mcpServers: Record<string, IdeMcpServerConfig>;
-}
-
-/** Response for listing IDE agents */
-export interface ListIdeAgentsResponse {
-  agents: IdeAgentInfo[];
-  total: number;
-}
-
-/** Response for MCP config */
-export interface McpConfigResponse {
-  agent_id: string;
-  config: IdeAgentMcpConfig | null;
-}
-
-/** @deprecated Use McpConfigResponse instead */
-export type IdeAgentConfigResponse = McpConfigResponse;
-
-/** Options for configuring browse-mcp */
-export interface ConfigureBrowseMcpOptions {
-  pythonPath?: string;
-  transport?: "stdio" | "sse" | "http";
-  port?: number;
-  apiKey?: string;
-}
-
-/** Response for browse-mcp status */
-export interface BrowseMcpStatusResponse {
-  agent_id: string;
-  configured: boolean;
-}
 
 /**
  * Check if an availability status indicates the agent is available
