@@ -3,14 +3,16 @@
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
-    routing::{delete, get, post},
+    routing::{delete, get, patch, post, put},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::path::PathBuf;
 
 use crate::gateway::{AppState, GatewayError};
 use crate::executors::{AvailabilityInfo, CodingAgent, StandardCodingAgentExecutor};
 use crate::services::session_store::{SessionConfig, SessionMessage, UIMessage};
+use crate::agents::{Agent, AgentManager, AgentTemplate, AgentUpdate, CreateAgentOptions};
 
 // Re-export workspace types for the merged endpoint
 pub use super::workspaces::{WorkspaceAgentsResponse, WorkspaceAgent, WorkspaceAgentType};
@@ -659,11 +661,603 @@ pub async fn list_session_ui_messages(
     }))
 }
 
+// ============================================================================
+// Viben Agent CRUD Operations
+// ============================================================================
+
+/// Request to create a new Viben agent
+#[derive(Debug, Deserialize)]
+pub struct CreateVibenAgentRequest {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from_template: Option<String>,
+    /// Workspace path for workspace-scoped agents
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub base_path: Option<String>,
+}
+
+/// Response for Viben agent operations
+#[derive(Debug, Serialize)]
+pub struct VibenAgentResponse {
+    pub id: String,
+    pub name: String,
+    pub agent_type: String,
+    pub source: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_config: Option<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mcp_servers: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skills: Vec<String>,
+    #[serde(default)]
+    pub plan_mode: bool,
+    #[serde(default)]
+    pub approvals: bool,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<Agent> for VibenAgentResponse {
+    fn from(agent: Agent) -> Self {
+        let home_dir = dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        // Determine source based on path
+        let source = if let Some(ref path) = agent.path {
+            if path.starts_with(&home_dir) && path.contains("/.viben/agents/") {
+                "global".to_string()
+            } else {
+                "workspace".to_string()
+            }
+        } else {
+            "global".to_string()
+        };
+
+        Self {
+            id: format!("viben:{}", agent.id),
+            name: agent.name,
+            agent_type: "viben".to_string(),
+            source,
+            workspace_path: agent.path.clone(),
+            config_path: agent.path.as_ref().map(|p| format!("{}/config.yaml", p)),
+            description: agent.description,
+            model: agent.model,
+            provider: agent.provider,
+            system_prompt: agent.system_prompt,
+            append_prompt: agent.append_prompt,
+            temperature: agent.temperature,
+            max_tokens: agent.max_tokens,
+            executor_type: agent.executor_type,
+            executor_config: agent.executor_config,
+            mcp_servers: agent.mcp_servers,
+            skills: agent.skills,
+            plan_mode: agent.plan_mode,
+            approvals: agent.approvals,
+            created_at: agent.created_at.to_rfc3339(),
+            updated_at: agent.updated_at.to_rfc3339(),
+        }
+    }
+}
+
+/// Create a new Viben agent
+///
+/// POST /api/agents/viben
+pub async fn create_viben_agent(
+    Json(req): Json<CreateVibenAgentRequest>,
+) -> Result<Json<VibenAgentResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Creating Viben agent: name={}, base_path={:?}",
+        req.name, req.base_path
+    );
+
+    let options = CreateAgentOptions {
+        id: req.id,
+        name: req.name,
+        description: req.description,
+        model: req.model,
+        provider: req.provider,
+        system_prompt: req.system_prompt,
+        temperature: req.temperature,
+        max_tokens: req.max_tokens,
+        from_template: req.from_template,
+        base_path: req.base_path,
+    };
+
+    let agent = AgentManager::create_agent(options)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to create agent: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Viben agent created: id={}",
+        agent.id
+    );
+
+    Ok(Json(VibenAgentResponse::from(agent)))
+}
+
+/// Get a Viben agent by ID
+///
+/// GET /api/agents/viben/:id
+pub async fn get_viben_agent(
+    Path(id): Path<String>,
+) -> Result<Json<VibenAgentResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Getting Viben agent: id={}",
+        id
+    );
+
+    let agent = AgentManager::get_agent(&id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to get agent: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::agents",
+                "Agent not found: id={}",
+                id
+            );
+            GatewayError::NotFound(format!("Agent not found: {}", id))
+        })?;
+
+    Ok(Json(VibenAgentResponse::from(agent)))
+}
+
+/// Request to update a Viben agent
+#[derive(Debug, Deserialize)]
+pub struct UpdateVibenAgentRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub system_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub append_prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub executor_config: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mcp_servers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skills: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan_mode: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approvals: Option<bool>,
+}
+
+/// Update a Viben agent
+///
+/// PATCH /api/agents/viben/:id
+pub async fn update_viben_agent(
+    Path(id): Path<String>,
+    Json(req): Json<UpdateVibenAgentRequest>,
+) -> Result<Json<VibenAgentResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Updating Viben agent: id={}",
+        id
+    );
+
+    let updates = AgentUpdate {
+        name: req.name,
+        description: req.description,
+        model: req.model,
+        provider: req.provider,
+        system_prompt: req.system_prompt,
+        append_prompt: req.append_prompt,
+        temperature: req.temperature,
+        max_tokens: req.max_tokens,
+        executor_type: req.executor_type,
+        executor_config: req.executor_config,
+        mcp_servers: req.mcp_servers,
+        skills: req.skills,
+        plan_mode: req.plan_mode,
+        approvals: req.approvals,
+    };
+
+    let agent = AgentManager::update_agent(&id, updates)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to update agent: {}",
+                e
+            );
+            match e {
+                crate::error::Error::AgentNotFound(_) => {
+                    GatewayError::NotFound(format!("Agent not found: {}", id))
+                }
+                _ => GatewayError::Internal(e.to_string()),
+            }
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Viben agent updated: id={}",
+        id
+    );
+
+    Ok(Json(VibenAgentResponse::from(agent)))
+}
+
+/// Delete a Viben agent
+///
+/// DELETE /api/agents/viben/:id
+pub async fn delete_viben_agent(
+    Path(id): Path<String>,
+) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Deleting Viben agent: id={}",
+        id
+    );
+
+    AgentManager::remove_agent(&id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to delete agent: {}",
+                e
+            );
+            match e {
+                crate::error::Error::AgentNotFound(_) => {
+                    GatewayError::NotFound(format!("Agent not found: {}", id))
+                }
+                _ => GatewayError::Internal(e.to_string()),
+            }
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Viben agent deleted: id={}",
+        id
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "deleted": id
+    })))
+}
+
+// ============================================================================
+// Default Agent Management
+// ============================================================================
+
+/// Get default agent response
+#[derive(Serialize)]
+pub struct DefaultAgentResponse {
+    pub default_agent_id: Option<String>,
+}
+
+/// Get the default agent ID
+///
+/// GET /api/agents/default
+pub async fn get_default_agent() -> Result<Json<DefaultAgentResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Getting default agent"
+    );
+
+    let default_id = AgentManager::get_default()
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to get default agent: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    Ok(Json(DefaultAgentResponse {
+        default_agent_id: default_id,
+    }))
+}
+
+/// Request to set default agent
+#[derive(Deserialize)]
+pub struct SetDefaultAgentRequest {
+    pub agent_id: String,
+}
+
+/// Set the default agent
+///
+/// PUT /api/agents/default
+pub async fn set_default_agent(
+    Json(req): Json<SetDefaultAgentRequest>,
+) -> Result<Json<Value>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Setting default agent: id={}",
+        req.agent_id
+    );
+
+    AgentManager::set_default(&req.agent_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to set default agent: {}",
+                e
+            );
+            match e {
+                crate::error::Error::AgentNotFound(_) => {
+                    GatewayError::NotFound(format!("Agent not found: {}", req.agent_id))
+                }
+                _ => GatewayError::Internal(e.to_string()),
+            }
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Default agent set: id={}",
+        req.agent_id
+    );
+
+    Ok(Json(json!({
+        "success": true,
+        "default_agent_id": req.agent_id
+    })))
+}
+
+// ============================================================================
+// Agent Templates
+// ============================================================================
+
+/// Template response
+#[derive(Serialize)]
+pub struct TemplateResponse {
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub config: Value,
+    pub created_at: String,
+}
+
+impl From<AgentTemplate> for TemplateResponse {
+    fn from(template: AgentTemplate) -> Self {
+        Self {
+            id: template.id,
+            name: template.name,
+            description: template.description,
+            config: serde_json::to_value(&template.config).unwrap_or(Value::Null),
+            created_at: template.created_at.to_rfc3339(),
+        }
+    }
+}
+
+/// List templates response
+#[derive(Serialize)]
+pub struct ListTemplatesResponse {
+    pub templates: Vec<TemplateResponse>,
+    pub total: usize,
+}
+
+/// List all agent templates
+///
+/// GET /api/agents/templates
+pub async fn list_templates() -> Result<Json<ListTemplatesResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Listing agent templates"
+    );
+
+    let templates = AgentManager::list_templates()
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to list templates: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    let total = templates.len();
+    let template_responses: Vec<TemplateResponse> = templates.into_iter().map(TemplateResponse::from).collect();
+
+    Ok(Json(ListTemplatesResponse {
+        templates: template_responses,
+        total,
+    }))
+}
+
+/// Get a template by ID
+///
+/// GET /api/agents/templates/:id
+pub async fn get_template(
+    Path(id): Path<String>,
+) -> Result<Json<TemplateResponse>, GatewayError> {
+    tracing::debug!(
+        target: "viben::gateway::agents",
+        "Getting template: id={}",
+        id
+    );
+
+    let template = AgentManager::get_template(&id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to get template: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?
+        .ok_or_else(|| {
+            tracing::warn!(
+                target: "viben::gateway::agents",
+                "Template not found: id={}",
+                id
+            );
+            GatewayError::NotFound(format!("Template not found: {}", id))
+        })?;
+
+    Ok(Json(TemplateResponse::from(template)))
+}
+
+/// Request to create a template from an agent
+#[derive(Deserialize)]
+pub struct CreateTemplateRequest {
+    pub agent_id: String,
+    pub template_id: String,
+}
+
+/// Create a template from an agent
+///
+/// POST /api/agents/templates
+pub async fn create_template(
+    Json(req): Json<CreateTemplateRequest>,
+) -> Result<Json<TemplateResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Creating template from agent: agent_id={}, template_id={}",
+        req.agent_id, req.template_id
+    );
+
+    let template = AgentManager::create_template(&req.agent_id, &req.template_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to create template: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Template created: id={}",
+        template.id
+    );
+
+    Ok(Json(TemplateResponse::from(template)))
+}
+
+/// Request to create an agent from a template
+#[derive(Deserialize)]
+pub struct InstantiateTemplateRequest {
+    pub agent_id: String,
+}
+
+/// Create an agent from a template
+///
+/// POST /api/agents/templates/:id/instantiate
+pub async fn instantiate_template(
+    Path(template_id): Path<String>,
+    Json(req): Json<InstantiateTemplateRequest>,
+) -> Result<Json<VibenAgentResponse>, GatewayError> {
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Creating agent from template: template_id={}, agent_id={}",
+        template_id, req.agent_id
+    );
+
+    let agent = AgentManager::create_from_template(&template_id, &req.agent_id)
+        .await
+        .map_err(|e| {
+            tracing::error!(
+                target: "viben::gateway::agents",
+                "Failed to create agent from template: {}",
+                e
+            );
+            GatewayError::Internal(e.to_string())
+        })?;
+
+    tracing::info!(
+        target: "viben::gateway::agents",
+        "Agent created from template: id={}",
+        agent.id
+    );
+
+    Ok(Json(VibenAgentResponse::from(agent)))
+}
+
 /// Create the agents router
 pub fn router() -> Router<AppState> {
     Router::new()
         // Agent type endpoints
         .route("/api/agents", get(list_agents))
+        // IDE Agent detection - must come before :id routes
+        .route("/api/agents/ide", get(list_ide_agents))
+        .route("/api/agents/ide/:id", get(get_ide_agent))
+        // Viben Agent CRUD - must come before :id routes
+        .route("/api/agents/viben", post(create_viben_agent))
+        .route("/api/agents/viben/:id", get(get_viben_agent))
+        .route("/api/agents/viben/:id", patch(update_viben_agent))
+        .route("/api/agents/viben/:id", delete(delete_viben_agent))
+        // Default agent management
+        .route("/api/agents/default", get(get_default_agent))
+        .route("/api/agents/default", put(set_default_agent))
+        // Agent templates
+        .route("/api/agents/templates", get(list_templates))
+        .route("/api/agents/templates", post(create_template))
+        .route("/api/agents/templates/:id", get(get_template))
+        .route("/api/agents/templates/:id/instantiate", post(instantiate_template))
         // NOTE: More specific routes must come BEFORE less specific ones
         // File-based session management (uses :id for consistency)
         .route("/api/agents/:id/sessions", get(list_agent_sessions))
