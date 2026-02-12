@@ -1,5 +1,7 @@
 /**
  * viben agent - Agent management commands
+ *
+ * Uses NAPI bindings to Rust viben-core for consistent behavior with Desktop/Gateway.
  */
 
 import chalk from 'chalk';
@@ -37,7 +39,7 @@ export function registerAgentCommand(program: Command): void {
   agentCmd
     .command('list')
     .description('List all agents')
-    .action(() => {
+    .action(async () => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -45,7 +47,7 @@ export function registerAgentCommand(program: Command): void {
       };
 
       try {
-        listAgents(ctx);
+        await listAgents(ctx);
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
@@ -65,9 +67,13 @@ export function registerAgentCommand(program: Command): void {
     .option('-d, --description <text>', 'Agent description')
     .option('-m, --model <model>', 'Model to use')
     .option('-p, --provider <provider>', 'Provider name')
+    .option('-s, --system-prompt <prompt>', 'System prompt')
+    .option('-t, --temperature <temp>', 'Temperature (0-2)', parseFloat)
+    .option('--max-tokens <tokens>', 'Max tokens', parseInt)
+    .option('--from-template <template>', 'Create from template')
     .option('-g, --global', 'Create in global scope')
     .option('-w, --workspace', 'Create in workspace scope')
-    .action((options: AgentOptions) => {
+    .action(async (options: AgentOptions & { systemPrompt?: string; temperature?: number; maxTokens?: number; fromTemplate?: string }) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -78,11 +84,15 @@ export function registerAgentCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
-        createAgent(ctx, {
+        await createAgent(ctx, {
           name: options.name,
           description: options.description,
           model: options.model,
           provider: options.provider,
+          systemPrompt: options.systemPrompt,
+          temperature: options.temperature,
+          maxTokens: options.maxTokens,
+          fromTemplate: options.fromTemplate,
           global: options.global || program.opts().global,
           workspace: options.workspace || program.opts().workspace,
         });
@@ -102,7 +112,7 @@ export function registerAgentCommand(program: Command): void {
     .command('show')
     .description('Show agent details')
     .requiredOption('-n, --name <id>', 'Agent ID (required)')
-    .action((options: AgentOptions) => {
+    .action(async (options: AgentOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -113,7 +123,7 @@ export function registerAgentCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
-        showAgent(ctx, options.name);
+        await showAgent(ctx, options.name);
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
@@ -131,7 +141,7 @@ export function registerAgentCommand(program: Command): void {
     .description('Remove an agent')
     .requiredOption('-n, --name <id>', 'Agent ID (required)')
     .option('-f, --force', 'Skip confirmation')
-    .action((options: AgentOptions) => {
+    .action(async (options: AgentOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -142,7 +152,7 @@ export function registerAgentCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
-        removeAgent(ctx, {
+        await removeAgent(ctx, {
           name: options.name,
           force: options.force,
         });
@@ -165,7 +175,7 @@ export function registerAgentCommand(program: Command): void {
     .argument('[action]', 'Action: set, get, or key name')
     .argument('[key]', 'Config key (for set/get)')
     .argument('[value]', 'Config value (for set)')
-    .action((action: string | undefined, key: string | undefined, value: string | undefined, options: AgentOptions) => {
+    .action(async (action: string | undefined, key: string | undefined, value: string | undefined, options: AgentOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -176,7 +186,7 @@ export function registerAgentCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
-        configAgent(ctx, {
+        await configAgent(ctx, {
           name: options.name,
           action,
           key,
@@ -198,7 +208,7 @@ export function registerAgentCommand(program: Command): void {
     .command('set-default')
     .description('Set the default agent')
     .requiredOption('-n, --name <id>', 'Agent ID (required)')
-    .action((options: AgentOptions) => {
+    .action(async (options: AgentOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -209,7 +219,7 @@ export function registerAgentCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Agent ID is required (-n, --name)', 'MISSING_ID');
         }
-        setDefaultAgent(ctx, {
+        await setDefaultAgent(ctx, {
           name: options.name,
         });
       } catch (error) {
@@ -228,7 +238,7 @@ export function registerAgentCommand(program: Command): void {
     .command('status')
     .description('Show agent status')
     .option('-n, --name <id>', 'Agent ID (optional, shows all if not specified)')
-    .action((options: AgentOptions) => {
+    .action(async (options: AgentOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -236,7 +246,7 @@ export function registerAgentCommand(program: Command): void {
       };
 
       try {
-        statusAgent(ctx, {
+        await statusAgent(ctx, {
           name: options.name,
         });
       } catch (error) {

@@ -1,23 +1,25 @@
 /**
  * viben model set-default - Set the default model
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { setDefaultModel, getDefaultModel } from '../../lib/models';
+import { modelSetDefault as nativeSetDefault, modelGetDefault } from '../../lib/native';
 
 /**
  * Set the default model
  */
-export function setDefault(ctx: OutputContext, modelId: string): void {
+export async function setDefault(ctx: OutputContext, modelId: string): Promise<void> {
   if (!modelId || modelId.trim() === '') {
     throw new CliError('Model ID is required', 'MISSING_MODEL_ID');
   }
 
-  const previousDefault = getDefaultModel();
-  setDefaultModel(modelId);
+  const previousDefault = await modelGetDefault();
+  await nativeSetDefault(modelId);
 
   output(
     ctx,

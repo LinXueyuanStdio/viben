@@ -1,18 +1,20 @@
 /**
  * viben provider status - Check provider connectivity
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import type { ProviderStatus } from '../../types/provider';
+import { CliError } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
 import {
-  checkProviderStatus,
-  checkAllProvidersStatus,
-  getProvider,
-  listProviders,
-} from '../../lib/providers';
-import { CliError } from '../../types';
+  providerList,
+  providerGet,
+  providerTestConnection,
+  type Provider,
+  type ProviderStatus,
+} from '../../lib/native';
 
 interface StatusOptions {
   name?: string;
@@ -22,23 +24,20 @@ interface StatusOptions {
  * Format status for display
  */
 function formatStatus(status: ProviderStatus): string {
-  switch (status.status) {
-    case 'connected':
-      return chalk.green('\u2713 connected');
-    case 'not_running':
-      return chalk.yellow('\u25CB not running');
-    case 'error':
-      return chalk.red('\u2717 error');
-    default:
-      return chalk.gray('unknown');
+  if (status.connected) {
+    return chalk.green('\u2713 connected');
   }
+  if (status.error) {
+    return chalk.red('\u2717 error');
+  }
+  return chalk.yellow('\u25CB not tested');
 }
 
 /**
  * Format latency for display
  */
 function formatLatency(latency?: number): string {
-  if (latency === undefined) {
+  if (latency === undefined || latency === null) {
     return chalk.gray('-');
   }
   return `${latency}ms`;
@@ -52,7 +51,7 @@ export async function statusProviderCommand(
   options: StatusOptions
 ): Promise<void> {
   // Check if no providers configured
-  const providers = listProviders();
+  const providers = await providerList();
   if (providers.length === 0) {
     output(
       ctx,
@@ -72,58 +71,62 @@ export async function statusProviderCommand(
 
   if (options.name) {
     // Check single provider
-    const provider = getProvider(options.name);
+    const provider = await providerGet(options.name);
     if (!provider) {
-      throw new CliError(
-        `Provider "${options.name}" not found`,
-        'PROVIDER_NOT_FOUND'
-      );
+      throw new CliError(`Provider "${options.name}" not found`, 'PROVIDER_NOT_FOUND');
     }
 
-    const status = await checkProviderStatus(provider);
+    const status = await providerTestConnection(options.name);
 
     output(
       ctx,
       successResponse({
         provider: {
-          name: status.name,
-          type: status.type,
-          status: status.status,
-          latency: status.latency,
+          id: provider.id,
+          name: provider.name,
+          type: provider.providerType,
+          status: status.connected ? 'connected' : 'error',
+          latency: status.latencyMs,
           error: status.error,
-          isDefault: status.isDefault,
+          isDefault: provider.isDefault,
         },
       }),
       () => {
-        console.log(chalk.bold(`Provider: ${status.name}`));
+        console.log(chalk.bold(`Provider: ${provider.name}`));
         console.log();
-        console.log('Type:', chalk.yellow(status.type));
+        console.log('ID:', chalk.yellow(provider.id));
+        console.log('Type:', chalk.yellow(provider.providerType));
         console.log('Status:', formatStatus(status));
-        if (status.latency !== undefined) {
-          console.log('Latency:', formatLatency(status.latency));
+        if (status.latencyMs !== undefined) {
+          console.log('Latency:', formatLatency(status.latencyMs));
         }
         if (status.error) {
           console.log('Error:', chalk.red(status.error));
         }
-        if (status.isDefault) {
+        if (provider.isDefault) {
           console.log('Default:', chalk.green('yes'));
         }
       }
     );
   } else {
     // Check all providers
-    const statuses = await checkAllProvidersStatus();
+    const statuses: Array<{ provider: Provider; status: ProviderStatus }> = [];
+    for (const provider of providers) {
+      const status = await providerTestConnection(provider.id);
+      statuses.push({ provider, status });
+    }
 
     output(
       ctx,
       successResponse({
-        providers: statuses.map((s) => ({
-          name: s.name,
-          type: s.type,
-          status: s.status,
-          latency: s.latency,
-          error: s.error,
-          isDefault: s.isDefault,
+        providers: statuses.map(({ provider, status }) => ({
+          id: provider.id,
+          name: provider.name,
+          type: provider.providerType,
+          status: status.connected ? 'connected' : 'error',
+          latency: status.latencyMs,
+          error: status.error,
+          isDefault: provider.isDefault,
         })),
       }),
       () => {
@@ -132,13 +135,14 @@ export async function statusProviderCommand(
 
         outputTable(
           ctx,
-          ['Name', 'Type', 'Status', 'Latency', 'Error'],
-          statuses.map((s) => [
-            s.isDefault ? chalk.cyan(s.name + '*') : s.name,
-            s.type,
-            formatStatus(s),
-            formatLatency(s.latency),
-            s.error ? chalk.red(s.error) : chalk.gray('-'),
+          ['ID', 'Name', 'Type', 'Status', 'Latency', 'Error'],
+          statuses.map(({ provider, status }) => [
+            provider.isDefault ? chalk.cyan(provider.id + '*') : provider.id,
+            provider.name,
+            provider.providerType,
+            formatStatus(status),
+            formatLatency(status.latencyMs),
+            status.error ? chalk.red(status.error) : chalk.gray('-'),
           ])
         );
 

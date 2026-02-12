@@ -2,7 +2,6 @@
   "name": "@viben/cli-rs",
   "version": "0.1.0",
   "description": "Viben core native bindings - Rust NAPI bindings for Node.js",
-  "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "napi": {
@@ -21,9 +20,9 @@
     "*.node"
   ],
   "scripts": {
-    "build": "napi build --target aarch64-apple-darwin --release --cargo-cwd ../../crates/viben-core --cargo-name viben-core --features napi",
-    "build:debug": "napi build --target aarch64-apple-darwin --cargo-cwd ../../crates/viben-core --cargo-name viben-core --features napi",
-    "build:all": "napi build --platform --release --cargo-cwd ../../crates/viben-core --cargo-name viben-core --features napi",
+    "build": "napi build --target aarch64-apple-darwin --release --cargo-cwd ../../crates/viben-core --cargo-name viben_core --features napi --cargo-flags=\"--lib\"",
+    "build:debug": "napi build --target aarch64-apple-darwin --cargo-cwd ../../crates/viben-core --cargo-name viben_core --features napi --cargo-flags=\"--lib\"",
+    "build:all": "napi build --platform --release --cargo-cwd ../../crates/viben-core --cargo-name viben_core --features napi --cargo-flags=\"--lib\"",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version"
   },

@@ -1,13 +1,14 @@
 /**
  * viben agent remove - Remove an agent
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
-import * as fs from 'fs';
 import chalk from 'chalk';
-import type { OutputContext, ConfigScope } from '../../types';
+import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { findAgent, deleteAgent, getAgentsDir } from '../../lib/agents';
+import { agentGet, agentRemove as nativeAgentRemove } from '../../lib/native';
 
 interface RemoveOptions {
   name: string;
@@ -17,51 +18,39 @@ interface RemoveOptions {
 /**
  * Remove an agent
  */
-export function removeAgent(ctx: OutputContext, options: RemoveOptions): void {
+export async function removeAgent(ctx: OutputContext, options: RemoveOptions): Promise<void> {
   const id = options.name;
 
-  // Find the agent first
-  const result = findAgent(id);
+  // Verify agent exists first
+  const agent = await agentGet(id);
 
-  if (!result) {
-    throw new CliError(
-      `Agent "${id}" not found`,
-      'AGENT_NOT_FOUND'
-    );
+  if (!agent) {
+    throw new CliError(`Agent "${id}" not found`, 'AGENT_NOT_FOUND');
   }
-
-  const { config, path: agentPath, source } = result;
 
   // In non-force mode, we would prompt for confirmation
   // For CLI, we just proceed (use --force to skip any future confirmation logic)
   if (!options.force && !ctx.json) {
-    // For now, we'll proceed without confirmation since stdin handling is complex
-    // In a real implementation, you might want to use readline or prompts
+    // For now, proceed without confirmation
+    // Could add readline prompt here in the future
   }
 
-  // Delete the agent file
-  try {
-    fs.unlinkSync(agentPath);
-  } catch (error) {
-    throw new CliError(
-      `Failed to delete agent: ${agentPath}`,
-      'AGENT_DELETE_ERROR',
-      error
-    );
-  }
+  // Delete the agent
+  await nativeAgentRemove(id);
 
   output(
     ctx,
     successResponse({
       removed: true,
-      id: config.id || id,
-      path: agentPath,
-      source,
+      id: agent.id,
+      path: agent.path,
     }),
     () => {
       console.log(chalk.green('OK') + ` Removed agent "${chalk.cyan(id)}"`);
-      console.log();
-      console.log(chalk.gray('Deleted:'), agentPath);
+      if (agent.path) {
+        console.log();
+        console.log(chalk.gray('Deleted:'), agent.path);
+      }
     }
   );
 }

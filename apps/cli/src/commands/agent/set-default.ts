@@ -1,15 +1,14 @@
 /**
  * viben agent set-default - Set the default agent
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
-import * as path from 'path';
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { findAgent } from '../../lib/agents';
-import { readConfigFile, writeConfigFile } from '../../lib/config';
-import { getGlobalConfigDir, ensureDir, CONFIG_FILE } from '../../lib/scope';
+import { agentGet, agentSetDefault as nativeSetDefault, agentGetDefault } from '../../lib/native';
 
 interface SetDefaultOptions {
   name: string;
@@ -18,57 +17,23 @@ interface SetDefaultOptions {
 /**
  * Set the default agent
  */
-export function setDefaultAgent(ctx: OutputContext, options: SetDefaultOptions): void {
+export async function setDefaultAgent(ctx: OutputContext, options: SetDefaultOptions): Promise<void> {
   const id = options.name;
 
   // Verify the agent exists
-  const result = findAgent(id);
+  const agent = await agentGet(id);
 
-  if (!result) {
-    throw new CliError(
-      `Agent "${id}" not found`,
-      'AGENT_NOT_FOUND'
-    );
+  if (!agent) {
+    throw new CliError(`Agent "${id}" not found`, 'AGENT_NOT_FOUND');
   }
 
-  // Update global config to set the default agent
-  const globalDir = getGlobalConfigDir();
-  ensureDir(globalDir);
-
-  const configPath = path.join(globalDir, CONFIG_FILE);
-  let config = readConfigFile(configPath);
-
-  if (!config) {
-    config = {
-      version: 1,
-      settings: {},
-      agents: [],
-    };
-  }
-
-  // Add settings if not present
-  if (!config.settings) {
-    config.settings = {};
-  }
-
-  // Store the default agent in settings
-  (config.settings as Record<string, unknown>).default_agent = id;
-
-  // Also ensure the agent is in the agents list
-  if (!config.agents) {
-    config.agents = [];
-  }
-  if (!config.agents.includes(id)) {
-    config.agents.push(id);
-  }
-
-  writeConfigFile(configPath, config);
+  // Set as default via NAPI
+  await nativeSetDefault(id);
 
   output(
     ctx,
     successResponse({
       default_agent: id,
-      path: configPath,
     }),
     () => {
       console.log(chalk.green('OK') + ` Set default agent to "${chalk.cyan(id)}"`);

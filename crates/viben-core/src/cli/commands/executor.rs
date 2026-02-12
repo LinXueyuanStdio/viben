@@ -31,6 +31,8 @@ pub enum ExecutorAction {
         /// Executor name
         name: String,
     },
+    /// List supported executor types
+    Types,
 }
 
 #[derive(Serialize)]
@@ -82,6 +84,34 @@ impl ExecutorCommand {
                     print_simple_table(headers, &rows);
                 }
             }
+            ExecutorAction::Types => {
+                let types = vec![
+                    ("CLAUDE_CODE", "Claude Code (Anthropic)"),
+                    ("AMP", "Amp"),
+                    ("GEMINI", "Gemini CLI (Google)"),
+                    ("CODEX", "Codex CLI (OpenAI)"),
+                    ("OPENCODE", "Opencode"),
+                    ("CURSOR_AGENT", "Cursor Agent"),
+                    ("QWEN_CODE", "Qwen Code (Alibaba)"),
+                    ("COPILOT", "GitHub Copilot"),
+                    ("DROID", "Droid"),
+                ];
+
+                if ctx.json {
+                    let type_objects: Vec<serde_json::Value> = types
+                        .iter()
+                        .map(|(id, name)| json!({ "id": id, "name": name }))
+                        .collect();
+                    print_json(&SuccessResponse::new(json!({ "types": type_objects })));
+                } else {
+                    let headers = &["TYPE", "DESCRIPTION"];
+                    let rows: Vec<Vec<String>> = types
+                        .iter()
+                        .map(|(id, name)| vec![id.to_string(), name.to_string()])
+                        .collect();
+                    print_simple_table(headers, &rows);
+                }
+            }
             ExecutorAction::Show { name } => {
                 let executors = Self::get_all_executors();
                 // Case-insensitive search
@@ -126,5 +156,104 @@ impl ExecutorCommand {
         ];
 
         agents.iter().map(ExecutorInfo::from_agent).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_executor_types_command() {
+        let cmd = ExecutorCommand {
+            action: ExecutorAction::Types,
+        };
+        let ctx = CliContext {
+            json: false,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_executor_types_command_json() {
+        let cmd = ExecutorCommand {
+            action: ExecutorAction::Types,
+        };
+        let ctx = CliContext {
+            json: true,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_executor_list_command() {
+        let cmd = ExecutorCommand {
+            action: ExecutorAction::List,
+        };
+        let ctx = CliContext {
+            json: false,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_executor_show_command() {
+        let cmd = ExecutorCommand {
+            action: ExecutorAction::Show {
+                name: "CLAUDE_CODE".to_string(),
+            },
+        };
+        let ctx = CliContext {
+            json: false,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_executor_show_not_found() {
+        let cmd = ExecutorCommand {
+            action: ExecutorAction::Show {
+                name: "INVALID_EXECUTOR".to_string(),
+            },
+        };
+        let ctx = CliContext {
+            json: false,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_err());
     }
 }

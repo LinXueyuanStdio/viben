@@ -13,6 +13,9 @@
     "desktop:restart": "./scripts/restart-desktop.sh",
     "gateway:restart": "./scripts/restart-gateway.sh",
     "gateway:build": "./scripts/restart-gateway.sh --build",
+    "cli:native": "./scripts/build-cli-native.sh",
+    "cli:native:debug": "./scripts/build-cli-native.sh --debug",
+    "viben": "pnpm --filter viben",
     "mcp-server": "pnpm --filter @viben/mcp-server",
     "docs": "pnpm --filter @viben/docs"
   },

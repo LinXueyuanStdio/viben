@@ -21,7 +21,7 @@ system-notifications = ["dep:notify-rust"]
 
 [dependencies]
 # NAPI bindings (optional, for Node.js addon)
-napi = { version = "2", features = ["async", "napi9"], optional = true }
+napi = { version = "2", default-features = false, features = ["async", "napi9"], optional = true }
 napi-derive = { version = "2", optional = true }
 # Async runtime
 tokio = { workspace = true }
@@ -111,6 +111,9 @@ croner = "2.2"
 
 # OS-level notifications (optional)
 notify-rust = { version = "4", optional = true }
+
+[build-dependencies]
+napi-build = "2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "macros"] }

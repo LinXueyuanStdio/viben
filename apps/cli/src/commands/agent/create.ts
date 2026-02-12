@@ -1,137 +1,79 @@
 /**
  * viben agent create - Create a new agent
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
-import * as yaml from 'yaml';
 import chalk from 'chalk';
-import type { OutputContext, Agent, ConfigScope } from '../../types';
+import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getWorkspaceDir, getStateDir, resolveScope } from '../../lib/scope';
+import { agentCreate, type CreateAgentOptions } from '../../lib/native';
 
 interface CreateOptions {
   name: string;
   description?: string;
   model?: string;
   provider?: string;
+  systemPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  fromTemplate?: string;
   global?: boolean;
   workspace?: boolean;
 }
 
 /**
- * Get agents directory for scope
+ * Validate agent name (will be used as ID)
  */
-function getAgentsDir(scope: ConfigScope): string {
-  if (scope === 'workspace') {
-    const workspaceDir = getWorkspaceDir();
-    if (!workspaceDir) {
-      throw new CliError(
-        'Not in a workspace. Use --global or run "viben init" first.',
-        'NO_WORKSPACE'
-      );
-    }
-    return path.join(workspaceDir, 'agents');
-  }
-  return path.join(getStateDir(), 'agents');
-}
-
-/**
- * Validate agent ID
- */
-function validateAgentId(id: string): void {
-  if (!id || id.trim() === '') {
-    throw new CliError('Agent ID cannot be empty', 'INVALID_ID');
+function validateAgentName(name: string): void {
+  if (!name || name.trim() === '') {
+    throw new CliError('Agent name cannot be empty', 'INVALID_NAME');
   }
 
-  if (!/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(id)) {
-    throw new CliError(
-      'Agent ID must start with a letter and contain only letters, numbers, underscores, and hyphens',
-      'INVALID_ID'
-    );
-  }
-
-  if (id.length > 64) {
-    throw new CliError('Agent ID must be 64 characters or less', 'INVALID_ID');
+  // Allow Unicode characters for agent names
+  if (name.length > 64) {
+    throw new CliError('Agent name must be 64 characters or less', 'INVALID_NAME');
   }
 }
 
 /**
  * Create a new agent
  */
-export function createAgent(ctx: OutputContext, options: CreateOptions): void {
-  const id = options.name;
-  validateAgentId(id);
+export async function createAgent(ctx: OutputContext, options: CreateOptions): Promise<void> {
+  validateAgentName(options.name);
 
-  const scope = resolveScope({
-    global: options.global,
-    workspace: options.workspace,
-  });
-
-  const agentsDir = getAgentsDir(scope);
-  const agentPath = path.join(agentsDir, `${id}.yaml`);
-
-  // Check if already exists
-  if (fs.existsSync(agentPath)) {
-    throw new CliError(
-      `Agent "${id}" already exists`,
-      'AGENT_EXISTS'
-    );
+  // Note: workspace scope is not yet supported in NAPI
+  // TODO: Add workspace_path parameter to NAPI when needed
+  if (options.workspace) {
+    console.log(chalk.yellow('Warning: --workspace flag is not yet supported, creating in global scope'));
   }
 
-  // Create agents directory if needed
-  if (!fs.existsSync(agentsDir)) {
-    fs.mkdirSync(agentsDir, { recursive: true });
-  }
-
-  // Create agent config
-  const now = new Date().toISOString();
-  const agent: Agent = {
-    id,
-    name: options.description ? undefined : id,
+  const createOptions: CreateAgentOptions = {
+    name: options.name,
     description: options.description,
     model: options.model,
     provider: options.provider,
-    createdAt: now,
-    updatedAt: now,
+    systemPrompt: options.systemPrompt,
+    temperature: options.temperature,
+    maxTokens: options.maxTokens,
+    fromTemplate: options.fromTemplate,
   };
 
-  // Build YAML content
-  const agentConfig: Record<string, unknown> = {
-    id: agent.id,
-  };
-
-  if (agent.name) {
-    agentConfig.name = agent.name;
-  }
-  if (agent.description) {
-    agentConfig.description = agent.description;
-  }
-  if (agent.model) {
-    agentConfig.model = agent.model;
-  }
-  if (agent.provider) {
-    agentConfig.provider = agent.provider;
-  }
-
-  const content = yaml.stringify(agentConfig, { indent: 2 });
-  fs.writeFileSync(agentPath, content, 'utf-8');
+  const agent = await agentCreate(createOptions);
 
   output(
     ctx,
-    successResponse({
-      agent,
-      path: agentPath,
-      scope,
-    }),
+    successResponse({ agent }),
     () => {
-      console.log(chalk.green('OK') + ` Created agent "${chalk.cyan(id)}"`);
+      console.log(chalk.green('OK') + ` Created agent "${chalk.cyan(agent.id)}"`);
       console.log();
-      console.log('Agent file:', chalk.gray(agentPath));
+      if (agent.path) {
+        console.log('Agent directory:', chalk.gray(agent.path));
+      }
       console.log();
       console.log('Next steps:');
-      console.log(chalk.cyan(`  viben agent show -n ${id}`) + ' - View agent details');
+      console.log(chalk.cyan(`  viben agent show -n ${agent.id}`) + ' - View agent details');
     }
   );
 }
