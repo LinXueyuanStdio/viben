@@ -1,7 +1,7 @@
 //! Channel service for managing channel instances
 //!
 //! Provides CRUD operations for channel configurations with YAML persistence.
-//! Config path: ~/.viben/channels.yaml
+//! Config path: $VIBEN_STATE_DIR/channels.yaml (default: ~/.viben/channels.yaml)
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -9,6 +9,7 @@ use std::sync::Arc;
 use chrono::Utc;
 use tokio::sync::RwLock;
 
+use crate::config::get_state_dir;
 use crate::services::{EventService, GatewayEvent};
 
 use super::{
@@ -45,10 +46,7 @@ pub struct ChannelService {
 impl ChannelService {
     /// Create a new channel service with default config path
     pub fn new(events: Arc<EventService>) -> Self {
-        let config_path = dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".viben")
-            .join("channels.yaml");
+        let config_path = get_state_dir().join("channels.yaml");
 
         Self::with_config_path(config_path, events)
     }

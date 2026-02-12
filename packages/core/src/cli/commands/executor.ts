@@ -17,8 +17,12 @@ import {
   createExecutor,
   executorSupportsChat,
   CHAT_SUPPORTED_EXECUTORS,
+  createChatProxyAsync,
+  chatProxyFactory,
 } from "../../executors";
+import { agentManager } from "../../agents";
 import type { ExecutorType } from "../../types";
+import type { ChatFormat } from "../../executors";
 
 /**
  * Get output context from program options
@@ -51,11 +55,14 @@ export function registerExecutorCommand(program: Command): void {
         output(ctx, successResponse({ types }), () => {
           console.log(chalk.bold("Available Executor Types:"));
           console.log();
-          for (const type of types) {
-            const supportsChat = executorSupportsChat(type);
-            const chatBadge = supportsChat ? chalk.green(" [chat]") : "";
-            console.log(`  ${chalk.cyan(type)}${chatBadge}`);
-          }
+          outputTable(
+            ctx,
+            ["Type", "Chat Support"],
+            types.map((type) => [
+              type,
+              executorSupportsChat(type) ? chalk.green("Yes") : chalk.gray("No"),
+            ])
+          );
           console.log();
           console.log(
             chalk.gray(`Total: ${types.length} executor types`)
@@ -81,14 +88,18 @@ export function registerExecutorCommand(program: Command): void {
       try {
         const availability = getAllExecutorsAvailability();
         let executors = Object.entries(availability).map(
-          ([type, info]) => ({
-            type: type as ExecutorType,
-            available: info.available,
-            status: info.executor.getAvailabilityInfo().status,
-            capabilities: info.executor.capabilities(),
-            supportsChat: executorSupportsChat(type as ExecutorType),
-            chatCommand: info.executor.getChatCommand?.() ?? null,
-          })
+          ([type, info]) => {
+            const availInfo = info.executor.getAvailabilityInfo();
+            return {
+              type: type as ExecutorType,
+              available: info.available,
+              status: availInfo.status,
+              path: availInfo.path ?? null,
+              capabilities: info.executor.capabilities(),
+              supportsChat: executorSupportsChat(type as ExecutorType),
+              chatCommand: info.executor.getChatCommand?.() ?? null,
+            };
+          }
         );
 
         // Filter by available if requested
@@ -109,7 +120,7 @@ export function registerExecutorCommand(program: Command): void {
 
           outputTable(
             ctx,
-            ["Type", "Status", "Chat", "Capabilities"],
+            ["Type", "Status", "Chat", "Path"],
             executors.map((e) => [
               e.type,
               e.available
@@ -118,7 +129,7 @@ export function registerExecutorCommand(program: Command): void {
               e.supportsChat
                 ? chalk.green("Yes")
                 : chalk.gray("No"),
-              e.capabilities.join(", ") || "-",
+              e.path ?? chalk.gray("-"),
             ])
           );
         });
@@ -127,19 +138,29 @@ export function registerExecutorCommand(program: Command): void {
       }
     });
 
-  // executor show <type> - show details of an executor
+  // executor show - show details of an executor
+  // Supports both: `executor show -n CLAUDE_CODE` (spec) and `executor show CLAUDE_CODE` (legacy)
   executor
     .command("show")
     .description("Show details of an executor")
-    .argument("<type>", "Executor type (e.g., CLAUDE_CODE, GEMINI)")
-    .action(async (type: string) => {
+    .argument("[type]", "Executor type (e.g., CLAUDE_CODE, GEMINI)")
+    .option("-n, --name <name>", "Executor name/type")
+    .action(async (type: string | undefined, options: { name?: string }) => {
       const ctx = getOutputContext(program);
       try {
+        // Get executor type from -n option or positional argument
+        const executorType = options.name || type;
+        if (!executorType) {
+          throw new Error(
+            "Executor type is required. Use -n <type> or provide as argument."
+          );
+        }
+
         // Validate executor type
-        const upperType = type.toUpperCase() as ExecutorType;
+        const upperType = executorType.toUpperCase() as ExecutorType;
         if (!EXECUTOR_TYPES.includes(upperType)) {
           throw new Error(
-            `Unknown executor type: ${type}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+            `Unknown executor type: ${executorType}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
           );
         }
 
@@ -150,6 +171,26 @@ export function registerExecutorCommand(program: Command): void {
         const chatCommand = exec.getChatCommand?.() ?? null;
         const mcpConfigPath = exec.defaultMcpConfigPath();
 
+        // Get agents using this executor
+        const allAgents = await agentManager.listAgents();
+        const defaultAgentId = await agentManager.getDefault();
+        const agentsUsingExecutor = allAgents.filter(
+          (agent) => agent.executorType === upperType
+        );
+
+        // Get session counts for each agent
+        const agentsWithSessions = await Promise.all(
+          agentsUsingExecutor.map(async (agent) => {
+            const sessions = await agentManager.listSessions(agent.id);
+            return {
+              id: agent.id,
+              name: agent.name,
+              sessionCount: sessions.length,
+              isDefault: agent.id === defaultAgentId,
+            };
+          })
+        );
+
         const data = {
           type: upperType,
           status: availabilityInfo.status,
@@ -158,6 +199,7 @@ export function registerExecutorCommand(program: Command): void {
           supportsChat,
           chatCommand,
           mcpConfigPath,
+          agents: agentsWithSessions,
         };
 
         output(ctx, successResponse(data), () => {
@@ -189,7 +231,126 @@ export function registerExecutorCommand(program: Command): void {
               console.log(`  ${chalk.cyan("•")} ${cap}`);
             }
           }
+
+          // Display agents using this executor
+          if (agentsWithSessions.length > 0) {
+            console.log();
+            console.log(chalk.bold("Agents using this executor:"));
+            for (const agent of agentsWithSessions) {
+              const sessionLabel =
+                agent.sessionCount === 1 ? "session" : "sessions";
+              const defaultLabel = agent.isDefault
+                ? chalk.cyan(" (default)")
+                : "";
+              console.log(
+                `  ${chalk.cyan("•")} ${agent.name}  ${chalk.gray(
+                  `${agent.sessionCount} ${sessionLabel}`
+                )}${defaultLabel}`
+              );
+            }
+          } else {
+            console.log();
+            console.log(chalk.gray("No agents using this executor."));
+          }
         });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // executor chat - run non-interactive chat with an executor
+  executor
+    .command("chat")
+    .description("Run non-interactive chat with an executor (like claude -p)")
+    .requiredOption("-n, --name <name>", "Executor name (e.g., CLAUDE_CODE, GEMINI)")
+    .option("-p, --prompt <prompt>", "Prompt (reads from stdin if not provided)")
+    .option("-C, --cwd <dir>", "Working directory")
+    .option("--input-format <format>", "Input format: text (default) or stream-json", "text")
+    .option("--output-format <format>", "Output format: text (default) or stream-json", "text")
+    .option("--session-id <id>", "Session ID")
+    .option("--resume <sessionId>", "Resume existing session")
+    .option("--model <model>", "Model to use")
+    .option("--dangerously-skip-permissions", "Skip permission checks")
+    .option("--use-sdk", "Use SDK proxy mode (default for CLAUDE_CODE)")
+    .option("--no-sdk", "Force spawn proxy mode instead of SDK")
+    .action(async (options) => {
+      const ctx = getOutputContext(program);
+      try {
+        // Validate executor type
+        const upperType = options.name.toUpperCase() as ExecutorType;
+        if (!EXECUTOR_TYPES.includes(upperType)) {
+          throw new Error(
+            `Unknown executor type: ${options.name}. Valid types: ${EXECUTOR_TYPES.join(", ")}`
+          );
+        }
+
+        // Check if executor supports chat
+        if (!executorSupportsChat(upperType)) {
+          throw new Error(
+            `Chat not supported for executor: ${upperType}. Chat-enabled executors: ${CHAT_SUPPORTED_EXECUTORS.join(", ")}`
+          );
+        }
+
+        // Get prompt (from -p option or stdin)
+        let prompt = options.prompt;
+        if (!prompt) {
+          // Read from stdin if no prompt provided
+          const stdin = process.stdin;
+          if (stdin.isTTY) {
+            throw new Error(
+              "No prompt provided. Use -p <prompt> or pipe input via stdin."
+            );
+          }
+          // Read stdin synchronously for simplicity
+          const chunks: Buffer[] = [];
+          for await (const chunk of stdin) {
+            chunks.push(chunk);
+          }
+          prompt = Buffer.concat(chunks).toString("utf-8").trim();
+          if (!prompt) {
+            throw new Error(
+              "No prompt provided and stdin is empty. Use -p <prompt> or pipe input."
+            );
+          }
+        }
+
+        // Determine SDK preference
+        // --use-sdk sets options.sdk to true
+        // --no-sdk sets options.sdk to false
+        // If neither is specified, options.sdk is undefined (default to true)
+        const preferSdk = options.sdk !== false;
+
+        // Create chat proxy using factory
+        const proxy = await createChatProxyAsync(upperType, preferSdk);
+
+        // Log proxy type in verbose mode
+        if (ctx.verbose) {
+          const sdkSupported = chatProxyFactory.isSdkAvailable(upperType);
+          console.log(chalk.gray(`Using ${proxy.proxyType} proxy for ${upperType}`));
+          if (sdkSupported && proxy.proxyType === "spawn") {
+            console.log(chalk.gray("SDK mode available but not used (--no-sdk or SDK not installed)"));
+          }
+        }
+
+        // Execute chat via proxy
+        const result = await proxy.execute({
+          prompt,
+          cwd: options.cwd,
+          inputFormat: options.inputFormat as ChatFormat,
+          outputFormat: options.outputFormat as ChatFormat,
+          verbose: ctx.verbose,
+          sessionId: options.sessionId,
+          resume: options.resume,
+          model: options.model,
+          dangerouslySkipPermissions: options.dangerouslySkipPermissions,
+        });
+
+        // Handle result
+        if (result.error && ctx.verbose) {
+          console.error(chalk.red(`Error: ${result.error}`));
+        }
+
+        process.exit(result.exitCode);
       } catch (error) {
         handleCommandError(ctx, error);
       }

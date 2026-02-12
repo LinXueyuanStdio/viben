@@ -15,8 +15,16 @@ import {
 } from "../lib";
 import { agentManager, templateManager, memoryManager } from "../../agents";
 import { configManager } from "../../config";
-import { EXECUTOR_TYPES, isExecutorType } from "../../executors";
+import {
+  EXECUTOR_TYPES,
+  isExecutorType,
+  executorSupportsChat,
+  CHAT_SUPPORTED_EXECUTORS,
+  createChatProxyAsync,
+  chatProxyFactory,
+} from "../../executors";
 import type { ExecutorType } from "../../types";
+import type { ChatFormat } from "../../executors";
 
 /**
  * Get output context from program options
@@ -139,12 +147,13 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent show <id> - show agent details
+  // agent show -n <id> - show agent details
   agent
     .command("show")
     .description("Show agent details")
-    .argument("<id>", "Agent ID")
-    .action(async (id: string) => {
+    .requiredOption("-n, --name <id>", "Agent ID")
+    .action(async (options: { name: string }) => {
+      const id = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(id);
@@ -213,13 +222,14 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent remove <id> - remove an agent
+  // agent remove -n <id> - remove an agent
   agent
     .command("remove")
     .description("Remove an agent")
-    .argument("<id>", "Agent ID")
+    .requiredOption("-n, --name <id>", "Agent ID")
     .option("-f, --force", "Skip confirmation")
-    .action(async (id: string, options) => {
+    .action(async (options: { name: string; force?: boolean }) => {
+      const id = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(id);
@@ -248,13 +258,14 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent config <id> - show/edit agent config
+  // agent config -n <id> - show/edit agent config
   agent
     .command("config")
     .description("Show or edit agent configuration")
-    .argument("<id>", "Agent ID")
+    .requiredOption("-n, --name <id>", "Agent ID")
     .option("-s, --set <key=value>", "Set a configuration value", collect, [])
-    .action(async (id: string, options) => {
+    .action(async (options: { name: string; set?: string[] }) => {
+      const id = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(id);
@@ -310,12 +321,13 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent set-default <id> - set default agent
+  // agent set-default -n <id> - set default agent
   agent
     .command("set-default")
     .description("Set the default agent")
-    .argument("<id>", "Agent ID")
-    .action(async (id: string) => {
+    .requiredOption("-n, --name <id>", "Agent ID")
+    .action(async (options: { name: string }) => {
+      const id = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(id);
@@ -379,6 +391,208 @@ export function registerAgentCommand(program: Command): void {
             }
           }
         });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // ========================================================================
+  // agent chat - non-interactive chat with an agent
+  // ========================================================================
+
+  agent
+    .command("chat")
+    .description("Run non-interactive chat with an agent")
+    .option("-n, --name <agent-id>", "Agent ID (uses default agent if not specified)")
+    .option("-p, --prompt <prompt>", "Prompt (reads from stdin if not provided)")
+    .option("-C, --cwd <dir>", "Working directory")
+    .option("--input-format <format>", "Input format: text (default) or stream-json", "text")
+    .option("--output-format <format>", "Output format: text (default) or stream-json", "text")
+    .option("-s, --session <session-id>", "Session ID")
+    .option("--resume <session-id>", "Resume existing session")
+    .option("--new-session", "Force create new session")
+    .option("--model <model>", "Override agent model")
+    .option("--no-memory", "Skip loading agent memory")
+    .option("--dangerously-skip-permissions", "Skip permission checks")
+    .option("--use-sdk", "Use SDK proxy mode (default for CLAUDE_CODE)")
+    .option("--no-sdk", "Force spawn proxy mode instead of SDK")
+    .action(async (options) => {
+      const ctx = getOutputContext(program);
+      try {
+        // Get agent ID (from -n option or default agent)
+        let agentId = options.name;
+        if (!agentId) {
+          agentId = await configManager.getDefaultAgent();
+          if (!agentId) {
+            // List available agents in error message
+            const agents = await agentManager.listAgents();
+            const agentList = agents.length > 0
+              ? "\n\nAvailable agents:\n" + agents.map(a => `  ${a.id.padEnd(15)} ${a.executorType || "-"}`).join("\n") + "\n\nUse `viben agent list` to see all agents."
+              : "\n\nNo agents found. Use `viben agent create <name>` to create one.";
+            throw new Error(`No agent specified and no default agent set.${agentList}`);
+          }
+        }
+
+        // Get agent
+        const agent = await agentManager.getAgent(agentId);
+        if (!agent) {
+          // List available agents in error message
+          const agents = await agentManager.listAgents();
+          const agentList = agents.length > 0
+            ? "\n\nAvailable agents:\n" + agents.map(a => `  ${a.id.padEnd(15)} ${a.executorType || "-"}`).join("\n") + "\n\nUse `viben agent list` to see all agents."
+            : "";
+          throw CliError.notFound("Agent", agentId + agentList);
+        }
+
+        // Determine executor type from agent
+        const executorType = agent.executorType?.toUpperCase() as ExecutorType | undefined;
+        if (!executorType || !isExecutorType(executorType)) {
+          throw new Error(
+            `Agent "${agentId}" has no executor type configured. ` +
+            `Set one with: viben agent config -n ${agentId} -s executorType=CLAUDE_CODE`
+          );
+        }
+
+        // Check if executor supports chat
+        if (!executorSupportsChat(executorType)) {
+          throw new Error(
+            `Chat not supported for agent type: ${executorType}\n\n` +
+            `Supported types: ${CHAT_SUPPORTED_EXECUTORS.join(", ")}`
+          );
+        }
+
+        // Get prompt (from -p option or stdin)
+        let prompt = options.prompt;
+        if (!prompt) {
+          const stdin = process.stdin;
+          if (stdin.isTTY) {
+            throw new Error(
+              "No prompt provided. Use -p <prompt> or pipe input via stdin."
+            );
+          }
+          // Read stdin
+          const chunks: Buffer[] = [];
+          for await (const chunk of stdin) {
+            chunks.push(chunk);
+          }
+          prompt = Buffer.concat(chunks).toString("utf-8").trim();
+          if (!prompt) {
+            throw new Error(
+              "No prompt provided and stdin is empty. Use -p <prompt> or pipe input."
+            );
+          }
+        }
+
+        // Load agent memory (unless --no-memory)
+        let memoryContent = "";
+        if (options.memory !== false) {
+          memoryContent = await memoryManager.getSessionStartupMemory(agentId);
+          if (ctx.verbose && memoryContent) {
+            console.log(chalk.gray(`Loaded ${memoryContent.length} bytes of agent memory`));
+          }
+        }
+
+        // Construct final prompt with memory
+        let finalPrompt = prompt;
+        if (memoryContent) {
+          // Prepend memory as context
+          finalPrompt = `<agent-memory>\n${memoryContent}\n</agent-memory>\n\n${prompt}`;
+        }
+
+        // Handle session
+        let sessionId = options.session;
+        let resume = options.resume;
+
+        if (options.newSession) {
+          // Create new session
+          const newSession = await agentManager.createSession(agentId);
+          sessionId = newSession.id;
+          if (ctx.verbose) {
+            console.log(chalk.gray(`Created new session: ${sessionId}`));
+          }
+        } else if (resume) {
+          // Resume existing session
+          sessionId = resume;
+          if (ctx.verbose) {
+            console.log(chalk.gray(`Resuming session: ${sessionId}`));
+          }
+        }
+
+        // Determine model (CLI override > agent config)
+        const model = options.model || agent.model;
+
+        // Determine SDK preference
+        const preferSdk = options.sdk !== false;
+
+        // Create chat proxy
+        const proxy = await createChatProxyAsync(executorType, preferSdk);
+
+        // Log proxy info in verbose mode
+        if (ctx.verbose) {
+          const sdkSupported = chatProxyFactory.isSdkAvailable(executorType);
+          console.log(chalk.gray(`Agent: ${agentId} (${executorType})`));
+          console.log(chalk.gray(`Using ${proxy.proxyType} proxy`));
+          if (sdkSupported && proxy.proxyType === "spawn") {
+            console.log(chalk.gray("SDK mode available but not used (--no-sdk or SDK not installed)"));
+          }
+          if (model) {
+            console.log(chalk.gray(`Model: ${model}`));
+          }
+        }
+
+        // Execute chat via proxy
+        const startTime = Date.now();
+        const result = await proxy.execute({
+          prompt: finalPrompt,
+          cwd: options.cwd || process.cwd(),
+          inputFormat: options.inputFormat as ChatFormat,
+          outputFormat: options.outputFormat as ChatFormat,
+          verbose: ctx.verbose,
+          sessionId,
+          resume,
+          model,
+          dangerouslySkipPermissions: options.dangerouslySkipPermissions,
+        });
+        const duration = Date.now() - startTime;
+
+        // Post-processing: Update daily log (if successful and not --no-memory)
+        if (result.exitCode === 0 && options.memory !== false) {
+          try {
+            await memoryManager.appendToDailyLog(agentId, {
+              title: "Chat session",
+              items: [
+                `Prompt: ${prompt.slice(0, 100)}${prompt.length > 100 ? "..." : ""}`,
+                `Duration: ${duration}ms`,
+                sessionId ? `Session: ${sessionId}` : "No session",
+              ],
+            });
+          } catch {
+            // Ignore memory update errors
+            if (ctx.verbose) {
+              console.error(chalk.yellow("Warning: Failed to update daily log"));
+            }
+          }
+        }
+
+        // Handle JSON output
+        if (ctx.json) {
+          const jsonResult = {
+            success: result.exitCode === 0,
+            agent_id: agentId,
+            session_id: sessionId,
+            memory_loaded: options.memory !== false && memoryContent.length > 0,
+            duration_ms: duration,
+            error: result.error,
+          };
+          console.log(JSON.stringify(jsonResult, null, 2));
+        }
+
+        // Handle result error
+        if (result.error && ctx.verbose) {
+          console.error(chalk.red(`Error: ${result.error}`));
+        }
+
+        process.exit(result.exitCode);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -524,12 +738,13 @@ export function registerAgentCommand(program: Command): void {
     .command("session")
     .description("Manage agent sessions");
 
-  // agent session list <agent-id>
+  // agent session list -n <agent-id>
   session
     .command("list")
     .description("List sessions for an agent")
-    .argument("<agent-id>", "Agent ID")
-    .action(async (agentId: string) => {
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
+    .action(async (options: { name: string }) => {
+      const agentId = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(agentId);
@@ -561,13 +776,14 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent session create <agent-id>
+  // agent session create -n <agent-id>
   session
     .command("create")
     .description("Create a new session")
-    .argument("<agent-id>", "Agent ID")
-    .option("-n, --name <name>", "Session name")
-    .action(async (agentId: string, options) => {
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
+    .option("--session-name <name>", "Session name")
+    .action(async (options: { name: string; sessionName?: string }) => {
+      const agentId = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(agentId);
@@ -575,7 +791,7 @@ export function registerAgentCommand(program: Command): void {
           throw CliError.notFound("Agent", agentId);
         }
 
-        const sess = await agentManager.createSession(agentId, options.name);
+        const sess = await agentManager.createSession(agentId, options.sessionName);
 
         output(ctx, successResponse({ session: sess }), () => {
           outputSuccess(ctx, `Created session: ${sess.id}`);
@@ -593,13 +809,15 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent session remove <agent-id> <session-id>
+  // agent session remove -n <agent-id> -s <session-id>
   session
     .command("remove")
     .description("Remove a session")
-    .argument("<agent-id>", "Agent ID")
-    .argument("<session-id>", "Session ID")
-    .action(async (agentId: string, sessionId: string) => {
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
+    .requiredOption("-s, --session <session-id>", "Session ID")
+    .action(async (options: { name: string; session: string }) => {
+      const agentId = options.name;
+      const sessionId = options.session;
       const ctx = getOutputContext(program);
       try {
         await agentManager.removeSession(agentId, sessionId);
@@ -618,13 +836,14 @@ export function registerAgentCommand(program: Command): void {
 
   const memory = agent.command("memory").description("Manage agent memory");
 
-  // agent memory show <agent-id>
+  // agent memory show -n <agent-id>
   memory
     .command("show")
     .description("Show agent memory")
-    .argument("<agent-id>", "Agent ID")
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
     .option("-d, --days <days>", "Show daily logs for N days", parseInt, 7)
-    .action(async (agentId: string, options) => {
+    .action(async (options: { name: string; days: number }) => {
+      const agentId = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(agentId);
@@ -689,13 +908,14 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent memory append <agent-id> <content>
+  // agent memory append -n <agent-id> <content>
   memory
     .command("append")
     .description("Append content to agent memory")
-    .argument("<agent-id>", "Agent ID")
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
     .argument("<content>", "Content to append")
-    .action(async (agentId: string, content: string) => {
+    .action(async (content: string, options: { name: string }) => {
+      const agentId = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(agentId);
@@ -713,13 +933,14 @@ export function registerAgentCommand(program: Command): void {
       }
     });
 
-  // agent memory clear <agent-id>
+  // agent memory clear -n <agent-id>
   memory
     .command("clear")
     .description("Clear agent memory")
-    .argument("<agent-id>", "Agent ID")
+    .requiredOption("-n, --name <agent-id>", "Agent ID")
     .option("-f, --force", "Skip confirmation")
-    .action(async (agentId: string, options) => {
+    .action(async (options: { name: string; force?: boolean }) => {
+      const agentId = options.name;
       const ctx = getOutputContext(program);
       try {
         const agentData = await agentManager.getAgent(agentId);

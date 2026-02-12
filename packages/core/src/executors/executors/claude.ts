@@ -18,7 +18,7 @@ import type {
   ChatSpawnResult,
 } from "../types";
 import { ExecutorError } from "../../error";
-import { which } from "../utils";
+import { which, whichSync } from "../utils";
 
 /**
  * Base command for Claude Code
@@ -80,12 +80,23 @@ export class ClaudeCode implements StandardCodingAgentExecutor {
 
   getAvailabilityInfo(): AvailabilityInfo {
     const authFile = join(homedir(), ".claude.json");
+    const execPath = whichSync("claude");
+
     if (existsSync(authFile)) {
       return {
         status: "LOGIN_DETECTED",
         lastAuthTimestamp: Date.now(),
+        path: execPath ?? undefined,
       };
     }
+
+    if (execPath) {
+      return {
+        status: "INSTALLATION_FOUND",
+        path: execPath,
+      };
+    }
+
     return { status: "NOT_FOUND" };
   }
 

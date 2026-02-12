@@ -201,13 +201,15 @@ export function registerChannelCommand(program: Command): void {
       }
     );
 
-  // channel remove <id> - remove a channel
+  // channel remove -n <id> - remove a channel
   channel
-    .command("remove <id>")
+    .command("remove")
     .description("Remove a channel")
+    .requiredOption("-n, --name <id>", "Channel ID to remove")
     .option("-f, --force", "Skip confirmation")
-    .action(async (id: string, options: { force?: boolean }) => {
+    .action(async (options: { name: string; force?: boolean }) => {
       const ctx = getOutputContext(program);
+      const id = options.name;
       try {
         // Get channel first to show what's being removed
         const existing = await channelManager.getChannel(id);
@@ -225,12 +227,14 @@ export function registerChannelCommand(program: Command): void {
       }
     });
 
-  // channel enable <id> - enable a channel
+  // channel enable -n <id> - enable a channel
   channel
-    .command("enable <id>")
+    .command("enable")
     .description("Enable a channel")
-    .action(async (id: string) => {
+    .requiredOption("-n, --name <id>", "Channel ID to enable")
+    .action(async (options: { name: string }) => {
       const ctx = getOutputContext(program);
+      const id = options.name;
       try {
         const updated = await channelManager.enableChannel(id);
 
@@ -242,12 +246,14 @@ export function registerChannelCommand(program: Command): void {
       }
     });
 
-  // channel disable <id> - disable a channel
+  // channel disable -n <id> - disable a channel
   channel
-    .command("disable <id>")
+    .command("disable")
     .description("Disable a channel")
-    .action(async (id: string) => {
+    .requiredOption("-n, --name <id>", "Channel ID to disable")
+    .action(async (options: { name: string }) => {
       const ctx = getOutputContext(program);
+      const id = options.name;
       try {
         const updated = await channelManager.disableChannel(id);
 
@@ -259,12 +265,14 @@ export function registerChannelCommand(program: Command): void {
       }
     });
 
-  // channel set-default <id> - set default channel
+  // channel set-default -n <id> - set default channel
   channel
-    .command("set-default <id>")
+    .command("set-default")
     .description("Set the default channel")
-    .action(async (id: string) => {
+    .requiredOption("-n, --name <id>", "Channel ID to set as default")
+    .action(async (options: { name: string }) => {
       const ctx = getOutputContext(program);
+      const id = options.name;
       try {
         const updated = await channelManager.setDefaultChannel(id);
 
@@ -276,12 +284,14 @@ export function registerChannelCommand(program: Command): void {
       }
     });
 
-  // channel status [id] - show channel status
+  // channel status [-n <id>] - show channel status
   channel
-    .command("status [id]")
+    .command("status")
     .description("Show channel status (tests connectivity)")
-    .action(async (id?: string) => {
+    .option("-n, --name <id>", "Channel ID to check status for")
+    .action(async (options: { name?: string }) => {
       const ctx = getOutputContext(program);
+      const id = options.name;
       try {
         if (id) {
           // Show status for specific channel
@@ -331,21 +341,23 @@ export function registerChannelCommand(program: Command): void {
       }
     });
 
-  // channel config <id> [action] [key] [value] - show/edit channel config
+  // channel config -n <id> [action] [key] [value] - show/edit channel config
   channel
-    .command("config <id>")
+    .command("config")
     .description("Show or edit channel configuration")
+    .requiredOption("-n, --name <id>", "Channel ID")
     .argument("[action]", "Action: set")
     .argument("[key]", "Configuration key")
     .argument("[value]", "Configuration value")
     .action(
       async (
-        id: string,
-        action?: string,
-        key?: string,
-        value?: string
+        action: string | undefined,
+        key: string | undefined,
+        value: string | undefined,
+        options: { name: string }
       ) => {
         const ctx = getOutputContext(program);
+        const id = options.name;
         try {
           const ch = await channelManager.getChannel(id);
           if (!ch) {

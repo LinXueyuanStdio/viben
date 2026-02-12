@@ -1,6 +1,7 @@
 //! History service for .agent_history management
 //!
 //! Similar to .bash_history, records user inputs for each agent session.
+//! State path: $VIBEN_STATE_DIR (default: ~/.viben)
 
 use base64::Engine as _;
 use chrono::{DateTime, Utc};
@@ -8,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+use crate::config::get_state_dir;
 
 /// History entry
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,9 +100,7 @@ pub struct HistoryService {
 impl HistoryService {
     /// Create a new history service
     pub fn new() -> Self {
-        let state_dir = dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".viben");
+        let state_dir = get_state_dir();
 
         tracing::debug!(
             target: "viben::services::history",

@@ -20,6 +20,26 @@ export type {
   ChatSpawnResult,
 } from "./types";
 
+// Chat Proxy Module
+export type {
+  ChatProxy,
+  ChatProxyType,
+  ChatResult,
+  ChatProxyOptions,
+  ChatProxyFactoryInterface,
+} from "./chat";
+export {
+  SpawnChatProxy,
+  createSpawnChatProxy,
+  SdkChatProxy,
+  createSdkChatProxy,
+  isSdkAvailable,
+  ChatProxyFactory,
+  chatProxyFactory,
+  createChatProxy,
+  createChatProxyAsync,
+} from "./chat";
+
 // Re-export types from main types
 export type {
   ExecutorType,

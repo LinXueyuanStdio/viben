@@ -16,6 +16,19 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerExecutorCommand } from "./executor";
 
+// Mock the agents module with vi.hoisted for proper initialization order
+const { mockAgentManager } = vi.hoisted(() => ({
+  mockAgentManager: {
+    listAgents: vi.fn(),
+    getDefault: vi.fn(),
+    listSessions: vi.fn(),
+  },
+}));
+
+vi.mock("../../agents", () => ({
+  agentManager: mockAgentManager,
+}));
+
 // Mock the executors module
 vi.mock("../../executors", () => {
   const MOCK_EXECUTOR_TYPES = [
@@ -50,6 +63,7 @@ vi.mock("../../executors", () => {
     getAvailabilityInfo: () => ({
       status: available ? "INSTALLATION_FOUND" : "NOT_FOUND",
       lastAuthTimestamp: available ? Date.now() : null,
+      path: available ? `/usr/local/bin/${type.toLowerCase().replace("_", "-")}` : undefined,
     }),
     supportsChat: () => MOCK_CHAT_SUPPORTED_EXECUTORS.includes(type),
     getChatCommand: () => {
@@ -129,6 +143,11 @@ describe("Executor CLI Commands", () => {
     vi.spyOn(process, "exit").mockImplementation((code?: string | number | null | undefined): never => {
       throw new Error(`Process exited with code ${code}`);
     });
+
+    // Setup agent manager mock returns
+    mockAgentManager.listAgents.mockResolvedValue([]);
+    mockAgentManager.getDefault.mockResolvedValue(undefined);
+    mockAgentManager.listSessions.mockResolvedValue([]);
 
     // Create a new program instance
     program = new Command();
@@ -222,7 +241,7 @@ describe("Executor CLI Commands", () => {
       expect(output).toContain("Type");
       expect(output).toContain("Status");
       expect(output).toContain("Chat");
-      expect(output).toContain("Capabilities");
+      expect(output).toContain("Path");
     });
 
     it("should show correct availability status for each executor", async () => {
@@ -304,6 +323,30 @@ describe("Executor CLI Commands", () => {
       expect(Array.isArray(claudeCode.capabilities)).toBe(true);
     });
 
+    it("should show Path column in list output", async () => {
+      await runCommand(["executor", "list"]);
+
+      const output = getLogOutput();
+      // Should have Path column header
+      expect(output).toContain("Path");
+      // Available executors should show their paths
+      expect(output).toContain("/usr/local/bin/claude-code");
+    });
+
+    it("should include path in JSON output for available executors", async () => {
+      await runCommand(["--json", "executor", "list"]);
+
+      const output = getLogOutput();
+      const parsed = JSON.parse(output);
+
+      const claudeCode = parsed.data.executors.find((e: { type: string }) => e.type === "CLAUDE_CODE");
+      expect(claudeCode.path).toBe("/usr/local/bin/claude-code");
+
+      // Unavailable executor should have null path
+      const amp = parsed.data.executors.find((e: { type: string }) => e.type === "AMP");
+      expect(amp.path).toBeNull();
+    });
+
     it("should output JSON format with --available filter", async () => {
       await runCommand(["--json", "executor", "list", "--available"]);
 
@@ -316,12 +359,16 @@ describe("Executor CLI Commands", () => {
       expect(allAvailable).toBe(true);
     });
 
-    it("should show capabilities for each executor", async () => {
-      await runCommand(["executor", "list"]);
+    it("should include capabilities in JSON output (not in table for brevity)", async () => {
+      await runCommand(["--json", "executor", "list"]);
 
       const output = getLogOutput();
-      // Should show capabilities like SESSION_FORK, CONTEXT_USAGE
-      expect(output).toContain("SESSION_FORK");
+      const parsed = JSON.parse(output);
+
+      const claudeCode = parsed.data.executors.find((e: { type: string }) => e.type === "CLAUDE_CODE");
+      // Capabilities are still in JSON output
+      expect(claudeCode.capabilities).toContain("SESSION_FORK");
+      expect(claudeCode.capabilities).toContain("CONTEXT_USAGE");
     });
   });
 
@@ -416,6 +463,116 @@ describe("Executor CLI Commands", () => {
       // COPILOT has empty capabilities, so Capabilities section might not be shown
       // or shown without items
     });
+
+    // ============================================================================
+    // Agents list - spec requirement (executor.md:313)
+    // ============================================================================
+
+    it("should show 'No agents' message when no agents use this executor", async () => {
+      await runCommand(["executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("No agents using this executor");
+    });
+
+    it("should include empty agents array in JSON output when no agents", async () => {
+      await runCommand(["--json", "executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      const parsed = JSON.parse(output);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.data.agents).toBeDefined();
+      expect(Array.isArray(parsed.data.agents)).toBe(true);
+      expect(parsed.data.agents.length).toBe(0);
+    });
+
+    it("should show agents using this executor in human output", async () => {
+      mockAgentManager.listAgents.mockResolvedValue([
+        { id: "agent1", name: "My Agent", executorType: "CLAUDE_CODE" },
+        { id: "agent2", name: "Other Agent", executorType: "GEMINI" },
+      ]);
+      mockAgentManager.listSessions.mockResolvedValue([
+        { id: "s1" }, { id: "s2" }, { id: "s3" },
+      ]);
+
+      await runCommand(["executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("Agents using this executor");
+      expect(output).toContain("My Agent");
+      expect(output).toContain("3 sessions");
+      // Should not contain agent using different executor
+      expect(output).not.toContain("Other Agent");
+    });
+
+    it("should include agents list in JSON output", async () => {
+      mockAgentManager.listAgents.mockResolvedValue([
+        { id: "agent1", name: "Test Agent", executorType: "CLAUDE_CODE" },
+      ]);
+      mockAgentManager.listSessions.mockResolvedValue([{ id: "s1" }]);
+
+      await runCommand(["--json", "executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      const parsed = JSON.parse(output);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.data.agents).toHaveLength(1);
+      expect(parsed.data.agents[0].id).toBe("agent1");
+      expect(parsed.data.agents[0].name).toBe("Test Agent");
+      expect(parsed.data.agents[0].sessionCount).toBe(1);
+    });
+
+    it("should show session count for each agent", async () => {
+      mockAgentManager.listAgents.mockResolvedValue([
+        { id: "agent1", name: "Agent One", executorType: "CLAUDE_CODE" },
+      ]);
+      mockAgentManager.listSessions.mockImplementation(async (agentId: string) => {
+        if (agentId === "agent1") return [{ id: "s1" }];
+        return [];
+      });
+
+      await runCommand(["executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("1 session");
+    });
+
+    it("should mark default agent", async () => {
+      mockAgentManager.listAgents.mockResolvedValue([
+        { id: "default-agent", name: "Default Agent", executorType: "CLAUDE_CODE" },
+        { id: "other-agent", name: "Other Agent", executorType: "CLAUDE_CODE" },
+      ]);
+      mockAgentManager.getDefault.mockResolvedValue("default-agent");
+      mockAgentManager.listSessions.mockResolvedValue([]);
+
+      await runCommand(["executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("(default)");
+    });
+
+    it("should include isDefault in JSON output", async () => {
+      mockAgentManager.listAgents.mockResolvedValue([
+        { id: "default-agent", name: "Default Agent", executorType: "CLAUDE_CODE" },
+        { id: "other-agent", name: "Other Agent", executorType: "CLAUDE_CODE" },
+      ]);
+      mockAgentManager.getDefault.mockResolvedValue("default-agent");
+      mockAgentManager.listSessions.mockResolvedValue([]);
+
+      await runCommand(["--json", "executor", "show", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      const parsed = JSON.parse(output);
+
+      expect(parsed.data.agents).toHaveLength(2);
+      const defaultAgent = parsed.data.agents.find((a: { id: string }) => a.id === "default-agent");
+      const otherAgent = parsed.data.agents.find((a: { id: string }) => a.id === "other-agent");
+
+      expect(defaultAgent.isDefault).toBe(true);
+      expect(otherAgent.isDefault).toBe(false);
+    });
   });
 
   // ============================================================================
@@ -493,6 +650,50 @@ describe("Executor CLI Commands", () => {
       } catch {
         // Expected to fail
       }
+    });
+  });
+
+  // ============================================================================
+  // -n option compatibility tests (spec: executor.md uses -n <id>)
+  // ============================================================================
+
+  describe("executor show with -n option", () => {
+    it("should accept -n option for executor type (spec requirement)", async () => {
+      await runCommand(["executor", "show", "-n", "CLAUDE_CODE"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("Executor: CLAUDE_CODE");
+      expect(output).toContain("Status");
+    });
+
+    it("should accept --name option for executor type (spec requirement)", async () => {
+      await runCommand(["executor", "show", "--name", "GEMINI"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("Executor: GEMINI");
+    });
+
+    it("should prefer -n option over positional argument when both provided", async () => {
+      // -n takes precedence
+      await runCommand(["executor", "show", "-n", "CLAUDE_CODE", "GEMINI"]);
+
+      const output = getLogOutput();
+      expect(output).toContain("Executor: CLAUDE_CODE");
+    });
+
+    it("should error when neither -n nor positional argument provided", async () => {
+      await expect(runCommand(["executor", "show"])).rejects.toThrow();
+      expect(errorOutput.some((e) => e.includes("required"))).toBe(true);
+    });
+
+    it("should output JSON format with -n option", async () => {
+      await runCommand(["--json", "executor", "show", "-n", "CODEX"]);
+
+      const output = getLogOutput();
+      const parsed = JSON.parse(output);
+
+      expect(parsed.success).toBe(true);
+      expect(parsed.data.type).toBe("CODEX");
     });
   });
 

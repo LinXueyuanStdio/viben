@@ -97,7 +97,7 @@ export class Copilot implements StandardCodingAgentExecutor {
     // Check if gh is installed (sync check)
     const ghPath = whichSync("gh");
     if (ghPath) {
-      return { status: "INSTALLATION_FOUND" };
+      return { status: "INSTALLATION_FOUND", path: ghPath };
     }
     return { status: "NOT_FOUND" };
   }

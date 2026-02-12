@@ -123,7 +123,7 @@ async function listJobs(ctx: OutputContext): Promise<void> {
         console.log(chalk.gray("  No cron jobs configured."));
         console.log();
         console.log("Add a job with:");
-        console.log(chalk.cyan("  viben cron add <name> --cron '0 9 * * *' --agent-id <agent>"));
+        console.log(chalk.cyan("  viben cron add --name <name> --cron '0 9 * * *' --agent-id <agent>"));
         return;
       }
 
@@ -216,9 +216,9 @@ async function addJob(
   name: string,
   options: {
     cron?: string;
-    interval?: string;
+    every?: string;
     agentId?: string;
-    prompt?: string;
+    message?: string;
     script?: string;
     channel?: string;
   }
@@ -226,16 +226,16 @@ async function addJob(
   await ensureLoaded();
 
   // Validate options
-  if (!options.cron && !options.interval) {
+  if (!options.cron && !options.every) {
     output(
       ctx,
-      { success: false, error: { code: "VALIDATION_ERROR", message: "Must specify either --cron or --interval" } },
+      { success: false, error: { code: "VALIDATION_ERROR", message: "Must specify either --cron or --every" } },
       () => {
-        console.error(chalk.red("Error: Must specify either --cron or --interval"));
+        console.error(chalk.red("Error: Must specify either --cron or --every"));
         console.log();
         console.log("Examples:");
-        console.log(chalk.cyan("  viben cron add 'Daily report' --cron '0 9 * * *' --agent-id main"));
-        console.log(chalk.cyan("  viben cron add 'Hourly check' --interval 3600 --agent-id monitor"));
+        console.log(chalk.cyan("  viben cron add --name 'Daily report' --cron '0 9 * * *' --agent-id main"));
+        console.log(chalk.cyan("  viben cron add --name 'Hourly check' --every 3600 --agent-id monitor"));
       }
     );
     return;
@@ -246,8 +246,8 @@ async function addJob(
     agent: options.agentId || "main",
     jobType: options.script ? "script" : "agent",
     cron: options.cron,
-    every: options.interval ? parseInt(options.interval, 10) : undefined,
-    message: options.prompt,
+    every: options.every ? parseInt(options.every, 10) : undefined,
+    message: options.message,
     script: options.script,
     channel: options.channel,
     enabled: true,
@@ -418,32 +418,30 @@ export function registerCronCommand(program: Command): void {
       }
     });
 
-  // cron add <name>
+  // cron add --name <name>
   cronCmd
     .command("add")
-    .argument("<name>", "Job name")
+    .requiredOption("-n, --name <name>", "Job name")
     .option("--cron <expression>", "Cron expression (e.g., '0 9 * * *')")
-    .option("--interval <seconds>", "Interval in seconds")
+    .option("--every <seconds>", "Interval in seconds")
     .option("--agent-id <id>", "Agent ID to use", "main")
-    .option("--prompt <message>", "Message to send to agent")
+    .option("--message <message>", "Message to send to agent")
     .option("--script <bash>", "Bash script to execute (for script type)")
     .option("--channel <id>", "Channel ID to target")
     .description("Add a new cron job")
     .action(
-      async (
-        name: string,
-        options: {
-          cron?: string;
-          interval?: string;
-          agentId?: string;
-          prompt?: string;
-          script?: string;
-          channel?: string;
-        }
-      ) => {
+      async (options: {
+        name: string;
+        cron?: string;
+        every?: string;
+        agentId?: string;
+        message?: string;
+        script?: string;
+        channel?: string;
+      }) => {
         const ctx = getContext(program);
         try {
-          await addJob(ctx, name, options);
+          await addJob(ctx, options.name, options);
         } catch (error) {
           handleCommandError(ctx, error);
         }

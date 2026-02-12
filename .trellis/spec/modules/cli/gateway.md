@@ -5,12 +5,14 @@
 ## 命令
 
 ```bash
-# Start gateway (foreground, default)
-viben gateway
+# Start gateway
 viben gateway start
 
 # Start gateway with specific options
-viben gateway start --host 127.0.0.1 --port 18790 --log-level info
+viben gateway start --host 127.0.0.1 --port 18790 --log-level info --agent main
+
+# Start gateway in daemon mode
+viben gateway start --daemon
 
 # Stop running gateway
 viben gateway stop
@@ -28,31 +30,20 @@ viben gateway status
 
 | 命令 | 说明 |
 |------|------|
-| `viben gateway` | 启动 gateway（默认，等同于 `start`） |
-| `viben gateway start` | 启动 gateway，支持 `--host`, `--port`, `--log-level` |
-| `viben gateway stop` | 停止运行中的 gateway（自动查找并终止占用端口的进程） |
-| `viben gateway restart` | 重启 gateway（先停止再启动） |
+| `viben gateway start` | 启动 gateway，支持 `--host`, `--port`, `--log-level`, `--agent`, `--daemon` |
+| `viben gateway stop` | 停止运行中的 gateway，支持 `--port` 指定端口 |
+| `viben gateway restart` | 重启 gateway（先停止再启动），支持所有 start 选项 |
 | `viben gateway status` | 检查 gateway 运行状态和健康状态 |
 
 ## 选项
 
 | 选项 | 说明 | 默认值 |
 |------|------|--------|
-| `-H, --host <host>` | Gateway 监听地址 | `127.0.0.1` |
+| `-h, --host <host>` | Gateway 监听地址 | `127.0.0.1` |
 | `-p, --port <port>` | Gateway 监听端口 | `18790` |
 | `-l, --log-level <level>` | 日志级别 (debug, info, warn, error) | `info` |
-
----
-
-## Binary Discovery
-
-Gateway 命令会按以下顺序查找 `viben-gateway` 二进制文件：
-
-1. 开发路径：`./crates/target/release/viben-gateway`
-2. 开发路径：`./crates/target/debug/viben-gateway`
-3. 用户安装：`~/.viben/bin/viben-gateway`
-4. 系统安装：`/usr/local/bin/viben-gateway`
-5. Homebrew：`/opt/viben/bin/viben-gateway`
+| `-n, --agent <agent-id>` | 指定运行的 agent | `main` |
+| `-d, --daemon` | 后台运行模式 | `false` |
 
 ---
 
@@ -131,10 +122,14 @@ Gateway running. Press Ctrl+C to stop.
 ## Acceptance Criteria
 
 ### Gateway (Agent Runtime)
-- [ ] `viben gateway` 启动 gateway
-- [ ] `viben gateway -n <agent-id>` 指定 agent
-- [ ] `viben gateway --daemon` 后台运行
-- [ ] `viben gateway stop` 停止后台 gateway
+- [ ] `viben gateway start` 启动 gateway
+- [ ] `viben gateway start -n <agent-id>` 指定 agent
+- [ ] `viben gateway start -d, --daemon` 后台运行
+- [ ] `viben gateway start -l, --log-level <level>` 指定日志级别
+- [ ] `viben gateway stop` 停止运行中的 gateway
+- [ ] `viben gateway stop --port <port>` 停止指定端口的 gateway
+- [ ] `viben gateway restart` 重启 gateway
+- [ ] `viben gateway status` 检查 gateway 状态
 - [ ] Gateway 正确初始化 message bus
 - [ ] Gateway 正确启动 agent loop
 - [ ] Gateway 正确连接已启用的 channels

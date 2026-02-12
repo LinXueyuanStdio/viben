@@ -1,17 +1,21 @@
 //! Session store service for file-based session persistence
 //!
 //! Stores session data in the file system according to the spec:
-//! ~/.viben/agents/<agent-id>/.agent_sessions/<session-id>/
+//! $VIBEN_STATE_DIR/agents/<agent-id>/.agent_sessions/<session-id>/
 //!   ├── config.yaml              # Session configuration
 //!   ├── messages.ui.jsonl        # User-facing messages for rendering (append-only)
 //!   ├── messages.rollout.jsonl   # Messages for sending to agent (can be compressed)
 //!   └── messages.agent.jsonl     # Agent-side raw messages (append-only)
+//!
+//! State path: $VIBEN_STATE_DIR (default: ~/.viben)
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+
+use crate::config::get_state_dir;
 
 /// Session configuration stored in config.yaml
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -344,9 +348,7 @@ pub struct SessionStoreService {
 impl SessionStoreService {
     /// Create a new session store service
     pub fn new() -> Self {
-        let state_dir = dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".viben");
+        let state_dir = get_state_dir();
 
         tracing::debug!(
             target: "viben::services::session_store",

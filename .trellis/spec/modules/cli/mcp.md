@@ -2,6 +2,142 @@
 
 > MCP (Model Context Protocol) 相关命令。
 
+## viben mcp list
+
+列出已安装的 MCP servers。
+
+```bash
+# 列出全局已安装的 MCP servers
+viben mcp list
+
+# 列出特定 agent 配置的 MCP servers
+viben mcp list --agent <agent-id>
+
+# JSON 输出
+viben mcp list --json
+viben mcp list --agent <agent-id> --json
+```
+
+### 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--agent <id>` | 列出特定 agent 的 MCP servers |
+| `--json` | JSON 格式输出 |
+
+### 输出示例
+
+**全局列表**:
+```
+Installed MCP Servers:
+  Name         Version    Path                    Installed At
+  filesystem   1.2.0      /path/to/filesystem     2d ago
+  git          2.0.1      /path/to/git            5d ago
+```
+
+**Agent 列表**:
+```
+MCP Servers for Agent: my-agent
+  Name         Command                              Enabled
+  filesystem   npx @anthropic-ai/mcp-server-fs      yes
+  git          npx @anthropic-ai/mcp-server-git     no
+```
+
+---
+
+## viben mcp show
+
+显示 MCP server 详细信息。
+
+```bash
+# 显示全局已安装的 MCP server 详情
+viben mcp show <name>
+
+# 显示 agent 配置的 MCP server 详情
+viben mcp show <name> --agent <agent-id>
+
+# JSON 输出
+viben mcp show <name> --json
+```
+
+### 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--agent <id>` | 查看特定 agent 的 MCP server |
+| `--json` | JSON 格式输出 |
+
+### 输出示例
+
+```
+MCP Server: filesystem
+
+  Name:          filesystem
+  Command:       npx
+  Args:          @anthropic-ai/mcp-server-filesystem /home/user
+  Enabled:       yes
+
+Environment Variables:
+
+  API_KEY:       secr****5678
+  DEBUG:         true
+```
+
+> **Note**: 包含 `secret`、`token`、`key` 的环境变量值会自动脱敏显示。
+
+---
+
+## viben mcp add
+
+为 agent 添加 MCP server 配置。
+
+```bash
+# 基础用法
+viben mcp add <name> --agent <agent-id> --command <cmd>
+
+# 带参数
+viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem /home/user
+
+# 带环境变量
+viben mcp add api-mcp --agent my-agent --command node --env API_KEY=secret123 --env DEBUG=true
+
+# 添加为禁用状态
+viben mcp add filesystem --agent my-agent --command npx --disabled
+```
+
+### 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--agent <id>` | (必需) Agent ID |
+| `--command <cmd>` | (必需) MCP server 启动命令 |
+| `--args <args...>` | 命令参数 |
+| `--env <key=value...>` | 环境变量 (可多次使用) |
+| `--disabled` | 添加为禁用状态 |
+| `--json` | JSON 格式输出 |
+
+---
+
+## viben mcp remove
+
+从 agent 移除 MCP server 配置。
+
+```bash
+viben mcp remove <name> --agent <agent-id>
+
+# JSON 输出
+viben mcp remove <name> --agent <agent-id> --json
+```
+
+### 选项
+
+| 选项 | 说明 |
+|------|------|
+| `--agent <id>` | (必需) Agent ID |
+| `--json` | JSON 格式输出 |
+
+---
+
 ## viben mcp inspector
 
 启动 MCP Inspector 用于测试和调试 MCP servers。基于 `@modelcontextprotocol/inspector` 包。
@@ -61,18 +197,26 @@ Starting MCP Inspector Proxy...
 
 ## viben mcp serve
 
-启动 MCP server (基于 browse-mcp Python 包)。
+显示 MCP server 启动信息 (基于 browse-mcp Python 包)。
 
 ```bash
-# 启动 MCP server
 viben mcp serve
-
-# 指定端口
-viben mcp serve --port 8080
-
-# 指定传输类型
-viben mcp serve -t sse --port 8080
 ```
+
+### 输出
+
+```
+Note: MCP server functionality is handled by browse-mcp.
+
+To start the MCP server, run:
+  uvx browse-mcp
+
+Or install and run:
+  pip install browse-mcp
+  browse-mcp
+```
+
+> **Note**: 该命令仅显示 browse-mcp 的使用说明，不直接启动 MCP server。
 
 ---
 

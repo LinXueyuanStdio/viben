@@ -57,7 +57,8 @@ describe("config command", () => {
   let program: Command;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let processExitSpy: ReturnType<typeof vi.spyOn>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let processExitSpy: any;
 
   beforeEach(() => {
     // Create a fresh program for each test

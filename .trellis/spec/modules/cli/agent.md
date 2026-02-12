@@ -127,10 +127,10 @@ viben agent remove -n my-agent --force                       # 强制删除
 
 # 配置 agent
 viben agent config -n <id>                                   # 查看配置
-viben agent config -n <id> set <key> <value>                 # 设置配置
-viben agent config -n my-agent set model gpt-4
-viben agent config -n my-agent set plan true
-viben agent config -n my-agent set mcp.enabled "[\"filesystem\",\"git\"]"
+viben agent config -n <id> --set <key>=<value>               # 设置配置
+viben agent config -n my-agent --set model=gpt-4
+viben agent config -n my-agent --set plan=true
+viben agent config -n my-agent --set mcp.enabled="[\"filesystem\",\"git\"]"
 
 # 设置默认 agent
 viben agent set-default -n <id>
@@ -174,8 +174,8 @@ viben agent session list -n my-agent
 viben agent session show -n <agent-id> -s <session-id>
 
 # 创建新会话
-viben agent session create -n <agent-id> [session-name]
-viben agent session create -n my-agent "feature-auth"
+viben agent session create -n <agent-id> [--session-name <name>]
+viben agent session create -n my-agent --session-name "feature-auth"
 
 # 删除会话
 viben agent session remove -n <agent-id> -s <session-id>

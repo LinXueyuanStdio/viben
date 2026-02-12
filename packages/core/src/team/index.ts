@@ -1,10 +1,11 @@
 /**
  * Team module - Viben Agent Organization
  *
- * This module implements functionality equivalent to `trellis init`,
- * generating `.viben/` and `.claude/` directories with all necessary
- * configuration files, scripts, and templates.
+ * This module implements the `viben team init` command that generates
+ * a complete AI-assisted development workflow structure.
+ *
+ * Templates are read from crates/viben-agent-organization/src/templates/
+ * which already have all necessary transformations applied.
  */
 
-export { initTeam, InitOptions, ProjectType, InitResult } from "./init";
-export { nameReplacer, applyReplacements } from "./replacer";
+export { initTeam, type InitOptions, type InitResult, type ProjectType } from "./init";
