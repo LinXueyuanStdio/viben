@@ -85,35 +85,54 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * List all agents
    * GET /api/agents
+   *
+   * Returns workspace-scoped agents with viben: prefix to match Rust gateway format
    */
   fastify.get("/api/agents", async () => {
     const agents = await agentManager.listAgents();
+    const homeDir = process.env.HOME || "/";
+
     return {
-      agents: agents.map((a) => ({
-        id: a.id,
-        name: a.name,
-        description: a.description,
-        model: a.model,
-        provider: a.provider,
-        systemPrompt: a.systemPrompt,
-        appendPrompt: a.appendPrompt,
-        temperature: a.temperature,
-        maxTokens: a.maxTokens,
-        executorType: a.executorType,
-        executorConfig: a.executorConfig,
-        mcpServers: a.mcpServers,
-        skills: a.skills,
-        planMode: a.planMode,
-        approvals: a.approvals,
-        createdAt: a.createdAt,
-        updatedAt: a.updatedAt,
-      })),
+      agents: agents.map((a) => {
+        // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+        const source =
+          a.path && a.path.startsWith(homeDir) && a.path.includes("/.viben/agents/")
+            ? "global"
+            : "workspace";
+
+        return {
+          // Add viben: prefix to match Rust gateway format
+          id: `viben:${a.id}`,
+          name: a.name,
+          agent_type: "viben",
+          source,
+          workspace_path: a.path,
+          config_path: a.path ? `${a.path}/config.yaml` : undefined,
+          description: a.description,
+          model: a.model,
+          provider: a.provider,
+          system_prompt: a.systemPrompt,
+          append_prompt: a.appendPrompt,
+          temperature: a.temperature,
+          max_tokens: a.maxTokens,
+          executor_type: a.executorType,
+          executor_config: a.executorConfig,
+          mcp_servers: a.mcpServers,
+          skills: a.skills,
+          plan_mode: a.planMode,
+          approvals: a.approvals,
+          created_at: a.createdAt,
+          updated_at: a.updatedAt,
+        };
+      }),
     };
   });
 
   /**
    * Create a new agent
    * POST /api/agents
+   *
+   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
    */
   fastify.post<{
     Body: {
@@ -123,16 +142,25 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       model?: string;
       provider?: string;
       systemPrompt?: string;
+      system_prompt?: string;
       appendPrompt?: string;
+      append_prompt?: string;
       temperature?: number;
       maxTokens?: number;
+      max_tokens?: number;
       fromTemplate?: string;
+      from_template?: string;
       basePath?: string;
+      base_path?: string;
       executorType?: string;
+      executor_type?: string;
       executorConfig?: Record<string, unknown>;
+      executor_config?: Record<string, unknown>;
       mcpServers?: string[];
+      mcp_servers?: string[];
       skills?: string[];
       planMode?: boolean;
+      plan_mode?: boolean;
       approvals?: boolean;
     };
   }>("/api/agents", async (request, reply) => {
@@ -144,38 +172,50 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         description: body.description,
         model: body.model,
         provider: body.provider,
-        systemPrompt: body.systemPrompt,
-        appendPrompt: body.appendPrompt,
+        systemPrompt: body.systemPrompt || body.system_prompt,
+        appendPrompt: body.appendPrompt || body.append_prompt,
         temperature: body.temperature,
-        maxTokens: body.maxTokens,
-        fromTemplate: body.fromTemplate,
-        executorType: body.executorType as ExecutorType | undefined,
-        executorConfig: body.executorConfig,
-        mcpServers: body.mcpServers,
+        maxTokens: body.maxTokens || body.max_tokens,
+        fromTemplate: body.fromTemplate || body.from_template,
+        executorType: (body.executorType || body.executor_type) as ExecutorType | undefined,
+        executorConfig: body.executorConfig || body.executor_config,
+        mcpServers: body.mcpServers || body.mcp_servers,
         skills: body.skills,
-        planMode: body.planMode,
+        planMode: body.planMode ?? body.plan_mode,
         approvals: body.approvals,
       });
       reply.code(201);
-      // Return agent directly (not wrapped) to match Rust gateway
+
+      const homeDir = process.env.HOME || "/";
+      // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+      const source =
+        agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
+          ? "global"
+          : "workspace";
+
+      // Return agent with viben: prefix and snake_case fields to match Rust gateway
       return {
-        id: agent.id,
+        id: `viben:${agent.id}`,
         name: agent.name,
+        agent_type: "viben",
+        source,
+        workspace_path: agent.path,
+        config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
         description: agent.description,
         model: agent.model,
         provider: agent.provider,
-        systemPrompt: agent.systemPrompt,
-        appendPrompt: agent.appendPrompt,
+        system_prompt: agent.systemPrompt,
+        append_prompt: agent.appendPrompt,
         temperature: agent.temperature,
-        maxTokens: agent.maxTokens,
-        executorType: agent.executorType,
-        executorConfig: agent.executorConfig,
-        mcpServers: agent.mcpServers,
+        max_tokens: agent.maxTokens,
+        executor_type: agent.executorType,
+        executor_config: agent.executorConfig,
+        mcp_servers: agent.mcpServers,
         skills: agent.skills,
-        planMode: agent.planMode,
+        plan_mode: agent.planMode,
         approvals: agent.approvals,
-        createdAt: agent.createdAt,
-        updatedAt: agent.updatedAt,
+        created_at: agent.createdAt,
+        updated_at: agent.updatedAt,
       };
     } catch (e) {
       reply.code(400);
@@ -287,6 +327,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * Create an agent from a template
    * POST /api/agents/templates/:id/instantiate
+   *
+   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
    */
   fastify.post<{ Params: { id: string }; Body: { agent_id: string } }>(
     "/api/agents/templates/:id/instantiate",
@@ -296,25 +338,37 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const agent = await agentManager.createAgentFromTemplate(id, agent_id);
         reply.code(201);
-        // Return agent directly (not wrapped) to match Rust gateway
+
+        const homeDir = process.env.HOME || "/";
+        // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+        const source =
+          agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
+            ? "global"
+            : "workspace";
+
+        // Return agent with viben: prefix and snake_case fields to match Rust gateway
         return {
-          id: agent.id,
+          id: `viben:${agent.id}`,
           name: agent.name,
+          agent_type: "viben",
+          source,
+          workspace_path: agent.path,
+          config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
           description: agent.description,
           model: agent.model,
           provider: agent.provider,
-          systemPrompt: agent.systemPrompt,
-          appendPrompt: agent.appendPrompt,
+          system_prompt: agent.systemPrompt,
+          append_prompt: agent.appendPrompt,
           temperature: agent.temperature,
-          maxTokens: agent.maxTokens,
-          executorType: agent.executorType,
-          executorConfig: agent.executorConfig,
-          mcpServers: agent.mcpServers,
+          max_tokens: agent.maxTokens,
+          executor_type: agent.executorType,
+          executor_config: agent.executorConfig,
+          mcp_servers: agent.mcpServers,
           skills: agent.skills,
-          planMode: agent.planMode,
+          plan_mode: agent.planMode,
           approvals: agent.approvals,
-          createdAt: agent.createdAt,
-          updatedAt: agent.updatedAt,
+          created_at: agent.createdAt,
+          updated_at: agent.updatedAt,
         };
       } catch (e) {
         reply.code(400);
@@ -677,6 +731,8 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * Get a specific agent
    * GET /api/agents/:id
+   *
+   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
    */
   fastify.get<{ Params: { id: string } }>("/api/agents/:id", async (request, reply) => {
     const { id } = request.params;
@@ -685,31 +741,45 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       reply.code(404);
       return { error: `Agent not found: ${id}` };
     }
-    // Return agent directly (not wrapped) to match Rust gateway
+
+    const homeDir = process.env.HOME || "/";
+    // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+    const source =
+      agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
+        ? "global"
+        : "workspace";
+
+    // Return agent with viben: prefix and snake_case fields to match Rust gateway
     return {
-      id: agent.id,
+      id: `viben:${agent.id}`,
       name: agent.name,
+      agent_type: "viben",
+      source,
+      workspace_path: agent.path,
+      config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
       description: agent.description,
       model: agent.model,
       provider: agent.provider,
-      systemPrompt: agent.systemPrompt,
-      appendPrompt: agent.appendPrompt,
+      system_prompt: agent.systemPrompt,
+      append_prompt: agent.appendPrompt,
       temperature: agent.temperature,
-      maxTokens: agent.maxTokens,
-      executorType: agent.executorType,
-      executorConfig: agent.executorConfig,
-      mcpServers: agent.mcpServers,
+      max_tokens: agent.maxTokens,
+      executor_type: agent.executorType,
+      executor_config: agent.executorConfig,
+      mcp_servers: agent.mcpServers,
       skills: agent.skills,
-      planMode: agent.planMode,
+      plan_mode: agent.planMode,
       approvals: agent.approvals,
-      createdAt: agent.createdAt,
-      updatedAt: agent.updatedAt,
+      created_at: agent.createdAt,
+      updated_at: agent.updatedAt,
     };
   });
 
   /**
    * Update an agent
    * PATCH /api/agents/:id
+   *
+   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
    */
   fastify.patch<{
     Params: { id: string };
@@ -719,43 +789,75 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       model?: string;
       provider?: string;
       systemPrompt?: string;
+      system_prompt?: string;
       appendPrompt?: string;
+      append_prompt?: string;
       temperature?: number;
       maxTokens?: number;
+      max_tokens?: number;
       executorType?: string;
+      executor_type?: string;
       executorConfig?: Record<string, unknown>;
+      executor_config?: Record<string, unknown>;
       mcpServers?: string[];
+      mcp_servers?: string[];
       skills?: string[];
       planMode?: boolean;
+      plan_mode?: boolean;
       approvals?: boolean;
     };
   }>("/api/agents/:id", async (request, reply) => {
     const { id } = request.params;
+    const body = request.body;
     const updates = {
-      ...request.body,
-      executorType: request.body.executorType as ExecutorType | undefined,
+      name: body.name,
+      description: body.description,
+      model: body.model,
+      provider: body.provider,
+      systemPrompt: body.systemPrompt || body.system_prompt,
+      appendPrompt: body.appendPrompt || body.append_prompt,
+      temperature: body.temperature,
+      maxTokens: body.maxTokens || body.max_tokens,
+      executorType: (body.executorType || body.executor_type) as ExecutorType | undefined,
+      executorConfig: body.executorConfig || body.executor_config,
+      mcpServers: body.mcpServers || body.mcp_servers,
+      skills: body.skills,
+      planMode: body.planMode ?? body.plan_mode,
+      approvals: body.approvals,
     };
     try {
       const agent = await agentManager.updateAgent(id, updates);
-      // Return agent directly (not wrapped) to match Rust gateway
+
+      const homeDir = process.env.HOME || "/";
+      // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+      const source =
+        agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
+          ? "global"
+          : "workspace";
+
+      // Return agent with viben: prefix and snake_case fields to match Rust gateway
       return {
-        id: agent.id,
+        id: `viben:${agent.id}`,
         name: agent.name,
+        agent_type: "viben",
+        source,
+        workspace_path: agent.path,
+        config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
         description: agent.description,
         model: agent.model,
         provider: agent.provider,
-        systemPrompt: agent.systemPrompt,
-        appendPrompt: agent.appendPrompt,
+        system_prompt: agent.systemPrompt,
+        append_prompt: agent.appendPrompt,
         temperature: agent.temperature,
-        maxTokens: agent.maxTokens,
-        executorType: agent.executorType,
-        executorConfig: agent.executorConfig,
-        mcpServers: agent.mcpServers,
+        max_tokens: agent.maxTokens,
+        executor_type: agent.executorType,
+        executor_config: agent.executorConfig,
+        mcp_servers: agent.mcpServers,
         skills: agent.skills,
-        planMode: agent.planMode,
+        plan_mode: agent.planMode,
         approvals: agent.approvals,
-        createdAt: agent.createdAt,
-        updatedAt: agent.updatedAt,
+        created_at: agent.createdAt,
+        updated_at: agent.updatedAt,
       };
     } catch (e) {
       reply.code(400);

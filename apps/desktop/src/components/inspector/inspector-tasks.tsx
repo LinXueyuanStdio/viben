@@ -113,6 +113,24 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
     }
   };
 
+  const getStatusLabel = (status: string): string => {
+    switch (status) {
+      case "pending":
+        return t("inspector.taskStatus.pending", "Pending");
+      case "running":
+        return t("inspector.taskStatus.running", "Running");
+      case "completed":
+      case "done":
+        return t("inspector.taskStatus.done", "Done");
+      case "failed":
+        return t("inspector.taskStatus.failed", "Failed");
+      case "cancelled":
+        return t("inspector.taskStatus.cancelled", "Cancelled");
+      default:
+        return status;
+    }
+  };
+
   const taskCounts = useMemo(() => {
     return {
       pending: tasks.filter((t) => t.status === "pending").length,
@@ -225,7 +243,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                     </div>
                     <span className="font-mono text-xs flex-1 truncate">{task.id}</span>
                     <Badge variant="outline" className="text-[10px] h-4">
-                      {task.status}
+                      {getStatusLabel(task.status)}
                     </Badge>
                   </div>
 

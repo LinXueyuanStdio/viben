@@ -11,6 +11,7 @@ import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { agentManager } from "../../agents";
+import { GroupChatService } from "../../group-chat";
 
 // ============================================================================
 // Types
@@ -162,9 +163,71 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
 
       const items: ChatListItem[] = [];
 
-      // 1. Load group chats (from in-memory storage - would need to import from group-chats.ts)
-      // For now, we skip group chats as they're stored in-memory in group-chats.ts
-      // In a real implementation, we'd share the storage or use a database
+      // 1. Load group chats from file-based storage
+      // Global group chats (from ~/.viben/group-chats)
+      if (includeGlobal) {
+        const globalVibenPath = join(globalPath, ".viben", "group-chats");
+        if (existsSync(globalVibenPath)) {
+          try {
+            const globalService = new GroupChatService(globalVibenPath);
+            const globalChats = await globalService.listGroupChats();
+            for (const gc of globalChats) {
+              items.push({
+                id: gc.id,
+                item_type: "group_chat",
+                name: gc.name,
+                description: gc.description,
+                source: "global",
+                workspace_path: globalPath,
+                icon_type: "group",
+                is_global: true,
+                last_active: gc.updatedAt,
+                metadata: {
+                  created_by: gc.createdBy,
+                  created_at: gc.createdAt,
+                  settings: gc.settings,
+                },
+              });
+            }
+          } catch {
+            // Global group chat loading failed, skip
+          }
+        }
+      }
+
+      // Workspace group chats (from <workspace>/.viben/group-chats)
+      if (workspacePath !== globalPath) {
+        const workspaceVibenPath = join(workspacePath, ".viben", "group-chats");
+        if (existsSync(workspaceVibenPath)) {
+          try {
+            const workspaceService = new GroupChatService(workspaceVibenPath);
+            const workspaceChats = await workspaceService.listGroupChats();
+            for (const gc of workspaceChats) {
+              // Skip if already exists from global
+              if (!items.some((i) => i.id === gc.id)) {
+                items.push({
+                  id: gc.id,
+                  item_type: "group_chat",
+                  name: gc.name,
+                  description: gc.description,
+                  source: "workspace",
+                  workspace_path: workspacePath,
+                  icon_type: "group",
+                  is_global: false,
+                  last_active: gc.updatedAt,
+                  metadata: {
+                    created_by: gc.createdBy,
+                    created_at: gc.createdAt,
+                    settings: gc.settings,
+                  },
+                });
+              }
+            }
+          } catch {
+            // Workspace group chat loading failed, skip
+          }
+        }
+      }
 
       // 2. Load executors with workspace config
       for (const executor of EXECUTOR_CONFIGS) {

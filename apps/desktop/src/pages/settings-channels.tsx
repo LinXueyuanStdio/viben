@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import {
   Eye,
   EyeOff,
@@ -160,65 +161,69 @@ function buildChannelConfig(channel: GatewayChannel): ChannelConfig {
 /**
  * Format error message for display
  */
-function formatChannelError(error: string | undefined, channelType: ChannelType): string {
-  if (!error) return "Unknown error";
+function formatChannelError(
+  error: string | undefined,
+  channelType: ChannelType,
+  t: TFunction
+): string {
+  if (!error) return t("channels.errors.unknown", "Unknown error");
 
   // Common error patterns with user-friendly messages
   const errorLower = error.toLowerCase();
 
   // Network errors
   if (errorLower.includes("fetch") || errorLower.includes("network") || errorLower.includes("econnrefused")) {
-    return `Network error: Unable to connect. Please check your internet connection.`;
+    return t("channels.errors.networkError", "Network error: Unable to connect. Please check your internet connection.");
   }
 
   // Gateway not running
   if (errorLower.includes("failed to fetch") || errorLower.includes("connection refused")) {
-    return `Gateway not running. Please start the gateway service first.`;
+    return t("channels.errors.gatewayNotRunning", "Gateway not running. Please start the gateway service first.");
   }
 
   // Timeout
   if (errorLower.includes("timeout")) {
-    return `Request timed out. The service may be slow or unreachable.`;
+    return t("channels.errors.requestTimeout", "Request timed out. The service may be slow or unreachable.");
   }
 
   // Channel-specific error formatting
   switch (channelType) {
     case "telegram":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return `Invalid Bot Token. Please check your token from @BotFather.`;
+        return t("channels.errors.telegram.invalidToken", "Invalid Bot Token. Please check your token from @BotFather.");
       }
       if (errorLower.includes("chat not found") || errorLower.includes("400")) {
-        return `Chat not found. Make sure you've sent /start to the bot first.`;
+        return t("channels.errors.telegram.chatNotFound", "Chat not found. Make sure you've sent /start to the bot first.");
       }
       if (errorLower.includes("bot was blocked")) {
-        return `Bot was blocked by the user. Please unblock the bot in Telegram.`;
+        return t("channels.errors.telegram.botBlocked", "Bot was blocked by the user. Please unblock the bot in Telegram.");
       }
       break;
     case "discord":
       if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
-        return `Invalid Bot Token. Please check your token from Discord Developer Portal.`;
+        return t("channels.errors.discord.invalidToken", "Invalid Bot Token. Please check your token from Discord Developer Portal.");
       }
       if (errorLower.includes("unknown channel") || errorLower.includes("404")) {
-        return `Channel not found. Please verify the Channel ID.`;
+        return t("channels.errors.discord.channelNotFound", "Channel not found. Please verify the Channel ID.");
       }
       if (errorLower.includes("missing access") || errorLower.includes("403")) {
-        return `Bot lacks permission. Invite the bot to the channel first.`;
+        return t("channels.errors.discord.missingAccess", "Bot lacks permission. Invite the bot to the channel first.");
       }
       break;
     case "feishu":
       if (errorLower.includes("invalid app_id") || errorLower.includes("10003")) {
-        return `Invalid App ID. Please check your credentials from Feishu Open Platform.`;
+        return t("channels.errors.feishu.invalidAppId", "Invalid App ID. Please check your credentials from Feishu Open Platform.");
       }
       if (errorLower.includes("app_secret") || errorLower.includes("10014")) {
-        return `Invalid App Secret. Please verify your credentials.`;
+        return t("channels.errors.feishu.invalidAppSecret", "Invalid App Secret. Please verify your credentials.");
       }
       if (errorLower.includes("user_not_found") || errorLower.includes("230001")) {
-        return `User not found. Please check the Open ID or Chat ID.`;
+        return t("channels.errors.feishu.userNotFound", "User not found. Please check the Open ID or Chat ID.");
       }
       break;
     case "whatsapp":
       if (errorLower.includes("websocket") || errorLower.includes("ws://")) {
-        return `Cannot connect to WhatsApp Bridge. Is the bridge server running?`;
+        return t("channels.errors.whatsapp.bridgeConnectionFailed", "Cannot connect to WhatsApp Bridge. Is the bridge server running?");
       }
       break;
   }
@@ -231,7 +236,8 @@ function formatChannelError(error: string | undefined, channelType: ChannelType)
  * Test channel connection via gateway API (no Chat ID required)
  */
 async function testChannelConnection(
-  channel: GatewayChannel
+  channel: GatewayChannel,
+  t: TFunction
 ): Promise<{ success: boolean; details?: string; error?: string }> {
   try {
     const gatewayUrl = getGatewayUrl();
@@ -255,13 +261,13 @@ async function testChannelConnection(
     return {
       success: data.success,
       details: data.details,
-      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type, t) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type),
+      error: formatChannelError(errorMsg, channel.channel_type, t),
     };
   }
 }
@@ -271,7 +277,8 @@ async function testChannelConnection(
  */
 async function sendTestMessage(
   channel: GatewayChannel,
-  chatId?: string
+  chatId: string | undefined,
+  t: TFunction
 ): Promise<{ success: boolean; error?: string }> {
   if (!chatId && channel.channel_type !== "whatsapp") {
     return { success: false, error: "Chat ID is required to send test message" };
@@ -299,13 +306,13 @@ async function sendTestMessage(
     const data = await response.json();
     return {
       success: data.success,
-      error: data.error ? formatChannelError(data.error, channel.channel_type) : undefined,
+      error: data.error ? formatChannelError(data.error, channel.channel_type, t) : undefined,
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     return {
       success: false,
-      error: formatChannelError(errorMsg, channel.channel_type),
+      error: formatChannelError(errorMsg, channel.channel_type, t),
     };
   }
 }
@@ -483,7 +490,7 @@ function TelegramForm({
         <Input
           value={chat_id}
           onChange={(e) => onChange({ chat_id: e.target.value })}
-          placeholder="123456789"
+          placeholder={t("channels.telegram.chatIdExamplePlaceholder", "123456789")}
         />
       </div>
       <div className="space-y-1.5">
@@ -493,7 +500,7 @@ function TelegramForm({
         <Input
           value={proxy}
           onChange={(e) => onChange({ proxy: e.target.value || undefined })}
-          placeholder="http://127.0.0.1:7890"
+          placeholder={t("channels.telegram.proxyPlaceholder", "http://127.0.0.1:7890")}
         />
       </div>
     </div>
@@ -559,13 +566,13 @@ function FeishuForm({
         description={t("channels.feishu.appIdDescription", "从飞书开放平台获取")}
         value={app_id}
         onChange={(app_id) => onChange({ app_id })}
-        placeholder="cli_xxxxx"
+        placeholder={t("channels.feishu.appIdPlaceholder", "cli_xxxxx")}
       />
       <SecretInput
         label={t("channels.feishu.appSecret", "App Secret")}
         value={app_secret}
         onChange={(app_secret) => onChange({ app_secret })}
-        placeholder="xxxxxxxx"
+        placeholder={t("channels.feishu.appSecretPlaceholder", "xxxxxxxx")}
       />
     </div>
   );
@@ -878,7 +885,7 @@ export function SettingsChannelsPage() {
   const handleTestConnection = async (channel: GatewayChannel) => {
     setTestingConnectionId(channel.id);
 
-    const result = await testChannelConnection(channel);
+    const result = await testChannelConnection(channel, t);
 
     setTestingConnectionId(null);
 
@@ -911,7 +918,7 @@ export function SettingsChannelsPage() {
     setIsSendingTestMessage(true);
     setSendingTestMessageId(testingChannel.id);
 
-    const result = await sendTestMessage(testingChannel, testChatId || undefined);
+    const result = await sendTestMessage(testingChannel, testChatId || undefined, t);
 
     setIsSendingTestMessage(false);
     setSendingTestMessageId(null);

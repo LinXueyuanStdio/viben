@@ -86,6 +86,8 @@ export interface GroupChatSessionConfig {
   name?: string;
   /** Session status */
   status: GroupChatSessionStatus;
+  /** Active agents in this session */
+  activeAgents?: string[];
   /** Creation timestamp */
   createdAt: string;
   /** Last update timestamp */
@@ -180,13 +182,15 @@ export interface AgentRolloutMessage {
   /** Timestamp */
   timestamp: string;
   /** Role */
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool";
   /** Content */
   content: string;
+  /** Name (for user messages from other agents or tool results) */
+  name?: string;
   /** Tool calls */
   toolCalls?: unknown;
-  /** Tool result */
-  toolResult?: unknown;
+  /** Tool call ID (for tool results) */
+  toolCallId?: string;
 }
 
 /**
@@ -282,6 +286,8 @@ export interface CreateSessionRequest {
   id?: string;
   /** Session name */
   name?: string;
+  /** Active agents in this session */
+  activeAgents?: string[];
   /** Initial metadata */
   metadata?: Record<string, unknown>;
 }
@@ -294,6 +300,8 @@ export interface UpdateSessionRequest {
   name?: string;
   /** New status */
   status?: GroupChatSessionStatus;
+  /** Active agents in this session */
+  activeAgents?: string[];
   /** New metadata */
   metadata?: Record<string, unknown>;
 }

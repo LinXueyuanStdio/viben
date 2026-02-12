@@ -19,7 +19,6 @@ import {
   type VibenAgentTemplate,
   // Legacy types for backwards compatibility
   type WorkspaceExecutor,
-  type WorkspaceAgent,
 } from "@/lib/gateway";
 
 // ============================================================================
@@ -423,11 +422,11 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   // Read operations
   const getVibenAgents = useCallback(() => {
-    return agents.filter((a) => a.agent_type === "viben");
+    return agents.filter((a) => a.executor_type === "viben");
   }, [agents]);
 
   const getIdeAgents = useCallback(() => {
-    return agents.filter((a) => a.agent_type !== "viben");
+    return agents.filter((a) => a.executor_type !== "viben");
   }, [agents]);
 
   const getAgent = useCallback(
@@ -556,7 +555,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
 export interface UseWorkspaceAgentsFromGatewayReturn {
   /** List of agents with workspace context */
-  agents: WorkspaceAgent[];
+  agents: AgentInfo[];
   /** Loading state */
   loading: boolean;
   /** Error message */
@@ -566,11 +565,11 @@ export interface UseWorkspaceAgentsFromGatewayReturn {
   /** Refresh agents */
   refresh: () => Promise<void>;
   /** Get Viben agents */
-  getVibenAgents: () => WorkspaceAgent[];
+  getVibenAgents: () => AgentInfo[];
   /** Get IDE agents (Claude Code, Cursor, etc.) */
-  getIdeAgents: () => WorkspaceAgent[];
+  getIdeAgents: () => AgentInfo[];
   /** Get agent by ID */
-  getAgent: (id: string) => WorkspaceAgent | undefined;
+  getAgent: (id: string) => AgentInfo | undefined;
 }
 
 /**
@@ -581,7 +580,7 @@ export interface UseWorkspaceAgentsFromGatewayReturn {
 export function useWorkspaceAgentsFromGateway(
   workspacePath: string | null
 ): UseWorkspaceAgentsFromGatewayReturn {
-  const [agents, setAgents] = useState<WorkspaceAgent[]>([]);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -617,11 +616,11 @@ export function useWorkspaceAgentsFromGateway(
   }, [loadAgents]);
 
   const getVibenAgents = useCallback(() => {
-    return agents.filter((a) => a.agent_type === "viben");
+    return agents.filter((a) => a.executor_type === "viben");
   }, [agents]);
 
   const getIdeAgents = useCallback(() => {
-    return agents.filter((a) => a.agent_type !== "viben");
+    return agents.filter((a) => a.executor_type !== "viben");
   }, [agents]);
 
   const getAgent = useCallback(

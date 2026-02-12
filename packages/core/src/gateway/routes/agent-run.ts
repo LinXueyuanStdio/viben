@@ -13,6 +13,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
+import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
+import { AgentManager } from "../../agents";
+
+// Agent manager instance for fetching agent configurations
+const agentManager = new AgentManager();
 
 // ============================================================================
 // SSE Message Types
@@ -150,13 +155,17 @@ function sendSSE(reply: FastifyReply, message: SSEMessage): void {
 }
 
 /**
- * Set SSE response headers
+ * Set SSE response headers (including CORS for raw responses)
  */
-function setSSEHeaders(reply: FastifyReply): void {
+function setSSEHeaders(reply: FastifyReply, request: FastifyRequest): void {
+  const origin = request.headers.origin || "*";
   reply.raw.setHeader("Content-Type", "text/event-stream");
   reply.raw.setHeader("Cache-Control", "no-cache, no-transform");
   reply.raw.setHeader("Connection", "keep-alive");
   reply.raw.setHeader("X-Accel-Buffering", "no");
+  // CORS headers for raw SSE responses (bypasses Fastify CORS plugin)
+  reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+  reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
 }
 
 // ============================================================================
@@ -182,8 +191,15 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
   }>("/api/agent/run", async (request, reply) => {
     const { agentId, prompt, cwd, model } = request.body;
 
-    // Set SSE headers
-    setSSEHeaders(reply);
+    console.log("[agent-run] Request received:", { agentId, prompt: prompt?.slice(0, 50), cwd, model });
+
+    // Set SSE headers (with CORS for raw response)
+    setSSEHeaders(reply, request);
+
+    // Get agent configuration (if agentId is provided and exists)
+    // Note: agentId might be an executor type (e.g., "CLAUDE_CODE") from frontend
+    // or an actual agent ID. We try to find the agent first.
+    const agent = agentId ? await agentManager.getAgent(agentId) : null;
 
     // Create session
     const session = agentService.createSession(agentId, prompt);
@@ -192,26 +208,42 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     sendSSE(reply, { type: "session", sessionId: session.sessionId });
 
     try {
-      // TODO: Phase B will implement actual agent execution with streaming
-      // For now, send a placeholder response
-      sendSSE(reply, {
-        type: "text",
-        content: `Agent execution started for agent: ${agentId}`,
+      console.log("[agent-run] Starting SDK proxy execution...");
+
+      // Execute agent using SDK proxy
+      const proxy = new SdkChatProxy();
+      const stream = proxy.executeStreaming({
+        prompt,
+        cwd: cwd || process.cwd(),
+        // Use model from request, or agent config
+        model: model || agent?.model,
+        sessionId: session.sessionId,
+        // Agent-specific configuration (only if agent is found)
+        systemPrompt: agent?.systemPrompt,
+        appendPrompt: agent?.appendPrompt,
+        mcpServers: agent?.mcpServers,
+        skills: agent?.skills,
+        // Allow all permissions for server-side execution
+        dangerouslySkipPermissions: true,
       });
-      sendSSE(reply, {
-        type: "text",
-        content: `\nPrompt: ${prompt}`,
-      });
-      if (cwd) {
-        sendSSE(reply, { type: "text", content: `\nWorking directory: ${cwd}` });
-      }
-      if (model) {
-        sendSSE(reply, { type: "text", content: `\nModel: ${model}` });
+
+      console.log("[agent-run] Starting to stream messages...");
+
+      // Stream messages to client
+      for await (const message of stream) {
+        console.log("[agent-run] Message received:", message.type);
+        sendSSE(reply, message);
+
+        // Check if session was cancelled
+        const currentSession = agentService.getSession(session.sessionId);
+        if (currentSession?.status === "cancelled") {
+          sendSSE(reply, { type: "error", message: "Session cancelled by user" });
+          break;
+        }
       }
 
       // Mark completed
       agentService.updateSessionStatus(session.sessionId, "completed", new Date());
-      sendSSE(reply, { type: "result", subtype: "success" });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       agentService.updateSessionStatus(session.sessionId, "error", new Date());
@@ -278,8 +310,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
    * GET /api/agent/tasks/subscribe
    */
   fastify.get("/api/agent/tasks/subscribe", async (request, reply) => {
-    // Set SSE headers
-    setSSEHeaders(reply);
+    // Set SSE headers (with CORS for raw response)
+    setSSEHeaders(reply, request);
 
     // Send current tasks
     reply.raw.write(

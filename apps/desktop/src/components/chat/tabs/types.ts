@@ -84,8 +84,8 @@ export interface AgentDetailTabContentProps {
 export interface ExecutorDetailTabContentProps {
   /** Executor data to display (uses ExecutorDetailData from panel) */
   executor: import("@/components/chat/executor-detail-panel").ExecutorDetailData;
-  /** Workspace ID for loading related data (MCP, skills, commands) - required */
-  workspaceId: string;
+  /** Workspace path for loading related data (e.g., "/Users/foo/project") */
+  workspacePath: string;
   /** Called when settings is clicked (navigate to edit page) */
   onSettings?: (executorId: string) => void;
 }

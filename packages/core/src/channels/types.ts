@@ -16,6 +16,26 @@ export type ChannelType =
   | "webhook";
 
 /**
+ * Binding type for agent/executor
+ */
+export type BindingType = "agent" | "executor";
+
+/**
+ * Agent or executor binding for a channel
+ * Allows binding a channel to a specific agent or executor for automated handling
+ */
+export interface AgentBinding {
+  /** Type of binding: agent or executor */
+  binding_type: BindingType;
+  /** Agent/executor ID */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Workspace path (for executor bindings) */
+  workspace_path?: string;
+}
+
+/**
  * Channel type metadata
  */
 export interface ChannelTypeInfo {
@@ -165,6 +185,8 @@ export interface ChannelEntry {
   updated_at?: number;
   allow_from?: string[];
   notification_mode?: NotificationMode;
+  /** Bound agent or executor */
+  agent_binding?: AgentBinding;
   // Type-specific fields
   token?: string;
   proxy?: string;
@@ -224,6 +246,8 @@ export interface CreateChannelOptions {
   set_as_default?: boolean;
   allow_from?: string[];
   notification_mode?: NotificationMode;
+  /** Agent or executor to bind */
+  agent_binding?: AgentBinding;
   // Type-specific fields
   token?: string;
   proxy?: string;
@@ -249,6 +273,8 @@ export interface UpdateChannelOptions {
   set_as_default?: boolean;
   allow_from?: string[];
   notification_mode?: NotificationMode;
+  /** Update agent binding (use null to clear) */
+  agent_binding?: AgentBinding | null;
   // Type-specific fields
   token?: string;
   proxy?: string;
@@ -308,5 +334,7 @@ export interface Channel {
   updated_at?: number;
   allow_from: string[];
   notification_mode: NotificationMode;
-  config: Omit<ChannelEntry, "type" | "name" | "enabled" | "created_at" | "updated_at" | "allow_from" | "notification_mode">;
+  /** Bound agent or executor */
+  agent_binding?: AgentBinding;
+  config: Omit<ChannelEntry, "type" | "name" | "enabled" | "created_at" | "updated_at" | "allow_from" | "notification_mode" | "agent_binding">;
 }

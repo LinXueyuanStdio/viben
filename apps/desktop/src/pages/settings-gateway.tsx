@@ -454,24 +454,23 @@ export function SettingsGatewayPage() {
         )}
       </div>
 
-      {/* Configuration Card */}
+      {/* Configuration Card - Host & Port */}
       <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
         <h3 className="text-sm font-semibold">
           {t("settings.gatewayConfig", "网关配置")}
         </h3>
 
-        {/* Auto Start Toggle */}
+        {/* Host Configuration */}
         <SettingsItem
-          title={t("gateway.autoStart", "自动启动")}
+          title={t("gateway.host", "主机")}
           description={t(
-            "gateway.autoStartDescription",
-            "应用启动时自动启动网关服务"
+            "gateway.hostDescription",
+            "网关服务绑定的主机地址"
           )}
         >
-          <Switch
-            checked={config?.auto_start ?? true}
-            onCheckedChange={(checked) => updateConfig({ auto_start: checked })}
-          />
+          <code className="bg-muted px-2 py-1 rounded text-sm">
+            {config?.host || "127.0.0.1"}
+          </code>
         </SettingsItem>
 
         {/* Port Configuration */}
@@ -505,45 +504,63 @@ export function SettingsGatewayPage() {
             </Button>
           </div>
         </SettingsItem>
-
-        {/* Host Configuration */}
-        <SettingsItem
-          title={t("gateway.host", "主机")}
-          description={t(
-            "gateway.hostDescription",
-            "网关服务绑定的主机地址"
-          )}
-        >
-          <code className="bg-muted px-2 py-1 rounded text-sm">
-            {config?.host || "127.0.0.1"}
-          </code>
-        </SettingsItem>
       </div>
 
-      {/* Binary Info Card */}
-      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <h3 className="text-sm font-semibold mb-3">
-          {t("settings.gatewayBinary", "网关程序")}
+      {/* Keep-Alive Card - Auto Start & Command */}
+      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <h3 className="text-sm font-semibold">
+          {t("settings.gatewayKeepAlive", "网关保活")}
         </h3>
 
-        {binaryPath ? (
-          <div className="flex items-center gap-2 text-sm">
-            <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-            <span className="text-muted-foreground truncate">{binaryPath}</span>
+        {/* Auto Start Toggle */}
+        <SettingsItem
+          title={t("gateway.autoStart", "自动启动")}
+          description={t(
+            "gateway.autoStartDescription",
+            "应用启动时自动启动网关服务"
+          )}
+        >
+          <Switch
+            checked={config?.auto_start ?? true}
+            onCheckedChange={(checked) => updateConfig({ auto_start: checked })}
+          />
+        </SettingsItem>
+
+        {/* Auto Start Command */}
+        <SettingsItem
+          title={t("gateway.autoStartCommand", "自启动命令")}
+          description={t(
+            "gateway.autoStartCommandDescription",
+            "用于启动网关的命令路径"
+          )}
+        >
+          <div className="flex items-center gap-2">
+            {binaryPath ? (
+              <>
+                <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                <code className="bg-muted px-2 py-1 rounded text-xs max-w-[200px] truncate" title={binaryPath}>
+                  {binaryPath}
+                </code>
+              </>
+            ) : (
+              <>
+                <XCircle className="h-4 w-4 text-destructive shrink-0" />
+                <span className="text-sm text-destructive">
+                  {t("gateway.commandNotFound", "未配置")}
+                </span>
+              </>
+            )}
           </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-destructive">
-              <XCircle className="h-4 w-4 shrink-0" />
-              <span>{t("gateway.binaryNotFound", "未找到网关程序")}</span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                "gateway.installHint",
-                "请安装 Viben CLI: npm install -g @viben/cli，或构建网关: cd crates && cargo build --release"
-              )}
-            </p>
-          </div>
+        </SettingsItem>
+
+        {/* Install hint when binary not found */}
+        {!binaryPath && (
+          <p className="text-xs text-muted-foreground px-1">
+            {t(
+              "gateway.installHint",
+              "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
+            )}
+          </p>
         )}
       </div>
     </div>

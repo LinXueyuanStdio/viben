@@ -226,12 +226,48 @@ export class SkillsManager {
 
   /**
    * List available skills from registry
-   * Note: Currently returns empty list - will be implemented with marketplace
+   * Currently returns mock data (like Rust implementation).
+   * Future: Fetch from marketplace API.
    */
   async listAvailableSkills(): Promise<AvailableSkill[]> {
-    // TODO: Implement marketplace skill listing
-    // This would fetch from a skill registry API
-    return [];
+    // Mock data matching Rust implementation in crates/viben-core/src/services/skill.rs
+    return [
+      {
+        name: "code-review",
+        version: "1.0.0",
+        description: "Code review assistance",
+        author: "viben",
+        tags: ["code", "review"],
+      },
+      {
+        name: "commit",
+        version: "1.2.0",
+        description: "Smart commit messages",
+        author: "viben",
+        tags: ["git", "commit"],
+      },
+      {
+        name: "test-runner",
+        version: "0.9.0",
+        description: "Test execution helper",
+        author: "viben",
+        tags: ["test", "runner"],
+      },
+      {
+        name: "doc-gen",
+        version: "1.1.0",
+        description: "Generate documentation from code",
+        author: "viben",
+        tags: ["docs", "generator"],
+      },
+      {
+        name: "refactor",
+        version: "0.8.0",
+        description: "Refactoring suggestions and assistance",
+        author: "viben",
+        tags: ["code", "refactor"],
+      },
+    ];
   }
 
   // ========================================================================

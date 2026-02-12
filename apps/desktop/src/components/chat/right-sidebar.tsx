@@ -165,8 +165,8 @@ interface RightSidebarProps {
   agentDetail?: AgentDetailData | null;
   /** Executor detail data - when provided, shows the executor detail tab */
   executorDetail?: ExecutorDetailData | null;
-  /** Workspace ID for loading executor capabilities (MCP, skills, commands) - required when executorDetail is provided */
-  workspaceId?: string;
+  /** Workspace path for loading executor capabilities (e.g., "/Users/foo/project") */
+  workspacePath?: string;
   /** Called when agent settings button is clicked */
   onAgentSettings?: (agentId: string) => void;
   /** Called when executor settings button is clicked */
@@ -284,7 +284,7 @@ export function RightSidebar({
   // Agent/Executor detail props
   agentDetail,
   executorDetail,
-  workspaceId,
+  workspacePath,
   onAgentSettings,
   onExecutorSettings,
   // Agent detail panel props
@@ -636,11 +636,11 @@ export function RightSidebar({
           </div>
         )}
 
-        {currentTab?.type === "category" && currentTab.category === "executorDetail" && executorDetail && workspaceId && (
+        {currentTab?.type === "category" && currentTab.category === "executorDetail" && executorDetail && workspacePath && (
           <div className="p-3">
             <ExecutorDetailTabContent
               executor={executorDetail}
-              workspaceId={workspaceId}
+              workspacePath={workspacePath}
               onSettings={onExecutorSettings}
             />
           </div>

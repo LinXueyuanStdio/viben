@@ -482,7 +482,7 @@ export function AgentDetailPanel({
             </h4>
 
             <CollapsibleSection
-              title="MCP"
+              title={t("settingsAgents.mcpTitle", "MCP")}
               icon={<Database className="h-4 w-4" />}
               badge={
                 <Badge variant="secondary" className="text-xs">
@@ -549,7 +549,7 @@ export function AgentDetailPanel({
             </h4>
 
             <CollapsibleSection
-              title="MEMORY.md"
+              title={t("settingsAgents.memoryFileTitle", "MEMORY.md")}
               icon={<Brain className="h-4 w-4" />}
             >
               <p className="text-xs text-muted-foreground py-2">

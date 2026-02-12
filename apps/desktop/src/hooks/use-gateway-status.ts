@@ -6,7 +6,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
 import { useWorkspaceStore } from "@/stores";
 import type { Workspace } from "@/types";
@@ -55,10 +54,21 @@ async function loadWorkspacesOnConnect() {
 
   try {
     store.setLoading(true);
-    const result = await invoke<Workspace[]>("list_workspaces");
-    if (Array.isArray(result)) {
-      store.setWorkspaces(result);
-    }
+    const client = getGatewayClient();
+    const response = await client.listWorkspaces();
+
+    // Transform gateway workspaces to local format
+    // Gateway now includes global workspace with type: "global"
+    const workspaces: Workspace[] = response.workspaces.map((w) => ({
+      id: w.id,
+      path: w.path,
+      name: w.name,
+      type: w.type || "custom",
+      created_at: w.created_at || new Date().toISOString(),
+      last_accessed: w.updated_at || new Date().toISOString(),
+    }));
+
+    store.setWorkspaces(workspaces);
   } catch (err) {
     console.error("Failed to load workspaces on gateway connect:", err);
   } finally {

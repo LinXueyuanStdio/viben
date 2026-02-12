@@ -51,8 +51,8 @@ export interface ExecutorDetailData {
 export interface ExecutorDetailPanelProps {
   /** Executor data to display */
   executor: ExecutorDetailData;
-  /** Workspace ID for loading related data */
-  workspaceId: string;
+  /** Workspace path for loading related data (e.g., "/Users/foo/project") */
+  workspacePath: string;
   /** Called when navigate to edit is requested */
   onNavigateToEdit?: () => void;
   /** Whether to show the header */
@@ -71,7 +71,7 @@ export interface ExecutorDetailPanelProps {
 
 export function ExecutorDetailPanel({
   executor,
-  workspaceId,
+  workspacePath,
   onNavigateToEdit,
   showHeader = true,
   showConfigButton = true,
@@ -80,22 +80,22 @@ export function ExecutorDetailPanel({
 }: ExecutorDetailPanelProps) {
   const { t } = useTranslation();
 
-  // Load data for executor
+  // Load data for executor using workspacePath and executor.type
   const { servers: mcpServers, loading: mcpLoading } = useWorkspaceMcpServers(
-    workspaceId,
-    executor.id
+    workspacePath || null,
+    executor.type
   );
   const { skills, loading: skillsLoading } = useWorkspaceSkills(
-    workspaceId,
-    executor.id
+    workspacePath || null,
+    executor.type
   );
   const { configs: agentConfigs, loading: configsLoading } = useWorkspaceAgentConfigs(
-    workspaceId,
-    executor.id
+    workspacePath || null,
+    executor.type
   );
   const { commands, loading: commandsLoading } = useWorkspaceCommands(
-    workspaceId,
-    executor.id
+    workspacePath || null,
+    executor.type
   );
 
   return (
@@ -172,7 +172,7 @@ export function ExecutorDetailPanel({
 
             {/* MCP */}
             <CollapsibleSection
-              title="MCP"
+              title={t("settingsAgents.mcpTitle", "MCP")}
               icon={<Database className="h-4 w-4" />}
               badge={
                 mcpLoading ? (

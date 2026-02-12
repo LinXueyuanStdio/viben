@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
   SearchCode,
@@ -13,17 +13,33 @@ import {
   PackageSearch,
   BarChart3,
   FileText,
+  Activity,
+  MessageSquare,
+  LayoutDashboard,
+  Clock,
+  Bot,
+  FolderOpen,
+  ChevronDown,
+  Plus,
+  Check,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { VibenLogo } from "@/components/ui/viben-logo";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
@@ -33,7 +49,7 @@ import { LoginDialog } from "@/components/auth/login-dialog";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
-import { WorkspaceSection } from "./workspace-section";
+import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 
 interface NavItem {
   titleKey: string;
@@ -53,6 +69,11 @@ const skillsNav: NavItem[] = [
   { titleKey: "nav.skillsMarket", href: "/skills-market", icon: Sparkles },
 ];
 
+// Observability section navigation
+const observabilityNav: NavItem[] = [
+  { titleKey: "nav.chatMonitor", href: "/chat-monitor", icon: Activity },
+];
+
 // Creator section navigation (only visible when authenticated)
 const creatorNav: NavItem[] = [
   { titleKey: "creator.publish", href: "/publish", icon: Upload },
@@ -60,11 +81,39 @@ const creatorNav: NavItem[] = [
   { titleKey: "creator.analytics", href: "/analytics", icon: BarChart3 },
 ];
 
+// Workspace navigation items for the active workspace
+interface WorkspaceNavItem {
+  titleKey: string;
+  path: string; // relative path suffix (e.g., "chat", "kanban")
+  icon: React.ElementType;
+}
+
+const workspaceNavItems: WorkspaceNavItem[] = [
+  { titleKey: "workspace.chat", path: "chat", icon: MessageSquare },
+  { titleKey: "workspace.kanban", path: "kanban", icon: LayoutDashboard },
+  { titleKey: "workspace.scheduledTasks", path: "cron", icon: Clock },
+  { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
+  { titleKey: "workspace.files", path: "files", icon: FolderOpen },
+];
+
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
 export function Sidebar() {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const {
+    workspaces,
+    activeWorkspaceId,
+    addWorkspace,
+    selectWorkspace,
+  } = useLocalWorkspaces();
+
+  const [isAdding, setIsAdding] = useState(false);
+
+  // Get active workspace
+  const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
 
   // Load collapsed state from localStorage
   const [collapsed, setCollapsed] = useState(() => {
@@ -79,6 +128,26 @@ export function Sidebar() {
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
+  const handleAddWorkspace = async () => {
+    setIsAdding(true);
+    try {
+      const workspace = await addWorkspace();
+      if (workspace) {
+        selectWorkspace(workspace.id);
+        navigate(`/workspace/${workspace.id}/chat`);
+      }
+    } catch {
+      // Error handled in hook
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const handleSelectWorkspace = (workspaceId: string) => {
+    selectWorkspace(workspaceId);
+    navigate(`/workspace/${workspaceId}/chat`);
+  };
+
   return (
     <TooltipProvider delayDuration={0}>
       <aside
@@ -87,31 +156,73 @@ export function Sidebar() {
           collapsed ? "w-16" : "w-56"
         )}
       >
-        {/* Logo & Collapse Toggle */}
+        {/* Workspace Selector & Collapse Toggle */}
         <div className={cn(
           "flex h-14 items-center border-b border-sidebar-border",
           collapsed ? "justify-center px-2" : "justify-between px-3"
         )}>
           {collapsed ? (
-            // Collapsed: clickable logo to expand
+            // Collapsed: clickable workspace icon to expand
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={toggleCollapsed}
-                  className="transition-transform duration-200 hover:scale-105"
+                  className="transition-transform duration-200 hover:scale-105 p-2"
                 >
-                  <VibenLogo size="sm" />
+                  <FolderOpen className="h-5 w-5 text-primary" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {t("sidebar.expand")}
+                {activeWorkspace?.name || t("sidebar.expand")}
               </TooltipContent>
             </Tooltip>
           ) : (
-            // Expanded: show logo, title, and collapse button
+            // Expanded: show workspace dropdown and collapse button
             <>
-              <VibenLogo size="sm" showText className="text-sidebar-foreground" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-9 flex-1 justify-between px-2 text-sidebar-foreground hover:bg-sidebar-accent mr-1"
+                  >
+                    <span className="flex items-center gap-2 truncate">
+                      <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="truncate text-sm font-medium">
+                        {activeWorkspace?.name || t("workspace.noWorkspaces")}
+                      </span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52">
+                  {workspaces.map((ws) => (
+                    <DropdownMenuItem
+                      key={ws.id}
+                      onClick={() => handleSelectWorkspace(ws.id)}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="truncate">{ws.name}</span>
+                      {ws.id === activeWorkspaceId && (
+                        <Check className="h-4 w-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                  {workspaces.length > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuItem
+                    onClick={handleAddWorkspace}
+                    disabled={isAdding}
+                    className="text-primary"
+                  >
+                    {isAdding ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    {t("workspace.addWorkspace")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -136,12 +247,22 @@ export function Sidebar() {
           {collapsed ? (
             // Collapsed: all items use SidebarIconButton with unified centering
             <div className="flex flex-col gap-1">
-              {/* Workspaces Section */}
-              <WorkspaceSection collapsed={collapsed} />
-
-              <div className="grid place-items-center w-full py-2">
-                <Separator className="w-10 bg-sidebar-border" />
-              </div>
+              {/* Workspace Pages Section (only when workspace is selected) */}
+              {activeWorkspaceId && (
+                <>
+                  {workspaceNavItems.map((item) => (
+                    <WorkspaceNavItemComponent
+                      key={item.path}
+                      item={item}
+                      workspaceId={activeWorkspaceId}
+                      collapsed={collapsed}
+                    />
+                  ))}
+                  <div className="grid place-items-center w-full py-2">
+                    <Separator className="w-10 bg-sidebar-border" />
+                  </div>
+                </>
+              )}
 
               {/* MCP Section */}
               {mcpNav.map((item) => (
@@ -154,6 +275,15 @@ export function Sidebar() {
 
               {/* Skills Section */}
               {skillsNav.map((item) => (
+                <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+              ))}
+
+              <div className="grid place-items-center w-full py-2">
+                <Separator className="w-10 bg-sidebar-border" />
+              </div>
+
+              {/* Observability Section */}
+              {observabilityNav.map((item) => (
                 <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
               ))}
 
@@ -172,10 +302,28 @@ export function Sidebar() {
           ) : (
             // Expanded: full layout with sections
             <div className="space-y-4 px-2">
-              {/* Workspaces Section */}
-              <WorkspaceSection collapsed={collapsed} />
-
-              <Separator className="bg-sidebar-border" />
+              {/* Workspace Pages Section (only when workspace is selected) */}
+              {activeWorkspaceId && (
+                <>
+                  <SidebarSection
+                    title={t("sidebar.workspacePages")}
+                    collapsible
+                    defaultOpen
+                  >
+                    <nav className="flex flex-col gap-1">
+                      {workspaceNavItems.map((item) => (
+                        <WorkspaceNavItemComponent
+                          key={item.path}
+                          item={item}
+                          workspaceId={activeWorkspaceId}
+                          collapsed={collapsed}
+                        />
+                      ))}
+                    </nav>
+                  </SidebarSection>
+                  <Separator className="bg-sidebar-border" />
+                </>
+              )}
 
               {/* MCP Section */}
               <SidebarSection
@@ -198,6 +346,19 @@ export function Sidebar() {
               >
                 <nav className="flex flex-col gap-1">
                   {skillsNav.map((item) => (
+                    <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
+                  ))}
+                </nav>
+              </SidebarSection>
+
+              {/* Observability Section */}
+              <SidebarSection
+                title={t("nav.observability")}
+                collapsible
+                defaultOpen
+              >
+                <nav className="flex flex-col gap-1">
+                  {observabilityNav.map((item) => (
                     <NavItemComponent key={item.href} item={item} collapsed={collapsed} />
                   ))}
                 </nav>
@@ -343,6 +504,65 @@ function NavItemComponent({ item, collapsed }: NavItemComponentProps) {
         "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
         "transition-all duration-200",
         isActiveOrChild
+          ? [
+              "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+              "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",
+              "before:h-6 before:w-1 before:rounded-r-full before:bg-primary",
+            ]
+          : [
+              "text-sidebar-foreground/70",
+              "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+            ]
+      )}
+    >
+      <item.icon
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors duration-200",
+          "group-hover:text-primary"
+        )}
+      />
+      <span>{title}</span>
+    </NavLink>
+  );
+}
+
+interface WorkspaceNavItemComponentProps {
+  item: WorkspaceNavItem;
+  workspaceId: string;
+  collapsed: boolean;
+}
+
+function WorkspaceNavItemComponent({ item, workspaceId, collapsed }: WorkspaceNavItemComponentProps) {
+  const { t } = useTranslation();
+  const location = useLocation();
+  const title = t(item.titleKey);
+  const href = `/workspace/${workspaceId}/${item.path}`;
+
+  // Check if this item is active
+  const isActive = location.pathname === href ||
+    location.pathname.startsWith(href + "/");
+
+  // Collapsed view - use unified SidebarIconButton component with centering wrapper
+  if (collapsed) {
+    return (
+      <div className="grid place-items-center w-full">
+        <SidebarIconButton
+          href={href}
+          icon={<item.icon className="h-4 w-4" />}
+          tooltip={title}
+        />
+      </div>
+    );
+  }
+
+  // Expanded view - full link with text
+  return (
+    <NavLink
+      to={href}
+      className={cn(
+        "group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm",
+        "transition-all duration-200",
+        isActive
           ? [
               "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
               "before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2",

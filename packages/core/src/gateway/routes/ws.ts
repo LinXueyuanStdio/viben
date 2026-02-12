@@ -138,7 +138,12 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
               }
 
               case "send_message": {
-                // TODO: Forward message to running agent process
+                // Forward message to running agent process via event broadcast.
+                // Note: Direct stdin forwarding would require maintaining a registry
+                // of running agent processes and their stdin pipes. The current
+                // implementation broadcasts the message to WebSocket subscribers,
+                // which allows UI clients to receive messages. For actual agent
+                // interaction, use the /api/sessions/:sessionId/messages endpoint.
                 if (msg.sessionId && msg.content) {
                   state.events.sessionMessage(msg.sessionId, msg.content, "user");
                 }

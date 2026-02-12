@@ -68,6 +68,8 @@ export type SSEMessage =
   | SSEResultMessage
   | SSEErrorMessage;
 
+import { execSync } from "node:child_process";
+
 /**
  * Environment variables that interfere with SDK execution.
  * These are set when running inside Claude Code CLI and cause the SDK to fail.
@@ -88,6 +90,23 @@ function clearInterferingEnvVars(): void {
     delete process.env[varName];
   }
 }
+
+/**
+ * Find the path to Claude Code executable
+ */
+function findClaudeCodeExecutable(): string | undefined {
+  try {
+    const path = execSync("which claude", { encoding: "utf-8" }).trim();
+    return path || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Default max turns for agent execution
+ */
+const DEFAULT_MAX_TURNS = 200;
 
 // Dynamic import for optional SDK dependency
 let claudeSdk: typeof import("@anthropic-ai/claude-agent-sdk") | null = null;
@@ -420,12 +439,27 @@ export class SdkChatProxy implements ChatProxy {
 
     clearInterferingEnvVars();
 
+    const startTime = Date.now();
+
     try {
-      // Build query options (same as execute method)
+      // Find Claude Code executable path
+      const claudePath = findClaudeCodeExecutable();
+
+      // Build query options following WorkAny patterns
       const queryOptions: Record<string, unknown> = {
         cwd,
-        settingSources: ["user"],
+        // Load user settings (includes API key from ~/.claude/settings.json)
+        settingSources: ["user", "project"],
+        // Use Claude Code preset tools
+        tools: { type: "preset", preset: "claude_code" },
+        // Limit max turns to prevent runaway execution
+        maxTurns: DEFAULT_MAX_TURNS,
       };
+
+      // Add Claude Code executable path if found
+      if (claudePath) {
+        queryOptions.pathToClaudeCodeExecutable = claudePath;
+      }
 
       // System prompt configuration
       if (systemPrompt) {
@@ -443,7 +477,6 @@ export class SdkChatProxy implements ChatProxy {
       }
 
       // Tools configuration
-      queryOptions.tools = { type: "preset", preset: "claude_code" };
       if (allowedTools?.length) {
         queryOptions.allowedTools = allowedTools;
       }
@@ -455,9 +488,14 @@ export class SdkChatProxy implements ChatProxy {
       if (model) queryOptions.model = model;
       if (sessionId) queryOptions.sessionId = sessionId;
       if (resume) queryOptions.resume = resume;
+
+      // Permission mode - use bypassPermissions by default for gateway usage
       if (permissionMode) {
         queryOptions.permissionMode = permissionMode;
       } else if (dangerouslySkipPermissions) {
+        queryOptions.permissionMode = "bypassPermissions";
+      } else {
+        // Default to bypassPermissions for server-side execution
         queryOptions.permissionMode = "bypassPermissions";
       }
 
@@ -475,13 +513,39 @@ export class SdkChatProxy implements ChatProxy {
         }
       }
 
+      const duration = Date.now() - startTime;
+
       // Yield success result at the end
-      yield { type: "result", subtype: "success" };
+      yield { type: "result", subtype: "success", duration };
     } catch (error) {
-      yield {
-        type: "error",
-        message: error instanceof Error ? error.message : String(error),
-      };
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Handle specific error types following WorkAny patterns
+      if (errorMessage.includes("exited with code")) {
+        // Claude Code process crashed
+        yield {
+          type: "error",
+          message: "Agent process terminated unexpectedly. Please try again.",
+        };
+      } else if (
+        errorMessage.includes("API key") ||
+        errorMessage.includes("authentication")
+      ) {
+        yield {
+          type: "error",
+          message: "API authentication failed. Please check your API key configuration.",
+        };
+      } else if (errorMessage.includes("not found") || errorMessage.includes("ENOENT")) {
+        yield {
+          type: "error",
+          message: "Claude Code executable not found. Please ensure Claude Code is installed.",
+        };
+      } else {
+        yield {
+          type: "error",
+          message: errorMessage,
+        };
+      }
     }
   }
 

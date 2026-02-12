@@ -15,9 +15,9 @@
  *     └── responses.jsonl      # Current round agent responses
  * ```
  */
-import { join } from "node:path";
+import { join, basename, extname } from "node:path";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile, readdir, rm, appendFile, stat } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir, rm, appendFile, stat, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { getStateDir } from "../config/paths";
 import type {
@@ -26,6 +26,7 @@ import type {
   GroupChatSessionConfig,
   GroupChatUIMessage,
   AgentResponse,
+  AgentRolloutMessage,
   CreateGroupChatRequest,
   UpdateGroupChatRequest,
   SendMessageRequest,
@@ -44,6 +45,14 @@ export class GroupChatService {
 
   constructor(baseDir?: string) {
     this.baseDir = baseDir || join(getStateDir(), "group-chats");
+  }
+
+  /**
+   * Get the base directory for group chats
+   * This is useful for determining workspace context
+   */
+  getBaseDir(): string {
+    return this.baseDir;
   }
 
   // ========================================================================
@@ -88,6 +97,18 @@ export class GroupChatService {
 
   private picturesDir(groupChatId: string): string {
     return join(this.groupChatDir(groupChatId), "pictures");
+  }
+
+  private agentsDir(groupChatId: string, sessionId: string): string {
+    return join(this.sessionDir(groupChatId, sessionId), "agents");
+  }
+
+  private agentDir(groupChatId: string, sessionId: string, agentId: string): string {
+    return join(this.agentsDir(groupChatId, sessionId), agentId);
+  }
+
+  private agentRolloutPath(groupChatId: string, sessionId: string, agentId: string): string {
+    return join(this.agentDir(groupChatId, sessionId, agentId), "messages.rollout.jsonl");
   }
 
   // ========================================================================
@@ -311,12 +332,14 @@ export class GroupChatService {
       groupChatId,
       name: request.name,
       status: "active",
+      activeAgents: request.activeAgents || [],
       createdAt: now,
       updatedAt: now,
       metadata: request.metadata,
     };
 
     await mkdir(sessionDir, { recursive: true });
+    await mkdir(this.agentsDir(groupChatId, id), { recursive: true });
     await this.writeYaml(this.sessionConfigPath(groupChatId, id), config);
 
     // Create empty message files
@@ -383,6 +406,7 @@ export class GroupChatService {
       ...session,
       name: update.name ?? session.name,
       status: update.status ?? session.status,
+      activeAgents: update.activeAgents ?? session.activeAgents,
       metadata: update.metadata ?? session.metadata,
       updatedAt: new Date().toISOString(),
     };
@@ -548,11 +572,554 @@ export class GroupChatService {
   }
 
   // ========================================================================
-  // File Handling
+  // Agent Rollout Messages (agents/<id>/messages.rollout.jsonl)
   // ========================================================================
 
   /**
-   * Upload a file
+   * Ensure agent directory exists
+   */
+  async ensureAgentDir(
+    groupChatId: string,
+    sessionId: string,
+    agentId: string
+  ): Promise<string> {
+    const agentDir = this.agentDir(groupChatId, sessionId, agentId);
+    await mkdir(agentDir, { recursive: true });
+    return agentDir;
+  }
+
+  /**
+   * Append an agent rollout message
+   */
+  async appendAgentRolloutMessage(
+    groupChatId: string,
+    sessionId: string,
+    agentId: string,
+    message: AgentRolloutMessage
+  ): Promise<void> {
+    await this.ensureAgentDir(groupChatId, sessionId, agentId);
+    const rolloutPath = this.agentRolloutPath(groupChatId, sessionId, agentId);
+    const json = JSON.stringify(message);
+    await appendFile(rolloutPath, json + "\n");
+  }
+
+  /**
+   * Get agent rollout messages
+   */
+  async getAgentRolloutMessages(
+    groupChatId: string,
+    sessionId: string,
+    agentId: string
+  ): Promise<AgentRolloutMessage[]> {
+    const rolloutPath = this.agentRolloutPath(groupChatId, sessionId, agentId);
+    if (!existsSync(rolloutPath)) {
+      return [];
+    }
+
+    const content = await readFile(rolloutPath, "utf-8");
+    const lines = content.split("\n").filter((line) => line.trim());
+    const messages: AgentRolloutMessage[] = [];
+
+    for (const line of lines) {
+      try {
+        messages.push(JSON.parse(line));
+      } catch {
+        // Skip invalid lines
+      }
+    }
+
+    return messages;
+  }
+
+  /**
+   * Get last N agent rollout messages
+   */
+  async getAgentRolloutMessagesLast(
+    groupChatId: string,
+    sessionId: string,
+    agentId: string,
+    limit: number
+  ): Promise<AgentRolloutMessage[]> {
+    const messages = await this.getAgentRolloutMessages(groupChatId, sessionId, agentId);
+    return messages.slice(-limit);
+  }
+
+  /**
+   * List agents with rollout messages in a session
+   */
+  async listSessionAgents(groupChatId: string, sessionId: string): Promise<string[]> {
+    const agentsDir = this.agentsDir(groupChatId, sessionId);
+    if (!existsSync(agentsDir)) {
+      return [];
+    }
+
+    const entries = await readdir(agentsDir, { withFileTypes: true });
+    const agents: string[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const agentId = entry.name;
+        const rolloutPath = this.agentRolloutPath(groupChatId, sessionId, agentId);
+        if (existsSync(rolloutPath)) {
+          agents.push(agentId);
+        }
+      }
+    }
+
+    return agents;
+  }
+
+  /**
+   * Build message for an agent (prepend other agents' responses)
+   */
+  async buildMessageForAgent(
+    groupChatId: string,
+    sessionId: string,
+    targetAgentId: string,
+    userMessage: string,
+    senderName: string
+  ): Promise<string> {
+    const responses = await this.getAgentResponses(groupChatId, sessionId);
+
+    // Filter out the target agent's own responses
+    const otherResponses = responses.filter((r) => r.agentId !== targetAgentId);
+
+    if (otherResponses.length === 0) {
+      // First round or no other agent responses
+      return userMessage;
+    } else {
+      // Prepend other agents' responses
+      const parts: string[] = [];
+      for (const resp of otherResponses) {
+        parts.push(`[${resp.agentName}]: ${resp.content}`);
+      }
+      parts.push(`[${senderName}]: ${userMessage}`);
+      return parts.join("\n\n");
+    }
+  }
+
+  /**
+   * Get agent members from a group chat
+   */
+  async getAgentMembers(groupChatId: string): Promise<MemberConfig[]> {
+    const members = await this.getMembers(groupChatId);
+    return members.filter((m) => m.type === "agent");
+  }
+
+  // ========================================================================
+  // File Management (files/)
+  // ========================================================================
+
+  /**
+   * Valid image extensions
+   */
+  private static readonly IMAGE_EXTENSIONS = [
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "webp",
+    "bmp",
+    "svg",
+    "ico",
+    "tiff",
+    "tif",
+  ];
+
+  /**
+   * Sanitize filename to prevent path traversal attacks
+   */
+  private sanitizeFilename(filename: string): string {
+    // Get just the basename (removes any path components)
+    const name = basename(filename);
+    // Replace problematic characters
+    return name.replace(/[/\\:*?"<>|]/g, "_");
+  }
+
+  /**
+   * Check if filename has a valid image extension
+   */
+  private isValidImageExtension(filename: string): boolean {
+    const ext = extname(filename).slice(1).toLowerCase();
+    return GroupChatService.IMAGE_EXTENSIONS.includes(ext);
+  }
+
+  /**
+   * Guess MIME type from filename extension
+   */
+  private guessMimeType(filename: string): string | undefined {
+    const ext = extname(filename).slice(1).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+      bmp: "image/bmp",
+      svg: "image/svg+xml",
+      ico: "image/x-icon",
+      tiff: "image/tiff",
+      tif: "image/tiff",
+      pdf: "application/pdf",
+      txt: "text/plain",
+      json: "application/json",
+      xml: "application/xml",
+      html: "text/html",
+      css: "text/css",
+      js: "application/javascript",
+      ts: "application/typescript",
+      md: "text/markdown",
+      zip: "application/zip",
+      tar: "application/x-tar",
+      gz: "application/gzip",
+    };
+    return mimeTypes[ext];
+  }
+
+  /**
+   * Generate a unique filename if file already exists
+   */
+  private async generateUniqueFilename(dir: string, filename: string): Promise<string> {
+    const safeName = this.sanitizeFilename(filename);
+    let finalName = safeName;
+    let filePath = join(dir, finalName);
+
+    if (existsSync(filePath)) {
+      // Add timestamp suffix to make it unique
+      const timestamp = Date.now();
+      const ext = extname(safeName);
+      const nameWithoutExt = safeName.slice(0, -ext.length || undefined);
+      finalName = `${nameWithoutExt}_${timestamp}${ext}`;
+    }
+
+    return finalName;
+  }
+
+  /**
+   * Upload a file to the group chat
+   */
+  async saveFile(
+    groupChatId: string,
+    filename: string,
+    data: Buffer,
+    uploadedBy?: string,
+    mimeType?: string
+  ): Promise<FileInfo> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filesDir = this.filesDir(groupChatId);
+    await mkdir(filesDir, { recursive: true });
+
+    const finalFilename = await this.generateUniqueFilename(filesDir, filename);
+    const filePath = join(filesDir, finalFilename);
+
+    await writeFile(filePath, data);
+
+    const stats = await stat(filePath);
+    const guessedMime = mimeType || this.guessMimeType(finalFilename) || "application/octet-stream";
+
+    const fileInfo: FileInfo = {
+      id: randomUUID(),
+      name: finalFilename,
+      mimeType: guessedMime,
+      size: stats.size,
+      path: `files/${finalFilename}`,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: uploadedBy || "",
+    };
+
+    return fileInfo;
+  }
+
+  /**
+   * List all files in the group chat
+   */
+  async listFiles(groupChatId: string): Promise<FileInfo[]> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filesDir = this.filesDir(groupChatId);
+    if (!existsSync(filesDir)) {
+      return [];
+    }
+
+    const entries = await readdir(filesDir, { withFileTypes: true });
+    const files: FileInfo[] = [];
+
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const filePath = join(filesDir, entry.name);
+        const stats = await stat(filePath);
+        const mimeType = this.guessMimeType(entry.name) || "application/octet-stream";
+
+        files.push({
+          id: entry.name, // Using filename as ID for simplicity
+          name: entry.name,
+          mimeType,
+          size: stats.size,
+          path: `files/${entry.name}`,
+          uploadedAt: stats.mtime.toISOString(),
+          uploadedBy: "",
+        });
+      }
+    }
+
+    // Sort by upload time descending
+    files.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+    return files;
+  }
+
+  /**
+   * Get file path for download
+   */
+  getFilePath(groupChatId: string, filename: string): string {
+    const safeFilename = this.sanitizeFilename(filename);
+    return join(this.filesDir(groupChatId), safeFilename);
+  }
+
+  /**
+   * Get file content
+   */
+  async getFileContent(groupChatId: string, filename: string): Promise<Buffer> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filePath = this.getFilePath(groupChatId, filename);
+    if (!existsSync(filePath)) {
+      throw new Error(`File not found: ${filename}`);
+    }
+
+    return readFile(filePath);
+  }
+
+  /**
+   * Get file info by filename
+   */
+  async getFileInfo(groupChatId: string, filename: string): Promise<FileInfo | null> {
+    const safeFilename = this.sanitizeFilename(filename);
+    const filePath = join(this.filesDir(groupChatId), safeFilename);
+
+    if (!existsSync(filePath)) {
+      return null;
+    }
+
+    const stats = await stat(filePath);
+    const mimeType = this.guessMimeType(safeFilename) || "application/octet-stream";
+
+    return {
+      id: safeFilename,
+      name: safeFilename,
+      mimeType,
+      size: stats.size,
+      path: `files/${safeFilename}`,
+      uploadedAt: stats.mtime.toISOString(),
+      uploadedBy: "",
+    };
+  }
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(groupChatId: string, filename: string): Promise<void> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filePath = this.getFilePath(groupChatId, filename);
+    if (!existsSync(filePath)) {
+      throw new Error(`File not found: ${filename}`);
+    }
+
+    await unlink(filePath);
+  }
+
+  // ========================================================================
+  // Picture Management (pictures/)
+  // ========================================================================
+
+  /**
+   * Upload a picture to the group chat
+   */
+  async savePicture(
+    groupChatId: string,
+    filename: string,
+    data: Buffer,
+    uploadedBy?: string,
+    mimeType?: string
+  ): Promise<FileInfo> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    // Validate image extension
+    if (!this.isValidImageExtension(filename)) {
+      throw new Error(
+        `Invalid image extension: ${filename}. Allowed: ${GroupChatService.IMAGE_EXTENSIONS.join(", ")}`
+      );
+    }
+
+    // Validate MIME type if provided
+    if (mimeType && !mimeType.startsWith("image/") && mimeType !== "application/octet-stream") {
+      throw new Error(`Invalid image type: ${mimeType}. Only image/* types are allowed.`);
+    }
+
+    const picturesDir = this.picturesDir(groupChatId);
+    await mkdir(picturesDir, { recursive: true });
+
+    const finalFilename = await this.generateUniqueFilename(picturesDir, filename);
+    const filePath = join(picturesDir, finalFilename);
+
+    await writeFile(filePath, data);
+
+    const stats = await stat(filePath);
+    const guessedMime = mimeType || this.guessMimeType(finalFilename) || "image/jpeg";
+
+    const fileInfo: FileInfo = {
+      id: randomUUID(),
+      name: finalFilename,
+      mimeType: guessedMime,
+      size: stats.size,
+      path: `pictures/${finalFilename}`,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: uploadedBy || "",
+    };
+
+    return fileInfo;
+  }
+
+  /**
+   * List all pictures in the group chat
+   */
+  async listPictures(groupChatId: string): Promise<FileInfo[]> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const picturesDir = this.picturesDir(groupChatId);
+    if (!existsSync(picturesDir)) {
+      return [];
+    }
+
+    const entries = await readdir(picturesDir, { withFileTypes: true });
+    const pictures: FileInfo[] = [];
+
+    for (const entry of entries) {
+      if (entry.isFile()) {
+        const filePath = join(picturesDir, entry.name);
+        const stats = await stat(filePath);
+        const mimeType = this.guessMimeType(entry.name) || "image/jpeg";
+
+        pictures.push({
+          id: entry.name, // Using filename as ID for simplicity
+          name: entry.name,
+          mimeType,
+          size: stats.size,
+          path: `pictures/${entry.name}`,
+          uploadedAt: stats.mtime.toISOString(),
+          uploadedBy: "",
+        });
+      }
+    }
+
+    // Sort by upload time descending
+    pictures.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+
+    return pictures;
+  }
+
+  /**
+   * Get picture path for download
+   */
+  getPicturePath(groupChatId: string, filename: string): string {
+    const safeFilename = this.sanitizeFilename(filename);
+    return join(this.picturesDir(groupChatId), safeFilename);
+  }
+
+  /**
+   * Get picture content
+   */
+  async getPictureContent(groupChatId: string, filename: string): Promise<Buffer> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filePath = this.getPicturePath(groupChatId, filename);
+    if (!existsSync(filePath)) {
+      throw new Error(`Picture not found: ${filename}`);
+    }
+
+    return readFile(filePath);
+  }
+
+  /**
+   * Get picture info by filename
+   */
+  async getPictureInfo(groupChatId: string, filename: string): Promise<FileInfo | null> {
+    const safeFilename = this.sanitizeFilename(filename);
+    const filePath = join(this.picturesDir(groupChatId), safeFilename);
+
+    if (!existsSync(filePath)) {
+      return null;
+    }
+
+    const stats = await stat(filePath);
+    const mimeType = this.guessMimeType(safeFilename) || "image/jpeg";
+
+    return {
+      id: safeFilename,
+      name: safeFilename,
+      mimeType,
+      size: stats.size,
+      path: `pictures/${safeFilename}`,
+      uploadedAt: stats.mtime.toISOString(),
+      uploadedBy: "",
+    };
+  }
+
+  /**
+   * Delete a picture
+   */
+  async deletePicture(groupChatId: string, filename: string): Promise<void> {
+    // Verify group chat exists
+    const config = await this.getGroupChat(groupChatId);
+    if (!config) {
+      throw new Error(`Group chat not found: ${groupChatId}`);
+    }
+
+    const filePath = this.getPicturePath(groupChatId, filename);
+    if (!existsSync(filePath)) {
+      throw new Error(`Picture not found: ${filename}`);
+    }
+
+    await unlink(filePath);
+  }
+
+  // ========================================================================
+  // Legacy File Handling (for backward compatibility)
+  // ========================================================================
+
+  /**
+   * Upload a file (legacy method)
+   * @deprecated Use saveFile or savePicture instead
    */
   async uploadFile(
     groupChatId: string,
@@ -560,76 +1127,31 @@ export class GroupChatService {
     data: Buffer,
     meta: FileUploadMeta
   ): Promise<FileInfo> {
-    const fileId = randomUUID();
-    const extension = meta.name.split(".").pop() || "";
-    const fileName = `${fileId}${extension ? "." + extension : ""}`;
-
     // Determine directory based on MIME type
     const isImage = meta.mimeType.startsWith("image/");
-    const targetDir = isImage
-      ? this.picturesDir(groupChatId)
-      : this.filesDir(groupChatId);
 
-    const filePath = join(targetDir, fileName);
-    await writeFile(filePath, data);
-
-    const fileInfo: FileInfo = {
-      id: fileId,
-      name: meta.name,
-      mimeType: meta.mimeType,
-      size: meta.size,
-      path: isImage ? `pictures/${fileName}` : `files/${fileName}`,
-      uploadedAt: new Date().toISOString(),
-      uploadedBy,
-    };
-
-    return fileInfo;
+    if (isImage) {
+      return this.savePicture(groupChatId, meta.name, data, uploadedBy, meta.mimeType);
+    } else {
+      return this.saveFile(groupChatId, meta.name, data, uploadedBy, meta.mimeType);
+    }
   }
 
   /**
-   * Get file info
+   * Get file info by ID (legacy method)
+   * @deprecated Use getFileInfo or getPictureInfo instead
    */
   async getFile(groupChatId: string, fileId: string): Promise<FileInfo | null> {
     // Check files directory
-    const filesDir = this.filesDir(groupChatId);
-    if (existsSync(filesDir)) {
-      const entries = await readdir(filesDir);
-      for (const entry of entries) {
-        if (entry.startsWith(fileId)) {
-          const filePath = join(filesDir, entry);
-          const stats = await stat(filePath);
-          return {
-            id: fileId,
-            name: entry,
-            mimeType: "application/octet-stream",
-            size: stats.size,
-            path: `files/${entry}`,
-            uploadedAt: stats.mtime.toISOString(),
-            uploadedBy: "",
-          };
-        }
-      }
+    const fileInfo = await this.getFileInfo(groupChatId, fileId);
+    if (fileInfo) {
+      return fileInfo;
     }
 
     // Check pictures directory
-    const picturesDir = this.picturesDir(groupChatId);
-    if (existsSync(picturesDir)) {
-      const entries = await readdir(picturesDir);
-      for (const entry of entries) {
-        if (entry.startsWith(fileId)) {
-          const filePath = join(picturesDir, entry);
-          const stats = await stat(filePath);
-          return {
-            id: fileId,
-            name: entry,
-            mimeType: "image/*",
-            size: stats.size,
-            path: `pictures/${entry}`,
-            uploadedAt: stats.mtime.toISOString(),
-            uploadedBy: "",
-          };
-        }
-      }
+    const pictureInfo = await this.getPictureInfo(groupChatId, fileId);
+    if (pictureInfo) {
+      return pictureInfo;
     }
 
     return null;

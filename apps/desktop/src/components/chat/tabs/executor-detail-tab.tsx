@@ -16,13 +16,13 @@ import type { ExecutorDetailTabContentProps } from "./types";
  */
 export function ExecutorDetailTabContent({
   executor,
-  workspaceId,
+  workspacePath,
   onSettings,
 }: ExecutorDetailTabContentProps) {
   return (
     <ExecutorDetailPanel
       executor={executor}
-      workspaceId={workspaceId}
+      workspacePath={workspacePath}
       onNavigateToEdit={onSettings ? () => onSettings(executor.id) : undefined}
       showHeader={false}
       showConfigButton={false}

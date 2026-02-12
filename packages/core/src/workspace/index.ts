@@ -32,6 +32,9 @@ export {
   isInsideWorkspace,
 } from "./init";
 
+// Import initWorkspace for internal use (renamed to avoid conflict with local export)
+import { initWorkspace as initWorkspaceFromInit } from "./init";
+
 /**
  * Workspace directory name
  */
@@ -362,81 +365,24 @@ export class WorkspaceManager {
    * - .viben/config.yaml - Workspace configuration
    * - .viben/agents/main.yaml - Default agent configuration
    *
+   * Supports template loading from registry or local file through the
+   * `template` option.
+   *
    * @param options - Initialization options
    * @returns Initialization result
    * @throws AlreadyExistsError if workspace already exists and force is false
    * @throws ValidationError if inside an existing workspace
+   * @throws NotFoundError if template not found
    */
   async init(options: InitWorkspaceOptions = {}): Promise<InitWorkspaceResult> {
-    const targetDir = resolve(options.targetDir || process.cwd());
-    const vibenDir = join(targetDir, WORKSPACE_DIR);
-    const configPath = join(vibenDir, WORKSPACE_CONFIG_FILE);
-    const agentsDir = join(vibenDir, AGENTS_DIR);
-    const mainAgentPath = join(agentsDir, "main.yaml");
-
-    // Check if already inside a workspace (nested workspace check)
-    const enclosingWorkspace = this.getEnclosingWorkspace(targetDir);
-    if (enclosingWorkspace) {
-      throw new ValidationError(
-        `Already inside workspace at ${enclosingWorkspace}. Nested workspaces are not supported.`
-      );
-    }
-
-    // Check if workspace already exists
-    if (existsSync(configPath) && !options.force) {
-      throw new AlreadyExistsError("Workspace", targetDir);
-    }
-
-    // Determine config to use
-    let config: WorkspaceConfigFile;
-
-    if (options.template) {
-      // TODO: Support template loading from registry or local file
-      // For now, just use default config with a note
-      config = {
-        ...DEFAULT_WORKSPACE_CONFIG,
-        version: 1,
-      };
-    } else {
-      config = {
-        ...DEFAULT_WORKSPACE_CONFIG,
-        version: 1,
-      };
-    }
-
-    // Track created files
-    const createdFiles: string[] = [];
-
-    // Create .viben directory
-    if (!existsSync(vibenDir)) {
-      await mkdir(vibenDir, { recursive: true });
-    }
-
-    // Write config file
-    const configContent = stringify(config, { indent: 2 });
-    await writeFile(configPath, configContent, "utf-8");
-    createdFiles.push(WORKSPACE_CONFIG_FILE);
-
-    // Create agents directory
-    if (!existsSync(agentsDir)) {
-      await mkdir(agentsDir, { recursive: true });
-    }
-
-    // Create default agent config
-    if (!existsSync(mainAgentPath) || options.force) {
-      await writeFile(mainAgentPath, DEFAULT_AGENT_CONFIG, "utf-8");
-      createdFiles.push(`${AGENTS_DIR}/main.yaml`);
-    }
+    // Delegate to initWorkspaceFromInit which properly handles templates
+    const result = await initWorkspaceFromInit(options);
 
     // Add to known workspaces
+    const targetDir = resolve(options.targetDir || process.cwd());
     await this.addKnownWorkspace(targetDir);
 
-    return {
-      success: true,
-      path: vibenDir,
-      files: createdFiles,
-      config,
-    };
+    return result;
   }
 
   /**
@@ -471,16 +417,12 @@ export const workspaceManager = new WorkspaceManager();
 /**
  * Standalone function to initialize a workspace (convenience export)
  *
- * Note: This function supports templates via options.template.
- * Use the imported initWorkspace from "./init" for full template support.
+ * Supports template loading from registry or local file through the
+ * `template` option.
  */
 export async function initWorkspace(
   options: InitWorkspaceOptions = {}
 ): Promise<InitWorkspaceResult> {
-  // Use the new init module if a template is specified
-  if (options.template) {
-    const { initWorkspace: initWithTemplate } = await import("./init");
-    return initWithTemplate(options);
-  }
+  // Delegate to workspaceManager.init which handles templates via initWorkspaceFromInit
   return workspaceManager.init(options);
 }

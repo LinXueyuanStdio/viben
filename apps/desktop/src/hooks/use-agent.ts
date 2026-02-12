@@ -72,6 +72,8 @@ interface SSEMessageData {
  * Agent hook options
  */
 interface UseAgentOptions {
+  /** Agent ID to use (the actual agent configuration ID) */
+  agentId?: string;
   /** Agent type to use (default: CLAUDE_CODE) */
   agentType?: BaseCodingAgent;
   /** Executor configuration */
@@ -86,6 +88,7 @@ interface UseAgentOptions {
  */
 export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   const {
+    agentId,
     agentType = "CLAUDE_CODE",
     executorConfig,
     mockMode = false,
@@ -105,6 +108,9 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const client = useMemo(() => getGatewayClient(), []);
+
+  // Track current streaming message ID for text accumulation
+  const streamingMessageIdRef = useRef<string | null>(null);
 
   // Check Gateway connection on mount
   useEffect(() => {
@@ -157,18 +163,43 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         break;
 
       case "text":
-        // Append to existing text message or create new one
+        // Streaming text: append to existing message or create new one
         if (data.content) {
-          const textMsg: AgentMessage = {
-            id: generateId(),
-            type: "text",
-            content: data.content,
-          };
-          setMessages((prev) => [...prev, textMsg]);
+          setMessages((prev) => {
+            // Check if we have an ongoing streaming message to append to
+            const currentStreamId = streamingMessageIdRef.current;
+            if (currentStreamId) {
+              // Find and update the existing streaming message
+              const existingIndex = prev.findIndex(
+                (m) => m.id === currentStreamId && m.type === "text"
+              );
+              if (existingIndex !== -1) {
+                // Append to existing message
+                const updated = [...prev];
+                updated[existingIndex] = {
+                  ...updated[existingIndex],
+                  content: (updated[existingIndex].content || "") + data.content,
+                };
+                return updated;
+              }
+            }
+            // Create new streaming message
+            const newId = generateId();
+            streamingMessageIdRef.current = newId;
+            const textMsg: AgentMessage = {
+              id: newId,
+              type: "text",
+              content: data.content,
+            };
+            return [...prev, textMsg];
+          });
         }
         break;
 
       case "tool_use": {
+        // End current text streaming when tool use starts
+        streamingMessageIdRef.current = null;
+
         const toolId = data.id || generateId();
         const toolInput = (data.input || {}) as Record<string, unknown>;
         const toolMsg: AgentMessage = {
@@ -193,6 +224,9 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       }
 
       case "tool_result": {
+        // Reset streaming ID so next text creates a new message
+        streamingMessageIdRef.current = null;
+
         const resultMsg: AgentMessage = {
           id: generateId(),
           type: "tool_result",
@@ -250,11 +284,16 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       }
 
       case "result":
+        // End text streaming on result
+        streamingMessageIdRef.current = null;
         setPhase("completed");
         setIsStreaming(false);
         break;
 
       case "error": {
+        // End text streaming on error
+        streamingMessageIdRef.current = null;
+
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
@@ -269,6 +308,8 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       }
 
       case "done":
+        // End text streaming on done
+        streamingMessageIdRef.current = null;
         setIsStreaming(false);
         if (phase === "running") {
           setPhase("completed");
@@ -283,6 +324,9 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
   const sendMessageReal = useCallback(
     async (content: string, _attachments?: MessageAttachment[]) => {
       if (!content.trim()) return;
+
+      // Reset streaming state for new message
+      streamingMessageIdRef.current = null;
 
       setError(null);
       setPhase("running");
@@ -303,18 +347,28 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
 
         console.log("[useAgent] Starting SSE connection to:", url);
 
+        // workspaceId is actually workspace path, use it as cwd
+        // If empty, let the server use its default (process.cwd())
+        // agentId takes priority - if provided, use it; otherwise fall back to agentType (executor name)
+        // Strip "viben:" prefix from agentId if present (frontend uses viben:agentName format)
+        const cleanAgentId = agentId?.startsWith("viben:") ? agentId.slice(6) : agentId;
+        const requestBody: Record<string, unknown> = {
+          agentId: cleanAgentId || agentType,
+          prompt: content,
+        };
+        if (workspaceId) {
+          requestBody.cwd = workspaceId;
+        }
+
+        console.log("[useAgent] Request body:", requestBody, { agentId, cleanAgentId, agentType });
+
         const response = await fetch(url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "Accept": "text/event-stream",
           },
-          body: JSON.stringify({
-            agentId: agentType,
-            prompt: content,
-            cwd: workspaceId,
-            // Model is passed through the agent configuration, not here
-          }),
+          body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -376,7 +430,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         setIsStreaming(false);
       }
     },
-    [agentType, executorConfig, workspaceId, handleSSEMessage]
+    [agentId, agentType, executorConfig, workspaceId, handleSSEMessage]
   );
 
   /**

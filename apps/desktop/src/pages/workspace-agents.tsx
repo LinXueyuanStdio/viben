@@ -627,7 +627,7 @@ export function WorkspaceAgentsPage({
           ) : selectedExecutor ? (
             <ExecutorDetailPanel
               executor={selectedExecutor}
-              workspaceId={workspaceId || ""}
+              workspacePath={workspace?.path || ""}
               onNavigateToEdit={() => handleEditItem(selectedExecutor.id, "executor")}
             />
           ) : (

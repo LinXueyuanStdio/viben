@@ -34,8 +34,10 @@ export type GatewayEvent =
   | { type: "group_chat_message"; data: { groupChatId: string; messageId: string } }
   | { type: "group_chat_agent_thinking"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string } }
   | { type: "group_chat_agent_progress"; data: { groupChatId: string; sessionId: string; agentId: string; delta: string } }
-  | { type: "group_chat_agent_response"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string; content: string } }
-  | { type: "group_chat_agent_error"; data: { groupChatId: string; sessionId: string; agentId: string; error: string } }
+  | { type: "group_chat_agent_response"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string; content: string; duration?: number } }
+  | { type: "group_chat_agent_error"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string; error: string } }
+  | { type: "group_chat_error"; data: { groupChatId: string; sessionId: string; error: string } }
+  | { type: "group_chat_round_complete"; data: { groupChatId: string; sessionId: string; successCount: number; errorCount: number; duration: number } }
   // Cron job events
   | { type: "cron_job_created"; data: { job: CronJobData } }
   | { type: "cron_job_updated"; data: { job: CronJobData } }
