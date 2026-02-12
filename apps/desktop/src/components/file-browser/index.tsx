@@ -193,11 +193,12 @@ interface ViewModeToggleProps {
 }
 
 function ViewModeToggle({ viewMode, onViewModeChange }: ViewModeToggleProps) {
+  const { t } = useTranslation();
   const modes: { mode: ViewMode; icon: React.ReactNode; label: string }[] = [
-    { mode: "list", icon: <List className="h-4 w-4" />, label: "List" },
-    { mode: "icon", icon: <LayoutGrid className="h-4 w-4" />, label: "Icon" },
-    { mode: "column", icon: <Columns3 className="h-4 w-4" />, label: "Column" },
-    { mode: "gallery", icon: <Image className="h-4 w-4" />, label: "Gallery" },
+    { mode: "list", icon: <List className="h-4 w-4" />, label: t("fileBrowser.viewModes.list") },
+    { mode: "icon", icon: <LayoutGrid className="h-4 w-4" />, label: t("fileBrowser.viewModes.icon") },
+    { mode: "column", icon: <Columns3 className="h-4 w-4" />, label: t("fileBrowser.viewModes.column") },
+    { mode: "gallery", icon: <Image className="h-4 w-4" />, label: t("fileBrowser.viewModes.gallery") },
   ];
 
   return (
@@ -277,6 +278,7 @@ function Toolbar({
   onNewFile,
   onNewFolder,
 }: ToolbarProps) {
+  const { t } = useTranslation();
   const pathSegments = getPathSegments(currentPath, workspacePath);
 
   return (
@@ -296,7 +298,7 @@ function Toolbar({
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Back</TooltipContent>
+            <TooltipContent>{t("fileBrowser.back")}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -310,7 +312,7 @@ function Toolbar({
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Forward</TooltipContent>
+            <TooltipContent>{t("fileBrowser.forward")}</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -324,7 +326,7 @@ function Toolbar({
                 <ArrowUp className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Up</TooltipContent>
+            <TooltipContent>{t("fileBrowser.up")}</TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>
@@ -406,7 +408,7 @@ function Toolbar({
                 <FilePlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New File (Cmd+N)</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFile")} (Cmd+N)</TooltipContent>
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -414,7 +416,7 @@ function Toolbar({
                 <FolderPlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New Folder (Cmd+Shift+N)</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFolder")} (Cmd+Shift+N)</TooltipContent>
           </Tooltip>
         </div>
       </TooltipProvider>
@@ -432,10 +434,11 @@ interface SidebarProps {
 }
 
 function Sidebar({ workspacePath, onNavigateTo }: SidebarProps) {
+  const { t } = useTranslation();
   const favorites: SidebarItem[] = [
     {
       id: "workspace",
-      label: workspacePath.split("/").pop() || "Workspace",
+      label: workspacePath.split("/").pop() || t("fileBrowser.workspace"),
       icon: <Folder className="h-4 w-4 text-amber-500" />,
       path: workspacePath,
     },
@@ -444,7 +447,7 @@ function Sidebar({ workspacePath, onNavigateTo }: SidebarProps) {
   const locations: SidebarItem[] = [
     {
       id: "root",
-      label: "Workspace Root",
+      label: t("fileBrowser.workspaceRoot"),
       icon: <HardDrive className="h-4 w-4 text-muted-foreground" />,
       path: workspacePath,
     },
@@ -457,7 +460,7 @@ function Sidebar({ workspacePath, onNavigateTo }: SidebarProps) {
           {/* Favorites */}
           <div>
             <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Favorites
+              {t("fileBrowser.favorites")}
             </div>
             <div className="space-y-0.5">
               {favorites.map((item) => (
@@ -478,7 +481,7 @@ function Sidebar({ workspacePath, onNavigateTo }: SidebarProps) {
           {/* Locations */}
           <div>
             <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Locations
+              {t("fileBrowser.locations")}
             </div>
             <div className="space-y-0.5">
               {locations.map((item) => (
@@ -1068,6 +1071,7 @@ interface GalleryViewProps {
 }
 
 function GalleryView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: GalleryViewProps) {
+  const { t } = useTranslation();
   const imageExtensions = ["jpg", "jpeg", "png", "gif", "webp", "svg", "ico"];
   const images = files.filter((f) => {
     const ext = f.name.split(".").pop()?.toLowerCase();
@@ -1081,7 +1085,7 @@ function GalleryView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: 
       {images.length > 0 && (
         <div>
           <div className="text-sm font-medium text-muted-foreground mb-3">
-            Images ({images.length})
+            {t("fileBrowser.groupImages")} ({images.length})
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-4">
             {images.map((file) => (
@@ -1109,7 +1113,7 @@ function GalleryView({ files, selectedFiles, onSelect, onOpen, onContextMenu }: 
       {others.length > 0 && (
         <div>
           <div className="text-sm font-medium text-muted-foreground mb-3">
-            Other Files ({others.length})
+            {t("fileBrowser.groupOther")} ({others.length})
           </div>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(100px,1fr))] gap-3">
             {others.map((file) => (
@@ -1146,6 +1150,7 @@ interface QuickLookProps {
 }
 
 function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
+  const { t } = useTranslation();
   const [content, setContent] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
 
@@ -1188,7 +1193,7 @@ function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
           ) : file.is_directory ? (
             <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
               <Folder className="h-16 w-16 text-amber-500 mb-4" />
-              <p>Directory: {file.name}</p>
+              <p>{t("fileBrowser.folder")}: {file.name}</p>
               <p className="text-sm mt-2">{file.path}</p>
             </div>
           ) : isImage ? (
@@ -1203,14 +1208,14 @@ function QuickLook({ file, onClose, readFileContent }: QuickLookProps) {
             </ScrollArea>
           ) : (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
-              <p>Unable to preview this file</p>
+              <p>{t("fileBrowser.unableToPreview")}</p>
             </div>
           )}
         </div>
         <DialogFooter>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>Size: {formatFileSize(file.size)}</span>
-            <span>Modified: {formatDate(file.modified)}</span>
+            <span>{t("fileBrowser.sizeLabel")} {formatFileSize(file.size)}</span>
+            <span>{t("fileBrowser.modifiedLabel")} {formatDate(file.modified)}</span>
           </div>
         </DialogFooter>
       </DialogContent>
@@ -1640,11 +1645,12 @@ function DeleteDialog({ file, onClose, onConfirm }: DeleteDialogProps) {
  * -------------------------------------------------------------------------- */
 
 function EmptyState() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
       <Folder className="h-16 w-16 mb-4" />
-      <p className="text-lg font-medium">This folder is empty</p>
-      <p className="text-sm mt-1">Drop files here or create new ones</p>
+      <p className="text-lg font-medium">{t("fileBrowser.emptyFolder")}</p>
+      <p className="text-sm mt-1">{t("fileBrowser.emptyFolderHint")}</p>
     </div>
   );
 }

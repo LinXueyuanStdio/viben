@@ -320,7 +320,12 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     });
   };
 
-  const formatDuration = (ms: number) => (ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(2)}s`);
+  const formatDuration = (ms: number) => {
+    if (ms < 1000) {
+      return t("inspector.durationMs", "{{value}}ms").replace("{{value}}", String(ms));
+    }
+    return t("inspector.durationS", "{{value}}s").replace("{{value}}", (ms / 1000).toFixed(2));
+  };
 
   const getStatusStyle = (status: string) => {
     switch (status) {
@@ -489,8 +494,8 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
                               onChange={(e) => updateArgumentValue(input.key, e.target.value)}
                               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
                             >
-                              <option value="true">true</option>
-                              <option value="false">false</option>
+                              <option value="true">{t("inspector.boolTrue", "true")}</option>
+                              <option value="false">{t("inspector.boolFalse", "false")}</option>
                             </select>
                           ) : (
                             <Input

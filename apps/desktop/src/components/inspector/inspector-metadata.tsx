@@ -150,15 +150,15 @@ export function InspectorMetadata({
           <div className="flex items-center gap-2">
             <Cpu className="h-4 w-4 text-muted-foreground" />
             <div>
-              <div className="text-xs text-muted-foreground">Protocol</div>
-              <div className="text-sm font-mono">{metadata?.protocolVersion || "unknown"}</div>
+              <div className="text-xs text-muted-foreground">{t("inspector.protocol", "Protocol")}</div>
+              <div className="text-sm font-mono">{metadata?.protocolVersion || t("common.unknown", "unknown")}</div>
             </div>
           </div>
           {metadata?.vendor && (
             <div className="flex items-center gap-2">
               <Tag className="h-4 w-4 text-muted-foreground" />
               <div>
-                <div className="text-xs text-muted-foreground">Vendor</div>
+                <div className="text-xs text-muted-foreground">{t("inspector.vendor", "Vendor")}</div>
                 <div className="text-sm">{metadata.vendor}</div>
               </div>
             </div>
@@ -167,7 +167,7 @@ export function InspectorMetadata({
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-muted-foreground" />
               <div>
-                <div className="text-xs text-muted-foreground">Homepage</div>
+                <div className="text-xs text-muted-foreground">{t("inspector.homepage", "Homepage")}</div>
                 <a
                   href={metadata.homepage}
                   target="_blank"

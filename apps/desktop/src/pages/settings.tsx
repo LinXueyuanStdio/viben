@@ -1451,10 +1451,10 @@ function AboutSection() {
             ) : (
               <XCircle className="h-4 w-4 text-red-600" />
             )}
-            <span className="text-sm">Python 3.10+</span>
+            <span className="text-sm">{t("about.python310", "Python 3.10+")}</span>
           </div>
           <span className="text-xs text-muted-foreground">
-            {pythonValid ? selectedPython?.version || "Detected" : "Not found"}
+            {pythonValid ? selectedPython?.version || t("about.detected", "Detected") : t("about.notFound", "Not found")}
           </span>
         </div>
 
@@ -1466,10 +1466,10 @@ function AboutSection() {
             ) : (
               <XCircle className="h-4 w-4 text-red-600" />
             )}
-            <span className="text-sm">browse-mcp package</span>
+            <span className="text-sm">{t("about.browseMcpPackage", "browse-mcp package")}</span>
           </div>
           <span className="text-xs text-muted-foreground">
-            {mcpInstalled ? browseMcpInfo?.version || "Installed" : "Not installed"}
+            {mcpInstalled ? browseMcpInfo?.version || t("common.installed") : t("common.notInstalled")}
           </span>
         </div>
 
@@ -1577,7 +1577,7 @@ function AboutSection() {
           </div>
           <div>
             <p className="font-medium">{t("about.authorName")}</p>
-            <p className="text-xs text-muted-foreground">Developer</p>
+            <p className="text-xs text-muted-foreground">{t("common.developer")}</p>
           </div>
         </div>
         <div className="space-y-2">

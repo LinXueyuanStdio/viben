@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { Loader2, Music, Pause, Play } from "lucide-react";
 
@@ -14,6 +15,7 @@ import type { PreviewComponentProps } from "./types";
 import { getAudioMimeType, isRemoteUrl } from "./utils";
 
 export function AudioPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -38,7 +40,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
       }
 
       if (!artifact.path) {
-        setError("No audio file path available");
+        setError(t("artifacts.noAudioPath", "No audio file path available"));
         setLoading(false);
         return;
       }
@@ -131,7 +133,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
         </h3>
         <div className="text-muted-foreground mt-4 flex items-center gap-2">
           <Loader2 className="size-4 animate-spin" />
-          <span className="text-sm">Loading audio...</span>
+          <span className="text-sm">{t("artifacts.loadingAudio", "Loading audio...")}</span>
         </div>
       </div>
     );
@@ -177,7 +179,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
         {artifact.name.replace(/\.[^/.]+$/, "")}
       </h3>
       <p className="text-muted-foreground mb-6 text-xs">
-        {artifact.name.split(".").pop()?.toUpperCase()} Audio
+        {artifact.name.split(".").pop()?.toUpperCase()} {t("artifacts.audio", "Audio")}
       </p>
 
       {/* Audio element */}
@@ -239,7 +241,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
           <button
             onClick={() => skip(-10)}
             className="text-muted-foreground hover:text-foreground hover:bg-accent flex size-10 items-center justify-center rounded-full transition-colors"
-            title="Rewind 10s"
+            title={t("artifacts.rewind10s", "Rewind 10s")}
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.5 3C17.15 3 21.08 6.03 22.47 10.22L20.1 11C19.05 7.81 16.04 5.5 12.5 5.5C10.54 5.5 8.77 6.22 7.38 7.38L10 10H3V3L5.6 5.6C7.45 4 9.85 3 12.5 3M10 12V22H8V14H6V12H10M18 14V20C18 21.11 17.11 22 16 22H14C12.9 22 12 21.1 12 20V14C12 12.9 12.9 12 14 12H16C17.11 12 18 12.9 18 14M14 14V20H16V14H14Z" />
@@ -269,7 +271,7 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
           <button
             onClick={() => skip(10)}
             className="text-muted-foreground hover:text-foreground hover:bg-accent flex size-10 items-center justify-center rounded-full transition-colors"
-            title="Forward 10s"
+            title={t("artifacts.forward10s", "Forward 10s")}
           >
             <svg className="size-5" viewBox="0 0 24 24" fill="currentColor">
               <path d="M11.5 3C6.85 3 2.92 6.03 1.53 10.22L3.9 11C4.95 7.81 7.96 5.5 11.5 5.5C13.46 5.5 15.23 6.22 16.62 7.38L14 10H21V3L18.4 5.6C16.55 4 14.15 3 11.5 3M10 12V22H8V14H6V12H10M18 14V20C18 21.11 17.11 22 16 22H14C12.9 22 12 21.1 12 20V14C12 12.9 12.9 12 14 12H16C17.11 12 18 12.9 18 14M14 14V20H16V14H14Z" />

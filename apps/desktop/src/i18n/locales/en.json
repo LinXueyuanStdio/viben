@@ -74,7 +74,9 @@
     "comingSoon": "Coming Soon",
     "retry": "Retry",
     "forward": "Forward",
-    "developer": "Developer"
+    "developer": "Developer",
+    "loadingWorkspace": "Loading workspace...",
+    "submit": "Submit"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -118,7 +120,9 @@
   },
   "gateway": {
     "url": "Gateway URL",
+    "urlPlaceholder": "http://localhost:18790",
     "workdir": "Working Directory",
+    "workdirPlaceholder": "/tmp/viben-debug",
     "connected": "Connected",
     "disconnected": "Disconnected",
     "connectionFailed": "Cannot connect to Gateway",
@@ -420,6 +424,7 @@
     "installed": "Installed",
     "notFound": "Not found",
     "refresh": "Refresh",
+    "checkFailed": "Check failed",
     "gatewayRequired": "Gateway connection required to check executor status. Please start the gateway service first.",
     "summary": "Executor Status",
     "summaryText": "{{installed}}/{{total}} executors available",
@@ -1129,7 +1134,37 @@
     "missingRequired": "Missing required field: {{field}}",
     "fieldTypeMismatch": "Field '{{field}}' should be {{type}}",
     "wrap": "Wrap Lines",
-    "nowrap": "No Wrap"
+    "nowrap": "No Wrap",
+    "statusPending": "Pending",
+    "statusRunning": "Running",
+    "statusDone": "Done",
+    "statusFailed": "Failed",
+    "progress": "Progress",
+    "resultLabel": "Result:",
+    "errorLabel": "Error:",
+    "copyId": "Copy ID",
+    "cancelTask": "Cancel",
+    "protocol": "Protocol",
+    "vendor": "Vendor",
+    "homepage": "Homepage",
+    "bearerTokenOption": "Bearer Token",
+    "apiKeyOption": "API Key",
+    "myApiKeyPlaceholder": "My API Key",
+    "tokenPlaceholder": "sk-...",
+    "created": "Created:",
+    "expires": "Expires:",
+    "durationMs": "{{value}}ms",
+    "durationS": "{{value}}s",
+    "boolTrue": "true",
+    "boolFalse": "false",
+    "copiedAction": "Copied",
+    "copyAction": "Copy",
+    "roleUser": "User",
+    "roleSystem": "System",
+    "chars": "chars",
+    "filterInfo": "Info",
+    "filterProgress": "Progress",
+    "filterStderr": "Stderr"
   },
   "updates": {
     "title": "Package Updates",
@@ -1502,7 +1537,8 @@
       "navigate": "Navigate",
       "open": "Open task",
       "close": "Close panel",
-      "command": "Commands"
+      "command": "Commands",
+      "cmdK": "Cmd/Ctrl + K"
     },
     "createTaskDialog": {
       "title": "Create Task",
@@ -1527,7 +1563,10 @@
       "noModelsWarning": "No models configured. Please configure a model in Settings.",
       "noAgentsOrModels": "No agents or models configured. Please configure them in Settings."
     },
-    "filesDescription": "Browse and manage files"
+    "filesDescription": "Browse and manage files",
+    "connectingToKanban": "Connecting to vibe-kanban...",
+    "kanbanConnectionFailed": "Failed to connect to vibe-kanban backend",
+    "failedToLoadTasks": "Failed to load tasks"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -1760,6 +1799,14 @@
       "helpDesc": "Show available commands",
       "stop": "Stop",
       "stopDesc": "Stop current execution"
+    },
+    "emojiPicker": {
+      "smileys": "Smileys",
+      "gestures": "Gestures",
+      "objects": "Objects",
+      "nature": "Nature",
+      "food": "Food",
+      "symbols": "Symbols"
     },
     "agentInput": {
       "placeholder": "Start with any idea... Press ⌘ ↵ for newline...",

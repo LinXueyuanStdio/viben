@@ -130,6 +130,7 @@ function TaskCardContent({
   task: EnhancedTask;
   onTitleChange?: (title: string) => void;
 }) {
+  const { t } = useTranslation();
   const hasMeta = task.assignee || task.dueDate || task.has_in_progress_attempt || task.last_attempt_failed;
 
   return (
@@ -195,13 +196,13 @@ function TaskCardContent({
           {task.has_in_progress_attempt && (
             <Badge variant="secondary" className="h-5 text-[10px] px-1.5 py-0 gap-1 rounded">
               <Play className="h-2.5 w-2.5" />
-              Running
+              {t("common.running")}
             </Badge>
           )}
           {task.last_attempt_failed && !task.has_in_progress_attempt && (
             <Badge variant="destructive" className="h-5 text-[10px] px-1.5 py-0 gap-1 rounded">
               <XCircle className="h-2.5 w-2.5" />
-              Failed
+              {t("workspace.failed")}
             </Badge>
           )}
         </div>
@@ -719,7 +720,7 @@ export function WorkspaceKanbanPage() {
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Loading workspace...</p>
+          <p className="text-muted-foreground">{t("common.loadingWorkspace", "Loading workspace...")}</p>
         </div>
       </PageWrapper>
     );
@@ -754,7 +755,7 @@ export function WorkspaceKanbanPage() {
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         </div>
       </PageWrapper>
     );
@@ -772,7 +773,7 @@ export function WorkspaceKanbanPage() {
         />
         <div className="flex-1 flex flex-col items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Connecting to vibe-kanban...</p>
+          <p className="text-muted-foreground">{t("workspace.connectingToKanban", "Connecting to vibe-kanban...")}</p>
         </div>
       </PageWrapper>
     );
@@ -792,7 +793,7 @@ export function WorkspaceKanbanPage() {
           message={
             projectsError instanceof Error
               ? projectsError.message
-              : "Failed to connect to vibe-kanban backend"
+              : t("workspace.kanbanConnectionFailed", "Failed to connect to vibe-kanban backend")
           }
           onRetry={() => refetchProjects()}
         />
@@ -829,7 +830,7 @@ export function WorkspaceKanbanPage() {
           message={
             tasksError instanceof Error
               ? tasksError.message
-              : "Failed to load tasks"
+              : t("workspace.failedToLoadTasks", "Failed to load tasks")
           }
           onRetry={() => refetchTasks()}
         />
@@ -935,7 +936,7 @@ export function WorkspaceKanbanPage() {
                     <span>{t("workspace.shortcut.open")}</span>
                     <span>{t("workspace.commandPalette.escape")}</span>
                     <span>{t("workspace.shortcut.close")}</span>
-                    <span>Cmd/Ctrl + K</span>
+                    <span>{t("workspace.shortcut.cmdK", "Cmd/Ctrl + K")}</span>
                     <span>{t("workspace.shortcut.command")}</span>
                   </div>
                 </div>

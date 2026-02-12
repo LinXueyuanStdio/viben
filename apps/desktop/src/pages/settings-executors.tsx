@@ -136,13 +136,13 @@ export function SettingsExecutorsPage() {
             ? {
                 ...e,
                 checking: false,
-                error: err instanceof Error ? err.message : "Check failed",
+                error: err instanceof Error ? err.message : t("settingsExecutors.checkFailed", "Check failed"),
               }
             : e
         )
       );
     }
-  }, []);
+  }, [t]);
 
   // Check all executors
   const checkAllExecutors = useCallback(async () => {
@@ -174,7 +174,7 @@ export function SettingsExecutorsPage() {
                 ? {
                     ...e,
                     checking: false,
-                    error: err instanceof Error ? err.message : "Check failed",
+                    error: err instanceof Error ? err.message : t("settingsExecutors.checkFailed", "Check failed"),
                   }
                 : e
             )
@@ -184,7 +184,7 @@ export function SettingsExecutorsPage() {
     );
 
     setIsRefreshing(false);
-  }, [gatewayStatus]);
+  }, [gatewayStatus, t]);
 
   // Auto-check on mount when gateway is connected
   useEffect(() => {

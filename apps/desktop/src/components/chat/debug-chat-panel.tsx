@@ -534,7 +534,7 @@ export function DebugChatPanel({
                 <Input
                   value={gatewayUrlInput}
                   onChange={(e) => setGatewayUrlInput(e.target.value)}
-                  placeholder="http://localhost:30100"
+                  placeholder={t("gateway.urlPlaceholder", "http://localhost:18790")}
                   className="h-8 text-sm"
                 />
               </div>
@@ -545,7 +545,7 @@ export function DebugChatPanel({
                 <Input
                   value={workdirInput}
                   onChange={(e) => setWorkdirInput(e.target.value)}
-                  placeholder="/tmp/viben-debug"
+                  placeholder={t("gateway.workdirPlaceholder", "/tmp/viben-debug")}
                   className="h-8 text-sm"
                 />
               </div>

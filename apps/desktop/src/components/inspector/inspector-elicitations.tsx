@@ -215,7 +215,7 @@ export function InspectorElicitations({ makeRequest, enabled = true }: Inspector
                   </h4>
                   <Button variant="ghost" size="sm" className="h-6" onClick={copySchema}>
                     {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? t("inspector.copiedAction", "Copied") : t("inspector.copyAction", "Copy")}
                   </Button>
                 </div>
                 <pre className="text-xs bg-muted/50 p-3 rounded-lg border overflow-x-auto max-h-32">
