@@ -9,6 +9,7 @@ import { KNOWN_MODELS, DEFAULT_ALIASES, getKnownModel } from "./known-models";
 
 export * from "./types";
 export * from "./known-models";
+export * from "./discovery";
 
 /**
  * ModelManager handles model configuration and aliases

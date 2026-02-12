@@ -1,5 +1,7 @@
 /**
  * viben channel - Channel management commands
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
@@ -14,17 +16,16 @@ import { enableChannel, disableChannel, type EnableChannelOptions } from './enab
 import { showChannelStatus, type StatusOptions } from './status';
 import { configureChannel, type ConfigOptions } from './config';
 import { setDefault, type SetDefaultOptions } from './set-default';
-import type { ChannelType } from '../../lib/channels';
 
 interface ChannelOptions {
   name?: string;
   type?: string;
   token?: string;
+  chatId?: string;
   appId?: string;
   appSecret?: string;
-  encryptKey?: string;
-  verificationToken?: string;
-  allowFrom?: string;
+  webhookUrl?: string;
+  bridgeUrl?: string;
   proxy?: string;
   enabled?: boolean;
   force?: boolean;
@@ -43,11 +44,11 @@ export function registerChannelCommand(program: Command): void {
   channelCmd
     .command('list')
     .description('List all channels')
-    .action(() => {
+    .action(async () => {
       const ctx = getContext(program);
 
       try {
-        listChannels(ctx);
+        await listChannels(ctx);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -57,30 +58,30 @@ export function registerChannelCommand(program: Command): void {
   channelCmd
     .command('create')
     .description('Create a new channel')
-    .requiredOption('-n, --name <id>', 'Channel ID (required)')
-    .requiredOption('--type <type>', 'Channel type: telegram, discord, feishu, whatsapp')
-    .option('--token <token>', 'Bot token (for Telegram, Discord)')
+    .requiredOption('-n, --name <name>', 'Channel name (required)')
+    .requiredOption('--type <type>', 'Channel type: telegram, discord, feishu, whatsapp, slack, webhook')
+    .option('--token <token>', 'Bot token (for Telegram, Discord, Slack)')
+    .option('--chat-id <id>', 'Chat ID (for Telegram)')
     .option('--app-id <id>', 'App ID (for Feishu)')
     .option('--app-secret <secret>', 'App Secret (for Feishu)')
-    .option('--encrypt-key <key>', 'Encrypt key (for Feishu)')
-    .option('--verification-token <token>', 'Verification token (for Feishu)')
-    .option('--allow-from <ids>', 'Allowed user IDs (JSON array or comma-separated)')
+    .option('--webhook-url <url>', 'Webhook URL (for Webhook)')
+    .option('--bridge-url <url>', 'Bridge URL (for WhatsApp)')
     .option('--proxy <url>', 'Proxy URL (for Telegram)')
     .option('--disabled', 'Create channel as disabled')
     .option('--set-default', 'Set as default channel')
-    .action((options: ChannelOptions) => {
+    .action(async (options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
         if (!options.name) {
-          throw new CliError('Channel ID is required (-n, --name)', 'MISSING_ID');
+          throw new CliError('Channel name is required (-n, --name)', 'MISSING_NAME');
         }
         if (!options.type) {
           throw new CliError('Channel type is required (--type)', 'MISSING_TYPE');
         }
 
-        const validTypes = ['telegram', 'discord', 'feishu', 'whatsapp'];
-        if (!validTypes.includes(options.type)) {
+        const validTypes = ['telegram', 'discord', 'feishu', 'whatsapp', 'slack', 'webhook'];
+        if (!validTypes.includes(options.type.toLowerCase())) {
           throw new CliError(
             `Invalid channel type: ${options.type}. Valid types: ${validTypes.join(', ')}`,
             'INVALID_TYPE'
@@ -89,19 +90,19 @@ export function registerChannelCommand(program: Command): void {
 
         const createOptions: CreateChannelOptions = {
           name: options.name,
-          type: options.type as ChannelType,
+          type: options.type,
           token: options.token,
+          chatId: options.chatId,
           appId: options.appId,
           appSecret: options.appSecret,
-          encryptKey: options.encryptKey,
-          verificationToken: options.verificationToken,
-          allowFrom: options.allowFrom,
+          webhookUrl: options.webhookUrl,
+          bridgeUrl: options.bridgeUrl,
           proxy: options.proxy,
           enabled: options.enabled !== false && !(options as { disabled?: boolean }).disabled,
           setDefault: options.setDefault,
         };
 
-        createChannel(ctx, createOptions);
+        await createChannel(ctx, createOptions);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -113,7 +114,7 @@ export function registerChannelCommand(program: Command): void {
     .description('Remove a channel')
     .requiredOption('-n, --name <id>', 'Channel ID (required)')
     .option('-f, --force', 'Skip confirmation')
-    .action((options: ChannelOptions) => {
+    .action(async (options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -126,7 +127,7 @@ export function registerChannelCommand(program: Command): void {
           force: options.force,
         };
 
-        removeChannel(ctx, removeOptions);
+        await removeChannel(ctx, removeOptions);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -137,7 +138,7 @@ export function registerChannelCommand(program: Command): void {
     .command('enable')
     .description('Enable a channel')
     .requiredOption('-n, --name <id>', 'Channel ID (required)')
-    .action((options: ChannelOptions) => {
+    .action(async (options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -149,7 +150,7 @@ export function registerChannelCommand(program: Command): void {
           name: options.name,
         };
 
-        enableChannel(ctx, enableOptions);
+        await enableChannel(ctx, enableOptions);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -160,7 +161,7 @@ export function registerChannelCommand(program: Command): void {
     .command('disable')
     .description('Disable a channel')
     .requiredOption('-n, --name <id>', 'Channel ID (required)')
-    .action((options: ChannelOptions) => {
+    .action(async (options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -172,7 +173,7 @@ export function registerChannelCommand(program: Command): void {
           name: options.name,
         };
 
-        disableChannel(ctx, enableOptions);
+        await disableChannel(ctx, enableOptions);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -205,7 +206,7 @@ export function registerChannelCommand(program: Command): void {
     .argument('[action]', 'Action: set')
     .argument('[key]', 'Configuration key')
     .argument('[value]', 'Configuration value')
-    .action((action: string | undefined, key: string | undefined, value: string | undefined, options: ChannelOptions) => {
+    .action(async (action: string | undefined, key: string | undefined, value: string | undefined, options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -223,7 +224,7 @@ export function registerChannelCommand(program: Command): void {
           configOptions.value = value;
         }
 
-        configureChannel(ctx, configOptions);
+        await configureChannel(ctx, configOptions);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -234,7 +235,7 @@ export function registerChannelCommand(program: Command): void {
     .command('set-default')
     .description('Set the default channel')
     .requiredOption('-n, --name <id>', 'Channel ID (required)')
-    .action((options: ChannelOptions) => {
+    .action(async (options: ChannelOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -246,7 +247,7 @@ export function registerChannelCommand(program: Command): void {
           name: options.name,
         };
 
-        setDefault(ctx, setDefaultOptions);
+        await setDefault(ctx, setDefaultOptions);
       } catch (error) {
         handleError(ctx, error);
       }

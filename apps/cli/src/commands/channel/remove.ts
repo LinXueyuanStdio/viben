@@ -1,12 +1,13 @@
 /**
  * viben channel remove - Remove a channel
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { deleteChannelConfig, channelExists } from '../../lib/channels';
+import { channelRemove } from '../../lib/native';
 
 export interface RemoveChannelOptions {
   name: string;
@@ -16,23 +17,16 @@ export interface RemoveChannelOptions {
 /**
  * Remove a channel
  */
-export function removeChannel(ctx: OutputContext, options: RemoveChannelOptions): void {
+export async function removeChannel(ctx: OutputContext, options: RemoveChannelOptions): Promise<void> {
   const { name, force } = options;
 
-  // Check if channel exists
-  if (!channelExists(name)) {
-    throw new CliError(`Channel "${name}" not found`, 'CHANNEL_NOT_FOUND');
-  }
-
   // In non-force mode, we would prompt for confirmation
-  // For now, just proceed (in a real CLI, we'd use readline or inquirer)
   if (!force && !ctx.quiet) {
-    // Just warn, don't block
     console.log(chalk.yellow('Warning:'), `Removing channel "${name}"`);
   }
 
-  // Delete the channel
-  deleteChannelConfig(name);
+  // Delete the channel (will throw error if not found)
+  await channelRemove(name);
 
   const response = successResponse({
     id: name,

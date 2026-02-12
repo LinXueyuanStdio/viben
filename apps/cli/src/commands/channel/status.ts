@@ -1,5 +1,7 @@
 /**
  * viben channel status - Show channel status
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
@@ -7,11 +9,11 @@ import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
 import {
-  listChannelConfigs,
-  getDefaultChannelId,
-  getChannelConfig,
-  ChannelManager,
-} from '../../lib/channels';
+  channelList,
+  channelGet,
+  channelGetDefault,
+  channelTestConnection,
+} from '../../lib/native';
 
 export interface StatusOptions {
   name?: string;
@@ -37,63 +39,54 @@ export async function showChannelStatus(
  * Show status for a single channel
  */
 async function showSingleChannelStatus(ctx: OutputContext, name: string): Promise<void> {
-  const config = getChannelConfig(name);
-  if (!config) {
+  const channel = await channelGet(name);
+  if (!channel) {
     throw new CliError(`Channel "${name}" not found`, 'CHANNEL_NOT_FOUND');
   }
 
-  const defaultId = getDefaultChannelId();
-  const isDefault = name === defaultId;
-
-  // Try to get live status if channel is enabled
-  let liveStatus = null;
-  if (config.enabled) {
+  // Try to test connection if channel is enabled
+  let testResult = null;
+  if (channel.enabled) {
     try {
-      const manager = new ChannelManager();
-      await manager.initialize();
-      const channel = manager.getChannel(name);
-      if (channel) {
-        await channel.connect();
-        liveStatus = channel.getStatus();
-        await channel.disconnect();
-      }
+      testResult = await channelTestConnection(name);
     } catch (error) {
-      // Connection failed, will show as disconnected
-      liveStatus = {
-        connected: false,
-        lastError: error instanceof Error ? error.message : String(error),
+      testResult = {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
 
   const response = successResponse({
-    id: name,
-    type: config.type,
-    enabled: config.enabled,
-    isDefault,
-    status: liveStatus || { connected: false },
+    id: channel.id,
+    name: channel.name,
+    type: channel.channelType,
+    enabled: channel.enabled,
+    isDefault: channel.isDefault,
+    status: testResult || { success: false },
   });
 
   output(ctx, response, () => {
-    console.log(chalk.bold(`Channel: ${name}`));
+    console.log(chalk.bold(`Channel: ${channel.name}`));
     console.log();
-    console.log(`  Type:     ${config.type}`);
-    console.log(`  Enabled:  ${config.enabled ? chalk.green('yes') : chalk.gray('no')}`);
-    console.log(`  Default:  ${isDefault ? chalk.yellow('yes') : 'no'}`);
+    console.log(`  ID:       ${channel.id}`);
+    console.log(`  Type:     ${channel.channelType}`);
+    console.log(`  Enabled:  ${channel.enabled ? chalk.green('yes') : chalk.gray('no')}`);
+    console.log(`  Default:  ${channel.isDefault ? chalk.yellow('yes') : 'no'}`);
 
-    if (liveStatus) {
-      const statusText = liveStatus.connected
+    if (testResult) {
+      const statusText = testResult.success
         ? chalk.green('\u2713 connected')
         : chalk.red('\u2717 disconnected');
       console.log(`  Status:   ${statusText}`);
 
-      if (liveStatus.identifier) {
-        console.log(`  Identity: ${liveStatus.identifier}`);
+      if (testResult.details) {
+        console.log(`  Details:  ${testResult.details}`);
       }
-      if (liveStatus.lastError) {
-        console.log(`  Error:    ${chalk.red(liveStatus.lastError)}`);
+      if (testResult.error) {
+        console.log(`  Error:    ${chalk.red(testResult.error)}`);
       }
-    } else if (!config.enabled) {
+    } else if (!channel.enabled) {
       console.log(`  Status:   ${chalk.gray('\u25CB disabled')}`);
     }
   });
@@ -103,8 +96,8 @@ async function showSingleChannelStatus(ctx: OutputContext, name: string): Promis
  * Show status for all channels
  */
 async function showAllChannelStatus(ctx: OutputContext): Promise<void> {
-  const channels = listChannelConfigs();
-  const defaultId = getDefaultChannelId();
+  const channels = await channelList();
+  const defaultId = await channelGetDefault();
 
   if (channels.length === 0) {
     const response = successResponse({ channels: [] });
@@ -117,9 +110,10 @@ async function showAllChannelStatus(ctx: OutputContext): Promise<void> {
   // Get statuses (without connecting, for speed)
   const statuses = channels.map((ch) => ({
     id: ch.id,
-    type: ch.type,
+    name: ch.name,
+    type: ch.channelType,
     enabled: ch.enabled,
-    isDefault: ch.id === defaultId,
+    isDefault: ch.isDefault,
   }));
 
   const response = successResponse({
@@ -131,19 +125,18 @@ async function showAllChannelStatus(ctx: OutputContext): Promise<void> {
     console.log(chalk.bold('Channel Status:'));
     console.log();
 
-    const headers = ['ID', 'Type', 'Status', 'Identity'];
+    const headers = ['ID', 'Name', 'Type', 'Status'];
     const rows = channels.map((ch) => {
-      const id = ch.id === defaultId ? `${ch.id}${chalk.yellow('*')}` : ch.id;
+      const id = ch.isDefault ? `${ch.id}${chalk.yellow('*')}` : ch.id;
       const status = ch.enabled
         ? chalk.green('\u2713 enabled')
         : chalk.gray('\u25CB disabled');
-      const identity = ch.enabled ? chalk.gray('(run gateway to connect)') : '-';
-      return [id, ch.type, status, identity];
+      return [id, ch.name, ch.channelType, status];
     });
 
     outputTable({ ...ctx, json: false }, headers, rows);
 
     console.log();
-    console.log(chalk.gray('To see live connection status, run: viben channel status -n <id>'));
+    console.log(chalk.gray('To test connection, run: viben channel status -n <id>'));
   });
 }

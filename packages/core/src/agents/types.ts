@@ -10,6 +10,11 @@ export type {
   DailyLog,
   LogEntry,
   CreateAgentOptions,
+  AgentUpdate,
+  ExecutorType,
+  AgentCapability,
+  AvailabilityStatus,
+  AvailabilityInfo,
 } from "../types";
 
 /**
@@ -21,8 +26,15 @@ export interface AgentConfigFile {
   model?: string;
   provider?: string;
   systemPrompt?: string;
+  appendPrompt?: string;
   temperature?: number;
   maxTokens?: number;
+  executorType?: string;
+  executorConfig?: Record<string, unknown>;
+  mcpServers?: string[];
+  skills?: string[];
+  planMode?: boolean;
+  approvals?: boolean;
   createdAt: string;
   updatedAt: string;
 }

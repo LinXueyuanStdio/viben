@@ -8,6 +8,12 @@
 # 安装/卸载
 viben skill install <name>
 viben skill install <name>@<version>
+viben skill install <name> --agent <agent-id>   # 安装到指定 agent
+viben skill install <name> --global              # 全局安装 (默认)
+viben skill install <name> --executor claude-code  # 使用执行器
+viben skill install <name> --path .claude/skills  # 安装到当前目录的 .claude/skills
+viben skill install <name> --claude # 安装到当前目录的 .claude/skills
+viben skill install <name> --force              # 强制重新安装
 viben skill uninstall <name>
 
 # 列表

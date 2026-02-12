@@ -1,12 +1,13 @@
 /**
  * viben channel enable/disable - Enable or disable a channel
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { setChannelEnabled, channelExists } from '../../lib/channels';
+import { channelEnable, channelDisable } from '../../lib/native';
 
 export interface EnableChannelOptions {
   name: string;
@@ -15,16 +16,11 @@ export interface EnableChannelOptions {
 /**
  * Enable a channel
  */
-export function enableChannel(ctx: OutputContext, options: EnableChannelOptions): void {
+export async function enableChannel(ctx: OutputContext, options: EnableChannelOptions): Promise<void> {
   const { name } = options;
 
-  // Check if channel exists
-  if (!channelExists(name)) {
-    throw new CliError(`Channel "${name}" not found`, 'CHANNEL_NOT_FOUND');
-  }
-
-  // Enable the channel
-  setChannelEnabled(name, true);
+  // Enable the channel (will throw if not found)
+  await channelEnable(name);
 
   const response = successResponse({
     id: name,
@@ -39,16 +35,11 @@ export function enableChannel(ctx: OutputContext, options: EnableChannelOptions)
 /**
  * Disable a channel
  */
-export function disableChannel(ctx: OutputContext, options: EnableChannelOptions): void {
+export async function disableChannel(ctx: OutputContext, options: EnableChannelOptions): Promise<void> {
   const { name } = options;
 
-  // Check if channel exists
-  if (!channelExists(name)) {
-    throw new CliError(`Channel "${name}" not found`, 'CHANNEL_NOT_FOUND');
-  }
-
-  // Disable the channel
-  setChannelEnabled(name, false);
+  // Disable the channel (will throw if not found)
+  await channelDisable(name);
 
   const response = successResponse({
     id: name,

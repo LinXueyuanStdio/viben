@@ -1,12 +1,13 @@
 /**
  * viben channel set-default - Set the default channel
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { setDefaultChannel, channelExists } from '../../lib/channels';
+import { channelSetDefault } from '../../lib/native';
 
 export interface SetDefaultOptions {
   name: string;
@@ -15,16 +16,11 @@ export interface SetDefaultOptions {
 /**
  * Set the default channel
  */
-export function setDefault(ctx: OutputContext, options: SetDefaultOptions): void {
+export async function setDefault(ctx: OutputContext, options: SetDefaultOptions): Promise<void> {
   const { name } = options;
 
-  // Check if channel exists
-  if (!channelExists(name)) {
-    throw new CliError(`Channel "${name}" not found`, 'CHANNEL_NOT_FOUND');
-  }
-
-  // Set as default
-  setDefaultChannel(name);
+  // Set as default (will throw if channel not found)
+  await channelSetDefault(name);
 
   const response = successResponse({
     id: name,

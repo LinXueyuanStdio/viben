@@ -5,21 +5,20 @@
 ## 架构概述
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Viben CLI                            │
-├─────────────────────────────────────────────────────────────┤
-│  Agent Template (可复用的 agent 配置模板)                    │
-│    └── Agent Instance (独立的 agent 实例)                   │
-│          ├── config.yaml (agent 配置)                       │
-│          ├── mcp_servers.json (MCP 配置)                    │
-│          ├── skills/ (agent 专属 skills)                    │
-│          ├── memory/ (agent 记忆)                           │
-│          │   ├── MEMORY.md (主记忆)                         │
-│          │   └── YYYY-MM-DD.md (每日日志, append-only)      │
-│          ├── .agentrc (启动配置)                            │
-│          ├── .agent_history (命令历史)                      │
-│          └── .agent_sessions/<session_id>/ (会话存储)       │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    Viben CLI                            │
+├─────────────────────────────────────────────────────────┤
+│  Agent Instance (独立的 agent 实例)                    │
+│      ├── config.yaml (agent 配置)                       │
+│      ├── mcp_servers.json (MCP 配置)                    │
+│      ├── skills/ (agent 专属 skills)                    │
+│      ├── memory/ (agent 记忆)                           │
+│      │   ├── MEMORY.md (主记忆)                         │
+│      │   └── YYYY-MM-DD.md (每日日志, append-only)      │
+│      ├── .agentrc (启动配置)                            │
+│      ├── .agent_history (命令历史)                      │
+│      └── .agent_sessions/<session_id>/ (会话存储)       │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -29,7 +28,6 @@
 | 概念 | 说明 |
 |------|------|
 | **Agent** | 独立的智能体实例，拥有自己的配置、记忆、会话 |
-| **Template** | 可复用的 agent 配置模板 |
 | **Memory** | Agent 的长期记忆 (MEMORY.md + 每日日志) |
 | **Session** | Agent 的会话存储 (对话历史、状态) |
 | **Workspace Config** | 项目工作区的 agent 类型配置 (如 `.claude/`) |
@@ -46,7 +44,7 @@ Agent 实际运行时，配置按以下顺序叠加：
 3. 命令行参数                              # 运行时覆盖
 ```
 
-例如：在 `/projects/my-app` 目录下运行 agent `main`，会先加载 `~/.viben/agents/main/config.yaml`，再叠加 `/projects/my-app/.claude/` 的配置。
+例如：在 `/projects/my-app` 目录下运行 agent `main`，会先加载 `~/.viben/agents/main/config.yaml`，如果 type 为 `claude-code `，再叠加 `/projects/my-app/.claude/` 的配置。
 
 ---
 
@@ -113,9 +111,10 @@ viben agent list --json
 # 创建新 agent
 viben agent create -n <id>
 viben agent create -n my-agent
-viben agent create -n my-agent -f <template-id>              # 从模板创建
+viben agent create -n my-agent -f <template-agent-id>              # 从模板创建
 viben agent create -n my-agent -f /path/to/config.yaml       # 从配置文件创建
 viben agent create -n my-agent --clone <existing-agent-id>   # 克隆现有 agent
+viben agent create -n my-agent --executor /path/to/executor # 使用特定 executor, 如 `~/Documents/my-project/.claude`
 
 # 查看 agent 详情
 viben agent show -n <id>
@@ -136,6 +135,10 @@ viben agent config -n my-agent set mcp.enabled "[\"filesystem\",\"git\"]"
 # 设置默认 agent
 viben agent set-default -n <id>
 viben agent set-default -n my-agent
+
+# 设置为模板
+viben agent set-template -n <id>
+viben agent set-template -n coding-assistant --description "A general coding assistant template"
 
 # 查看 agent 状态
 viben agent status
@@ -390,7 +393,7 @@ Agent Templates:
 ### Skills & MCP Scoping
 - [ ] 共享 skills (`~/.viben/skills/`) 所有 agents 可用
 - [ ] Agent 专属 skills (`agents/<id>/skills/`) 仅该 agent 可用
-- [ ] `viben skill install -n <agent-id>` 安装到特定 agent
+- [ ] `viben skill install <name> --agent <agent-id>` 安装到特定 agent
 - [ ] MCP 配置支持 `mcp_servers.json` 格式
 
 ---

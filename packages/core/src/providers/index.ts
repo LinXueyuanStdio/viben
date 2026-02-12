@@ -10,20 +10,9 @@ import type {
   CreateProviderOptions,
 } from "../types";
 import type { ProvidersFile, ProviderEntry } from "./types";
+import { DEFAULT_BASE_URLS } from "./types";
 
 export * from "./types";
-
-/**
- * Default base URLs for known provider types
- */
-const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
-  openai: "https://api.openai.com/v1",
-  anthropic: "https://api.anthropic.com/v1",
-  azure: "", // Requires custom endpoint
-  ollama: "http://localhost:11434",
-  openrouter: "https://openrouter.ai/api/v1",
-  custom: "",
-};
 
 /**
  * ProviderManager handles provider CRUD operations
@@ -79,6 +68,11 @@ export class ProviderManager {
         name: entry.name,
         apiKey: entry.apiKey,
         baseUrl: entry.baseUrl,
+        apiVersion: entry.apiVersion,
+        deployment: entry.deployment,
+        timeout: entry.timeout,
+        maxRetries: entry.maxRetries,
+        headers: entry.headers,
         isDefault: config.default === id,
         enabled: entry.enabled,
         createdAt: entry.createdAt,
@@ -106,6 +100,11 @@ export class ProviderManager {
       name: entry.name,
       apiKey: entry.apiKey,
       baseUrl: entry.baseUrl,
+      apiVersion: entry.apiVersion,
+      deployment: entry.deployment,
+      timeout: entry.timeout,
+      maxRetries: entry.maxRetries,
+      headers: entry.headers,
       isDefault: config.default === id,
       enabled: entry.enabled,
       createdAt: entry.createdAt,
@@ -130,6 +129,11 @@ export class ProviderManager {
       name: options.name,
       apiKey: options.apiKey,
       baseUrl: options.baseUrl || DEFAULT_BASE_URLS[options.type],
+      apiVersion: options.apiVersion,
+      deployment: options.deployment,
+      timeout: options.timeout,
+      maxRetries: options.maxRetries,
+      headers: options.headers,
       enabled: true,
       createdAt: now,
       updatedAt: now,
@@ -150,6 +154,11 @@ export class ProviderManager {
       name: options.name,
       apiKey: options.apiKey,
       baseUrl: entry.baseUrl,
+      apiVersion: entry.apiVersion,
+      deployment: entry.deployment,
+      timeout: entry.timeout,
+      maxRetries: entry.maxRetries,
+      headers: entry.headers,
       isDefault: config.default === id,
       enabled: true,
       createdAt: now,
@@ -178,6 +187,11 @@ export class ProviderManager {
       name: updates.name || entry.name,
       apiKey: updates.apiKey ?? entry.apiKey,
       baseUrl: updates.baseUrl ?? entry.baseUrl,
+      apiVersion: updates.apiVersion ?? entry.apiVersion,
+      deployment: updates.deployment ?? entry.deployment,
+      timeout: updates.timeout ?? entry.timeout,
+      maxRetries: updates.maxRetries ?? entry.maxRetries,
+      headers: updates.headers ?? entry.headers,
       updatedAt: now,
     };
 
@@ -190,6 +204,11 @@ export class ProviderManager {
       name: updated.name,
       apiKey: updated.apiKey,
       baseUrl: updated.baseUrl,
+      apiVersion: updated.apiVersion,
+      deployment: updated.deployment,
+      timeout: updated.timeout,
+      maxRetries: updated.maxRetries,
+      headers: updated.headers,
       isDefault: config.default === id,
       enabled: updated.enabled,
       createdAt: updated.createdAt,
@@ -284,7 +303,7 @@ export class ProviderManager {
     }
 
     // Check if API key is configured (for providers that need it)
-    const needsApiKey = ["openai", "anthropic", "azure", "openrouter"].includes(
+    const needsApiKey = ["openai", "anthropic", "azure", "openrouter", "google"].includes(
       provider.type
     );
     if (needsApiKey && !provider.apiKey) {
