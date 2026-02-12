@@ -1,22 +1,23 @@
 /**
  * viben executor show - Show executor details
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
-import type { ExecutorShowData } from '../../types/executor';
 import { output, successResponse } from '../../lib/output';
-import { getExecutorById, formatCapability, getAllExecutorIds } from '../../lib/executors';
+import { executorGet, executorGetAllIds, type Executor } from '../../lib/native';
 
 /**
  * Show executor details
  */
 export function showExecutor(ctx: OutputContext, id: string): void {
-  const executor = getExecutorById(id);
+  const executor = executorGet(id.toUpperCase());
 
   if (!executor) {
-    const validIds = getAllExecutorIds();
+    const validIds = executorGetAllIds();
     throw new CliError(
       `Executor "${id}" not found. Valid IDs: ${validIds.join(', ')}`,
       'EXECUTOR_NOT_FOUND',
@@ -24,12 +25,8 @@ export function showExecutor(ctx: OutputContext, id: string): void {
     );
   }
 
-  // TODO: Get agents using this executor from agents config
-  const agents: ExecutorShowData['agents'] = [];
-
-  const responseData: ExecutorShowData = {
+  const responseData = {
     executor,
-    agents,
   };
 
   output(ctx, successResponse(responseData), () => {
@@ -39,43 +36,27 @@ export function showExecutor(ctx: OutputContext, id: string): void {
     console.log();
 
     // Status
-    if (executor.installed) {
-      console.log(`Status: ${chalk.green('✓ Installed')}`);
-      if (executor.version) {
-        console.log(`Version: ${executor.version}`);
+    const status = executor.availability.status;
+    if (status === 'LoginDetected') {
+      console.log(`Status: ${chalk.green('✓ Logged In')}`);
+      if (executor.availability.lastAuthTimestamp) {
+        const date = new Date(executor.availability.lastAuthTimestamp * 1000);
+        console.log(`Last Auth: ${date.toLocaleString()}`);
       }
-      if (executor.path) {
-        console.log(`Path: ${executor.path}`);
-      }
+    } else if (status === 'InstallationFound') {
+      console.log(`Status: ${chalk.yellow('○ Installed')}`);
     } else {
-      console.log(`Status: ${chalk.gray('○ Not Installed')}`);
+      console.log(`Status: ${chalk.gray('○ Not Found')}`);
     }
 
     console.log();
 
-    // Configuration
-    if (executor.installed && (executor.configDir || executor.mcpConfigPath || executor.settingsPath)) {
-      console.log(chalk.bold('Configuration:'));
-      if (executor.configDir) {
-        console.log(`  Config Dir:    ${executor.configDir}`);
-      }
+    // MCP Configuration
+    if (executor.supportsMcp) {
+      console.log(chalk.bold('MCP Support:'));
+      console.log(`  Supports MCP: ${chalk.green('Yes')}`);
       if (executor.mcpConfigPath) {
-        console.log(`  MCP Config:    ${executor.mcpConfigPath}`);
-      }
-      if (executor.settingsPath) {
-        console.log(`  Settings:      ${executor.settingsPath}`);
-      }
-      console.log();
-    }
-
-    // Agents using this executor
-    if (agents && agents.length > 0) {
-      console.log(chalk.bold('Agents using this executor:'));
-      for (const agent of agents) {
-        const defaultMark = agent.isDefault ? chalk.yellow(' (default)') : '';
-        console.log(
-          `  ${agent.id}          ${agent.sessionCount} session${agent.sessionCount !== 1 ? 's' : ''}${defaultMark}`
-        );
+        console.log(`  Config Path:  ${executor.mcpConfigPath}`);
       }
       console.log();
     }
@@ -88,4 +69,14 @@ export function showExecutor(ctx: OutputContext, id: string): void {
       }
     }
   });
+}
+
+function formatCapability(capability: string): string {
+  const labels: Record<string, string> = {
+    'SessionFork': 'Session forking',
+    'SetupHelper': 'Setup helper required',
+    'ContextUsage': 'Context/token usage reporting',
+  };
+
+  return labels[capability] || capability;
 }

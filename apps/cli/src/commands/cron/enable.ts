@@ -1,11 +1,13 @@
 /**
  * viben cron enable - Enable a cron job
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronEnable } from '../../lib/native';
 
 /**
  * Enable a cron job
@@ -14,9 +16,7 @@ export async function enableCronJob(
   ctx: OutputContext,
   jobId: string
 ): Promise<void> {
-  const service = getCronService();
-
-  const job = await service.enableJob(jobId);
+  const job = await cronEnable(jobId);
 
   output(
     ctx,

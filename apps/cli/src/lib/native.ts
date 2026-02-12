@@ -381,6 +381,35 @@ export const agentRemove: (id: string) => Promise<void> = native.agentRemove;
 export const agentSetDefault: (id: string) => Promise<void> = native.agentSetDefault;
 export const agentGetDefault: () => Promise<string | null> = native.agentGetDefault;
 
+// Channel functions
+export const channelList: () => Promise<Channel[]> = native.channelList;
+export const channelGet: (id: string) => Promise<Channel | null> = native.channelGet;
+export const channelCreate: (options: CreateChannelOptions) => Promise<Channel> = native.channelCreate as any;
+export const channelUpdate: (id: string, options: UpdateChannelOptions) => Promise<Channel> = native.channelUpdate as any;
+export const channelRemove: (id: string) => Promise<void> = native.channelRemove;
+export const channelSetDefault: (id: string) => Promise<void> = native.channelSetDefault;
+export const channelGetDefault: () => Promise<string | null> = native.channelGetDefault;
+export const channelTestConnection: (id: string) => Promise<ChannelTestResult> = native.channelTestConnection;
+export const channelEnable: (id: string) => Promise<void> = native.channelEnable;
+export const channelDisable: (id: string) => Promise<void> = native.channelDisable;
+export const channelSendMessage: (id: string, chatId: string, message: string) => Promise<SendMessageResult> = native.channelSendMessage;
+
+// Executor functions
+export const executorList: () => Executor[] = native.executorList;
+export const executorGet: (id: string) => Executor | null = native.executorGet;
+export const executorCheckAvailability: (id: string) => ExecutorAvailability = native.executorCheckAvailability;
+export const executorGetAllIds: () => string[] = native.executorGetAllIds;
+
+// Cron functions
+export const cronList: () => Promise<CronJob[]> = native.cronList;
+export const cronGet: (id: string) => Promise<CronJob | null> = native.cronGet;
+export const cronCreate: (options: CreateCronJobOptions) => Promise<CronJob> = native.cronCreate as any;
+export const cronUpdate: (id: string, options: UpdateCronJobOptions) => Promise<CronJob> = native.cronUpdate as any;
+export const cronRemove: (id: string) => Promise<void> = native.cronRemove;
+export const cronEnable: (id: string) => Promise<CronJob> = native.cronEnable;
+export const cronDisable: (id: string) => Promise<CronJob> = native.cronDisable;
+export const cronRun: (id: string) => Promise<void> = native.cronRun;
+
 /**
  * Check if native bindings are available
  */

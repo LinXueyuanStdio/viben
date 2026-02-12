@@ -1,12 +1,14 @@
 /**
  * viben cron show - Show cron job details
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronGet, type CronJob } from '../../lib/native';
 
 /**
  * Describe a cron expression in human-readable format
@@ -72,9 +74,8 @@ function formatTimestamp(ms: number | undefined): string {
 /**
  * Show cron job details
  */
-export function showCronJob(ctx: OutputContext, jobId: string): void {
-  const service = getCronService();
-  const job = service.getJob(jobId);
+export async function showCronJob(ctx: OutputContext, jobId: string): Promise<void> {
+  const job = await cronGet(jobId);
 
   if (!job) {
     throw new CliError(`Job "${jobId}" not found`, 'JOB_NOT_FOUND');
@@ -86,6 +87,7 @@ export function showCronJob(ctx: OutputContext, jobId: string): void {
     () => {
       console.log(`Cron Job: ${chalk.cyan(job.id)}`);
       console.log(`  Name:    ${job.name}`);
+      console.log(`  Type:    ${job.jobType}`);
       console.log(`  Status:  ${job.enabled ? chalk.green('enabled') : chalk.gray('disabled')}`);
 
       if (job.cron) {
@@ -99,7 +101,12 @@ export function showCronJob(ctx: OutputContext, jobId: string): void {
         console.log(`  Schedule: every ${desc}`);
       }
 
-      console.log(`  Message: "${job.message}"`);
+      if (job.message) {
+        console.log(`  Message: "${job.message}"`);
+      }
+      if (job.script) {
+        console.log(`  Script:  "${job.script}"`);
+      }
 
       if (job.channel) {
         console.log(`  Channel: ${job.channel}`);
@@ -109,10 +116,13 @@ export function showCronJob(ctx: OutputContext, jobId: string): void {
       console.log();
 
       if (job.lastRun) {
-        const statusColor = job.lastStatus === 'success' ? chalk.green : chalk.red;
+        const statusColor = job.lastStatus === 'Success' ? chalk.green : chalk.red;
         console.log(`  Last run:  ${formatTimestamp(job.lastRun)} (${statusColor(job.lastStatus ?? 'unknown')})`);
         if (job.lastError) {
           console.log(`  Last error: ${chalk.red(job.lastError)}`);
+        }
+        if (job.lastOutput) {
+          console.log(`  Last output: ${job.lastOutput.substring(0, 100)}${job.lastOutput.length > 100 ? '...' : ''}`);
         }
       } else {
         console.log(`  Last run:  ${chalk.gray('never')}`);

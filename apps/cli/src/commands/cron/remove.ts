@@ -1,12 +1,13 @@
 /**
  * viben cron remove - Remove a cron job
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { CliError } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronRemove } from '../../lib/native';
 
 /**
  * Remove a cron job
@@ -15,13 +16,7 @@ export async function removeCronJob(
   ctx: OutputContext,
   jobId: string
 ): Promise<void> {
-  const service = getCronService();
-
-  const removed = await service.removeJob(jobId);
-
-  if (!removed) {
-    throw new CliError(`Job "${jobId}" not found`, 'JOB_NOT_FOUND');
-  }
+  await cronRemove(jobId);
 
   output(
     ctx,

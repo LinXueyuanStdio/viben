@@ -1,15 +1,19 @@
 /**
  * viben cron add - Add a new cron job
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService, type AddJobOptions } from '../../lib/cron';
+import { cronCreate, type CreateCronJobOptions } from '../../lib/native';
 
 export interface AddCronOptions {
   name: string;
-  message: string;
+  message?: string;
+  script?: string;
+  jobType?: string;
   cron?: string;
   every?: number;
   channel?: string;
@@ -24,11 +28,11 @@ export async function addCronJob(
   ctx: OutputContext,
   options: AddCronOptions
 ): Promise<void> {
-  const service = getCronService();
-
-  const addOptions: AddJobOptions = {
+  const createOptions: CreateCronJobOptions = {
     name: options.name,
     message: options.message,
+    script: options.script,
+    jobType: options.jobType,
     cron: options.cron,
     every: options.every,
     channel: options.channel,
@@ -36,7 +40,7 @@ export async function addCronJob(
     enabled: options.enabled !== false,
   };
 
-  const job = await service.addJob(addOptions);
+  const job = await cronCreate(createOptions);
 
   output(
     ctx,
@@ -45,7 +49,13 @@ export async function addCronJob(
       console.log(chalk.green('Created cron job:'), job.id);
       console.log();
       console.log(`  Name:     ${job.name}`);
-      console.log(`  Message:  "${job.message}"`);
+      console.log(`  Type:     ${job.jobType}`);
+      if (job.message) {
+        console.log(`  Message:  "${job.message}"`);
+      }
+      if (job.script) {
+        console.log(`  Script:   "${job.script}"`);
+      }
       console.log(`  Schedule: ${job.cron ?? `every ${job.every}s`}`);
       if (job.channel) {
         console.log(`  Channel:  ${job.channel}`);

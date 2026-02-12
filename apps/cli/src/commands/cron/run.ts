@@ -1,11 +1,13 @@
 /**
  * viben cron run - Run a cron job immediately
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronRun } from '../../lib/native';
 
 /**
  * Run a cron job immediately
@@ -14,11 +16,9 @@ export async function runCronJob(
   ctx: OutputContext,
   jobId: string
 ): Promise<void> {
-  const service = getCronService();
-
   console.log(`Running job: ${jobId}...`);
 
-  await service.runJob(jobId);
+  await cronRun(jobId);
 
   output(
     ctx,

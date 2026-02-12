@@ -1,11 +1,13 @@
 /**
  * viben cron disable - Disable a cron job
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronDisable } from '../../lib/native';
 
 /**
  * Disable a cron job
@@ -14,9 +16,7 @@ export async function disableCronJob(
   ctx: OutputContext,
   jobId: string
 ): Promise<void> {
-  const service = getCronService();
-
-  const job = await service.disableJob(jobId);
+  const job = await cronDisable(jobId);
 
   output(
     ctx,
