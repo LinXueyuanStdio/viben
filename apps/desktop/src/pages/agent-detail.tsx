@@ -77,7 +77,7 @@ import { cn } from "@/lib/utils";
 import {
   useAgents,
   useModels,
-  useAgent,
+  useAgentConversation,
   useCloudSkillPackages,
   useLocalWorkspaces,
   useWorkspaceAgents,
@@ -600,17 +600,18 @@ export function AgentDetailPage() {
     answerQuestions,
     cancel,
     clearMessages,
-  } = useAgent(debugWorkdir, {
-    agentType: formExecutorType,
-    executorConfig: formExecutorType === "CLAUDE_CODE" ? {
-      type: "CLAUDE_CODE",
-      config: {
-        plan: formPlanMode,
-        approvals: formApprovals,
-        append_prompt: formAppendPrompt || undefined,
-        model: formModel || undefined,
-      },
-    } : undefined,
+  } = useAgentConversation(debugWorkdir, {
+    agentConfig: {
+      name: formName || undefined,
+      model: formModel || undefined,
+      systemPrompt: formSystemPrompt || undefined,
+      appendPrompt: formAppendPrompt || undefined,
+      executorType: formExecutorType,
+      planMode: formPlanMode,
+      approvals: formApprovals,
+      mcpServers: selectedMcpServers.length > 0 ? selectedMcpServers : undefined,
+      skills: selectedSkills.length > 0 ? selectedSkills : undefined,
+    },
   });
 
   // Navigate back to appropriate location based on scope
@@ -1548,9 +1549,8 @@ function ExecutorDetailView({
     loading: commandsLoading,
   } = useWorkspaceCommands(workspacePath || null, executor.type);
 
-  // Chat functionality - map executor type to agent type
-  // Only CLAUDE_CODE and CODEX have corresponding BaseCodingAgent types
-  const agentType = useMemo((): BaseCodingAgent => {
+  // Chat functionality - map executor type to executor type string
+  const executorTypeString = useMemo((): string => {
     if (executor.type === "claude-code") return "CLAUDE_CODE";
     if (executor.type === "codex") return "CODEX";
     // All other executor types default to CLAUDE_CODE for chat
@@ -1569,15 +1569,12 @@ function ExecutorDetailView({
     answerQuestions,
     cancel,
     clearMessages,
-  } = useAgent(workspacePath, {
-    agentType,
-    executorConfig: agentType === "CLAUDE_CODE" ? {
-      type: "CLAUDE_CODE",
-      config: {
-        plan: false,
-        approvals: false,
-      },
-    } : undefined,
+  } = useAgentConversation(workspacePath, {
+    agentConfig: {
+      executorType: executorTypeString,
+      planMode: false,
+      approvals: false,
+    },
   });
 
   // Panel width state for resizable panels

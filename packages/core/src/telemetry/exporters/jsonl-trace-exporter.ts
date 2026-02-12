@@ -66,9 +66,17 @@ export class JsonlTraceExporter implements SpanExporter {
    * 获取 parentSpanId
    */
   private getParentSpanId(span: ReadableSpan): string | undefined {
-    // parentSpanId 可能在不同版本的 SDK 中有不同的访问方式
-    const spanAny = span as unknown as { parentSpanId?: string };
-    return spanAny.parentSpanId || undefined;
+    // ReadableSpan has parentSpanContext that contains the parent span ID
+    const parentContext = span.parentSpanContext;
+    if (!parentContext) {
+      return undefined;
+    }
+    const parentId = parentContext.spanId;
+    // Return undefined if empty string or invalid (all zeros)
+    if (!parentId || parentId === "0000000000000000") {
+      return undefined;
+    }
+    return parentId;
   }
 
   /**

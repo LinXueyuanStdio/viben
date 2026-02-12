@@ -86,45 +86,94 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * List all agents
    * GET /api/agents
    *
-   * Returns workspace-scoped agents with viben: prefix to match Rust gateway format
+   * Query params:
+   * - workspace_path: Optional workspace path to include workspace agents
+   * - include_global: Whether to include global agents (default: true)
+   *
+   * Returns workspace-scoped agents with viben: prefix to match Rust gateway format.
+   * When workspace_path is provided, workspace agents take priority (deduped by ID).
    */
-  fastify.get("/api/agents", async () => {
-    const agents = await agentManager.listAgents();
+  fastify.get<{
+    Querystring: {
+      workspace_path?: string;
+      include_global?: string;
+    };
+  }>("/api/agents", async (request) => {
+    const { workspace_path, include_global } = request.query;
+    const includeGlobal = include_global !== "false"; // Default: true
     const homeDir = process.env.HOME || "/";
 
-    return {
-      agents: agents.map((a) => {
-        // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
-        const source =
-          a.path && a.path.startsWith(homeDir) && a.path.includes("/.viben/agents/")
-            ? "global"
-            : "workspace";
+    // Helper to transform agent to API response format
+    const transformAgent = (a: Awaited<ReturnType<typeof agentManager.getAgent>>, sourceOverride?: "global" | "workspace") => {
+      if (!a) return null;
 
-        return {
-          // Add viben: prefix to match Rust gateway format
-          id: `viben:${a.id}`,
-          name: a.name,
-          agent_type: "viben",
-          source,
-          workspace_path: a.path,
-          config_path: a.path ? `${a.path}/config.yaml` : undefined,
-          description: a.description,
-          model: a.model,
-          provider: a.provider,
-          system_prompt: a.systemPrompt,
-          append_prompt: a.appendPrompt,
-          temperature: a.temperature,
-          max_tokens: a.maxTokens,
-          executor_type: a.executorType,
-          executor_config: a.executorConfig,
-          mcp_servers: a.mcpServers,
-          skills: a.skills,
-          plan_mode: a.planMode,
-          approvals: a.approvals,
-          created_at: a.createdAt,
-          updated_at: a.updatedAt,
-        };
-      }),
+      // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+      const source = sourceOverride || (
+        a.path && a.path.startsWith(homeDir) && a.path.includes("/.viben/agents/")
+          ? "global"
+          : "workspace"
+      );
+
+      return {
+        // Add viben: prefix to match Rust gateway format
+        id: `viben:${a.id}`,
+        name: a.name,
+        agent_type: "viben",
+        source,
+        workspace_path: a.path,
+        config_path: a.path ? `${a.path}/config.yaml` : undefined,
+        description: a.description,
+        model: a.model,
+        provider: a.provider,
+        system_prompt: a.systemPrompt,
+        append_prompt: a.appendPrompt,
+        temperature: a.temperature,
+        max_tokens: a.maxTokens,
+        executor_type: a.executorType,
+        executor_config: a.executorConfig,
+        mcp_servers: a.mcpServers,
+        skills: a.skills,
+        plan_mode: a.planMode,
+        approvals: a.approvals,
+        created_at: a.createdAt,
+        updated_at: a.updatedAt,
+      };
+    };
+
+    // Map to store agents by ID (for deduplication, workspace takes priority)
+    const agentMap = new Map<string, ReturnType<typeof transformAgent>>();
+
+    // 1. Load global agents first (if includeGlobal)
+    if (includeGlobal) {
+      const globalAgents = await agentManager.listAgents();
+      for (const agent of globalAgents) {
+        const transformed = transformAgent(agent, "global");
+        if (transformed) {
+          agentMap.set(agent.id, transformed);
+        }
+      }
+    }
+
+    // 2. Load workspace agents (if workspace_path provided)
+    // Workspace agents override global agents with the same ID
+    if (workspace_path) {
+      const { join } = await import("node:path");
+      const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
+      const workspaceAgents = await agentManager.listAgentsFromDir(workspaceAgentsDir);
+
+      for (const agent of workspaceAgents) {
+        const transformed = transformAgent(agent, "workspace");
+        if (transformed) {
+          agentMap.set(agent.id, transformed);
+        }
+      }
+    }
+
+    const agents = Array.from(agentMap.values()).filter(Boolean);
+
+    return {
+      agents,
+      total: agents.length,
     };
   });
 
@@ -732,22 +781,48 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Get a specific agent
    * GET /api/agents/:id
    *
-   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
+   * Query params:
+   * - workspace_path: Optional workspace path to check workspace agents first
+   *
+   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format.
+   * When workspace_path is provided, checks workspace first, then falls back to global.
    */
-  fastify.get<{ Params: { id: string } }>("/api/agents/:id", async (request, reply) => {
+  fastify.get<{
+    Params: { id: string };
+    Querystring: { workspace_path?: string };
+  }>("/api/agents/:id", async (request, reply) => {
     const { id } = request.params;
-    const agent = await agentManager.getAgent(id);
+    const { workspace_path } = request.query;
+    const homeDir = process.env.HOME || "/";
+
+    let agent = null;
+    let source: "global" | "workspace" = "global";
+
+    // 1. Check workspace first (if workspace_path provided)
+    if (workspace_path) {
+      const { join } = await import("node:path");
+      const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
+      agent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
+      if (agent) {
+        source = "workspace";
+      }
+    }
+
+    // 2. Fall back to global agent
+    if (!agent) {
+      agent = await agentManager.getAgent(id);
+      if (agent) {
+        // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
+        source = agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
+          ? "global"
+          : "workspace";
+      }
+    }
+
     if (!agent) {
       reply.code(404);
       return { error: `Agent not found: ${id}` };
     }
-
-    const homeDir = process.env.HOME || "/";
-    // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
-    const source =
-      agent.path && agent.path.startsWith(homeDir) && agent.path.includes("/.viben/agents/")
-        ? "global"
-        : "workspace";
 
     // Return agent with viben: prefix and snake_case fields to match Rust gateway
     return {

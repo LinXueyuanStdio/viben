@@ -555,6 +555,78 @@ export class AgentManager {
   }
 
   // ========================================================================
+  // Directory-based Operations (for workspace agents)
+  // ========================================================================
+
+  /**
+   * List agents from a specific agents directory
+   * Used for listing workspace agents from {workspace}/.viben/agents/
+   *
+   * @param agentsDir - The agents directory path (e.g., /path/to/workspace/.viben/agents/)
+   */
+  async listAgentsFromDir(agentsDir: string): Promise<Agent[]> {
+    if (!fileExists(agentsDir)) {
+      return [];
+    }
+
+    const entries = await readdir(agentsDir, { withFileTypes: true });
+    const agents: Agent[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const agent = await this.getAgentFromDir(agentsDir, entry.name);
+        if (agent) {
+          agents.push(agent);
+        }
+      }
+    }
+
+    return agents;
+  }
+
+  /**
+   * Get an agent from a specific agents directory
+   * Used for getting workspace agents from {workspace}/.viben/agents/
+   *
+   * @param agentsDir - The agents directory path (e.g., /path/to/workspace/.viben/agents/)
+   * @param id - The agent ID (directory name)
+   */
+  async getAgentFromDir(agentsDir: string, id: string): Promise<Agent | null> {
+    const agentDir = join(agentsDir, id);
+    const configPath = join(agentDir, "config.yaml");
+
+    if (!fileExists(configPath)) {
+      return null;
+    }
+
+    const config = await readYaml<AgentConfigFile>(configPath);
+    if (!config) {
+      return null;
+    }
+
+    return {
+      id,
+      name: config.name,
+      path: agentDir,
+      description: config.description,
+      model: config.model,
+      provider: config.provider,
+      systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      executorType: config.executorType as Agent["executorType"],
+      executorConfig: config.executorConfig,
+      mcpServers: config.mcpServers ?? [],
+      skills: config.skills ?? [],
+      planMode: config.planMode ?? false,
+      approvals: config.approvals ?? false,
+      createdAt: config.createdAt,
+      updatedAt: config.updatedAt,
+    };
+  }
+
+  // ========================================================================
   // Helpers
   // ========================================================================
 

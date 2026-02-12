@@ -22,8 +22,16 @@ export const ROUTE_NAMES: Record<string, string> = {
   "GET /api/agents/:id/status": "获取智能体状态",
 
   // 智能体运行
+  "POST /api/agent/run": "执行智能体任务(SSE)",
   "POST /api/agent-run": "执行智能体任务",
   "POST /api/agent-run/stream": "流式执行智能体任务",
+  "POST /api/agent/stop/:sessionId": "停止智能体会话",
+  "POST /api/agent/approve/:planId": "批准执行计划",
+  "POST /api/agent/reject/:planId": "拒绝执行计划",
+  "GET /api/agent/tasks/subscribe": "订阅后台任务(SSE)",
+  "POST /api/agent/tasks/:taskId/stop": "停止后台任务",
+  "GET /api/agent/session/:sessionId": "获取会话信息",
+  "GET /api/agent/plan/:planId": "获取计划信息",
 
   // 会话
   "GET /api/sessions": "获取会话列表",
@@ -139,6 +147,10 @@ export const ROUTE_NAMES: Record<string, string> = {
 export const SPAN_NAMES: Record<string, string> = {
   // 智能体相关
   "agent.run": "执行智能体",
+  "agent.run.session_create": "创建会话",
+  "agent.run.sdk_init": "初始化SDK",
+  "agent.run.stream": "流式输出",
+  "agent.run.stream_message": "处理消息",
   "agent.init": "初始化智能体",
   "agent.stop": "停止智能体",
   "agent.cleanup": "清理智能体资源",

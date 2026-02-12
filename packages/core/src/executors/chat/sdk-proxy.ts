@@ -499,16 +499,19 @@ export class SdkChatProxy implements ChatProxy {
         queryOptions.permissionMode = "bypassPermissions";
       }
 
+      // Reset deduplication state for new streaming session
+      this.sentTextHashes.clear();
+      this.sentToolIds.clear();
+
       // Execute query
       const queryResult = sdk.query({
         prompt,
         options: queryOptions as Parameters<typeof sdk.query>[0]["options"],
       });
 
-      // Stream messages
+      // Stream messages - yield all SSE messages from each SDK message
       for await (const message of queryResult) {
-        const sseMessage = this.convertToSSEMessage(message);
-        if (sseMessage) {
+        for (const sseMessage of this.convertToSSEMessages(message)) {
           yield sseMessage;
         }
       }
@@ -549,85 +552,152 @@ export class SdkChatProxy implements ChatProxy {
     }
   }
 
+  // Track seen text hashes and tool IDs to prevent duplicates (like WorkAny)
+  private sentTextHashes = new Set<string>();
+  private sentToolIds = new Set<string>();
+
   /**
-   * Convert SDK message to SSE message format
+   * Convert SDK message to SSE messages
+   *
+   * Returns an array of SSE messages because one SDK message can contain
+   * multiple content blocks (text + tool_use in same assistant message).
    *
    * Handles various message types from the Claude Agent SDK:
-   * - assistant messages with text content
-   * - tool_use messages
-   * - tool_result messages
+   * - assistant messages with text content and tool_use
+   * - user messages with tool_result
    * - content_block_delta for streaming text
+   * - result messages
    */
-  private convertToSSEMessage(message: unknown): SSEMessage | null {
-    if (!message || typeof message !== "object") return null;
+  private *convertToSSEMessages(message: unknown): Generator<SSEMessage> {
+    if (!message || typeof message !== "object") return;
 
     const msg = message as Record<string, unknown>;
 
-    // Handle assistant text messages
-    if (msg.type === "assistant") {
-      // Handle nested message object structure:
-      // { type: "assistant", message: { content: [...] } }
-      if (msg.message && typeof msg.message === "object") {
-        const innerMsg = msg.message as Record<string, unknown>;
-        if (Array.isArray(innerMsg.content)) {
-          const textParts: string[] = [];
-          for (const block of innerMsg.content) {
-            if (
-              block &&
-              typeof block === "object" &&
-              (block as Record<string, unknown>).type === "text"
-            ) {
-              textParts.push((block as Record<string, unknown>).text as string);
+    // Handle assistant messages with nested message object structure:
+    // { type: "assistant", message: { content: [...] } }
+    // Content can include both text blocks and tool_use blocks
+    if (msg.type === "assistant" && msg.message && typeof msg.message === "object") {
+      const innerMsg = msg.message as Record<string, unknown>;
+      if (Array.isArray(innerMsg.content)) {
+        for (const block of innerMsg.content as Record<string, unknown>[]) {
+          if (!block || typeof block !== "object") continue;
+
+          // Handle text content - with deduplication
+          if ("text" in block && typeof block.text === "string") {
+            const textHash = (block.text as string).slice(0, 100);
+            if (!this.sentTextHashes.has(textHash)) {
+              this.sentTextHashes.add(textHash);
+              yield { type: "text", content: block.text as string };
             }
           }
-          if (textParts.length > 0) {
-            return { type: "text", content: textParts.join("") };
+          // Handle tool_use within assistant message - with deduplication
+          else if ("name" in block && "id" in block) {
+            const toolId = block.id as string;
+            if (!this.sentToolIds.has(toolId)) {
+              this.sentToolIds.add(toolId);
+              yield {
+                type: "tool_use",
+                id: toolId,
+                name: block.name as string,
+                input: block.input,
+              };
+            }
           }
         }
       }
-      // Handle direct string content
-      if (typeof msg.content === "string") {
-        return { type: "text", content: msg.content };
-      }
-      // Handle array content (content blocks)
-      if (Array.isArray(msg.content)) {
-        const textParts: string[] = [];
-        for (const block of msg.content) {
-          if (
-            block &&
-            typeof block === "object" &&
-            (block as Record<string, unknown>).type === "text"
-          ) {
-            textParts.push((block as Record<string, unknown>).text as string);
-          }
-        }
-        if (textParts.length > 0) {
-          return { type: "text", content: textParts.join("") };
-        }
-      }
+      return;
     }
 
-    // Handle tool use
+    // Handle user messages with tool_result
+    // { type: "user", message: { content: [{ type: "tool_result", ... }] } }
+    if (msg.type === "user" && msg.message && typeof msg.message === "object") {
+      const innerMsg = msg.message as Record<string, unknown>;
+      if (Array.isArray(innerMsg.content)) {
+        for (const block of innerMsg.content as Record<string, unknown>[]) {
+          if (!block || typeof block !== "object") continue;
+
+          if (block.type === "tool_result") {
+            const toolUseId = (block.tool_use_id ?? block.toolUseId) as string;
+            const isError = (block.is_error ?? block.isError ?? false) as boolean;
+            yield {
+              type: "tool_result",
+              toolUseId: toolUseId || "",
+              output:
+                typeof block.content === "string"
+                  ? block.content
+                  : JSON.stringify(block.content),
+              isError,
+            };
+          }
+        }
+      }
+      return;
+    }
+
+    // Handle direct assistant messages with string content
+    if (msg.type === "assistant" && typeof msg.content === "string") {
+      const textHash = msg.content.slice(0, 100);
+      if (!this.sentTextHashes.has(textHash)) {
+        this.sentTextHashes.add(textHash);
+        yield { type: "text", content: msg.content };
+      }
+      return;
+    }
+
+    // Handle assistant messages with array content (content blocks)
+    if (msg.type === "assistant" && Array.isArray(msg.content)) {
+      for (const block of msg.content as Record<string, unknown>[]) {
+        if (!block || typeof block !== "object") continue;
+
+        if ("text" in block && typeof block.text === "string") {
+          const textHash = (block.text as string).slice(0, 100);
+          if (!this.sentTextHashes.has(textHash)) {
+            this.sentTextHashes.add(textHash);
+            yield { type: "text", content: block.text as string };
+          }
+        } else if ("name" in block && "id" in block) {
+          const toolId = block.id as string;
+          if (!this.sentToolIds.has(toolId)) {
+            this.sentToolIds.add(toolId);
+            yield {
+              type: "tool_use",
+              id: toolId,
+              name: block.name as string,
+              input: block.input,
+            };
+          }
+        }
+      }
+      return;
+    }
+
+    // Handle top-level tool_use (legacy format)
     if (msg.type === "tool_use") {
-      return {
-        type: "tool_use",
-        id: msg.id as string,
-        name: msg.name as string,
-        input: msg.input,
-      };
+      const toolId = msg.id as string;
+      if (!this.sentToolIds.has(toolId)) {
+        this.sentToolIds.add(toolId);
+        yield {
+          type: "tool_use",
+          id: toolId,
+          name: msg.name as string,
+          input: msg.input,
+        };
+      }
+      return;
     }
 
-    // Handle tool result
+    // Handle top-level tool_result (legacy format)
     if (msg.type === "tool_result") {
-      return {
+      yield {
         type: "tool_result",
-        toolUseId: msg.tool_use_id as string,
+        toolUseId: (msg.tool_use_id ?? msg.toolUseId) as string,
         output:
           typeof msg.content === "string"
             ? msg.content
             : JSON.stringify(msg.content),
-        isError: msg.is_error as boolean | undefined,
+        isError: (msg.is_error ?? msg.isError) as boolean | undefined,
       };
+      return;
     }
 
     // Handle streaming deltas (content_block_delta)
@@ -638,14 +708,35 @@ export class SdkChatProxy implements ChatProxy {
         delta.type === "text_delta" &&
         typeof delta.text === "string"
       ) {
-        return { type: "text", content: delta.text };
+        yield { type: "text", content: delta.text };
       }
+      return;
     }
 
     // Handle text content blocks directly
     if (msg.type === "text" && typeof msg.text === "string") {
-      return { type: "text", content: msg.text };
+      yield { type: "text", content: msg.text };
+      return;
     }
+
+    // Handle result message
+    if (msg.type === "result") {
+      yield {
+        type: "result",
+        subtype: msg.subtype as "success" | "error" | undefined,
+        cost: msg.total_cost_usd as number | undefined,
+        duration: msg.duration_ms as number | undefined,
+      };
+      return;
+    }
+  }
+
+  /**
+   * Convert SDK message to SSE message format (backward compatibility wrapper)
+   */
+  private convertToSSEMessage(message: unknown): SSEMessage | null {
+    const messages = [...this.convertToSSEMessages(message)];
+    return messages.length > 0 ? messages[0] : null;
 
     return null;
   }

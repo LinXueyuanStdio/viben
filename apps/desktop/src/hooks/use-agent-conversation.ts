@@ -1,7 +1,8 @@
 /**
- * useAgent Hook - Real Gateway Integration
+ * useAgentConversation Hook - SSE Conversation State Management
  *
- * Connects to viben-gateway for real AI agent execution.
+ * Manages SSE streaming conversation with AI agents via Gateway.
+ * Handles message state, tool usage, plans, and interactive questions.
  * Falls back to mock implementation when Gateway is unavailable.
  */
 
@@ -14,8 +15,6 @@ import type {
   PendingQuestion,
   Artifact,
   ToolUsage,
-  BaseCodingAgent,
-  ExecutorConfig,
 } from "@/types";
 import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
 
@@ -69,28 +68,43 @@ interface SSEMessageData {
 }
 
 /**
- * Agent hook options
+ * Agent configuration passed to the backend (inline config)
  */
-interface UseAgentOptions {
-  /** Agent ID to use (the actual agent configuration ID) */
-  agentId?: string;
-  /** Agent type to use (default: CLAUDE_CODE) */
-  agentType?: BaseCodingAgent;
-  /** Executor configuration */
-  executorConfig?: ExecutorConfig;
+export interface AgentConfig {
+  name?: string;
+  model?: string;
+  provider?: string;
+  systemPrompt?: string;
+  appendPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  executorType?: string;
+  mcpServers?: string[];
+  skills?: string[];
+  planMode?: boolean;
+  approvals?: boolean;
+}
+
+/**
+ * Agent conversation hook options
+ */
+export interface UseAgentConversationOptions {
+  /** Path to agent config.yaml file (preferred, backend reads from disk) */
+  agentPath?: string;
+  /** Inline agent configuration (fallback if agentPath not provided) */
+  agentConfig?: AgentConfig;
   /** Enable mock mode (for testing) */
   mockMode?: boolean;
 }
 
 /**
- * Agent hook for workspace chat
- * Connects to Gateway for real AI agent execution
+ * Agent conversation hook for workspace chat
+ * Manages SSE streaming conversation with AI agents via Gateway
  */
-export function useAgent(workspaceId: string, options?: UseAgentOptions) {
+export function useAgentConversation(workspaceId: string, options?: UseAgentConversationOptions) {
   const {
-    agentId,
-    agentType = "CLAUDE_CODE",
-    executorConfig,
+    agentPath,
+    agentConfig,
     mockMode = false,
   } = options || {};
 
@@ -165,34 +179,44 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       case "text":
         // Streaming text: append to existing message or create new one
         if (data.content) {
-          setMessages((prev) => {
-            // Check if we have an ongoing streaming message to append to
-            const currentStreamId = streamingMessageIdRef.current;
-            if (currentStreamId) {
-              // Find and update the existing streaming message
+          // Get current streaming ID before setState (for consistency)
+          const currentStreamId = streamingMessageIdRef.current;
+
+          if (currentStreamId) {
+            // Append to existing streaming message
+            setMessages((prev) => {
               const existingIndex = prev.findIndex(
                 (m) => m.id === currentStreamId && m.type === "text"
               );
               if (existingIndex !== -1) {
-                // Append to existing message
+                // Create new array with updated message
                 const updated = [...prev];
                 updated[existingIndex] = {
                   ...updated[existingIndex],
                   content: (updated[existingIndex].content || "") + data.content,
                 };
+                console.log("[useAgent] Updated text message, total messages:", updated.length);
                 return updated;
               }
-            }
+              // Streaming ID exists but message not found (edge case)
+              // Create new message
+              const newId = generateId();
+              streamingMessageIdRef.current = newId;
+              console.log("[useAgent] Created new text message (edge case), total:", prev.length + 1);
+              return [...prev, { id: newId, type: "text", content: data.content }];
+            });
+          } else {
             // Create new streaming message
             const newId = generateId();
             streamingMessageIdRef.current = newId;
-            const textMsg: AgentMessage = {
-              id: newId,
-              type: "text",
-              content: data.content,
-            };
-            return [...prev, textMsg];
-          });
+            setMessages((prev) => {
+              console.log("[useAgent] Created new streaming message, total:", prev.length + 1);
+              return [
+                ...prev,
+                { id: newId, type: "text", content: data.content },
+              ];
+            });
+          }
         }
         break;
 
@@ -325,12 +349,16 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
     async (content: string, _attachments?: MessageAttachment[]) => {
       if (!content.trim()) return;
 
+      console.log("[useAgent] sendMessageReal called with:", content.slice(0, 50));
+
       // Reset streaming state for new message
       streamingMessageIdRef.current = null;
 
       setError(null);
       setPhase("running");
       setIsStreaming(true);
+
+      console.log("[useAgent] State set: phase=running, isStreaming=true");
 
       // Add user message
       const userMessage: AgentMessage = {
@@ -347,20 +375,19 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
 
         console.log("[useAgent] Starting SSE connection to:", url);
 
+        // Build request body
+        // Prefer agentPath (backend reads config from disk), fallback to inline agentConfig
         // workspaceId is actually workspace path, use it as cwd
-        // If empty, let the server use its default (process.cwd())
-        // agentId takes priority - if provided, use it; otherwise fall back to agentType (executor name)
-        // Strip "viben:" prefix from agentId if present (frontend uses viben:agentName format)
-        const cleanAgentId = agentId?.startsWith("viben:") ? agentId.slice(6) : agentId;
         const requestBody: Record<string, unknown> = {
-          agentId: cleanAgentId || agentType,
           prompt: content,
+          agentPath: agentPath || undefined,
+          agentConfig: agentPath ? undefined : (agentConfig || undefined),
         };
         if (workspaceId) {
           requestBody.cwd = workspaceId;
         }
 
-        console.log("[useAgent] Request body:", requestBody, { agentId, cleanAgentId, agentType });
+        console.log("[useAgent] Request body:", requestBody);
 
         const response = await fetch(url, {
           method: "POST",
@@ -414,6 +441,12 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
           }
         }
 
+        // Stream completed successfully
+        console.log("[useAgent] Stream completed successfully");
+        setIsStreaming(false);
+        if (phase === "running") {
+          setPhase("completed");
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[useAgent] Error:", errorMessage);
@@ -430,7 +463,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         setIsStreaming(false);
       }
     },
-    [agentId, agentType, executorConfig, workspaceId, handleSSEMessage]
+    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase]
   );
 
   /**
@@ -789,7 +822,9 @@ The workspace ID for this session is: \`${workspaceId}\`
     // Stop the agent through Gateway if we have a session
     if (sessionId && !mockMode && gatewayConnected) {
       try {
-        await client.stopAgent(agentType, sessionId);
+        // Use executor type from config or default to CLAUDE_CODE
+        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as import("@/types").BaseCodingAgent;
+        await client.stopAgent(executorType, sessionId);
       } catch (err) {
         console.error("[useAgent] Failed to stop agent:", err);
       }
@@ -802,7 +837,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     setPendingQuestions(null);
     setIsStreaming(false);
     setPhase("idle");
-  }, [agentType, client, gatewayConnected, mockMode, sessionId]);
+  }, [agentConfig, client, gatewayConnected, mockMode, sessionId]);
 
   /**
    * Clear all messages

@@ -231,10 +231,12 @@ export interface AppendMessageRequest {
 
 /** SSE event types from agent stream */
 export type SSEEventType =
+  | "session"
   | "text"
   | "tool_use"
   | "tool_result"
   | "plan"
+  | "question"
   | "result"
   | "error"
   | "done";
@@ -243,6 +245,14 @@ export type SSEEventType =
 export interface SSEEvent {
   type: SSEEventType;
   data: unknown;
+}
+
+/** Session created event - first event from agent run */
+export interface SSESessionEvent {
+  type: "session";
+  sessionId: string;
+  /** Trace ID for observability correlation */
+  traceId?: string;
 }
 
 /** Text message event */
@@ -314,11 +324,27 @@ export interface SSEDoneEvent extends SSEEvent {
   };
 }
 
+/** Question event - interactive question from agent */
+export interface SSEQuestionEvent extends SSEEvent {
+  type: "question";
+  data: {
+    id: string;
+    questions: Array<{
+      header: string;
+      question: string;
+      options: Array<{ label: string; description?: string }>;
+      multiSelect: boolean;
+    }>;
+  };
+}
+
 export type SSEMessageEvent =
+  | SSESessionEvent
   | SSETextEvent
   | SSEToolUseEvent
   | SSEToolResultEvent
   | SSEPlanEvent
+  | SSEQuestionEvent
   | SSEResultEvent
   | SSEErrorEvent
   | SSEDoneEvent;
@@ -757,6 +783,44 @@ export class GatewayClient {
     workspacePath: string
   ): Promise<WorkspaceAgentsResponse> {
     return this.getAgents({ workspacePath, includeGlobal: true });
+  }
+
+  /**
+   * Get a single agent by ID
+   *
+   * @param agentId - The agent ID (without "viben:" prefix)
+   * @param workspacePath - Optional workspace path to check workspace agents first
+   *
+   * When workspacePath is provided, checks workspace first, then falls back to global.
+   */
+  async getAgentById(
+    agentId: string,
+    workspacePath?: string
+  ): Promise<VibenAgentResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) {
+      params.set("workspace_path", workspacePath);
+    }
+
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/agents/${agentId}?${queryString}`
+      : `${this.baseUrl}/api/agents/${agentId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get agent: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
   }
 
   /**

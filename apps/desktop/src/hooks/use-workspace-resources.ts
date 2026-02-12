@@ -19,6 +19,7 @@ import {
   type VibenAgentTemplate,
   // Legacy types for backwards compatibility
   type WorkspaceExecutor,
+  GatewayError,
 } from "@/lib/gateway";
 
 // ============================================================================
@@ -546,6 +547,89 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
     refreshTemplates: loadTemplates,
     createTemplate,
     createFromTemplate,
+  };
+}
+
+// ============================================================================
+// Agent Detail Hook (On-demand single agent loading)
+// ============================================================================
+
+export interface UseAgentDetailReturn {
+  /** The agent data */
+  agent: VibenAgentResponse | null;
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Whether the agent was not found (404) */
+  notFound: boolean;
+  /** Refresh the agent data */
+  refresh: () => Promise<void>;
+}
+
+/**
+ * Hook to fetch a single agent's details on-demand
+ *
+ * Used for right sidebar detail panels where we want to load
+ * complete agent info when user clicks, rather than loading
+ * all details upfront.
+ *
+ * @param agentId - The agent ID (with or without "viben:" prefix)
+ * @param workspacePath - Optional workspace path to check workspace agents first
+ */
+export function useAgentDetail(
+  agentId: string | null,
+  workspacePath?: string | null
+): UseAgentDetailReturn {
+  const [agent, setAgent] = useState<VibenAgentResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  const loadAgent = useCallback(async () => {
+    if (!agentId) {
+      setAgent(null);
+      setLoading(false);
+      setError(null);
+      setNotFound(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setNotFound(false);
+
+    try {
+      const client = getGatewayClient();
+      // Strip "viben:" prefix if present
+      const cleanAgentId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
+      const agentData = await client.getAgentById(cleanAgentId, workspacePath || undefined);
+      setAgent(agentData);
+    } catch (err) {
+      if (err instanceof GatewayError && err.statusCode === 404) {
+        setNotFound(true);
+        setAgent(null);
+      } else {
+        const message = err instanceof Error ? err.message : "Failed to load agent";
+        setError(message);
+        console.error("[useAgentDetail] Error:", err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [agentId, workspacePath]);
+
+  // Load on mount and when agentId/workspacePath changes
+  useEffect(() => {
+    loadAgent();
+  }, [loadAgent]);
+
+  return {
+    agent,
+    loading,
+    error,
+    notFound,
+    refresh: loadAgent,
   };
 }
 
