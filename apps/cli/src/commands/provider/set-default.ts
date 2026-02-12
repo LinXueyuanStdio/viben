@@ -1,12 +1,14 @@
 /**
  * viben provider set-default - Set default provider
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { output, successResponse } from '../../lib/output';
-import { setDefaultProvider, getProvider } from '../../lib/providers';
 import { CliError } from '../../types';
+import { output, successResponse } from '../../lib/output';
+import { providerGet, providerSetDefault as nativeSetDefault } from '../../lib/native';
 
 interface SetDefaultOptions {
   name: string;
@@ -15,16 +17,13 @@ interface SetDefaultOptions {
 /**
  * Set default provider
  */
-export function setDefaultProviderCommand(ctx: OutputContext, options: SetDefaultOptions): void {
+export async function setDefaultProviderCommand(ctx: OutputContext, options: SetDefaultOptions): Promise<void> {
   const { name } = options;
 
   // Verify provider exists
-  const provider = getProvider(name);
+  const provider = await providerGet(name);
   if (!provider) {
-    throw new CliError(
-      `Provider "${name}" not found`,
-      'PROVIDER_NOT_FOUND'
-    );
+    throw new CliError(`Provider "${name}" not found`, 'PROVIDER_NOT_FOUND');
   }
 
   // Check if already default
@@ -43,13 +42,13 @@ export function setDefaultProviderCommand(ctx: OutputContext, options: SetDefaul
   }
 
   // Set as default
-  setDefaultProvider(name);
+  await nativeSetDefault(name);
 
   output(
     ctx,
     successResponse({
       name,
-      type: provider.type,
+      type: provider.providerType,
     }),
     () => {
       console.log(chalk.green('OK') + ` Set "${chalk.cyan(name)}" as default provider`);

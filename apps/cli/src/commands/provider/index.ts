@@ -1,5 +1,7 @@
 /**
  * viben provider - Provider management commands
+ *
+ * Uses NAPI bindings to Rust viben-core for consistent behavior with Desktop/Gateway.
  */
 
 import chalk from 'chalk';
@@ -18,6 +20,7 @@ interface ProviderOptions {
   type?: string;
   apiKey?: string;
   baseUrl?: string;
+  setAsDefault?: boolean;
 }
 
 /**
@@ -32,7 +35,7 @@ export function registerProviderCommand(program: Command): void {
   providerCmd
     .command('list')
     .description('List all providers')
-    .action(() => {
+    .action(async () => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -40,7 +43,7 @@ export function registerProviderCommand(program: Command): void {
       };
 
       try {
-        listProvidersCommand(ctx);
+        await listProvidersCommand(ctx);
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
@@ -60,7 +63,8 @@ export function registerProviderCommand(program: Command): void {
     .requiredOption('-t, --type <type>', 'Provider type (openai, anthropic, google, azure, openrouter, ollama, custom)')
     .option('--api-key <key>', 'API key')
     .option('--base-url <url>', 'Base URL')
-    .action((options: ProviderOptions) => {
+    .option('--default', 'Set as default provider')
+    .action(async (options: ProviderOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -71,11 +75,12 @@ export function registerProviderCommand(program: Command): void {
         if (!options.type) {
           throw new CliError('Provider type is required (-t, --type)', 'MISSING_TYPE');
         }
-        createProviderCommand(ctx, {
+        await createProviderCommand(ctx, {
           name: options.name,
           type: options.type,
           apiKey: options.apiKey,
           baseUrl: options.baseUrl,
+          setAsDefault: options.setAsDefault,
         });
       } catch (error) {
         if (error instanceof CliError) {
@@ -93,7 +98,7 @@ export function registerProviderCommand(program: Command): void {
     .command('remove')
     .description('Remove a provider')
     .requiredOption('-n, --name <name>', 'Provider name (required)')
-    .action((options: ProviderOptions) => {
+    .action(async (options: ProviderOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -104,7 +109,7 @@ export function registerProviderCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Provider name is required (-n, --name)', 'MISSING_NAME');
         }
-        removeProviderCommand(ctx, { name: options.name });
+        await removeProviderCommand(ctx, { name: options.name });
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
@@ -121,7 +126,7 @@ export function registerProviderCommand(program: Command): void {
     .command('set-default')
     .description('Set default provider')
     .requiredOption('-n, --name <name>', 'Provider name (required)')
-    .action((options: ProviderOptions) => {
+    .action(async (options: ProviderOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
         verbose: program.opts().verbose || false,
@@ -132,7 +137,7 @@ export function registerProviderCommand(program: Command): void {
         if (!options.name) {
           throw new CliError('Provider name is required (-n, --name)', 'MISSING_NAME');
         }
-        setDefaultProviderCommand(ctx, { name: options.name });
+        await setDefaultProviderCommand(ctx, { name: options.name });
       } catch (error) {
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {

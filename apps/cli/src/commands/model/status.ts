@@ -1,26 +1,36 @@
 /**
  * viben model status - Show model status
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
-import { getDefaultModel, getModelStatus } from '../../lib/models';
+import { modelList, modelGet, modelGetDefault, type Model } from '../../lib/native';
 
 /**
  * Show model status
  */
-export function showModelStatus(ctx: OutputContext, modelId?: string): void {
-  const defaultModel = getDefaultModel();
-  const statuses = getModelStatus(modelId);
+export async function showModelStatus(ctx: OutputContext, modelId?: string): Promise<void> {
+  const defaultModel = await modelGetDefault();
+
+  let models: Model[];
+  if (modelId) {
+    const model = await modelGet(modelId);
+    models = model ? [model] : [];
+  } else {
+    models = await modelList();
+  }
 
   const responseData = {
     default: defaultModel,
-    models: statuses.map((s) => ({
-      id: s.id,
-      provider: s.provider,
-      available: s.available,
-      error: s.error,
+    models: models.map((m: Model) => ({
+      id: m.id,
+      name: m.name,
+      provider: m.provider,
+      enabled: m.enabled,
+      isDefault: m.isDefault,
     })),
   };
 
@@ -38,20 +48,20 @@ export function showModelStatus(ctx: OutputContext, modelId?: string): void {
 
       console.log();
 
-      if (statuses.length === 0) {
+      if (models.length === 0) {
         console.log(chalk.gray('  No models configured.'));
         return;
       }
 
       outputTable(
         ctx,
-        ['Model', 'Provider', 'Status'],
-        statuses.map((status) => [
-          status.id,
-          status.provider || chalk.gray('(unknown)'),
-          status.available
-            ? chalk.green('\u2713 available')
-            : chalk.red(`\u2717 ${status.error || 'unavailable'}`),
+        ['Model', 'Name', 'Provider', 'Enabled', 'Default'],
+        models.map((model: Model) => [
+          model.id,
+          model.name || chalk.gray('(unnamed)'),
+          model.provider || chalk.gray('(unknown)'),
+          model.enabled ? chalk.green('yes') : chalk.gray('no'),
+          model.isDefault ? chalk.green('yes') : chalk.gray('no'),
         ])
       );
     }

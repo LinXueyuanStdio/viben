@@ -1,12 +1,14 @@
 /**
  * viben provider remove - Remove a provider
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { output, successResponse } from '../../lib/output';
-import { removeProvider, getProvider } from '../../lib/providers';
 import { CliError } from '../../types';
+import { output, successResponse } from '../../lib/output';
+import { providerGet, providerRemove as nativeProviderRemove } from '../../lib/native';
 
 interface RemoveOptions {
   name: string;
@@ -15,22 +17,19 @@ interface RemoveOptions {
 /**
  * Remove a provider
  */
-export function removeProviderCommand(ctx: OutputContext, options: RemoveOptions): void {
+export async function removeProviderCommand(ctx: OutputContext, options: RemoveOptions): Promise<void> {
   const { name } = options;
 
   // Get provider info before removing
-  const provider = getProvider(name);
+  const provider = await providerGet(name);
   if (!provider) {
-    throw new CliError(
-      `Provider "${name}" not found`,
-      'PROVIDER_NOT_FOUND'
-    );
+    throw new CliError(`Provider "${name}" not found`, 'PROVIDER_NOT_FOUND');
   }
 
   const wasDefault = provider.isDefault;
 
   // Remove the provider
-  removeProvider(name);
+  await nativeProviderRemove(name);
 
   output(
     ctx,

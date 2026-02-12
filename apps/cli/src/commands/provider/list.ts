@@ -1,27 +1,33 @@
 /**
  * viben provider list - List all providers
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
-import { listProviders } from '../../lib/providers';
+import { providerList, providerGetDefault, type Provider } from '../../lib/native';
 
 /**
  * List all providers
  */
-export function listProvidersCommand(ctx: OutputContext): void {
-  const providers = listProviders();
+export async function listProvidersCommand(ctx: OutputContext): Promise<void> {
+  const providers = await providerList();
+  const defaultId = await providerGetDefault();
 
   output(
     ctx,
     successResponse({
-      providers: providers.map((p) => ({
+      providers: providers.map((p: Provider) => ({
+        id: p.id,
         name: p.name,
-        type: p.type,
+        type: p.providerType,
+        enabled: p.enabled,
         isDefault: p.isDefault,
       })),
       count: providers.length,
+      defaultProvider: defaultId,
     }),
     () => {
       if (providers.length === 0) {
@@ -39,10 +45,12 @@ export function listProvidersCommand(ctx: OutputContext): void {
 
       outputTable(
         ctx,
-        ['Name', 'Type', 'Default'],
-        providers.map((p) => [
-          p.isDefault ? chalk.cyan(p.name + '*') : p.name,
-          p.type,
+        ['ID', 'Name', 'Type', 'Enabled', 'Default'],
+        providers.map((p: Provider) => [
+          p.isDefault ? chalk.cyan(p.id + '*') : p.id,
+          p.name,
+          p.providerType,
+          p.enabled ? chalk.green('yes') : chalk.gray('no'),
           p.isDefault ? chalk.green('yes') : chalk.gray('no'),
         ])
       );

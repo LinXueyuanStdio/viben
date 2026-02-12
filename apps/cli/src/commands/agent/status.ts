@@ -1,77 +1,41 @@
 /**
  * viben agent status - Show agent status
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
-import * as path from 'path';
 import chalk from 'chalk';
-import type { OutputContext, ConfigScope } from '../../types';
+import type { OutputContext } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
-import { getAllAgents, findAgent } from '../../lib/agents';
-import { readConfigFile } from '../../lib/config';
-import { getGlobalConfigDir, getWorkspaceDir, CONFIG_FILE } from '../../lib/scope';
+import { agentList, agentGet, agentGetDefault, type Agent } from '../../lib/native';
 
 interface StatusOptions {
   name?: string;
 }
 
 /**
- * Get the default agent from config
- */
-function getDefaultAgent(): string | null {
-  // Check workspace config first
-  const workspaceDir = getWorkspaceDir();
-  if (workspaceDir) {
-    const workspaceConfig = readConfigFile(path.join(workspaceDir, CONFIG_FILE));
-    if (workspaceConfig?.settings) {
-      const defaultAgent = (workspaceConfig.settings as Record<string, unknown>).default_agent;
-      if (typeof defaultAgent === 'string') {
-        return defaultAgent;
-      }
-    }
-  }
-
-  // Check global config
-  const globalDir = getGlobalConfigDir();
-  const globalConfig = readConfigFile(path.join(globalDir, CONFIG_FILE));
-  if (globalConfig?.settings) {
-    const defaultAgent = (globalConfig.settings as Record<string, unknown>).default_agent;
-    if (typeof defaultAgent === 'string') {
-      return defaultAgent;
-    }
-  }
-
-  // Check environment variable
-  const envAgent = process.env.VIBEN_AGENT;
-  if (envAgent) {
-    return envAgent;
-  }
-
-  return null;
-}
-
-/**
  * Get the current/active agent
  */
-function getCurrentAgent(): string | null {
+async function getCurrentAgent(): Promise<string | null> {
   // First check environment variable
   const envAgent = process.env.VIBEN_AGENT;
   if (envAgent) {
     return envAgent;
   }
 
-  // Then check default agent from config
-  return getDefaultAgent();
+  // Then check default agent from NAPI
+  return await agentGetDefault();
 }
 
 /**
  * Show status for a specific agent
  */
-function showAgentStatus(ctx: OutputContext, agentId: string): void {
-  const result = findAgent(agentId);
-  const currentAgent = getCurrentAgent();
-  const defaultAgent = getDefaultAgent();
+async function showAgentStatus(ctx: OutputContext, agentId: string): Promise<void> {
+  const agent = await agentGet(agentId);
+  const currentAgent = await getCurrentAgent();
+  const defaultAgent = await agentGetDefault();
 
-  if (!result) {
+  if (!agent) {
     output(
       ctx,
       successResponse({
@@ -87,26 +51,24 @@ function showAgentStatus(ctx: OutputContext, agentId: string): void {
     return;
   }
 
-  const { config, path: agentPath, source } = result;
   const isCurrent = currentAgent === agentId;
   const isDefault = defaultAgent === agentId;
 
   output(
     ctx,
     successResponse({
-      id: config.id || agentId,
-      name: config.name,
-      type: config.type,
-      model: config.model,
-      provider: config.provider,
-      source,
-      path: agentPath,
+      id: agent.id,
+      name: agent.name,
+      model: agent.model,
+      provider: agent.provider,
+      executor: agent.executorType,
+      path: agent.path,
       current: isCurrent,
       default: isDefault,
       found: true,
     }),
     () => {
-      console.log(chalk.bold.underline(`Agent: ${config.id || agentId}`));
+      console.log(chalk.bold.underline(`Agent: ${agent.id}`));
       console.log();
 
       const printField = (label: string, value: string | undefined | boolean, defaultVal?: string) => {
@@ -119,16 +81,17 @@ function showAgentStatus(ctx: OutputContext, agentId: string): void {
         console.log(`  ${chalk.cyan(label.padEnd(12))} ${displayValue}`);
       };
 
-      printField('Name', config.name);
-      printField('Type', config.type, '(default)');
-      printField('Model', config.model, '(default)');
-      printField('Provider', config.provider, '(default)');
-      printField('Source', source);
+      printField('Name', agent.name);
+      printField('Model', agent.model, '(default)');
+      printField('Provider', agent.provider, '(default)');
+      printField('Executor', agent.executorType, '(default)');
       console.log();
       printField('Current', isCurrent);
       printField('Default', isDefault);
-      console.log();
-      console.log(chalk.gray('Config file:'), agentPath);
+      if (agent.path) {
+        console.log();
+        console.log(chalk.gray('Agent directory:'), agent.path);
+      }
     }
   );
 }
@@ -136,17 +99,16 @@ function showAgentStatus(ctx: OutputContext, agentId: string): void {
 /**
  * Show status for all agents
  */
-function showAllAgentsStatus(ctx: OutputContext): void {
-  const agents = getAllAgents();
-  const currentAgent = getCurrentAgent();
-  const defaultAgent = getDefaultAgent();
+async function showAllAgentsStatus(ctx: OutputContext): Promise<void> {
+  const agents = await agentList();
+  const currentAgent = await getCurrentAgent();
+  const defaultAgent = await agentGetDefault();
 
-  const agentStatuses = agents.map((agent) => ({
+  const agentStatuses = agents.map((agent: Agent) => ({
     id: agent.id,
     name: agent.name,
-    type: (findAgent(agent.id)?.config?.type) || undefined,
     model: agent.model,
-    source: agent.source,
+    executor: agent.executorType,
     current: currentAgent === agent.id,
     default: defaultAgent === agent.id,
   }));
@@ -187,14 +149,13 @@ function showAllAgentsStatus(ctx: OutputContext): void {
 
       outputTable(
         ctx,
-        ['', 'ID', 'Name', 'Type', 'Model', 'Source'],
+        ['', 'ID', 'Name', 'Model', 'Executor'],
         agentStatuses.map((a) => [
           a.current ? chalk.green('*') : (a.default ? chalk.blue('D') : ' '),
           a.id,
           a.name || chalk.gray('(unnamed)'),
-          a.type || chalk.gray('(default)'),
           a.model || chalk.gray('(default)'),
-          a.source,
+          a.executor || chalk.gray('(default)'),
         ])
       );
 
@@ -207,10 +168,10 @@ function showAllAgentsStatus(ctx: OutputContext): void {
 /**
  * Show agent status (main entry point)
  */
-export function statusAgent(ctx: OutputContext, options: StatusOptions): void {
+export async function statusAgent(ctx: OutputContext, options: StatusOptions): Promise<void> {
   if (options.name) {
-    showAgentStatus(ctx, options.name);
+    await showAgentStatus(ctx, options.name);
   } else {
-    showAllAgentsStatus(ctx);
+    await showAllAgentsStatus(ctx);
   }
 }

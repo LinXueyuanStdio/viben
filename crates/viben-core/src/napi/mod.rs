@@ -39,9 +39,15 @@ mod model;
 mod agent;
 mod config;
 mod init;
+mod channel;
+mod executor;
+mod cron;
 
 pub use provider::*;
 pub use model::*;
 pub use agent::*;
 pub use config::*;
 pub use init::*;
+pub use channel::*;
+pub use executor::*;
+pub use cron::*;

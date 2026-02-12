@@ -1,5 +1,7 @@
 /**
  * viben model - Model management commands
+ *
+ * Uses NAPI bindings to Rust viben-core for consistent behavior with Desktop/Gateway.
  */
 
 import chalk from 'chalk';
@@ -55,10 +57,10 @@ export function registerModelCommand(program: Command): void {
     .command('list')
     .description('List available models')
     .option('--provider <name>', 'Filter by provider name')
-    .action((options: { provider?: string }) => {
+    .action(async (options: { provider?: string }) => {
       const ctx = getOutputContext(program);
       try {
-        listAvailableModels(ctx, options.provider);
+        await listAvailableModels(ctx, options.provider);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -69,10 +71,10 @@ export function registerModelCommand(program: Command): void {
     .command('status')
     .description('Show model status')
     .option('-n, --name <model>', 'Specific model to check')
-    .action((options: { name?: string }) => {
+    .action(async (options: { name?: string }) => {
       const ctx = getOutputContext(program);
       try {
-        showModelStatus(ctx, options.name);
+        await showModelStatus(ctx, options.name);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -83,10 +85,10 @@ export function registerModelCommand(program: Command): void {
     .command('set-default')
     .description('Set the default model')
     .requiredOption('-n, --name <model>', 'Model ID to set as default')
-    .action((options: { name: string }) => {
+    .action(async (options: { name: string }) => {
       const ctx = getOutputContext(program);
       try {
-        setDefault(ctx, options.name);
+        await setDefault(ctx, options.name);
       } catch (error) {
         handleError(ctx, error);
       }

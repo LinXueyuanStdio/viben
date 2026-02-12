@@ -685,7 +685,11 @@ Executor（执行器）是运行 Agent 的底层 coding agent。Viben 通过为�
 # Executor 发现 (Discovery Only)
 # ============================================================
 
-# 列出所有已发现的 executors
+# 列出支持的 executor 类型
+viben executor types
+viben executor types --json
+
+# 列出所有已发现的 executors（含安装状态）
 viben executor list
 viben executor list --json
 
@@ -693,13 +697,69 @@ viben executor list --json
 viben executor show -n <executor-id>
 viben executor show -n CLAUDE_CODE
 viben executor show -n CURSOR --json
+
+# ============================================================
+# Executor Chat (非交互式执行)
+# ============================================================
+
+# 基本用法
+viben executor chat -n CLAUDE_CODE -p "分析这段代码"
+
+# 从 stdin 读取
+echo "写一个排序函数" | viben executor chat -n CLAUDE_CODE
+
+# JSON 流输入输出（用于程序化调用）
+viben executor chat -n CLAUDE_CODE --input-format stream-json --output-format stream-json
+
+# 恢复 session
+viben executor chat -n CLAUDE_CODE -p "继续" --resume <session-id>
 ```
 
-> **Note**: 当前阶段只实现发现功能，不实现安装。安装应由用户手动完成或通过各 executor 官方渠道。
+> **Note**: 发现功能不实现安装，安装应由用户通过各 executor 官方渠道完成。
+> **详细设计**: 参见 [executor-chat.md](./cli/executor-chat.md)
 
 ---
 
-#### 4.4 Executor 检测逻辑
+#### 4.4 输出示例
+
+**`viben executor types` (Human)**:
+```
+TYPE          DESCRIPTION
+------------  -----------------------
+CLAUDE_CODE   Claude Code (Anthropic)
+AMP           Amp
+GEMINI        Gemini CLI (Google)
+CODEX         Codex CLI (OpenAI)
+OPENCODE      Opencode
+CURSOR_AGENT  Cursor Agent
+QWEN_CODE     Qwen Code (Alibaba)
+COPILOT       GitHub Copilot
+DROID         Droid
+```
+
+**`viben executor types --json`**:
+```json
+{
+  "success": true,
+  "data": {
+    "types": [
+      { "id": "CLAUDE_CODE", "name": "Claude Code (Anthropic)" },
+      { "id": "AMP", "name": "Amp" },
+      { "id": "GEMINI", "name": "Gemini CLI (Google)" },
+      { "id": "CODEX", "name": "Codex CLI (OpenAI)" },
+      { "id": "OPENCODE", "name": "Opencode" },
+      { "id": "CURSOR_AGENT", "name": "Cursor Agent" },
+      { "id": "QWEN_CODE", "name": "Qwen Code (Alibaba)" },
+      { "id": "COPILOT", "name": "GitHub Copilot" },
+      { "id": "DROID", "name": "Droid" }
+    ]
+  }
+}
+```
+
+---
+
+#### 4.5 Executor 检测逻辑
 
 ```typescript
 interface ExecutorDetector {
@@ -727,7 +787,7 @@ interface DetectedExecutor {
 
 ---
 
-#### 4.5 输出示例
+#### 4.6 输出示例
 
 **`viben executor list` (Human)**:
 ```
@@ -857,7 +917,7 @@ Capabilities:
 
 ---
 
-#### 4.6 与 Agent 的关系
+#### 4.7 与 Agent 的关系
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -1045,7 +1105,11 @@ Manage chat channels for the gateway.
 # Channel Management
 # ============================================================
 
-# List all channels
+# List supported channel types
+viben channel types
+viben channel types --json
+
+# List configured channels
 viben channel list
 viben channel list --json
 
@@ -1132,15 +1196,67 @@ channels:
 
 #### Output Examples
 
+**`viben channel types` (Human)**:
+```
+TYPE      DESCRIPTION
+--------  -----------------------
+telegram  Telegram Bot API
+discord   Discord Bot API
+feishu    Feishu (Lark) Open Platform
+whatsapp  WhatsApp Web Bridge
+slack     Slack Web API
+webhook   Generic Webhook
+```
+
+**`viben channel types --json`**:
+```json
+{
+  "success": true,
+  "data": {
+    "types": [
+      { "id": "telegram", "name": "Telegram Bot API" },
+      { "id": "discord", "name": "Discord Bot API" },
+      { "id": "feishu", "name": "Feishu (Lark) Open Platform" },
+      { "id": "whatsapp", "name": "WhatsApp Web Bridge" },
+      { "id": "slack", "name": "Slack Web API" },
+      { "id": "webhook", "name": "Generic Webhook" }
+    ]
+  }
+}
+```
+
 **`viben channel list` (Human)**:
 ```
-Channels:
-  my-telegram*   telegram   enabled    @my_bot
-  my-discord     discord    enabled    MyBot#1234
-  my-whatsapp    whatsapp   disabled   -
-  my-feishu      feishu     disabled   -
+ID          NAME         TYPE      ENABLED  DEFAULT
+----------  -----------  --------  -------  -------
+vibenrobot  viben_robot  telegram  yes      *
+my-discord  My Discord   discord   yes
+my-feishu   Feishu Bot   feishu    no
 
-* = default channel
+No channels configured:
+  Use 'viben channel types' to see supported channel types.
+```
+
+**`viben channel list --json`**:
+```json
+{
+  "success": true,
+  "data": {
+    "channels": [
+      {
+        "id": "vibenrobot",
+        "channel_type": "telegram",
+        "name": "viben_robot",
+        "config": { "type": "telegram", "chat_id": "123456789" },
+        "is_default": true,
+        "enabled": true,
+        "notification_mode": "none",
+        "created_at": "2024-01-15T10:30:00Z",
+        "updated_at": "2024-01-15T10:30:00Z"
+      }
+    ]
+  }
+}
 ```
 
 **`viben channel status` (Human)**:
@@ -2317,8 +2433,10 @@ apps/cli/
 - [ ] 环境变量 `VIBEN_STATE_DIR`, `VIBEN_AGENT` 等正确工作
 
 ### Executor Discovery (发现，不安装)
-- [ ] `viben executor list` 列出所有已发现的 executors
-- [ ] `viben executor list --json` 输出 JSON 格式
+- [x] `viben executor types` 列出支持的 executor 类型
+- [x] `viben executor types --json` 输出 JSON 格式
+- [x] `viben executor list` 列出所有已发现的 executors（含安装状态）
+- [x] `viben executor list --json` 输出 JSON 格式
 - [ ] `viben executor show -n <id>` 显示 executor 详情
 - [ ] 支持检测 Claude Code (`claude --version`)
 - [ ] 支持检测 Cursor (`cursor --version`)
@@ -2332,6 +2450,21 @@ apps/cli/
 - [ ] 支持检测 Continue (`continue --version`)
 - [ ] 显示 executor 的配置路径信息
 - [ ] 显示使用该 executor 的 agents 列表
+
+### Executor Chat (非交互式执行)
+- [ ] `viben executor chat -n CLAUDE_CODE -p "prompt"` 基本执行
+- [ ] 支持从 stdin 读取 prompt（无 -p 时）
+- [ ] `--input-format text|stream-json` 输入格式选择
+- [ ] `--output-format text|stream-json` 输出格式选择
+- [ ] `--verbose` 详细输出
+- [ ] `--session-id` 指定 session ID
+- [ ] `--resume` 恢复已有 session
+- [ ] `--model` 指定模型
+- [ ] `--dangerously-skip-permissions` 跳过权限检查
+- [ ] `-C, --cwd` 指定工作目录
+- [ ] IO 透传：子进程 stdin/stdout/stderr 继承父进程
+- [ ] 退出码透传：子进程退出码作为命令退出码
+- [ ] 架构可扩展：支持未来添加其他 executor 的 chat 功能
 
 ### Agent Management
 - [ ] `viben agent list` 列出所有 agents
@@ -2403,7 +2536,10 @@ apps/cli/
 - [ ] Gateway 正确连接已启用的 channels
 
 ### Channel Management
-- [ ] `viben channel list` 列出所有 channels
+- [x] `viben channel types` 列出支持的 channel 类型
+- [x] `viben channel types --json` 输出 JSON 格式
+- [x] `viben channel list` 列出已配置的 channels
+- [x] `viben channel list --json` 输出 JSON 格式
 - [ ] `viben channel create -n <id> --type telegram --token <token>` 创建 Telegram channel
 - [ ] `viben channel create -n <id> --type discord --token <token>` 创建 Discord channel
 - [ ] `viben channel create -n <id> --type feishu --app-id <id> --app-secret <secret>` 创建 Feishu channel
@@ -2415,7 +2551,7 @@ apps/cli/
 - [ ] `viben channel config -n <id> set <key> <value>` 配置 channel
 - [ ] `viben channel login -n <id>` WhatsApp QR 扫码登录
 - [ ] Channels 配置存储在 `~/.viben/channels.yaml`
-- [ ] 支持 channel 类型: telegram, discord, whatsapp, feishu
+- [x] 支持 channel 类型: telegram, discord, whatsapp, feishu, slack, webhook
 
 ### Cron Management
 - [ ] `viben cron list` 列出所有 cron jobs
