@@ -7,6 +7,7 @@ import { readYaml, writeYaml, ensureDir, fileExists } from "./yaml";
 
 export * from "./paths";
 export * from "./yaml";
+export * from "./manager";
 
 /**
  * ConfigManager handles global configuration

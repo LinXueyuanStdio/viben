@@ -410,6 +410,156 @@ export const cronEnable: (id: string) => Promise<CronJob> = native.cronEnable;
 export const cronDisable: (id: string) => Promise<CronJob> = native.cronDisable;
 export const cronRun: (id: string) => Promise<void> = native.cronRun;
 
+// ============================================================
+// Service/Daemon Types
+// ============================================================
+
+/** Service type - string union */
+export type ServiceType = 'Mcp' | 'Viben';
+
+/** Service status - string union */
+export type ServiceStatus = 'Running' | 'Stopped' | 'Error' | 'Unknown';
+
+/** Parsed service name */
+export interface ParsedServiceName {
+  serviceType: string;
+  identifier: string;
+}
+
+/** Service information */
+export interface ServiceInfo {
+  name: string;
+  serviceType: string;
+  status: string;
+  pid?: number;
+  uptime?: string;
+  error?: string;
+  command?: string;
+  args?: string[];
+}
+
+// Service functions
+export const serviceList: () => ServiceInfo[] = native.serviceList;
+export const serviceGetStatus: (name: string) => ServiceInfo = native.serviceGetStatus;
+export const serviceStart: (name: string, command: string, args: string[]) => ServiceInfo = native.serviceStart;
+export const serviceStop: (name: string) => ServiceInfo = native.serviceStop;
+export const serviceRestart: (name: string, command?: string, args?: string[]) => ServiceInfo = native.serviceRestart;
+export const serviceReadLogs: (name: string, lines?: number) => string[] = native.serviceReadLogs;
+export const serviceClearLogs: (name: string) => void = native.serviceClearLogs;
+export const serviceGetLogPath: (name: string) => string = native.serviceGetLogPath;
+export const serviceParseName: (name: string) => ParsedServiceName = native.serviceParseName;
+
+// ============================================================
+// Skill Types
+// ============================================================
+
+/** Installed skill information */
+export interface NativeSkill {
+  id: string;
+  version: string;
+  installedAt: string;
+  description?: string;
+}
+
+/** Available skill from marketplace */
+export interface NativeAvailableSkill {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+}
+
+/** Parsed skill name */
+export interface ParsedSkillName {
+  name: string;
+  version?: string;
+}
+
+// Skill functions
+export const skillList: () => NativeSkill[] = native.skillList;
+export const skillGet: (id: string) => NativeSkill | null = native.skillGet;
+export const skillIsInstalled: (id: string) => boolean = native.skillIsInstalled;
+export const skillInstall: (name: string, version?: string) => NativeSkill = native.skillInstall;
+export const skillUninstall: (name: string) => boolean = native.skillUninstall;
+export const skillValidateId: (id: string) => void = native.skillValidateId;
+export const skillParseName: (nameWithVersion: string) => ParsedSkillName = native.skillParseName;
+export const skillGetAvailable: () => NativeAvailableSkill[] = native.skillGetAvailable;
+export const skillGetDir: () => string = native.skillGetDir;
+
+// ============================================================
+// Workspace Types
+// ============================================================
+
+/** MCP configuration for workspace */
+export interface NativeMcpConfig {
+  enabled: string[];
+  disabled?: string[];
+}
+
+/** Skills configuration for workspace */
+export interface NativeWorkspaceSkillsConfig {
+  enabled: string[];
+  disabled?: string[];
+}
+
+/** Workspace information */
+export interface NativeWorkspaceInfo {
+  path: string;
+  name: string;
+  configPath: string;
+  mcp?: NativeMcpConfig;
+  skills?: NativeWorkspaceSkillsConfig;
+  agents?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Workspace functions
+export const workspaceList: () => NativeWorkspaceInfo[] = native.workspaceList;
+export const workspaceGetCurrent: () => NativeWorkspaceInfo | null = native.workspaceGetCurrent;
+export const workspaceGetCurrentPath: () => string | null = native.workspaceGetCurrentPath;
+export const workspaceIsInWorkspace: () => boolean = native.workspaceIsInWorkspace;
+export const workspaceGetInfo: (path: string) => NativeWorkspaceInfo | null = native.workspaceGetInfo;
+export const workspaceAddKnown: (path: string, name?: string) => void = native.workspaceAddKnown;
+export const workspaceRemoveKnown: (path: string) => void = native.workspaceRemoveKnown;
+export const workspaceFindRoot: (startPath: string) => string | null = native.workspaceFindRoot;
+
+// ============================================================
+// Workspace Init Types
+// ============================================================
+
+/** Options for initializing a workspace */
+export interface InitWorkspaceOptions {
+  targetDir?: string;
+  template?: string;
+  force?: boolean;
+}
+
+/** Result of workspace initialization */
+export interface InitWorkspaceResult {
+  success: boolean;
+  path: string;
+  files: string[];
+}
+
+// Workspace init function
+export const workspaceInit: (options?: InitWorkspaceOptions) => InitWorkspaceResult = native.workspaceInit;
+
+// ============================================================
+// Channel Types (Additional)
+// ============================================================
+
+/** Channel type information */
+export interface ChannelTypeInfo {
+  id: string;
+  name: string;
+  description: string;
+  setupDifficulty: string;
+}
+
+// Channel type list function
+export const channelListTypes: () => ChannelTypeInfo[] = native.channelListTypes;
+
 /**
  * Check if native bindings are available
  */

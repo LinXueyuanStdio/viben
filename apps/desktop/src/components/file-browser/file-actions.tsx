@@ -53,17 +53,18 @@ export interface ViewModeToggleProps {
 }
 
 export function ViewModeToggle({ viewMode, onViewModeChange, className }: ViewModeToggleProps) {
-  const modes: { mode: ViewMode; icon: React.ReactNode; label: string }[] = [
-    { mode: "list", icon: <List className="h-4 w-4" />, label: "List" },
-    { mode: "icon", icon: <LayoutGrid className="h-4 w-4" />, label: "Icon" },
-    { mode: "column", icon: <Columns3 className="h-4 w-4" />, label: "Column" },
-    { mode: "gallery", icon: <Image className="h-4 w-4" />, label: "Gallery" },
+  const { t } = useTranslation();
+  const modes: { mode: ViewMode; icon: React.ReactNode; labelKey: string }[] = [
+    { mode: "list", icon: <List className="h-4 w-4" />, labelKey: "fileBrowser.viewModes.list" },
+    { mode: "icon", icon: <LayoutGrid className="h-4 w-4" />, labelKey: "fileBrowser.viewModes.icon" },
+    { mode: "column", icon: <Columns3 className="h-4 w-4" />, labelKey: "fileBrowser.viewModes.column" },
+    { mode: "gallery", icon: <Image className="h-4 w-4" />, labelKey: "fileBrowser.viewModes.gallery" },
   ];
 
   return (
     <TooltipProvider>
       <div className={cn("flex items-center gap-0.5 bg-muted rounded-lg p-0.5", className)}>
-        {modes.map(({ mode, icon, label }) => (
+        {modes.map(({ mode, icon, labelKey }) => (
           <Tooltip key={mode}>
             <TooltipTrigger asChild>
               <Button
@@ -78,7 +79,7 @@ export function ViewModeToggle({ viewMode, onViewModeChange, className }: ViewMo
                 {icon}
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{label}</TooltipContent>
+            <TooltipContent>{t(labelKey)}</TooltipContent>
           </Tooltip>
         ))}
       </div>
@@ -336,6 +337,7 @@ export interface FileActionButtonsProps {
 }
 
 export function FileActionButtons({ onNewFile, onNewFolder, className }: FileActionButtonsProps) {
+  const { t } = useTranslation();
   return (
     <TooltipProvider>
       <div className={cn("flex items-center gap-1", className)}>
@@ -345,7 +347,7 @@ export function FileActionButtons({ onNewFile, onNewFolder, className }: FileAct
               <FilePlus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>New File (Cmd+N)</TooltipContent>
+          <TooltipContent>{t("fileBrowser.newFile")} (Cmd+N)</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -353,7 +355,7 @@ export function FileActionButtons({ onNewFile, onNewFolder, className }: FileAct
               <FolderPlus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>New Folder (Cmd+Shift+N)</TooltipContent>
+          <TooltipContent>{t("fileBrowser.newFolder")} (Cmd+Shift+N)</TooltipContent>
         </Tooltip>
       </div>
     </TooltipProvider>

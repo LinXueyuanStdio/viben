@@ -105,6 +105,20 @@ export class Copilot implements StandardCodingAgentExecutor {
   capabilities(): AgentCapability[] {
     return [];
   }
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat(): boolean {
+    return false;
+  }
+
+  /**
+   * Get the CLI command name used for chat
+   */
+  getChatCommand(): string | null {
+    return null;
+  }
 }
 
 export function createCopilot(config?: CopilotConfig): Copilot {

@@ -42,6 +42,9 @@ mod init;
 mod channel;
 mod executor;
 mod cron;
+mod service;
+mod skill;
+mod workspace;
 
 pub use provider::*;
 pub use model::*;
@@ -51,3 +54,6 @@ pub use init::*;
 pub use channel::*;
 pub use executor::*;
 pub use cron::*;
+pub use service::*;
+pub use skill::*;
+pub use workspace::*;

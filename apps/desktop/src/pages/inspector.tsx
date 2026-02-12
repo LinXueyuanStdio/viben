@@ -91,7 +91,7 @@ export function InspectorPage() {
       const config = parseMcpConfig(configJson);
       const validation = validateMcpConfig(config);
       if (!validation.valid) {
-        setParseError(validation.error || "Invalid configuration");
+        setParseError(validation.error || t("inspector.invalidConfiguration"));
         return null;
       }
       setParseError(null);
@@ -654,7 +654,7 @@ export function InspectorPage() {
             zIndex: 10,
             background: isDragging ? "rgba(0,0,0,0.08)" : "transparent",
           }}
-          aria-label="Resize sidebar"
+          aria-label={t("common.resizeSidebar")}
         />
       </div>
 

@@ -1698,12 +1698,13 @@ interface ErrorStateProps {
 }
 
 function ErrorState({ error, onRetry }: ErrorStateProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-      <p className="text-destructive mb-2">Error loading directory</p>
+      <p className="text-destructive mb-2">{t("fileBrowser.errorLoadingDirectory")}</p>
       <p className="text-sm mb-4">{error}</p>
       <Button variant="outline" size="sm" onClick={onRetry}>
-        Retry
+        {t("common.retry")}
       </Button>
     </div>
   );

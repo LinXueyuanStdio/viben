@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Folder, Globe, Copy, Check, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ export function WorkspaceBreadcrumb({
   segments = [],
   className,
 }: WorkspaceBreadcrumbProps) {
+  const { t } = useTranslation();
   const [pathCopied, setPathCopied] = useState(false);
 
   const isGlobal = workspace.type === "global";
@@ -59,7 +61,7 @@ export function WorkspaceBreadcrumb({
 
   return (
     <nav
-      aria-label="Breadcrumb"
+      aria-label={t("common.breadcrumb")}
       className={cn("flex items-center gap-1 whitespace-nowrap", className)}
     >
       {/* Root: Workspace name with icon */}

@@ -122,7 +122,7 @@ export function ImagePreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground text-sm">
-            File too large to preview ({formatFileSize(fileTooLarge)})
+            {t("artifacts.fileTooLarge", "File too large to preview")} ({formatFileSize(fileTooLarge)})
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ export function ImagePreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground text-sm break-all whitespace-pre-wrap">
-            {error || "No image file path available"}
+            {error || t("artifacts.failedToLoadImage", "Failed to load image")}
           </p>
         </div>
       </div>

@@ -87,8 +87,8 @@ describe('viben init', () => {
     const parsed = JSON.parse(output);
 
     expect(parsed.success).toBe(true);
-    expect(parsed.data.workspaceDir).toContain('.viben');
-    expect(parsed.data.config.version).toBe(1);
+    expect(parsed.data.path).toContain('.viben');
+    expect(parsed.data.files).toContain('config.yaml');
   });
 
   it('should fail if workspace already exists', async () => {

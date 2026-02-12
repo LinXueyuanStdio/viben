@@ -14,6 +14,8 @@ import type {
   StandardCodingAgentExecutor,
   AgentCapability,
   AvailabilityInfo,
+  ChatOptions,
+  ChatSpawnResult,
 } from "../types";
 import { ExecutorError } from "../../error";
 import { which } from "../utils";
@@ -89,6 +91,105 @@ export class ClaudeCode implements StandardCodingAgentExecutor {
 
   capabilities(): AgentCapability[] {
     return ["SESSION_FORK", "CONTEXT_USAGE"];
+  }
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat(): boolean {
+    return true;
+  }
+
+  /**
+   * Get the CLI command name used for chat
+   */
+  getChatCommand(): string {
+    return "claude";
+  }
+
+  /**
+   * Spawn a non-interactive chat process with transparent I/O streaming.
+   * Uses stdio inherit for direct pass-through experience.
+   */
+  async spawnChat(options: ChatOptions): Promise<ChatSpawnResult> {
+    const {
+      prompt,
+      cwd = process.cwd(),
+      inputFormat = "text",
+      outputFormat = "text",
+      verbose = false,
+      sessionId,
+      resume,
+      model,
+      dangerouslySkipPermissions = false,
+      env: extraEnv = {},
+    } = options;
+
+    // Resolve claude command path
+    const programPath = await which("claude");
+    if (!programPath) {
+      throw ExecutorError.executableNotFound("claude");
+    }
+
+    // Build command arguments
+    const args: string[] = ["-p"];
+
+    // For text input format, prompt is passed as argument
+    // For stream-json, prompt is sent via stdin
+    if (inputFormat === "text" && prompt) {
+      args.push(prompt);
+    }
+
+    // Format arguments
+    if (inputFormat !== "text") {
+      args.push("--input-format", inputFormat);
+    }
+    if (outputFormat !== "text") {
+      args.push("--output-format", outputFormat);
+    }
+
+    // Optional arguments
+    if (verbose) {
+      args.push("--verbose");
+    }
+    if (sessionId) {
+      args.push("--session-id", sessionId);
+    }
+    if (resume) {
+      args.push("--resume", resume);
+    }
+    if (model || this.config.model) {
+      args.push("--model", model || this.config.model!);
+    }
+    if (dangerouslySkipPermissions || this.config.dangerouslySkipPermissions) {
+      args.push("--dangerously-skip-permissions");
+    }
+
+    // Merge environment variables
+    const spawnEnv = {
+      ...process.env,
+      ...this.config.env,
+      ...extraEnv,
+    };
+
+    // Spawn with inherited stdio for transparent pass-through
+    const child = spawn(programPath, args, {
+      cwd,
+      env: spawnEnv,
+      stdio: "inherit",
+    });
+
+    // Create exit promise
+    const exitPromise = new Promise<number>((resolve, reject) => {
+      child.on("exit", (code) => {
+        resolve(code ?? 1);
+      });
+      child.on("error", (err) => {
+        reject(err);
+      });
+    });
+
+    return { child, exitPromise };
   }
 
   private buildCommandParts() {

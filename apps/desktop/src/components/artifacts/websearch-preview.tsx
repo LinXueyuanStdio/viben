@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ChevronDown, ChevronUp, ExternalLink, Globe } from "lucide-react";
 
@@ -247,6 +248,7 @@ function SearchGroupCard({
   group: SearchGroup;
   defaultExpanded?: boolean;
 }) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = React.useState(defaultExpanded);
 
   return (
@@ -258,11 +260,11 @@ function SearchGroupCard({
         <Globe className="text-muted-foreground size-5 shrink-0" />
         <div className="min-w-0 flex-1 text-left">
           <div className="text-foreground truncate text-sm font-medium">
-            {group.query || "Search Results"}
+            {group.query || t("artifacts.searchResults", "Search Results")}
           </div>
         </div>
         <span className="text-muted-foreground shrink-0 text-xs">
-          {group.results.length} results
+          {group.results.length} {t("artifacts.results", "results")}
         </span>
         {isExpanded ? (
           <ChevronUp className="text-muted-foreground size-4 shrink-0" />
@@ -283,6 +285,7 @@ function SearchGroupCard({
 }
 
 export function WebSearchPreview({ artifact }: { artifact: Artifact }) {
+  const { t } = useTranslation();
   const content = artifact.content || "";
   const groups = parseSearchResults(content);
 
@@ -290,11 +293,11 @@ export function WebSearchPreview({ artifact }: { artifact: Artifact }) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
         <Globe className="text-muted-foreground/50 mb-4 size-12" />
-        <p className="text-muted-foreground text-sm">No search results</p>
+        <p className="text-muted-foreground text-sm">{t("artifacts.noSearchResults", "No search results")}</p>
         {content && (
           <details className="mt-4 max-w-md">
             <summary className="text-muted-foreground cursor-pointer text-xs">
-              Show raw content
+              {t("artifacts.showRawContent", "Show raw content")}
             </summary>
             <pre className="bg-muted mt-2 max-h-40 overflow-auto rounded p-2 text-xs whitespace-pre-wrap">
               {content.slice(0, 500)}...
@@ -311,8 +314,8 @@ export function WebSearchPreview({ artifact }: { artifact: Artifact }) {
     <div className="h-full overflow-auto">
       <div className="p-4">
         <div className="text-muted-foreground mb-4 text-xs tracking-wide uppercase">
-          {groups.length} {groups.length === 1 ? "search" : "searches"} ·{" "}
-          {totalResults} results
+          {groups.length} {groups.length === 1 ? t("artifacts.search", "search") : t("artifacts.searches", "searches")} ·{" "}
+          {totalResults} {t("artifacts.results", "results")}
         </div>
         <div className="space-y-4">
           {groups.map((group, index) => (

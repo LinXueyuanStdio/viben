@@ -203,6 +203,7 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
               className="h-8 w-8 p-0 text-base flex-shrink-0"
               onClick={() => setSelectedCategory(key)}
               title={t(category.labelKey)}
+            >
               {firstEmoji}
             </Button>
           );

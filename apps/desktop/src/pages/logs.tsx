@@ -178,7 +178,7 @@ export function LogsPage() {
 
       const filePath = await save({
         defaultPath: defaultName,
-        filters: [{ name: "Log Files", extensions: ["log", "txt"] }],
+        filters: [{ name: t("logs.logFiles"), extensions: ["log", "txt"] }],
       });
       if (filePath) {
         await exportServerLogs(filePath);
@@ -693,7 +693,7 @@ function UnifiedSessionItem({ session, selected, onClick, isAlive }: UnifiedSess
         {/* Log type indicators */}
         <div className="flex-1" />
         {hasServerLog && (
-          <span title="Server logs">
+          <span title={t("common.serverLogs")}>
             <Terminal className="h-3 w-3 text-blue-500" />
           </span>
         )}

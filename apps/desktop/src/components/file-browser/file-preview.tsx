@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "react-i18next";
 import type { FileEntry, FileInfo } from "@/types";
 
 /* -----------------------------------------------------------------------------
@@ -145,13 +146,14 @@ function getPreviewIcon(previewType: PreviewType) {
  * -------------------------------------------------------------------------- */
 
 function ImagePreview({ src, alt }: { src: string; alt: string }) {
+  const { t } = useTranslation();
   const [error, setError] = React.useState(false);
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <ImageIcon className="size-12 mb-3 opacity-50" />
-        <p className="text-sm">Failed to load image</p>
+        <p className="text-sm">{t("fileBrowser.failedToLoadImage")}</p>
       </div>
     );
   }
@@ -197,14 +199,15 @@ function CodePreview({ content, language }: { content: string; language: string 
 }
 
 function UnknownPreview({ fileInfo }: { fileInfo: FileInfo | null }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
       <File className="size-16 mb-4 opacity-40" />
-      <p className="text-sm mb-1">Preview not available</p>
+      <p className="text-sm mb-1">{t("fileBrowser.previewNotAvailable")}</p>
       <p className="text-xs opacity-70">
         {fileInfo?.extension
-          ? `${fileInfo.extension.toUpperCase()} files cannot be previewed`
-          : "This file type cannot be previewed"}
+          ? t("fileBrowser.unknownFileType")
+          : t("fileBrowser.unknownFileType")}
       </p>
     </div>
   );
@@ -223,10 +226,11 @@ function LoadingPreview() {
 }
 
 function ErrorPreview({ error }: { error: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center py-16 text-destructive">
       <File className="size-12 mb-3 opacity-50" />
-      <p className="text-sm font-medium">Error loading file</p>
+      <p className="text-sm font-medium">{t("fileBrowser.errorLoadingFile")}</p>
       <p className="text-xs mt-1 opacity-70 max-w-xs text-center">{error}</p>
     </div>
   );
@@ -237,6 +241,7 @@ function ErrorPreview({ error }: { error: string }) {
  * -------------------------------------------------------------------------- */
 
 function FileMetadataPanel({ fileInfo }: { fileInfo: FileInfo | null }) {
+  const { t } = useTranslation();
   if (!fileInfo) {
     return (
       <div className="border-t border-border bg-accent/20 px-4 py-3 space-y-2">
@@ -259,13 +264,13 @@ function FileMetadataPanel({ fileInfo }: { fileInfo: FileInfo | null }) {
         {fileInfo.modified && (
           <div className="flex items-center gap-1.5">
             <Clock className="size-3.5" />
-            <span>Modified: {formatDate(fileInfo.modified)}</span>
+            <span>{t("fileBrowser.modified")}: {formatDate(fileInfo.modified)}</span>
           </div>
         )}
         {fileInfo.created && (
           <div className="flex items-center gap-1.5">
             <Calendar className="size-3.5" />
-            <span>Created: {formatDate(fileInfo.created)}</span>
+            <span>{t("fileBrowser.created")}: {formatDate(fileInfo.created)}</span>
           </div>
         )}
       </div>
@@ -284,6 +289,7 @@ export function FilePreview({
   readFileContent,
   getFileInfo,
 }: FilePreviewProps) {
+  const { t } = useTranslation();
   const [state, setState] = React.useState<FilePreviewState>({
     content: null,
     fileInfo: null,
@@ -467,7 +473,7 @@ export function FilePreview({
               "hover:bg-accent transition-colors",
               "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             )}
-            aria-label="Close preview"
+            aria-label={t("common.closePreview")}
           >
             <X className="size-4" />
           </button>
@@ -484,8 +490,7 @@ export function FilePreview({
         {/* Keyboard hint */}
         <div className="px-4 py-2 border-t border-border bg-accent/5 text-center">
           <span className="text-xs text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-accent font-mono text-[10px]">Space</kbd> or{" "}
-            <kbd className="px-1.5 py-0.5 rounded bg-accent font-mono text-[10px]">Esc</kbd> to close
+            {t("fileBrowser.closePreviewHint")}
           </span>
         </div>
       </div>

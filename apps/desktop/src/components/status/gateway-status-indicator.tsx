@@ -87,13 +87,13 @@ export function GatewayStatusIndicator({
   const displayText = React.useMemo(() => {
     switch (status) {
       case "connected":
-        return t("gateway.connected", "网关已连接");
+        return t("gateway.connected");
       case "connecting":
-        return t("gateway.connecting", "正在连接...");
+        return t("gateway.connecting");
       case "disconnected":
-        return t("gateway.disconnected", "网关未连接");
+        return t("gateway.disconnected");
       case "error":
-        return t("gateway.error", "连接错误");
+        return t("gateway.error");
       default:
         return "";
     }
@@ -103,16 +103,13 @@ export function GatewayStatusIndicator({
   const tooltipContent = React.useMemo(() => {
     switch (status) {
       case "connected":
-        return t("gateway.connectedTooltip", "网关服务运行正常");
+        return t("gateway.connectedTooltip");
       case "connecting":
-        return t("gateway.connectingTooltip", "正在检查网关连接状态...");
+        return t("gateway.connectingTooltip");
       case "disconnected":
-        return t(
-          "gateway.disconnectedTooltip",
-          "网关服务未启动，点击重试或配置"
-        );
+        return t("gateway.disconnectedTooltip");
       case "error":
-        return error || t("gateway.errorTooltip", "连接网关时出错");
+        return error || t("gateway.errorTooltip");
       default:
         return "";
     }

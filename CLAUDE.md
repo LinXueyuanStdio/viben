@@ -2,6 +2,11 @@
 
 生成 spec 时使用中文
 
+## Core Architecture
+
+- **packages/core 是所有前端应用 (apps/*) 使用底层能力的唯一边界**，需完整实现所有功能，CLI 作为 MVP 验证入口，命令为 `viben`。
+- **Provider/Model 等配置使用 file-native 范式 (YAML)**，不使用数据库，配置存储在 `~/.viben/` 目录。
+
 ## Build Requirements
 
 **IMPORTANT**: When making changes to the codebase, ensure all packages compile successfully:

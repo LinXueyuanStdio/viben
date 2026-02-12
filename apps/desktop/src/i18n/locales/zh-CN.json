@@ -18,6 +18,15 @@
     "configure": "配置",
     "apply": "应用",
     "close": "关闭",
+    "clearSearch": "清除搜索",
+    "builtIn": "内置",
+    "calls": "{{count}} 次调用",
+    "closePreview": "关闭预览",
+    "resizeSidebar": "调整侧边栏大小",
+    "resizePanels": "调整面板大小",
+    "breadcrumb": "面包屑导航",
+    "kanbanBoard": "看板",
+    "serverLogs": "服务器日志",
     "yes": "是",
     "no": "否",
     "confirm": "确认",
@@ -74,7 +83,9 @@
     "comingSoon": "即将推出",
     "retry": "重试",
     "forward": "前进",
-    "developer": "开发者"
+    "developer": "开发者",
+    "loadingWorkspace": "正在加载工作空间...",
+    "submit": "提交"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -118,13 +129,21 @@
   },
   "gateway": {
     "url": "网关地址",
+    "urlPlaceholder": "http://localhost:18790",
     "workdir": "工作目录",
+    "workdirPlaceholder": "/tmp/viben-debug",
     "connected": "已连接",
     "disconnected": "未连接",
     "connectionFailed": "无法连接到网关",
     "connectFirst": "请先连接网关...",
     "debugChat": "调试对话",
-    "agentSpawned": "智能体 {{agentType}} 已启动，会话 ID: {{sessionId}}。实时流式响应将在网关支持 SSE 后可用。"
+    "agentSpawned": "智能体 {{agentType}} 已启动，会话 ID: {{sessionId}}。实时流式响应将在网关支持 SSE 后可用。",
+    "connecting": "正在连接...",
+    "error": "连接错误",
+    "connectedTooltip": "网关服务运行正常",
+    "connectingTooltip": "正在检查网关连接状态...",
+    "disconnectedTooltip": "网关服务未启动，点击重试或配置",
+    "errorTooltip": "连接网关时出错"
   },
   "channels": {
     "addChannel": "添加渠道",
@@ -150,6 +169,7 @@
       "description": "通过 Telegram Bot 接收消息",
       "token": "Bot Token",
       "tokenDescription": "从 @BotFather 获取",
+      "tokenPlaceholder": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ",
       "proxy": "代理 (可选)",
       "proxyDescription": "支持 HTTP/SOCKS5 代理",
       "allowFrom": "允许的用户 (可选)",
@@ -157,18 +177,21 @@
       "chatId": "Chat ID",
       "chatIdDescription": "消息发送的目标聊天 ID，可从 @userinfobot 获取",
       "chatIdPlaceholder": "输入 Chat ID（如 123456789 或 @频道用户名）",
-      "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID"
+      "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID",
+      "instancePlaceholder": "我的 Telegram 机器人"
     },
     "discord": {
       "name": "Discord",
       "description": "通过 Discord Bot 接收消息",
       "token": "Bot Token",
       "tokenDescription": "从 Discord Developer Portal 获取",
+      "tokenPlaceholder": "MTIzNDU2Nzg5...",
       "allowFrom": "允许的用户 (可选)",
       "allowFromDescription": "留空允许所有用户",
       "channelId": "频道 ID",
       "channelIdPlaceholder": "输入频道 ID（如 1234567890123456789）",
-      "channelIdHint": "右键点击频道 > 复制频道 ID（需开启开发者模式）"
+      "channelIdHint": "右键点击频道 > 复制频道 ID（需开启开发者模式）",
+      "instancePlaceholder": "我的 Discord 机器人"
     },
     "feishu": {
       "name": "飞书",
@@ -183,7 +206,8 @@
       "allowFromDescription": "用户 open_id，留空允许所有用户",
       "chatId": "接收者 ID",
       "chatIdPlaceholder": "输入 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱",
-      "chatIdHint": "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱地址"
+      "chatIdHint": "可以使用 Open ID (ou_xxx)、Chat ID (oc_xxx) 或邮箱地址",
+      "instancePlaceholder": "我的飞书机器人"
     },
     "whatsapp": {
       "name": "WhatsApp",
@@ -192,7 +216,8 @@
       "bridgeDescription": "WhatsApp Web Bridge WebSocket 地址",
       "allowFrom": "允许的手机号 (可选)",
       "allowFromDescription": "留空允许所有用户",
-      "testNote": "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。"
+      "testNote": "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。",
+      "instancePlaceholder": "我的 WhatsApp 桥接"
     },
     "agentBinding": "绑定智能体/执行器",
     "agentBindingDescription": "接收到消息时自动路由给指定的智能体或执行器",
@@ -381,7 +406,11 @@
     "setupRequired": "需要设置",
     "showBanner": "显示提示",
     "updates": "更新",
-    "developer": "开发者"
+    "developer": "开发者",
+    "python310": "Python 3.10+",
+    "detected": "已检测",
+    "notFound": "未找到",
+    "browseMcpPackage": "browse-mcp 包"
   },
   "settingsProviders": {
     "title": "API 提供商",
@@ -425,6 +454,17 @@
     "summary": "执行器状态",
     "summaryText": "{{installed}}/{{total}} 个执行器可用",
     "installHint": "安装命令:",
+    "executorNames": {
+      "CLAUDE_CODE": "Claude Code",
+      "AMP": "Amp",
+      "GEMINI": "Gemini CLI",
+      "CODEX": "Codex CLI",
+      "OPENCODE": "OpenCode",
+      "CURSOR_AGENT": "Cursor Agent",
+      "QWEN_CODE": "通义灵码",
+      "COPILOT": "GitHub Copilot CLI",
+      "DROID": "Droid"
+    },
     "executors": {
       "CLAUDE_CODE": "Anthropic 官方 Claude CLI - 强大的编程智能体",
       "AMP": "Sourcegraph 的 AI 代码导航和编辑工具",
@@ -827,7 +867,8 @@
     "openFolder": "打开文件夹",
     "noServerLogs": "此会话没有服务器日志",
     "noServerLogsDesc": "此会话仅有 API 日志",
-    "noApiLogsForSession": "此会话没有 API 日志"
+    "noApiLogsForSession": "此会话没有 API 日志",
+    "logFiles": "日志文件"
   },
   "searchService": {
     "title": "搜索服务",
@@ -900,11 +941,15 @@
     "profile": "个人资料",
     "settings": "设置",
     "signInRequired": "需要登录",
-    "signInRequiredDescription": "请登录以访问此功能。您的数据将在设备间同步。"
+    "signInRequiredDescription": "请登录以访问此功能。您的数据将在设备间同步。",
+    "oauthCodeRequired": "请输入 OAuth 授权码",
+    "devModeOAuthHint": "开发模式：从 URL 中粘贴 OAuth 授权码",
+    "oauthCodePlaceholder": "粘贴来自 viben://oauth?code=... 的授权码"
   },
   "inspector": {
     "title": "MCP 检查器",
     "subtitle": "实时检查和交互 MCP 服务器",
+    "invalidConfiguration": "无效配置",
     "transportType": "传输类型",
     "selectTransport": "选择传输类型",
     "command": "命令",
@@ -1229,7 +1274,11 @@
     "syncingTooltip": "正在同步数据",
     "tryReconnect": "尝试重新连接",
     "usingCachedData": "使用缓存数据",
-    "cannotRefreshOffline": "无法刷新缓存：当前处于离线状态"
+    "cannotRefreshOffline": "无法刷新缓存：当前处于离线状态",
+    "cacheSize50": "50 MB",
+    "cacheSize100": "100 MB",
+    "cacheSize200": "200 MB",
+    "cacheSize500": "500 MB"
   },
   "skillsMarket": {
     "title": "技能市场",
@@ -1533,7 +1582,8 @@
       "navigate": "导航",
       "open": "打开任务",
       "close": "关闭面板",
-      "command": "命令"
+      "command": "命令",
+      "cmdK": "Cmd/Ctrl + K"
     },
     "createTaskDialog": {
       "title": "创建任务",
@@ -1558,7 +1608,10 @@
       "noModelsWarning": "未配置模型。请在设置中配置模型。",
       "noAgentsOrModels": "未配置智能体和模型。请在设置中进行配置。"
     },
-    "filesDescription": "浏览和管理文件"
+    "filesDescription": "浏览和管理文件",
+    "connectingToKanban": "正在连接 vibe-kanban...",
+    "kanbanConnectionFailed": "无法连接 vibe-kanban 后端",
+    "failedToLoadTasks": "加载任务失败"
   },
   "sync": {
     "workspaceSync": "工作区同步",
@@ -1791,6 +1844,14 @@
       "helpDesc": "显示可用命令",
       "stop": "停止",
       "stopDesc": "停止当前执行"
+    },
+    "emojiPicker": {
+      "smileys": "表情",
+      "gestures": "手势",
+      "objects": "物品",
+      "nature": "自然",
+      "food": "食物",
+      "symbols": "符号"
     },
     "agentInput": {
       "placeholder": "从任何想法开始... 按 ⌘ ↵ 换行...",
@@ -2247,7 +2308,34 @@
     "forward10s": "前进 10 秒",
     "noSearchResults": "无搜索结果",
     "showRawContent": "显示原始内容",
-    "openInEditor": "在编辑器中打开"
+    "openInEditor": "在编辑器中打开",
+    "loadingFont": "加载字体中...",
+    "fontPreviewNotAvailable": "字体预览不可用",
+    "openInFontViewer": "在字体查看器中打开",
+    "characterSet": "字符集",
+    "sizeSamples": "字号示例",
+    "loadingImage": "加载图片中...",
+    "fileTooLarge": "文件过大，无法预览",
+    "fileTooLargeDesc": "此文件过大，无法在应用内预览。",
+    "fileSize": "文件大小：{{size}}",
+    "defaultApp": "系统应用",
+    "failedToLoadImage": "加载图片失败",
+    "loadingPdf": "加载 PDF 中...",
+    "openInPdfViewerHint": "点击外部链接按钮在 PDF 阅读器中打开",
+    "loadingVideo": "加载视频中...",
+    "openInVideoPlayer": "在视频播放器中打开",
+    "searchResults": "搜索结果",
+    "results": "个结果",
+    "search": "次搜索",
+    "searches": "次搜索",
+    "selectToPreview": "从侧边栏选择一个产物进行预览",
+    "openIn": "在 {{name}} 中打开",
+    "exitFullscreen": "退出全屏",
+    "fullscreen": "全屏",
+    "preview": "预览",
+    "code": "代码",
+    "previewNotAvailable": "预览不可用",
+    "switchToCodeView": "切换到代码视图查看内容"
   },
   "inspector": {
     "taskStatus": {

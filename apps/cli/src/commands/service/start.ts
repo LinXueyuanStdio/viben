@@ -4,9 +4,12 @@
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
-import { CliError } from '../../types';
 import { output, successResponse, errorResponse } from '../../lib/output';
-import { startService, getServiceStatus, parseServiceName } from '../../lib/services';
+import {
+  startService,
+  getServiceStatusAsync,
+  parseServiceName,
+} from '../../lib/services';
 
 /**
  * Options for start command
@@ -23,7 +26,7 @@ export interface StartOptions {
 function getDefaultCommand(serviceName: string): { command: string; args: string[] } | null {
   const { type, identifier } = parseServiceName(serviceName);
 
-  if (type === 'mcp') {
+  if (type === 'Mcp') {
     // MCP servers are typically started via npx
     return {
       command: 'npx',
@@ -31,7 +34,7 @@ function getDefaultCommand(serviceName: string): { command: string; args: string
     };
   }
 
-  if (type === 'viben') {
+  if (type === 'Viben') {
     // Viben services
     switch (identifier) {
       case 'sync':
@@ -62,7 +65,7 @@ export async function startServiceCommand(
   const { name } = options;
 
   // Check if already running
-  const current = getServiceStatus(name);
+  const current = await getServiceStatusAsync(name);
   if (current.status === 'running') {
     output(
       ctx,

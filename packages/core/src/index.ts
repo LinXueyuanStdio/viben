@@ -21,6 +21,7 @@ export {
   SessionStoreError,
   HistoryError,
   GatewayError,
+  ServiceError,
 } from "./error";
 
 // Config management
@@ -46,20 +47,48 @@ export {
   getTemplateDir,
   getSharedMcpDir,
   getSharedSkillsDir,
+  getWorkspaceTemplatesDir,
+  getWorkspaceTemplateDir,
   readYaml,
   writeYaml,
   readJson,
   writeJson,
   ensureDir,
   fileExists,
+  // Git-style config management
+  GitStyleConfigManager,
+  gitConfigManager,
+  parseKey,
+  getValueByPath,
+  setValueByPath,
+  deleteValueByPath,
+  flattenObject,
+  parseValue,
+  getWorkspaceConfigPath,
+  type ConfigEntry,
+  type ConfigOptions,
 } from "./config";
 
 // Agent management
 export {
   AgentManager,
   agentManager,
+  // Template management
+  TemplateManager,
+  templateManager,
+  // Memory management
+  MemoryManager,
+  memoryManager,
+  // Types
   type AgentConfigFile,
   type SessionFile,
+  type TemplateConfigFile,
+  type CreateTemplateOptions,
+  type ApplyTemplateOptions,
+  type MemoryContent,
+  type DailyLogContent,
+  type ParsedLogEntry,
+  type AppendLogOptions,
 } from "./agents";
 
 // Provider management
@@ -109,10 +138,48 @@ export {
   type InstalledSkillsFile,
   type InstalledSkillEntry,
   type SkillMetadata,
+  type SkillTarget,
+  type InstallSkillOptions,
+  type InstallSkillResult,
+  type UninstallSkillOptions,
+  type UninstallSkillResult,
+  type ListSkillsOptions,
+  type AvailableSkill,
+  type AgentSkillConfig,
 } from "./skills";
+
+// Workspace management
+export {
+  WorkspaceManager,
+  workspaceManager,
+  initWorkspace,
+  initFromTemplate,
+  listWorkspaceTemplates,
+  getWorkspaceTemplate,
+  createWorkspaceTemplate,
+  deleteWorkspaceTemplate,
+  workspaceExists,
+  isInsideWorkspace,
+  WORKSPACE_DIR,
+  WORKSPACE_CONFIG_FILE,
+  AGENTS_DIR,
+  DEFAULT_WORKSPACE_CONFIG,
+  type Workspace,
+  type WorkspaceConfigFile,
+  type WorkspaceMcpConfig,
+  type WorkspaceSkillsConfig,
+  type WorkspaceSettings,
+  type KnownWorkspacesFile,
+  type KnownWorkspaceEntry,
+  type InitWorkspaceOptions,
+  type InitWorkspaceResult,
+  type WorkspaceTemplate,
+  type WorkspaceTemplateConfig,
+} from "./workspace";
 
 // Channels management
 export {
+  // Functions
   sendChannelMessage,
   sendTestMessage,
   testChannel,
@@ -124,13 +191,31 @@ export {
   testFeishuChannel,
   sendWhatsAppMessage,
   testWhatsAppChannel,
+  // Manager
+  ChannelManager,
+  channelManager,
+  getChannelsPath,
+  // Constants
+  CHANNEL_TYPES,
+  // Types
   type ChannelType,
+  type ChannelTypeInfo,
+  type NotificationMode,
+  type ConnectionStatus,
   type ChannelConfig,
+  type BaseChannelConfig,
   type TelegramChannelConfig,
   type DiscordChannelConfig,
   type FeishuChannelConfig,
   type WhatsAppChannelConfig,
+  type SlackChannelConfig,
+  type WebhookChannelConfig,
+  type ChannelEntry,
   type ChannelsFile,
+  type Channel,
+  type ChannelStatus,
+  type CreateChannelOptions,
+  type UpdateChannelOptions,
   type SendMessageOptions,
   type SendMessageResult,
   type TestChannelResult,
@@ -149,6 +234,10 @@ export {
   type ExecutorConfig,
   type ExecutorApprovalService,
   type StandardCodingAgentExecutor,
+  // Chat types (non-interactive streaming)
+  type ChatFormat,
+  type ChatOptions,
+  type ChatSpawnResult,
   // Utilities
   createExecutionEnv,
   applyEnvToSpawnOptions,
@@ -164,6 +253,10 @@ export {
   EXECUTOR_TYPES,
   isExecutorType,
   getAllExecutorsAvailability,
+  // Chat helpers
+  CHAT_SUPPORTED_EXECUTORS,
+  executorSupportsChat,
+  spawnChat,
   // Executors
   ClaudeCode,
   createClaudeCode,
@@ -273,6 +366,16 @@ export {
   type InboundMessage,
   type OutboundMessage,
   type InboundMessageHandler,
+  // Service manager
+  ServiceManager,
+  serviceManager,
+  type ServiceType,
+  type ServiceStatus,
+  type ServiceInfo,
+  type ServiceProcess,
+  type StartServiceOptions,
+  type WatchLogsOptions,
+  type ServiceDefaults,
 } from "./services";
 
 // Group Chat
@@ -327,9 +430,14 @@ export async function initializeCore(): Promise<void> {
   const { agentManager } = await import("./agents");
   const { mcpManager } = await import("./mcp");
   const { skillsManager } = await import("./skills");
+  const { serviceManager } = await import("./services");
+
+  const { templateManager } = await import("./agents");
 
   await configManager.initialize();
   await agentManager.initialize();
+  await templateManager.initialize();
   await mcpManager.initialize();
   await skillsManager.initialize();
+  await serviceManager.initialize();
 }

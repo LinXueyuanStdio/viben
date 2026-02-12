@@ -126,6 +126,20 @@ export class Amp implements StandardCodingAgentExecutor {
   capabilities(): AgentCapability[] {
     return ["SESSION_FORK"];
   }
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat(): boolean {
+    return false;
+  }
+
+  /**
+   * Get the CLI command name used for chat
+   */
+  getChatCommand(): string | null {
+    return null;
+  }
 }
 
 export function createAmp(config?: AmpConfig): Amp {

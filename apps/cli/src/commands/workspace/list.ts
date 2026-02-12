@@ -10,8 +10,8 @@ import { listWorkspaces, getCurrentWorkspacePath } from '../../lib/workspace';
 /**
  * List all known workspaces
  */
-export function listWorkspacesCommand(ctx: OutputContext): void {
-  const workspaces = listWorkspaces();
+export async function listWorkspacesCommand(ctx: OutputContext): Promise<void> {
+  const workspaces = await listWorkspaces();
   const currentPath = getCurrentWorkspacePath();
 
   const response = successResponse({

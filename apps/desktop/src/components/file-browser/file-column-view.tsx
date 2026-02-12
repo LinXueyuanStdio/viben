@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTranslation } from "react-i18next";
 import type { FileEntry } from "@/types";
 
 /**
@@ -175,6 +176,7 @@ interface ColumnProps {
 }
 
 function Column({ state, onSelectItem, onDoubleClickItem }: ColumnProps) {
+  const { t } = useTranslation();
   const columnRef = React.useRef<HTMLDivElement>(null);
   const [focusedIndex, setFocusedIndex] = React.useState(-1);
 
@@ -245,7 +247,7 @@ function Column({ state, onSelectItem, onDoubleClickItem }: ColumnProps) {
             </div>
           ) : state.files.length === 0 ? (
             <div className="px-3 py-4 text-center">
-              <p className="text-xs text-muted-foreground">Empty folder</p>
+              <p className="text-xs text-muted-foreground">{t("fileBrowser.emptyFolder")}</p>
             </div>
           ) : (
             state.files.map((file, index) => {
@@ -300,10 +302,13 @@ interface PreviewPanelProps {
 }
 
 function PreviewPanel({ file, workspacePath }: PreviewPanelProps) {
+  const { t } = useTranslation();
+  const getFileTypeDescription = useFileTypeDescription();
+
   if (!file) {
     return (
       <div className="flex-1 flex items-center justify-center bg-muted/20">
-        <p className="text-sm text-muted-foreground">Select a file to preview</p>
+        <p className="text-sm text-muted-foreground">{t("fileBrowser.selectToPreview")}</p>
       </div>
     );
   }
@@ -333,19 +338,19 @@ function PreviewPanel({ file, workspacePath }: PreviewPanelProps) {
         <div className="space-y-4">
           {/* File info */}
           <div className="space-y-2">
-            <InfoRow label="Type" value={file.is_directory ? "Folder" : "File"} />
+            <InfoRow label={t("fileBrowser.type")} value={file.is_directory ? t("fileBrowser.folder") : t("fileBrowser.file")} />
             {!file.is_directory && file.size !== undefined && (
-              <InfoRow label="Size" value={formatFileSize(file.size)} />
+              <InfoRow label={t("fileBrowser.size")} value={formatFileSize(file.size)} />
             )}
             {file.modified && (
               <InfoRow
-                label="Modified"
+                label={t("fileBrowser.modified")}
                 value={new Date(file.modified).toLocaleString()}
               />
             )}
             {file.created && (
               <InfoRow
-                label="Created"
+                label={t("fileBrowser.created")}
                 value={new Date(file.created).toLocaleString()}
               />
             )}
@@ -379,43 +384,25 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 /**
  * Get file type description based on extension
+ * Uses i18n translation keys from fileBrowser.fileTypes namespace
  */
-function getFileTypeDescription(name: string): string {
-  const ext = name.split(".").pop()?.toLowerCase();
-  if (!ext) return "Unknown file type";
+function useFileTypeDescription() {
+  const { t } = useTranslation();
 
-  const descriptions: Record<string, string> = {
-    // Code
-    ts: "TypeScript source file",
-    tsx: "TypeScript React component",
-    js: "JavaScript source file",
-    jsx: "JavaScript React component",
-    py: "Python source file",
-    rs: "Rust source file",
-    go: "Go source file",
-    // Config
-    json: "JSON configuration file",
-    yaml: "YAML configuration file",
-    yml: "YAML configuration file",
-    toml: "TOML configuration file",
-    // Docs
-    md: "Markdown document",
-    txt: "Plain text file",
-    // Media
-    png: "PNG image",
-    jpg: "JPEG image",
-    jpeg: "JPEG image",
-    gif: "GIF image",
-    svg: "SVG vector image",
-    mp3: "MP3 audio file",
-    mp4: "MP4 video file",
-    // Archive
-    zip: "ZIP archive",
-    tar: "TAR archive",
-    gz: "Gzip compressed file",
-  };
+  return React.useCallback((name: string): string => {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (!ext) return t("fileBrowser.unknownFileType");
 
-  return descriptions[ext] || `${ext.toUpperCase()} file`;
+    // Check if we have a translation for this extension
+    const translationKey = `fileBrowser.fileTypes.${ext}`;
+    const translation = t(translationKey, { defaultValue: "" });
+
+    if (translation && translation !== translationKey) {
+      return translation;
+    }
+
+    return `${ext.toUpperCase()} ${t("fileBrowser.file").toLowerCase()}`;
+  }, [t]);
 }
 
 /**

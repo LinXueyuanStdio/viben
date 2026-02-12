@@ -337,6 +337,15 @@ export declare function channelEnable(id: string): Promise<void>
 export declare function channelDisable(id: string): Promise<void>
 /** Send a message through a channel */
 export declare function channelSendMessage(id: string, chatId: string, message: string): Promise<SendMessageResult>
+/** Channel type information for NAPI */
+export interface ChannelTypeInfo {
+  id: string
+  name: string
+  description: string
+  setupDifficulty: string
+}
+/** Get all supported channel types */
+export declare function channelListTypes(): Array<ChannelTypeInfo>
 /** Executor type enum for NAPI */
 export const enum ExecutorType {
   ClaudeCode = 'ClaudeCode',
@@ -465,3 +474,135 @@ export declare function cronEnable(id: string): Promise<CronJob>
 export declare function cronDisable(id: string): Promise<CronJob>
 /** Run a cron job immediately */
 export declare function cronRun(id: string): Promise<void>
+/** Service type enum for NAPI */
+export const enum NapiServiceType {
+  Mcp = 'Mcp',
+  Viben = 'Viben'
+}
+/** Service status enum for NAPI */
+export const enum NapiServiceStatus {
+  Running = 'Running',
+  Stopped = 'Stopped',
+  Error = 'Error',
+  Unknown = 'Unknown'
+}
+/** Service information for NAPI */
+export interface ServiceInfo {
+  name: string
+  serviceType: string
+  status: string
+  pid?: number
+  uptime?: string
+  error?: string
+  command?: string
+  args?: Array<string>
+}
+/** List all services with their status */
+export declare function serviceList(): Array<ServiceInfo>
+/** Get status of a specific service */
+export declare function serviceGetStatus(name: string): ServiceInfo
+/** Start a service */
+export declare function serviceStart(name: string, command: string, args: Array<string>): ServiceInfo
+/** Stop a service */
+export declare function serviceStop(name: string): ServiceInfo
+/** Restart a service */
+export declare function serviceRestart(name: string, command?: string | undefined | null, args?: Array<string> | undefined | null): ServiceInfo
+/** Read service logs */
+export declare function serviceReadLogs(name: string, lines?: number | undefined | null): Array<string>
+/** Clear service logs */
+export declare function serviceClearLogs(name: string): void
+/** Get log file path for a service */
+export declare function serviceGetLogPath(name: string): string
+/** Parse service name to get type and identifier */
+export interface ParsedServiceName {
+  serviceType: string
+  identifier: string
+}
+export declare function serviceParseName(name: string): ParsedServiceName
+/** Installed skill for NAPI */
+export interface NapiSkill {
+  id: string
+  version: string
+  installedAt: string
+  description?: string
+}
+/** Available skill from marketplace for NAPI */
+export interface NapiAvailableSkill {
+  id: string
+  name: string
+  version: string
+  description: string
+}
+/** List all installed skills */
+export declare function skillList(): Array<NapiSkill>
+/** Get a skill by ID */
+export declare function skillGet(id: string): NapiSkill | null
+/** Check if a skill is installed */
+export declare function skillIsInstalled(id: string): boolean
+/** Install a skill */
+export declare function skillInstall(name: string, version?: string | undefined | null): NapiSkill
+/** Uninstall a skill */
+export declare function skillUninstall(name: string): boolean
+/** Validate skill ID format */
+export declare function skillValidateId(id: string): void
+/** Parse skill name with optional version */
+export interface ParsedSkillName {
+  name: string
+  version?: string
+}
+export declare function skillParseName(nameWithVersion: string): ParsedSkillName
+/** Get available skills from marketplace */
+export declare function skillGetAvailable(): Array<NapiAvailableSkill>
+/** Get skills directory path */
+export declare function skillGetDir(): string
+/** MCP configuration for NAPI */
+export interface NapiMcpConfig {
+  enabled: Array<string>
+  disabled?: Array<string>
+}
+/** Skills configuration for NAPI */
+export interface NapiWorkspaceSkillsConfig {
+  enabled: Array<string>
+  disabled?: Array<string>
+}
+/** Workspace information for NAPI */
+export interface NapiWorkspaceInfo {
+  path: string
+  name: string
+  configPath: string
+  mcp?: NapiMcpConfig
+  skills?: NapiWorkspaceSkillsConfig
+  agents?: Array<string>
+  createdAt?: string
+  updatedAt?: string
+}
+/** List all known workspaces */
+export declare function workspaceList(): Array<NapiWorkspaceInfo>
+/** Get current workspace info (if in a workspace) */
+export declare function workspaceGetCurrent(): NapiWorkspaceInfo | null
+/** Get current workspace path (if in a workspace) */
+export declare function workspaceGetCurrentPath(): string | null
+/** Check if currently in a workspace */
+export declare function workspaceIsInWorkspace(): boolean
+/** Get workspace info for a given path */
+export declare function workspaceGetInfo(path: string): NapiWorkspaceInfo | null
+/** Add a workspace to known workspaces */
+export declare function workspaceAddKnown(path: string, name?: string | undefined | null): void
+/** Remove a workspace from known workspaces */
+export declare function workspaceRemoveKnown(path: string): void
+/** Find workspace root from a given path */
+export declare function workspaceFindRoot(startPath: string): string | null
+/** Options for initializing a workspace */
+export interface NapiInitWorkspaceOptions {
+  targetDir?: string
+  template?: string
+  force?: boolean
+}
+/** Result of workspace initialization */
+export interface NapiInitWorkspaceResult {
+  success: boolean
+  path: string
+  files: Array<string>
+}
+/** Initialize a workspace */
+export declare function workspaceInit(options?: NapiInitWorkspaceOptions | undefined | null): NapiInitWorkspaceResult

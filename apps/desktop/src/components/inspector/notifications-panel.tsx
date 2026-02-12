@@ -95,9 +95,9 @@ export function NotificationsPanel({
 
   const filterButtons: { key: NotificationFilterType; label: string; count: number }[] = [
     { key: "all", label: t("inspector.all"), count: counts.all },
-    { key: "info", label: "Info", count: counts.info },
-    { key: "progress", label: "Progress", count: counts.progress },
-    { key: "stderr", label: "Stderr", count: counts.stderr },
+    { key: "info", label: t("inspector.filterInfo", "Info"), count: counts.info },
+    { key: "progress", label: t("inspector.filterProgress", "Progress"), count: counts.progress },
+    { key: "stderr", label: t("inspector.filterStderr", "Stderr"), count: counts.stderr },
   ];
 
   return (

@@ -10,8 +10,8 @@ import { getCurrentWorkspace } from '../../lib/workspace';
 /**
  * Show current workspace information
  */
-export function showCurrentWorkspace(ctx: OutputContext): void {
-  const workspace = getCurrentWorkspace();
+export async function showCurrentWorkspace(ctx: OutputContext): Promise<void> {
+  const workspace = await getCurrentWorkspace();
 
   if (!workspace) {
     output(

@@ -7,12 +7,44 @@
  * is available via NAPI bindings in ./native.ts
  */
 
+// Config utilities
 export * from './config';
-export * from './scope';
+
+// Scope utilities (excluding getStateDir which conflicts with native)
+export {
+  WORKSPACE_DIR,
+  CONFIG_FILE,
+  getGlobalConfigDir,
+  GLOBAL_CONFIG_DIR,
+  findWorkspaceRoot,
+  getWorkspaceDir,
+  resolveScope,
+  getConfigPathForScope,
+  ensureDir,
+  type ResolveScopeOptions,
+} from './scope';
+
+// Output utilities
 export * from './output';
+
+// Native NAPI bindings
 export * from './native';
-export * from './channels';
+
+// Channel utilities (avoiding conflict with native Channel type)
+export {
+  ChannelManager,
+  type ChannelConfig as CliChannelConfig,
+  type ChannelsConfig as CliChannelsConfig,
+} from './channels';
+
+// Model utilities
 export * from './models';
+
+// Skills utilities
 export * from './skills';
+
+// Workspace utilities
 export * from './workspace';
+
+// Service management
 export * from './services';

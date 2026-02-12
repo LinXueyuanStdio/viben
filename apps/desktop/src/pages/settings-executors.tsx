@@ -33,60 +33,60 @@ interface ExecutorInfo {
 const EXECUTORS: ExecutorInfo[] = [
   {
     id: "CLAUDE_CODE",
-    name: "Claude Code",
-    description: "Anthropic's official CLI for Claude - powerful coding agent",
+    name: "CLAUDE_CODE",
+    description: "CLAUDE_CODE",
     website: "https://docs.anthropic.com/en/docs/claude-code",
     installCommand: "npm install -g @anthropic-ai/claude-code",
   },
   {
     id: "AMP",
-    name: "Amp",
-    description: "Sourcegraph's AI-powered code navigation and editing",
+    name: "AMP",
+    description: "AMP",
     website: "https://sourcegraph.com/amp",
   },
   {
     id: "GEMINI",
-    name: "Gemini CLI",
-    description: "Google's Gemini AI assistant for coding tasks",
+    name: "GEMINI",
+    description: "GEMINI",
     website: "https://ai.google.dev/gemini-api",
     installCommand: "npm install -g @anthropic-ai/gemini-cli",
   },
   {
     id: "CODEX",
-    name: "Codex CLI",
-    description: "OpenAI's Codex-powered coding assistant",
+    name: "CODEX",
+    description: "CODEX",
     website: "https://openai.com/codex",
     installCommand: "npm install -g codex-cli",
   },
   {
     id: "OPENCODE",
-    name: "OpenCode",
-    description: "Open-source AI coding assistant",
+    name: "OPENCODE",
+    description: "OPENCODE",
     website: "https://github.com/opencode-ai/opencode",
   },
   {
     id: "CURSOR_AGENT",
-    name: "Cursor Agent",
-    description: "Cursor's background AI agent for autonomous coding",
+    name: "CURSOR_AGENT",
+    description: "CURSOR_AGENT",
     website: "https://cursor.sh",
   },
   {
     id: "QWEN_CODE",
-    name: "Qwen Coder",
-    description: "Alibaba's Qwen coding model CLI",
+    name: "QWEN_CODE",
+    description: "QWEN_CODE",
     website: "https://github.com/QwenLM/Qwen",
   },
   {
     id: "COPILOT",
-    name: "GitHub Copilot CLI",
-    description: "GitHub's AI pair programmer in the terminal",
+    name: "COPILOT",
+    description: "COPILOT",
     website: "https://github.com/features/copilot",
     installCommand: "gh extension install github/gh-copilot",
   },
   {
     id: "DROID",
-    name: "Droid",
-    description: "Android development AI assistant",
+    name: "DROID",
+    description: "DROID",
     website: "https://developer.android.com",
   },
 ];
@@ -329,7 +329,7 @@ export function SettingsExecutorsPage() {
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-medium">{executor.info.name}</h3>
+                    <h3 className="font-medium">{t(`settingsExecutors.executorNames.${executor.info.id}`, executor.info.name)}</h3>
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs",

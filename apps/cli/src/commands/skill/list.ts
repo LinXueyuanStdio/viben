@@ -75,7 +75,7 @@ export function listInstalledSkills(ctx: OutputContext): void {
         skills.map((skill) => [
           skill.id,
           `v${skill.version}`,
-          formatDate(skill.installed_at),
+          formatDate(skill.installedAt),
         ])
       );
     }
