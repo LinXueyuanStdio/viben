@@ -11,7 +11,8 @@
  * - Workspace: /workspace/:workspaceId/agent/:agentId
  */
 import * as React from "react";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDebounceFn } from "ahooks";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -452,20 +453,6 @@ export function AgentDetailPage() {
     checkAvailability();
   }, [formExecutorType]);
 
-  // Keyboard shortcut: Cmd+S to save
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        if (isDirty && !saving) {
-          handleSave();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isDirty, saving]);
-
   // Mark as dirty when form changes
   useEffect(() => {
     if (agent) {
@@ -486,8 +473,18 @@ export function AgentDetailPage() {
     }
   }, [agent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills]);
 
+  // Form validation
+  const validateForm = useCallback(() => {
+    const errors: string[] = [];
+    if (!formModel) errors.push(t("settingsAgents.modelRequired", "Model is required"));
+    if (!formExecutorType) errors.push(t("settingsAgents.executorRequired", "Executor is required"));
+    return { isValid: errors.length === 0, errors };
+  }, [formModel, formExecutorType, t]);
+
+  const { isValid: formIsValid, errors: validationErrors } = validateForm();
+
   // Save agent
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!agentId) return;
     setSaving(true);
     try {
@@ -512,7 +509,39 @@ export function AgentDetailPage() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [agentId, updateAgent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills]);
+
+  // Debounced save with backpressure protection (using ahooks)
+  // - wait: 300ms debounce delay
+  // - leading: false - don't execute on first call
+  // - trailing: true - execute after wait period
+  const { run: debouncedSave, cancel: cancelDebouncedSave } = useDebounceFn(
+    () => {
+      if (formIsValid) {
+        handleSave();
+      }
+    },
+    { wait: 300, leading: false, trailing: true }
+  );
+
+  // Keyboard shortcut: Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault();
+        if (isDirty && !saving && formIsValid) {
+          debouncedSave();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDirty, saving, formIsValid, debouncedSave]);
+
+  // Cancel debounced save on unmount
+  useEffect(() => {
+    return () => cancelDebouncedSave();
+  }, [cancelDebouncedSave]);
 
   // Gateway connection state
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
@@ -763,6 +792,26 @@ export function AgentDetailPage() {
               {t("settingsAgents.unsaved")}
             </Badge>
           )}
+          {/* Validation errors */}
+          {!formIsValid && isDirty && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="destructive" className="text-xs gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {t("settingsAgents.validationError", "Validation failed")}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <ul className="text-xs space-y-1">
+                    {validationErrors.map((error, i) => (
+                      <li key={i}>{error}</li>
+                    ))}
+                  </ul>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {/* Open folder button */}
           <TooltipProvider>
             <Tooltip>
@@ -779,7 +828,7 @@ export function AgentDetailPage() {
               <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
-          <Button onClick={handleSave} disabled={saving || !isDirty}>
+          <Button onClick={debouncedSave} disabled={saving || !isDirty || !formIsValid}>
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (

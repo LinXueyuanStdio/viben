@@ -2,6 +2,7 @@
 //!
 //! Provides scheduled task execution using tokio-cron-scheduler.
 //! Jobs are persisted to a YAML configuration file.
+//! Config path: $VIBEN_STATE_DIR/cron.yaml (default: ~/.viben/cron.yaml)
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ use ts_rs::TS;
 
 use super::EventService;
 use crate::channels::{send_channel_message, ChannelService, SendMessageOptions};
+use crate::config::get_state_dir;
 
 /// Cron service errors
 #[derive(Debug, thiserror::Error)]
@@ -264,10 +266,7 @@ pub struct CronService {
 impl CronService {
     /// Create a new cron service with default config path
     pub fn new(events: Arc<EventService>) -> Self {
-        let config_path = dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".viben")
-            .join("cron.yaml");
+        let config_path = get_state_dir().join("cron.yaml");
 
         Self::with_config_path(config_path, events)
     }

@@ -416,16 +416,23 @@ export class ServiceManager {
     await mkdir(this.logsDir, { recursive: true });
 
     const logPath = this.getLogPath(name);
-    const logStream = fs.createWriteStream(logPath, { flags: "a" });
+
+    // Open log file synchronously to get a proper file descriptor
+    // spawn() requires a file descriptor, not a WriteStream
+    const logFd = fs.openSync(logPath, "a");
 
     return new Promise((resolve, reject) => {
       try {
         const env = options.env || process.env;
         const child = spawn(command, args, {
           detached: true,
-          stdio: ["ignore", logStream, logStream],
+          stdio: ["ignore", logFd, logFd],
           env,
         });
+
+        // Close the file descriptor in the parent process
+        // The child process has inherited its own copy
+        fs.closeSync(logFd);
 
         // Allow parent to exit independently
         child.unref();
@@ -465,6 +472,12 @@ export class ServiceManager {
           });
         });
       } catch (failed) {
+        // Ensure fd is closed on error
+        try {
+          fs.closeSync(logFd);
+        } catch {
+          // Ignore close errors
+        }
         reject(failed);
       }
     });

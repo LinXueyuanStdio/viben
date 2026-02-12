@@ -188,20 +188,22 @@ export function registerSkillCommand(program: Command): void {
       }
     });
 
-  // skill install <name> - install a skill
+  // skill install <nameWithVersion> - install a skill
+  // Supports: skill install <name>, skill install <name>@<version>, skill install <name>@latest
   skill
-    .command("install <name>")
-    .description("Install a skill")
+    .command("install <nameWithVersion>")
+    .description("Install a skill (supports name@version syntax)")
     .option("--agent <id>", "Install to a specific agent")
     .option("--global", "Install globally (default)")
     .option("--claude", "Install to Claude skills directory")
     .option("--path <path>", "Install to custom path")
     .option("--source <path>", "Install from local path")
     .option("--version <version>", "Specific version to install")
+    .option("--executor <name>", "Use executor for installation (e.g., claude-code)")
     .option("-f, --force", "Overwrite if already installed")
     .action(
       async (
-        name: string,
+        nameWithVersion: string,
         options: {
           agent?: string;
           global?: boolean;
@@ -209,11 +211,18 @@ export function registerSkillCommand(program: Command): void {
           path?: string;
           source?: string;
           version?: string;
+          executor?: string;
           force?: boolean;
         }
       ) => {
         const ctx = getOutputContext(program);
         try {
+          // Parse name@version syntax
+          const { name, version } = parseNameWithVersion(nameWithVersion);
+
+          // --version option overrides @version in name
+          const finalVersion = options.version || version;
+
           // Determine target
           let target: SkillTarget = "global";
           if (options.agent) {
@@ -222,6 +231,9 @@ export function registerSkillCommand(program: Command): void {
             target = "claude";
           } else if (options.path) {
             target = "custom";
+          } else if (options.executor) {
+            // Handle executor-based installation
+            target = getTargetFromExecutor(options.executor);
           }
 
           const result = await skillsManager.installSkill({
@@ -230,7 +242,8 @@ export function registerSkillCommand(program: Command): void {
             agentId: options.agent,
             customPath: options.path,
             sourcePath: options.source,
-            version: options.version,
+            version: finalVersion,
+            executor: options.executor,
             force: options.force,
           });
 
@@ -414,6 +427,44 @@ export function registerSkillCommand(program: Command): void {
         }
       }
     );
+}
+
+/**
+ * Parse name@version syntax
+ * Supports: "skill-name", "skill-name@1.0.0", "skill-name@latest"
+ */
+function parseNameWithVersion(nameWithVersion: string): {
+  name: string;
+  version: string | undefined;
+} {
+  const atIndex = nameWithVersion.lastIndexOf("@");
+
+  // No @ or @ is at position 0 (like @scope/package)
+  if (atIndex <= 0) {
+    return { name: nameWithVersion, version: undefined };
+  }
+
+  const name = nameWithVersion.substring(0, atIndex);
+  const version = nameWithVersion.substring(atIndex + 1);
+
+  // Handle "latest" as undefined (let skillsManager resolve it)
+  if (version === "latest") {
+    return { name, version: undefined };
+  }
+
+  return { name, version };
+}
+
+/**
+ * Get skill target from executor name
+ */
+function getTargetFromExecutor(executor: string): SkillTarget {
+  switch (executor) {
+    case "claude-code":
+      return "claude";
+    default:
+      return "global";
+  }
 }
 
 /**

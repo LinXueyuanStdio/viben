@@ -42,6 +42,8 @@ export type AvailabilityStatus =
 export interface AvailabilityInfo {
   status: AvailabilityStatus;
   lastAuthTimestamp?: number;
+  /** Path to the executable (if found) */
+  path?: string;
 }
 
 // ============================================================================

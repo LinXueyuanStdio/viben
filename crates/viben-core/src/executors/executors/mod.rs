@@ -193,6 +193,22 @@ impl CodingAgent {
     pub fn supports_mcp(&self) -> bool {
         self.default_mcp_config_path().is_some()
     }
+
+    /// Check if this executor supports chat command
+    pub fn supports_chat(&self) -> bool {
+        matches!(self, CodingAgent::ClaudeCode(_))
+        // Future extension: | CodingAgent::Gemini(_) | ...
+    }
+
+    /// Get the CLI command for chat
+    pub fn chat_command(&self) -> Option<&str> {
+        match self {
+            CodingAgent::ClaudeCode(_) => Some("claude"),
+            // CodingAgent::Gemini(_) => Some("gemini"),
+            // CodingAgent::Codex(_) => Some("codex"),
+            _ => None,
+        }
+    }
 }
 
 /// Standard coding agent executor trait
@@ -255,4 +271,215 @@ pub trait StandardCodingAgentExecutor {
 pub trait ExecutorApprovalService: Send + Sync {
     /// Request approval for an action
     fn request_approval(&self, action: &str) -> bool;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ==================== AvailabilityInfo tests ====================
+
+    #[test]
+    fn test_availability_info_is_available_login_detected() {
+        let info = AvailabilityInfo::LoginDetected {
+            last_auth_timestamp: 1234567890,
+        };
+        assert!(info.is_available());
+    }
+
+    #[test]
+    fn test_availability_info_is_available_installation_found() {
+        let info = AvailabilityInfo::InstallationFound;
+        assert!(info.is_available());
+    }
+
+    #[test]
+    fn test_availability_info_is_available_not_found() {
+        let info = AvailabilityInfo::NotFound;
+        assert!(!info.is_available());
+    }
+
+    // ==================== CodingAgent::supports_chat tests ====================
+
+    #[test]
+    fn test_supports_chat_claude_code() {
+        let agent = CodingAgent::ClaudeCode(ClaudeCode::default());
+        assert!(agent.supports_chat());
+    }
+
+    #[test]
+    fn test_supports_chat_other_agents() {
+        // All other agents should NOT support chat
+        let agents = vec![
+            CodingAgent::Amp(Amp::default()),
+            CodingAgent::Gemini(Gemini::default()),
+            CodingAgent::Codex(Codex::default()),
+            CodingAgent::Opencode(Opencode::default()),
+            CodingAgent::CursorAgent(CursorAgent::default()),
+            CodingAgent::QwenCode(QwenCode::default()),
+            CodingAgent::Copilot(Copilot::default()),
+            CodingAgent::Droid(Droid::default()),
+        ];
+
+        for agent in agents {
+            assert!(
+                !agent.supports_chat(),
+                "Agent {} should not support chat",
+                agent
+            );
+        }
+    }
+
+    // ==================== CodingAgent::chat_command tests ====================
+
+    #[test]
+    fn test_chat_command_claude_code() {
+        let agent = CodingAgent::ClaudeCode(ClaudeCode::default());
+        assert_eq!(agent.chat_command(), Some("claude"));
+    }
+
+    #[test]
+    fn test_chat_command_other_agents() {
+        // All other agents should return None
+        let agents = vec![
+            CodingAgent::Amp(Amp::default()),
+            CodingAgent::Gemini(Gemini::default()),
+            CodingAgent::Codex(Codex::default()),
+            CodingAgent::Opencode(Opencode::default()),
+            CodingAgent::CursorAgent(CursorAgent::default()),
+            CodingAgent::QwenCode(QwenCode::default()),
+            CodingAgent::Copilot(Copilot::default()),
+            CodingAgent::Droid(Droid::default()),
+        ];
+
+        for agent in agents {
+            assert_eq!(
+                agent.chat_command(),
+                None,
+                "Agent {} should not have chat_command",
+                agent
+            );
+        }
+    }
+
+    // ==================== CodingAgent::capabilities tests ====================
+
+    #[test]
+    fn test_capabilities_claude_code() {
+        let agent = CodingAgent::ClaudeCode(ClaudeCode::default());
+        let caps = agent.capabilities();
+        assert!(caps.contains(&BaseAgentCapability::SessionFork));
+        assert!(caps.contains(&BaseAgentCapability::ContextUsage));
+        assert!(!caps.contains(&BaseAgentCapability::SetupHelper));
+    }
+
+    #[test]
+    fn test_capabilities_codex() {
+        let agent = CodingAgent::Codex(Codex::default());
+        let caps = agent.capabilities();
+        assert!(caps.contains(&BaseAgentCapability::SessionFork));
+        assert!(caps.contains(&BaseAgentCapability::SetupHelper));
+        assert!(caps.contains(&BaseAgentCapability::ContextUsage));
+    }
+
+    #[test]
+    fn test_capabilities_copilot_empty() {
+        let agent = CodingAgent::Copilot(Copilot::default());
+        let caps = agent.capabilities();
+        assert!(caps.is_empty());
+    }
+
+    // ==================== CodingAgent serialization tests ====================
+
+    #[test]
+    fn test_coding_agent_display() {
+        let agent = CodingAgent::ClaudeCode(ClaudeCode::default());
+        assert_eq!(agent.to_string(), "CLAUDE_CODE");
+
+        let agent = CodingAgent::Gemini(Gemini::default());
+        assert_eq!(agent.to_string(), "GEMINI");
+    }
+
+    #[test]
+    fn test_coding_agent_serialize() {
+        let agent = CodingAgent::ClaudeCode(ClaudeCode::default());
+        let json = serde_json::to_string(&agent).unwrap();
+        assert!(json.contains("CLAUDE_CODE"));
+    }
+
+    #[test]
+    fn test_coding_agent_deserialize() {
+        let json = r#"{"CLAUDE_CODE":{}}"#;
+        let agent: CodingAgent = serde_json::from_str(json).unwrap();
+        assert!(matches!(agent, CodingAgent::ClaudeCode(_)));
+    }
+
+    // ==================== ExecutorError tests ====================
+
+    #[test]
+    fn test_executor_error_follow_up_not_supported() {
+        let err = ExecutorError::FollowUpNotSupported("test".to_string());
+        assert_eq!(err.to_string(), "Follow-up is not supported: test");
+    }
+
+    #[test]
+    fn test_executor_error_unknown_executor_type() {
+        let err = ExecutorError::UnknownExecutorType("UNKNOWN".to_string());
+        assert_eq!(err.to_string(), "Unknown executor type: UNKNOWN");
+    }
+
+    #[test]
+    fn test_executor_error_executable_not_found() {
+        let err = ExecutorError::ExecutableNotFound {
+            program: "foo".to_string(),
+        };
+        assert_eq!(err.to_string(), "Executable `foo` not found in PATH");
+    }
+
+    #[test]
+    fn test_executor_error_auth_required() {
+        let err = ExecutorError::AuthRequired("Please login".to_string());
+        assert_eq!(err.to_string(), "Auth required: Please login");
+    }
+
+    #[test]
+    fn test_executor_error_setup_helper_not_supported() {
+        let err = ExecutorError::SetupHelperNotSupported;
+        assert_eq!(err.to_string(), "Setup helper not supported");
+    }
+
+    // ==================== Consistency tests ====================
+
+    #[test]
+    fn test_supports_chat_and_chat_command_consistency() {
+        // If supports_chat() is true, chat_command() should return Some
+        // If supports_chat() is false, chat_command() should return None
+        let all_agents = vec![
+            CodingAgent::ClaudeCode(ClaudeCode::default()),
+            CodingAgent::Amp(Amp::default()),
+            CodingAgent::Gemini(Gemini::default()),
+            CodingAgent::Codex(Codex::default()),
+            CodingAgent::Opencode(Opencode::default()),
+            CodingAgent::CursorAgent(CursorAgent::default()),
+            CodingAgent::QwenCode(QwenCode::default()),
+            CodingAgent::Copilot(Copilot::default()),
+            CodingAgent::Droid(Droid::default()),
+        ];
+
+        for agent in all_agents {
+            if agent.supports_chat() {
+                assert!(
+                    agent.chat_command().is_some(),
+                    "Agent {} supports chat but chat_command() is None",
+                    agent
+                );
+            } else {
+                assert!(
+                    agent.chat_command().is_none(),
+                    "Agent {} does not support chat but chat_command() is Some",
+                    agent
+                );
+            }
+        }
+    }
 }

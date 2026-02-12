@@ -91,7 +91,7 @@ export class Gemini implements StandardCodingAgentExecutor {
   getAvailabilityInfo(): AvailabilityInfo {
     const programPath = whichSync("gemini");
     if (programPath) {
-      return { status: "INSTALLATION_FOUND" };
+      return { status: "INSTALLATION_FOUND", path: programPath };
     }
     return { status: "NOT_FOUND" };
   }

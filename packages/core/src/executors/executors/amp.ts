@@ -15,7 +15,7 @@ import type {
   AvailabilityInfo,
 } from "../types";
 import { ExecutorError } from "../../error";
-import { which } from "../utils";
+import { which, whichSync } from "../utils";
 
 const BASE_COMMAND = "amp";
 
@@ -116,9 +116,14 @@ export class Amp implements StandardCodingAgentExecutor {
   }
 
   getAvailabilityInfo(): AvailabilityInfo {
+    const programPath = whichSync("amp");
     const configPath = this.defaultMcpConfigPath();
+
     if (configPath && existsSync(configPath)) {
-      return { status: "INSTALLATION_FOUND" };
+      return { status: "INSTALLATION_FOUND", path: programPath ?? configPath };
+    }
+    if (programPath) {
+      return { status: "INSTALLATION_FOUND", path: programPath };
     }
     return { status: "NOT_FOUND" };
   }

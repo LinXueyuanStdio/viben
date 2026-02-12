@@ -84,25 +84,28 @@ export function registerProviderCommand(program: Command): void {
       }
     });
 
-  // provider create <id>
+  // provider create
   provider
-    .command("create <id>")
+    .command("create")
     .description("Create a new provider")
+    .option("-n, --name <name>", "Provider name (auto-generated if not provided)")
     .option("-t, --type <type>", `Provider type (${PROVIDER_TYPES.join(", ")})`)
     .option("-u, --base-url <url>", "Custom base URL")
     .option("-k, --api-key <key>", "API key")
-    .option("-n, --name <name>", "Display name for the provider")
+    .option("-c, --config <file>", "Config file path")
+    .option("--auth <method>", "Authentication method")
     .option("--timeout <seconds>", "Request timeout in seconds", parseInt)
     .option("--max-retries <count>", "Maximum retry attempts", parseInt)
     .option("-d, --default", "Set as default provider")
     .action(async function (
       this: Command,
-      id: string,
       options: {
+        name?: string;
         type?: string;
         baseUrl?: string;
         apiKey?: string;
-        name?: string;
+        config?: string;
+        auth?: string;
         timeout?: number;
         maxRetries?: number;
         default?: boolean;
@@ -110,13 +113,16 @@ export function registerProviderCommand(program: Command): void {
     ) {
       const ctx = getContext(this);
       try {
-        // Validate provider type
+        // Validate provider type (default to custom if not provided)
         const type = (options.type || "custom") as ProviderType;
         if (!PROVIDER_TYPES.includes(type)) {
           throw new Error(
             `Invalid provider type: ${type}. Valid types: ${PROVIDER_TYPES.join(", ")}`
           );
         }
+
+        // Auto-generate name if not provided: type-timestamp
+        const name = options.name || `${type}-${Date.now()}`;
 
         // Try to get API key from environment if not provided
         let apiKey = options.apiKey;
@@ -126,7 +132,7 @@ export function registerProviderCommand(program: Command): void {
 
         const provider = await providerManager.createProvider({
           type,
-          name: options.name || id,
+          name,
           apiKey,
           baseUrl: options.baseUrl || DEFAULT_BASE_URLS[type],
           timeout: options.timeout,
@@ -152,51 +158,63 @@ export function registerProviderCommand(program: Command): void {
       }
     });
 
-  // provider remove <id>
+  // provider remove
   provider
-    .command("remove <id>")
+    .command("remove")
     .alias("rm")
     .description("Remove a provider")
-    .action(async function (this: Command, id: string) {
+    .requiredOption("-n, --name <name>", "Provider name to remove")
+    .action(async function (
+      this: Command,
+      options: { name: string }
+    ) {
       const ctx = getContext(this);
       try {
-        await providerManager.removeProvider(id);
-        output(ctx, successResponse({ removed: id }), () => {
-          outputSuccess(ctx, `Removed provider "${id}"`);
+        await providerManager.removeProvider(options.name);
+        output(ctx, successResponse({ removed: options.name }), () => {
+          outputSuccess(ctx, `Removed provider "${options.name}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
       }
     });
 
-  // provider set-default <id>
+  // provider set-default
   provider
-    .command("set-default <id>")
+    .command("set-default")
     .description("Set the default provider")
-    .action(async function (this: Command, id: string) {
+    .requiredOption("-n, --name <name>", "Provider name to set as default")
+    .action(async function (
+      this: Command,
+      options: { name: string }
+    ) {
       const ctx = getContext(this);
       try {
-        await providerManager.setDefault(id);
-        output(ctx, successResponse({ default: id }), () => {
-          outputSuccess(ctx, `Set "${id}" as default provider`);
+        await providerManager.setDefault(options.name);
+        output(ctx, successResponse({ default: options.name }), () => {
+          outputSuccess(ctx, `Set "${options.name}" as default provider`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
       }
     });
 
-  // provider status [id]
+  // provider status
   provider
-    .command("status [id]")
+    .command("status")
     .description("Show provider status")
-    .action(async function (this: Command, id?: string) {
+    .option("-n, --name <name>", "Provider name (show all if not provided)")
+    .action(async function (
+      this: Command,
+      options: { name?: string }
+    ) {
       const ctx = getContext(this);
       try {
-        if (id) {
+        if (options.name) {
           // Show status for specific provider
-          const status = await providerManager.checkStatus(id);
+          const status = await providerManager.checkStatus(options.name);
           output(ctx, successResponse({ status }), () => {
-            console.log(chalk.bold(`Provider: ${id}`));
+            console.log(chalk.bold(`Provider: ${options.name}`));
             outputKeyValue(ctx, {
               Connected: status.connected ? chalk.green("Yes") : chalk.red("No"),
               Latency: status.latency ? `${status.latency}ms` : "-",
@@ -232,16 +250,20 @@ export function registerProviderCommand(program: Command): void {
       }
     });
 
-  // provider show <id>
+  // provider show
   provider
-    .command("show <id>")
+    .command("show")
     .description("Show provider details")
-    .action(async function (this: Command, id: string) {
+    .requiredOption("-n, --name <name>", "Provider name to show")
+    .action(async function (
+      this: Command,
+      options: { name: string }
+    ) {
       const ctx = getContext(this);
       try {
-        const p = await providerManager.getProvider(id);
+        const p = await providerManager.getProvider(options.name);
         if (!p) {
-          throw new Error(`Provider "${id}" not found`);
+          throw new Error(`Provider "${options.name}" not found`);
         }
 
         output(ctx, successResponse({ provider: p }), () => {
@@ -266,24 +288,25 @@ export function registerProviderCommand(program: Command): void {
       }
     });
 
-  // provider update <id>
+  // provider update
   provider
-    .command("update <id>")
+    .command("update")
     .description("Update a provider")
+    .requiredOption("-n, --name <name>", "Provider name to update")
     .option("-t, --type <type>", "Provider type")
     .option("-u, --base-url <url>", "Custom base URL")
     .option("-k, --api-key <key>", "API key")
-    .option("-n, --name <name>", "Display name")
+    .option("--display-name <displayName>", "Display name")
     .option("--timeout <seconds>", "Request timeout in seconds", parseInt)
     .option("--max-retries <count>", "Maximum retry attempts", parseInt)
     .action(async function (
       this: Command,
-      id: string,
       options: {
+        name: string;
         type?: string;
         baseUrl?: string;
         apiKey?: string;
-        name?: string;
+        displayName?: string;
         timeout?: number;
         maxRetries?: number;
       }
@@ -297,9 +320,9 @@ export function registerProviderCommand(program: Command): void {
           );
         }
 
-        const provider = await providerManager.updateProvider(id, {
+        const provider = await providerManager.updateProvider(options.name, {
           type: options.type as ProviderType | undefined,
-          name: options.name,
+          name: options.displayName,
           apiKey: options.apiKey,
           baseUrl: options.baseUrl,
           timeout: options.timeout,
@@ -307,39 +330,47 @@ export function registerProviderCommand(program: Command): void {
         });
 
         output(ctx, successResponse({ provider }), () => {
-          outputSuccess(ctx, `Updated provider "${id}"`);
+          outputSuccess(ctx, `Updated provider "${options.name}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
       }
     });
 
-  // provider enable <id>
+  // provider enable
   provider
-    .command("enable <id>")
+    .command("enable")
     .description("Enable a provider")
-    .action(async function (this: Command, id: string) {
+    .requiredOption("-n, --name <name>", "Provider name to enable")
+    .action(async function (
+      this: Command,
+      options: { name: string }
+    ) {
       const ctx = getContext(this);
       try {
-        await providerManager.setEnabled(id, true);
-        output(ctx, successResponse({ enabled: id }), () => {
-          outputSuccess(ctx, `Enabled provider "${id}"`);
+        await providerManager.setEnabled(options.name, true);
+        output(ctx, successResponse({ enabled: options.name }), () => {
+          outputSuccess(ctx, `Enabled provider "${options.name}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);
       }
     });
 
-  // provider disable <id>
+  // provider disable
   provider
-    .command("disable <id>")
+    .command("disable")
     .description("Disable a provider")
-    .action(async function (this: Command, id: string) {
+    .requiredOption("-n, --name <name>", "Provider name to disable")
+    .action(async function (
+      this: Command,
+      options: { name: string }
+    ) {
       const ctx = getContext(this);
       try {
-        await providerManager.setEnabled(id, false);
-        output(ctx, successResponse({ disabled: id }), () => {
-          outputSuccess(ctx, `Disabled provider "${id}"`);
+        await providerManager.setEnabled(options.name, false);
+        output(ctx, successResponse({ disabled: options.name }), () => {
+          outputSuccess(ctx, `Disabled provider "${options.name}"`);
         });
       } catch (error) {
         handleCommandError(ctx, error);

@@ -92,11 +92,13 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model show <model>
+  // model show -n <model>
   model
-    .command("show <model>")
+    .command("show")
     .description("Show model details")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID or alias")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         // Resolve alias first
@@ -203,11 +205,13 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model set-default <model>
+  // model set-default -n <model>
   model
-    .command("set-default <model>")
+    .command("set-default")
     .description("Set the default model")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID or alias")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         // Resolve alias to actual model ID
@@ -260,11 +264,15 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model alias set <alias> <model>
+  // model alias create -n <name> -m <model>
   alias
-    .command("set <alias> <model>")
+    .command("create")
     .description("Create or update a model alias")
-    .action(async function (this: Command, aliasName: string, modelId: string) {
+    .requiredOption("-n, --name <name>", "Alias name")
+    .requiredOption("-m, --model <model>", "Target model ID")
+    .action(async function (this: Command, options: { name: string; model: string }) {
+      const aliasName = options.name;
+      const modelId = options.model;
       const ctx = getContext(this);
       try {
         await modelManager.createAlias(aliasName, modelId);
@@ -277,12 +285,14 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model alias remove <alias>
+  // model alias remove -n <name>
   alias
-    .command("remove <alias>")
+    .command("remove")
     .alias("rm")
     .description("Remove a model alias")
-    .action(async function (this: Command, aliasName: string) {
+    .requiredOption("-n, --name <name>", "Alias name to remove")
+    .action(async function (this: Command, options: { name: string }) {
+      const aliasName = options.name;
       const ctx = getContext(this);
       try {
         await modelManager.removeAlias(aliasName);
@@ -295,11 +305,13 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model alias resolve <alias>
+  // model alias resolve -n <name>
   alias
-    .command("resolve <alias>")
+    .command("resolve")
     .description("Resolve an alias to its model ID")
-    .action(async function (this: Command, aliasName: string) {
+    .requiredOption("-n, --name <name>", "Alias name to resolve")
+    .action(async function (this: Command, options: { name: string }) {
+      const aliasName = options.name;
       const ctx = getContext(this);
       try {
         const resolved = await modelManager.resolveAlias(aliasName);
@@ -380,11 +392,13 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model fallback add <model>
+  // model fallback add -n <model>
   fallback
-    .command("add <model>")
+    .command("add")
     .description("Add a model to the fallback chain")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID to add")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         await modelManager.addFallback(modelId);
@@ -398,12 +412,14 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model fallback remove <model>
+  // model fallback remove -n <model>
   fallback
-    .command("remove <model>")
+    .command("remove")
     .alias("rm")
     .description("Remove a model from the fallback chain")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID to remove")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         await modelManager.removeFallback(modelId);
@@ -436,11 +452,13 @@ export function registerModelCommand(program: Command): void {
   // model config - subcommand group
   const config = model.command("config").description("Manage model-specific configuration");
 
-  // model config show <model>
+  // model config show -n <model>
   config
-    .command("show <model>")
+    .command("show")
     .description("Show model-specific configuration")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         const modelConfig = await modelManager.getModelConfig(modelId);
@@ -465,19 +483,20 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model config set <model>
+  // model config set -n <model>
   config
-    .command("set <model>")
+    .command("set")
     .description("Set model-specific configuration")
+    .requiredOption("-n, --name <model>", "Model ID")
     .option("-t, --temperature <value>", "Temperature (0-2)", parseFloat)
-    .option("-m, --max-tokens <value>", "Max tokens", parseInt)
+    .option("--max-tokens <value>", "Max tokens", parseInt)
     .option("--top-p <value>", "Top P (0-1)", parseFloat)
     .option("--frequency-penalty <value>", "Frequency penalty (-2 to 2)", parseFloat)
     .option("--presence-penalty <value>", "Presence penalty (-2 to 2)", parseFloat)
     .action(async function (
       this: Command,
-      modelId: string,
       options: {
+        name: string;
         temperature?: number;
         maxTokens?: number;
         topP?: number;
@@ -485,6 +504,7 @@ export function registerModelCommand(program: Command): void {
         presencePenalty?: number;
       }
     ) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         // Get existing config and merge with new values
@@ -507,12 +527,14 @@ export function registerModelCommand(program: Command): void {
       }
     });
 
-  // model config remove <model>
+  // model config remove -n <model>
   config
-    .command("remove <model>")
+    .command("remove")
     .alias("rm")
     .description("Remove model-specific configuration")
-    .action(async function (this: Command, modelId: string) {
+    .requiredOption("-n, --name <model>", "Model ID")
+    .action(async function (this: Command, options: { name: string }) {
+      const modelId = options.name;
       const ctx = getContext(this);
       try {
         await modelManager.removeModelConfig(modelId);

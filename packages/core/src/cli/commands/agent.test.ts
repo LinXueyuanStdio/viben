@@ -345,7 +345,7 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent show <id>", () => {
+  describe("agent show -n <id>", () => {
     it("should show agent details", async () => {
       const mockAgent = createMockAgent({
         id: "my-agent",
@@ -365,7 +365,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(configManager.getDefaultAgent).mockResolvedValue("my-agent");
 
-      await runCommand(["agent", "show", "my-agent"]);
+      await runCommand(["agent", "show", "-n", "my-agent"]);
 
       expect(agentManager.getAgent).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalled();
@@ -374,7 +374,7 @@ describe("Agent CLI Commands", () => {
     it("should show error when agent not found", async () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
-      await expect(runCommand(["agent", "show", "nonexistent"])).rejects.toThrow();
+      await expect(runCommand(["agent", "show", "-n", "nonexistent"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found")
@@ -391,13 +391,13 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(configManager.getDefaultAgent).mockResolvedValue("default-agent");
 
-      await runCommand(["agent", "show", "default-agent"]);
+      await runCommand(["agent", "show", "-n", "default-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Default Agent"));
     });
   });
 
-  describe("agent remove <id>", () => {
+  describe("agent remove -n <id>", () => {
     it("should remove an agent", async () => {
       const mockAgent = createMockAgent({
         id: "agent-to-remove",
@@ -408,7 +408,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.removeAgent).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "remove", "agent-to-remove"]);
+      await runCommand(["agent", "remove", "-n", "agent-to-remove"]);
 
       expect(agentManager.removeAgent).toHaveBeenCalledWith("agent-to-remove");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Removed agent"));
@@ -424,7 +424,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.removeAgent).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "remove", "agent-to-remove"]);
+      await runCommand(["agent", "remove", "-n", "agent-to-remove"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Warning"));
     });
@@ -439,7 +439,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.removeAgent).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "remove", "agent-to-remove", "--force"]);
+      await runCommand(["agent", "remove", "-n", "agent-to-remove", "--force"]);
 
       // Check that warning was NOT called
       const warningCalls = consoleSpy.mock.calls.filter(
@@ -451,7 +451,7 @@ describe("Agent CLI Commands", () => {
     it("should show error when agent not found", async () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
-      await expect(runCommand(["agent", "remove", "nonexistent"])).rejects.toThrow();
+      await expect(runCommand(["agent", "remove", "-n", "nonexistent"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found")
@@ -459,7 +459,7 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent set-default <id>", () => {
+  describe("agent set-default -n <id>", () => {
     it("should set default agent", async () => {
       const mockAgent = createMockAgent({
         id: "new-default",
@@ -470,7 +470,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.setDefault).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "set-default", "new-default"]);
+      await runCommand(["agent", "set-default", "-n", "new-default"]);
 
       expect(agentManager.setDefault).toHaveBeenCalledWith("new-default");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Set default agent"));
@@ -479,7 +479,7 @@ describe("Agent CLI Commands", () => {
     it("should show error when agent not found", async () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
-      await expect(runCommand(["agent", "set-default", "nonexistent"])).rejects.toThrow();
+      await expect(runCommand(["agent", "set-default", "-n", "nonexistent"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found")
@@ -524,7 +524,7 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent config <id>", () => {
+  describe("agent config -n <id>", () => {
     it("should show agent configuration", async () => {
       const mockAgent = createMockAgent({
         id: "my-agent",
@@ -540,7 +540,7 @@ describe("Agent CLI Commands", () => {
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
 
-      await runCommand(["agent", "config", "my-agent"]);
+      await runCommand(["agent", "config", "-n", "my-agent"]);
 
       expect(agentManager.getAgent).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Configuration"));
@@ -561,7 +561,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.updateAgent).mockResolvedValue(updatedAgent);
 
-      await runCommand(["agent", "config", "my-agent", "--set", "model=gpt-4"]);
+      await runCommand(["agent", "config", "-n", "my-agent", "--set", "model=gpt-4"]);
 
       expect(agentManager.updateAgent).toHaveBeenCalledWith("my-agent", { model: "gpt-4" });
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Updated agent"));
@@ -586,6 +586,7 @@ describe("Agent CLI Commands", () => {
       await runCommand([
         "agent",
         "config",
+        "-n",
         "my-agent",
         "--set",
         "model=gpt-4",
@@ -614,7 +615,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.updateAgent).mockResolvedValue(updatedAgent);
 
-      await runCommand(["agent", "config", "my-agent", "--set", "planMode=true"]);
+      await runCommand(["agent", "config", "-n", "my-agent", "--set", "planMode=true"]);
 
       expect(agentManager.updateAgent).toHaveBeenCalledWith("my-agent", { planMode: true });
     });
@@ -630,7 +631,7 @@ describe("Agent CLI Commands", () => {
 
       // "=value" has empty key, which should fail
       await expect(
-        runCommand(["agent", "config", "my-agent", "--set", "=value"])
+        runCommand(["agent", "config", "-n", "my-agent", "--set", "=value"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -654,7 +655,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.updateAgent).mockResolvedValue(updatedAgent);
 
       // "key=" is valid - empty value is parsed as 0 by parseConfigValue (Number("") === 0)
-      await runCommand(["agent", "config", "my-agent", "--set", "model="]);
+      await runCommand(["agent", "config", "-n", "my-agent", "--set", "model="]);
 
       // Note: parseConfigValue converts empty string to 0 because Number("") is 0
       expect(agentManager.updateAgent).toHaveBeenCalledWith("my-agent", { model: 0 });
@@ -663,7 +664,7 @@ describe("Agent CLI Commands", () => {
     it("should show error when agent not found", async () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
-      await expect(runCommand(["agent", "config", "nonexistent"])).rejects.toThrow();
+      await expect(runCommand(["agent", "config", "-n", "nonexistent"])).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         expect.stringContaining("not found")
@@ -678,28 +679,27 @@ describe("Agent CLI Commands", () => {
   describe("agent template list", () => {
     it("should list all templates", async () => {
       const mockTemplates = [
-        {
+        createMockTemplate({
           id: "coding-assistant",
           name: "Coding Assistant",
           description: "A general coding assistant",
           config: {
             name: "Coding Assistant",
-            executorType: "CLAUDE_CODE",
+            executorType: "CLAUDE_CODE" as ExecutorType,
             model: "claude-3-opus",
           },
-          createdAt: "2024-01-01T00:00:00Z",
-        },
-        {
+        }),
+        createMockTemplate({
           id: "researcher",
           name: "Researcher",
           description: "Research and analysis",
           config: {
             name: "Researcher",
-            executorType: "GEMINI",
+            executorType: "GEMINI" as ExecutorType,
             model: "gemini-pro",
           },
           createdAt: "2024-01-02T00:00:00Z",
-        },
+        }),
       ];
 
       vi.mocked(templateManager.list).mockResolvedValue(mockTemplates);
@@ -721,29 +721,24 @@ describe("Agent CLI Commands", () => {
 
   describe("agent template create <agent-id> <template-id>", () => {
     it("should create template from agent", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "source-agent",
         name: "Source Agent",
-        executorType: "CLAUDE_CODE",
+        executorType: "CLAUDE_CODE" as ExecutorType,
         model: "claude-3-opus",
-        mcpServers: [],
-        skills: [],
         planMode: true,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+      });
 
-      const mockTemplate = {
+      const mockTemplate = createMockTemplate({
         id: "new-template",
         name: "Source Agent",
         config: {
           name: "Source Agent",
-          executorType: "CLAUDE_CODE",
+          executorType: "CLAUDE_CODE" as ExecutorType,
           model: "claude-3-opus",
         },
         createdAt: "2024-01-02T00:00:00Z",
-      };
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.createTemplate).mockResolvedValue(mockTemplate);
@@ -769,18 +764,17 @@ describe("Agent CLI Commands", () => {
 
   describe("agent template show <template-id>", () => {
     it("should show template details", async () => {
-      const mockTemplate = {
+      const mockTemplate = createMockTemplate({
         id: "coding-assistant",
         name: "Coding Assistant",
         description: "A general coding assistant",
         config: {
           name: "Coding Assistant",
-          executorType: "CLAUDE_CODE",
+          executorType: "CLAUDE_CODE" as ExecutorType,
           model: "claude-3-opus",
           provider: "anthropic",
         },
-        createdAt: "2024-01-01T00:00:00Z",
-      };
+      });
 
       vi.mocked(templateManager.get).mockResolvedValue(mockTemplate);
 
@@ -805,14 +799,10 @@ describe("Agent CLI Commands", () => {
 
   describe("agent template remove <template-id>", () => {
     it("should remove template", async () => {
-      const mockTemplate = {
+      const mockTemplate = createMockTemplate({
         id: "template-to-remove",
         name: "Template To Remove",
-        config: {
-          name: "Template To Remove",
-        },
-        createdAt: "2024-01-01T00:00:00Z",
-      };
+      });
 
       vi.mocked(templateManager.get).mockResolvedValue(mockTemplate);
       vi.mocked(templateManager.remove).mockResolvedValue(undefined);
@@ -840,63 +830,51 @@ describe("Agent CLI Commands", () => {
   // Session Tests
   // ============================================================================
 
-  describe("agent session list <agent-id>", () => {
+  describe("agent session list -n <agent-id>", () => {
     it("should list agent sessions", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       const mockSessions = [
-        {
+        createMockSession({
           id: "session-1",
           agentId: "my-agent",
           name: "Feature Development",
           createdAt: "2024-01-01T10:00:00Z",
           lastAccessedAt: "2024-01-01T14:00:00Z",
-        },
-        {
+        }),
+        createMockSession({
           id: "session-2",
           agentId: "my-agent",
           name: "Bug Fixes",
           createdAt: "2024-01-02T09:00:00Z",
           lastAccessedAt: "2024-01-02T12:00:00Z",
-        },
+        }),
       ];
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.listSessions).mockResolvedValue(mockSessions);
 
-      await runCommand(["agent", "session", "list", "my-agent"]);
+      await runCommand(["agent", "session", "list", "-n", "my-agent"]);
 
       expect(agentManager.listSessions).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalled();
     });
 
     it("should show message when no sessions exist", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.listSessions).mockResolvedValue([]);
 
-      await runCommand(["agent", "session", "list", "my-agent"]);
+      await runCommand(["agent", "session", "list", "-n", "my-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No sessions found"));
     });
@@ -905,7 +883,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
       await expect(
-        runCommand(["agent", "session", "list", "nonexistent"])
+        runCommand(["agent", "session", "list", "-n", "nonexistent"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -914,62 +892,49 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent session create <agent-id>", () => {
+  describe("agent session create -n <agent-id>", () => {
     it("should create new session", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
-      const mockSession = {
+      const mockSession = createMockSession({
         id: "new-session-id",
         agentId: "my-agent",
-        name: undefined,
         createdAt: "2024-01-01T10:00:00Z",
         lastAccessedAt: "2024-01-01T10:00:00Z",
-      };
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.createSession).mockResolvedValue(mockSession);
 
-      await runCommand(["agent", "session", "create", "my-agent"]);
+      await runCommand(["agent", "session", "create", "-n", "my-agent"]);
 
       expect(agentManager.createSession).toHaveBeenCalledWith("my-agent", undefined);
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Created session"));
     });
 
     it("should create session with name", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
-      const mockSession = {
+      const mockSession = createMockSession({
         id: "new-session-id",
         agentId: "my-agent",
         name: "Feature Work",
         createdAt: "2024-01-01T10:00:00Z",
         lastAccessedAt: "2024-01-01T10:00:00Z",
-      };
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(agentManager.createSession).mockResolvedValue(mockSession);
 
-      await runCommand(["agent", "session", "create", "my-agent", "--name", "Feature Work"]);
+      await runCommand(["agent", "session", "create", "-n", "my-agent", "--session-name", "Feature Work"]);
 
       expect(agentManager.createSession).toHaveBeenCalledWith("my-agent", "Feature Work");
     });
@@ -978,7 +943,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
       await expect(
-        runCommand(["agent", "session", "create", "nonexistent"])
+        runCommand(["agent", "session", "create", "-n", "nonexistent"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -987,11 +952,11 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent session remove <agent-id> <session-id>", () => {
+  describe("agent session remove -n <agent-id> -s <session-id>", () => {
     it("should remove session", async () => {
       vi.mocked(agentManager.removeSession).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "session", "remove", "my-agent", "session-123"]);
+      await runCommand(["agent", "session", "remove", "-n", "my-agent", "-s", "session-123"]);
 
       expect(agentManager.removeSession).toHaveBeenCalledWith("my-agent", "session-123");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Removed session"));
@@ -1001,7 +966,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.removeSession).mockRejectedValue(new Error('Session "nonexistent" not found'));
 
       await expect(
-        runCommand(["agent", "session", "remove", "my-agent", "nonexistent"])
+        runCommand(["agent", "session", "remove", "-n", "my-agent", "-s", "nonexistent"])
       ).rejects.toThrow();
     });
   });
@@ -1010,19 +975,13 @@ describe("Agent CLI Commands", () => {
   // Memory Tests
   // ============================================================================
 
-  describe("agent memory show <agent-id>", () => {
+  describe("agent memory show -n <agent-id>", () => {
     it("should show agent memory", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       const mockMemory = {
         agentId: "my-agent",
@@ -1053,7 +1012,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(memoryManager.getMemoryStats).mockResolvedValue(mockStats);
       vi.mocked(memoryManager.getRecentLogs).mockResolvedValue(mockLogs);
 
-      await runCommand(["agent", "memory", "show", "my-agent"]);
+      await runCommand(["agent", "memory", "show", "-n", "my-agent"]);
 
       expect(memoryManager.getMemory).toHaveBeenCalledWith("my-agent");
       expect(memoryManager.getMemoryStats).toHaveBeenCalledWith("my-agent");
@@ -1062,17 +1021,11 @@ describe("Agent CLI Commands", () => {
     });
 
     it("should show memory with custom days option", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.getMemory).mockResolvedValue({
@@ -1089,7 +1042,7 @@ describe("Agent CLI Commands", () => {
       });
       vi.mocked(memoryManager.getRecentLogs).mockResolvedValue([]);
 
-      await runCommand(["agent", "memory", "show", "my-agent", "--days", "14"]);
+      await runCommand(["agent", "memory", "show", "-n", "my-agent", "--days", "14"]);
 
       // Verify getRecentLogs was called with the agent ID and a numeric days value
       // Note: parseInt is used as the parser in commander, which may cause issues with radix
@@ -1103,7 +1056,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
       await expect(
-        runCommand(["agent", "memory", "show", "nonexistent"])
+        runCommand(["agent", "memory", "show", "-n", "nonexistent"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1112,24 +1065,18 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent memory append <agent-id> <content>", () => {
+  describe("agent memory append -n <agent-id> <content>", () => {
     it("should append to agent memory", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.appendMemory).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "memory", "append", "my-agent", "New memory content"]);
+      await runCommand(["agent", "memory", "append", "-n", "my-agent", "New memory content"]);
 
       expect(memoryManager.appendMemory).toHaveBeenCalledWith("my-agent", "New memory content");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Appended to memory"));
@@ -1139,7 +1086,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
       await expect(
-        runCommand(["agent", "memory", "append", "nonexistent", "content"])
+        runCommand(["agent", "memory", "append", "-n", "nonexistent", "content"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1148,71 +1095,53 @@ describe("Agent CLI Commands", () => {
     });
   });
 
-  describe("agent memory clear <agent-id>", () => {
+  describe("agent memory clear -n <agent-id>", () => {
     it("should clear agent memory", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.clearMemory).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "memory", "clear", "my-agent"]);
+      await runCommand(["agent", "memory", "clear", "-n", "my-agent"]);
 
       expect(memoryManager.clearMemory).toHaveBeenCalledWith("my-agent");
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Cleared memory"));
     });
 
     it("should show warning without --force flag", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.clearMemory).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "memory", "clear", "my-agent"]);
+      await runCommand(["agent", "memory", "clear", "-n", "my-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Warning"));
     });
 
     it("should skip warning with --force flag", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(memoryManager.clearMemory).mockResolvedValue(undefined);
 
-      await runCommand(["agent", "memory", "clear", "my-agent", "--force"]);
+      await runCommand(["agent", "memory", "clear", "-n", "my-agent", "--force"]);
 
       // Check that warning was NOT called
       const warningCalls = consoleSpy.mock.calls.filter(
-        (call) => call[0]?.includes?.("Warning")
+        (call) => (call[0] as string)?.includes?.("Warning")
       );
       expect(warningCalls.length).toBe(0);
     });
@@ -1221,7 +1150,7 @@ describe("Agent CLI Commands", () => {
       vi.mocked(agentManager.getAgent).mockResolvedValue(null);
 
       await expect(
-        runCommand(["agent", "memory", "clear", "nonexistent"])
+        runCommand(["agent", "memory", "clear", "-n", "nonexistent"])
       ).rejects.toThrow();
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -1236,22 +1165,16 @@ describe("Agent CLI Commands", () => {
 
   describe("JSON output mode", () => {
     it("should output JSON for agent show", async () => {
-      const mockAgent = {
+      const mockAgent = createMockAgent({
         id: "my-agent",
         name: "My Agent",
-        executorType: "CLAUDE_CODE",
-        mcpServers: [],
-        skills: [],
-        planMode: false,
-        approvals: false,
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z",
-      };
+        executorType: "CLAUDE_CODE" as ExecutorType,
+      });
 
       vi.mocked(agentManager.getAgent).mockResolvedValue(mockAgent);
       vi.mocked(configManager.getDefaultAgent).mockResolvedValue(undefined);
 
-      await runCommand(["--json", "agent", "show", "my-agent"]);
+      await runCommand(["--json", "agent", "show", "-n", "my-agent"]);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('"success": true')

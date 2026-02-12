@@ -14,47 +14,73 @@ viben model list
 viben model list --provider <provider-name>
 viben model list --json
 
+# 查看 model 详情
+viben model show -n <model>
+
 # 查看 model 状态
 viben model status
-viben model status -n <model>
 
 # 设置默认 model
 viben model set-default -n <model>
 
 # ============================================================
-# Model Aliases (别名)
+# Model Alias (别名)
 # ============================================================
 
 # 列出别名
-viben model aliases list
+viben model alias list
 
 # 创建别名
-viben model aliases create -n <alias> -f <model>
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n smart -f claude-sonnet-4-20250514
-viben model aliases create -n best -f claude-opus-4-20250514
+viben model alias create -n <name> -m <model>
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n smart -m claude-sonnet-4-20250514
+viben model alias create -n best -m claude-opus-4-20250514
 
 # 删除别名
-viben model aliases remove -n <alias>
+viben model alias remove -n <name>
+
+# 解析别名
+viben model alias resolve -n <name>
 
 # ============================================================
-# Model Fallbacks (回退链)
+# Model Fallback (回退链)
 # ============================================================
 
 # 列出回退链
-viben model fallbacks list
+viben model fallback list
+
+# 设置回退链 (支持空格或逗号分隔)
+viben model fallback set <models...>
+viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
 
 # 添加到回退链
-viben model fallbacks create -n <model>
-viben model fallbacks create -n claude-sonnet-4-20250514
-viben model fallbacks create -n gpt-4-turbo
-viben model fallbacks create -n claude-3-5-haiku-latest
+viben model fallback add -n <model>
 
 # 从回退链移除
-viben model fallbacks remove -n <model>
+viben model fallback remove -n <model>
 
 # 清空回退链
-viben model fallbacks clear
+viben model fallback clear
+
+# ============================================================
+# Model Config (模型特定配置)
+# ============================================================
+
+# 查看模型配置
+viben model config show -n <model>
+
+# 设置模型配置
+viben model config set -n <model> --temperature <value> --max-tokens <value>
+
+# 删除模型配置
+viben model config remove -n <model>
+
+# ============================================================
+# Model Providers
+# ============================================================
+
+# 列出可用 providers
+viben model providers
 ```
 
 ---
@@ -303,10 +329,32 @@ Model Status:
 
 ### Model Management
 - [ ] `viben model list` 列出可用 models
+- [ ] `viben model list --provider <provider>` 按 provider 过滤
+- [ ] `viben model list --json` JSON 输出
+- [ ] `viben model show -n <model>` 显示 model 详情
 - [ ] `viben model status` 显示 model 状态
 - [ ] `viben model set-default -n <model>` 设置默认 model
-- [ ] `viben model aliases list/create/remove` 管理别名
-- [ ] `viben model fallbacks list/create/remove/clear` 管理回退链
+
+### Model Alias
+- [ ] `viben model alias list` 列出别名
+- [ ] `viben model alias create -n <name> -m <model>` 创建别名
+- [ ] `viben model alias remove -n <name>` 删除别名
+- [ ] `viben model alias resolve -n <name>` 解析别名
+
+### Model Fallback
+- [ ] `viben model fallback list` 列出回退链
+- [ ] `viben model fallback set <models...>` 设置回退链
+- [ ] `viben model fallback add -n <model>` 添加到回退链
+- [ ] `viben model fallback remove -n <model>` 从回退链移除
+- [ ] `viben model fallback clear` 清空回退链
+
+### Model Config
+- [ ] `viben model config show -n <model>` 显示模型配置
+- [ ] `viben model config set -n <model>` 设置模型配置
+- [ ] `viben model config remove -n <model>` 删除模型配置
+
+### Model Providers
+- [ ] `viben model providers` 列出可用 providers
 
 ---
 
