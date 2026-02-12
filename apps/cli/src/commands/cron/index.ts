@@ -51,10 +51,10 @@ export function registerCronCommand(program: Command): void {
   cronCmd
     .command('list')
     .description('List all cron jobs')
-    .action(() => {
+    .action(async () => {
       const ctx = getOutputContext(program);
       try {
-        listCronJobs(ctx);
+        await listCronJobs(ctx);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -140,10 +140,10 @@ export function registerCronCommand(program: Command): void {
   cronCmd
     .command('show <job_id>')
     .description('Show cron job details')
-    .action((jobId: string) => {
+    .action(async (jobId: string) => {
       const ctx = getOutputContext(program);
       try {
-        showCronJob(ctx, jobId);
+        await showCronJob(ctx, jobId);
       } catch (error) {
         handleError(ctx, error);
       }

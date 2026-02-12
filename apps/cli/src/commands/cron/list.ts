@@ -1,11 +1,13 @@
 /**
  * viben cron list - List all cron jobs
+ *
+ * Uses NAPI bindings to Rust viben-core.
  */
 
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
-import { getCronService } from '../../lib/cron';
+import { cronList, type CronJob } from '../../lib/native';
 
 /**
  * Format a timestamp for display
@@ -16,7 +18,6 @@ function formatTimestamp(ms: number | undefined): string {
   }
 
   const date = new Date(ms);
-  const now = new Date();
 
   // Format as "YYYY-MM-DD HH:mm"
   const year = date.getFullYear();
@@ -52,9 +53,8 @@ function formatSchedule(cron?: string, every?: number): string {
 /**
  * List all cron jobs
  */
-export function listCronJobs(ctx: OutputContext): void {
-  const service = getCronService();
-  const jobs = service.listJobs();
+export async function listCronJobs(ctx: OutputContext): Promise<void> {
+  const jobs = await cronList();
 
   output(
     ctx,
