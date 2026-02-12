@@ -271,7 +271,7 @@ function convertClaudeMessageToUI(msg: Record<string, unknown>): ExecutorUIMessa
               return null;
           }
         })
-        .filter((m): m is ExecutorUIMessage => m !== null);
+        .filter((m): m is NonNullable<typeof m> => m !== null) as ExecutorUIMessage[];
     }
 
     case "result": {

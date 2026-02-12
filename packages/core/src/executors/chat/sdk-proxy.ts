@@ -119,8 +119,10 @@ export class SdkChatProxy implements ChatProxy {
       return { exitCode: 0 };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      if (verbose) {
-        console.error(`SDK Error: ${errorMessage}`);
+      // Always show errors to stderr
+      console.error(`SDK Error: ${errorMessage}`);
+      if (verbose && error instanceof Error && error.stack) {
+        console.error(error.stack);
       }
       return {
         exitCode: 1,

@@ -19,6 +19,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
+  // Optional dependencies that are dynamically imported at runtime
+  external: ["@fastify/cors", "@fastify/websocket", "node-pty"],
   onSuccess: async () => {
     // Add shebang to bin.js after build
     const fs = await import("fs/promises");

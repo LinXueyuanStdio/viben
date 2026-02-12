@@ -65,13 +65,14 @@ export function registerAgentCommand(program: Command): void {
 
           outputTable(
             ctx,
-            ["ID", "Name", "Executor", "Model", "Default"],
+            ["ID", "Name", "Executor", "Model", "Default", "Path"],
             agents.map((a) => [
               a.id,
               a.name,
               a.executorType || "-",
               a.model || "-",
               a.id === defaultAgentId ? chalk.green("*") : "",
+              a.path || "-",
             ])
           );
         });
@@ -174,6 +175,7 @@ export function registerAgentCommand(program: Command): void {
           outputKeyValue(ctx, {
             ID: agentData.id,
             Name: agentData.name,
+            Path: agentData.path || "-",
             Description: agentData.description || "-",
             Executor: agentData.executorType || "-",
             Model: agentData.model || "-",
@@ -587,8 +589,8 @@ export function registerAgentCommand(program: Command): void {
           console.log(JSON.stringify(jsonResult, null, 2));
         }
 
-        // Handle result error
-        if (result.error && ctx.verbose) {
+        // Handle result error - always show errors
+        if (result.error) {
           console.error(chalk.red(`Error: ${result.error}`));
         }
 

@@ -104,6 +104,7 @@ export class AgentManager {
     return {
       id,
       name: config.name,
+      path: getAgentDir(id),
       description: config.description,
       model: config.model,
       provider: config.provider,
