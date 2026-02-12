@@ -471,6 +471,7 @@ export function MessageList({
   maxMessageWidth,
 }: MessageListProps) {
   const { t } = useTranslation();
+
   const viewportRef = React.useRef<HTMLDivElement>(null);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
@@ -478,6 +479,12 @@ export function MessageList({
   const [showScrollButton, setShowScrollButton] = React.useState(false);
   const userScrolledUpRef = React.useRef(false);
   const lastScrollTopRef = React.useRef(0);
+
+  // Debug
+  React.useEffect(() => {
+    console.log("[MessageList] Render - messages:", messages.length, "isStreaming:", isStreaming);
+    console.log("[MessageList] Message types:", messages.map(m => m.type));
+  }, [messages, isStreaming]);
 
   // Group messages for display - must be called before any conditional returns
   // In simpleMode, skip grouping and just create "other" groups for each message
@@ -487,6 +494,19 @@ export function MessageList({
       : groupMessages(messages, isStreaming || false),
     [messages, isStreaming, simpleMode]
   );
+
+  // Debug groups
+  React.useEffect(() => {
+    console.log("[MessageList] Groups:", groups.length, "from messages:", messages.length);
+    groups.forEach((g, i) => {
+      if (g.type === "task") {
+        console.log(`  [${i}] task: ${g.tools.length} tools`);
+      } else {
+        console.log(`  [${i}] ${g.message.type}: ${g.message.content?.slice(0, 50) || g.message.id}`);
+      }
+    });
+  }, [groups, messages.length]);
+
 
   // Scroll to bottom function
   const scrollToBottom = React.useCallback(() => {
@@ -527,9 +547,13 @@ export function MessageList({
   const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
   React.useEffect(() => {
     if (shouldAutoScroll && !userScrolledUpRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+      // Use instant scroll during active streaming to prevent jitter
+      // Use smooth scroll when streaming just started (new message) or stopped
+      bottomRef.current?.scrollIntoView({
+        behavior: isStreaming ? "instant" : "smooth",
+      });
     }
-  }, [messages, shouldAutoScroll, pendingQuestions]);
+  }, [messages, shouldAutoScroll, isStreaming, pendingQuestions]);
 
   // Reset userScrolledUp when streaming stops
   React.useEffect(() => {
@@ -627,7 +651,7 @@ export function MessageList({
   };
 
   return (
-    <div ref={containerRef} className={cn("relative flex-1 w-0 min-h-0 min-w-0 overflow-hidden", className)}>
+    <div ref={containerRef} className={cn("relative flex-1 w-full min-h-0 min-w-0 overflow-hidden", className)}>
       <ScrollArea
         className="h-full w-full"
         viewportRef={viewportRef}
@@ -672,7 +696,7 @@ export function MessageList({
             );
           })}
 
-          {/* Running indicator */}
+          {/* Running indicator - shows "Thinking..." or tool execution status */}
           {isStreaming && <RunningIndicator messages={messages} />}
 
           {/* Pending questions */}

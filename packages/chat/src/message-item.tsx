@@ -357,10 +357,11 @@ function AssistantMessage({
             >
               {content || ""}
             </ReactMarkdown>
+            {/* Streaming cursor - inline with text */}
+            {isStreaming && (
+              <span className="inline-block h-4 w-0.5 animate-pulse bg-primary align-text-bottom ml-0.5" />
+            )}
           </div>
-          {isStreaming && (
-            <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-1" />
-          )}
         </div>
       </div>
     </motion.div>

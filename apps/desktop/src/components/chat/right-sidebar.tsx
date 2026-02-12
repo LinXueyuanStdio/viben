@@ -163,6 +163,8 @@ interface RightSidebarProps {
   // Agent/Executor detail props
   /** Agent detail data - when provided, shows the agent detail tab */
   agentDetail?: AgentDetailData | null;
+  /** Whether agent detail is loading */
+  isAgentDetailLoading?: boolean;
   /** Executor detail data - when provided, shows the executor detail tab */
   executorDetail?: ExecutorDetailData | null;
   /** Workspace path for loading executor capabilities (e.g., "/Users/foo/project") */
@@ -283,6 +285,7 @@ export function RightSidebar({
   isGroupChatLoading,
   // Agent/Executor detail props
   agentDetail,
+  isAgentDetailLoading,
   executorDetail,
   workspacePath,
   onAgentSettings,
@@ -621,18 +624,35 @@ export function RightSidebar({
           </div>
         )}
 
-        {currentTab?.type === "category" && currentTab.category === "agentDetail" && agentDetail && (
+        {currentTab?.type === "category" && currentTab.category === "agentDetail" && (
           <div className="p-3">
-            <AgentDetailTabContent
-              agent={agentDetail}
-              isDefault={isAgentDefault}
-              models={agentModels}
-              onUpdate={onAgentUpdate}
-              onSetDefault={onAgentSetDefault}
-              onDelete={onAgentDelete}
-              onSettings={onAgentSettings}
-              isWorkspaceScoped={isAgentWorkspaceScoped}
-            />
+            {isAgentDetailLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                  <span className="text-sm text-muted-foreground">
+                    {t("common.loading", "Loading...")}
+                  </span>
+                </div>
+              </div>
+            ) : agentDetail ? (
+              <AgentDetailTabContent
+                agent={agentDetail}
+                isDefault={isAgentDefault}
+                models={agentModels}
+                onUpdate={onAgentUpdate}
+                onSetDefault={onAgentSetDefault}
+                onDelete={onAgentDelete}
+                onSettings={onAgentSettings}
+                isWorkspaceScoped={isAgentWorkspaceScoped}
+              />
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <span className="text-sm text-muted-foreground">
+                  {t("agent.notFound", "Agent not found")}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

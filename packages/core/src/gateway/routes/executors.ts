@@ -571,10 +571,10 @@ function discoverExecutors(): ExecutorInfo[] {
 export function registerExecutorRoutes(fastify: FastifyInstance): void {
   // List executors (workspace-scoped)
   fastify.get<{
-    Querystring: { workspacePath?: string; includeGlobal?: boolean };
+    Querystring: { workspace_path?: string; include_global?: boolean };
   }>("/api/executors", async (request) => {
-    const workspacePath = request.query.workspacePath || os.homedir();
-    const includeGlobal = request.query.includeGlobal !== false;
+    const workspacePath = request.query.workspace_path || os.homedir();
+    const includeGlobal = request.query.include_global !== false;
 
     // Discover available executors
     const executors = discoverExecutors();
@@ -585,10 +585,10 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   // Discover sessions for an executor type
   fastify.get<{
     Params: { type: string };
-    Querystring: { workspacePath: string };
+    Querystring: { workspace_path: string };
   }>("/api/executors/:type/discover-sessions", async (request, reply) => {
     const { type } = request.params;
-    const { workspacePath } = request.query;
+    const { workspace_path: workspacePath } = request.query;
 
     if (!workspacePath) {
       reply.code(400);
@@ -617,10 +617,10 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   // Get messages from an executor session
   fastify.get<{
     Params: { type: string; sessionId: string };
-    Querystring: { workspacePath: string; limit?: number };
+    Querystring: { workspace_path: string; limit?: number };
   }>("/api/executors/:type/sessions/:sessionId/messages", async (request, reply) => {
     const { type, sessionId } = request.params;
-    const { workspacePath, limit } = request.query;
+    const { workspace_path: workspacePath, limit } = request.query;
 
     if (!workspacePath) {
       reply.code(400);

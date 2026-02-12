@@ -91,6 +91,7 @@ export {
   useExecutors,
   useAgents,
   useAgents as useGatewayAgents, // Alias for backwards compatibility
+  useAgentDetail,
   useChatList,
   // Legacy hooks (for backwards compatibility)
   useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
@@ -103,6 +104,7 @@ export type {
   UseExecutorsReturn,
   UseAgentsOptions,
   UseAgentsReturn,
+  UseAgentDetailReturn,
   UseChatListOptions,
   UseChatListReturn,
   AgentOperations,
@@ -157,8 +159,11 @@ export type {
 export { useUnifiedAgents, useVibenAgentsOnly, useWorkspaceExecutors } from "./use-unified-agents";
 export type { UseUnifiedAgentsOptions, UseUnifiedAgentsReturn } from "./use-unified-agents";
 
-// Workspace Chat
-export { useAgent } from "./use-agent";
+// Workspace Chat - Agent Conversation
+export { useAgentConversation } from "./use-agent-conversation";
+export type { AgentConfig, UseAgentConversationOptions } from "./use-agent-conversation";
+export { useConversation } from "./use-conversation";
+export type { UseConversationOptions, UseConversationReturn } from "./use-conversation";
 export { useTaskAgent } from "./use-task-agent";
 export type { TaskContext } from "./use-task-agent";
 export { useVitePreview } from "./use-vite-preview";

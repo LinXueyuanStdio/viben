@@ -22,6 +22,7 @@ import type { TraceTree, TraceSpan } from "../../telemetry";
 
 interface DateQuery {
   date?: string;
+  route?: string;
 }
 
 interface TraceParams {
@@ -66,16 +67,46 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
 
   /**
    * GET /api/telemetry/traces
-   * List traces for a specific date
+   * List traces for a specific date, optionally filtered by route
    */
   fastify.get<{ Querystring: DateQuery }>(
     "/api/telemetry/traces",
     async (request: FastifyRequest<{ Querystring: DateQuery }>, reply: FastifyReply) => {
       try {
-        const { date = new Date().toISOString().split("T")[0] } = request.query;
+        const { date = new Date().toISOString().split("T")[0], route } = request.query;
         const traces = await listTraces(baseDir, date);
 
-        const result = traces.map((t) => ({
+        // If route filter is specified, filter traces that contain matching spans
+        let filteredTraces = traces;
+        if (route) {
+          filteredTraces = [];
+          for (const t of traces) {
+            const filePath = path.join(baseDir, "traces", date, `${t.traceId}.jsonl`);
+            try {
+              const spans = await loadTrace(filePath);
+              // Check if any span has matching http.target or http.route
+              const matches = spans.some((span: TraceSpan) => {
+                const httpTarget = span.attributes["http.target"] as string | undefined;
+                const httpRoute = span.attributes["http.route"] as string | undefined;
+                const httpUrl = span.attributes["http.url"] as string | undefined;
+
+                // Match if target/route/url contains the filter route
+                return (
+                  httpTarget?.includes(route) ||
+                  httpRoute?.includes(route) ||
+                  httpUrl?.includes(route)
+                );
+              });
+              if (matches) {
+                filteredTraces.push(t);
+              }
+            } catch {
+              // Skip traces that can't be loaded
+            }
+          }
+        }
+
+        const result = filteredTraces.map((t) => ({
           traceId: t.traceId,
           size: t.size,
           mtime: t.mtime.toISOString(),
@@ -83,6 +114,7 @@ export function registerTelemetryRoutes(fastify: FastifyInstance): void {
 
         return reply.send({
           date,
+          route: route || null,
           count: result.length,
           traces: result,
         });

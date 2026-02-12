@@ -67,8 +67,9 @@ import {
 } from "@/components/chat";
 import { WorkspaceHeader, ExecutorList } from "@/components/workspace";
 import {
-  useAgent,
+  useAgentConversation,
   useAgents,
+  useAgentDetail,
   useModels,
   useLocalWorkspaces,
   useChatConfig,
@@ -349,9 +350,6 @@ export function WorkspaceChatPage() {
   const [isLoadingSessions, setIsLoadingSessions] = React.useState(false);
   const [_sessionsError, setSessionsError] = React.useState<string | null>(null);
 
-  // Selected agent for the left sidebar
-  const [selectedAgentId, setSelectedAgentId] = React.useState<string | null>(null);
-
   // Group Chat State
   const [selectedGroupChatId, setSelectedGroupChatId] = React.useState<string | null>(null);
   const [selectedGroupSessionId, setSelectedGroupSessionId] = React.useState<string | null>(null);
@@ -363,22 +361,8 @@ export function WorkspaceChatPage() {
   const [mutedGroupChats, setMutedGroupChats] = React.useState<Set<string>>(new Set());
 
   // Right sidebar detail views
-  // Right sidebar detail views - using full data types from panel components
-  const [rightSidebarAgentDetail, setRightSidebarAgentDetail] = React.useState<{
-    id: string;
-    name: string;
-    path?: string;
-    description?: string;
-    model?: string;
-    provider?: string;
-    system_prompt?: string;
-    temperature?: number;
-    max_tokens?: number;
-    mcp_servers?: string[];
-    skills?: string[];
-    created_at?: string;
-    updated_at?: string;
-  } | null>(null);
+  // Use on-demand loading for agent details - only load when user clicks to view details
+  const [detailAgentId, setDetailAgentId] = React.useState<string | null>(null);
   const [rightSidebarExecutorDetail, setRightSidebarExecutorDetail] = React.useState<{
     id: string;
     name: string;
@@ -402,6 +386,31 @@ export function WorkspaceChatPage() {
     workspacePath: workspace?.path,
     includeGlobal: true,
   });
+
+  // On-demand agent detail loading for right sidebar
+  // Loads complete agent info only when user clicks to view details
+  const {
+    agent: detailAgentData,
+    loading: isLoadingDetailAgent,
+    error: _detailAgentError,
+  } = useAgentDetail(detailAgentId, workspace?.path);
+
+  // Convert to the format expected by RightSidebar (rightSidebarAgentDetail)
+  const rightSidebarAgentDetail = detailAgentData ? {
+    id: detailAgentData.id,
+    name: detailAgentData.name,
+    path: detailAgentData.config_path,
+    description: detailAgentData.description,
+    model: detailAgentData.model,
+    provider: detailAgentData.provider,
+    system_prompt: detailAgentData.system_prompt,
+    temperature: detailAgentData.temperature,
+    max_tokens: detailAgentData.max_tokens,
+    mcp_servers: detailAgentData.mcp_servers,
+    skills: detailAgentData.skills,
+    created_at: detailAgentData.created_at,
+    updated_at: detailAgentData.updated_at,
+  } : null;
 
   // Alias for backwards compatibility
   const isLoadingExecutors = isLoadingChatList;
@@ -658,8 +667,9 @@ export function WorkspaceChatPage() {
     enabled: m.is_available,
   }));
 
-  // Get chat config for executor and agent selection
-  const { selectedExecutor, selectedAgentId: configSelectedAgentId } = useChatConfig();
+  // Get chat config for agent selection
+  // selectedAgentId is the single source of truth for both sidebar and input bar
+  const { selectedAgentId, setSelectedAgentId } = useChatConfig();
 
   // Chat notifications hook
   const { notifyAIResponse, notifyChatError } = useChatNotifications();
@@ -668,12 +678,29 @@ export function WorkspaceChatPage() {
   const currentConversation = conversations.find(
     (c) => c.id === selectedConversationId
   );
-  const currentAgent = agents.find(
-    (a) => a.id === selectedAgentId
-  );
+  // Try to find agent in full agents list first, then fall back to chatListAgents
+  // This ensures we can show details for both workspace and global agents
+  const currentAgent = agents.find((a) => a.id === selectedAgentId);
+  const currentChatListAgent = chatListAgents.find((a) => a.id === selectedAgentId);
+
+  // Build agent config from current agent for the useAgent hook
+  const currentAgentConfig = currentAgent ? {
+    name: currentAgent.name,
+    model: currentAgent.model,
+    provider: currentAgent.provider,
+    systemPrompt: currentAgent.system_prompt,
+    appendPrompt: currentAgent.append_prompt,
+    temperature: currentAgent.temperature,
+    maxTokens: currentAgent.max_tokens,
+    executorType: currentAgent.executor_type,
+    mcpServers: currentAgent.mcp_servers,
+    skills: currentAgent.skills,
+    planMode: currentAgent.plan_mode,
+    approvals: currentAgent.approvals,
+  } : undefined;
 
   // Agent hook - use workspace path as workdir for the agent
-  // Pass selected agent ID and executor type for proper agent configuration
+  // Pass complete agent configuration directly
   const {
     messages,
     phase,
@@ -692,7 +719,16 @@ export function WorkspaceChatPage() {
     loadMessages,
     gatewayConnected,
     checkGatewayConnection,
-  } = useAgent(workspace?.path || "", { agentId: selectedAgentId || undefined, agentType: selectedExecutor });
+  } = useAgentConversation(workspace?.path || "", { agentConfig: currentAgentConfig });
+
+  // Debug: Log messages changes
+  React.useEffect(() => {
+    console.log("[WorkspaceChat] messages changed:", messages.length, "isStreaming:", isStreaming, "phase:", phase);
+    console.log("[WorkspaceChat] selectedConversationId:", selectedConversationId, "isGroupChatMode:", selectedGroupChatId !== null);
+    if (messages.length > 0) {
+      console.log("[WorkspaceChat] Last message:", messages[messages.length - 1]);
+    }
+  }, [messages, isStreaming, phase, selectedConversationId, selectedGroupChatId]);
 
   // Group notifications hook
   const {
@@ -1598,7 +1634,7 @@ export function WorkspaceChatPage() {
   // Navigate to full agent settings
   // Use the agent selected in config bar, or fall back to conversation's agent
   const handleNavigateToAgentSettings = () => {
-    const targetAgentId = configSelectedAgentId || currentAgent?.id;
+    const targetAgentId = selectedAgentId || currentAgent?.id;
     if (targetAgentId && workspaceId) {
       navigate(`/workspace/${workspaceId}/agent/${targetAgentId}`);
     }
@@ -2035,7 +2071,8 @@ export function WorkspaceChatPage() {
                         type: selectedSidebarExecutor.icon_type || "unknown",
                         config_path: (selectedSidebarExecutor.metadata?.config_path as string) || undefined,
                       });
-                      setRightSidebarAgentDetail(null);
+                      // Clear agent detail by resetting the detail agent ID
+                      setDetailAgentId(null);
                       setIsSidebarOpen(true);
                     }}
                     title={t("executor.showDetails", "Show executor details")}
@@ -2212,22 +2249,12 @@ export function WorkspaceChatPage() {
                     type="button"
                     className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
                     onClick={() => {
-                      if (currentAgent) {
-                        setRightSidebarAgentDetail({
-                          id: currentAgent.id,
-                          name: currentAgent.name,
-                          path: currentAgent.config_path,
-                          description: currentAgent.description,
-                          model: currentAgent.model,
-                          provider: currentAgent.provider,
-                          system_prompt: currentAgent.system_prompt,
-                          temperature: currentAgent.temperature,
-                          max_tokens: currentAgent.max_tokens,
-                          mcp_servers: currentAgent.mcp_servers,
-                          skills: currentAgent.skills,
-                          created_at: currentAgent.created_at,
-                          updated_at: currentAgent.updated_at,
-                        });
+                      // Use on-demand loading: set the agent ID and let useAgentDetail fetch the full data
+                      const agentId = selectedAgentId || currentChatListAgent?.id;
+                      if (agentId) {
+                        // Strip "viben:" prefix if present for the detail fetch
+                        const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
+                        setDetailAgentId(cleanId);
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);
                       }
@@ -2493,6 +2520,7 @@ export function WorkspaceChatPage() {
           isGroupChatLoading={isLoadingGroupChat}
           // Agent/Executor detail props
           agentDetail={rightSidebarAgentDetail}
+          isAgentDetailLoading={isLoadingDetailAgent}
           executorDetail={rightSidebarExecutorDetail}
           workspacePath={workspace.path}
           onAgentSettings={(agentId) => {

@@ -14,10 +14,58 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
-import { AgentManager } from "../../agents";
+import { trace, context, SpanStatusCode } from "../../telemetry";
+import { getSpanName } from "../../telemetry/route-names";
+import { readYaml } from "../../config/yaml";
+import type { AgentConfigFile } from "../../agents";
 
-// Agent manager instance for fetching agent configurations
-const agentManager = new AgentManager();
+/**
+ * Agent configuration passed from frontend (inline config)
+ */
+export interface AgentConfigPayload {
+  name?: string;
+  model?: string;
+  provider?: string;
+  systemPrompt?: string;
+  appendPrompt?: string;
+  temperature?: number;
+  maxTokens?: number;
+  executorType?: string;
+  mcpServers?: string[];
+  skills?: string[];
+  planMode?: boolean;
+  approvals?: boolean;
+}
+
+/**
+ * Load agent config from a YAML file path
+ * @param configPath - Path to the agent config.yaml file
+ * @returns AgentConfigPayload or null if not found
+ */
+async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigPayload | null> {
+  try {
+    const config = await readYaml<AgentConfigFile>(configPath);
+    if (!config) return null;
+
+    return {
+      name: config.name,
+      model: config.model,
+      provider: config.provider,
+      systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      executorType: config.executorType,
+      mcpServers: config.mcpServers,
+      skills: config.skills,
+      planMode: config.planMode,
+      approvals: config.approvals,
+    };
+  } catch (error) {
+    console.error(`[agent-run] Failed to load agent config from ${configPath}:`, error);
+    return null;
+  }
+}
 
 // ============================================================================
 // SSE Message Types
@@ -43,6 +91,8 @@ export type SSEEventType =
 export interface SSESessionMessage {
   type: "session";
   sessionId: string;
+  /** Trace ID for observability correlation */
+  traceId?: string;
 }
 
 /**
@@ -172,6 +222,9 @@ function setSSEHeaders(reply: FastifyReply, request: FastifyRequest): void {
 // Route Registration
 // ============================================================================
 
+// Get tracer for agent-run routes
+const tracer = trace.getTracer("viben-gateway", "1.0.0");
+
 /**
  * Register agent run routes (SSE endpoints)
  */
@@ -179,76 +232,267 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
   /**
    * Run agent with SSE streaming
    * POST /api/agent/run
+   *
+   * Supports two ways to specify agent configuration:
+   * 1. agentPath - Path to agent config.yaml file (backend reads from disk)
+   * 2. agentConfig - Inline agent configuration object
+   *
+   * If both are provided, agentPath takes precedence.
    */
   fastify.post<{
     Body: {
-      agentId: string;
       prompt: string;
       cwd?: string;
-      model?: string;
       attachments?: Array<{ type: string; data: string; name?: string }>;
+      /** Path to agent config.yaml file (preferred) */
+      agentPath?: string;
+      /** Inline agent configuration (fallback) */
+      agentConfig?: AgentConfigPayload;
     };
   }>("/api/agent/run", async (request, reply) => {
-    const { agentId, prompt, cwd, model } = request.body;
+    const { prompt, cwd, agentPath, agentConfig: inlineConfig } = request.body;
 
-    console.log("[agent-run] Request received:", { agentId, prompt: prompt?.slice(0, 50), cwd, model });
+    // Load agent config: prefer agentPath, fallback to inline config
+    let agentConfig: AgentConfigPayload | null = null;
+    if (agentPath) {
+      agentConfig = await loadAgentConfigFromPath(agentPath);
+      if (!agentConfig) {
+        console.warn(`[agent-run] Failed to load config from ${agentPath}, using inline config`);
+        agentConfig = inlineConfig || null;
+      }
+    } else {
+      agentConfig = inlineConfig || null;
+    }
+
+    // Get parent span from HTTP instrumentation (auto-created by FastifyInstrumentation)
+    const parentSpan = trace.getActiveSpan();
+    const traceId = parentSpan?.spanContext().traceId;
 
     // Set SSE headers (with CORS for raw response)
     setSSEHeaders(reply, request);
 
-    // Get agent configuration (if agentId is provided and exists)
-    // Note: agentId might be an executor type (e.g., "CLAUDE_CODE") from frontend
-    // or an actual agent ID. We try to find the agent first.
-    const agent = agentId ? await agentManager.getAgent(agentId) : null;
+    // Prepare request body for logging (sanitized)
+    const requestBody = {
+      prompt: prompt?.slice(0, 500) + (prompt && prompt.length > 500 ? "..." : ""),
+      prompt_full_length: prompt?.length || 0,
+      cwd: cwd || process.cwd(),
+      agentPath: agentPath || null,
+      agentConfig: agentConfig ? {
+        name: agentConfig.name,
+        model: agentConfig.model,
+        provider: agentConfig.provider,
+        executorType: agentConfig.executorType,
+        mcpServers: agentConfig.mcpServers,
+        skills: agentConfig.skills,
+        planMode: agentConfig.planMode,
+        approvals: agentConfig.approvals,
+        // Don't log full system prompt, just indicate if present
+        hasSystemPrompt: !!agentConfig.systemPrompt,
+        hasAppendPrompt: !!agentConfig.appendPrompt,
+      } : null,
+    };
 
-    // Create session
-    const session = agentService.createSession(agentId, prompt);
+    // Create main agent run span as child of HTTP span
+    const agentRunSpan = tracer.startSpan(getSpanName("agent.run"), {
+      attributes: {
+        "agent.name": agentConfig?.name || "default",
+        "agent.model": agentConfig?.model || "unknown",
+        "agent.prompt_length": prompt?.length || 0,
+        "agent.cwd": cwd || process.cwd(),
+        // Store request body as JSON for detailed inspection
+        "http.request.body": JSON.stringify(requestBody),
+      },
+    });
 
-    // Send session message
-    sendSSE(reply, { type: "session", sessionId: session.sessionId });
+    // Create context with agent run span as parent
+    const agentRunContext = trace.setSpan(context.active(), agentRunSpan);
+
+    let sessionId: string | null = null;
 
     try {
-      console.log("[agent-run] Starting SDK proxy execution...");
+      // Create session span as child of agentRunSpan
+      const sessionSpan = tracer.startSpan(
+        getSpanName("agent.run.session_create"),
+        {
+          attributes: {
+            "session.agent_name": agentConfig?.name || "default",
+          },
+        },
+        agentRunContext
+      );
 
-      // Execute agent using SDK proxy
+      // Create session with agent name (if provided)
+      const session = agentService.createSession(agentConfig?.name || "default", prompt);
+      sessionId = session.sessionId;
+
+      sessionSpan.setAttribute("session.id", sessionId);
+      sessionSpan.setStatus({ code: SpanStatusCode.OK });
+      sessionSpan.end();
+
+      // Send session message with trace ID for frontend correlation
+      sendSSE(reply, {
+        type: "session",
+        sessionId,
+        traceId,
+      });
+
+      // SDK initialization span
+      const sdkInitSpan = tracer.startSpan(
+        getSpanName("agent.run.sdk_init"),
+        {},
+        agentRunContext
+      );
+
+      // Execute agent using SDK proxy with config from frontend
       const proxy = new SdkChatProxy();
       const stream = proxy.executeStreaming({
         prompt,
         cwd: cwd || process.cwd(),
-        // Use model from request, or agent config
-        model: model || agent?.model,
-        sessionId: session.sessionId,
-        // Agent-specific configuration (only if agent is found)
-        systemPrompt: agent?.systemPrompt,
-        appendPrompt: agent?.appendPrompt,
-        mcpServers: agent?.mcpServers,
-        skills: agent?.skills,
-        // Allow all permissions for server-side execution
+        sessionId,
+        model: agentConfig?.model,
+        systemPrompt: agentConfig?.systemPrompt,
+        appendPrompt: agentConfig?.appendPrompt,
+        mcpServers: agentConfig?.mcpServers,
+        skills: agentConfig?.skills,
         dangerouslySkipPermissions: true,
       });
 
-      console.log("[agent-run] Starting to stream messages...");
+      sdkInitSpan.setStatus({ code: SpanStatusCode.OK });
+      sdkInitSpan.end();
+
+      // Streaming span
+      const streamSpan = tracer.startSpan(
+        getSpanName("agent.run.stream"),
+        {
+          attributes: {
+            "stream.session_id": sessionId,
+          },
+        },
+        agentRunContext
+      );
+
+      // Create stream context for child spans (tool uses)
+      const streamContext = trace.setSpan(context.active(), streamSpan);
+
+      let messageCount = 0;
+      let textLength = 0;
+      let toolUseCount = 0;
+      const textParts: string[] = [];
 
       // Stream messages to client
       for await (const message of stream) {
-        console.log("[agent-run] Message received:", message.type);
+        messageCount++;
+
+        // Track message statistics
+        if (message.type === "text" && "content" in message) {
+          const textContent = (message as SSETextMessage).content;
+          textLength += textContent.length;
+          textParts.push(textContent);
+        } else if (message.type === "tool_use") {
+          toolUseCount++;
+          const toolMsg = message as SSEToolUseMessage;
+          // Create a span for each tool use as child of stream span
+          const toolSpan = tracer.startSpan(
+            `tool.${toolMsg.name}`,
+            {
+              attributes: {
+                "tool.id": toolMsg.id,
+                "tool.name": toolMsg.name,
+                // Store tool input as JSON for detailed inspection
+                "tool.input": JSON.stringify(toolMsg.input),
+              },
+            },
+            streamContext
+          );
+          toolSpan.end();
+        } else if (message.type === "tool_result") {
+          const resultMsg = message as SSEToolResultMessage;
+          // Create a span for tool result
+          const resultSpan = tracer.startSpan(
+            `tool_result.${resultMsg.toolUseId}`,
+            {
+              attributes: {
+                "tool_result.tool_use_id": resultMsg.toolUseId,
+                "tool_result.is_error": resultMsg.isError || false,
+                // Store output (truncated if too long)
+                "tool_result.output": resultMsg.output?.slice(0, 2000) +
+                  (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
+                "tool_result.output_length": resultMsg.output?.length || 0,
+              },
+            },
+            streamContext
+          );
+          if (resultMsg.isError) {
+            resultSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
+          } else {
+            resultSpan.setStatus({ code: SpanStatusCode.OK });
+          }
+          resultSpan.end();
+        }
+
         sendSSE(reply, message);
 
         // Check if session was cancelled
-        const currentSession = agentService.getSession(session.sessionId);
+        const currentSession = agentService.getSession(sessionId);
         if (currentSession?.status === "cancelled") {
+          streamSpan.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: "Session cancelled by user",
+          });
           sendSSE(reply, { type: "error", message: "Session cancelled by user" });
           break;
         }
       }
 
+      // Combine all text parts for response body
+      const fullResponse = textParts.join("");
+      const responseBody = {
+        text: fullResponse.slice(0, 2000) + (fullResponse.length > 2000 ? "...[truncated]" : ""),
+        text_full_length: fullResponse.length,
+        message_count: messageCount,
+        tool_use_count: toolUseCount,
+      };
+
+      // Update stream span with statistics
+      streamSpan.setAttributes({
+        "stream.message_count": messageCount,
+        "stream.text_length": textLength,
+        "stream.tool_use_count": toolUseCount,
+        // Store response body as JSON for detailed inspection
+        "http.response.body": JSON.stringify(responseBody),
+      });
+      streamSpan.setStatus({ code: SpanStatusCode.OK });
+      streamSpan.end();
+
       // Mark completed
-      agentService.updateSessionStatus(session.sessionId, "completed", new Date());
+      agentService.updateSessionStatus(sessionId, "completed", new Date());
+
+      // Update agent run span with final statistics
+      agentRunSpan.setAttributes({
+        "agent.status": "completed",
+        "agent.message_count": messageCount,
+        "agent.text_length": textLength,
+        "agent.tool_use_count": toolUseCount,
+        // Store full response body for main span too
+        "http.response.body": JSON.stringify(responseBody),
+      });
+      agentRunSpan.setStatus({ code: SpanStatusCode.OK });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      agentService.updateSessionStatus(session.sessionId, "error", new Date());
-      sendSSE(reply, { type: "error", message });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      if (sessionId) {
+        agentService.updateSessionStatus(sessionId, "error", new Date());
+      }
+
+      agentRunSpan.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: errorMessage,
+      });
+      agentRunSpan.recordException(error instanceof Error ? error : new Error(errorMessage));
+
+      sendSSE(reply, { type: "error", message: errorMessage });
     } finally {
+      agentRunSpan.end();
       sendSSE(reply, { type: "done" });
       reply.raw.end();
     }
