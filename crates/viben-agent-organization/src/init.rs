@@ -10,7 +10,6 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
 /// Project type for initialization
@@ -509,20 +508,26 @@ fn write_file(path: &Path, content: &str, options: &InitOptions) -> Result<()> {
         })
 }
 
-/// Helper: Set file as executable
+/// Helper: Set file as executable (Unix-specific)
+#[cfg(unix)]
 fn set_executable(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
     let metadata = fs::metadata(path).map_err(|e| Error::SetPermissions {
         path: path.to_path_buf(),
         source: e,
     })?;
-
     let mut permissions = metadata.permissions();
     permissions.set_mode(0o755);
-
     fs::set_permissions(path, permissions).map_err(|e| Error::SetPermissions {
         path: path.to_path_buf(),
         source: e,
     })
+}
+
+/// Helper: Set file as executable (no-op for non-Unix)
+#[cfg(not(unix))]
+fn set_executable(_path: &Path) -> Result<()> {
+    Ok(())
 }
 
 /// Helper: Calculate SHA256 hash of content
