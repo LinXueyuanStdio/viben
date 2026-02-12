@@ -10,6 +10,7 @@ import type {
   SendMessageResult,
   TestChannelResult,
 } from "./types";
+import { fetchWithProxy } from "./http-client";
 
 /**
  * Send a message via WhatsApp Bridge
@@ -39,7 +40,7 @@ export async function sendWhatsAppMessage(
       httpUrl = httpUrl.replace("wss://", "https://");
     }
 
-    const response = await fetch(`${httpUrl}/send`, {
+    const response = await fetchWithProxy(`${httpUrl}/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

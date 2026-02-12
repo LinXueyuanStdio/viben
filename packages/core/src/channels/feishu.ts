@@ -10,6 +10,7 @@ import type {
   SendMessageResult,
   TestChannelResult,
 } from "./types";
+import { fetchWithProxy } from "./http-client";
 
 const FEISHU_API_BASE = "https://open.feishu.cn/open-apis";
 
@@ -27,7 +28,7 @@ async function getTenantAccessToken(
   config: FeishuChannelConfig
 ): Promise<{ token?: string; error?: string }> {
   try {
-    const response = await fetch(
+    const response = await fetchWithProxy(
       `${FEISHU_API_BASE}/auth/v3/tenant_access_token/internal`,
       {
         method: "POST",
@@ -102,7 +103,7 @@ export async function sendFeishuMessage(
   try {
     const receiveIdType = getReceiveIdType(options.chatId);
 
-    const response = await fetch(
+    const response = await fetchWithProxy(
       `${FEISHU_API_BASE}/im/v1/messages?receive_id_type=${receiveIdType}`,
       {
         method: "POST",

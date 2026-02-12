@@ -1,8 +1,11 @@
 /**
- * Hook for managing viben-core Providers via Tauri commands
+ * Hook for managing viben-core Providers via Gateway HTTP API
+ *
+ * Migrated from Tauri invoke to HTTP calls for Desktop/Gateway decoupling.
  */
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
+import type { ProviderResponse } from "@/lib/gateway";
 
 // ============================================================================
 // Types (matching Rust viben-core types)
@@ -14,6 +17,7 @@ export type ProviderType =
   | "azure"
   | "ollama"
   | "openrouter"
+  | "google"
   | "custom";
 
 export interface Provider {
@@ -22,6 +26,11 @@ export interface Provider {
   name: string;
   api_key?: string;
   base_url?: string;
+  api_version?: string;
+  deployment?: string;
+  timeout?: number;
+  max_retries?: number;
+  headers?: Record<string, string>;
   is_default: boolean;
   enabled: boolean;
   created_at: string;
@@ -33,6 +42,11 @@ export interface CreateProviderOptions {
   name: string;
   api_key?: string;
   base_url?: string;
+  api_version?: string;
+  deployment?: string;
+  timeout?: number;
+  max_retries?: number;
+  headers?: Record<string, string>;
   set_as_default?: boolean;
 }
 
@@ -41,6 +55,11 @@ export interface ProviderUpdate {
   provider_type?: ProviderType;
   api_key?: string;
   base_url?: string;
+  api_version?: string;
+  deployment?: string;
+  timeout?: number;
+  max_retries?: number;
+  headers?: Record<string, string>;
 }
 
 export interface ProviderStatus {
@@ -51,6 +70,26 @@ export interface ProviderStatus {
   checked_at: string;
 }
 
+// Helper to transform gateway response to hook format
+function transformProviderResponse(response: ProviderResponse): Provider {
+  return {
+    id: response.id,
+    provider_type: response.type as ProviderType,
+    name: response.name,
+    api_key: response.api_key,
+    base_url: response.base_url,
+    api_version: response.api_version,
+    deployment: response.deployment,
+    timeout: response.timeout,
+    max_retries: response.max_retries,
+    headers: response.headers,
+    is_default: response.is_default,
+    enabled: response.enabled,
+    created_at: response.created_at,
+    updated_at: response.updated_at,
+  };
+}
+
 // Default base URLs for provider types
 export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   openai: "https://api.openai.com/v1",
@@ -58,6 +97,7 @@ export const DEFAULT_BASE_URLS: Record<ProviderType, string> = {
   azure: "",
   ollama: "http://localhost:11434",
   openrouter: "https://openrouter.ai/api/v1",
+  google: "https://generativelanguage.googleapis.com/v1beta",
   custom: "",
 };
 
@@ -68,6 +108,7 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
   azure: "Azure OpenAI",
   ollama: "Ollama",
   openrouter: "OpenRouter",
+  google: "Google AI",
   custom: "Custom",
 };
 
@@ -110,12 +151,11 @@ export function useVibenProviders(): UseVibenProvidersReturn {
     setLoading(true);
     setError(null);
     try {
-      const [providersList, defaultId] = await Promise.all([
-        invoke<Provider[]>("viben_list_providers"),
-        invoke<string | null>("viben_get_default_provider"),
-      ]);
+      const client = getGatewayClient();
+      const response = await client.listProviders();
+      const providersList = response.providers.map(transformProviderResponse);
       setProviders(providersList);
-      setDefaultProviderId(defaultId);
+      setDefaultProviderId(response.default_provider_id);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -128,7 +168,20 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const createProvider = useCallback(async (options: CreateProviderOptions): Promise<Provider> => {
     setError(null);
     try {
-      const provider = await invoke<Provider>("viben_create_provider", { options });
+      const client = getGatewayClient();
+      const response = await client.createProvider({
+        type: options.provider_type,
+        name: options.name,
+        apiKey: options.api_key,
+        baseUrl: options.base_url,
+        apiVersion: options.api_version,
+        deployment: options.deployment,
+        timeout: options.timeout,
+        maxRetries: options.max_retries,
+        headers: options.headers,
+        setAsDefault: options.set_as_default,
+      });
+      const provider = transformProviderResponse(response);
       // Refresh list to get updated state
       await refresh();
       return provider;
@@ -143,7 +196,19 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const updateProvider = useCallback(async (id: string, updates: ProviderUpdate): Promise<Provider> => {
     setError(null);
     try {
-      const provider = await invoke<Provider>("viben_update_provider", { id, updates });
+      const client = getGatewayClient();
+      const response = await client.updateProvider(id, {
+        type: updates.provider_type,
+        name: updates.name,
+        apiKey: updates.api_key,
+        baseUrl: updates.base_url,
+        apiVersion: updates.api_version,
+        deployment: updates.deployment,
+        timeout: updates.timeout,
+        maxRetries: updates.max_retries,
+        headers: updates.headers,
+      });
+      const provider = transformProviderResponse(response);
       // Update local state
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? provider : p))
@@ -160,7 +225,8 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const removeProvider = useCallback(async (id: string): Promise<void> => {
     setError(null);
     try {
-      await invoke("viben_remove_provider", { id });
+      const client = getGatewayClient();
+      await client.deleteProvider(id);
       // Update local state
       setProviders((prev) => prev.filter((p) => p.id !== id));
       setStatuses((prev) => {
@@ -170,8 +236,8 @@ export function useVibenProviders(): UseVibenProvidersReturn {
       });
       // Refresh to get updated default
       if (defaultProviderId === id) {
-        const newDefault = await invoke<string | null>("viben_get_default_provider");
-        setDefaultProviderId(newDefault);
+        const response = await client.getDefaultProvider();
+        setDefaultProviderId(response.default_provider_id);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -184,7 +250,8 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const setDefaultProvider = useCallback(async (id: string): Promise<void> => {
     setError(null);
     try {
-      await invoke("viben_set_default_provider", { id });
+      const client = getGatewayClient();
+      await client.setDefaultProvider(id);
       setDefaultProviderId(id);
       // Update local state to reflect new default
       setProviders((prev) =>
@@ -204,7 +271,8 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const enableProvider = useCallback(async (id: string): Promise<void> => {
     setError(null);
     try {
-      await invoke("viben_enable_provider", { id });
+      const client = getGatewayClient();
+      await client.enableProvider(id);
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? { ...p, enabled: true } : p))
       );
@@ -219,7 +287,8 @@ export function useVibenProviders(): UseVibenProvidersReturn {
   const disableProvider = useCallback(async (id: string): Promise<void> => {
     setError(null);
     try {
-      await invoke("viben_disable_provider", { id });
+      const client = getGatewayClient();
+      await client.disableProvider(id);
       setProviders((prev) =>
         prev.map((p) => (p.id === id ? { ...p, enabled: false } : p))
       );
@@ -235,7 +304,15 @@ export function useVibenProviders(): UseVibenProvidersReturn {
     setTestingId(id);
     setError(null);
     try {
-      const status = await invoke<ProviderStatus>("viben_test_provider_connection", { id });
+      const client = getGatewayClient();
+      const gatewayStatus = await client.testProvider(id);
+      const status: ProviderStatus = {
+        id: gatewayStatus.provider_id,
+        connected: gatewayStatus.connected,
+        latency: gatewayStatus.latency,
+        error: gatewayStatus.error,
+        checked_at: gatewayStatus.checked_at,
+      };
       setStatuses((prev) => ({ ...prev, [id]: status }));
       return status;
     } catch (err) {

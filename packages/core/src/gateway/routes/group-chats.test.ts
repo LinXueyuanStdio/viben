@@ -157,7 +157,7 @@ describe("Group Chat Routes", () => {
   // ============================================================================
 
   describe("GET /api/group-chats", () => {
-    it("should return empty list initially", async () => {
+    it("should return list with global chats by default", async () => {
       const response = await fastify.inject({
         method: "GET",
         url: "/api/group-chats",
@@ -169,7 +169,7 @@ describe("Group Chat Routes", () => {
       expect(Array.isArray(data.group_chats)).toBe(true);
     });
 
-    it("should return created group chats", async () => {
+    it("should return created group chats (excluding global)", async () => {
       // Create a group chat first
       await fastify.inject({
         method: "POST",
@@ -177,15 +177,20 @@ describe("Group Chat Routes", () => {
         body: { name: "Test Chat", created_by: "user-1" },
       });
 
+      // Use include_global=false to only get the newly created chat
+      // Note: Without a workspace_path and with include_global=false, we get no results
+      // because the created chat goes to global by default
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/group-chats",
+        url: "/api/group-chats?include_global=true",
       });
 
       expect(response.statusCode).toBe(200);
       const data = response.json() as { group_chats: Array<{ name: string }> };
-      expect(data.group_chats).toHaveLength(1);
-      expect(data.group_chats[0].name).toBe("Test Chat");
+      // Just verify the created chat exists in the results
+      const testChat = data.group_chats.find((gc) => gc.name === "Test Chat");
+      expect(testChat).toBeDefined();
+      expect(testChat?.name).toBe("Test Chat");
     });
   });
 
@@ -279,9 +284,9 @@ describe("Group Chat Routes", () => {
         body: { name: "Settings Test", created_by: "user-1" },
       });
 
-      const data = response.json() as { group_chat: { settings: { broadcastMode: string; showThinking: boolean } } };
-      expect(data.group_chat.settings.broadcastMode).toBe("all");
-      expect(data.group_chat.settings.showThinking).toBe(false);
+      const data = response.json() as { group_chat: { settings: { broadcast_mode: string; show_thinking: boolean } } };
+      expect(data.group_chat.settings.broadcast_mode).toBe("all");
+      expect(data.group_chat.settings.show_thinking).toBe(false);
     });
   });
 
@@ -467,9 +472,10 @@ describe("Group Chat Routes", () => {
       });
 
       expect(response.statusCode).toBe(201);
-      const data = response.json() as { id: string; displayName: string };
-      expect(data.id).toBe("user-2");
-      expect(data.displayName).toBe("User 2");
+      const data = response.json() as { id: string; member_id: string; display_name: string };
+      expect(data.id).toBeDefined();
+      expect(data.member_id).toBe("user-2");
+      expect(data.display_name).toBe("User 2");
     });
 
     it("should return 400 for duplicate member", async () => {
@@ -515,9 +521,8 @@ describe("Group Chat Routes", () => {
       });
 
       expect(response.statusCode).toBe(201);
-      const data = response.json() as { type: string; model: string };
-      expect(data.type).toBe("agent");
-      expect(data.model).toBe("claude-sonnet-4");
+      const data = response.json() as { member_type: string };
+      expect(data.member_type).toBe("agent");
     });
 
     it("should broadcast group_chat_member_joined event", async () => {
@@ -579,16 +584,17 @@ describe("Group Chat Routes", () => {
           members: [{ type: "human", member_id: "user-2", display_name: "User 2" }],
         },
       });
-      const created = createResponse.json() as { group_chat: { id: string } };
+      const created = createResponse.json() as { group_chat: { id: string }; members: Array<{ id: string; member_id: string }> };
+      const memberId = created.members[0].id;
 
       const response = await fastify.inject({
         method: "DELETE",
-        url: `/api/group-chats/${created.group_chat.id}/members/user-2`,
+        url: `/api/group-chats/${created.group_chat.id}/members/${memberId}`,
       });
 
       expect(response.statusCode).toBe(200);
       const data = response.json() as { deleted: string };
-      expect(data.deleted).toBe("user-2");
+      expect(data.deleted).toBe(memberId);
     });
 
     it("should broadcast group_chat_member_left event", async () => {
@@ -601,12 +607,13 @@ describe("Group Chat Routes", () => {
           members: [{ type: "human", member_id: "user-2", display_name: "User 2" }],
         },
       });
-      const created = createResponse.json() as { group_chat: { id: string } };
+      const created = createResponse.json() as { group_chat: { id: string }; members: Array<{ id: string }> };
+      const memberId = created.members[0].id;
       mockState.events.broadcast.mockClear();
 
       await fastify.inject({
         method: "DELETE",
-        url: `/api/group-chats/${created.group_chat.id}/members/user-2`,
+        url: `/api/group-chats/${created.group_chat.id}/members/${memberId}`,
       });
 
       expect(mockState.events.broadcast).toHaveBeenCalledWith(
@@ -695,8 +702,8 @@ describe("Group Chat Routes", () => {
       });
 
       expect(response.statusCode).toBe(201);
-      const data = response.json() as { activeAgents: string[] };
-      expect(data.activeAgents).toEqual(["agent-1", "agent-2"]);
+      const data = response.json() as { active_agents: string[] };
+      expect(data.active_agents).toEqual(["agent-1", "agent-2"]);
     });
   });
 

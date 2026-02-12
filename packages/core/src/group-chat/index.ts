@@ -28,3 +28,20 @@ export type {
 
 // Service
 export { GroupChatService, groupChatService } from "./service";
+
+// Orchestrator
+export {
+  AgentOrchestrator,
+  createOrchestrator,
+  buildMessageForAgent,
+  DEFAULT_ORCHESTRATOR_CONFIG,
+  type OrchestratorEvent,
+  type OrchestratorEventType,
+  type OrchestratorEventBase,
+  type ThinkingEvent,
+  type ProgressEvent,
+  type ResponseEvent,
+  type ErrorEvent,
+  type CompleteEvent,
+  type OrchestratorConfig,
+} from "./orchestrator";

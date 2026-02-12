@@ -9,9 +9,23 @@
  * - WebSocket real-time streaming
  *
  * Group chats are stored in the workspace directory under `.viben/group-chats/`.
+ * This implementation uses file-based storage via GroupChatService.
  */
+import { join } from "node:path";
+import { homedir } from "node:os";
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import type { AppState } from "../state";
+import { GroupChatService } from "../../group-chat/service";
+import { createOrchestrator, type OrchestratorEvent } from "../../group-chat/orchestrator";
+import type {
+  GroupChatConfig,
+  MemberConfig,
+  GroupChatSessionConfig,
+  GroupChatUIMessage,
+  AgentResponse,
+  AgentRolloutMessage,
+  FileInfo,
+} from "../../group-chat/types";
 
 // ============================================================================
 // Types
@@ -33,39 +47,17 @@ export type MemberRole = "owner" | "admin" | "member";
 export type SessionStatus = "active" | "archived";
 
 /**
- * UI message type
+ * UI message type for routes
  */
 export type UIMessageType = "user" | "agent_thinking" | "agent_response" | "system";
-
-/**
- * Group chat settings (internal camelCase)
- */
-export interface GroupChatSettings {
-  broadcastMode: "all" | "mention_only";
-  showThinking: boolean;
-  historyLimit: number;
-}
 
 /**
  * Group chat settings response (snake_case for API)
  */
 interface GroupChatSettingsResponse {
-  broadcast_mode: "all" | "mention_only";
+  broadcast_mode: string;
   show_thinking: boolean;
   history_limit: number;
-}
-
-/**
- * Group chat member (internal camelCase)
- */
-export interface GroupChatMember {
-  id: string;
-  type: MemberType;
-  displayName: string;
-  role: MemberRole;
-  model?: string;
-  joinedAt: string;
-  lastSeenAt?: string;
 }
 
 /**
@@ -83,20 +75,6 @@ interface GroupChatMemberResponse {
 }
 
 /**
- * Group chat configuration (internal camelCase)
- */
-export interface GroupChat {
-  id: string;
-  name: string;
-  description?: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  members: GroupChatMember[];
-  settings: GroupChatSettings;
-}
-
-/**
  * Group chat response (snake_case for API)
  */
 interface GroupChatResponse {
@@ -107,21 +85,10 @@ interface GroupChatResponse {
   created_at: string;
   updated_at: string;
   settings: GroupChatSettingsResponse;
-  workspace_path?: string;
-  is_global?: boolean;
-}
-
-/**
- * Session configuration (internal camelCase)
- */
-export interface Session {
-  id: string;
-  groupChatId: string;
-  title?: string;
-  createdAt: string;
-  updatedAt: string;
-  activeAgents: string[];
-  status: SessionStatus;
+  /** The workspace path where this group chat is stored */
+  workspace_path: string;
+  /** Whether this is a global group chat (from ~/.viben/) */
+  is_global: boolean;
 }
 
 /**
@@ -135,23 +102,6 @@ interface SessionResponse {
   updated_at: string;
   active_agents: string[];
   status: string;
-}
-
-/**
- * UI message (user-facing, internal camelCase)
- */
-export interface UIMessage {
-  id: string;
-  type: UIMessageType;
-  timestamp: string;
-  senderId?: string;
-  senderName?: string;
-  content?: string;
-  agentId?: string;
-  agentName?: string;
-  status?: "thinking" | "done" | "error";
-  event?: "member_joined" | "member_left" | "session_created";
-  data?: Record<string, unknown>;
 }
 
 /**
@@ -172,18 +122,6 @@ interface UIMessageResponse {
 }
 
 /**
- * Agent rollout message (for agent view, internal camelCase)
- */
-export interface AgentRolloutMessage {
-  timestamp: string;
-  role: "system" | "user" | "assistant" | "tool";
-  content: string;
-  name?: string;
-  toolCalls?: unknown;
-  toolCallId?: string;
-}
-
-/**
  * Agent rollout message response (snake_case for API)
  */
 interface AgentRolloutMessageResponse {
@@ -195,21 +133,29 @@ interface AgentRolloutMessageResponse {
   tool_call_id?: string;
 }
 
-// ============================================================================
-// In-Memory Storage
-// ============================================================================
-
-// For now, we use in-memory storage. Later this can be replaced with file-based storage.
-const groupChats = new Map<string, GroupChat>();
-const sessions = new Map<string, Session>();
-const uiMessages = new Map<string, UIMessage[]>(); // sessionId -> messages
-const agentMessages = new Map<string, AgentRolloutMessage[]>(); // sessionId:agentId -> messages
+/**
+ * File info response (snake_case for API)
+ */
+interface FileInfoResponse {
+  id: string;
+  name: string;
+  mime_type: string;
+  size: number;
+  path: string;
+  uploaded_at: string;
+  uploaded_by: string;
+}
 
 /**
- * Generate a unique ID
+ * Session agent info response (snake_case for API)
  */
-function generateId(): string {
-  return `gc-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+interface SessionAgentResponse {
+  id: string;
+  name: string;
+  is_active: boolean;
+  has_messages: boolean;
+  role: string;
+  joined_at: string;
 }
 
 // ============================================================================
@@ -220,7 +166,13 @@ interface WorkspaceQuery {
   workspace_path?: string;
 }
 
+interface ListGroupChatsQuery extends WorkspaceQuery {
+  include_global?: boolean;
+  created_by?: string;
+}
+
 interface CreateGroupChatBody {
+  workspace_path?: string;
   name: string;
   description?: string;
   created_by: string;
@@ -228,7 +180,7 @@ interface CreateGroupChatBody {
     type: MemberType;
     member_id: string;
     display_name?: string;
-    role?: MemberRole;
+    role?: string;
     model?: string;
   }>;
 }
@@ -242,12 +194,18 @@ interface AddMemberBody {
   type: MemberType;
   member_id: string;
   display_name: string;
-  role?: MemberRole;
+  role?: string;
   model?: string;
 }
 
 interface CreateSessionBody {
   title?: string;
+  active_agents?: string[];
+}
+
+interface UpdateSessionBody {
+  title?: string;
+  status?: string;
   active_agents?: string[];
 }
 
@@ -282,47 +240,115 @@ interface WsClientCommand {
 }
 
 /**
+ * WebSocket server message types
+ */
+type WsServerMessageType =
+  | "connected"
+  | "new_message"
+  | "agent_thinking"
+  | "agent_progress"
+  | "agent_response"
+  | "agent_error"
+  | "complete"
+  | "member_joined"
+  | "member_left"
+  | "typing"
+  | "view_data"
+  | "messages"
+  | "error";
+
+/**
  * WebSocket server messages
  */
 interface WsServerMessage {
-  type:
-    | "connected"
-    | "new_message"
-    | "agent_thinking"
-    | "agent_response"
-    | "member_joined"
-    | "member_left"
-    | "typing"
-    | "view_data"
-    | "error";
+  type: WsServerMessageType;
   member_id?: string;
-  message?: UIMessage;
+  message?: UIMessageResponse;
   agent_id?: string;
   agent_name?: string;
   content?: string;
-  member?: GroupChatMember;
+  delta?: string;
+  duration?: number;
+  member?: GroupChatMemberResponse;
   is_typing?: boolean;
   view?: string;
   messages?: unknown;
   error?: string;
+  success_count?: number;
+  error_count?: number;
 }
 
-// WebSocket connections per session
-// Using 'unknown' type since we don't have WebSocket types in all environments
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const wsConnections = new Map<string, Set<any>>();
+/**
+ * WebSocket connection state
+ * Tracks per-connection state like current view
+ */
+interface WsConnectionState {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  socket: any;
+  memberId: string;
+  memberType: string;
+  /** Current view: 'ui' (default) or 'agent' */
+  view: "ui" | "agent";
+  /** Agent ID when in agent view */
+  agentId?: string;
+}
+
+// WebSocket connections per session with state
+const wsConnections = new Map<string, Map<string, WsConnectionState>>();
+
+/**
+ * Generate a unique connection ID
+ */
+function generateConnectionId(): string {
+  return `conn-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Get or create connections map for a session
+ */
+function getSessionConnections(sessionId: string): Map<string, WsConnectionState> {
+  let connections = wsConnections.get(sessionId);
+  if (!connections) {
+    connections = new Map();
+    wsConnections.set(sessionId, connections);
+  }
+  return connections;
+}
+
+/**
+ * Send message to a specific connection
+ */
+function sendToConnection(state: WsConnectionState, message: WsServerMessage): void {
+  try {
+    state.socket.send(JSON.stringify(message));
+  } catch {
+    // Connection may be closed
+  }
+}
 
 /**
  * Broadcast message to all WebSocket connections in a session
+ * Optionally filter by view type
  */
-function broadcastToSession(sessionId: string, message: WsServerMessage): void {
+function broadcastToSession(
+  sessionId: string,
+  message: WsServerMessage,
+  options?: { viewFilter?: "ui" | "agent"; excludeConnectionId?: string }
+): void {
   const connections = wsConnections.get(sessionId);
   if (connections) {
     const data = JSON.stringify(message);
-    // Use Array.from to iterate since Set iteration requires downlevelIteration
-    Array.from(connections).forEach((ws) => {
+    connections.forEach((state, connId) => {
+      // Skip excluded connection
+      if (options?.excludeConnectionId && connId === options.excludeConnectionId) {
+        return;
+      }
+      // Filter by view if specified
+      if (options?.viewFilter && state.view !== options.viewFilter) {
+        return;
+      }
       try {
-        ws.send(data);
+        state.socket.send(data);
       } catch {
         // Connection may be closed
       }
@@ -330,41 +356,177 @@ function broadcastToSession(sessionId: string, message: WsServerMessage): void {
   }
 }
 
+/**
+ * Broadcast agent events to connections based on their view
+ * - UI view: receives thinking, response, error, complete events
+ * - Agent view: receives progress events for the specific agent
+ */
+function broadcastAgentEvent(
+  sessionId: string,
+  event: OrchestratorEvent
+): void {
+  const connections = wsConnections.get(sessionId);
+  if (!connections) return;
+
+  connections.forEach((state) => {
+    let message: WsServerMessage | null = null;
+
+    switch (event.type) {
+      case "thinking":
+        // Send to all connections (both UI and agent view)
+        message = {
+          type: "agent_thinking",
+          agent_id: event.agentId,
+          agent_name: event.agentName,
+        };
+        break;
+
+      case "progress":
+        // For agent view, only send if viewing this specific agent
+        if (state.view === "agent" && state.agentId === event.agentId) {
+          message = {
+            type: "agent_progress",
+            agent_id: event.agentId,
+            agent_name: event.agentName,
+            delta: event.delta,
+          };
+        }
+        // For UI view, we could accumulate and send less frequently
+        // For now, skip progress events in UI view to reduce noise
+        break;
+
+      case "response":
+        // Send to all connections
+        message = {
+          type: "agent_response",
+          agent_id: event.agentId,
+          agent_name: event.agentName,
+          content: event.content,
+          duration: event.duration,
+        };
+        break;
+
+      case "error":
+        // Send to all connections
+        message = {
+          type: "agent_error",
+          agent_id: event.agentId,
+          agent_name: event.agentName,
+          error: event.error,
+        };
+        break;
+
+      case "complete":
+        // Send to all connections
+        message = {
+          type: "complete",
+          success_count: event.successCount,
+          error_count: event.errorCount,
+          duration: event.duration,
+        };
+        break;
+    }
+
+    if (message) {
+      sendToConnection(state, message);
+    }
+  });
+}
+
 // ============================================================================
-// Transformers (camelCase to snake_case)
+// Service Helpers
 // ============================================================================
 
+import { existsSync, statSync } from "node:fs";
+
 /**
- * Transform settings to snake_case
+ * Get the global group chats path (~/.viben/group-chats)
  */
-function toSnakeCaseSettings(s: GroupChatSettings): GroupChatSettingsResponse {
-  return {
-    broadcast_mode: s.broadcastMode,
-    show_thinking: s.showThinking,
-    history_limit: s.historyLimit,
-  };
+function getGlobalGroupChatsPath(): string {
+  return join(homedir(), ".viben", "group-chats");
 }
 
 /**
- * Transform member to snake_case
+ * Get the global .viben path (~/.viben)
  */
-function toSnakeCaseMember(m: GroupChatMember): GroupChatMemberResponse {
-  return {
-    id: m.id,
-    member_type: m.type,
-    member_id: m.id,
-    display_name: m.displayName,
-    role: m.role,
-    model: m.model,
-    joined_at: m.joinedAt,
-    last_seen_at: m.lastSeenAt,
-  };
+function getGlobalVibenPath(): string {
+  return join(homedir(), ".viben");
 }
 
 /**
- * Transform group chat to snake_case
+ * Validate workspace path exists and is a directory
+ *
+ * @param workspacePath - Path to validate
+ * @returns The validated path
+ * @throws Error if path does not exist or is not a directory
  */
-function toSnakeCaseGroupChat(gc: GroupChat): GroupChatResponse {
+function validateWorkspacePath(workspacePath: string): string {
+  if (!existsSync(workspacePath)) {
+    throw new Error(`Workspace path does not exist: ${workspacePath}`);
+  }
+  const stats = statSync(workspacePath);
+  if (!stats.isDirectory()) {
+    throw new Error(`Workspace path is not a directory: ${workspacePath}`);
+  }
+  return workspacePath;
+}
+
+/**
+ * Check if a workspace path is the global path
+ */
+function isGlobalWorkspace(workspacePath: string): boolean {
+  const globalVibenPath = getGlobalVibenPath();
+  return workspacePath === globalVibenPath || workspacePath === homedir();
+}
+
+/**
+ * Get the service for a workspace path
+ *
+ * @param workspacePath - Optional workspace path. If not provided, uses global ~/.viben
+ * @param validate - Whether to validate the workspace path exists (default: false for backwards compatibility)
+ * @returns GroupChatService instance
+ */
+function getService(workspacePath?: string, validate = false): GroupChatService {
+  if (workspacePath && validate) {
+    validateWorkspacePath(workspacePath);
+  }
+  const baseDir = workspacePath
+    ? join(workspacePath, ".viben", "group-chats")
+    : getGlobalGroupChatsPath();
+  return new GroupChatService(baseDir);
+}
+
+/**
+ * Get global service (for ~/.viben/group-chats)
+ */
+function getGlobalService(): GroupChatService {
+  return new GroupChatService(getGlobalGroupChatsPath());
+}
+
+/**
+ * Get workspace path string for response
+ * Returns the workspace_path that should be included in API responses
+ */
+function getWorkspacePathForResponse(workspacePath?: string): string {
+  return workspacePath || getGlobalVibenPath();
+}
+
+// ============================================================================
+// Transformers (service types to API responses)
+// ============================================================================
+
+/**
+ * Transform group chat config to API response
+ *
+ * @param gc - Group chat config from service
+ * @param workspacePath - The workspace path where this group chat is stored
+ * @param isGlobal - Whether this is a global group chat (from ~/.viben/)
+ */
+function toGroupChatResponse(
+  gc: GroupChatConfig,
+  workspacePath: string,
+  isGlobal: boolean
+): GroupChatResponse {
   return {
     id: gc.id,
     name: gc.name,
@@ -372,29 +534,50 @@ function toSnakeCaseGroupChat(gc: GroupChat): GroupChatResponse {
     created_by: gc.createdBy,
     created_at: gc.createdAt,
     updated_at: gc.updatedAt,
-    settings: toSnakeCaseSettings(gc.settings),
+    settings: {
+      broadcast_mode: gc.settings?.broadcastMode || "all",
+      show_thinking: gc.settings?.showThinking || false,
+      history_limit: gc.settings?.maxConcurrentAgents || 10,
+    },
+    workspace_path: workspacePath,
+    is_global: isGlobal,
   };
 }
 
 /**
- * Transform session to snake_case
+ * Transform member config to API response
  */
-function toSnakeCaseSession(s: Session): SessionResponse {
+function toMemberResponse(m: MemberConfig): GroupChatMemberResponse {
+  return {
+    id: m.id,
+    member_type: m.type,
+    member_id: m.refId,
+    display_name: m.displayName,
+    role: m.role,
+    joined_at: m.joinedAt,
+    last_seen_at: m.lastSeenAt,
+  };
+}
+
+/**
+ * Transform session config to API response
+ */
+function toSessionResponse(s: GroupChatSessionConfig): SessionResponse {
   return {
     id: s.id,
     group_chat_id: s.groupChatId,
-    title: s.title,
+    title: s.name,
     created_at: s.createdAt,
     updated_at: s.updatedAt,
-    active_agents: s.activeAgents,
+    active_agents: s.activeAgents || [],
     status: s.status,
   };
 }
 
 /**
- * Transform UI message to snake_case
+ * Transform UI message to API response
  */
-function toSnakeCaseUIMessage(m: UIMessage): UIMessageResponse {
+function toUIMessageResponse(m: GroupChatUIMessage): UIMessageResponse {
   return {
     id: m.id,
     type: m.type,
@@ -402,18 +585,13 @@ function toSnakeCaseUIMessage(m: UIMessage): UIMessageResponse {
     sender_id: m.senderId,
     sender_name: m.senderName,
     content: m.content,
-    agent_id: m.agentId,
-    agent_name: m.agentName,
-    status: m.status,
-    event: m.event,
-    data: m.data,
   };
 }
 
 /**
- * Transform agent rollout message to snake_case
+ * Transform agent rollout message to API response
  */
-function toSnakeCaseAgentMessage(m: AgentRolloutMessage): AgentRolloutMessageResponse {
+function toAgentMessageResponse(m: AgentRolloutMessage): AgentRolloutMessageResponse {
   return {
     timestamp: m.timestamp,
     role: m.role,
@@ -424,44 +602,139 @@ function toSnakeCaseAgentMessage(m: AgentRolloutMessage): AgentRolloutMessageRes
   };
 }
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
-
 /**
- * Create a new group chat member
+ * Transform file info to API response
  */
-function createMember(
-  id: string,
-  type: MemberType,
-  displayName: string,
-  role: MemberRole = "member",
-  model?: string
-): GroupChatMember {
-  const now = new Date().toISOString();
+function toFileInfoResponse(f: FileInfo): FileInfoResponse {
   return {
-    id,
-    type,
-    displayName,
-    role,
-    model,
-    joinedAt: now,
+    id: f.id,
+    name: f.name,
+    mime_type: f.mimeType,
+    size: f.size,
+    path: f.path,
+    uploaded_at: f.uploadedAt,
+    uploaded_by: f.uploadedBy,
   };
 }
 
+// ============================================================================
+// Agent Orchestration
+// ============================================================================
+
+import type { AgentOrchestrator } from "../../group-chat/orchestrator";
+
 /**
- * Create a new UI message
+ * Execute agents in background using the orchestrator
+ *
+ * This function runs the agent orchestrator asynchronously, streaming events
+ * to WebSocket connections and broadcasting to the event system.
  */
-function createUIMessage(
-  type: UIMessageType,
-  options: Partial<Omit<UIMessage, "id" | "type" | "timestamp">>
-): UIMessage {
-  return {
-    id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-    type,
-    timestamp: new Date().toISOString(),
-    ...options,
-  };
+async function executeAgentsInBackground(
+  orchestrator: AgentOrchestrator,
+  userMessage: string,
+  senderName: string,
+  agentMembers: MemberConfig[],
+  state: AppState,
+  groupChatId: string,
+  sessionId: string
+): Promise<void> {
+  try {
+    // Execute agents using orchestrator async generator
+    for await (const event of orchestrator.execute(userMessage, senderName, agentMembers)) {
+      handleOrchestratorEvent(event, state, groupChatId, sessionId);
+    }
+  } catch (err) {
+    console.error("[GroupChat] Agent orchestration error:", err);
+    // Broadcast error to clients
+    state.events.broadcast({
+      type: "group_chat_error",
+      data: {
+        groupChatId,
+        sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
+}
+
+/**
+ * Handle orchestrator events - broadcast to WebSocket and event system
+ */
+function handleOrchestratorEvent(
+  event: OrchestratorEvent,
+  state: AppState,
+  groupChatId: string,
+  sessionId: string
+): void {
+  // Broadcast to WebSocket connections with view-aware routing
+  broadcastAgentEvent(sessionId, event);
+
+  // Also broadcast to SSE event system for non-WebSocket clients
+  switch (event.type) {
+    case "thinking":
+      state.events.broadcast({
+        type: "group_chat_agent_thinking",
+        data: {
+          groupChatId,
+          sessionId,
+          agentId: event.agentId,
+          agentName: event.agentName,
+        },
+      });
+      break;
+
+    case "progress":
+      state.events.broadcast({
+        type: "group_chat_agent_progress",
+        data: {
+          groupChatId,
+          sessionId,
+          agentId: event.agentId,
+          delta: event.delta,
+        },
+      });
+      break;
+
+    case "response":
+      state.events.broadcast({
+        type: "group_chat_agent_response",
+        data: {
+          groupChatId,
+          sessionId,
+          agentId: event.agentId,
+          agentName: event.agentName,
+          content: event.content,
+          duration: event.duration,
+        },
+      });
+      break;
+
+    case "error":
+      state.events.broadcast({
+        type: "group_chat_agent_error",
+        data: {
+          groupChatId,
+          sessionId,
+          agentId: event.agentId,
+          agentName: event.agentName,
+          error: event.error,
+        },
+      });
+      break;
+
+    case "complete":
+      state.events.broadcast({
+        type: "group_chat_round_complete",
+        data: {
+          groupChatId,
+          sessionId,
+          successCount: event.successCount,
+          errorCount: event.errorCount,
+          duration: event.duration,
+        },
+      });
+      break;
+  }
 }
 
 // ============================================================================
@@ -477,13 +750,71 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   // ========================================
 
   // List all group chats
+  //
+  // Query parameters:
+  // - workspace_path (optional): The workspace path to list group chats from
+  // - include_global (optional, default true): Also include global group chats from ~/.viben/group-chats/
+  // - created_by (optional): Filter by creator
+  //
+  // Response includes group chats from:
+  // 1. Global ~/.viben/group-chats/ (if include_global=true)
+  // 2. Workspace {workspace_path}/.viben/group-chats/ (if workspace_path provided and different from global)
   fastify.get(
     "/api/group-chats",
-    async (request: FastifyRequest<{ Querystring: WorkspaceQuery }>) => {
-      const chats = Array.from(groupChats.values());
+    async (request: FastifyRequest<{ Querystring: ListGroupChatsQuery }>, reply: FastifyReply) => {
+      const { workspace_path, include_global = true, created_by } = request.query;
+      const responses: GroupChatResponse[] = [];
+      const globalVibenPath = getGlobalVibenPath();
+
+      // Get global group chats first (from ~/.viben/group-chats/)
+      if (include_global) {
+        const globalService = getGlobalService();
+        try {
+          const globalChats = await globalService.listGroupChats();
+          for (const gc of globalChats) {
+            if (!created_by || gc.createdBy === created_by) {
+              responses.push(toGroupChatResponse(gc, globalVibenPath, true));
+            }
+          }
+        } catch {
+          // Global directory may not exist, continue silently
+        }
+      }
+
+      // Get workspace group chats if path provided and different from global
+      if (workspace_path) {
+        // Validate workspace path
+        try {
+          validateWorkspacePath(workspace_path);
+        } catch (err) {
+          reply.code(400);
+          return { error: err instanceof Error ? err.message : "Invalid workspace path" };
+        }
+
+        // Check if workspace path is not the global path
+        const isGlobalPath = isGlobalWorkspace(workspace_path);
+
+        if (!isGlobalPath) {
+          const service = getService(workspace_path);
+          try {
+            const workspaceChats = await service.listGroupChats();
+            for (const gc of workspaceChats) {
+              // Avoid duplicates (by id)
+              if (!responses.some((existing) => existing.id === gc.id)) {
+                if (!created_by || gc.createdBy === created_by) {
+                  responses.push(toGroupChatResponse(gc, workspace_path, false));
+                }
+              }
+            }
+          } catch {
+            // Workspace group chats directory may not exist, continue silently
+          }
+        }
+      }
+
       return {
-        workspace_path: request.query.workspace_path,
-        group_chats: chats.map(toSnakeCaseGroupChat),
+        workspace_path: workspace_path || null,
+        group_chats: responses,
       };
     }
   );
@@ -496,14 +827,23 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id } = request.params;
-      const groupChat = groupChats.get(id);
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+      // Determine if this is a global group chat (no workspace_path = global)
+      const isGlobal = !workspace_path;
+      const responseWorkspacePath = getWorkspacePathForResponse(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
+
+      const members = await service.getMembers(id);
+
       return {
-        group_chat: toSnakeCaseGroupChat(groupChat),
-        members: groupChat.members.map(toSnakeCaseMember),
+        group_chat: toGroupChatResponse(groupChat, responseWorkspacePath, isGlobal),
+        members: members.map(toMemberResponse),
       };
     }
   );
@@ -512,50 +852,52 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   fastify.post(
     "/api/group-chats",
     async (request: FastifyRequest<{ Body: CreateGroupChatBody }>, reply: FastifyReply) => {
-      const { name, description, created_by, members = [] } = request.body;
+      const { workspace_path, name, description, created_by, members = [] } = request.body;
 
-      const id = generateId();
-      const now = new Date().toISOString();
+      // Validate workspace path if provided
+      if (workspace_path) {
+        try {
+          validateWorkspacePath(workspace_path);
+        } catch (err) {
+          reply.code(400);
+          return { error: err instanceof Error ? err.message : "Invalid workspace path" };
+        }
+      }
 
-      // Create initial members
-      const groupChatMembers: GroupChatMember[] = members.map((m) =>
-        createMember(
-          m.member_id,
-          m.type,
-          m.display_name || m.member_id,
-          m.role || "member",
-          m.model
-        )
-      );
+      const service = getService(workspace_path);
+      // Determine if this is a global group chat (no workspace_path = global)
+      const isGlobal = !workspace_path;
+      const responseWorkspacePath = getWorkspacePathForResponse(workspace_path);
 
-      const groupChat: GroupChat = {
-        id,
-        name,
-        description,
-        createdBy: created_by,
-        createdAt: now,
-        updatedAt: now,
-        members: groupChatMembers,
-        settings: {
-          broadcastMode: "all",
-          showThinking: false,
-          historyLimit: 10,
-        },
-      };
+      try {
+        const groupChat = await service.createGroupChat(created_by, {
+          name,
+          description,
+          members: members.map((m) => ({
+            type: m.type,
+            refId: m.member_id,
+            displayName: m.display_name || m.member_id,
+            role: (m.role as "admin" | "member" | "observer") || "member",
+          })),
+        });
 
-      groupChats.set(id, groupChat);
+        const createdMembers = await service.getMembers(groupChat.id);
 
-      // Broadcast event
-      state.events.broadcast({
-        type: "group_chat_created",
-        data: { groupChatId: id },
-      });
+        // Broadcast event
+        state.events.broadcast({
+          type: "group_chat_created",
+          data: { groupChatId: groupChat.id },
+        });
 
-      reply.code(201);
-      return {
-        group_chat: toSnakeCaseGroupChat(groupChat),
-        members: groupChatMembers.map(toSnakeCaseMember),
-      };
+        reply.code(201);
+        return {
+          group_chat: toGroupChatResponse(groupChat, responseWorkspacePath, isGlobal),
+          members: createdMembers.map(toMemberResponse),
+        };
+      } catch (err) {
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to create group chat" };
+      }
     }
   );
 
@@ -572,26 +914,30 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
     ) => {
       const { id } = request.params;
       const { name, description } = request.body;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+      // Determine if this is a global group chat (no workspace_path = global)
+      const isGlobal = !workspace_path;
+      const responseWorkspacePath = getWorkspacePathForResponse(workspace_path);
 
-      const groupChat = groupChats.get(id);
-      if (!groupChat) {
-        reply.code(404);
-        return { error: `Group chat not found: ${id}` };
+      try {
+        const updated = await service.updateGroupChat(id, { name, description });
+
+        // Broadcast event
+        state.events.broadcast({
+          type: "group_chat_updated",
+          data: { groupChatId: id },
+        });
+
+        return toGroupChatResponse(updated, responseWorkspacePath, isGlobal);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Group chat not found: ${id}` };
+        }
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to update group chat" };
       }
-
-      if (name !== undefined) groupChat.name = name;
-      if (description !== undefined) groupChat.description = description;
-      groupChat.updatedAt = new Date().toISOString();
-
-      groupChats.set(id, groupChat);
-
-      // Broadcast event
-      state.events.broadcast({
-        type: "group_chat_updated",
-        data: { groupChatId: id },
-      });
-
-      return toSnakeCaseGroupChat(groupChat);
     }
   );
 
@@ -603,30 +949,27 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      if (!groupChats.has(id)) {
-        reply.code(404);
-        return { error: `Group chat not found: ${id}` };
-      }
+      try {
+        await service.deleteGroupChat(id);
 
-      groupChats.delete(id);
+        // Broadcast event
+        state.events.broadcast({
+          type: "group_chat_deleted",
+          data: { groupChatId: id },
+        });
 
-      // Also delete associated sessions and messages
-      // Use Array.from for iteration since Map iteration requires downlevelIteration
-      Array.from(sessions.entries()).forEach(([sessionId, session]) => {
-        if (session.groupChatId === id) {
-          sessions.delete(sessionId);
-          uiMessages.delete(sessionId);
+        return { deleted: id };
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Group chat not found: ${id}` };
         }
-      });
-
-      // Broadcast event
-      state.events.broadcast({
-        type: "group_chat_deleted",
-        data: { groupChatId: id },
-      });
-
-      return { deleted: id };
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to delete group chat" };
+      }
     }
   );
 
@@ -642,12 +985,17 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id } = request.params;
-      const groupChat = groupChats.get(id);
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
-      return { members: groupChat.members.map(toSnakeCaseMember) };
+
+      const members = await service.getMembers(id);
+      return { members: members.map(toMemberResponse) };
     }
   );
 
@@ -663,33 +1011,44 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id } = request.params;
-      const { type, member_id, display_name, role = "member", model } = request.body;
+      const { type, member_id, display_name, role = "member" } = request.body;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      const groupChat = groupChats.get(id);
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
       // Check if member already exists
-      if (groupChat.members.some((m) => m.id === member_id)) {
+      const existingMembers = await service.getMembers(id);
+      if (existingMembers.some((m) => m.refId === member_id)) {
         reply.code(400);
         return { error: `Member already exists: ${member_id}` };
       }
 
-      const member = createMember(member_id, type, display_name, role, model);
-      groupChat.members.push(member);
-      groupChat.updatedAt = new Date().toISOString();
-      groupChats.set(id, groupChat);
+      try {
+        const member = await service.addMember(
+          id,
+          type,
+          member_id,
+          display_name,
+          role as "admin" | "member" | "observer"
+        );
 
-      // Broadcast event
-      state.events.broadcast({
-        type: "group_chat_member_joined",
-        data: { groupChatId: id, memberId: member_id },
-      });
+        // Broadcast event
+        state.events.broadcast({
+          type: "group_chat_member_joined",
+          data: { groupChatId: id, memberId: member_id },
+        });
 
-      reply.code(201);
-      return toSnakeCaseMember(member);
+        reply.code(201);
+        return toMemberResponse(member);
+      } catch (err) {
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to add member" };
+      }
     }
   );
 
@@ -704,30 +1063,33 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id, memberId } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      const groupChat = groupChats.get(id);
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
-      const memberIndex = groupChat.members.findIndex((m) => m.id === memberId);
-      if (memberIndex === -1) {
-        reply.code(404);
-        return { error: `Member not found: ${memberId}` };
+      try {
+        await service.removeMember(id, memberId);
+
+        // Broadcast event
+        state.events.broadcast({
+          type: "group_chat_member_left",
+          data: { groupChatId: id, memberId },
+        });
+
+        return { deleted: memberId };
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Member not found: ${memberId}` };
+        }
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to remove member" };
       }
-
-      groupChat.members.splice(memberIndex, 1);
-      groupChat.updatedAt = new Date().toISOString();
-      groupChats.set(id, groupChat);
-
-      // Broadcast event
-      state.events.broadcast({
-        type: "group_chat_member_left",
-        data: { groupChatId: id, memberId },
-      });
-
-      return { deleted: memberId };
     }
   );
 
@@ -743,17 +1105,17 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      if (!groupChats.has(id)) {
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
-      const groupChatSessions = Array.from(sessions.values()).filter(
-        (s) => s.groupChatId === id
-      );
-
-      return { sessions: groupChatSessions.map(toSnakeCaseSession) };
+      const sessions = await service.listSessions(id);
+      return { sessions: sessions.map(toSessionResponse) };
     }
   );
 
@@ -770,33 +1132,576 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
     ) => {
       const { id } = request.params;
       const { title, active_agents = [] } = request.body;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      const groupChat = groupChats.get(id);
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
-      const sessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      const now = new Date().toISOString();
+      try {
+        const session = await service.createSession(id, {
+          name: title,
+          activeAgents: active_agents,
+        });
 
-      const session: Session = {
-        id: sessionId,
-        groupChatId: id,
-        title,
-        createdAt: now,
-        updatedAt: now,
-        activeAgents: active_agents,
-        status: "active",
-      };
-
-      sessions.set(sessionId, session);
-      uiMessages.set(sessionId, []);
-
-      reply.code(201);
-      return toSnakeCaseSession(session);
+        reply.code(201);
+        return toSessionResponse(session);
+      } catch (err) {
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to create session" };
+      }
     }
   );
+
+  // Get a session
+  fastify.get(
+    "/api/group-chats/:id/sessions/:sessionId",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; sessionId: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, sessionId } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      const session = await service.getSession(id, sessionId);
+      if (!session) {
+        reply.code(404);
+        return { error: `Session not found: ${sessionId}` };
+      }
+
+      return toSessionResponse(session);
+    }
+  );
+
+  // Update a session
+  fastify.patch(
+    "/api/group-chats/:id/sessions/:sessionId",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; sessionId: string };
+        Body: UpdateSessionBody;
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, sessionId } = request.params;
+      const { title, status, active_agents } = request.body;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        const updated = await service.updateSession(id, sessionId, {
+          name: title,
+          status: status as "active" | "paused" | "completed" | "archived" | undefined,
+          activeAgents: active_agents,
+        });
+
+        return toSessionResponse(updated);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Session not found: ${sessionId}` };
+        }
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to update session" };
+      }
+    }
+  );
+
+  // Delete a session
+  fastify.delete(
+    "/api/group-chats/:id/sessions/:sessionId",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; sessionId: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, sessionId } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        await service.deleteSession(id, sessionId);
+        return { deleted: sessionId };
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Session not found: ${sessionId}` };
+        }
+        reply.code(400);
+        return { error: err instanceof Error ? err.message : "Failed to delete session" };
+      }
+    }
+  );
+
+  // List session agents (agents with rollout messages + agent members)
+  // Returns all agent members from the group chat with their activity status
+  fastify.get(
+    "/api/group-chats/:id/sessions/:sessionId/agents",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; sessionId: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, sessionId } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      const session = await service.getSession(id, sessionId);
+      if (!session) {
+        reply.code(404);
+        return { error: `Session not found: ${sessionId}` };
+      }
+
+      // Get agent IDs that have rollout messages in this session
+      const agentsWithMessages = await service.listSessionAgents(id, sessionId);
+
+      // Get all agent members from the group chat
+      const members = await service.getMembers(id);
+      const agentMembers = members.filter((m) => m.type === "agent");
+
+      // Build response with agent details
+      const agents = agentMembers.map((member) => ({
+        id: member.refId,
+        name: member.displayName,
+        // Agent is active if it's in the session's activeAgents list
+        is_active: session.activeAgents?.includes(member.refId) ?? false,
+        // Agent has messages if it's in the agentsWithMessages list
+        has_messages: agentsWithMessages.includes(member.refId),
+        role: member.role,
+        joined_at: member.joinedAt,
+      }));
+
+      return { agents };
+    }
+  );
+
+  // ========================================
+  // File Management
+  // ========================================
+
+  // Upload a file
+  fastify.post(
+    "/api/group-chats/:id/files",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      // Handle multipart form data
+      // Note: Requires @fastify/multipart plugin to be registered
+      try {
+        // Check if request is multipart by checking content-type header
+        const contentType = request.headers["content-type"] || "";
+        if (!contentType.includes("multipart/form-data")) {
+          reply.code(400);
+          return { error: "Expected multipart/form-data" };
+        }
+
+        // Type assertion for multipart-enabled request
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const multipartRequest = request as any;
+        if (typeof multipartRequest.parts !== "function") {
+          reply.code(400);
+          return {
+            error: "Multipart upload not configured. Please ensure @fastify/multipart is registered.",
+          };
+        }
+
+        const parts = multipartRequest.parts();
+        let fileData: Buffer | null = null;
+        let filename = "unnamed";
+        let mimeType = "application/octet-stream";
+        let uploadedBy: string | undefined;
+
+        for await (const part of parts) {
+          if (part.type === "file" && part.fieldname === "file") {
+            filename = part.filename || "unnamed";
+            mimeType = part.mimetype || "application/octet-stream";
+            const chunks: Buffer[] = [];
+            for await (const chunk of part.file) {
+              chunks.push(chunk);
+            }
+            fileData = Buffer.concat(chunks);
+          } else if (part.type === "field" && part.fieldname === "uploaded_by") {
+            uploadedBy = part.value as string;
+          }
+        }
+
+        if (!fileData) {
+          reply.code(400);
+          return { error: "No file provided in multipart form" };
+        }
+
+        const fileInfo = await service.saveFile(
+          id,
+          filename,
+          fileData,
+          uploadedBy,
+          mimeType
+        );
+
+        reply.code(201);
+        return toFileInfoResponse(fileInfo);
+      } catch (err) {
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to upload file" };
+      }
+    }
+  );
+
+  // List files
+  fastify.get(
+    "/api/group-chats/:id/files",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      const files = await service.listFiles(id);
+      return {
+        files: files.map(toFileInfoResponse),
+        total: files.length,
+      };
+    }
+  );
+
+  // Download a file
+  fastify.get(
+    "/api/group-chats/:id/files/:filename",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; filename: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, filename } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        const content = await service.getFileContent(id, filename);
+        const fileInfo = await service.getFileInfo(id, filename);
+
+        const mimeType = fileInfo?.mimeType || "application/octet-stream";
+
+        reply.header("Content-Type", mimeType);
+        reply.header("Content-Disposition", `attachment; filename="${filename}"`);
+
+        return reply.send(content);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `File not found: ${filename}` };
+        }
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to download file" };
+      }
+    }
+  );
+
+  // Delete a file
+  fastify.delete(
+    "/api/group-chats/:id/files/:filename",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; filename: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, filename } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        await service.deleteFile(id, filename);
+        return { deleted: filename };
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `File not found: ${filename}` };
+        }
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to delete file" };
+      }
+    }
+  );
+
+  // ========================================
+  // Picture Management
+  // ========================================
+
+  // Upload a picture
+  fastify.post(
+    "/api/group-chats/:id/pictures",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      // Handle multipart form data
+      try {
+        // Check if request is multipart by checking content-type header
+        const contentType = request.headers["content-type"] || "";
+        if (!contentType.includes("multipart/form-data")) {
+          reply.code(400);
+          return { error: "Expected multipart/form-data" };
+        }
+
+        // Type assertion for multipart-enabled request
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const multipartRequest = request as any;
+        if (typeof multipartRequest.parts !== "function") {
+          reply.code(400);
+          return {
+            error: "Multipart upload not configured. Please ensure @fastify/multipart is registered.",
+          };
+        }
+
+        const parts = multipartRequest.parts();
+        let fileData: Buffer | null = null;
+        let filename = "unnamed";
+        let mimeType = "image/jpeg";
+        let uploadedBy: string | undefined;
+
+        for await (const part of parts) {
+          if (part.type === "file" && part.fieldname === "file") {
+            filename = part.filename || "unnamed";
+            mimeType = part.mimetype || "image/jpeg";
+
+            // Validate image type
+            if (!mimeType.startsWith("image/") && mimeType !== "application/octet-stream") {
+              reply.code(400);
+              return { error: `Invalid image type: ${mimeType}. Only image/* types are allowed.` };
+            }
+
+            const chunks: Buffer[] = [];
+            for await (const chunk of part.file) {
+              chunks.push(chunk);
+            }
+            fileData = Buffer.concat(chunks);
+          } else if (part.type === "field" && part.fieldname === "uploaded_by") {
+            uploadedBy = part.value as string;
+          }
+        }
+
+        if (!fileData) {
+          reply.code(400);
+          return { error: "No file provided in multipart form" };
+        }
+
+        const fileInfo = await service.savePicture(
+          id,
+          filename,
+          fileData,
+          uploadedBy,
+          mimeType
+        );
+
+        reply.code(201);
+        return toFileInfoResponse(fileInfo);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("Invalid image")) {
+          reply.code(400);
+          return { error: err.message };
+        }
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to upload picture" };
+      }
+    }
+  );
+
+  // List pictures
+  fastify.get(
+    "/api/group-chats/:id/pictures",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      const pictures = await service.listPictures(id);
+      return {
+        pictures: pictures.map(toFileInfoResponse),
+        total: pictures.length,
+      };
+    }
+  );
+
+  // Download a picture
+  fastify.get(
+    "/api/group-chats/:id/pictures/:filename",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; filename: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, filename } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        const content = await service.getPictureContent(id, filename);
+        const pictureInfo = await service.getPictureInfo(id, filename);
+
+        const mimeType = pictureInfo?.mimeType || "image/jpeg";
+
+        reply.header("Content-Type", mimeType);
+        reply.header("Cache-Control", "public, max-age=86400"); // Cache for 1 day
+
+        return reply.send(content);
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Picture not found: ${filename}` };
+        }
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to download picture" };
+      }
+    }
+  );
+
+  // Delete a picture
+  fastify.delete(
+    "/api/group-chats/:id/pictures/:filename",
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; filename: string };
+        Querystring: WorkspaceQuery;
+      }>,
+      reply: FastifyReply
+    ) => {
+      const { id, filename } = request.params;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
+
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
+        reply.code(404);
+        return { error: `Group chat not found: ${id}` };
+      }
+
+      try {
+        await service.deletePicture(id, filename);
+        return { deleted: filename };
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("not found")) {
+          reply.code(404);
+          return { error: `Picture not found: ${filename}` };
+        }
+        reply.code(500);
+        return { error: err instanceof Error ? err.message : "Failed to delete picture" };
+      }
+    }
+  );
+
+  // ========================================
+  // Messages
+  // ========================================
 
   // Get session messages
   fastify.get(
@@ -809,14 +1714,17 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       reply: FastifyReply
     ) => {
       const { id, sessionId } = request.params;
-      const { view = "ui", agent_id, limit = 50 } = request.query;
+      const { workspace_path, view = "ui", agent_id, limit = 50 } = request.query;
+      const service = getService(workspace_path);
 
-      if (!groupChats.has(id)) {
+      const groupChat = await service.getGroupChat(id);
+      if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
-      if (!sessions.has(sessionId)) {
+      const session = await service.getSession(id, sessionId);
+      if (!session) {
         reply.code(404);
         return { error: `Session not found: ${sessionId}` };
       }
@@ -827,26 +1735,23 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
           return { error: "agent_id is required for agent view" };
         }
 
-        const key = `${sessionId}:${agent_id}`;
-        const messages = agentMessages.get(key) || [];
-        const limitedMessages = messages.slice(-limit);
+        const messages = await service.getAgentRolloutMessagesLast(id, sessionId, agent_id, limit);
 
         return {
-          messages: limitedMessages.map(toSnakeCaseAgentMessage),
+          messages: messages.map(toAgentMessageResponse),
           view: "agent",
           agent_id,
-          has_more: messages.length > limit,
+          has_more: messages.length >= limit,
         };
       }
 
       // UI view (default)
-      const messages = uiMessages.get(sessionId) || [];
-      const limitedMessages = messages.slice(-limit);
+      const messages = await service.getMessages(id, sessionId, { limit });
 
       return {
-        messages: limitedMessages.map(toSnakeCaseUIMessage),
+        messages: messages.map(toUIMessageResponse),
         view: "ui",
-        has_more: messages.length > limit,
+        has_more: messages.length >= limit,
       };
     }
   );
@@ -864,30 +1769,44 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
     ) => {
       const { id, sessionId } = request.params;
       const { content, sender_id, sender_name } = request.body;
+      const { workspace_path } = request.query;
+      const service = getService(workspace_path);
 
-      const groupChat = groupChats.get(id);
+      const groupChat = await service.getGroupChat(id);
       if (!groupChat) {
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
 
-      const session = sessions.get(sessionId);
+      const session = await service.getSession(id, sessionId);
       if (!session) {
         reply.code(404);
         return { error: `Session not found: ${sessionId}` };
       }
 
-      // Create user message
-      const userMessage = createUIMessage("user", {
-        senderId: sender_id,
-        senderName: sender_name,
-        content,
-      });
+      // Clear agent responses for new round
+      await service.clearAgentResponses(id, sessionId);
 
-      // Add to UI messages
-      const sessionMessages = uiMessages.get(sessionId) || [];
-      sessionMessages.push(userMessage);
-      uiMessages.set(sessionId, sessionMessages);
+      // Send the user message
+      const userMessage = await service.sendMessage(
+        id,
+        sessionId,
+        sender_id,
+        "human",
+        sender_name,
+        { content }
+      );
+
+      // Update member last seen
+      try {
+        const members = await service.getMembers(id);
+        const member = members.find((m) => m.refId === sender_id);
+        if (member) {
+          await service.updateMemberLastSeen(id, member.id);
+        }
+      } catch {
+        // Ignore errors updating last seen
+      }
 
       // Broadcast message event
       state.events.broadcast({
@@ -898,77 +1817,33 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       // Broadcast to WebSocket connections
       broadcastToSession(sessionId, {
         type: "new_message",
-        message: userMessage,
+        message: toUIMessageResponse(userMessage),
       });
 
       // Get agent members to trigger
-      const agentMembers = groupChat.members.filter((m) => m.type === "agent");
-      const agentsTriggered = agentMembers.map((m) => m.id);
+      const agentMembers = await service.getAgentMembers(id);
+      const agentsTriggered = agentMembers.map((m) => m.refId);
 
-      // Simulate agent thinking and responses
-      for (const agent of agentMembers) {
-        // Broadcast agent thinking
-        state.events.broadcast({
-          type: "group_chat_agent_thinking",
-          data: {
-            groupChatId: id,
-            sessionId,
-            agentId: agent.id,
-            agentName: agent.displayName,
-          },
-        });
+      // Create orchestrator for agent execution
+      const orchestrator = createOrchestrator(service, id, sessionId, {
+        timeoutMs: 120000, // 2 minutes timeout
+        continueOnError: true,
+      });
 
-        broadcastToSession(sessionId, {
-          type: "agent_thinking",
-          agent_id: agent.id,
-          agent_name: agent.displayName,
-        });
-
-        // Add thinking message to UI
-        const thinkingMessage = createUIMessage("agent_thinking", {
-          agentId: agent.id,
-          agentName: agent.displayName,
-          status: "thinking",
-        });
-        sessionMessages.push(thinkingMessage);
-
-        // Simulate a response (in real implementation, this would call the agent)
-        setTimeout(() => {
-          const responseContent = `[Simulated response from ${agent.displayName}] I received your message: "${content}"`;
-
-          const responseMessage = createUIMessage("agent_response", {
-            agentId: agent.id,
-            agentName: agent.displayName,
-            content: responseContent,
-          });
-
-          const msgs = uiMessages.get(sessionId) || [];
-          msgs.push(responseMessage);
-          uiMessages.set(sessionId, msgs);
-
-          // Broadcast agent response
-          state.events.broadcast({
-            type: "group_chat_agent_response",
-            data: {
-              groupChatId: id,
-              sessionId,
-              agentId: agent.id,
-              agentName: agent.displayName,
-              content: responseContent,
-            },
-          });
-
-          broadcastToSession(sessionId, {
-            type: "agent_response",
-            agent_id: agent.id,
-            agent_name: agent.displayName,
-            content: responseContent,
-          });
-        }, 1000 + Math.random() * 2000);
-      }
+      // Execute agents in background (non-blocking)
+      // The orchestrator handles all agent coordination, context building, and storage
+      executeAgentsInBackground(
+        orchestrator,
+        content,
+        sender_name,
+        agentMembers,
+        state,
+        id,
+        sessionId
+      );
 
       return {
-        message: toSnakeCaseUIMessage(userMessage),
+        message: toUIMessageResponse(userMessage),
         agents_triggered: agentsTriggered,
       };
     }
@@ -979,6 +1854,12 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
   // ========================================
 
   // Register WebSocket route for group chat sessions
+  // Supports query parameters:
+  // - workspace_path: Workspace path
+  // - member_type: Member type (human/agent)
+  // - member_id: Member ID
+  // - view: Initial view (ui/agent), default: ui
+  // - agent_id: Agent ID for agent view
   fastify.register(async (instance) => {
     try {
       const websocket = await import("@fastify/websocket");
@@ -988,12 +1869,19 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         "/ws/group-chats/:id/sessions/:sessionId",
         { websocket: true },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (socket: any, request: any) => {
+        async (socket: any, request: any) => {
           const { id, sessionId } = request.params;
-          const { member_id } = request.query;
+          const {
+            workspace_path,
+            member_type = "human",
+            member_id,
+            view: initialView = "ui",
+            agent_id: initialAgentId,
+          } = request.query;
+          const service = getService(workspace_path);
 
           // Verify group chat and session exist
-          const groupChat = groupChats.get(id);
+          const groupChat = await service.getGroupChat(id);
           if (!groupChat) {
             const errorMsg: WsServerMessage = {
               type: "error",
@@ -1004,7 +1892,8 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
             return;
           }
 
-          if (!sessions.has(sessionId)) {
+          const session = await service.getSession(id, sessionId);
+          if (!session) {
             const errorMsg: WsServerMessage = {
               type: "error",
               error: `Session not found: ${sessionId}`,
@@ -1014,84 +1903,219 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
             return;
           }
 
-          // Add connection to session
-          if (!wsConnections.has(sessionId)) {
-            wsConnections.set(sessionId, new Set());
+          // Generate connection ID and create connection state
+          const connectionId = generateConnectionId();
+          const memberId = member_id || "anonymous";
+
+          // Validate initial view
+          const view: "ui" | "agent" = initialView === "agent" ? "agent" : "ui";
+          const agentId = view === "agent" ? initialAgentId : undefined;
+
+          // Validate agent_id is provided for agent view
+          if (view === "agent" && !agentId) {
+            const errorMsg: WsServerMessage = {
+              type: "error",
+              error: "agent_id is required for agent view",
+            };
+            socket.send(JSON.stringify(errorMsg));
+            socket.close();
+            return;
           }
-          wsConnections.get(sessionId)!.add(socket);
+
+          // Create connection state
+          const connectionState: WsConnectionState = {
+            socket,
+            memberId,
+            memberType: member_type,
+            view,
+            agentId,
+          };
+
+          // Add connection to session
+          const connections = getSessionConnections(sessionId);
+          connections.set(connectionId, connectionState);
 
           // Send connected message
           const connectedMsg: WsServerMessage = {
             type: "connected",
-            member_id: member_id || "anonymous",
+            member_id: memberId,
+            view,
+            agent_id: agentId,
           };
           socket.send(JSON.stringify(connectedMsg));
 
+          // Notify others that member joined
+          broadcastToSession(
+            sessionId,
+            {
+              type: "member_joined",
+              member_id: memberId,
+            },
+            { excludeConnectionId: connectionId }
+          );
+
+          // Send initial messages based on view
+          try {
+            let initialMessages: unknown[] = [];
+
+            if (view === "agent" && agentId) {
+              const agentMsgs = await service.getAgentRolloutMessagesLast(
+                id,
+                sessionId,
+                agentId,
+                50
+              );
+              initialMessages = agentMsgs.map(toAgentMessageResponse);
+            } else {
+              const uiMsgs = await service.getMessages(id, sessionId, { limit: 50 });
+              initialMessages = uiMsgs.map(toUIMessageResponse);
+            }
+
+            const messagesMsg: WsServerMessage = {
+              type: "messages",
+              view,
+              agent_id: agentId,
+              messages: initialMessages,
+            };
+            socket.send(JSON.stringify(messagesMsg));
+          } catch (err) {
+            console.error("[GroupChat WebSocket] Failed to load initial messages:", err);
+          }
+
           // Handle incoming messages
-          socket.on("message", (data: Buffer) => {
+          socket.on("message", async (data: Buffer) => {
             try {
               const cmd = JSON.parse(data.toString()) as WsClientCommand;
 
               switch (cmd.type) {
                 case "send_message": {
+                  // Only allow sending messages in UI view
+                  if (connectionState.view === "agent") {
+                    const errorMsg: WsServerMessage = {
+                      type: "error",
+                      error: "Cannot send messages in agent view (read-only)",
+                    };
+                    socket.send(JSON.stringify(errorMsg));
+                    break;
+                  }
+
                   if (cmd.content && cmd.sender_id && cmd.sender_name) {
+                    // Clear responses for new round
+                    await service.clearAgentResponses(id, sessionId);
+
                     // Create and store message
-                    const userMessage = createUIMessage("user", {
-                      senderId: cmd.sender_id,
-                      senderName: cmd.sender_name,
-                      content: cmd.content,
-                    });
+                    const userMessage = await service.sendMessage(
+                      id,
+                      sessionId,
+                      cmd.sender_id,
+                      "human",
+                      cmd.sender_name,
+                      { content: cmd.content }
+                    );
 
-                    const msgs = uiMessages.get(sessionId) || [];
-                    msgs.push(userMessage);
-                    uiMessages.set(sessionId, msgs);
+                    // Update member last seen
+                    try {
+                      const members = await service.getMembers(id);
+                      const member = members.find((m) => m.refId === cmd.sender_id);
+                      if (member) {
+                        await service.updateMemberLastSeen(id, member.id);
+                      }
+                    } catch {
+                      // Ignore errors updating last seen
+                    }
 
-                    // Broadcast to all connections
+                    // Broadcast to all connections (UI view will see it)
                     broadcastToSession(sessionId, {
                       type: "new_message",
-                      message: userMessage,
+                      message: toUIMessageResponse(userMessage),
                     });
 
-                    // Trigger agents (simplified)
-                    const agentMembers = groupChat.members.filter((m) => m.type === "agent");
-                    for (const agent of agentMembers) {
-                      broadcastToSession(sessionId, {
-                        type: "agent_thinking",
-                        agent_id: agent.id,
-                        agent_name: agent.displayName,
-                      });
-                    }
+                    // Trigger agents using orchestrator
+                    const agentMembers = await service.getAgentMembers(id);
+
+                    // Create orchestrator for agent execution
+                    const orchestrator = createOrchestrator(service, id, sessionId, {
+                      timeoutMs: 120000, // 2 minutes timeout
+                      continueOnError: true,
+                    });
+
+                    // Execute agents in background (non-blocking)
+                    executeAgentsInBackground(
+                      orchestrator,
+                      cmd.content,
+                      cmd.sender_name,
+                      agentMembers,
+                      state,
+                      id,
+                      sessionId
+                    );
                   }
                   break;
                 }
 
                 case "typing": {
-                  broadcastToSession(sessionId, {
-                    type: "typing",
-                    member_id: member_id || "anonymous",
-                    is_typing: cmd.is_typing,
-                  });
+                  broadcastToSession(
+                    sessionId,
+                    {
+                      type: "typing",
+                      member_id: memberId,
+                      is_typing: cmd.is_typing,
+                    },
+                    { excludeConnectionId: connectionId }
+                  );
                   break;
                 }
 
                 case "switch_view": {
-                  const view = cmd.view || "ui";
-                  let messages: unknown[] = [];
+                  const newView = cmd.view || "ui";
+                  const newAgentId = cmd.agent_id;
 
-                  if (view === "agent" && cmd.agent_id) {
-                    const key = `${sessionId}:${cmd.agent_id}`;
-                    messages = agentMessages.get(key) || [];
-                  } else {
-                    messages = uiMessages.get(sessionId) || [];
+                  // Validate agent_id for agent view
+                  if (newView === "agent" && !newAgentId) {
+                    const errorMsg: WsServerMessage = {
+                      type: "error",
+                      error: "agent_id is required for agent view",
+                    };
+                    socket.send(JSON.stringify(errorMsg));
+                    break;
                   }
 
-                  const viewDataMsg: WsServerMessage = {
-                    type: "view_data",
-                    view,
-                    agent_id: cmd.agent_id,
-                    messages,
-                  };
-                  socket.send(JSON.stringify(viewDataMsg));
+                  // Update connection state
+                  connectionState.view = newView === "agent" ? "agent" : "ui";
+                  connectionState.agentId = newView === "agent" ? newAgentId : undefined;
+
+                  // Fetch messages for the new view
+                  let messages: unknown[] = [];
+
+                  try {
+                    if (newView === "agent" && newAgentId) {
+                      const agentMsgs = await service.getAgentRolloutMessagesLast(
+                        id,
+                        sessionId,
+                        newAgentId,
+                        50
+                      );
+                      messages = agentMsgs.map(toAgentMessageResponse);
+                    } else {
+                      const uiMsgs = await service.getMessages(id, sessionId, { limit: 50 });
+                      messages = uiMsgs.map(toUIMessageResponse);
+                    }
+
+                    // Send view data directly to this connection only
+                    const viewDataMsg: WsServerMessage = {
+                      type: "view_data",
+                      view: newView,
+                      agent_id: newAgentId,
+                      messages,
+                    };
+                    socket.send(JSON.stringify(viewDataMsg));
+                  } catch (err) {
+                    const errorMsg: WsServerMessage = {
+                      type: "error",
+                      error: `Failed to load messages: ${err instanceof Error ? err.message : String(err)}`,
+                    };
+                    socket.send(JSON.stringify(errorMsg));
+                  }
                   break;
                 }
               }
@@ -1106,10 +2130,10 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
 
           // Handle close
           socket.on("close", () => {
-            const connections = wsConnections.get(sessionId);
-            if (connections) {
-              connections.delete(socket);
-              if (connections.size === 0) {
+            const conns = wsConnections.get(sessionId);
+            if (conns) {
+              conns.delete(connectionId);
+              if (conns.size === 0) {
                 wsConnections.delete(sessionId);
               }
             }
@@ -1117,16 +2141,16 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
             // Notify others that member left
             broadcastToSession(sessionId, {
               type: "member_left",
-              member_id: member_id || "anonymous",
+              member_id: memberId,
             });
           });
 
           // Handle error
           socket.on("error", (err: Error) => {
             console.error("[GroupChat WebSocket] Error:", err);
-            const connections = wsConnections.get(sessionId);
-            if (connections) {
-              connections.delete(socket);
+            const conns = wsConnections.get(sessionId);
+            if (conns) {
+              conns.delete(connectionId);
             }
           });
         }

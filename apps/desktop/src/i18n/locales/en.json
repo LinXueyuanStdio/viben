@@ -85,7 +85,13 @@
     "forward": "Forward",
     "developer": "Developer",
     "loadingWorkspace": "Loading workspace...",
-    "submit": "Submit"
+    "submit": "Submit",
+    "creating": "Creating...",
+    "saving": "Saving...",
+    "loadMore": "Load more",
+    "send": "Send",
+    "you": "You",
+    "unknown": "Unknown"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -99,13 +105,16 @@
     "logs": "Logs",
     "documents": "Documents",
     "settings": "Settings",
-    "about": "About"
+    "about": "About",
+    "observability": "Observability",
+    "chatMonitor": "Chat Monitor"
   },
   "sidebar": {
     "setupComplete": "Setup Complete",
     "setupRequired": "Setup Required",
     "collapse": "Collapse sidebar",
-    "expand": "Expand sidebar"
+    "expand": "Expand sidebar",
+    "workspacePages": "Workspace"
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -143,7 +152,33 @@
     "connectedTooltip": "Gateway is running",
     "connectingTooltip": "Checking gateway connection...",
     "disconnectedTooltip": "Gateway not started. Click to retry or configure.",
-    "errorTooltip": "Error connecting to gateway"
+    "errorTooltip": "Error connecting to gateway",
+    "connectionSuccess": "Gateway connected successfully",
+    "address": "Address",
+    "availableEndpoints": "Available endpoints",
+    "healthCheckFailed": "Health check failed",
+    "unreachableDescription": "Cannot connect to gateway service. Please check if the gateway is running.",
+    "connectionError": "Connection error",
+    "running": "Running",
+    "stopped": "Stopped",
+    "restart": "Restart",
+    "stop": "Stop",
+    "start": "Start",
+    "autoDiscovered": "Auto discovered",
+    "refreshDiscover": "Rediscover",
+    "connectivityTest": "Connectivity Test",
+    "testConnection": "Test",
+    "reachable": "Gateway reachable",
+    "unreachable": "Gateway unreachable",
+    "endpoints": "Endpoint status",
+    "autoStart": "Auto start",
+    "autoStartCommand": "Auto start command",
+    "autoStartCommandDescription": "Command path for starting the gateway",
+    "commandNotFound": "Not configured",
+    "port": "Port",
+    "host": "Host",
+    "binaryNotFound": "Gateway binary not found",
+    "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart"
   },
   "channels": {
     "addChannel": "Add Channel",
@@ -172,11 +207,13 @@
       "tokenPlaceholder": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ",
       "proxy": "Proxy (optional)",
       "proxyDescription": "Support HTTP/SOCKS5 proxy",
+      "proxyPlaceholder": "http://127.0.0.1:7890",
       "allowFrom": "Allowed Users (optional)",
       "allowFromDescription": "Leave empty to allow all users, separate with comma",
       "chatId": "Chat ID",
       "chatIdDescription": "Target chat ID for sending messages, get from @userinfobot",
       "chatIdPlaceholder": "Enter Chat ID (e.g., 123456789 or @channel_username)",
+      "chatIdExamplePlaceholder": "123456789",
       "chatIdHint": "You can get your Chat ID from @userinfobot",
       "instancePlaceholder": "My Telegram Bot"
     },
@@ -198,7 +235,9 @@
       "description": "Receive messages via Feishu/Lark Bot",
       "appId": "App ID",
       "appIdDescription": "Get from Feishu Open Platform",
+      "appIdPlaceholder": "cli_xxxxx",
       "appSecret": "App Secret",
+      "appSecretPlaceholder": "xxxxxxxx",
       "encryptKey": "Encrypt Key (optional)",
       "encryptKeyDescription": "For event subscription encryption",
       "verificationToken": "Verification Token (optional)",
@@ -217,13 +256,45 @@
       "allowFrom": "Allowed Phone Numbers (optional)",
       "allowFromDescription": "Leave empty to allow all users",
       "testNote": "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication.",
-      "instancePlaceholder": "My WhatsApp Bridge"
+      "instancePlaceholder": "My WhatsApp Bridge",
+      "note": "WhatsApp requires configuring a Bridge server.",
+      "testHint": "WhatsApp will test bridge connection only"
     },
     "agentBinding": "Bind Agent/Executor",
     "agentBindingDescription": "Automatically route incoming messages to the specified agent or executor",
     "noBinding": "No binding",
     "agents": "Agents",
-    "executors": "Executors (Claude Code)"
+    "executors": "Executors (Claude Code)",
+    "default": "Default",
+    "createSuccess": "Channel created successfully",
+    "createFailed": "Failed to create channel",
+    "deleteSuccess": "Channel deleted",
+    "updateSuccess": "Channel updated",
+    "updateFailed": "Failed to update channel",
+    "errors": {
+      "unknown": "Unknown error",
+      "networkError": "Network error: Unable to connect. Please check your internet connection.",
+      "gatewayNotRunning": "Gateway not running. Please start the gateway service first.",
+      "requestTimeout": "Request timed out. The service may be slow or unreachable.",
+      "telegram": {
+        "invalidToken": "Invalid Bot Token. Please check your token from @BotFather.",
+        "chatNotFound": "Chat not found. Make sure you've sent /start to the bot first.",
+        "botBlocked": "Bot was blocked by the user. Please unblock the bot in Telegram."
+      },
+      "discord": {
+        "invalidToken": "Invalid Bot Token. Please check your token from Discord Developer Portal.",
+        "channelNotFound": "Channel not found. Please verify the Channel ID.",
+        "missingAccess": "Bot lacks permission. Invite the bot to the channel first."
+      },
+      "feishu": {
+        "invalidAppId": "Invalid App ID. Please check your credentials from Feishu Open Platform.",
+        "invalidAppSecret": "Invalid App Secret. Please verify your credentials.",
+        "userNotFound": "User not found. Please check the Open ID or Chat ID."
+      },
+      "whatsapp": {
+        "bridgeConnectionFailed": "Cannot connect to WhatsApp Bridge. Is the bridge server running?"
+      }
+    }
   },
   "dashboard": {
     "title": "Dashboard",
@@ -327,6 +398,11 @@
     "channelsDescription": "Configure AI agent communication channels",
     "resetChannels": "Reset Channel Configuration",
     "executorsDescription": "Check AI coding agent executor installation status",
+    "gatewayDescription": "Manage AI agent gateway service",
+    "gatewayStatus": "Gateway Status",
+    "gatewayConfig": "Gateway Configuration",
+    "gatewayKeepAlive": "Gateway Keep-Alive",
+    "gatewayBinary": "Gateway Binary",
     "pythonEnvironment": "Python Environment",
     "detect": "Detect",
     "detectedInstallations": "Detected Python Installations",
@@ -636,7 +712,14 @@
       "coding": "Coding Assistant",
       "codingDesc": "Optimized for code development"
     },
-    "copyName": "{{name}} (Copy)"
+    "copyName": "{{name}} (Copy)",
+    "noGlobalWorkspace": "Global workspace not found",
+    "noGlobalWorkspaceDesc": "Please create or initialize a global workspace first",
+    "modelRequired": "Model is required",
+    "executorRequired": "Executor is required",
+    "validationError": "Validation failed",
+    "mcpTitle": "MCP",
+    "memoryFileTitle": "MEMORY.md"
   },
   "settingsModels": {
     "title": "AI Models",
@@ -759,7 +842,9 @@
     "roleExecutor": "Executor",
     "roleAgent": "Agent",
     "unnamedExecutor": "Unnamed Executor",
-    "unnamedAgent": "Unnamed Agent"
+    "unnamedAgent": "Unnamed Agent",
+    "agents": "Agents",
+    "showDetails": "Show agent details"
   },
   "agents": {
     "title": "Agents",
@@ -1065,6 +1150,7 @@
     "refreshRoots": "Refresh Roots",
     "addCustomRoot": "Add Custom Root",
     "rootUri": "Root URI",
+    "rootUriPlaceholder": "file:///path/to/directory or https://example.com",
     "rootName": "Name (optional)",
     "rootNamePlaceholder": "Friendly name for this root",
     "addRoot": "Add Root",
@@ -1476,7 +1562,8 @@
       "home": "Home",
       "mcp": "MCP",
       "skills": "Skills",
-      "preferences": "Preferences"
+      "preferences": "Preferences",
+      "agents": "Agents"
     },
     "agentConfigs": "Agents",
     "agentConfigsDesc": "Agent configuration files (.claude/agents/*.md)",
@@ -1611,7 +1698,31 @@
     "filesDescription": "Browse and manage files",
     "connectingToKanban": "Connecting to vibe-kanban...",
     "kanbanConnectionFailed": "Failed to connect to vibe-kanban backend",
-    "failedToLoadTasks": "Failed to load tasks"
+    "failedToLoadTasks": "Failed to load tasks",
+    "chat": "Chat",
+    "chatDescription": "Start a conversation with AI",
+    "recentActivity": "Recent activity",
+    "kanban": "Task Board",
+    "kanbanDescription": "Manage tasks with kanban board",
+    "taskManagement": "Task management",
+    "scheduledTasks": "Scheduled Tasks",
+    "scheduledTasksDescription": "Manage scheduled tasks and automation",
+    "automation": "Automation",
+    "agentsDetected": "agents",
+    "browseFiles": "Browse files",
+    "kanbanStatus": {
+      "todo": "To Do",
+      "inProgress": "In Progress",
+      "review": "Review",
+      "done": "Done"
+    },
+    "addTask": "Add Task",
+    "hideStats": "Hide Stats",
+    "showStats": "Show Stats",
+    "viewKanban": "Kanban View",
+    "viewList": "List View",
+    "taskDetail": "Details",
+    "description": "Description"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -1834,7 +1945,14 @@
     "olderSessions": "Older",
     "totalSessions": "sessions",
     "searchSessions": "Search sessions...",
+    "noSearchResults": "No matching sessions found",
     "agentSessions": "{{agent}}'s Sessions",
+    "showPanel": "Show Panel",
+    "hidePanel": "Hide Panel",
+    "gatewayOfflineHint": "Gateway offline, click to retry",
+    "refreshSessions": "Refresh sessions",
+    "scrollToBottom": "Scroll to bottom",
+    "selectExecutor": "Executor",
     "createGroup": "Create Group",
     "createGroupDesc": "Create a group chat where multiple agents can collaborate",
     "slashCommands": {
@@ -1917,6 +2035,12 @@
     "analyticsComingSoonDesc": "Analytics dashboard is currently under development. You will be able to track your package performance here."
   },
   "executor": {
+    "executors": "Executors",
+    "noExecutors": "No executors detected",
+    "sessionCount": "{{count}} sessions",
+    "settings": "Executor Settings",
+    "searchExecutors": "Search executors...",
+    "showDetails": "Show executor details",
     "noSessions": "No sessions found",
     "noSessionsHint": "Sessions will appear when you use this executor",
     "noMessages": "No messages in this session",
@@ -2180,6 +2304,11 @@
     "undo": "Undo"
   },
   "fileBrowser": {
+    "openWithApps": {
+      "vscode": "VS Code",
+      "cursor": "Cursor",
+      "preview": "Preview"
+    },
     "sort": "Sort",
     "sortBy": "Sort by",
     "sortByName": "Name",
@@ -2236,6 +2365,8 @@
     "openWithDefault": "Default Application",
     "quickLook": "Quick Look",
     "cut": "Cut",
+    "paste": "Paste",
+    "showInFinder": "Show in Finder",
     "filenamePlaceholder": "filename.txt",
     "foldernamePlaceholder": "folder name",
     "newNamePlaceholder": "New name",
@@ -2354,7 +2485,8 @@
       "pending": "Pending",
       "running": "Running",
       "done": "Done",
-      "failed": "Failed"
+      "failed": "Failed",
+      "cancelled": "Cancelled"
     },
     "progress": "Progress",
     "messageRole": {
@@ -2370,5 +2502,40 @@
       "vendor": "Vendor",
       "homepage": "Homepage"
     }
+  },
+  "observability": {
+    "title": "Observability",
+    "chatMonitor": "Chat Monitor",
+    "chatMonitorDescription": "Monitor agent chat execution traces",
+    "traces": "Traces",
+    "traceDetail": "Trace Detail",
+    "noTraces": "No traces yet",
+    "noTracesDescription": "Traces will appear here after running agents",
+    "selectDate": "Select date",
+    "selectTrace": "Select trace",
+    "refreshTraces": "Refresh traces",
+    "traceId": "Trace ID",
+    "duration": "Duration",
+    "startTime": "Start Time",
+    "status": "Status",
+    "spanCount": "Span Count",
+    "successSpans": "Success",
+    "errorSpans": "Errors",
+    "maxDepth": "Max Depth",
+    "operations": "Operations",
+    "operationName": "Operation",
+    "count": "Count",
+    "avgDuration": "Avg Duration",
+    "totalDuration": "Total Duration",
+    "traceTree": "Trace Tree",
+    "stats": "Statistics",
+    "loading": "Loading...",
+    "loadError": "Load failed",
+    "today": "Today",
+    "clean": "Clean",
+    "cleanOldData": "Clean Old Data",
+    "retentionDays": "Retention Days",
+    "cleanSuccess": "Cleanup successful",
+    "cleanDescription": "Clean traces older than {{days}} days"
   }
 }

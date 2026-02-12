@@ -48,11 +48,23 @@ function findProcessOnPort(port: number): number | null {
 }
 
 /**
- * Kill a process by PID
+ * Kill a process by PID (graceful SIGTERM)
  */
 function killProcess(pid: number): boolean {
   try {
     process.kill(pid, "SIGTERM");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Force kill a process by PID (SIGKILL)
+ */
+function forceKillProcess(pid: number): boolean {
+  try {
+    process.kill(pid, "SIGKILL");
     return true;
   } catch {
     return false;
@@ -519,18 +531,39 @@ async function restartGateway(
     logLevel?: string;
     agent?: string;
     daemon?: boolean;
+    force?: boolean;
   }
 ): Promise<void> {
   const port = options.port ?? DEFAULT_PORT;
+  const force = options.force ?? false;
 
   // Stop existing gateway if running
-  const existingPid = findProcessOnPort(port);
+  let existingPid = findProcessOnPort(port);
   if (existingPid !== null) {
-    if (!ctx.quiet) {
-      console.log(chalk.cyan(`Stopping existing gateway (PID ${existingPid})...`));
+    if (force) {
+      if (!ctx.quiet) {
+        console.log(chalk.cyan(`Force killing existing gateway (PID ${existingPid})...`));
+      }
+      forceKillProcess(existingPid);
+    } else {
+      if (!ctx.quiet) {
+        console.log(chalk.cyan(`Stopping existing gateway (PID ${existingPid})...`));
+      }
+      killProcess(existingPid);
     }
-    killProcess(existingPid);
     await new Promise((resolve) => setTimeout(resolve, 500));
+
+    // If force mode, verify port is released and retry if needed
+    if (force) {
+      existingPid = findProcessOnPort(port);
+      if (existingPid !== null) {
+        if (!ctx.quiet) {
+          console.log(chalk.yellow(`Port ${port} still occupied, retrying force kill...`));
+        }
+        forceKillProcess(existingPid);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
   }
 
   // Start new gateway
@@ -546,6 +579,13 @@ interface GatewayStartOptions {
   logLevel?: string;
   agent?: string;
   daemon?: boolean;
+}
+
+/**
+ * Gateway restart options interface
+ */
+interface GatewayRestartOptions extends GatewayStartOptions {
+  force?: boolean;
 }
 
 /**
@@ -633,11 +673,15 @@ export function registerGatewayCommand(program: Command): void {
     .option("-l, --log-level <level>", "Log level (debug, info, warn, error)")
     .option("-n, --agent <agent-id>", "Agent to run")
     .option("-d, --daemon", "Run in daemon mode")
+    .option("-f, --force", "Force kill the existing process (SIGKILL instead of SIGTERM)")
     .description("Restart the gateway")
-    .action(async (options: GatewayStartOptions) => {
+    .action(async (options: GatewayRestartOptions) => {
       const ctx = getContext(program);
       try {
-        await restartGateway(ctx, parseStartOptions(options));
+        await restartGateway(ctx, {
+          ...parseStartOptions(options),
+          force: options.force || false,
+        });
       } catch (error) {
         handleCommandError(ctx, error);
       }

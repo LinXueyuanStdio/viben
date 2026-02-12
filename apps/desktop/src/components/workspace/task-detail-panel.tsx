@@ -590,7 +590,7 @@ export function TaskDetailPanel({
                   label={t("workspace.status", "Status")}
                   icon={Circle}
                 >
-                  <Badge variant="outline">{task.status}</Badge>
+                  <Badge variant="outline">{getStatusLabel(task.status)}</Badge>
                 </PropertyRow>
 
                 {/* Priority */}

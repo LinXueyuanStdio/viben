@@ -61,33 +61,10 @@ pub struct GatewayStatus {
 }
 
 /// Find the gateway binary path
-/// Supports both standalone viben-gateway binary and `viben gateway` CLI command
+/// Supports TypeScript gateway via `viben gateway` CLI command
+/// Priority: which viben > known paths > npx viben
 fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
-    // First, try to find `viben` CLI (preferred method)
-    let viben_paths = [
-        // Global npm installation
-        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
-        // npx path
-        Some(PathBuf::from("npx")),
-        // Local project node_modules
-        Some(PathBuf::from("./node_modules/.bin/viben")),
-        // Homebrew installation (macOS)
-        Some(PathBuf::from("/opt/homebrew/bin/viben")),
-        Some(PathBuf::from("/usr/local/bin/viben")),
-    ];
-
-    // Check if `viben` CLI exists
-    for path in viben_paths.into_iter().flatten() {
-        if path == PathBuf::from("npx") {
-            // Special case: use npx to run viben
-            return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string()]));
-        }
-        if path.exists() {
-            return Some((path, vec!["gateway".to_string()]));
-        }
-    }
-
-    // Try to find viben via `which` command on Unix
+    // 1. First, try `which viben` to find the installed CLI (most reliable)
     #[cfg(unix)]
     {
         if let Ok(output) = std::process::Command::new("which")
@@ -103,39 +80,47 @@ fn find_gateway_binary() -> Option<(PathBuf, Vec<String>)> {
         }
     }
 
-    // Fallback: try standalone viben-gateway binary
-    let gateway_paths = [
-        // Development path: crates/target/debug/viben-gateway
-        dirs::home_dir()
-            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
-        dirs::home_dir()
-            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/release/viben-gateway")),
-        // System-installed path
-        Some(PathBuf::from("/usr/local/bin/viben-gateway")),
-        // Cargo bin path
-        dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
-        // Home viben directory
-        dirs::home_dir().map(|h| h.join(".viben/bin/viben-gateway")),
+    // 2. Check known installation paths for viben CLI
+    let viben_paths = [
+        // Global npm installation
+        dirs::home_dir().map(|h| h.join(".npm-global/bin/viben")),
+        // Local project node_modules
+        Some(PathBuf::from("./node_modules/.bin/viben")),
+        // Homebrew installation (macOS)
+        Some(PathBuf::from("/opt/homebrew/bin/viben")),
+        Some(PathBuf::from("/usr/local/bin/viben")),
+        // Cargo bin path (if installed via cargo)
+        dirs::home_dir().map(|h| h.join(".cargo/bin/viben")),
     ];
 
-    for path in gateway_paths.into_iter().flatten() {
+    for path in viben_paths.into_iter().flatten() {
         if path.exists() {
-            return Some((path, vec![]));
+            return Some((path, vec!["gateway".to_string()]));
         }
     }
 
-    // Try to find viben-gateway via `which` command on Unix
+    // 3. Fallback: use npx to run viben (always available if npm is installed)
+    // Check if npx exists first
     #[cfg(unix)]
     {
         if let Ok(output) = std::process::Command::new("which")
-            .arg("viben-gateway")
+            .arg("npx")
             .output()
         {
             if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() {
-                    return Some((PathBuf::from(path), vec![]));
-                }
+                return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string()]));
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        if let Ok(output) = std::process::Command::new("where")
+            .arg("npx")
+            .output()
+        {
+            if output.status.success() {
+                return Some((PathBuf::from("npx"), vec!["viben".to_string(), "gateway".to_string()]));
             }
         }
     }

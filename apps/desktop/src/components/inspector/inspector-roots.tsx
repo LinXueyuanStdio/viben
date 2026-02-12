@@ -117,7 +117,7 @@ export function InspectorRoots({ enabled = true }: InspectorRootsProps) {
             <Input
               value={newRootUri}
               onChange={(e) => setNewRootUri(e.target.value)}
-              placeholder="file:///path/to/directory or https://example.com"
+              placeholder={t("inspector.rootUriPlaceholder", "file:///path/to/directory or https://example.com")}
               className="text-xs"
             />
           </div>

@@ -18,15 +18,42 @@ import { sendTelegramMessage, testTelegramChannel } from "./telegram";
 import { sendDiscordMessage, testDiscordChannel } from "./discord";
 import { sendFeishuMessage, testFeishuChannel } from "./feishu";
 import { sendWhatsAppMessage, testWhatsAppChannel } from "./whatsapp";
+import { sendSlackMessage, testSlackChannel } from "./slack";
+import { sendWebhookMessage, testWebhookChannel } from "./webhook";
 
 // Re-export individual channel functions
 export { sendTelegramMessage, testTelegramChannel } from "./telegram";
 export { sendDiscordMessage, testDiscordChannel } from "./discord";
 export { sendFeishuMessage, testFeishuChannel } from "./feishu";
 export { sendWhatsAppMessage, testWhatsAppChannel } from "./whatsapp";
+export {
+  sendSlackMessage,
+  testSlackChannel,
+  getSlackChannelInfo,
+  listSlackChannels,
+} from "./slack";
+export {
+  sendWebhookMessage,
+  testWebhookChannel,
+  testWebhookEndpoint,
+  validateIncomingWebhookMessage,
+  type IncomingWebhookMessage,
+} from "./webhook";
 
 // Re-export channel manager
 export { ChannelManager, channelManager, getChannelsPath } from "./manager";
+
+// Re-export channel router
+export {
+  ChannelRouter,
+  ResponseCollector,
+  RouterError,
+  createChannelRouter,
+  type RouterErrorCode,
+  type IncomingMessage,
+  type OutgoingMessage,
+  type ChannelRouterConfig,
+} from "./router";
 
 /**
  * Send a message through any channel type
@@ -45,66 +72,9 @@ export async function sendChannelMessage(
     case "whatsapp":
       return sendWhatsAppMessage(config, options);
     case "slack":
-      // Slack message sending
-      if (!config.token) {
-        return { success: false, error: "Bot token is required" };
-      }
-      try {
-        const response = await fetch("https://slack.com/api/chat.postMessage", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            channel: options.chatId,
-            text: options.message,
-          }),
-        });
-        const data = (await response.json()) as {
-          ok: boolean;
-          error?: string;
-          ts?: string;
-        };
-        if (data.ok) {
-          return { success: true, messageId: data.ts };
-        }
-        return { success: false, error: data.error || "Unknown error" };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
+      return sendSlackMessage(config, options);
     case "webhook":
-      // Webhook message sending
-      if (!config.url) {
-        return { success: false, error: "Webhook URL is required" };
-      }
-      try {
-        const method = config.method || "POST";
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          ...config.headers,
-        };
-        const response = await fetch(config.url, {
-          method,
-          headers,
-          body: JSON.stringify({
-            chatId: options.chatId,
-            message: options.message,
-          }),
-        });
-        if (response.ok) {
-          return { success: true };
-        }
-        return { success: false, error: `HTTP ${response.status}` };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
+      return sendWebhookMessage(config, options);
     default:
       return {
         success: false,
@@ -129,44 +99,9 @@ export async function testChannel(
     case "whatsapp":
       return testWhatsAppChannel(config);
     case "slack":
-      // Slack channel test
-      if (!config.token) {
-        return { success: false, error: "Bot token is required" };
-      }
-      try {
-        const response = await fetch("https://slack.com/api/auth.test", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${config.token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        const data = (await response.json()) as {
-          ok: boolean;
-          error?: string;
-          user?: string;
-        };
-        if (data.ok) {
-          return { success: true, details: `User: ${data.user}` };
-        }
-        return { success: false, error: data.error || "Unknown error" };
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        };
-      }
+      return testSlackChannel(config);
     case "webhook":
-      // Webhook validation
-      if (!config.url) {
-        return { success: false, error: "Webhook URL is required" };
-      }
-      try {
-        new URL(config.url);
-        return { success: true, details: `URL: ${config.url}` };
-      } catch {
-        return { success: false, error: "Invalid webhook URL" };
-      }
+      return testWebhookChannel(config);
     default:
       return {
         success: false,

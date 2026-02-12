@@ -21,6 +21,8 @@ import { registerWorkspaceRoutes } from "./workspaces";
 import { registerChatListRoutes } from "./chat-list";
 import { registerMcpRoutes } from "./mcp";
 import { registerAgentRunRoutes } from "./agent-run";
+import { registerFileRoutes } from "./files";
+import { registerTelemetryRoutes } from "./telemetry";
 
 /**
  * Register all routes
@@ -44,6 +46,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerChatListRoutes(fastify);
   registerMcpRoutes(fastify);
   registerAgentRunRoutes(fastify);
+  registerFileRoutes(fastify);
+  registerTelemetryRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -65,6 +69,8 @@ export { registerGroupChatRoutes } from "./group-chats";
 export { registerChatListRoutes } from "./chat-list";
 export { registerMcpRoutes } from "./mcp";
 export { registerAgentRunRoutes } from "./agent-run";
+export { registerFileRoutes } from "./files";
+export { registerTelemetryRoutes } from "./telemetry";
 export type {
   SSEEventType,
   SSEMessage,

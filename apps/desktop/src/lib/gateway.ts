@@ -550,8 +550,8 @@ export class GatewayClient {
   /**
    * Get agent details by type
    */
-  async getAgent(agentType: BaseCodingAgent): Promise<AgentDetails> {
-    const response = await fetch(`${this.baseUrl}/api/agents/${agentType}`, {
+  async getAgent(executorType: BaseCodingAgent): Promise<AgentDetails> {
+    const response = await fetch(`${this.baseUrl}/api/agents/${executorType}`, {
       method: "GET",
       headers: { Accept: "application/json" },
     });
@@ -569,9 +569,9 @@ export class GatewayClient {
   /**
    * Check agent availability
    */
-  async checkAvailability(agentType: BaseCodingAgent): Promise<AvailabilityInfo> {
+  async checkAvailability(executorType: BaseCodingAgent): Promise<AvailabilityInfo> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/availability`,
+      `${this.baseUrl}/api/agents/${executorType}/availability`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -826,11 +826,11 @@ export class GatewayClient {
    * Returns the session ID
    */
   async spawnAgent(
-    agentType: BaseCodingAgent,
+    executorType: BaseCodingAgent,
     request: SpawnAgentRequest
   ): Promise<SpawnAgentResponse> {
-    const url = `${this.baseUrl}/api/agents/${agentType}/spawn`;
-    console.log("[GatewayClient] Spawn request:", { url, agentType, request });
+    const url = `${this.baseUrl}/api/agents/${executorType}/spawn`;
+    console.log("[GatewayClient] Spawn request:", { url, executorType, request });
 
     const response = await fetch(url, {
       method: "POST",
@@ -879,7 +879,7 @@ export class GatewayClient {
    * Returns an async generator that yields SSE events
    */
   async *spawnAgentStream(
-    agentType: BaseCodingAgent,
+    executorType: BaseCodingAgent,
     request: SpawnAgentRequest
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
@@ -888,7 +888,7 @@ export class GatewayClient {
     this.abortController = new AbortController();
 
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/spawn`,
+      `${this.baseUrl}/api/agents/${executorType}/spawn`,
       {
         method: "POST",
         headers: {
@@ -963,21 +963,21 @@ export class GatewayClient {
    * Stop an agent process
    */
   async stopAgent(
-    agentType: BaseCodingAgent,
+    _executorType: BaseCodingAgent,
     sessionId: string
   ): Promise<void> {
     // Cancel any ongoing stream
     this.cancelStream();
 
+    // Use the new endpoint: POST /api/agent/stop/:sessionId
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/stop`,
+      `${this.baseUrl}/api/agent/stop/${sessionId}`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ session_id: sessionId }),
       }
     );
 
@@ -993,11 +993,11 @@ export class GatewayClient {
    * Continue an existing session
    */
   async continueSession(
-    agentType: BaseCodingAgent,
+    executorType: BaseCodingAgent,
     request: ContinueSessionRequest
   ): Promise<SpawnAgentResponse> {
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/continue`,
+      `${this.baseUrl}/api/agents/${executorType}/continue`,
       {
         method: "POST",
         headers: {
@@ -1023,7 +1023,7 @@ export class GatewayClient {
    * Continue session with SSE streaming
    */
   async *continueSessionStream(
-    agentType: BaseCodingAgent,
+    executorType: BaseCodingAgent,
     request: ContinueSessionRequest
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
@@ -1032,7 +1032,7 @@ export class GatewayClient {
     this.abortController = new AbortController();
 
     const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentType}/continue`,
+      `${this.baseUrl}/api/agents/${executorType}/continue`,
       {
         method: "POST",
         headers: {
@@ -2510,6 +2510,1039 @@ export class GatewayClient {
     }
   }
 
+  // ==========================================================================
+  // Provider CRUD
+  // ==========================================================================
+
+  /**
+   * List all providers
+   */
+  async listProviders(): Promise<ProvidersListResponse> {
+    const response = await fetch(`${this.baseUrl}/api/providers`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list providers: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create a new provider
+   */
+  async createProvider(options: CreateProviderOptions): Promise<ProviderResponse> {
+    const body = {
+      type: options.type,
+      name: options.name,
+      api_key: options.apiKey,
+      base_url: options.baseUrl,
+      api_version: options.apiVersion,
+      deployment: options.deployment,
+      timeout: options.timeout,
+      max_retries: options.maxRetries,
+      headers: options.headers,
+      set_as_default: options.setAsDefault,
+    };
+
+    const response = await fetch(`${this.baseUrl}/api/providers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a provider by ID
+   */
+  async getProvider(id: string): Promise<ProviderResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a provider
+   */
+  async updateProvider(id: string, updates: ProviderUpdate): Promise<ProviderResponse> {
+    const body: Record<string, unknown> = {};
+    if (updates.type !== undefined) body.type = updates.type;
+    if (updates.name !== undefined) body.name = updates.name;
+    if (updates.apiKey !== undefined) body.api_key = updates.apiKey;
+    if (updates.baseUrl !== undefined) body.base_url = updates.baseUrl;
+    if (updates.apiVersion !== undefined) body.api_version = updates.apiVersion;
+    if (updates.deployment !== undefined) body.deployment = updates.deployment;
+    if (updates.timeout !== undefined) body.timeout = updates.timeout;
+    if (updates.maxRetries !== undefined) body.max_retries = updates.maxRetries;
+    if (updates.headers !== undefined) body.headers = updates.headers;
+
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a provider
+   */
+  async deleteProvider(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete provider: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get the default provider
+   */
+  async getDefaultProvider(): Promise<{ default_provider_id: string | null; provider: ProviderResponse | null }> {
+    const response = await fetch(`${this.baseUrl}/api/providers/default`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get default provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Set the default provider
+   */
+  async setDefaultProvider(providerId: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/providers/default`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ provider_id: providerId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set default provider: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Enable a provider
+   */
+  async enableProvider(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}/enable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to enable provider: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Disable a provider
+   */
+  async disableProvider(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}/disable`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to disable provider: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Test provider connection
+   */
+  async testProvider(id: string): Promise<ProviderStatus> {
+    const response = await fetch(
+      `${this.baseUrl}/api/providers/${encodeURIComponent(id)}/test`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to test provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Workspace CRUD
+  // ==========================================================================
+
+  /**
+   * List all registered workspaces
+   */
+  async listWorkspaces(): Promise<WorkspacesListResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workspaces`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list workspaces: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add (register) a workspace
+   */
+  async addWorkspace(path: string, name?: string): Promise<WorkspaceResponse> {
+    const response = await fetch(`${this.baseUrl}/api/workspaces`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, name }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add workspace: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a workspace by ID
+   */
+  async getWorkspace(id: string): Promise<WorkspaceResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/${encodeURIComponent(id)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get workspace: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Remove (unregister) a workspace
+   */
+  async removeWorkspace(id: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to remove workspace: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get the active workspace
+   */
+  async getActiveWorkspace(): Promise<{ active_workspace: WorkspaceResponse | null }> {
+    const response = await fetch(`${this.baseUrl}/api/workspaces/active`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get active workspace: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Set the active workspace
+   */
+  async setActiveWorkspace(options: { workspaceId?: string; path?: string }): Promise<WorkspaceResponse> {
+    const body: Record<string, string> = {};
+    if (options.workspaceId) body.workspace_id = options.workspaceId;
+    if (options.path) body.path = options.path;
+
+    const response = await fetch(`${this.baseUrl}/api/workspaces/active`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set active workspace: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.active_workspace;
+  }
+
+  /**
+   * Detect agents in a workspace
+   */
+  async detectWorkspaceAgents(workspaceId: string): Promise<DetectAgentsResponse> {
+    const response = await fetch(
+      `${this.baseUrl}/api/workspaces/${encodeURIComponent(workspaceId)}/detect-agents`,
+      {
+        method: "POST",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to detect workspace agents: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // MCP Servers (Workspace IDE Agents)
+  // ==========================================================================
+
+  /**
+   * Get MCP servers for an executor in a workspace
+   *
+   * @param workspacePath - The workspace path (defaults to home dir)
+   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   */
+  async getMcpServers(
+    workspacePath: string | undefined,
+    executorType: string
+  ): Promise<WorkspaceMcpServersResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP servers: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add MCP server to an IDE agent
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The agent type
+   * @param server - The MCP server configuration
+   */
+  async addMcpServer(
+    workspacePath: string | undefined,
+    executorType: string,
+    server: WorkspaceMcpServerConfig
+  ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
+    const response = await fetch(`${this.baseUrl}/api/mcp-servers`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        workspace_path: workspacePath,
+        executor_type: executorType,
+        server,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add MCP server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update MCP server
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The agent type
+   * @param serverName - The server name to update
+   * @param updates - The updates to apply
+   */
+  async updateMcpServer(
+    workspacePath: string | undefined,
+    executorType: string,
+    serverName: string,
+    updates: Partial<WorkspaceMcpServerConfig>
+  ): Promise<{ success: boolean }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+    params.set("executor_type", executorType);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(updates),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update MCP server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete MCP server
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The agent type
+   * @param serverName - The server name to delete
+   */
+  async deleteMcpServer(
+    workspacePath: string | undefined,
+    executorType: string,
+    serverName: string
+  ): Promise<{ success: boolean; deleted: string }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+    params.set("executor_type", executorType);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete MCP server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Skills (Executor Resources)
+  // ==========================================================================
+
+  /**
+   * Get skills for an executor in a workspace
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type
+   */
+  async getSkills(
+    workspacePath: string | undefined,
+    executorType: string
+  ): Promise<WorkspaceSkillsResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/skills?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get skills: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add skill to an IDE agent
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The agent type
+   * @param skill - The skill to add
+   */
+  async addSkill(
+    workspacePath: string | undefined,
+    executorType: string,
+    skill: WorkspaceSkillConfig
+  ): Promise<{ success: boolean; skill: WorkspaceSkillConfig }> {
+    const response = await fetch(`${this.baseUrl}/api/skills`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        workspace_path: workspacePath,
+        executor_type: executorType,
+        skill,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add skill: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete skill from an IDE agent
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The agent type
+   * @param skillId - The skill ID to delete
+   */
+  async deleteSkill(
+    workspacePath: string | undefined,
+    executorType: string,
+    skillId: string
+  ): Promise<{ success: boolean; deleted: string }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+    params.set("executor_type", executorType);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/skills/${encodeURIComponent(skillId)}?${params.toString()}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete skill: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Agent Configs (prompts from .claude/agents/*.md or executor-specific paths)
+  // ==========================================================================
+
+  /**
+   * Get agent configs for an executor in a workspace
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   */
+  async getAgentConfigs(
+    workspacePath: string | undefined,
+    executorType: string
+  ): Promise<WorkspaceAgentConfigsResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/configs?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get agent configs: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a single agent config file
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type
+   * @param configId - The config ID (filename without extension)
+   */
+  async getAgentConfig(
+    workspacePath: string | undefined,
+    executorType: string,
+    configId: string
+  ): Promise<{ config: WorkspaceAgentConfigData }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/configs/${encodeURIComponent(configId)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get agent config: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Commands (slash commands from .claude/commands/ or executor-specific paths)
+  // ==========================================================================
+
+  /**
+   * Get commands for an executor in a workspace
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   */
+  async getCommands(
+    workspacePath: string | undefined,
+    executorType: string
+  ): Promise<WorkspaceCommandsResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/commands?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get commands: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a single command file
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type
+   * @param commandId - The command ID (namespace/name or just name)
+   */
+  async getCommand(
+    workspacePath: string | undefined,
+    executorType: string,
+    commandId: string
+  ): Promise<{ command: WorkspaceCommandData }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/commands/${encodeURIComponent(commandId)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get command: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // File Operations
+  // ==========================================================================
+
+  /**
+   * List directory contents
+   */
+  async listFiles(path: string, showHidden = false): Promise<FileListResponse> {
+    const params = new URLSearchParams();
+    params.set("path", path);
+    if (showHidden) params.set("show_hidden", "true");
+
+    const response = await fetch(
+      `${this.baseUrl}/api/files/list?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list files: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Read file content
+   */
+  async readFile(path: string, encoding = "utf-8"): Promise<FileContentResponse> {
+    const params = new URLSearchParams();
+    params.set("path", path);
+    params.set("encoding", encoding);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/files/content?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to read file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create a new file
+   */
+  async createFile(path: string, content = "", encoding = "utf-8"): Promise<FileEntry> {
+    const response = await fetch(`${this.baseUrl}/api/files`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, content, encoding }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Create a new directory
+   */
+  async createDirectory(path: string, recursive = true): Promise<FileEntry> {
+    const response = await fetch(`${this.baseUrl}/api/files/directory`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, recursive }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create directory: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Write content to file
+   */
+  async writeFile(path: string, content: string, encoding = "utf-8"): Promise<{ success: boolean; file: FileEntry }> {
+    const response = await fetch(`${this.baseUrl}/api/files/content`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, content, encoding }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to write file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete file or directory
+   */
+  async deleteFile(path: string, recursive = false): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/files`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, recursive }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete file: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Rename file or directory
+   */
+  async renameFile(oldPath: string, newPath: string): Promise<{ success: boolean; file: FileEntry }> {
+    const response = await fetch(`${this.baseUrl}/api/files/rename`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ old_path: oldPath, new_path: newPath }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to rename file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Copy file or directory
+   */
+  async copyFile(source: string, destination: string, recursive = true): Promise<{ success: boolean; file: FileEntry }> {
+    const response = await fetch(`${this.baseUrl}/api/files/copy`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ source, destination, recursive }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to copy file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Move file or directory
+   */
+  async moveFile(source: string, destination: string): Promise<{ success: boolean; file: FileEntry }> {
+    const response = await fetch(`${this.baseUrl}/api/files/move`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ source, destination }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to move file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
 }
 
 // ============================================================================
@@ -2947,7 +3980,7 @@ export interface AgentInfo {
   /** Display name */
   name: string;
   /** Agent type */
-  agent_type: WorkspaceAgentType;
+  executor_type: WorkspaceAgentType;
   /** Source: "global" or "workspace" */
   source: "global" | "workspace";
   /** The workspace path this agent belongs to (absolute path) */
@@ -2976,8 +4009,6 @@ export interface AgentInfo {
   temperature?: number;
   /** Max tokens (Viben agents only) */
   max_tokens?: number;
-  /** Executor type (Viben agents only) */
-  executor_type?: string;
   /** MCP servers (Viben agents only) */
   mcp_servers?: string[];
   /** Skills (Viben agents only) */
@@ -3006,7 +4037,7 @@ export interface WorkspaceAgent {
   /** Display name */
   name: string;
   /** Agent type */
-  agent_type: WorkspaceAgentType;
+  executor_type: WorkspaceAgentType;
   /** Source: "global" or "workspace" */
   source: string;
   /** Path to agent config */
@@ -3105,6 +4136,226 @@ export interface ProviderEnabledModelsResponse {
 }
 
 // ============================================================================
+// Provider CRUD Types
+// ============================================================================
+
+// ProviderType is already defined above in Model CRUD Types
+
+/** Provider response from gateway */
+export interface ProviderResponse {
+  id: string;
+  type: ProviderType;
+  name: string;
+  api_key?: string;
+  base_url?: string;
+  api_version?: string;
+  deployment?: string;
+  timeout?: number;
+  max_retries?: number;
+  headers?: Record<string, string>;
+  is_default: boolean;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Options for creating a provider */
+export interface CreateProviderOptions {
+  type: ProviderType;
+  name: string;
+  apiKey?: string;
+  baseUrl?: string;
+  apiVersion?: string;
+  deployment?: string;
+  timeout?: number;
+  maxRetries?: number;
+  headers?: Record<string, string>;
+  setAsDefault?: boolean;
+}
+
+/** Options for updating a provider */
+export interface ProviderUpdate {
+  type?: ProviderType;
+  name?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  apiVersion?: string;
+  deployment?: string;
+  timeout?: number;
+  maxRetries?: number;
+  headers?: Record<string, string>;
+}
+
+/** Provider status from test */
+export interface ProviderStatus {
+  provider_id: string;
+  connected: boolean;
+  latency?: number;
+  error?: string;
+  checked_at: string;
+}
+
+/** Response for listing providers */
+export interface ProvidersListResponse {
+  providers: ProviderResponse[];
+  total: number;
+  default_provider_id: string | null;
+}
+
+// ============================================================================
+// Workspace CRUD Types
+// ============================================================================
+
+/** Workspace response from gateway */
+export interface WorkspaceResponse {
+  id: string;
+  path: string;
+  name: string;
+  config_path: string;
+  type?: "global" | "custom";
+  mcp?: {
+    enabled: string[];
+    disabled?: string[];
+  };
+  skills?: {
+    enabled: string[];
+    disabled?: string[];
+  };
+  agents?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** Response for listing workspaces */
+export interface WorkspacesListResponse {
+  workspaces: WorkspaceResponse[];
+  total: number;
+  active_workspace_id: string | null;
+}
+
+/** Response for detecting agents */
+export interface DetectAgentsResponse {
+  workspace_id: string;
+  workspace_path: string;
+  agents: Array<{
+    id: string;
+    name: string;
+    type: string;
+    source: string;
+    config_path?: string;
+  }>;
+  total: number;
+}
+
+// ============================================================================
+// Workspace MCP/Skills Types
+// ============================================================================
+
+/** MCP Server configuration */
+export interface WorkspaceMcpServerConfig {
+  name: string;
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+  transport?: string;
+  headers?: Record<string, string>;
+  disabled?: boolean;
+}
+
+/** Response for listing MCP servers */
+export interface WorkspaceMcpServersResponse {
+  servers: WorkspaceMcpServerConfig[];
+  total: number;
+}
+
+/** Workspace Skill configuration */
+export interface WorkspaceSkillConfig {
+  id: string;
+  name: string;
+  version: string;
+  source: string;
+  path?: string;
+  description?: string;
+}
+
+/** Response for listing skills */
+export interface WorkspaceSkillsResponse {
+  skills: WorkspaceSkillConfig[];
+  total: number;
+}
+
+// ============================================================================
+// Agent Configs Types (prompts from .claude/agents/*.md)
+// ============================================================================
+
+/** Agent config data from .claude/agents/*.md */
+export interface WorkspaceAgentConfigData {
+  id: string;
+  name: string;
+  description: string;
+  tools: string[];
+  model: string;
+  path: string;
+  content: string;
+}
+
+/** Response for listing agent configs */
+export interface WorkspaceAgentConfigsResponse {
+  configs: WorkspaceAgentConfigData[];
+}
+
+// ============================================================================
+// Commands Types (slash commands from .claude/commands/)
+// ============================================================================
+
+/** Command data from .claude/commands/ */
+export interface WorkspaceCommandData {
+  id: string;
+  namespace: string;
+  name: string;
+  path: string;
+  content: string;
+}
+
+/** Response for listing commands */
+export interface WorkspaceCommandsResponse {
+  commands: WorkspaceCommandData[];
+}
+
+// ============================================================================
+// File Operations Types
+// ============================================================================
+
+/** File entry from directory listing */
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  is_file: boolean;
+  is_symlink: boolean;
+  size: number;
+  created_at: string;
+  modified_at: string;
+  extension?: string;
+}
+
+/** Response for listing files */
+export interface FileListResponse {
+  path: string;
+  entries: FileEntry[];
+  total: number;
+}
+
+/** Response for reading file content */
+export interface FileContentResponse {
+  path: string;
+  content: string;
+  size: number;
+  encoding: string;
+}
+
+// ============================================================================
 // Viben Agent CRUD Types
 // ============================================================================
 
@@ -3127,7 +4378,7 @@ export interface CreateVibenAgentOptions {
 export interface VibenAgentResponse {
   id: string;
   name: string;
-  agent_type: string;
+  executor_type: string;
   source: string;
   workspace_path?: string;
   config_path?: string;
@@ -3138,7 +4389,6 @@ export interface VibenAgentResponse {
   append_prompt?: string;
   temperature?: number;
   max_tokens?: number;
-  executor_type?: string;
   executor_config?: Record<string, unknown>;
   /** MCP servers (may be omitted if empty due to skip_serializing_if) */
   mcp_servers?: string[];

@@ -1,13 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "@/stores";
+import { getGatewayClient } from "@/lib/gateway";
+import type { WorkspaceResponse } from "@/lib/gateway";
 import type {
   Workspace,
   WorkspaceAgent,
   WorkspaceMcpServer,
   WorkspaceSkill,
 } from "@/types";
+
+// Helper to transform gateway response to hook format
+function transformWorkspaceResponse(response: WorkspaceResponse): Workspace {
+  return {
+    id: response.id,
+    path: response.path,
+    name: response.name,
+    type: response.type || "custom",
+    created_at: response.created_at || new Date().toISOString(),
+    last_accessed: response.updated_at || new Date().toISOString(),
+  };
+}
 
 /**
  * Hook for local workspace management - handles CRUD operations for workspaces,
@@ -48,10 +61,10 @@ export function useLocalWorkspaces() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<Workspace[]>("list_workspaces");
-      if (Array.isArray(result)) {
-        setWorkspaces(result);
-      }
+      const client = getGatewayClient();
+      const response = await client.listWorkspaces();
+      const workspacesList = response.workspaces.map(transformWorkspaceResponse);
+      setWorkspaces(workspacesList);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -66,9 +79,18 @@ export function useLocalWorkspaces() {
     async (workspaceId: string) => {
       startDiscovery(workspaceId);
       try {
-        const agents = await invoke<WorkspaceAgent[]>("detect_workspace_agents", {
-          workspaceId,
-        });
+        const client = getGatewayClient();
+        const response = await client.detectWorkspaceAgents(workspaceId);
+        // Transform gateway response to WorkspaceAgent (Executor) format
+        const agents: WorkspaceAgent[] = response.agents.map((a) => ({
+          id: a.id,
+          workspace_id: workspaceId,
+          name: a.name,
+          type: (a.type as any) || "unknown",
+          config_path: a.config_path || "",
+          mcp_config_file: null,
+          skills_config_file: null,
+        }));
         completeDiscovery(workspaceId, agents);
         return agents;
       } catch (err) {
@@ -92,7 +114,9 @@ export function useLocalWorkspaces() {
       if (!selected) return null;
 
       const path = typeof selected === "string" ? selected : selected;
-      const workspace = await invoke<Workspace>("add_workspace", { path });
+      const client = getGatewayClient();
+      const response = await client.addWorkspace(path);
+      const workspace = transformWorkspaceResponse(response);
       addWorkspaceToStore(workspace);
 
       // Note: Discovery will happen when user navigates to the workspace detail page
@@ -108,7 +132,8 @@ export function useLocalWorkspaces() {
   const removeWorkspace = useCallback(
     async (workspaceId: string) => {
       try {
-        await invoke("remove_workspace", { workspaceId });
+        const client = getGatewayClient();
+        await client.removeWorkspace(workspaceId);
         removeWorkspaceFromStore(workspaceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -123,11 +148,11 @@ export function useLocalWorkspaces() {
   const selectWorkspace = useCallback(
     async (workspaceId: string | null) => {
       try {
-        await invoke("set_active_workspace", { workspaceId });
-        setActiveWorkspace(workspaceId);
         if (workspaceId) {
-          await invoke("update_workspace_accessed", { workspaceId });
+          const client = getGatewayClient();
+          await client.setActiveWorkspace({ workspaceId });
         }
+        setActiveWorkspace(workspaceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
@@ -204,9 +229,18 @@ export function useWorkspaceAgents(workspaceId: string | null) {
     setError(null);
 
     try {
-      const result = await invoke<WorkspaceAgent[]>("detect_workspace_agents", {
-        workspaceId,
-      });
+      const client = getGatewayClient();
+      const response = await client.detectWorkspaceAgents(workspaceId);
+      // Transform gateway response to WorkspaceAgent (Executor) format
+      const result: WorkspaceAgent[] = response.agents.map((a) => ({
+        id: a.id,
+        workspace_id: workspaceId,
+        name: a.name,
+        type: (a.type as any) || "unknown",
+        config_path: a.config_path || "",
+        mcp_config_file: null,
+        skills_config_file: null,
+      }));
       setAgents(result);
       completeDiscovery(workspaceId, result);
     } catch (err) {
@@ -256,18 +290,22 @@ export function useWorkspaceAgents(workspaceId: string | null) {
 }
 
 /**
- * Hook for managing MCP servers within an agent
+ * Hook for managing MCP servers within an executor
+ * Uses HTTP API via Gateway client
+ *
+ * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
+ * @param executorType - The executor type (e.g., "claude_code", "cursor")
  */
 export function useWorkspaceMcpServers(
-  workspaceId: string | null,
-  agentId: string | null
+  workspacePath: string | null,
+  executorType: string | null
 ) {
   const [servers, setServers] = useState<WorkspaceMcpServer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadServers = useCallback(async () => {
-    if (!workspaceId || !agentId) {
+    if (!executorType) {
       setServers([]);
       return;
     }
@@ -275,29 +313,24 @@ export function useWorkspaceMcpServers(
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<WorkspaceMcpServer[]>(
-        "get_workspace_mcp_servers",
-        { workspaceId, agentId }
-      );
-      setServers(result);
+      const client = getGatewayClient();
+      const response = await client.getMcpServers(workspacePath ?? undefined, executorType);
+      setServers(response.servers);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, agentId]);
+  }, [workspacePath, executorType]);
 
   const addServer = useCallback(
     async (server: WorkspaceMcpServer) => {
-      if (!workspaceId || !agentId) return;
+      if (!executorType) return;
 
       try {
-        await invoke("add_workspace_mcp_server", {
-          workspaceId,
-          agentId,
-          server,
-        });
+        const client = getGatewayClient();
+        await client.addMcpServer(workspacePath ?? undefined, executorType, server);
         await loadServers();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -305,20 +338,16 @@ export function useWorkspaceMcpServers(
         throw new Error(message);
       }
     },
-    [workspaceId, agentId, loadServers]
+    [workspacePath, executorType, loadServers]
   );
 
   const updateServer = useCallback(
     async (serverName: string, server: WorkspaceMcpServer) => {
-      if (!workspaceId || !agentId) return;
+      if (!executorType) return;
 
       try {
-        await invoke("update_workspace_mcp_server", {
-          workspaceId,
-          agentId,
-          serverName,
-          server,
-        });
+        const client = getGatewayClient();
+        await client.updateMcpServer(workspacePath ?? undefined, executorType, serverName, server);
         await loadServers();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -326,19 +355,16 @@ export function useWorkspaceMcpServers(
         throw new Error(message);
       }
     },
-    [workspaceId, agentId, loadServers]
+    [workspacePath, executorType, loadServers]
   );
 
   const deleteServer = useCallback(
     async (serverName: string) => {
-      if (!workspaceId || !agentId) return;
+      if (!executorType) return;
 
       try {
-        await invoke("delete_workspace_mcp_server", {
-          workspaceId,
-          agentId,
-          serverName,
-        });
+        const client = getGatewayClient();
+        await client.deleteMcpServer(workspacePath ?? undefined, executorType, serverName);
         await loadServers();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -346,7 +372,7 @@ export function useWorkspaceMcpServers(
         throw new Error(message);
       }
     },
-    [workspaceId, agentId, loadServers]
+    [workspacePath, executorType, loadServers]
   );
 
   useEffect(() => {
@@ -365,18 +391,22 @@ export function useWorkspaceMcpServers(
 }
 
 /**
- * Hook for managing skills within an agent
+ * Hook for managing skills within an executor
+ * Uses HTTP API via Gateway client
+ *
+ * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
+ * @param executorType - The executor type (e.g., "claude_code", "cursor")
  */
 export function useWorkspaceSkills(
-  workspaceId: string | null,
-  agentId: string | null
+  workspacePath: string | null,
+  executorType: string | null
 ) {
   const [skills, setSkills] = useState<WorkspaceSkill[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadSkills = useCallback(async () => {
-    if (!workspaceId || !agentId) {
+    if (!executorType) {
       setSkills([]);
       return;
     }
@@ -384,29 +414,24 @@ export function useWorkspaceSkills(
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<WorkspaceSkill[]>("get_workspace_skills", {
-        workspaceId,
-        agentId,
-      });
-      setSkills(result);
+      const client = getGatewayClient();
+      const response = await client.getSkills(workspacePath ?? undefined, executorType);
+      setSkills(response.skills);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, agentId]);
+  }, [workspacePath, executorType]);
 
   const addSkill = useCallback(
     async (skill: WorkspaceSkill) => {
-      if (!workspaceId || !agentId) return;
+      if (!executorType) return;
 
       try {
-        await invoke("add_workspace_skill", {
-          workspaceId,
-          agentId,
-          skill,
-        });
+        const client = getGatewayClient();
+        await client.addSkill(workspacePath ?? undefined, executorType, skill);
         await loadSkills();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -414,19 +439,16 @@ export function useWorkspaceSkills(
         throw new Error(message);
       }
     },
-    [workspaceId, agentId, loadSkills]
+    [workspacePath, executorType, loadSkills]
   );
 
   const deleteSkill = useCallback(
     async (skillId: string) => {
-      if (!workspaceId || !agentId) return;
+      if (!executorType) return;
 
       try {
-        await invoke("delete_workspace_skill", {
-          workspaceId,
-          agentId,
-          skillId,
-        });
+        const client = getGatewayClient();
+        await client.deleteSkill(workspacePath ?? undefined, executorType, skillId);
         await loadSkills();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -434,7 +456,7 @@ export function useWorkspaceSkills(
         throw new Error(message);
       }
     },
-    [workspaceId, agentId, loadSkills]
+    [workspacePath, executorType, loadSkills]
   );
 
   useEffect(() => {

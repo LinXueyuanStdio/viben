@@ -11,7 +11,7 @@
  * - Workspace: /workspace/:workspaceId/agent/:agentId
  */
 import * as React from "react";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useDebounceFn } from "ahooks";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -266,8 +266,8 @@ export function AgentDetailPage() {
   } = useAgents({ workspacePath: workspace?.path });
 
   // Filter agents by source
-  const vibenAgents = getGlobalAgents().filter((a: AgentInfo) => a.agent_type === "viben");
-  const workspaceVibenAgents = getWorkspaceAgents().filter((a: AgentInfo) => a.agent_type === "viben");
+  const vibenAgents = getGlobalAgents().filter((a: AgentInfo) => a.executor_type === "viben");
+  const workspaceVibenAgents = getWorkspaceAgents().filter((a: AgentInfo) => a.executor_type === "viben");
   const workspaceAgentsLoading = agentsLoading;
 
   // Workspace executors (auto-discovered from .claude, .cursor, etc.)
@@ -1089,7 +1089,7 @@ export function AgentDetailPage() {
                 </h4>
 
                 <CollapsibleSection
-                  title="MCP"
+                  title={t("settingsAgents.mcpTitle", "MCP")}
                   icon={<Database className="h-4 w-4" />}
                   badge={<Badge variant="secondary" className="text-xs">{selectedMcpServers.length}</Badge>}
                   action={
@@ -1259,7 +1259,7 @@ export function AgentDetailPage() {
                 </h4>
 
                 <CollapsibleSection
-                  title="MEMORY.md"
+                  title={t("settingsAgents.memoryFileTitle", "MEMORY.md")}
                   icon={<Brain className="h-4 w-4" />}
                   action={
                     <Button
@@ -1524,29 +1524,29 @@ function ExecutorDetailView({
     loadClaudeMd();
   }, [workspacePath]);
 
-  // Load MCP servers for this executor
+  // Load MCP servers for this executor (using workspacePath and executor.type)
   const {
     servers: mcpServers,
     loading: mcpLoading,
-  } = useWorkspaceMcpServers(workspaceId, executor.id);
+  } = useWorkspaceMcpServers(workspacePath || null, executor.type);
 
-  // Load skills for this executor
+  // Load skills for this executor (using workspacePath and executor.type)
   const {
     skills,
     loading: skillsLoading,
-  } = useWorkspaceSkills(workspaceId, executor.id);
+  } = useWorkspaceSkills(workspacePath || null, executor.type);
 
   // Load agent configs (prompts) for this executor
   const {
     configs: agentConfigs,
     loading: configsLoading,
-  } = useWorkspaceAgentConfigs(workspaceId, executor.id);
+  } = useWorkspaceAgentConfigs(workspacePath || null, executor.type);
 
   // Load commands for this executor
   const {
     commands,
     loading: commandsLoading,
-  } = useWorkspaceCommands(workspaceId, executor.id);
+  } = useWorkspaceCommands(workspacePath || null, executor.type);
 
   // Chat functionality - map executor type to agent type
   // Only CLAUDE_CODE and CODEX have corresponding BaseCodingAgent types
@@ -1804,7 +1804,7 @@ function ExecutorDetailView({
 
                 {/* MCP Section */}
                 <CollapsibleSection
-                  title="MCP"
+                  title={t("settingsAgents.mcpTitle", "MCP")}
                   icon={<Database className="h-4 w-4" />}
                   badge={
                     mcpLoading ? (

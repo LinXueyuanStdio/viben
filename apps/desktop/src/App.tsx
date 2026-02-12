@@ -25,6 +25,7 @@ import {
   MyPackagesPage,
   AnalyticsPage,
   DocumentsPage,
+  ChatMonitorPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -98,6 +99,9 @@ function App() {
               </Suspense>
             }
           />
+
+          {/* Observability routes */}
+          <Route path="chat-monitor" element={<ChatMonitorPage />} />
 
           {/* Documents, Settings and About */}
           <Route path="documents" element={<DocumentsPage />} />

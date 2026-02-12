@@ -85,7 +85,13 @@
     "forward": "前进",
     "developer": "开发者",
     "loadingWorkspace": "正在加载工作空间...",
-    "submit": "提交"
+    "submit": "提交",
+    "creating": "创建中...",
+    "saving": "保存中...",
+    "loadMore": "加载更多",
+    "send": "发送",
+    "you": "你",
+    "unknown": "未知"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -99,13 +105,16 @@
     "logs": "日志",
     "documents": "文档",
     "settings": "设置",
-    "about": "关于"
+    "about": "关于",
+    "observability": "可观测性",
+    "chatMonitor": "对话监控"
   },
   "sidebar": {
     "setupComplete": "设置完成",
     "setupRequired": "需要设置",
     "collapse": "收起侧边栏",
-    "expand": "展开侧边栏"
+    "expand": "展开侧边栏",
+    "workspacePages": "工作空间"
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -143,7 +152,33 @@
     "connectedTooltip": "网关服务运行正常",
     "connectingTooltip": "正在检查网关连接状态...",
     "disconnectedTooltip": "网关服务未启动，点击重试或配置",
-    "errorTooltip": "连接网关时出错"
+    "errorTooltip": "连接网关时出错",
+    "connectionSuccess": "网关连接成功",
+    "address": "地址",
+    "availableEndpoints": "可用端点",
+    "healthCheckFailed": "健康检查未通过",
+    "unreachableDescription": "无法连接到网关服务，请检查网关是否已启动",
+    "connectionError": "连接错误",
+    "running": "运行中",
+    "stopped": "已停止",
+    "restart": "重启",
+    "stop": "停止",
+    "start": "启动",
+    "autoDiscovered": "已自动发现",
+    "refreshDiscover": "重新发现",
+    "connectivityTest": "连通性检测",
+    "testConnection": "检测",
+    "reachable": "网关可达",
+    "unreachable": "网关不可达",
+    "endpoints": "端点状态",
+    "autoStart": "自动启动",
+    "autoStartCommand": "自启动命令",
+    "autoStartCommandDescription": "用于启动网关的命令路径",
+    "commandNotFound": "未配置",
+    "port": "端口",
+    "host": "主机",
+    "binaryNotFound": "未找到网关程序",
+    "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
   },
   "channels": {
     "addChannel": "添加渠道",
@@ -172,11 +207,13 @@
       "tokenPlaceholder": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ",
       "proxy": "代理 (可选)",
       "proxyDescription": "支持 HTTP/SOCKS5 代理",
+      "proxyPlaceholder": "http://127.0.0.1:7890",
       "allowFrom": "允许的用户 (可选)",
       "allowFromDescription": "留空允许所有用户，用逗号分隔",
       "chatId": "Chat ID",
       "chatIdDescription": "消息发送的目标聊天 ID，可从 @userinfobot 获取",
       "chatIdPlaceholder": "输入 Chat ID（如 123456789 或 @频道用户名）",
+      "chatIdExamplePlaceholder": "123456789",
       "chatIdHint": "你可以从 @userinfobot 获取你的 Chat ID",
       "instancePlaceholder": "我的 Telegram 机器人"
     },
@@ -198,7 +235,9 @@
       "description": "通过飞书/Lark Bot 接收消息",
       "appId": "App ID",
       "appIdDescription": "从飞书开放平台获取",
+      "appIdPlaceholder": "cli_xxxxx",
       "appSecret": "App Secret",
+      "appSecretPlaceholder": "xxxxxxxx",
       "encryptKey": "Encrypt Key (可选)",
       "encryptKeyDescription": "用于事件订阅加密",
       "verificationToken": "Verification Token (可选)",
@@ -217,13 +256,45 @@
       "allowFrom": "允许的手机号 (可选)",
       "allowFromDescription": "留空允许所有用户",
       "testNote": "WhatsApp 测试将验证 Bridge 服务器连接是否正常。实际发送消息需要完成 WhatsApp Web 认证。",
-      "instancePlaceholder": "我的 WhatsApp 桥接"
+      "instancePlaceholder": "我的 WhatsApp 桥接",
+      "note": "WhatsApp 需要配置 Bridge 服务器。",
+      "testHint": "WhatsApp 只会测试 Bridge 连接"
     },
     "agentBinding": "绑定智能体/执行器",
     "agentBindingDescription": "接收到消息时自动路由给指定的智能体或执行器",
     "noBinding": "不绑定",
     "agents": "智能体",
-    "executors": "执行器 (Claude Code)"
+    "executors": "执行器 (Claude Code)",
+    "default": "默认",
+    "createSuccess": "渠道创建成功",
+    "createFailed": "创建失败",
+    "deleteSuccess": "渠道已删除",
+    "updateSuccess": "渠道已更新",
+    "updateFailed": "更新失败",
+    "errors": {
+      "unknown": "未知错误",
+      "networkError": "网络错误：无法连接。请检查您的网络连接。",
+      "gatewayNotRunning": "网关未运行。请先启动网关服务。",
+      "requestTimeout": "请求超时。服务可能较慢或无法访问。",
+      "telegram": {
+        "invalidToken": "Bot Token 无效。请检查从 @BotFather 获取的令牌。",
+        "chatNotFound": "找不到聊天。请确保您已向机器人发送 /start。",
+        "botBlocked": "机器人已被用户屏蔽。请在 Telegram 中取消屏蔽。"
+      },
+      "discord": {
+        "invalidToken": "Bot Token 无效。请检查从 Discord Developer Portal 获取的令牌。",
+        "channelNotFound": "找不到频道。请验证频道 ID。",
+        "missingAccess": "机器人缺少权限。请先将机器人邀请到频道。"
+      },
+      "feishu": {
+        "invalidAppId": "App ID 无效。请检查从飞书开放平台获取的凭证。",
+        "invalidAppSecret": "App Secret 无效。请验证您的凭证。",
+        "userNotFound": "找不到用户。请检查 Open ID 或 Chat ID。"
+      },
+      "whatsapp": {
+        "bridgeConnectionFailed": "无法连接到 WhatsApp Bridge。桥接服务器是否正在运行？"
+      }
+    }
   },
   "dashboard": {
     "title": "仪表盘",
@@ -327,6 +398,11 @@
     "channelsDescription": "配置 AI 智能体的通信渠道",
     "resetChannels": "重置渠道配置",
     "executorsDescription": "检查 AI 编程智能体执行器的安装状态",
+    "gatewayDescription": "管理 AI 智能体网关服务",
+    "gatewayStatus": "网关状态",
+    "gatewayConfig": "网关配置",
+    "gatewayKeepAlive": "网关保活",
+    "gatewayBinary": "网关程序",
     "pythonEnvironment": "Python 环境",
     "detect": "检测",
     "detectedInstallations": "检测到的 Python 安装",
@@ -636,7 +712,14 @@
       "coding": "编程助手",
       "codingDesc": "专为代码开发优化"
     },
-    "copyName": "{{name}} (副本)"
+    "copyName": "{{name}} (副本)",
+    "noGlobalWorkspace": "全局工作空间未找到",
+    "noGlobalWorkspaceDesc": "请先创建或初始化全局工作空间",
+    "modelRequired": "模型是必需的",
+    "executorRequired": "执行器是必需的",
+    "validationError": "验证失败",
+    "mcpTitle": "MCP",
+    "memoryFileTitle": "MEMORY.md"
   },
   "settingsModels": {
     "title": "AI 模型",
@@ -759,7 +842,9 @@
     "roleExecutor": "执行器",
     "roleAgent": "智能体",
     "unnamedExecutor": "未命名执行器",
-    "unnamedAgent": "未命名智能体"
+    "unnamedAgent": "未命名智能体",
+    "agents": "智能体",
+    "showDetails": "显示智能体详情"
   },
   "agents": {
     "title": "智能体",
@@ -1065,6 +1150,7 @@
     "refreshRoots": "刷新根目录",
     "addCustomRoot": "添加自定义根目录",
     "rootUri": "根目录 URI",
+    "rootUriPlaceholder": "file:///path/to/directory 或 https://example.com",
     "rootName": "名称（可选）",
     "rootNamePlaceholder": "此根目录的友好名称",
     "addRoot": "添加根目录",
@@ -1476,7 +1562,8 @@
       "home": "首页",
       "mcp": "MCP",
       "skills": "技能",
-      "preferences": "偏好设置"
+      "preferences": "偏好设置",
+      "agents": "智能体"
     },
     "agentConfigs": "智能体配置",
     "agentConfigsDesc": "智能体配置文件 (.claude/agents/*.md)",
@@ -1611,7 +1698,31 @@
     "filesDescription": "浏览和管理文件",
     "connectingToKanban": "正在连接 vibe-kanban...",
     "kanbanConnectionFailed": "无法连接 vibe-kanban 后端",
-    "failedToLoadTasks": "加载任务失败"
+    "failedToLoadTasks": "加载任务失败",
+    "chat": "对话",
+    "chatDescription": "与 AI 开始对话",
+    "recentActivity": "最近活跃",
+    "kanban": "任务看板",
+    "kanbanDescription": "使用看板管理任务",
+    "taskManagement": "任务管理",
+    "scheduledTasks": "定时任务",
+    "scheduledTasksDescription": "管理定时任务和自动化",
+    "automation": "自动化",
+    "agentsDetected": "个智能体",
+    "browseFiles": "浏览文件",
+    "kanbanStatus": {
+      "todo": "待办",
+      "inProgress": "进行中",
+      "review": "审核中",
+      "done": "已完成"
+    },
+    "addTask": "添加任务",
+    "hideStats": "隐藏统计",
+    "showStats": "显示统计",
+    "viewKanban": "看板视图",
+    "viewList": "列表视图",
+    "taskDetail": "详情",
+    "description": "描述"
   },
   "sync": {
     "workspaceSync": "工作区同步",
@@ -1834,7 +1945,14 @@
     "olderSessions": "更早",
     "totalSessions": "个会话",
     "searchSessions": "搜索会话...",
+    "noSearchResults": "未找到匹配的会话",
     "agentSessions": "{{agent}} 的会话",
+    "showPanel": "显示面板",
+    "hidePanel": "隐藏面板",
+    "gatewayOfflineHint": "网关离线，点击重试",
+    "refreshSessions": "刷新会话",
+    "scrollToBottom": "滚动到底部",
+    "selectExecutor": "执行器",
     "createGroup": "创建群聊",
     "createGroupDesc": "创建一个群聊，多个智能体可以协作完成任务",
     "slashCommands": {
@@ -1917,6 +2035,12 @@
     "analyticsComingSoonDesc": "数据分析仪表盘正在开发中。您将能够在这里跟踪您的包性能。"
   },
   "executor": {
+    "executors": "执行器",
+    "noExecutors": "未检测到执行器",
+    "sessionCount": "{{count}} 个会话",
+    "settings": "执行器设置",
+    "searchExecutors": "搜索执行器...",
+    "showDetails": "显示执行器详情",
     "noSessions": "暂无会话",
     "noSessionsHint": "使用此执行器后，会话将显示在此处",
     "noMessages": "此会话无消息",
@@ -2180,6 +2304,11 @@
     "undo": "撤销"
   },
   "fileBrowser": {
+    "openWithApps": {
+      "vscode": "VS Code",
+      "cursor": "Cursor",
+      "preview": "预览"
+    },
     "sort": "排序",
     "sortBy": "排序方式",
     "sortByName": "名称",
@@ -2236,6 +2365,8 @@
     "openWithDefault": "默认应用程序",
     "quickLook": "快速查看",
     "cut": "剪切",
+    "paste": "粘贴",
+    "showInFinder": "在访达中显示",
     "filenamePlaceholder": "文件名.txt",
     "foldernamePlaceholder": "文件夹名称",
     "newNamePlaceholder": "新名称",
@@ -2354,7 +2485,8 @@
       "pending": "待处理",
       "running": "运行中",
       "done": "已完成",
-      "failed": "失败"
+      "failed": "失败",
+      "cancelled": "已取消"
     },
     "progress": "进度",
     "messageRole": {
@@ -2370,5 +2502,40 @@
       "vendor": "供应商",
       "homepage": "主页"
     }
+  },
+  "observability": {
+    "title": "可观测性",
+    "chatMonitor": "对话监控",
+    "chatMonitorDescription": "监控智能体对话的执行追踪",
+    "traces": "追踪列表",
+    "traceDetail": "追踪详情",
+    "noTraces": "暂无追踪数据",
+    "noTracesDescription": "运行智能体后，追踪数据将显示在这里",
+    "selectDate": "选择日期",
+    "selectTrace": "选择追踪",
+    "refreshTraces": "刷新追踪",
+    "traceId": "追踪 ID",
+    "duration": "耗时",
+    "startTime": "开始时间",
+    "status": "状态",
+    "spanCount": "Span 数量",
+    "successSpans": "成功",
+    "errorSpans": "错误",
+    "maxDepth": "最大深度",
+    "operations": "操作统计",
+    "operationName": "操作名称",
+    "count": "次数",
+    "avgDuration": "平均耗时",
+    "totalDuration": "总耗时",
+    "traceTree": "追踪树",
+    "stats": "统计信息",
+    "loading": "加载中...",
+    "loadError": "加载失败",
+    "today": "今天",
+    "clean": "清理",
+    "cleanOldData": "清理旧数据",
+    "retentionDays": "保留天数",
+    "cleanSuccess": "清理成功",
+    "cleanDescription": "清理 {{days}} 天前的追踪数据"
   }
 }

@@ -47,17 +47,18 @@ export function WorkspaceSkillDetailPage() {
   }>();
   const { getWorkspace } = useLocalWorkspaces();
   const { agents } = useWorkspaceAgents(workspaceId || null);
+  const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+  const agent = agents.find((a) => a.id === agentId);
+
+  // Load skills using workspacePath and executor.type (agent.type maps to executor type)
   const { skills, loading: skillsLoading } = useWorkspaceSkills(
-    workspaceId || null,
-    agentId || null
+    workspace?.path || null,
+    agent?.type || null
   );
 
   // Tab management
   const [openTabs, setOpenTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
-
-  const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  const agent = agents.find((a) => a.id === agentId);
   const selectedSkill = skills.find((s) => s.id === skillId);
 
   // Auto-open tab for selected skill (useEffect instead of useMemo to avoid side effects)

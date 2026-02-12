@@ -10,6 +10,7 @@ import type {
   SendMessageResult,
   TestChannelResult,
 } from "./types";
+import { fetchWithProxy } from "./http-client";
 
 /**
  * Get the Telegram API base URL (with optional proxy)
@@ -57,7 +58,7 @@ export async function sendTelegramMessage(
       body.parse_mode = parseMode;
     }
 
-    const response = await fetch(`${apiUrl}/sendMessage`, {
+    const response = await fetchWithProxy(`${apiUrl}/sendMessage`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -103,7 +104,7 @@ export async function testTelegramChannel(
   try {
     const apiUrl = getApiUrl(config);
 
-    const response = await fetch(`${apiUrl}/getMe`, {
+    const response = await fetchWithProxy(`${apiUrl}/getMe`, {
       method: "GET",
     });
 

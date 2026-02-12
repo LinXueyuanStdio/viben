@@ -10,6 +10,7 @@ import type {
   SendMessageResult,
   TestChannelResult,
 } from "./types";
+import { fetchWithProxy } from "./http-client";
 
 const DISCORD_API_BASE = "https://discord.com/api/v10";
 
@@ -29,7 +30,7 @@ export async function sendDiscordMessage(
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithProxy(
       `${DISCORD_API_BASE}/channels/${options.chatId}/messages`,
       {
         method: "POST",
@@ -78,7 +79,7 @@ export async function testDiscordChannel(
   }
 
   try {
-    const response = await fetch(`${DISCORD_API_BASE}/users/@me`, {
+    const response = await fetchWithProxy(`${DISCORD_API_BASE}/users/@me`, {
       method: "GET",
       headers: {
         Authorization: `Bot ${config.token}`,

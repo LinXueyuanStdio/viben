@@ -1,12 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import * as React from "react";
 import { useParams, Link } from "react-router-dom";
-import { Loader2, FolderOpen, ArrowLeft, File, FileCode, FileImage, FileText, X, GripVertical } from "lucide-react";
+import { Loader2, FolderOpen, ArrowLeft, File, FileCode, FileImage, FileText, X, GripVertical, Code } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/components/file-browser";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
@@ -14,6 +13,20 @@ import { invoke } from "@tauri-apps/api/core";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
 import type { FileEntry } from "@/types";
+
+// Artifact preview components
+import { ImagePreview } from "@/components/artifacts/image-preview";
+import { CodePreview } from "@/components/artifacts/code-preview";
+import { MarkdownPreview } from "@/components/artifacts/markdown-preview";
+import { PdfPreview } from "@/components/artifacts/pdf-preview";
+import { AudioPreview } from "@/components/artifacts/audio-preview";
+import { VideoPreview } from "@/components/artifacts/video-preview";
+import { FontPreview } from "@/components/artifacts/font-preview";
+import { DocxPreview } from "@/components/artifacts/docx-preview";
+import { XlsxPreview } from "@/components/artifacts/xlsx-preview";
+import { PptxPreview } from "@/components/artifacts/pptx-preview";
+import { getArtifactTypeFromExt, getFileExtension, parseCSV } from "@/components/artifacts/utils";
+import type { Artifact, ArtifactType } from "@/components/artifacts/types";
 
 /* -----------------------------------------------------------------------------
  * Constants
@@ -81,6 +94,30 @@ function getFileIcon(file: FileEntry, size: "sm" | "md" = "md") {
     default:
       return <File className={cn(iconClass, "text-muted-foreground")} />;
   }
+}
+
+/**
+ * Convert FileEntry to Artifact for preview components
+ */
+function fileEntryToArtifact(file: FileEntry, content: string | null): Artifact {
+  const ext = getFileExtension(file.name);
+  const type = getArtifactTypeFromExt(ext);
+
+  return {
+    id: file.path,
+    name: file.name,
+    type,
+    content: content ?? undefined,
+    path: file.path,
+    fileSize: file.size,
+  };
+}
+
+/**
+ * Check if artifact type needs text content for preview
+ */
+function needsTextContent(type: ArtifactType): boolean {
+  return ["code", "text", "markdown", "csv", "json", "html", "jsx", "css"].includes(type);
 }
 
 /* -----------------------------------------------------------------------------
@@ -196,6 +233,159 @@ function EditorTab({
 }
 
 /* -----------------------------------------------------------------------------
+ * FilePreviewContent Component - Renders appropriate preview based on file type
+ * -------------------------------------------------------------------------- */
+function FilePreviewContent({
+  file,
+  content,
+}: {
+  file: FileEntry;
+  content: string | null;
+}) {
+  const { t } = useTranslation();
+  const artifact = fileEntryToArtifact(file, content);
+
+  // Image Preview
+  if (artifact.type === "image") {
+    return <ImagePreview artifact={artifact} />;
+  }
+
+  // PDF Preview
+  if (artifact.type === "pdf") {
+    return <PdfPreview artifact={artifact} />;
+  }
+
+  // Audio Preview
+  if (artifact.type === "audio") {
+    return <AudioPreview artifact={artifact} />;
+  }
+
+  // Video Preview
+  if (artifact.type === "video") {
+    return <VideoPreview artifact={artifact} />;
+  }
+
+  // Font Preview
+  if (artifact.type === "font") {
+    return <FontPreview artifact={artifact} />;
+  }
+
+  // Document Preview (Word)
+  if (artifact.type === "document") {
+    return <DocxPreview artifact={artifact} />;
+  }
+
+  // Spreadsheet Preview (Excel)
+  if (artifact.type === "spreadsheet") {
+    return <XlsxPreview artifact={artifact} />;
+  }
+
+  // Presentation Preview (PowerPoint)
+  if (artifact.type === "presentation") {
+    return <PptxPreview artifact={artifact} />;
+  }
+
+  // Markdown Preview
+  if (artifact.type === "markdown" && content) {
+    return <MarkdownPreview artifact={artifact} />;
+  }
+
+  // CSV Preview
+  if (artifact.type === "csv" && content) {
+    const csvData = parseCSV(content);
+    return (
+      <div className="bg-background h-full overflow-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="bg-muted sticky top-0">
+            {csvData.length > 0 && (
+              <tr>
+                {csvData[0].map((cell, i) => (
+                  <th
+                    key={i}
+                    className="border-border text-foreground border px-3 py-2 text-left font-medium"
+                  >
+                    {cell}
+                  </th>
+                ))}
+              </tr>
+            )}
+          </thead>
+          <tbody>
+            {csvData.slice(1).map((row, rowIndex) => (
+              <tr key={rowIndex} className="hover:bg-muted/50">
+                {row.map((cell, cellIndex) => (
+                  <td
+                    key={cellIndex}
+                    className="border-border text-foreground border px-3 py-2"
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // HTML Preview (in iframe)
+  if (artifact.type === "html" && content) {
+    const blob = new Blob([content], { type: "text/html" });
+    const iframeSrc = URL.createObjectURL(blob);
+    return (
+      <div className="h-full bg-white">
+        <iframe
+          src={iframeSrc}
+          className="h-full w-full border-0"
+          sandbox="allow-scripts allow-same-origin"
+          title={file.name}
+          onLoad={() => URL.revokeObjectURL(iframeSrc)}
+        />
+      </div>
+    );
+  }
+
+  // Code/Text Preview
+  if (["code", "text", "jsx", "css", "json"].includes(artifact.type) && content) {
+    return <CodePreview artifact={artifact} />;
+  }
+
+  // No content or unsupported type
+  if (content === null && needsTextContent(artifact.type)) {
+    return (
+      <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
+        <div className="flex flex-col items-center text-center">
+          <div className="border-border bg-background mb-4 flex size-16 items-center justify-center rounded-xl border">
+            <Code className="text-muted-foreground/50 size-8" />
+          </div>
+          <h3 className="text-muted-foreground text-sm font-medium">
+            {t("fileBrowser.unableToPreview")}
+          </h3>
+          <p className="text-muted-foreground/70 mt-1 text-xs">
+            {t("fileBrowser.fileTooLarge", "File may be too large or binary")}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Default: show "unable to preview" message
+  return (
+    <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-center text-center">
+        <div className="border-border bg-background mb-4 flex size-16 items-center justify-center rounded-xl border">
+          <File className="text-muted-foreground/50 size-8" />
+        </div>
+        <h3 className="text-muted-foreground text-sm font-medium">
+          {t("fileBrowser.previewNotAvailable")}
+        </h3>
+      </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
  * FilePreviewPanel Component
  * -------------------------------------------------------------------------- */
 function FilePreviewPanel({
@@ -247,17 +437,8 @@ function FilePreviewPanel({
             <div className="flex items-center justify-center h-full">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : activeTab.content !== null ? (
-            <ScrollArea className="h-full">
-              <pre className="p-4 text-sm font-mono whitespace-pre-wrap break-all">
-                {activeTab.content}
-              </pre>
-            </ScrollArea>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <FileText className="h-12 w-12 mb-2" />
-              <p className="text-sm">{t("fileBrowser.unableToPreview")}</p>
-            </div>
+            <FilePreviewContent file={activeTab.file} content={activeTab.content} />
           )
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
@@ -330,7 +511,25 @@ export function WorkspaceFilesPage() {
       return;
     }
 
-    // Add new tab in loading state
+    // Determine file type to decide if we need to load text content
+    const ext = getFileExtension(file.name);
+    const artifactType = getArtifactTypeFromExt(ext);
+    const needsContent = needsTextContent(artifactType);
+
+    // For non-text files (images, PDFs, etc.), add tab immediately without loading content
+    // The preview component will handle loading the binary data itself
+    if (!needsContent) {
+      const newTab: PreviewTab = {
+        file,
+        content: null,
+        loading: false,
+      };
+      setPreviewTabs((prev) => [...prev, newTab]);
+      setActivePreviewPath(file.path);
+      return;
+    }
+
+    // For text-based files, add tab in loading state and load content
     const newTab: PreviewTab = {
       file,
       content: null,
@@ -339,11 +538,25 @@ export function WorkspaceFilesPage() {
     setPreviewTabs((prev) => [...prev, newTab]);
     setActivePreviewPath(file.path);
 
-    // Load file content
+    // Load file content for text-based files
+    // Get workspace path from workspaceId
+    const ws = workspaceId ? getWorkspace(workspaceId) : undefined;
+    if (!ws?.path) {
+      console.error("Workspace not found");
+      setPreviewTabs((prev) =>
+        prev.map((tab) =>
+          tab.file.path === file.path
+            ? { ...tab, content: null, loading: false }
+            : tab
+        )
+      );
+      return;
+    }
+
     try {
       const content = await invoke<string | null>("read_file_content", {
-        path: file.path,
-        maxSize: 1024 * 1024, // 1MB limit
+        workspacePath: ws.path,
+        filePath: file.path,
       });
       setPreviewTabs((prev) =>
         prev.map((tab) =>
@@ -362,7 +575,7 @@ export function WorkspaceFilesPage() {
         )
       );
     }
-  }, [previewTabs]);
+  }, [previewTabs, workspaceId, getWorkspace]);
 
   // Handle closing a preview tab
   const handleClosePreviewTab = useCallback((path: string) => {

@@ -12,6 +12,7 @@ import { testTelegramChannel } from "./telegram";
 import { testDiscordChannel } from "./discord";
 import { testFeishuChannel } from "./feishu";
 import { testWhatsAppChannel } from "./whatsapp";
+import { fetchWithProxy } from "./http-client";
 import type {
   ChannelType,
   ChannelEntry,
@@ -29,6 +30,7 @@ import type {
   WebhookChannelConfig,
   ChannelConfig,
   NotificationMode,
+  AgentBinding,
   CHANNEL_TYPES,
 } from "./types";
 import { CHANNEL_TYPES as channelTypes } from "./types";
@@ -168,6 +170,7 @@ export class ChannelManager {
       updated_at: now,
       allow_from: options.allow_from || [],
       notification_mode: options.notification_mode || "none",
+      agent_binding: options.agent_binding,
     };
 
     // Add type-specific fields
@@ -210,6 +213,10 @@ export class ChannelManager {
     }
     if (options.notification_mode !== undefined) {
       entry.notification_mode = options.notification_mode;
+    }
+    // Handle agent_binding update (null means clear, undefined means no change)
+    if (options.agent_binding !== undefined) {
+      entry.agent_binding = options.agent_binding ?? undefined;
     }
 
     // Apply type-specific updates
@@ -469,7 +476,7 @@ export class ChannelManager {
         }
         // Test Slack connection by calling auth.test
         try {
-          const response = await fetch("https://slack.com/api/auth.test", {
+          const response = await fetchWithProxy("https://slack.com/api/auth.test", {
             method: "POST",
             headers: {
               Authorization: `Bearer ${entry.token}`,
@@ -617,6 +624,7 @@ export class ChannelManager {
       updated_at,
       allow_from,
       notification_mode,
+      agent_binding,
       ...config
     } = entry;
 
@@ -630,6 +638,7 @@ export class ChannelManager {
       updated_at,
       allow_from: allow_from || [],
       notification_mode: notification_mode || "none",
+      agent_binding,
       config,
     };
   }

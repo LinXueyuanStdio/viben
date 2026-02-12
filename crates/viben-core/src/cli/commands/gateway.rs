@@ -27,7 +27,7 @@ fn find_process_on_port(port: u16) -> Option<u32> {
     }
 }
 
-/// Kill a process by PID
+/// Kill a process by PID with SIGTERM (graceful)
 fn kill_process(pid: u32) -> bool {
     // Try SIGTERM first
     if Command::new("kill")
@@ -42,6 +42,15 @@ fn kill_process(pid: u32) -> bool {
     } else {
         false
     }
+}
+
+/// Force kill a process by PID with SIGKILL
+fn force_kill_process(pid: u32) -> bool {
+    Command::new("kill")
+        .args(["-9", &pid.to_string()])
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 #[derive(Args)]
@@ -86,6 +95,9 @@ pub enum GatewayAction {
         /// Host to bind to
         #[arg(long, default_value = "127.0.0.1")]
         host: String,
+        /// Force kill the existing process (SIGKILL instead of SIGTERM)
+        #[arg(short, long)]
+        force: bool,
     },
     /// Check gateway status
     Status,
@@ -225,25 +237,53 @@ impl GatewayCommand {
                     print_success("Gateway stopped");
                 }
             }
-            Some(GatewayAction::Restart { port, host }) => {
+            Some(GatewayAction::Restart { port, host, force }) => {
                 tracing::info!(
                     target: "viben::cli::gateway",
-                    "Restarting gateway on {}:{}",
-                    host, port
+                    "Restarting gateway on {}:{} (force={})",
+                    host, port, force
                 );
                 // Stop existing gateway if running
                 if let Some(pid) = find_process_on_port(port) {
-                    tracing::info!(
-                        target: "viben::cli::gateway",
-                        "Stopping existing gateway (PID {})...",
-                        pid
-                    );
-                    if !ctx.quiet {
-                        println!("Stopping existing gateway (PID {})...", pid);
+                    if force {
+                        tracing::info!(
+                            target: "viben::cli::gateway",
+                            "Force killing existing gateway (PID {})...",
+                            pid
+                        );
+                        if !ctx.quiet {
+                            println!("Force killing existing gateway (PID {})...", pid);
+                        }
+                        force_kill_process(pid);
+                    } else {
+                        tracing::info!(
+                            target: "viben::cli::gateway",
+                            "Stopping existing gateway (PID {})...",
+                            pid
+                        );
+                        if !ctx.quiet {
+                            println!("Stopping existing gateway (PID {})...", pid);
+                        }
+                        kill_process(pid);
                     }
-                    kill_process(pid);
                     // Wait for port to be released
                     std::thread::sleep(std::time::Duration::from_millis(300));
+
+                    // If force mode, verify port is released and retry if needed
+                    if force {
+                        if let Some(pid) = find_process_on_port(port) {
+                            tracing::warn!(
+                                target: "viben::cli::gateway",
+                                "Port {} still occupied by PID {}, retrying force kill...",
+                                port, pid
+                            );
+                            if !ctx.quiet {
+                                println!("Port {} still occupied, retrying force kill...", port);
+                            }
+                            force_kill_process(pid);
+                            std::thread::sleep(std::time::Duration::from_millis(300));
+                        }
+                    }
                 }
 
                 // Start new gateway

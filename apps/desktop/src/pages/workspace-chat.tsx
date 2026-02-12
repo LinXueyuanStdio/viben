@@ -673,7 +673,7 @@ export function WorkspaceChatPage() {
   );
 
   // Agent hook - use workspace path as workdir for the agent
-  // Pass selected executor to connect with the correct coding agent
+  // Pass selected agent ID and executor type for proper agent configuration
   const {
     messages,
     phase,
@@ -692,7 +692,7 @@ export function WorkspaceChatPage() {
     loadMessages,
     gatewayConnected,
     checkGatewayConnection,
-  } = useAgent(workspace?.path || "", { agentType: selectedExecutor });
+  } = useAgent(workspace?.path || "", { agentId: selectedAgentId || undefined, agentType: selectedExecutor });
 
   // Group notifications hook
   const {
@@ -2494,7 +2494,7 @@ export function WorkspaceChatPage() {
           // Agent/Executor detail props
           agentDetail={rightSidebarAgentDetail}
           executorDetail={rightSidebarExecutorDetail}
-          workspaceId={workspaceId}
+          workspacePath={workspace.path}
           onAgentSettings={(agentId) => {
             if (workspaceId) {
               navigate(`/workspace/${workspaceId}/agent/${agentId}`);
