@@ -101,6 +101,7 @@ pub async fn agent_create(options: CreateAgentOptions) -> Result<Agent> {
         temperature: options.temperature.map(|t| t as f32),
         max_tokens: options.max_tokens.map(|m| m as u32),
         from_template: options.from_template,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(core_options)

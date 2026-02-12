@@ -63,6 +63,64 @@ Icons without `.Color` (use default): OpenAI, Ollama, Groq, Anthropic
 - `ChatInput` - Simple chat input with attachment support (used in task panels, debug panels)
 - `AgentChatInput` - Full-featured agent chat input with model selector, parameters, token usage (used in workspace chat)
 
+## Rust Monorepo Development
+
+### Target Directory Convention
+
+**IMPORTANT**: This is a monorepo. All Rust crates should share a single `target` directory at the project root to avoid redundant compilation.
+
+**Correct structure:**
+```
+viben/
+├── Cargo.toml          # Root workspace (primary)
+├── target/             # Single shared target directory
+├── crates/
+│   ├── viben-core/
+│   └── viben-agent-organization/
+└── apps/desktop/src-tauri/
+    └── target/         # Tauri has its own target (excluded from workspace)
+```
+
+**Wrong structure** (causes duplicate compilation):
+```
+viben/
+├── target/
+├── crates/
+│   ├── Cargo.toml      # ❌ Separate workspace - DELETE THIS
+│   ├── target/         # ❌ Duplicate target - DELETE THIS
+│   └── viben-core/
+│       └── target/     # ❌ Duplicate target - DELETE THIS
+```
+
+### Building and Installing CLI
+
+Always run Cargo commands from the **project root**:
+
+```bash
+# Build
+cargo build -p viben-core
+
+# Run
+cargo run -p viben-core -- <args>
+
+# Install CLI globally (for development testing)
+cargo install --path crates/viben-core
+```
+
+**Never** run `cargo build` or `cargo install` from inside `crates/` subdirectories.
+
+### Cleaning Up Duplicate Targets
+
+If you find duplicate `target` directories:
+
+```bash
+# Remove duplicate targets (keep only root target/)
+rm -rf crates/target crates/viben-core/target crates/*/target
+
+# Also remove duplicate workspace files
+rm -f crates/Cargo.toml crates/Cargo.lock
+```
+
 ## Desktop App Development
 
 ### Restart Desktop App

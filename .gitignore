@@ -277,3 +277,5 @@ Cargo.lock
 .viben/group-chats
 .viben/agents
 test
+crates/viben-agent-organization/scripts
+crates/viben-agent-organization/tests
