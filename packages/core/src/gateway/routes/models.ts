@@ -44,13 +44,13 @@ interface ModelsQuery {
   include_provider_predefined?: string;
 }
 
-// In-memory enabled models tracking
-const enabledModels = new Set<string>();
-
 /**
  * Transform model to API response format (snake_case)
+ *
+ * Now uses model.isDefault and model.enabled from ModelManager
+ * instead of in-memory tracking.
  */
-function toSnakeCaseModel(model: Model, defaultModelId?: string): ModelResponse {
+function toSnakeCaseModel(model: Model): ModelResponse {
   const now = new Date().toISOString();
   return {
     id: model.id,
@@ -63,10 +63,10 @@ function toSnakeCaseModel(model: Model, defaultModelId?: string): ModelResponse 
     max_output_tokens: model.maxOutputTokens,
     input_price: model.inputPrice,
     output_price: model.outputPrice,
-    is_default: defaultModelId === model.id,
-    enabled: enabledModels.has(model.id) || true, // Default to enabled
-    created_at: now,
-    updated_at: now,
+    is_default: model.isDefault ?? false,
+    enabled: model.enabled ?? true,
+    created_at: model.createdAt ?? now,
+    updated_at: model.updatedAt ?? now,
   };
 }
 
@@ -351,7 +351,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     const models = await modelManager.listModels();
     const defaultModel = await modelManager.getDefault();
     return {
-      models: models.map(m => toSnakeCaseModel(m, defaultModel)),
+      models: models.map(m => toSnakeCaseModel(m)),
       total: models.length,
       default_model_id: defaultModel,
     };
@@ -374,10 +374,9 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     }
 
     const modelConfig = await modelManager.getModelConfig(resolvedId);
-    const defaultModel = await modelManager.getDefault();
 
     return {
-      ...toSnakeCaseModel(model, defaultModel),
+      ...toSnakeCaseModel(model),
       config: modelConfig,
     };
   });
@@ -391,14 +390,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const model = modelManager.getModelInfo(resolvedId);
-
-      if (!model) {
-        reply.code(404);
-        return { error: `Model not found: ${id}` };
-      }
-
-      enabledModels.add(resolvedId);
+      await modelManager.enableModel(resolvedId);
 
       return {
         success: true,
@@ -406,6 +398,10 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         enabled: true,
       };
     } catch (e) {
+      if (e instanceof Error && e.message.includes("not found")) {
+        reply.code(404);
+        return { error: `Model not found: ${id}` };
+      }
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to enable model" };
     }
@@ -420,14 +416,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
 
     try {
       const resolvedId = await modelManager.resolveAlias(id);
-      const model = modelManager.getModelInfo(resolvedId);
-
-      if (!model) {
-        reply.code(404);
-        return { error: `Model not found: ${id}` };
-      }
-
-      enabledModels.delete(resolvedId);
+      await modelManager.disableModel(resolvedId);
 
       return {
         success: true,
@@ -435,6 +424,10 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
         enabled: false,
       };
     } catch (e) {
+      if (e instanceof Error && e.message.includes("not found")) {
+        reply.code(404);
+        return { error: `Model not found: ${id}` };
+      }
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to disable model" };
     }
@@ -453,8 +446,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      // For now, we can only configure existing known models or set aliases
-      // Check if model exists
+      // Check if model already exists
       const existingModel = modelManager.getModelInfo(id);
 
       if (existingModel) {
@@ -464,22 +456,31 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
           maxTokens: config.max_output_tokens,
         };
         await modelManager.setModelConfig(id, modelConfig);
+      } else {
+        // Create new custom model
+        await modelManager.createModel({
+          id,
+          name: config.name || id,
+          provider: config.provider || "custom",
+          description: config.description,
+          contextWindow: config.context_window,
+          maxOutputTokens: config.max_output_tokens,
+          setAsDefault: set_as_default,
+        });
       }
 
-      // Set as default if requested
-      if (set_as_default) {
+      // Set as default if requested (for existing models)
+      if (set_as_default && existingModel) {
         await modelManager.setDefault(id);
       }
 
-      // Enable the model by default
-      enabledModels.add(id);
-
-      const defaultModel = await modelManager.getDefault();
+      // Reload to get updated model
+      await modelManager.reload();
       const model = modelManager.getModelInfo(id);
 
       reply.code(201);
       if (model) {
-        return toSnakeCaseModel(model, defaultModel);
+        return toSnakeCaseModel(model);
       }
       return {
         success: true,
@@ -517,8 +518,10 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       };
       await modelManager.setModelConfig(resolvedId, newConfig);
 
-      const defaultModel = await modelManager.getDefault();
-      return toSnakeCaseModel(model, defaultModel);
+      // Reload to get updated model
+      await modelManager.reload();
+      const updatedModel = modelManager.getModelInfo(resolvedId);
+      return toSnakeCaseModel(updatedModel ?? model);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to update model" };

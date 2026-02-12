@@ -1,10 +1,12 @@
 /**
  * Model management for Viben
+ *
+ * Synced with crates/viben-core/src/models/mod.rs
  */
 import { getModelsPath } from "../config/paths";
 import { readYaml, writeYaml, fileExists } from "../config/yaml";
 import type { Model, ModelConfig } from "../types";
-import type { ModelsFile, ModelConfigEntry } from "./types";
+import type { ModelsFile, ModelConfigEntry, ModelEntry } from "./types";
 import { KNOWN_MODELS, DEFAULT_ALIASES, getKnownModel } from "./known-models";
 
 export * from "./types";
@@ -13,6 +15,8 @@ export * from "./discovery";
 
 /**
  * ModelManager handles model configuration and aliases
+ *
+ * Synced with crates/viben-core/src/models/mod.rs ModelManager
  */
 export class ModelManager {
   private config: ModelsFile | undefined;
@@ -31,6 +35,8 @@ export class ModelManager {
         aliases: { ...DEFAULT_ALIASES },
         fallbacks: [],
         configs: {},
+        custom_models: {},
+        disabled_models: [],
       };
       return this.config;
     }
@@ -46,6 +52,10 @@ export class ModelManager {
       fallbacks: loaded?.fallbacks || [],
       // Handle both field names: Rust uses model_config, TypeScript uses configs
       configs: loaded?.configs || loaded?.model_config || {},
+      // Custom models added by user
+      custom_models: loaded?.custom_models || {},
+      // Disabled built-in models
+      disabled_models: loaded?.disabled_models || [],
     };
     return this.config;
   }
@@ -71,18 +81,50 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * List all known models
+   * List all available models (built-in + custom)
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::list_models
    */
   async listModels(): Promise<Model[]> {
-    return KNOWN_MODELS.map((m) => ({
-      id: m.id,
-      name: m.name,
-      provider: m.provider,
-      contextLength: m.contextLength,
-      maxOutputTokens: m.maxOutputTokens,
-      inputPrice: m.inputPrice,
-      outputPrice: m.outputPrice,
-    }));
+    const config = await this.loadConfig();
+    const models: Model[] = [];
+
+    // Add known (built-in) models
+    for (const known of KNOWN_MODELS) {
+      const enabled = !config.disabled_models.includes(known.id);
+      const isDefault = config.default === known.id;
+      models.push({
+        id: known.id,
+        name: known.name,
+        provider: known.provider,
+        description: known.description,
+        contextLength: known.contextLength,
+        maxOutputTokens: known.maxOutputTokens,
+        inputPrice: known.inputPrice,
+        outputPrice: known.outputPrice,
+        isDefault,
+        enabled,
+      });
+    }
+
+    // Add custom models
+    for (const [id, entry] of Object.entries(config.custom_models)) {
+      const isDefault = config.default === id;
+      models.push({
+        id,
+        name: entry.name,
+        provider: entry.provider,
+        description: entry.description,
+        contextLength: entry.context_window,
+        maxOutputTokens: entry.max_output_tokens,
+        isDefault,
+        enabled: entry.enabled,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
+      });
+    }
+
+    return models;
   }
 
   /**
@@ -91,6 +133,242 @@ export class ModelManager {
   async getModelsByProvider(provider: string): Promise<Model[]> {
     const all = await this.listModels();
     return all.filter((m) => m.provider === provider);
+  }
+
+  /**
+   * Get a model by ID
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::get_model
+   */
+  async getModel(id: string): Promise<Model | null> {
+    const config = await this.loadConfig();
+
+    // Check custom models first
+    const customEntry = config.custom_models[id];
+    if (customEntry) {
+      const isDefault = config.default === id;
+      return {
+        id,
+        name: customEntry.name,
+        provider: customEntry.provider,
+        description: customEntry.description,
+        contextLength: customEntry.context_window,
+        maxOutputTokens: customEntry.max_output_tokens,
+        isDefault,
+        enabled: customEntry.enabled,
+        createdAt: customEntry.created_at,
+        updatedAt: customEntry.updated_at,
+      };
+    }
+
+    // Check known models
+    const known = getKnownModel(id);
+    if (known) {
+      const enabled = !config.disabled_models.includes(id);
+      const isDefault = config.default === id;
+      return {
+        id: known.id,
+        name: known.name,
+        provider: known.provider,
+        description: known.description,
+        contextLength: known.contextLength,
+        maxOutputTokens: known.maxOutputTokens,
+        inputPrice: known.inputPrice,
+        outputPrice: known.outputPrice,
+        isDefault,
+        enabled,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Create a custom model
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::create_model
+   */
+  async createModel(options: {
+    id: string;
+    name: string;
+    provider: string;
+    description?: string;
+    contextWindow?: number;
+    maxOutputTokens?: number;
+    setAsDefault?: boolean;
+  }): Promise<Model> {
+    const config = await this.loadConfig();
+
+    // Check if model already exists
+    if (config.custom_models[options.id] || getKnownModel(options.id)) {
+      throw new Error(`Model already exists: ${options.id}`);
+    }
+
+    const now = new Date().toISOString();
+    const entry: ModelEntry = {
+      name: options.name,
+      provider: options.provider,
+      description: options.description,
+      context_window: options.contextWindow,
+      max_output_tokens: options.maxOutputTokens,
+      enabled: true,
+      created_at: now,
+      updated_at: now,
+    };
+
+    config.custom_models[options.id] = entry;
+
+    // Set as default if requested
+    const isDefault = options.setAsDefault ?? false;
+    if (isDefault) {
+      config.default = options.id;
+    }
+
+    await this.saveConfig(config);
+
+    return {
+      id: options.id,
+      name: entry.name,
+      provider: entry.provider,
+      description: entry.description,
+      contextLength: entry.context_window,
+      maxOutputTokens: entry.max_output_tokens,
+      isDefault,
+      enabled: entry.enabled,
+      createdAt: entry.created_at,
+      updatedAt: entry.updated_at,
+    };
+  }
+
+  /**
+   * Remove a custom model
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::remove_model
+   */
+  async removeModel(id: string): Promise<void> {
+    const config = await this.loadConfig();
+
+    // Can't remove built-in models
+    if (getKnownModel(id)) {
+      throw new Error(`Cannot remove built-in model: ${id}`);
+    }
+
+    if (!config.custom_models[id]) {
+      throw new Error(`Model not found: ${id}`);
+    }
+
+    delete config.custom_models[id];
+
+    // Clear default if it was this model
+    if (config.default === id) {
+      config.default = undefined;
+    }
+
+    await this.saveConfig(config);
+  }
+
+  /**
+   * Update a custom model
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::update_model
+   */
+  async updateModel(
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      contextWindow?: number;
+      maxOutputTokens?: number;
+    }
+  ): Promise<Model> {
+    const config = await this.loadConfig();
+
+    // Can't update built-in models
+    if (getKnownModel(id)) {
+      throw new Error(`Cannot update built-in model: ${id}`);
+    }
+
+    const entry = config.custom_models[id];
+    if (!entry) {
+      throw new Error(`Model not found: ${id}`);
+    }
+
+    const now = new Date().toISOString();
+
+    if (updates.name !== undefined) {
+      entry.name = updates.name;
+    }
+    if (updates.description !== undefined) {
+      entry.description = updates.description;
+    }
+    if (updates.contextWindow !== undefined) {
+      entry.context_window = updates.contextWindow;
+    }
+    if (updates.maxOutputTokens !== undefined) {
+      entry.max_output_tokens = updates.maxOutputTokens;
+    }
+    entry.updated_at = now;
+
+    await this.saveConfig(config);
+
+    return {
+      id,
+      name: entry.name,
+      provider: entry.provider,
+      description: entry.description,
+      contextLength: entry.context_window,
+      maxOutputTokens: entry.max_output_tokens,
+      isDefault: config.default === id,
+      enabled: entry.enabled,
+      createdAt: entry.created_at,
+      updatedAt: entry.updated_at,
+    };
+  }
+
+  /**
+   * Enable a model (built-in or custom)
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::enable_model
+   */
+  async enableModel(id: string): Promise<void> {
+    const config = await this.loadConfig();
+
+    const customEntry = config.custom_models[id];
+    if (customEntry) {
+      customEntry.enabled = true;
+      customEntry.updated_at = new Date().toISOString();
+    } else if (getKnownModel(id)) {
+      // Remove from disabled list
+      config.disabled_models = config.disabled_models.filter((m) => m !== id);
+    } else {
+      throw new Error(`Model not found: ${id}`);
+    }
+
+    await this.saveConfig(config);
+  }
+
+  /**
+   * Disable a model (built-in or custom)
+   *
+   * Synced with crates/viben-core/src/models/mod.rs ModelManager::disable_model
+   */
+  async disableModel(id: string): Promise<void> {
+    const config = await this.loadConfig();
+
+    const customEntry = config.custom_models[id];
+    if (customEntry) {
+      customEntry.enabled = false;
+      customEntry.updated_at = new Date().toISOString();
+    } else if (getKnownModel(id)) {
+      // Add to disabled list if not already there
+      if (!config.disabled_models.includes(id)) {
+        config.disabled_models.push(id);
+      }
+    } else {
+      throw new Error(`Model not found: ${id}`);
+    }
+
+    await this.saveConfig(config);
   }
 
   /**
@@ -258,21 +536,50 @@ export class ModelManager {
   // ========================================================================
 
   /**
-   * Get model info (from known models)
+   * Get model info synchronously (from known models or cached custom models)
    */
   getModelInfo(model: string): Model | undefined {
     const resolved = this.resolveAliasSync(model);
+
+    // Check custom models first (if config is cached)
+    if (this.config) {
+      const customEntry = this.config.custom_models[resolved];
+      if (customEntry) {
+        return {
+          id: resolved,
+          name: customEntry.name,
+          provider: customEntry.provider,
+          description: customEntry.description,
+          contextLength: customEntry.context_window,
+          maxOutputTokens: customEntry.max_output_tokens,
+          isDefault: this.config.default === resolved,
+          enabled: customEntry.enabled,
+          createdAt: customEntry.created_at,
+          updatedAt: customEntry.updated_at,
+        };
+      }
+    }
+
+    // Check known models
     const known = getKnownModel(resolved);
     if (!known) return undefined;
+
+    const enabled = this.config
+      ? !this.config.disabled_models.includes(resolved)
+      : true;
+    const isDefault = this.config?.default === resolved;
 
     return {
       id: known.id,
       name: known.name,
       provider: known.provider,
+      description: known.description,
       contextLength: known.contextLength,
       maxOutputTokens: known.maxOutputTokens,
       inputPrice: known.inputPrice,
       outputPrice: known.outputPrice,
+      isDefault,
+      enabled,
     };
   }
 }

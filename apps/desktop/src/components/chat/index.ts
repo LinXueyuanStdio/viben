@@ -71,3 +71,6 @@ export { ExecutorDetailPanel } from "./executor-detail-panel";
 export type { ExecutorDetailPanelProps, ExecutorDetailData } from "./executor-detail-panel";
 export { AgentDetailPanel } from "./agent-detail-panel";
 export type { AgentDetailPanelProps, AgentDetailData, ModelOption } from "./agent-detail-panel";
+
+// Background Task Indicator
+export { BackgroundTaskIndicator } from "./background-task-indicator";

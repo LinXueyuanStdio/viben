@@ -206,9 +206,10 @@ function saveLastAgentId(workspaceId: string, agentId: string) {
 
 // Convert Gateway FileSession to Conversation
 function fileSessionToConversation(session: FileSession): Conversation {
+  const sessionId = session.id || crypto.randomUUID();
   return {
-    id: session.id,
-    title: session.prompt || `Session ${session.id.slice(0, 8)}`,
+    id: sessionId,
+    title: session.prompt || `Session ${sessionId.slice(0, 8)}`,
     agentId: session.agent_id,
     createdAt: session.created_at,
     updatedAt: session.updated_at,
@@ -818,7 +819,9 @@ export function WorkspaceChatPage() {
       }
 
       const sessions = await client.listAgentSessions(selectedAgentId);
-      const convs = sessions.map(fileSessionToConversation);
+      // Filter out sessions with missing id (invalid data from API)
+      const validSessions = sessions.filter(s => s && s.id);
+      const convs = validSessions.map(fileSessionToConversation);
       convs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       setConversations(convs);
       console.log(`[WorkspaceChat] Refreshed ${convs.length} sessions for agent ${selectedAgentId}`);
@@ -939,7 +942,9 @@ export function WorkspaceChatPage() {
           return;
         }
 
-        const convs = sessions.map(fileSessionToConversation);
+        // Filter out sessions with missing id (invalid data from API)
+        const validSessions = sessions.filter(s => s && s.id);
+        const convs = validSessions.map(fileSessionToConversation);
         convs.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
         console.log(`[WorkspaceChat:Effect:Sessions] Loaded ${convs.length} sessions for agent ${targetAgentId}`);

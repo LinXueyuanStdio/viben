@@ -561,6 +561,29 @@ export function MessageList({
     }
   }, [messages.length, checkScrollPosition]);
 
+  // Track container width for content constraint
+  // NOTE: These hooks must be declared before any early returns to follow React's rules of hooks
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.getBoundingClientRect().width;
+        setContainerWidth(width);
+      }
+    };
+
+    // Update on mount and resize
+    updateWidth();
+    const resizeObserver = new ResizeObserver(updateWidth);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    return () => resizeObserver.disconnect();
+  }, []);
+
   // Empty state
   if (messages.length === 0) {
     // Use custom welcome content if provided
@@ -596,28 +619,6 @@ export function MessageList({
   const containerStyle = maxMessageWidth
     ? { "--message-max-width": maxMessageWidth } as React.CSSProperties
     : undefined;
-
-  // Track container width for content constraint
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    const updateWidth = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.getBoundingClientRect().width;
-        setContainerWidth(width);
-      }
-    };
-
-    // Update on mount and resize
-    updateWidth();
-    const resizeObserver = new ResizeObserver(updateWidth);
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
-    return () => resizeObserver.disconnect();
-  }, []);
 
   // Constrain content width to container width
   const contentStyle: React.CSSProperties = {

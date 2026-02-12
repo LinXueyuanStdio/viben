@@ -285,3 +285,11 @@ export type {
   GatewayWsMessage,
   UseGatewayWebSocketOptions,
 } from "./use-gateway-websocket";
+
+// Background Tasks
+export { useBackgroundTasks } from "./use-background-tasks";
+export type {
+  BackgroundTask,
+  BackgroundTaskStatus,
+  UseBackgroundTasksReturn,
+} from "./use-background-tasks";
