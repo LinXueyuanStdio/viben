@@ -1853,6 +1853,18 @@
       "food": "Food",
       "symbols": "Symbols"
     },
+    "backgroundTask": {
+      "title": "Background Tasks",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "stop": "Stop task",
+      "noTasks": "No background tasks",
+      "clearCompleted": "Clear completed",
+      "connected": "Connected to server",
+      "disconnected": "Disconnected from server"
+    },
     "agentInput": {
       "placeholder": "Start with any idea... Press ⌘ ↵ for newline...",
       "searchModels": "Search models...",

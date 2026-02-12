@@ -30,43 +30,42 @@ const generateId = () => crypto.randomUUID();
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Gateway event data structure
+ * SSE message data from /api/agent/run endpoint
  */
-interface GatewayEventData {
-  agent_id?: string;
-  session_id?: string;
-  success?: boolean;
-  task_id?: string;
-  old_status?: string;
-  new_status?: string;
+interface SSEMessageData {
+  type: "session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done";
+  // session
+  sessionId?: string;
+  // text
   content?: string;
-  role?: string;
-  log_type?: string;
-  message?: string;
-  code?: string;
-}
-
-/**
- * WebSocket message from server (matching Rust WsMessage with serde tag="type", content="data")
- */
-interface WsServerMessage {
-  type: "Event" | "Pong" | "Subscribed" | "Error";
-  data?: {
-    channel?: string;
-    payload?: {
-      type?: string;  // e.g., "SessionMessage", "ExecutionLog", "AgentCompleted"
-      data?: GatewayEventData;
-    };
-    message?: string;
+  // tool_use
+  id?: string;
+  name?: string;
+  input?: unknown;
+  // tool_result
+  toolUseId?: string;
+  output?: string;
+  isError?: boolean;
+  // plan
+  plan?: {
+    id: string;
+    goal: string;
+    steps: Array<{ id: string; description: string; status: string }>;
+    notes?: string;
   };
-}
-
-/**
- * Get WebSocket URL from Gateway URL
- */
-function getWebSocketUrl(): string {
-  const gatewayUrl = getGatewayUrl();
-  return gatewayUrl.replace(/^http/, "ws") + "/ws";
+  // question
+  questions?: Array<{
+    header: string;
+    question: string;
+    options: Array<{ label: string; description?: string }>;
+    multiSelect: boolean;
+  }>;
+  // result
+  cost?: number;
+  duration?: number;
+  subtype?: string;
+  // error
+  message?: string;
 }
 
 /**
@@ -144,397 +143,142 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
     }
   }, [client]);
 
-  // Streaming text buffer for accumulating delta updates
-  const streamingTextRef = useRef<{ id: string; content: string } | null>(null);
-
-  // Tool use buffer for accumulating input_json_delta updates
-  const toolUseRef = useRef<{
-    messageId: string;
-    toolUseId: string;
-    name: string;
-    inputJson: string;
-  } | null>(null);
-
   /**
-   * Handle incoming WebSocket event
+   * Handle SSE message from /api/agent/run endpoint
    */
-  const handleWsEvent = useCallback((eventType: string, eventData: GatewayEventData, targetSessionId: string) => {
-    if (eventData.session_id !== targetSessionId) {
-      return;
-    }
+  const handleSSEMessage = useCallback((data: SSEMessageData) => {
+    console.log("[useAgent] SSE message:", data);
 
-    console.log("[useAgent] Processing event:", eventType, eventData);
-
-    switch (eventType) {
-      case "AgentSpawned":
-        console.log("[useAgent] Agent spawned confirmed for session:", targetSessionId);
+    switch (data.type) {
+      case "session":
+        if (data.sessionId) {
+          setSessionId(data.sessionId);
+        }
         break;
 
-      case "SessionMessage": {
-        // Finalize any streaming text first
-        if (streamingTextRef.current) {
-          streamingTextRef.current = null;
-        }
-        const msg: AgentMessage = {
-          id: generateId(),
-          type: eventData.role === "user" ? "user" : "text",
-          content: eventData.content || "",
-        };
-        setMessages((prev) => [...prev, msg]);
-        break;
-      }
-
-      case "ExecutionLog": {
-        const logType = eventData.log_type;
-        const content = eventData.content || "";
-
-        // Handle "user" log type which may contain tool_result inside
-        if (logType === "user") {
-          try {
-            const userData = JSON.parse(content);
-
-            // Check if this is a tool_result wrapped in user message
-            if (userData.type === "user" && userData.message?.content) {
-              const messageContent = userData.message.content;
-              // Content can be an array of content blocks
-              if (Array.isArray(messageContent)) {
-                for (const block of messageContent) {
-                  if (block.type === "tool_result" && block.tool_use_id) {
-                    // This is a tool result! Create the message
-                    const resultMsg: AgentMessage = {
-                      id: generateId(),
-                      type: "tool_result",
-                      toolUseId: block.tool_use_id,
-                      output: typeof block.content === "string" ? block.content : JSON.stringify(block.content),
-                      isError: block.is_error,
-                    };
-                    setMessages((prev) => [...prev, resultMsg]);
-
-                    // Update tool usage
-                    setToolUsages((prev) => prev.map((t) =>
-                      t.toolUseId === block.tool_use_id
-                        ? { ...t, output: resultMsg.output, completedAt: Date.now() }
-                        : t
-                    ));
-                  }
-                }
-              }
-            }
-          } catch {
-            // Ignore parse errors for user logs
-          }
-        }
-
-        if (logType === "tool_use") {
-          try {
-            const toolData = JSON.parse(content);
-            const toolId = generateId();
-            const toolMsg: AgentMessage = {
-              id: toolId,
-              type: "tool_use",
-              name: toolData.name || "unknown",
-              input: toolData.input || {},
-            };
-            setMessages((prev) => [...prev, toolMsg]);
-
-            const toolUsage: ToolUsage = {
-              id: toolId,
-              name: toolData.name || "unknown",
-              displayName: toolData.name || "Unknown Tool",
-              input: toolData.input || {},
-              timestamp: Date.now(),
-            };
-            setToolUsages((prev) => [...prev, toolUsage]);
-          } catch {
-            const textMsg: AgentMessage = {
-              id: generateId(),
-              type: "text",
-              content,
-            };
-            setMessages((prev) => [...prev, textMsg]);
-          }
-        } else if (logType === "tool_result") {
-          try {
-            const resultData = JSON.parse(content);
-            // Claude Code stream-json format uses "content" for tool result, not "output"
-            const resultOutput = resultData.content || resultData.output || content;
-            const resultMsg: AgentMessage = {
-              id: generateId(),
-              type: "tool_result",
-              toolUseId: resultData.tool_use_id || "",
-              output: typeof resultOutput === "string" ? resultOutput : JSON.stringify(resultOutput),
-              isError: resultData.is_error,
-            };
-            setMessages((prev) => [...prev, resultMsg]);
-
-            // Update tool usage to mark as completed (match by Claude's toolUseId)
-            if (resultData.tool_use_id) {
-              setToolUsages((prev) => prev.map((t) =>
-                t.toolUseId === resultData.tool_use_id
-                  ? { ...t, output: resultMsg.output, completedAt: Date.now() }
-                  : t
-              ));
-            }
-          } catch {
-            const textMsg: AgentMessage = {
-              id: generateId(),
-              type: "text",
-              content,
-            };
-            setMessages((prev) => [...prev, textMsg]);
-          }
-        } else if (logType === "stream_event") {
-          // Handle streaming events from Claude Code stream-json format
-          try {
-            const streamData = JSON.parse(content);
-            const event = streamData.event;
-
-            if (event?.type === "content_block_start") {
-              // Handle new content block start
-              const contentBlock = event.content_block;
-              if (contentBlock?.type === "tool_use") {
-                // Start a new tool use block
-                const messageId = generateId();
-                toolUseRef.current = {
-                  messageId,
-                  toolUseId: contentBlock.id || "",
-                  name: contentBlock.name || "unknown",
-                  inputJson: "",
-                };
-
-                // Add tool_use message placeholder with Claude's toolUseId
-                const toolMsg: AgentMessage = {
-                  id: messageId,
-                  type: "tool_use",
-                  name: contentBlock.name || "unknown",
-                  toolUseId: contentBlock.id || "",  // Store Claude's tool_use_id
-                  input: {},
-                };
-                setMessages((prev) => [...prev, toolMsg]);
-
-                // Add to tool usages with Claude's toolUseId for matching
-                const toolUsage: ToolUsage = {
-                  id: messageId,
-                  toolUseId: contentBlock.id || "",  // Store Claude's tool_use_id
-                  name: contentBlock.name || "unknown",
-                  displayName: contentBlock.name || "Unknown Tool",
-                  input: {},
-                  timestamp: Date.now(),
-                };
-                setToolUsages((prev) => [...prev, toolUsage]);
-              } else if (contentBlock?.type === "thinking") {
-                // Start thinking block - finalize any previous streaming text
-                if (streamingTextRef.current) {
-                  streamingTextRef.current = null;
-                }
-                // Create a new thinking message
-                const thinkingId = generateId();
-                streamingTextRef.current = { id: thinkingId, content: "" };
-                setMessages((prev) => [...prev, {
-                  id: thinkingId,
-                  type: "thinking",
-                  content: "",
-                }]);
-              } else if (contentBlock?.type === "text") {
-                // Start text block - finalize any previous streaming and start new
-                if (streamingTextRef.current) {
-                  streamingTextRef.current = null;
-                }
-                const textId = generateId();
-                streamingTextRef.current = { id: textId, content: "" };
-                setMessages((prev) => [...prev, {
-                  id: textId,
-                  type: "text",
-                  content: "",
-                }]);
-              }
-            } else if (event?.type === "content_block_delta") {
-              const delta = event.delta;
-              if (delta?.type === "text_delta") {
-                // Handle text delta
-                const deltaText = delta.text || "";
-                if (deltaText) {
-                  if (!streamingTextRef.current) {
-                    // Start new streaming message
-                    const newId = generateId();
-                    streamingTextRef.current = { id: newId, content: deltaText };
-                    setMessages((prev) => [...prev, {
-                      id: newId,
-                      type: "text",
-                      content: deltaText,
-                    }]);
-                  } else {
-                    // Append to existing streaming message
-                    streamingTextRef.current.content += deltaText;
-                    const currentId = streamingTextRef.current.id;
-                    const currentContent = streamingTextRef.current.content;
-                    setMessages((prev) => prev.map((m) =>
-                      m.id === currentId ? { ...m, content: currentContent } : m
-                    ));
-                  }
-                }
-              } else if (delta?.type === "thinking_delta") {
-                // Handle thinking delta
-                const thinkingText = delta.thinking || "";
-                if (thinkingText && streamingTextRef.current) {
-                  streamingTextRef.current.content += thinkingText;
-                  const currentId = streamingTextRef.current.id;
-                  const currentContent = streamingTextRef.current.content;
-                  setMessages((prev) => prev.map((m) =>
-                    m.id === currentId ? { ...m, content: currentContent } : m
-                  ));
-                }
-              } else if (delta?.type === "input_json_delta") {
-                // Handle tool input JSON delta
-                const partialJson = delta.partial_json || "";
-                if (partialJson && toolUseRef.current) {
-                  toolUseRef.current.inputJson += partialJson;
-                }
-              }
-            } else if (event?.type === "content_block_stop") {
-              // Content block finished
-              // Finalize tool use if we have one
-              if (toolUseRef.current) {
-                try {
-                  const parsedInput = toolUseRef.current.inputJson
-                    ? JSON.parse(toolUseRef.current.inputJson)
-                    : {};
-                  const currentTool = toolUseRef.current;
-
-                  // Update the tool_use message with parsed input
-                  setMessages((prev) => prev.map((m) =>
-                    m.id === currentTool.messageId
-                      ? { ...m, input: parsedInput }
-                      : m
-                  ));
-
-                  // Update tool usages
-                  setToolUsages((prev) => prev.map((t) =>
-                    t.id === currentTool.messageId
-                      ? { ...t, input: parsedInput }
-                      : t
-                  ));
-                } catch {
-                  // JSON parse error, keep empty input
-                }
-                toolUseRef.current = null;
-              }
-              // Finalize streaming text if we have one
-              if (streamingTextRef.current) {
-                streamingTextRef.current = null;
-              }
-            } else if (event?.type === "message_stop") {
-              // Message finished - clean up all refs
-              streamingTextRef.current = null;
-              toolUseRef.current = null;
-            }
-          } catch {
-            // Ignore parse errors for stream events
-          }
-        } else if (content.trim()) {
+      case "text":
+        // Append to existing text message or create new one
+        if (data.content) {
           const textMsg: AgentMessage = {
             id: generateId(),
             type: "text",
-            content,
+            content: data.content,
           };
           setMessages((prev) => [...prev, textMsg]);
         }
         break;
+
+      case "tool_use": {
+        const toolId = data.id || generateId();
+        const toolInput = (data.input || {}) as Record<string, unknown>;
+        const toolMsg: AgentMessage = {
+          id: toolId,
+          type: "tool_use",
+          name: data.name || "unknown",
+          toolUseId: data.id,
+          input: toolInput,
+        };
+        setMessages((prev) => [...prev, toolMsg]);
+
+        const toolUsage: ToolUsage = {
+          id: toolId,
+          toolUseId: data.id,
+          name: data.name || "unknown",
+          displayName: data.name || "Unknown Tool",
+          input: toolInput,
+          timestamp: Date.now(),
+        };
+        setToolUsages((prev) => [...prev, toolUsage]);
+        break;
       }
 
-      case "AgentCompleted":
-        setIsStreaming(false);
-        if (eventData.success) {
-          setPhase("completed");
-          // Don't add verbose "completed" message - the streaming indicator stopping is enough
-        } else {
-          setPhase("error");
-          const errMsg: AgentMessage = {
-            id: generateId(),
-            type: "error",
-            message: "Agent execution failed.",
-            isError: true,
-          };
-          setMessages((prev) => [...prev, errMsg]);
+      case "tool_result": {
+        const resultMsg: AgentMessage = {
+          id: generateId(),
+          type: "tool_result",
+          toolUseId: data.toolUseId || "",
+          output: data.output || "",
+          isError: data.isError,
+        };
+        setMessages((prev) => [...prev, resultMsg]);
+
+        // Update tool usage to mark as completed
+        if (data.toolUseId) {
+          setToolUsages((prev) =>
+            prev.map((t) =>
+              t.toolUseId === data.toolUseId
+                ? { ...t, output: resultMsg.output, completedAt: Date.now() }
+                : t
+            )
+          );
         }
         break;
+      }
 
-      case "Error":
-        setError(eventData.message || "Unknown error");
+      case "plan": {
+        if (data.plan) {
+          const planMsg: AgentMessage = {
+            id: generateId(),
+            type: "plan",
+            plan: {
+              goal: data.plan.goal,
+              steps: data.plan.steps.map((s) => ({
+                id: s.id,
+                description: s.description,
+                status: s.status as "pending" | "in_progress" | "completed" | "failed" | "cancelled",
+              })),
+              notes: data.plan.notes,
+            },
+          };
+          setMessages((prev) => [...prev, planMsg]);
+          setPendingPlan(planMsg.plan as TaskPlan);
+          setPhase("awaiting_approval");
+        }
+        break;
+      }
+
+      case "question": {
+        if (data.questions) {
+          const pendingQ: PendingQuestion = {
+            id: data.id || generateId(),
+            questions: data.questions,
+          };
+          setPendingQuestions(pendingQ);
+          setPhase("awaiting_input");
+        }
+        break;
+      }
+
+      case "result":
+        setPhase("completed");
+        setIsStreaming(false);
+        break;
+
+      case "error": {
         const errMsg: AgentMessage = {
           id: generateId(),
           type: "error",
-          message: eventData.message || "Unknown error",
+          message: data.message || "Unknown error",
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
+        setError(data.message || "Unknown error");
         setPhase("error");
         setIsStreaming(false);
         break;
-    }
-  }, []);
-
-  /**
-   * Subscribe to WebSocket events for a session
-   * Returns a promise that resolves when the connection is open
-   */
-  const subscribeToEvents = useCallback((targetSessionId: string): Promise<WebSocket> => {
-    return new Promise((resolve, reject) => {
-      // Close existing connection
-      if (wsRef.current) {
-        wsRef.current.close();
       }
 
-      const wsUrl = getWebSocketUrl();
-      console.log("[useAgent] Connecting to WebSocket:", wsUrl);
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      // Set a timeout for connection
-      const connectionTimeout = setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          ws.close();
-          reject(new Error("WebSocket connection timeout"));
+      case "done":
+        setIsStreaming(false);
+        if (phase === "running") {
+          setPhase("completed");
         }
-      }, 5000);
-
-      ws.onopen = () => {
-        clearTimeout(connectionTimeout);
-        console.log("[useAgent] WebSocket connection opened for session:", targetSessionId);
-        resolve(ws);
-      };
-
-      ws.onmessage = (e) => {
-        try {
-          const message: WsServerMessage = JSON.parse(e.data);
-          console.log("[useAgent] WebSocket message:", message);
-
-          if (message.type === "Event" && message.data?.payload) {
-            const eventType = message.data.payload.type;
-            const eventData = message.data.payload.data;
-            if (eventType && eventData) {
-              handleWsEvent(eventType, eventData, targetSessionId);
-            }
-          }
-        } catch (err) {
-          console.error("[useAgent] Failed to parse WebSocket message:", err, e.data);
-        }
-      };
-
-      ws.onerror = (e) => {
-        clearTimeout(connectionTimeout);
-        console.error("[useAgent] WebSocket error:", e);
-        reject(new Error("WebSocket connection failed"));
-      };
-
-      ws.onclose = (e) => {
-        console.log("[useAgent] WebSocket closed:", e.code, e.reason);
-      };
-    });
-  }, [handleWsEvent]);
+        break;
+    }
+  }, [phase]);
 
   /**
-   * Send a message to the agent (real Gateway implementation)
+   * Send a message to the agent (real Gateway implementation using SSE)
    */
   const sendMessageReal = useCallback(
     async (content: string, _attachments?: MessageAttachment[]) => {
@@ -552,31 +296,70 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
       };
       setMessages((prev) => [...prev, userMessage]);
 
-      // Generate session ID upfront so WebSocket can listen for it
-      const newSessionId = sessionId || crypto.randomUUID();
-
       try {
-        // CRITICAL: First establish WebSocket connection BEFORE spawning
-        // This ensures we don't miss any early messages from the agent
-        console.log("[useAgent] Establishing WebSocket connection first...");
-        await subscribeToEvents(newSessionId);
-        console.log("[useAgent] WebSocket ready, now spawning agent");
+        // Use the new SSE endpoint /api/agent/run
+        const gatewayUrl = getGatewayUrl();
+        const url = `${gatewayUrl}/api/agent/run`;
 
-        // Spawn agent through Gateway
-        const request = {
-          prompt: content,
-          workdir: workspaceId, // Use workspace path as workdir
-          session_id: newSessionId,
-          config: executorConfig?.config as Record<string, unknown>,
-        };
-        console.log("[useAgent] Spawning agent:", { agentType, request });
-        const response = await client.spawnAgent(agentType, request);
-        console.log("[useAgent] Spawn response:", response);
+        console.log("[useAgent] Starting SSE connection to:", url);
 
-        // Update session ID (should match what we sent)
-        setSessionId(response.session_id);
-        // Agent started - no need to add verbose info message
-        // The UI will show streaming indicator
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+          },
+          body: JSON.stringify({
+            agentId: agentType,
+            prompt: content,
+            cwd: workspaceId,
+            // Model is passed through the agent configuration, not here
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        if (!response.body) {
+          throw new Error("No response body");
+        }
+
+        // Read SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                handleSSEMessage(data);
+              } catch (e) {
+                console.warn("[useAgent] Failed to parse SSE data:", line, e);
+              }
+            }
+          }
+        }
+
+        // Process any remaining data in buffer
+        if (buffer.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(buffer.slice(6));
+            handleSSEMessage(data);
+          } catch {
+            // Ignore parse errors on final buffer
+          }
+        }
+
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[useAgent] Error:", errorMessage);
@@ -593,7 +376,7 @@ export function useAgent(workspaceId: string, options?: UseAgentOptions) {
         setIsStreaming(false);
       }
     },
-    [agentType, client, executorConfig, sessionId, workspaceId, subscribeToEvents]
+    [agentType, executorConfig, workspaceId, handleSSEMessage]
   );
 
   /**
@@ -793,40 +576,36 @@ The workspace ID for this session is: \`${workspaceId}\`
   const approvePlan = useCallback(async () => {
     if (!pendingPlan) return;
 
+    // Find the plan ID from messages
+    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
+    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+
     setPendingPlan(null);
     setPhase("running");
     setIsStreaming(true);
 
     try {
-      // Simulate executing the plan
-      for (let i = 0; i < pendingPlan.steps.length; i++) {
-        await mockDelay(1000);
+      if (planId && gatewayConnected) {
+        // Call real Gateway endpoint
+        const gatewayUrl = getGatewayUrl();
+        const response = await fetch(`${gatewayUrl}/api/agent/approve/${planId}`, {
+          method: "POST",
+        });
 
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (m.type === "plan" && m.plan) {
-              const updatedSteps = m.plan.steps.map((step, idx) => ({
-                ...step,
-                status:
-                  idx < i
-                    ? "completed"
-                    : idx === i
-                      ? "in_progress"
-                      : step.status,
-              })) as typeof m.plan.steps;
-              return { ...m, plan: { ...m.plan, steps: updatedSteps } };
-            }
-            return m;
-          })
-        );
+        if (!response.ok) {
+          throw new Error(`Failed to approve plan: ${response.statusText}`);
+        }
+
+        console.log("[useAgent] Plan approved:", planId);
       }
 
+      // Update UI to show plan is being executed
       setMessages((prev) =>
         prev.map((m) => {
           if (m.type === "plan" && m.plan) {
             const updatedSteps = m.plan.steps.map((step) => ({
               ...step,
-              status: "completed" as const,
+              status: "in_progress" as const,
             }));
             return { ...m, plan: { ...m.plan, steps: updatedSteps } };
           }
@@ -834,25 +613,60 @@ The workspace ID for this session is: \`${workspaceId}\`
         })
       );
 
-      const resultMessage: AgentMessage = {
-        id: generateId(),
-        type: "result",
-        content: "Plan executed successfully! All steps have been completed.",
-      };
-      setMessages((prev) => [...prev, resultMessage]);
-      setPhase("completed");
+      // Note: The actual plan execution will continue via the SSE stream
+      // For now, we'll mark as completed after a short delay if not using real Gateway
+      if (!gatewayConnected) {
+        await mockDelay(2000);
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.type === "plan" && m.plan) {
+              const updatedSteps = m.plan.steps.map((step) => ({
+                ...step,
+                status: "completed" as const,
+              }));
+              return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+            }
+            return m;
+          })
+        );
+        setPhase("completed");
+        setIsStreaming(false);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to execute plan");
+      setError(err instanceof Error ? err.message : "Failed to approve plan");
       setPhase("error");
-    } finally {
       setIsStreaming(false);
     }
-  }, [pendingPlan]);
+  }, [pendingPlan, messages, gatewayConnected]);
 
   /**
    * Reject a pending plan
    */
   const rejectPlan = useCallback(async () => {
+    if (!pendingPlan) return;
+
+    // Find the plan ID from messages
+    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
+    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+
+    try {
+      if (planId && gatewayConnected) {
+        // Call real Gateway endpoint
+        const gatewayUrl = getGatewayUrl();
+        const response = await fetch(`${gatewayUrl}/api/agent/reject/${planId}`, {
+          method: "POST",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to reject plan: ${response.statusText}`);
+        }
+
+        console.log("[useAgent] Plan rejected:", planId);
+      }
+    } catch (err) {
+      console.error("[useAgent] Failed to reject plan:", err);
+    }
+
     setPendingPlan(null);
 
     setMessages((prev) =>
@@ -875,7 +689,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
-  }, []);
+  }, [pendingPlan, messages, gatewayConnected]);
 
   /**
    * Answer pending questions

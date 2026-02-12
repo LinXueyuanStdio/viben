@@ -257,6 +257,11 @@ export interface ProviderUpdate {
 // Model Types
 // ============================================================================
 
+/**
+ * Model definition
+ *
+ * Synced with crates/viben-core/src/models/types.rs Model
+ */
 export interface Model {
   id: string;
   name: string;
@@ -266,6 +271,14 @@ export interface Model {
   maxOutputTokens?: number;
   inputPrice?: number;
   outputPrice?: number;
+  /** Whether this is the default model */
+  isDefault?: boolean;
+  /** Whether this model is enabled */
+  enabled?: boolean;
+  /** Creation timestamp (for custom models) */
+  createdAt?: string;
+  /** Last update timestamp (for custom models) */
+  updatedAt?: string;
 }
 
 export interface ModelConfig {

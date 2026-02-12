@@ -89,10 +89,30 @@ export const KNOWN_MODELS: KnownModel[] = [
 
   // Anthropic Models
   {
+    id: "claude-sonnet-4-5-20250514",
+    name: "Claude 4.5 Sonnet",
+    provider: "anthropic",
+    description: "Most intelligent Claude model with extended thinking",
+    contextLength: 200000,
+    maxOutputTokens: 16384,
+    inputPrice: 3,
+    outputPrice: 15,
+  },
+  {
+    id: "claude-opus-4-5-20250514",
+    name: "Claude 4.5 Opus",
+    provider: "anthropic",
+    description: "Most capable Claude model for complex tasks",
+    contextLength: 200000,
+    maxOutputTokens: 32000,
+    inputPrice: 15,
+    outputPrice: 75,
+  },
+  {
     id: "claude-3-5-sonnet-20241022",
     name: "Claude 3.5 Sonnet",
     provider: "anthropic",
-    description: "Most intelligent Claude model",
+    description: "High-performance Claude 3.5 model",
     contextLength: 200000,
     maxOutputTokens: 8192,
     inputPrice: 3,
@@ -266,10 +286,14 @@ export const DEFAULT_ALIASES: Record<string, string> = {
   "gpt4o": "gpt-4o",
   "gpt4-mini": "gpt-4o-mini",
   "gpt35": "gpt-3.5-turbo",
-  "claude": "claude-3-5-sonnet-20241022",
-  "sonnet": "claude-3-5-sonnet-20241022",
+  "claude": "claude-sonnet-4-5-20250514",
+  "sonnet": "claude-sonnet-4-5-20250514",
+  "sonnet-4.5": "claude-sonnet-4-5-20250514",
+  "opus": "claude-opus-4-5-20250514",
+  "opus-4.5": "claude-opus-4-5-20250514",
   "haiku": "claude-3-5-haiku-20241022",
-  "opus": "claude-3-opus-20240229",
+  "sonnet-3.5": "claude-3-5-sonnet-20241022",
+  "opus-3": "claude-3-opus-20240229",
 };
 
 /**

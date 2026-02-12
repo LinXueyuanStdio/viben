@@ -81,10 +81,26 @@ pub fn get_known_models() -> Vec<KnownModel> {
         },
         // Anthropic Models
         KnownModel {
+            id: "claude-sonnet-4-5-20250514",
+            name: "Claude 4.5 Sonnet",
+            provider: ProviderType::Anthropic,
+            description: Some("Most intelligent Claude model with extended thinking"),
+            context_window: Some(200000),
+            max_output_tokens: Some(16384),
+        },
+        KnownModel {
+            id: "claude-opus-4-5-20250514",
+            name: "Claude 4.5 Opus",
+            provider: ProviderType::Anthropic,
+            description: Some("Most capable Claude model for complex tasks"),
+            context_window: Some(200000),
+            max_output_tokens: Some(32000),
+        },
+        KnownModel {
             id: "claude-3-5-sonnet-20241022",
             name: "Claude 3.5 Sonnet",
             provider: ProviderType::Anthropic,
-            description: Some("Most intelligent Claude model"),
+            description: Some("High-performance Claude 3.5 model"),
             context_window: Some(200000),
             max_output_tokens: Some(8192),
         },

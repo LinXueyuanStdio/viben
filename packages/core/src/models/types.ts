@@ -1,20 +1,28 @@
 /**
  * Model-specific types (re-exports from main types for convenience)
+ *
+ * Synced with crates/viben-core/src/models/types.rs
  */
 export type { Model, ModelConfig, ModelAlias } from "../types";
 
 /**
  * Models config file structure
+ *
+ * Synced with crates/viben-core/src/models/types.rs ModelsFile
  */
 export interface ModelsFile {
   default?: string;
   aliases: Record<string, string>;
   fallbacks: string[];
   configs: Record<string, ModelConfigEntry>;
+  /** Custom models added by user */
+  custom_models: Record<string, ModelEntry>;
+  /** List of disabled built-in model IDs */
+  disabled_models: string[];
 }
 
 /**
- * Model configuration entry
+ * Model configuration entry (for inference parameters)
  */
 export interface ModelConfigEntry {
   temperature?: number;
@@ -22,6 +30,22 @@ export interface ModelConfigEntry {
   topP?: number;
   frequencyPenalty?: number;
   presencePenalty?: number;
+}
+
+/**
+ * Model entry in config file (custom models)
+ *
+ * Synced with crates/viben-core/src/models/types.rs ModelEntry
+ */
+export interface ModelEntry {
+  name: string;
+  provider: string;
+  description?: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
