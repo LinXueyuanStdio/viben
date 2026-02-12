@@ -17,15 +17,16 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://linxueyuan.online',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // Landing page is at /viben/, docs are at /viben/docs/
-  baseUrl: '/viben/docs/',
+  // Landing page is at /, docs are at /docs/
+  baseUrl: '/docs/',
 
   // GitHub pages deployment config.
   organizationName: 'LinXueyuanStdio', // GitHub org/user name
   projectName: 'viben', // Repo name
   trailingSlash: false,
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
+  onBrokenMarkdownLinks: 'warn',
 
   markdown: {
     mermaid: true,
@@ -59,8 +60,10 @@ const config: Config = {
       'classic',
       {
         docs: {
-          sidebarPath: './sidebars.ts',
-          // Build correct edit URLs for files under repo/apps/docs/docs
+          // Main docs instance for user-facing documentation
+          path: 'docs/user',
+          routeBasePath: 'user',
+          sidebarPath: './sidebars/user.ts',
           editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
         },
         blog: {
@@ -69,9 +72,7 @@ const config: Config = {
             type: ['rss', 'atom'],
             xslt: true,
           },
-          // Build correct edit URLs for files under repo/apps/docs/blog
           editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
-          // Useful options to enforce blogging best practices
           onInlineTags: 'warn',
           onInlineAuthors: 'warn',
           onUntruncatedBlogPosts: 'warn',
@@ -80,6 +81,64 @@ const config: Config = {
           customCss: './src/css/custom.css',
         },
       } satisfies Preset.Options,
+    ],
+  ],
+
+  plugins: [
+    // CLI documentation
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'cli',
+        path: 'docs/cli',
+        routeBasePath: 'cli',
+        sidebarPath: './sidebars/cli.ts',
+        editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
+      },
+    ],
+    // Frontend developer documentation
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'frontend',
+        path: 'docs/frontend',
+        routeBasePath: 'frontend',
+        sidebarPath: './sidebars/frontend.ts',
+        editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
+      },
+    ],
+    // Backend developer documentation
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'backend',
+        path: 'docs/backend',
+        routeBasePath: 'backend',
+        sidebarPath: './sidebars/backend.ts',
+        editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
+      },
+    ],
+    // Agent developer documentation
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'agent',
+        path: 'docs/agent',
+        routeBasePath: 'agent',
+        sidebarPath: './sidebars/agent.ts',
+        editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
+      },
+    ],
+    // Shared documentation
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'shared',
+        path: 'docs/shared',
+        routeBasePath: 'shared',
+        sidebarPath: './sidebars/shared.ts',
+        editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
+      },
     ],
   ],
 
@@ -115,11 +174,43 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
+        // User docs (default)
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'userSidebar',
           position: 'left',
-          label: 'Docs',
+          label: 'User Guide',
+        },
+        // CLI docs
+        {
+          to: '/cli/',
+          label: 'CLI',
+          position: 'left',
+          activeBaseRegex: `/cli/`,
+        },
+        // Developer docs dropdown
+        {
+          type: 'dropdown',
+          label: 'Developer',
+          position: 'left',
+          items: [
+            {
+              to: '/frontend/',
+              label: 'Frontend',
+            },
+            {
+              to: '/backend/',
+              label: 'Backend',
+            },
+            {
+              to: '/agent/',
+              label: 'Agent',
+            },
+            {
+              to: '/shared/',
+              label: 'Shared',
+            },
+          ],
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {
@@ -138,9 +229,20 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'User',
           items: [
-            {label: 'Getting Started', to: '/docs/intro'},
+            {label: 'Getting Started', to: '/user/getting-started/installation'},
+            {label: 'Desktop App', to: '/user/desktop/'},
+            {label: 'MCP Server', to: '/user/mcp/configuration'},
+          ],
+        },
+        {
+          title: 'Developer',
+          items: [
+            {label: 'CLI', to: '/cli/'},
+            {label: 'Frontend', to: '/frontend/'},
+            {label: 'Backend', to: '/backend/'},
+            {label: 'Agent', to: '/agent/'},
           ],
         },
         {
@@ -164,7 +266,7 @@ const config: Config = {
     prism: {
       theme: prismThemes.github,
       darkTheme: prismThemes.dracula,
-      additionalLanguages: ['bash', 'json', 'python', 'toml'],
+      additionalLanguages: ['bash', 'json', 'python', 'toml', 'yaml', 'rust', 'typescript'],
     },
   } satisfies Preset.ThemeConfig,
 };

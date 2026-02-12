@@ -554,6 +554,11 @@ export function registerAgentCommand(program: Command): void {
           resume,
           model,
           dangerouslySkipPermissions: options.dangerouslySkipPermissions,
+          // Agent-specific options for SDK mode
+          systemPrompt: agent.systemPrompt,
+          appendPrompt: agent.appendPrompt,
+          mcpServers: agent.mcpServers,
+          skills: agent.skills,
         });
         const duration = Date.now() - startTime;
 

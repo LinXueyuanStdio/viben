@@ -46,12 +46,7 @@ interface DiscoverModelsResponse {
  */
 interface EnabledModelsResponse {
   provider_id: string;
-  models: Array<{
-    id: string;
-    name: string;
-    enabled: boolean;
-    is_default: boolean;
-  }>;
+  enabled_models: string[];
 }
 
 /**
@@ -180,56 +175,41 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
       // Get enabled models for this provider
       const enabledSet = getEnabledModels(id);
-      const defaultModel = await modelManager.getDefault();
-
-      // Get all models for this provider
-      const allModels = await modelManager.getModelsByProvider(id);
-
-      // Map to response format, showing only enabled models
-      const models = Array.from(enabledSet).map((modelId) => {
-        const modelInfo = allModels.find((m) => m.id === modelId);
-        return {
-          id: modelId,
-          name: modelInfo?.name || modelId,
-          enabled: true,
-          is_default: defaultModel === modelId,
-        };
-      });
 
       return {
         provider_id: id,
-        models,
+        enabled_models: Array.from(enabledSet),
       };
     }
   );
 
   /**
    * Enable a model for a provider
-   * POST /api/providers/:pid/models/:mid/enable
+   * POST /api/providers/:provider_id/models/:model_id/enable
    */
   fastify.post(
-    "/api/providers/:pid/models/:mid/enable",
+    "/api/providers/:provider_id/models/:model_id/enable",
     async (
-      request: FastifyRequest<{ Params: { pid: string; mid: string } }>,
+      request: FastifyRequest<{ Params: { provider_id: string; model_id: string } }>,
       reply: FastifyReply
     ): Promise<ModelToggleResponse> => {
-      const { pid, mid } = request.params;
+      const { provider_id, model_id } = request.params;
 
       // Check if provider exists
-      const provider = await providerManager.getProvider(pid);
+      const provider = await providerManager.getProvider(provider_id);
       if (!provider) {
         reply.code(404);
-        throw new Error(`Provider not found: ${pid}`);
+        throw new Error(`Provider not found: ${provider_id}`);
       }
 
       // Enable the model
-      const enabledSet = getEnabledModels(pid);
-      enabledSet.add(mid);
+      const enabledSet = getEnabledModels(provider_id);
+      enabledSet.add(model_id);
 
       return {
         success: true,
-        provider_id: pid,
-        model_id: mid,
+        provider_id,
+        model_id,
         enabled: true,
       };
     }
@@ -237,31 +217,31 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
 
   /**
    * Disable a model for a provider
-   * POST /api/providers/:pid/models/:mid/disable
+   * POST /api/providers/:provider_id/models/:model_id/disable
    */
   fastify.post(
-    "/api/providers/:pid/models/:mid/disable",
+    "/api/providers/:provider_id/models/:model_id/disable",
     async (
-      request: FastifyRequest<{ Params: { pid: string; mid: string } }>,
+      request: FastifyRequest<{ Params: { provider_id: string; model_id: string } }>,
       reply: FastifyReply
     ): Promise<ModelToggleResponse> => {
-      const { pid, mid } = request.params;
+      const { provider_id, model_id } = request.params;
 
       // Check if provider exists
-      const provider = await providerManager.getProvider(pid);
+      const provider = await providerManager.getProvider(provider_id);
       if (!provider) {
         reply.code(404);
-        throw new Error(`Provider not found: ${pid}`);
+        throw new Error(`Provider not found: ${provider_id}`);
       }
 
       // Disable the model
-      const enabledSet = getEnabledModels(pid);
-      enabledSet.delete(mid);
+      const enabledSet = getEnabledModels(provider_id);
+      enabledSet.delete(model_id);
 
       return {
         success: true,
-        provider_id: pid,
-        model_id: mid,
+        provider_id,
+        model_id,
         enabled: false,
       };
     }

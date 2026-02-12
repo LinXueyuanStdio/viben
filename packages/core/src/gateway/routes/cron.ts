@@ -2,8 +2,34 @@
  * Cron routes
  */
 import type { FastifyInstance } from "fastify";
-import type { CreateCronJob, UpdateCronJob } from "../../services/cron";
+import type { CronJob, CreateCronJob, UpdateCronJob } from "../../services/cron";
 import type { AppState } from "../state";
+
+/**
+ * Transform CronJob to snake_case response format (to match Rust gateway)
+ */
+function toSnakeCaseJob(job: CronJob) {
+  return {
+    id: job.id,
+    name: job.name,
+    enabled: job.enabled,
+    job_type: job.jobType,
+    message: job.message,
+    script: job.script,
+    cron: job.cron,
+    every: job.every,
+    channel: job.channel,
+    agent: job.agent,
+    notifications: job.notifications,
+    last_run: job.lastRun,
+    last_status: job.lastStatus,
+    last_error: job.lastError,
+    last_output: job.lastOutput,
+    next_run: job.nextRun,
+    created_at: job.createdAt,
+    updated_at: job.updatedAt,
+  };
+}
 
 /**
  * Register cron routes
@@ -12,7 +38,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
   // List all cron jobs
   fastify.get("/api/cron", async () => {
     const jobs = await state.cron.listJobs();
-    return { jobs };
+    return { jobs: jobs.map(toSnakeCaseJob) };
   });
 
   // Get a specific cron job
@@ -23,7 +49,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
       reply.code(404);
       return { error: `Cron job not found: ${id}` };
     }
-    return { job };
+    return toSnakeCaseJob(job);
   });
 
   // Create a new cron job
@@ -32,7 +58,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     try {
       const job = await state.cron.createJob(input);
       reply.code(201);
-      return { job };
+      return toSnakeCaseJob(job);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to create cron job" };
@@ -45,7 +71,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     const updates = request.body;
     try {
       const job = await state.cron.updateJob(id, updates);
-      return { job };
+      return toSnakeCaseJob(job);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to update cron job" };
@@ -57,7 +83,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     try {
       await state.cron.deleteJob(id);
-      return { success: true };
+      return { deleted: id };
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to delete cron job" };
@@ -69,7 +95,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     try {
       const job = await state.cron.enableJob(id);
-      return { job };
+      return toSnakeCaseJob(job);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to enable cron job" };
@@ -81,7 +107,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     try {
       const job = await state.cron.disableJob(id);
-      return { job };
+      return toSnakeCaseJob(job);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to disable cron job" };
@@ -93,7 +119,7 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     try {
       await state.cron.runJob(id);
-      return { success: true };
+      return { triggered: id, message: "Job execution started" };
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to run cron job" };

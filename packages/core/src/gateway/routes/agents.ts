@@ -12,9 +12,63 @@ import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
 import { agentManager, templateManager } from "../../agents";
 import type { AppState } from "../state";
-import type { SessionMessage } from "../../services/session-store";
+import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
 import type { ExecutorType } from "../../types";
+
+// ============================================================================
+// Response Transformers (camelCase to snake_case for API consistency)
+// ============================================================================
+
+/**
+ * Transform session config to snake_case response format (to match Rust gateway)
+ */
+function toSnakeCaseSession(s: SessionConfig) {
+  return {
+    id: s.id,
+    agent_id: s.agentId,
+    agent_path: s.agentPath,
+    agent_config: s.agentConfig,
+    task_id: s.taskId,
+    prompt: s.prompt,
+    status: s.status,
+    workspace_path: s.workspacePath,
+    created_at: s.createdAt,
+    updated_at: s.updatedAt,
+    metadata: s.metadata,
+  };
+}
+
+/**
+ * Transform session message to snake_case response format
+ */
+function toSnakeCaseMessage(m: SessionMessage) {
+  return {
+    timestamp: m.timestamp,
+    role: m.role,
+    content: m.content,
+    tool_calls: m.toolCalls,
+    tool_result: m.toolResult,
+  };
+}
+
+/**
+ * Transform UI message to snake_case response format
+ */
+function toSnakeCaseUIMessage(m: UIMessage) {
+  return {
+    id: m.id,
+    timestamp: m.timestamp,
+    type: m.type,
+    content: m.content,
+    tool_use_id: m.toolUseId,
+    tool_name: m.toolName,
+    tool_input: m.toolInput,
+    tool_output: m.toolOutput,
+    is_error: m.isError,
+    attachments: m.attachments,
+  };
+}
 
 // ============================================================================
 // Route Registration
@@ -103,7 +157,26 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         approvals: body.approvals,
       });
       reply.code(201);
-      return { agent };
+      // Return agent directly (not wrapped) to match Rust gateway
+      return {
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        model: agent.model,
+        provider: agent.provider,
+        systemPrompt: agent.systemPrompt,
+        appendPrompt: agent.appendPrompt,
+        temperature: agent.temperature,
+        maxTokens: agent.maxTokens,
+        executorType: agent.executorType,
+        executorConfig: agent.executorConfig,
+        mcpServers: agent.mcpServers,
+        skills: agent.skills,
+        planMode: agent.planMode,
+        approvals: agent.approvals,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
+      };
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to create agent" };
@@ -223,7 +296,26 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const agent = await agentManager.createAgentFromTemplate(id, agent_id);
         reply.code(201);
-        return { agent };
+        // Return agent directly (not wrapped) to match Rust gateway
+        return {
+          id: agent.id,
+          name: agent.name,
+          description: agent.description,
+          model: agent.model,
+          provider: agent.provider,
+          systemPrompt: agent.systemPrompt,
+          appendPrompt: agent.appendPrompt,
+          temperature: agent.temperature,
+          maxTokens: agent.maxTokens,
+          executorType: agent.executorType,
+          executorConfig: agent.executorConfig,
+          mcpServers: agent.mcpServers,
+          skills: agent.skills,
+          planMode: agent.planMode,
+          approvals: agent.approvals,
+          createdAt: agent.createdAt,
+          updatedAt: agent.updatedAt,
+        };
       } catch (e) {
         reply.code(400);
         return { error: e instanceof Error ? e.message : "Failed to instantiate template" };
@@ -246,19 +338,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const sessions = await state.sessionStore.listSessions(id);
         return {
-          sessions: sessions.map((s) => ({
-            id: s.id,
-            agentId: s.agentId,
-            agentPath: s.agentPath,
-            agentConfig: s.agentConfig,
-            taskId: s.taskId,
-            prompt: s.prompt,
-            status: s.status,
-            workspacePath: s.workspacePath,
-            createdAt: s.createdAt,
-            updatedAt: s.updatedAt,
-            metadata: s.metadata,
-          })),
+          sessions: sessions.map(toSnakeCaseSession),
           total: sessions.length,
         };
       } catch (e) {
@@ -300,19 +380,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
       await state.sessionStore.createSession(config);
       reply.code(201);
-      return {
-        id: config.id,
-        agentId: config.agentId,
-        agentPath: config.agentPath,
-        agentConfig: config.agentConfig,
-        taskId: config.taskId,
-        prompt: config.prompt,
-        status: config.status,
-        workspacePath: config.workspacePath,
-        createdAt: config.createdAt,
-        updatedAt: config.updatedAt,
-        metadata: config.metadata,
-      };
+      return toSnakeCaseSession(config);
     } catch (e) {
       reply.code(500);
       return { error: e instanceof Error ? e.message : "Failed to create session" };
@@ -329,19 +397,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id, session_id } = request.params;
       try {
         const session = await state.sessionStore.getSession(id, session_id);
-        return {
-          id: session.id,
-          agentId: session.agentId,
-          agentPath: session.agentPath,
-          agentConfig: session.agentConfig,
-          taskId: session.taskId,
-          prompt: session.prompt,
-          status: session.status,
-          workspacePath: session.workspacePath,
-          createdAt: session.createdAt,
-          updatedAt: session.updatedAt,
-          metadata: session.metadata,
-        };
+        return toSnakeCaseSession(session);
       } catch (e) {
         reply.code(404);
         return { error: e instanceof Error ? e.message : "Session not found" };
@@ -382,13 +438,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const messages = await state.sessionStore.readMessages(id, session_id);
         return {
-          messages: messages.map((m) => ({
-            timestamp: m.timestamp,
-            role: m.role,
-            content: m.content,
-            toolCalls: m.toolCalls,
-            toolResult: m.toolResult,
-          })),
+          messages: messages.map(toSnakeCaseMessage),
           total: messages.length,
         };
       } catch (e) {
@@ -425,13 +475,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
 
       await state.sessionStore.appendMessage(id, session_id, message);
       reply.code(201);
-      return {
-        timestamp: message.timestamp,
-        role: message.role,
-        content: message.content,
-        toolCalls: message.toolCalls,
-        toolResult: message.toolResult,
-      };
+      return toSnakeCaseMessage(message);
     } catch (e) {
       reply.code(500);
       return { error: e instanceof Error ? e.message : "Failed to append message" };
@@ -453,18 +497,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       try {
         const messages = await state.sessionStore.readUIMessages(id, session_id);
         return {
-          messages: messages.map((m) => ({
-            id: m.id,
-            timestamp: m.timestamp,
-            type: m.type,
-            content: m.content,
-            toolUseId: m.toolUseId,
-            toolName: m.toolName,
-            toolInput: m.toolInput,
-            toolOutput: m.toolOutput,
-            isError: m.isError,
-            attachments: m.attachments,
-          })),
+          messages: messages.map(toSnakeCaseUIMessage),
           total: messages.length,
         };
       } catch (e) {
@@ -475,7 +508,170 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   );
 
   // ========================================================================
-  // Single Agent Operations (must be after /sessions routes)
+  // Agent Availability Check
+  // ========================================================================
+
+  /**
+   * Check agent/executor availability
+   * GET /api/agents/:id/availability
+   *
+   * Returns availability info for executor-type agents (CLAUDE_CODE, CODEX, etc.)
+   */
+  fastify.get<{ Params: { id: string } }>(
+    "/api/agents/:id/availability",
+    async (request, reply) => {
+      const { id } = request.params;
+      const homeDir = process.env.HOME || "/";
+
+      // Known executor types that support availability check
+      const executorTypes = [
+        "CLAUDE_CODE",
+        "CODEX",
+        "AMP",
+        "GEMINI",
+        "OPENCODE",
+        "CURSOR_AGENT",
+        "QWEN_CODE",
+        "COPILOT",
+        "DROID",
+        "WINDSURF",
+        "GOOSE",
+        "ROOCODE",
+        "AIDE",
+        "AUGMENT",
+        "CLINE",
+        "CONTINUE",
+        "TRAE",
+        "MELTY",
+        "ZENCODER",
+        "MARSCODE",
+        "VOID",
+        "AIDER",
+        "PLANDEX",
+        "MENTAT",
+        "GPT_ENGINEER",
+        "AGENT_CODE",
+        "SWEEP",
+        "MICRO_AGENT",
+        "AUTODEBUG",
+        "DEVON",
+        "SWEBENCH",
+        "GPTPILOT",
+        "DEVIN",
+        "MAGIC",
+        "PYTHAGORA",
+        "FINE",
+        "AI2WARE",
+        "SOURCEGRAPH_CODY",
+      ];
+
+      // Check if this is a known executor type
+      const upperCaseId = id.toUpperCase().replace(/-/g, "_");
+      if (executorTypes.includes(upperCaseId)) {
+        // Check actual availability based on executor type
+        const fs = await import("node:fs");
+        const path = await import("node:path");
+
+        let availability: { type: string; last_auth_timestamp?: number } = { type: "NOT_FOUND" };
+
+        switch (upperCaseId) {
+          case "CLAUDE_CODE": {
+            const claudeDir = path.join(homeDir, ".claude");
+            const authFile = path.join(claudeDir, "config.json");
+            if (fs.existsSync(authFile)) {
+              try {
+                const stat = fs.statSync(authFile);
+                availability = {
+                  type: "LOGIN_DETECTED",
+                  last_auth_timestamp: Math.floor(stat.mtimeMs),
+                };
+              } catch {
+                availability = { type: "INSTALLATION_FOUND" };
+              }
+            } else if (fs.existsSync(claudeDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "CODEX": {
+            const codexDir = path.join(homeDir, ".codex");
+            if (fs.existsSync(codexDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "CURSOR_AGENT": {
+            const cursorPaths = [
+              path.join(homeDir, ".cursor"),
+              path.join(homeDir, "Library/Application Support/Cursor"),
+            ];
+            for (const p of cursorPaths) {
+              if (fs.existsSync(p)) {
+                availability = { type: "INSTALLATION_FOUND" };
+                break;
+              }
+            }
+            break;
+          }
+          case "AMP": {
+            const ampDir = path.join(homeDir, ".amp");
+            if (fs.existsSync(ampDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "GEMINI": {
+            const geminiDir = path.join(homeDir, ".gemini");
+            if (fs.existsSync(geminiDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "WINDSURF": {
+            const windsurfDir = path.join(homeDir, ".windsurf");
+            if (fs.existsSync(windsurfDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "GOOSE": {
+            const gooseDir = path.join(homeDir, ".goose");
+            if (fs.existsSync(gooseDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          case "AIDER": {
+            const aiderDir = path.join(homeDir, ".aider");
+            if (fs.existsSync(aiderDir)) {
+              availability = { type: "INSTALLATION_FOUND" };
+            }
+            break;
+          }
+          // Add more executors as needed
+        }
+
+        return availability;
+      }
+
+      // Check if it's a Viben agent
+      const agent = await agentManager.getAgent(id);
+      if (agent) {
+        return {
+          type: "VIBEN_AGENT",
+          available: true,
+          agent_id: agent.id,
+          name: agent.name,
+        };
+      }
+
+      reply.code(404);
+      return { error: `Agent or executor not found: ${id}` };
+    }
+  );
+
+  // ========================================================================
+  // Single Agent Operations (must be after /sessions and /availability routes)
   // ========================================================================
 
   /**
@@ -489,26 +685,25 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       reply.code(404);
       return { error: `Agent not found: ${id}` };
     }
+    // Return agent directly (not wrapped) to match Rust gateway
     return {
-      agent: {
-        id: agent.id,
-        name: agent.name,
-        description: agent.description,
-        model: agent.model,
-        provider: agent.provider,
-        systemPrompt: agent.systemPrompt,
-        appendPrompt: agent.appendPrompt,
-        temperature: agent.temperature,
-        maxTokens: agent.maxTokens,
-        executorType: agent.executorType,
-        executorConfig: agent.executorConfig,
-        mcpServers: agent.mcpServers,
-        skills: agent.skills,
-        planMode: agent.planMode,
-        approvals: agent.approvals,
-        createdAt: agent.createdAt,
-        updatedAt: agent.updatedAt,
-      },
+      id: agent.id,
+      name: agent.name,
+      description: agent.description,
+      model: agent.model,
+      provider: agent.provider,
+      systemPrompt: agent.systemPrompt,
+      appendPrompt: agent.appendPrompt,
+      temperature: agent.temperature,
+      maxTokens: agent.maxTokens,
+      executorType: agent.executorType,
+      executorConfig: agent.executorConfig,
+      mcpServers: agent.mcpServers,
+      skills: agent.skills,
+      planMode: agent.planMode,
+      approvals: agent.approvals,
+      createdAt: agent.createdAt,
+      updatedAt: agent.updatedAt,
     };
   });
 
@@ -542,26 +737,25 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     };
     try {
       const agent = await agentManager.updateAgent(id, updates);
+      // Return agent directly (not wrapped) to match Rust gateway
       return {
-        agent: {
-          id: agent.id,
-          name: agent.name,
-          description: agent.description,
-          model: agent.model,
-          provider: agent.provider,
-          systemPrompt: agent.systemPrompt,
-          appendPrompt: agent.appendPrompt,
-          temperature: agent.temperature,
-          maxTokens: agent.maxTokens,
-          executorType: agent.executorType,
-          executorConfig: agent.executorConfig,
-          mcpServers: agent.mcpServers,
-          skills: agent.skills,
-          planMode: agent.planMode,
-          approvals: agent.approvals,
-          createdAt: agent.createdAt,
-          updatedAt: agent.updatedAt,
-        },
+        id: agent.id,
+        name: agent.name,
+        description: agent.description,
+        model: agent.model,
+        provider: agent.provider,
+        systemPrompt: agent.systemPrompt,
+        appendPrompt: agent.appendPrompt,
+        temperature: agent.temperature,
+        maxTokens: agent.maxTokens,
+        executorType: agent.executorType,
+        executorConfig: agent.executorConfig,
+        mcpServers: agent.mcpServers,
+        skills: agent.skills,
+        planMode: agent.planMode,
+        approvals: agent.approvals,
+        createdAt: agent.createdAt,
+        updatedAt: agent.updatedAt,
       };
     } catch (e) {
       reply.code(400);

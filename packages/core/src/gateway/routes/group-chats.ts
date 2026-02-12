@@ -38,7 +38,7 @@ export type SessionStatus = "active" | "archived";
 export type UIMessageType = "user" | "agent_thinking" | "agent_response" | "system";
 
 /**
- * Group chat settings
+ * Group chat settings (internal camelCase)
  */
 export interface GroupChatSettings {
   broadcastMode: "all" | "mention_only";
@@ -47,7 +47,16 @@ export interface GroupChatSettings {
 }
 
 /**
- * Group chat member
+ * Group chat settings response (snake_case for API)
+ */
+interface GroupChatSettingsResponse {
+  broadcast_mode: "all" | "mention_only";
+  show_thinking: boolean;
+  history_limit: number;
+}
+
+/**
+ * Group chat member (internal camelCase)
  */
 export interface GroupChatMember {
   id: string;
@@ -60,7 +69,21 @@ export interface GroupChatMember {
 }
 
 /**
- * Group chat configuration
+ * Group chat member response (snake_case for API)
+ */
+interface GroupChatMemberResponse {
+  id: string;
+  member_type: string;
+  member_id: string;
+  display_name: string;
+  role: string;
+  model?: string;
+  joined_at: string;
+  last_seen_at?: string;
+}
+
+/**
+ * Group chat configuration (internal camelCase)
  */
 export interface GroupChat {
   id: string;
@@ -74,7 +97,22 @@ export interface GroupChat {
 }
 
 /**
- * Session configuration
+ * Group chat response (snake_case for API)
+ */
+interface GroupChatResponse {
+  id: string;
+  name: string;
+  description?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  settings: GroupChatSettingsResponse;
+  workspace_path?: string;
+  is_global?: boolean;
+}
+
+/**
+ * Session configuration (internal camelCase)
  */
 export interface Session {
   id: string;
@@ -87,7 +125,20 @@ export interface Session {
 }
 
 /**
- * UI message (user-facing)
+ * Session response (snake_case for API)
+ */
+interface SessionResponse {
+  id: string;
+  group_chat_id: string;
+  title?: string;
+  created_at: string;
+  updated_at: string;
+  active_agents: string[];
+  status: string;
+}
+
+/**
+ * UI message (user-facing, internal camelCase)
  */
 export interface UIMessage {
   id: string;
@@ -104,7 +155,24 @@ export interface UIMessage {
 }
 
 /**
- * Agent rollout message (for agent view)
+ * UI message response (snake_case for API)
+ */
+interface UIMessageResponse {
+  id: string;
+  type: string;
+  timestamp: string;
+  sender_id?: string;
+  sender_name?: string;
+  content?: string;
+  agent_id?: string;
+  agent_name?: string;
+  status?: string;
+  event?: string;
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Agent rollout message (for agent view, internal camelCase)
  */
 export interface AgentRolloutMessage {
   timestamp: string;
@@ -113,6 +181,18 @@ export interface AgentRolloutMessage {
   name?: string;
   toolCalls?: unknown;
   toolCallId?: string;
+}
+
+/**
+ * Agent rollout message response (snake_case for API)
+ */
+interface AgentRolloutMessageResponse {
+  timestamp: string;
+  role: string;
+  content: string;
+  name?: string;
+  tool_calls?: unknown;
+  tool_call_id?: string;
 }
 
 // ============================================================================
@@ -251,6 +331,100 @@ function broadcastToSession(sessionId: string, message: WsServerMessage): void {
 }
 
 // ============================================================================
+// Transformers (camelCase to snake_case)
+// ============================================================================
+
+/**
+ * Transform settings to snake_case
+ */
+function toSnakeCaseSettings(s: GroupChatSettings): GroupChatSettingsResponse {
+  return {
+    broadcast_mode: s.broadcastMode,
+    show_thinking: s.showThinking,
+    history_limit: s.historyLimit,
+  };
+}
+
+/**
+ * Transform member to snake_case
+ */
+function toSnakeCaseMember(m: GroupChatMember): GroupChatMemberResponse {
+  return {
+    id: m.id,
+    member_type: m.type,
+    member_id: m.id,
+    display_name: m.displayName,
+    role: m.role,
+    model: m.model,
+    joined_at: m.joinedAt,
+    last_seen_at: m.lastSeenAt,
+  };
+}
+
+/**
+ * Transform group chat to snake_case
+ */
+function toSnakeCaseGroupChat(gc: GroupChat): GroupChatResponse {
+  return {
+    id: gc.id,
+    name: gc.name,
+    description: gc.description,
+    created_by: gc.createdBy,
+    created_at: gc.createdAt,
+    updated_at: gc.updatedAt,
+    settings: toSnakeCaseSettings(gc.settings),
+  };
+}
+
+/**
+ * Transform session to snake_case
+ */
+function toSnakeCaseSession(s: Session): SessionResponse {
+  return {
+    id: s.id,
+    group_chat_id: s.groupChatId,
+    title: s.title,
+    created_at: s.createdAt,
+    updated_at: s.updatedAt,
+    active_agents: s.activeAgents,
+    status: s.status,
+  };
+}
+
+/**
+ * Transform UI message to snake_case
+ */
+function toSnakeCaseUIMessage(m: UIMessage): UIMessageResponse {
+  return {
+    id: m.id,
+    type: m.type,
+    timestamp: m.timestamp,
+    sender_id: m.senderId,
+    sender_name: m.senderName,
+    content: m.content,
+    agent_id: m.agentId,
+    agent_name: m.agentName,
+    status: m.status,
+    event: m.event,
+    data: m.data,
+  };
+}
+
+/**
+ * Transform agent rollout message to snake_case
+ */
+function toSnakeCaseAgentMessage(m: AgentRolloutMessage): AgentRolloutMessageResponse {
+  return {
+    timestamp: m.timestamp,
+    role: m.role,
+    content: m.content,
+    name: m.name,
+    tool_calls: m.toolCalls,
+    tool_call_id: m.toolCallId,
+  };
+}
+
+// ============================================================================
 // Helper Functions
 // ============================================================================
 
@@ -309,7 +483,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       const chats = Array.from(groupChats.values());
       return {
         workspace_path: request.query.workspace_path,
-        group_chats: chats,
+        group_chats: chats.map(toSnakeCaseGroupChat),
       };
     }
   );
@@ -328,8 +502,8 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         return { error: `Group chat not found: ${id}` };
       }
       return {
-        group_chat: groupChat,
-        members: groupChat.members,
+        group_chat: toSnakeCaseGroupChat(groupChat),
+        members: groupChat.members.map(toSnakeCaseMember),
       };
     }
   );
@@ -379,8 +553,8 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
 
       reply.code(201);
       return {
-        group_chat: groupChat,
-        members: groupChatMembers,
+        group_chat: toSnakeCaseGroupChat(groupChat),
+        members: groupChatMembers.map(toSnakeCaseMember),
       };
     }
   );
@@ -417,7 +591,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         data: { groupChatId: id },
       });
 
-      return groupChat;
+      return toSnakeCaseGroupChat(groupChat);
     }
   );
 
@@ -473,7 +647,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         reply.code(404);
         return { error: `Group chat not found: ${id}` };
       }
-      return { members: groupChat.members };
+      return { members: groupChat.members.map(toSnakeCaseMember) };
     }
   );
 
@@ -515,7 +689,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       });
 
       reply.code(201);
-      return member;
+      return toSnakeCaseMember(member);
     }
   );
 
@@ -579,7 +753,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         (s) => s.groupChatId === id
       );
 
-      return { sessions: groupChatSessions };
+      return { sessions: groupChatSessions.map(toSnakeCaseSession) };
     }
   );
 
@@ -620,7 +794,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       uiMessages.set(sessionId, []);
 
       reply.code(201);
-      return session;
+      return toSnakeCaseSession(session);
     }
   );
 
@@ -658,7 +832,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         const limitedMessages = messages.slice(-limit);
 
         return {
-          messages: limitedMessages,
+          messages: limitedMessages.map(toSnakeCaseAgentMessage),
           view: "agent",
           agent_id,
           has_more: messages.length > limit,
@@ -670,7 +844,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       const limitedMessages = messages.slice(-limit);
 
       return {
-        messages: limitedMessages,
+        messages: limitedMessages.map(toSnakeCaseUIMessage),
         view: "ui",
         has_more: messages.length > limit,
       };
@@ -794,7 +968,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       }
 
       return {
-        message: userMessage,
+        message: toSnakeCaseUIMessage(userMessage),
         agents_triggered: agentsTriggered,
       };
     }

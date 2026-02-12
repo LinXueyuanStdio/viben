@@ -16,6 +16,7 @@
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import * as os from "node:os";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { agentManager } from "../../agents";
@@ -37,11 +38,14 @@ interface WorkspaceQuery {
 /**
  * Executor availability info
  */
-interface AvailabilityInfo {
-  status: "installed" | "not_found" | "login_detected";
-  version?: string;
-  path?: string;
-}
+/**
+ * Availability info (matching Rust gateway format)
+ * Uses tagged union with "type" field
+ */
+type AvailabilityInfo =
+  | { type: "LOGIN_DETECTED"; last_auth_timestamp: number }
+  | { type: "INSTALLATION_FOUND" }
+  | { type: "NOT_FOUND" };
 
 /**
  * Executor info with workspace context
@@ -319,11 +323,137 @@ function countSkills(claudeDir: string): number {
 
 /**
  * Get executor availability info
- * This is a simplified version - full implementation would check actual installations
+ * Checks if the executor is installed and available on the system
  */
-function getExecutorAvailability(_executorId: string): AvailabilityInfo {
-  // TODO: Implement actual availability checking
-  return { status: "not_found" };
+function getExecutorAvailability(executorId: string): AvailabilityInfo {
+  const homeDir = os.homedir();
+
+  switch (executorId) {
+    case "CLAUDE_CODE": {
+      // Check for Claude Code installation
+      // Claude Code stores its auth in ~/.claude/
+      const claudeDir = join(homeDir, ".claude");
+      const authFile = join(claudeDir, "config.json");
+      if (existsSync(authFile)) {
+        try {
+          const stat = statSync(authFile);
+          return {
+            type: "LOGIN_DETECTED",
+            last_auth_timestamp: Math.floor(stat.mtimeMs),
+          };
+        } catch {
+          // Fallthrough
+        }
+      }
+      if (existsSync(claudeDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "CODEX": {
+      // Check for Codex installation
+      const codexDir = join(homeDir, ".codex");
+      if (existsSync(codexDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "CURSOR_AGENT": {
+      // Check for Cursor installation
+      const cursorPaths = [
+        join(homeDir, ".cursor"),
+        join(homeDir, "Library/Application Support/Cursor"),
+      ];
+      for (const path of cursorPaths) {
+        if (existsSync(path)) {
+          return { type: "INSTALLATION_FOUND" };
+        }
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "AMP": {
+      // Check for AMP installation
+      const ampDir = join(homeDir, ".amp");
+      if (existsSync(ampDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "GEMINI": {
+      // Check for Gemini CLI installation
+      const geminiDir = join(homeDir, ".gemini");
+      if (existsSync(geminiDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "OPENCODE": {
+      // Check for OpenCode installation
+      const opencodeDir = join(homeDir, ".opencode");
+      if (existsSync(opencodeDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "QWEN_CODE": {
+      // Check for Qwen Code installation
+      const qwenDir = join(homeDir, ".qwen");
+      if (existsSync(qwenDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "COPILOT": {
+      // Check for GitHub Copilot installation (VS Code extension)
+      const copilotPaths = [
+        join(homeDir, ".config/github-copilot"),
+        join(homeDir, "Library/Application Support/github-copilot"),
+      ];
+      for (const path of copilotPaths) {
+        if (existsSync(path)) {
+          return { type: "INSTALLATION_FOUND" };
+        }
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "WINDSURF": {
+      // Check for Windsurf installation
+      const windsurfDir = join(homeDir, ".windsurf");
+      if (existsSync(windsurfDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "GOOSE": {
+      // Check for Goose installation
+      const gooseDir = join(homeDir, ".goose");
+      if (existsSync(gooseDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    case "AIDER": {
+      // Check for Aider installation
+      const aiderDir = join(homeDir, ".aider");
+      if (existsSync(aiderDir)) {
+        return { type: "INSTALLATION_FOUND" };
+      }
+      return { type: "NOT_FOUND" };
+    }
+
+    default:
+      return { type: "NOT_FOUND" };
+  }
 }
 
 // ============================================================================
@@ -699,7 +829,7 @@ async function listChatItems(
     // Only include executors that have config
     if (hasWorkspaceConfig) {
       const availability = getExecutorAvailability(id);
-      const isInstalled = availability.status === "installed" || availability.status === "login_detected";
+      const isInstalled = availability.type === "INSTALLATION_FOUND" || availability.type === "LOGIN_DETECTED";
 
       items.push({
         id,

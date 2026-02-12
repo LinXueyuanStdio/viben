@@ -13,7 +13,57 @@ import type {
   NotificationMode,
   CreateChannelOptions,
   UpdateChannelOptions,
+  Channel,
 } from "../../channels";
+
+// ============================================================================
+// Response Types (snake_case to match Rust gateway)
+// ============================================================================
+
+/**
+ * Agent binding response (snake_case for API)
+ */
+interface AgentBindingResponse {
+  binding_type: string;
+  id: string;
+  name: string;
+  workspace_path?: string;
+}
+
+/**
+ * Channel response (snake_case to match Rust gateway)
+ */
+interface ChannelResponse {
+  id: string;
+  channel_type: string;
+  name: string;
+  config: Record<string, unknown>;
+  is_default: boolean;
+  enabled: boolean;
+  notification_mode: string;
+  agent_binding?: AgentBindingResponse;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Transform channel to API response format
+ * Note: Channel interface already uses snake_case internally
+ */
+function toSnakeCaseChannel(channel: Channel): ChannelResponse {
+  return {
+    id: channel.id,
+    channel_type: channel.type,
+    name: channel.name,
+    config: channel.config || {},
+    is_default: channel.is_default || false,
+    enabled: channel.enabled !== false,
+    notification_mode: channel.notification_mode || "none",
+    agent_binding: undefined, // Agent binding not yet implemented in TypeScript
+    created_at: channel.created_at ? new Date(channel.created_at).toISOString() : new Date().toISOString(),
+    updated_at: channel.updated_at ? new Date(channel.updated_at).toISOString() : new Date().toISOString(),
+  };
+}
 
 /**
  * Register channel routes
@@ -22,7 +72,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   // List all channels
   fastify.get("/api/channels", async () => {
     const channels = await channelManager.listChannels();
-    return { channels };
+    return { channels: channels.map(toSnakeCaseChannel) };
   });
 
   // Get a specific channel
@@ -33,7 +83,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
       reply.code(404);
       return { error: `Channel not found: ${id}` };
     }
-    return channel;
+    return toSnakeCaseChannel(channel);
   });
 
   // Create a new channel
@@ -80,7 +130,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
       };
       const channel = await channelManager.createChannel(options);
       reply.code(201);
-      return channel;
+      return toSnakeCaseChannel(channel);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to create channel" };
@@ -99,7 +149,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
     const updates = request.body;
     try {
       const channel = await channelManager.updateChannel(id, updates);
-      return channel;
+      return toSnakeCaseChannel(channel);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to update channel" };
@@ -129,7 +179,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
     const { id } = request.params;
     try {
       const channel = await channelManager.setDefaultChannel(id);
-      return channel;
+      return toSnakeCaseChannel(channel);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to set default channel" };

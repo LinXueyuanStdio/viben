@@ -62,6 +62,7 @@ async fn test_agent_manager_create_agent() {
         temperature: Some(0.7),
         max_tokens: Some(4096),
         from_template: None,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -90,6 +91,7 @@ async fn test_agent_manager_create_agent_with_custom_id() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -114,6 +116,7 @@ async fn test_agent_manager_create_agent_id_from_name() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -140,6 +143,7 @@ async fn test_agent_manager_create_agent_duplicate() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options.clone()).await.unwrap();
@@ -166,6 +170,7 @@ async fn test_agent_manager_get_agent() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -206,6 +211,7 @@ async fn test_agent_manager_list_agents() {
             temperature: None,
             max_tokens: None,
             from_template: None,
+            base_path: None,
         };
         AgentManager::create_agent(options).await.unwrap();
     }
@@ -231,6 +237,7 @@ async fn test_agent_manager_remove_agent() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -270,6 +277,7 @@ async fn test_agent_manager_remove_default_agent() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -300,6 +308,7 @@ async fn test_agent_manager_update_agent() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -364,6 +373,7 @@ async fn test_agent_manager_set_default() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -429,6 +439,7 @@ async fn test_agent_manager_create_template() {
         temperature: Some(0.7),
         max_tokens: Some(2048),
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -472,6 +483,7 @@ async fn test_agent_manager_create_template_duplicate() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -504,6 +516,7 @@ async fn test_agent_manager_get_template() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -549,6 +562,7 @@ async fn test_agent_manager_create_from_template() {
         temperature: Some(0.8),
         max_tokens: Some(4096),
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -586,6 +600,7 @@ async fn test_agent_manager_create_agent_from_template_option() {
         temperature: Some(0.5),
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -602,6 +617,7 @@ async fn test_agent_manager_create_agent_from_template_option() {
         temperature: None,
         max_tokens: None,
         from_template: Some("tmpl".to_string()),
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -633,6 +649,7 @@ async fn test_agent_manager_list_sessions_empty() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -658,6 +675,7 @@ async fn test_agent_manager_create_session() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -688,6 +706,7 @@ async fn test_agent_manager_create_session_no_name() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -725,6 +744,7 @@ async fn test_agent_manager_list_sessions() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -761,6 +781,7 @@ async fn test_agent_manager_remove_session() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -794,6 +815,7 @@ async fn test_agent_manager_remove_session_not_found() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -823,6 +845,7 @@ async fn test_agent_manager_get_memory_empty() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -850,6 +873,7 @@ async fn test_agent_manager_append_memory() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -879,6 +903,7 @@ async fn test_agent_manager_append_memory_multiple() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     AgentManager::create_agent(options).await.unwrap();
@@ -931,6 +956,7 @@ async fn test_agent_manager_list_templates_with_templates() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
     AgentManager::create_agent(options).await.unwrap();
 
@@ -967,6 +993,7 @@ async fn test_agent_manager_list_sessions_dir_not_exists() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
     AgentManager::create_agent(options).await.unwrap();
 
@@ -1001,6 +1028,7 @@ async fn test_agent_manager_create_agent_empty_name_generates_id() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -1028,6 +1056,7 @@ async fn test_agent_manager_create_agent_very_long_name() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
 
     let agent = AgentManager::create_agent(options).await.unwrap();
@@ -1069,6 +1098,7 @@ async fn test_agent_manager_list_agents_with_non_dir_entries() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
     AgentManager::create_agent(options).await.unwrap();
 
@@ -1097,6 +1127,7 @@ async fn test_agent_manager_list_templates_with_non_dir_entries() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
     AgentManager::create_agent(options).await.unwrap();
     AgentManager::create_template("template-src", "real-template")
@@ -1133,6 +1164,7 @@ async fn test_agent_manager_list_sessions_with_non_dir_entries() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     };
     AgentManager::create_agent(options).await.unwrap();
 

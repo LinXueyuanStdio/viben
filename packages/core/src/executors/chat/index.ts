@@ -20,7 +20,18 @@ export type {
 
 // Implementations
 export { SpawnChatProxy, createSpawnChatProxy } from "./spawn-proxy";
-export { SdkChatProxy, createSdkChatProxy, isSdkAvailable } from "./sdk-proxy";
+export {
+  SdkChatProxy,
+  createSdkChatProxy,
+  isSdkAvailable,
+  // SSE types for streaming
+  type SSEMessage,
+  type SSETextMessage,
+  type SSEToolUseMessage,
+  type SSEToolResultMessage,
+  type SSEResultMessage,
+  type SSEErrorMessage,
+} from "./sdk-proxy";
 
 // Factory
 export {

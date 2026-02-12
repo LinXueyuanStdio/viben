@@ -9,6 +9,8 @@
  * - HistoryService: Agent history management
  * - MessageBus: Channel message routing
  * - ServiceManager: Background service management (MCP servers, gateway, viben services)
+ * - BackgroundTaskManager: Background task management with observer pattern
+ * - AgentService: Agent session lifecycle and plan approval management
  */
 
 // Event service
@@ -83,3 +85,18 @@ export {
   type WatchLogsOptions,
   type ServiceDefaults,
 } from "./service-manager";
+
+// Background tasks
+export {
+  BackgroundTaskManager,
+  backgroundTaskManager,
+  type BackgroundTask,
+} from "./background-tasks";
+
+// Agent service
+export {
+  AgentService,
+  agentService,
+  type AgentSession,
+  type AgentPlan,
+} from "./agent";

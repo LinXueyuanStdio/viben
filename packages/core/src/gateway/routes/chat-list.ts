@@ -26,13 +26,16 @@ type ChatItemType = "group_chat" | "executor" | "agent";
  */
 interface ChatListItem {
   id: string;
-  type: ChatItemType;
+  item_type: ChatItemType;
   name: string;
   description?: string;
   last_active?: string;
   unread_count?: number;
   workspace_path?: string;
   is_global?: boolean;
+  source?: string;
+  icon_type?: string;
+  metadata?: Record<string, unknown>;
   // Executor-specific
   is_available?: boolean;
   supports_mcp?: boolean;
@@ -55,7 +58,9 @@ interface ChatListCounts {
  * Chat list response
  */
 interface ChatListResponse {
+  workspace_path: string;
   items: ChatListItem[];
+  total: number;
   counts: ChatListCounts;
 }
 
@@ -172,13 +177,20 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
 
           items.push({
             id: executor.id,
-            type: "executor",
+            item_type: "executor",
             name: executor.name,
             description: `${executor.name} CLI`,
+            source: hasWorkspaceConfig ? "workspace" : "global",
+            workspace_path: hasWorkspaceConfig ? workspacePath : globalPath,
+            icon_type: executor.id.toLowerCase(),
             is_available: true, // Would need to check actual availability
             supports_mcp: executor.supportsMcp,
             session_count: sessionCount,
             last_active: undefined, // Would need to check session files
+            metadata: {
+              executor_type: executor.id,
+              is_installed: true,
+            },
           });
         }
       }
@@ -189,13 +201,19 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
         for (const agent of agents) {
           items.push({
             id: agent.id,
-            type: "agent",
+            item_type: "agent",
             name: agent.name || agent.id,
             description: agent.systemPrompt?.substring(0, 100),
+            source: "global",
+            workspace_path: globalPath,
+            icon_type: "viben",
             model: agent.model,
             provider: agent.provider,
             is_global: true,
             session_count: 0, // Would need to check session store
+            metadata: {
+              agent_type: "viben",
+            },
           });
         }
       } catch {
@@ -214,10 +232,15 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
               if (!items.some((i) => i.id === agentId)) {
                 items.push({
                   id: agentId,
-                  type: "agent",
+                  item_type: "agent",
                   name: entry.name,
+                  source: "workspace",
                   workspace_path: workspacePath,
+                  icon_type: "viben",
                   is_global: false,
+                  metadata: {
+                    agent_type: "viben",
+                  },
                 });
               }
             }
@@ -237,13 +260,15 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
 
       // Calculate counts
       const counts: ChatListCounts = {
-        group_chats: items.filter((i) => i.type === "group_chat").length,
-        executors: items.filter((i) => i.type === "executor").length,
-        agents: items.filter((i) => i.type === "agent").length,
+        group_chats: items.filter((i) => i.item_type === "group_chat").length,
+        executors: items.filter((i) => i.item_type === "executor").length,
+        agents: items.filter((i) => i.item_type === "agent").length,
       };
 
       return {
+        workspace_path: workspacePath,
         items,
+        total: items.length,
         counts,
       };
     }

@@ -2,8 +2,23 @@
  * Task routes
  */
 import type { FastifyInstance } from "fastify";
-import { TaskModel, type CreateTask, type UpdateTask } from "../../db";
+import { TaskModel, type Task, type CreateTask, type UpdateTask } from "../../db";
 import type { AppState } from "../state";
+
+/**
+ * Transform task to snake_case response format (to match Rust gateway)
+ */
+function toSnakeCaseTask(task: Task) {
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    agent_id: task.agentId,
+    created_at: task.createdAt,
+    updated_at: task.updatedAt,
+  };
+}
 
 /**
  * Register task routes
@@ -12,7 +27,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   // List all tasks
   fastify.get("/api/tasks", async () => {
     const tasks = await TaskModel.findAll();
-    return { tasks };
+    return { tasks: tasks.map(toSnakeCaseTask) };
   });
 
   // Get a specific task
@@ -23,7 +38,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       reply.code(404);
       return { error: `Task not found: ${id}` };
     }
-    return { task };
+    // Return task directly (not wrapped) to match Rust gateway
+    return toSnakeCaseTask(task);
   });
 
   // Create a new task
@@ -33,7 +49,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const task = await TaskModel.create(input);
       state.events.taskCreated(task);
       reply.code(201);
-      return { task };
+      // Return task directly (not wrapped) to match Rust gateway
+      return toSnakeCaseTask(task);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to create task" };
@@ -54,7 +71,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         state.events.taskStatusChanged(id, existingTask.status, updates.status);
       }
 
-      return { task };
+      // Return task directly (not wrapped) to match Rust gateway
+      return toSnakeCaseTask(task);
     } catch (e) {
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to update task" };
@@ -68,7 +86,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
       const deleted = await TaskModel.delete(id);
       if (deleted) {
         state.events.taskDeleted(id);
-        return { success: true };
+        return { deleted: id };
       } else {
         reply.code(404);
         return { error: `Task not found: ${id}` };
@@ -83,6 +101,6 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   fastify.get<{ Params: { agentId: string } }>("/api/agents/:agentId/tasks", async (request) => {
     const { agentId } = request.params;
     const tasks = await TaskModel.findByAgentId(agentId);
-    return { tasks };
+    return { tasks: tasks.map(toSnakeCaseTask) };
   });
 }

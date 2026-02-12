@@ -103,6 +103,7 @@ async fn test_cli_agent_list_with_agents() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -117,6 +118,7 @@ async fn test_cli_agent_list_with_agents() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -148,6 +150,7 @@ async fn test_cli_agent_list_with_agents_json() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -179,6 +182,7 @@ async fn test_cli_agent_list_with_default_marked() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -447,6 +451,7 @@ async fn test_cli_agent_show_existing() {
         temperature: Some(0.7),
         max_tokens: Some(4096),
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -479,6 +484,7 @@ async fn test_cli_agent_show_existing_json() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -548,6 +554,7 @@ async fn test_cli_agent_show_default_agent() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -586,6 +593,7 @@ async fn test_cli_agent_remove_existing() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -622,6 +630,7 @@ async fn test_cli_agent_remove_existing_json() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -673,6 +682,7 @@ async fn test_cli_agent_remove_default_clears_default() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -715,6 +725,7 @@ async fn test_cli_agent_update_name() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -754,6 +765,7 @@ async fn test_cli_agent_update_name_json() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -790,6 +802,7 @@ async fn test_cli_agent_update_model() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -829,6 +842,7 @@ async fn test_cli_agent_update_provider() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -871,6 +885,7 @@ async fn test_cli_agent_update_system_prompt() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -913,6 +928,7 @@ async fn test_cli_agent_update_multiple_fields() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -977,6 +993,7 @@ async fn test_cli_agent_update_no_changes() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -1019,6 +1036,7 @@ async fn test_cli_agent_set_default() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -1054,6 +1072,7 @@ async fn test_cli_agent_set_default_json() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -1105,6 +1124,7 @@ async fn test_cli_agent_set_default_changes_default() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -1119,6 +1139,7 @@ async fn test_cli_agent_set_default_changes_default() {
         temperature: None,
         max_tokens: None,
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();
@@ -1422,6 +1443,7 @@ async fn test_cli_agent_json_output_format() {
         temperature: Some(0.7),
         max_tokens: Some(4096),
         from_template: None,
+        base_path: None,
     })
     .await
     .unwrap();

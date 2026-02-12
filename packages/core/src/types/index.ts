@@ -261,6 +261,7 @@ export interface Model {
   id: string;
   name: string;
   provider: string;
+  description?: string;
   contextLength?: number;
   maxOutputTokens?: number;
   inputPrice?: number;
