@@ -113,7 +113,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   ) => {
     const { id } = request.params;
     try {
-      await channelManager.deleteChannel(id);
+      await channelManager.removeChannel(id);
       return { deleted: id };
     } catch (e) {
       reply.code(400);
@@ -128,7 +128,7 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   ) => {
     const { id } = request.params;
     try {
-      const channel = await channelManager.setDefault(id);
+      const channel = await channelManager.setDefaultChannel(id);
       return channel;
     } catch (e) {
       reply.code(400);

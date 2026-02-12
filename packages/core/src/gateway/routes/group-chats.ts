@@ -948,7 +948,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
           });
 
           // Handle error
-          socket.on("error", (err) => {
+          socket.on("error", (err: Error) => {
             console.error("[GroupChat WebSocket] Error:", err);
             const connections = wsConnections.get(sessionId);
             if (connections) {

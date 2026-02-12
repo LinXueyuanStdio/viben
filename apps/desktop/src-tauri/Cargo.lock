@@ -2972,6 +2972,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "napi-build"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d376940fd5b723c6893cd1ee3f33abbfd86acb1cd1ec079f3ab04a2a3bc4d3b1"
+
+[[package]]
 name = "native-tls"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6664,6 +6670,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
+name = "viben-agent-organization"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "viben-core"
 version = "0.1.0"
 dependencies = [
@@ -6683,6 +6702,7 @@ dependencies = [
  "futures-util",
  "json-patch",
  "lazy_static",
+ "napi-build",
  "notify-rust",
  "portable-pty",
  "regex",
@@ -6704,6 +6724,7 @@ dependencies = [
  "tracing-subscriber",
  "ts-rs",
  "uuid",
+ "viben-agent-organization",
  "which",
 ]
 
