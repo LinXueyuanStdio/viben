@@ -1,4 +1,5 @@
 //! Common shell script utilities
+//! Updated: 2026-02-12
 
 pub const PATHS: &str = include_str!("paths.sh");
 pub const DEVELOPER: &str = include_str!("developer.sh");

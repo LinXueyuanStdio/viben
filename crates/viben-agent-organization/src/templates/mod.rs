@@ -5,6 +5,7 @@
 
 // Re-export submodules
 pub mod claude;
+pub mod cursor;
 pub mod markdown;
 pub mod viben;
 

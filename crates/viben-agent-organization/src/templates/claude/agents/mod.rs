@@ -1,4 +1,5 @@
 //! Agent definitions for multi-agent pipeline
+//! Updated: 2026-02-12
 
 pub const CHECK_MD: &str = include_str!("check.md");
 pub const DEBUG_MD: &str = include_str!("debug.md");

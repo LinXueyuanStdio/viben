@@ -1,4 +1,5 @@
 //! Multi-agent pipeline scripts
+//! Updated: 2026-02-12
 
 pub const START: &str = include_str!("start.sh");
 pub const CLEANUP: &str = include_str!("cleanup.sh");

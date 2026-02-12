@@ -6,6 +6,8 @@
 use crate::error::{Error, Result};
 use crate::templates;
 use chrono::Local;
+use sha2::{Digest, Sha256};
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -49,6 +51,7 @@ impl Default for InitOptions {
 /// This creates:
 /// - `.viben/` directory with workflow files, scripts, specs, and workspace
 /// - `.claude/` directory with agents, commands, hooks, and settings.json
+/// - `.cursor/` directory with commands
 /// - `AGENTS.md` in the project root
 pub fn init_viben_agent_organization(target_dir: &Path, options: InitOptions) -> Result<()> {
     // Validate developer name
@@ -60,8 +63,17 @@ pub fn init_viben_agent_organization(target_dir: &Path, options: InitOptions) ->
     // Create .claude directory structure
     create_claude_directory(target_dir, &options)?;
 
+    // Create .cursor directory structure
+    create_cursor_directory(target_dir, &options)?;
+
     // Create AGENTS.md
     create_agents_md(target_dir, &options)?;
+
+    // Create bootstrap task
+    create_bootstrap_task(target_dir, &options)?;
+
+    // Create template hashes file
+    create_template_hashes(target_dir, &options)?;
 
     Ok(())
 }
@@ -133,10 +145,16 @@ fn create_viben_directory(target_dir: &Path, options: &InitOptions) -> Result<()
         options,
     )?;
 
-    // Write developer identity file
+    // Write developer identity file (same format as Trellis)
+    let now = Local::now();
+    let developer_content = format!(
+        "name={}\ninitialized_at={}\n",
+        options.developer_name,
+        now.to_rfc3339()
+    );
     write_file(
         &viben_dir.join(".developer"),
-        &options.developer_name,
+        &developer_content,
         options,
     )?;
 
@@ -192,6 +210,21 @@ fn create_claude_directory(target_dir: &Path, options: &InitOptions) -> Result<(
     Ok(())
 }
 
+/// Create .cursor directory structure
+fn create_cursor_directory(target_dir: &Path, options: &InitOptions) -> Result<()> {
+    let cursor_dir = target_dir.join(".cursor");
+
+    // Create commands directory
+    create_dir_all(&cursor_dir.join("commands"), options)?;
+
+    // Write commands (flattened with viben- prefix)
+    for (name, content) in templates::cursor::commands::get_all() {
+        write_file(&cursor_dir.join("commands").join(name), content, options)?;
+    }
+
+    Ok(())
+}
+
 /// Create AGENTS.md in project root
 fn create_agents_md(target_dir: &Path, options: &InitOptions) -> Result<()> {
     write_file(
@@ -199,6 +232,83 @@ fn create_agents_md(target_dir: &Path, options: &InitOptions) -> Result<()> {
         templates::markdown::AGENTS_MD,
         options,
     )
+}
+
+/// Create bootstrap task for first-time setup
+fn create_bootstrap_task(target_dir: &Path, options: &InitOptions) -> Result<()> {
+    let viben_dir = target_dir.join(".viben");
+    let task_dir = viben_dir.join("tasks").join("00-bootstrap-guidelines");
+
+    create_dir_all(&task_dir, options)?;
+
+    // Create task.json
+    let task_json = serde_json::json!({
+        "title": "Bootstrap Project Guidelines",
+        "slug": "bootstrap-guidelines",
+        "status": "pending",
+        "priority": "P1",
+        "assignee": &options.developer_name,
+        "branch": null,
+        "scope": null,
+        "created_at": Local::now().to_rfc3339(),
+        "dev_type": match options.project_type {
+            ProjectType::Frontend => "frontend",
+            ProjectType::Backend => "backend",
+            ProjectType::Fullstack => "fullstack",
+        }
+    });
+
+    write_file(
+        &task_dir.join("task.json"),
+        &serde_json::to_string_pretty(&task_json).unwrap(),
+        options,
+    )?;
+
+    // Create prd.md
+    let prd_content = r#"# Bootstrap Project Guidelines
+
+## Objective
+
+Fill in the placeholder guidelines in `.viben/spec/` with project-specific information.
+
+## Tasks
+
+1. **Backend Guidelines** (if applicable)
+   - [ ] Update `spec/backend/directory-structure.md` with your project's structure
+   - [ ] Update `spec/backend/database-guidelines.md` with your database conventions
+   - [ ] Update `spec/backend/error-handling.md` with your error patterns
+   - [ ] Update `spec/backend/logging-guidelines.md` with your logging setup
+   - [ ] Update `spec/backend/quality-guidelines.md` with your quality standards
+
+2. **Frontend Guidelines** (if applicable)
+   - [ ] Update `spec/frontend/directory-structure.md` with your project's structure
+   - [ ] Update `spec/frontend/component-guidelines.md` with your component patterns
+   - [ ] Update `spec/frontend/state-management.md` with your state approach
+   - [ ] Update `spec/frontend/type-safety.md` with your TypeScript conventions
+   - [ ] Update `spec/frontend/hook-guidelines.md` with your custom hooks
+   - [ ] Update `spec/frontend/quality-guidelines.md` with your quality standards
+
+3. **Review Guides**
+   - [ ] Read `spec/guides/cross-layer-thinking-guide.md`
+   - [ ] Read `spec/guides/code-reuse-thinking-guide.md`
+
+## Acceptance Criteria
+
+- [ ] All placeholder text replaced with project-specific content
+- [ ] Guidelines reflect actual project conventions
+- [ ] Team members can follow guidelines without ambiguity
+"#;
+
+    write_file(&task_dir.join("prd.md"), prd_content, options)?;
+
+    // Set as current task
+    write_file(
+        &viben_dir.join(".current-task"),
+        ".viben/tasks/00-bootstrap-guidelines",
+        options,
+    )?;
+
+    Ok(())
 }
 
 /// Write shell scripts
@@ -413,6 +523,84 @@ fn set_executable(path: &Path) -> Result<()> {
         path: path.to_path_buf(),
         source: e,
     })
+}
+
+/// Helper: Calculate SHA256 hash of content
+fn sha256_hash(content: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(content.as_bytes());
+    hex::encode(hasher.finalize())
+}
+
+/// Create .template-hashes.json file with SHA256 hashes of all templates
+fn create_template_hashes(target_dir: &Path, options: &InitOptions) -> Result<()> {
+    let viben_dir = target_dir.join(".viben");
+    let mut hashes: BTreeMap<String, String> = BTreeMap::new();
+
+    // .viben/ root files
+    hashes.insert(
+        ".viben/workflow.md".to_string(),
+        sha256_hash(templates::viben::WORKFLOW_MD),
+    );
+    hashes.insert(
+        ".viben/worktree.yaml".to_string(),
+        sha256_hash(templates::viben::WORKTREE_YAML),
+    );
+
+    // scripts/common/
+    for (name, content) in templates::viben::scripts::common::get_all() {
+        hashes.insert(format!(".viben/scripts/common/{}", name), sha256_hash(content));
+    }
+
+    // scripts/ main
+    for (name, content) in templates::viben::scripts::get_main_scripts() {
+        hashes.insert(format!(".viben/scripts/{}", name), sha256_hash(content));
+    }
+
+    // scripts/multi-agent/
+    for (name, content) in templates::viben::scripts::multi_agent::get_all() {
+        hashes.insert(
+            format!(".viben/scripts/multi-agent/{}", name),
+            sha256_hash(content),
+        );
+    }
+
+    // spec/guides/
+    for (name, content) in templates::viben::spec::guides::get_all() {
+        hashes.insert(format!(".viben/spec/guides/{}", name), sha256_hash(content));
+    }
+
+    // .claude/agents/
+    for (name, content) in templates::claude::agents::get_all() {
+        hashes.insert(format!(".claude/agents/{}", name), sha256_hash(content));
+    }
+
+    // .claude/commands/viben/
+    for (name, content) in templates::claude::commands::get_all() {
+        hashes.insert(format!(".claude/commands/viben/{}", name), sha256_hash(content));
+    }
+
+    // .claude/hooks/
+    for (name, content) in templates::claude::hooks::get_all() {
+        hashes.insert(format!(".claude/hooks/{}", name), sha256_hash(content));
+    }
+
+    // .claude/settings.json
+    hashes.insert(
+        ".claude/settings.json".to_string(),
+        sha256_hash(templates::claude::SETTINGS_JSON),
+    );
+
+    // .cursor/commands/
+    for (name, content) in templates::cursor::commands::get_all() {
+        hashes.insert(format!(".cursor/commands/{}", name), sha256_hash(content));
+    }
+
+    write_file(
+        &viben_dir.join(".template-hashes.json"),
+        &serde_json::to_string_pretty(&hashes).unwrap(),
+        options,
+    )
 }
 
 #[cfg(test)]

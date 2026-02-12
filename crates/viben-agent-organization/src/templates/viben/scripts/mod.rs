@@ -1,4 +1,5 @@
 //! Shell scripts for Viben workflow automation
+//! Updated: 2026-02-12
 
 pub mod common;
 pub mod multi_agent;
