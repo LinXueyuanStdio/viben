@@ -190,7 +190,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  placeholder="Paste code from viben://oauth?code=..."
+                  placeholder={t("auth.oauthCodePlaceholder", "Paste code from viben://oauth?code=...")}
                   value={oauthCode}
                   onChange={(e) => setOauthCode(e.target.value)}
                   disabled={isLoading}

@@ -32,12 +32,12 @@ export function registerServiceCommand(program: Command): void {
   serviceCmd
     .command('status [name]')
     .description('Show service status')
-    .action((name: string | undefined) => {
+    .action(async (name: string | undefined) => {
       const ctx = getContext(program);
 
       try {
         const options: StatusOptions = { name };
-        showServiceStatus(ctx, options);
+        await showServiceStatus(ctx, options);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -133,7 +133,7 @@ export function registerServiceCommand(program: Command): void {
     .option('-f, --follow', 'Follow log output')
     .option('-n, --lines <number>', 'Number of lines to show', '100')
     .option('--clear', 'Clear service logs')
-    .action((name: string, options: ServiceOptions) => {
+    .action(async (name: string, options: ServiceOptions) => {
       const ctx = getContext(program);
 
       try {
@@ -144,7 +144,7 @@ export function registerServiceCommand(program: Command): void {
           clear: options.clear,
         };
 
-        showServiceLogs(ctx, logsOptions);
+        await showServiceLogs(ctx, logsOptions);
       } catch (error) {
         handleError(ctx, error);
       }

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +122,7 @@ interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, ...props }, ref) => {
+    const { t } = useTranslation();
     const { open, setOpen } = useDialogContext();
 
     // Handle escape key
@@ -179,7 +181,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
             onClick={() => setOpen(false)}
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t("common.close")}</span>
           </button>
         </div>
       </>

@@ -186,8 +186,8 @@ export function InspectorSampling({ makeRequest, enabled = true }: InspectorSamp
                   onChange={(e) => setNewMessageRole(e.target.value as "user" | "system")}
                   className="text-xs border rounded px-2 py-1 bg-background"
                 >
-                  <option value="user">User</option>
-                  <option value="system">System</option>
+                  <option value="user">{t("inspector.roleUser", "User")}</option>
+                  <option value="system">{t("inspector.roleSystem", "System")}</option>
                 </select>
               </div>
               <Textarea
@@ -300,7 +300,7 @@ export function InspectorSampling({ makeRequest, enabled = true }: InspectorSamp
                   )}
                   <div className="flex justify-between">
                     <span>{t("inspector.responseLength")}:</span>
-                    <span className="font-mono">{response.content.text.length} chars</span>
+                    <span className="font-mono">{response.content.text.length} {t("inspector.chars", "chars")}</span>
                   </div>
                 </div>
               </div>

@@ -110,3 +110,17 @@ export function getSharedMcpDir(): string {
 export function getSharedSkillsDir(): string {
   return join(getStateDir(), "skills");
 }
+
+/**
+ * Get the workspace templates directory path
+ */
+export function getWorkspaceTemplatesDir(): string {
+  return join(getStateDir(), "templates", "workspace");
+}
+
+/**
+ * Get the path to a specific workspace template's directory
+ */
+export function getWorkspaceTemplateDir(templateId: string): string {
+  return join(getWorkspaceTemplatesDir(), templateId);
+}

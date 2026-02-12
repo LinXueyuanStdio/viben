@@ -8,6 +8,7 @@
  * - ContainerService: Process spawning and management
  * - HistoryService: Agent history management
  * - MessageBus: Channel message routing
+ * - ServiceManager: Background service management (MCP servers, gateway, viben services)
  */
 
 // Event service
@@ -69,3 +70,16 @@ export {
   type OutboundMessage,
   type InboundMessageHandler,
 } from "./message-bus";
+
+// Service manager
+export {
+  ServiceManager,
+  serviceManager,
+  type ServiceType,
+  type ServiceStatus,
+  type ServiceInfo,
+  type ServiceProcess,
+  type StartServiceOptions,
+  type WatchLogsOptions,
+  type ServiceDefaults,
+} from "./service-manager";

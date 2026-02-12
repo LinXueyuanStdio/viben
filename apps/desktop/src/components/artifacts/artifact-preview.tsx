@@ -217,7 +217,7 @@ export function ArtifactPreview({
               {t("chat.noArtifacts")}
             </h3>
             <p className="text-muted-foreground/70 mt-1 text-xs">
-              Select an artifact from the sidebar to preview
+              {t("artifacts.selectToPreview", "Select an artifact from the sidebar to preview")}
             </p>
           </div>
         </div>
@@ -257,7 +257,7 @@ export function ArtifactPreview({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>Open in {openWithApp.name}</p>
+                  <p>{t("artifacts.openIn", "Open in {{name}}", { name: openWithApp.name })}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -273,7 +273,7 @@ export function ArtifactPreview({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  <p>Open in Editor</p>
+                  <p>{t("artifacts.openInEditor", "Open in Editor")}</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -288,7 +288,7 @@ export function ArtifactPreview({
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>{isFullscreen ? "Exit Fullscreen" : "Fullscreen"}</p>
+                <p>{isFullscreen ? t("artifacts.exitFullscreen", "Exit Fullscreen") : t("artifacts.fullscreen", "Fullscreen")}</p>
               </TooltipContent>
             </Tooltip>
 
@@ -326,7 +326,7 @@ export function ArtifactPreview({
                 )}
               >
                 <Eye className="size-3.5" />
-                Preview
+                {t("artifacts.preview", "Preview")}
               </button>
               <button
                 onClick={() => setViewMode("code")}
@@ -338,7 +338,7 @@ export function ArtifactPreview({
                 )}
               >
                 <Code className="size-3.5" />
-                Code
+                {t("artifacts.code", "Code")}
               </button>
             </div>
           )}
@@ -346,7 +346,7 @@ export function ArtifactPreview({
           {!hasPreview && hasCodeView && (
             <div className="bg-muted text-foreground flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium">
               <Code className="size-3.5" />
-              Code
+              {t("artifacts.code", "Code")}
             </div>
           )}
 
@@ -400,6 +400,8 @@ function PreviewContent({
   iframeSrc: string | null;
   iframeRef: React.RefObject<HTMLIFrameElement | null>;
 }) {
+  const { t } = useTranslation();
+
   // HTML Preview
   if (artifact.type === "html" && iframeSrc) {
     return (
@@ -512,10 +514,10 @@ function PreviewContent({
           <Code className="text-muted-foreground/50 size-8" />
         </div>
         <h3 className="text-muted-foreground text-sm font-medium">
-          Preview not available
+          {t("artifacts.previewNotAvailable", "Preview not available")}
         </h3>
         <p className="text-muted-foreground/70 mt-1 text-xs">
-          Switch to Code view to see the content
+          {t("artifacts.switchToCodeView", "Switch to Code view to see the content")}
         </p>
       </div>
     </div>

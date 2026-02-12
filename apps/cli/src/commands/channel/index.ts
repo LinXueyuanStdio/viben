@@ -10,12 +10,14 @@ import type { OutputContext } from '../../types';
 import { CliError } from '../../types';
 import { output } from '../../lib/output';
 import { listChannels } from './list';
+import { listChannelTypes } from './types';
 import { createChannel, type CreateChannelOptions } from './create';
 import { removeChannel, type RemoveChannelOptions } from './remove';
 import { enableChannel, disableChannel, type EnableChannelOptions } from './enable';
 import { showChannelStatus, type StatusOptions } from './status';
 import { configureChannel, type ConfigOptions } from './config';
 import { setDefault, type SetDefaultOptions } from './set-default';
+import { loginChannel, type LoginOptions } from './login';
 
 interface ChannelOptions {
   name?: string;
@@ -39,6 +41,20 @@ export function registerChannelCommand(program: Command): void {
   const channelCmd = program
     .command('channel')
     .description('Manage chat channels (Telegram, Discord, Feishu)');
+
+  // channel types
+  channelCmd
+    .command('types')
+    .description('List supported channel types')
+    .action(async () => {
+      const ctx = getContext(program);
+
+      try {
+        await listChannelTypes(ctx);
+      } catch (error) {
+        handleError(ctx, error);
+      }
+    });
 
   // channel list
   channelCmd
@@ -248,6 +264,29 @@ export function registerChannelCommand(program: Command): void {
         };
 
         await setDefault(ctx, setDefaultOptions);
+      } catch (error) {
+        handleError(ctx, error);
+      }
+    });
+
+  // channel login
+  channelCmd
+    .command('login')
+    .description('Login to WhatsApp channel (QR code scan)')
+    .requiredOption('-n, --name <id>', 'Channel ID (required)')
+    .action(async (options: ChannelOptions) => {
+      const ctx = getContext(program);
+
+      try {
+        if (!options.name) {
+          throw new CliError('Channel ID is required (-n, --name)', 'MISSING_ID');
+        }
+
+        const loginOptions: LoginOptions = {
+          name: options.name,
+        };
+
+        await loginChannel(ctx, loginOptions);
       } catch (error) {
         handleError(ctx, error);
       }

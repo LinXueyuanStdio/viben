@@ -484,3 +484,55 @@ pub async fn channel_send_message(id: String, chat_id: String, message: String) 
         error: result.error,
     })
 }
+
+/// Channel type information for NAPI
+#[napi(object)]
+pub struct ChannelTypeInfo {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub setup_difficulty: String,
+}
+
+/// Get all supported channel types
+#[napi]
+pub fn channel_list_types() -> Vec<ChannelTypeInfo> {
+    vec![
+        ChannelTypeInfo {
+            id: "telegram".to_string(),
+            name: "Telegram".to_string(),
+            description: "Telegram Bot API integration".to_string(),
+            setup_difficulty: "easy".to_string(),
+        },
+        ChannelTypeInfo {
+            id: "discord".to_string(),
+            name: "Discord".to_string(),
+            description: "Discord Bot integration".to_string(),
+            setup_difficulty: "medium".to_string(),
+        },
+        ChannelTypeInfo {
+            id: "feishu".to_string(),
+            name: "Feishu".to_string(),
+            description: "Feishu (Lark) Bot integration".to_string(),
+            setup_difficulty: "medium".to_string(),
+        },
+        ChannelTypeInfo {
+            id: "whatsapp".to_string(),
+            name: "WhatsApp".to_string(),
+            description: "WhatsApp via bridge integration".to_string(),
+            setup_difficulty: "hard".to_string(),
+        },
+        ChannelTypeInfo {
+            id: "slack".to_string(),
+            name: "Slack".to_string(),
+            description: "Slack Bot integration".to_string(),
+            setup_difficulty: "medium".to_string(),
+        },
+        ChannelTypeInfo {
+            id: "webhook".to_string(),
+            name: "Webhook".to_string(),
+            description: "Generic HTTP webhook integration".to_string(),
+            setup_difficulty: "easy".to_string(),
+        },
+    ]
+}

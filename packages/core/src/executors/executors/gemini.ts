@@ -12,6 +12,8 @@ import type {
   StandardCodingAgentExecutor,
   AgentCapability,
   AvailabilityInfo,
+  ChatOptions,
+  ChatSpawnResult,
 } from "../types";
 import { ExecutorError } from "../../error";
 import { which, whichSync } from "../utils";
@@ -96,6 +98,84 @@ export class Gemini implements StandardCodingAgentExecutor {
 
   capabilities(): AgentCapability[] {
     return ["SESSION_FORK"];
+  }
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat(): boolean {
+    return true;
+  }
+
+  /**
+   * Get the CLI command name used for chat
+   */
+  getChatCommand(): string {
+    return "gemini";
+  }
+
+  /**
+   * Spawn a non-interactive chat process with transparent I/O streaming.
+   */
+  async spawnChat(options: ChatOptions): Promise<ChatSpawnResult> {
+    const {
+      prompt,
+      cwd = process.cwd(),
+      inputFormat = "text",
+      outputFormat = "text",
+      verbose = false,
+      model,
+      env: extraEnv = {},
+    } = options;
+
+    const programPath = await which("gemini");
+    if (!programPath) {
+      throw ExecutorError.executableNotFound("gemini");
+    }
+
+    const args: string[] = [];
+
+    // Gemini uses --prompt for non-interactive mode
+    if (prompt) {
+      args.push("--prompt", prompt);
+    }
+
+    // Model selection
+    if (model || this.config.model) {
+      args.push("--model", model || this.config.model!);
+    }
+
+    // Format arguments (Gemini may support different format flags)
+    if (outputFormat === "stream-json") {
+      args.push("--output-format", "json");
+    }
+
+    if (verbose) {
+      args.push("--verbose");
+    }
+
+    const spawnEnv = {
+      ...process.env,
+      ...this.config.env,
+      ...extraEnv,
+    };
+
+    const child = spawn(programPath, args, {
+      cwd,
+      env: spawnEnv,
+      stdio: "inherit",
+    });
+
+    const exitPromise = new Promise<number>((resolve, reject) => {
+      child.on("exit", (code) => {
+        resolve(code ?? 1);
+      });
+      child.on("error", (err) => {
+        reject(err);
+      });
+    });
+
+    return { child, exitPromise };
   }
 }
 

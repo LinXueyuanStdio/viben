@@ -29,7 +29,27 @@ import type {
 } from "../types";
 import type { AgentConfigFile, SessionFile } from "./types";
 
+// Re-export types
 export * from "./types";
+
+// Export template management
+export {
+  TemplateManager,
+  templateManager,
+  type TemplateConfigFile,
+  type CreateTemplateOptions,
+  type ApplyTemplateOptions,
+} from "./templates";
+
+// Export memory management
+export {
+  MemoryManager,
+  memoryManager,
+  type MemoryContent,
+  type DailyLogContent,
+  type ParsedLogEntry,
+  type AppendLogOptions,
+} from "./memory";
 
 /**
  * AgentManager handles agent CRUD operations

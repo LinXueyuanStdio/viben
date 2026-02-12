@@ -14,6 +14,10 @@ export type {
   ExecutorConfig,
   ExecutorApprovalService,
   StandardCodingAgentExecutor,
+  // Chat types
+  ChatFormat,
+  ChatOptions,
+  ChatSpawnResult,
 } from "./types";
 
 // Re-export types from main types
@@ -59,7 +63,7 @@ export {
   type DroidConfig,
 } from "./executors";
 
-import type { ExecutorType, ExecutorConfig, StandardCodingAgentExecutor } from "./types";
+import type { ExecutorType, ExecutorConfig, StandardCodingAgentExecutor, ChatOptions, ChatSpawnResult } from "./types";
 import {
   ClaudeCode,
   Amp,
@@ -142,4 +146,42 @@ export function getAllExecutorsAvailability(): Record<ExecutorType, { available:
   }
 
   return result as Record<ExecutorType, { available: boolean; executor: StandardCodingAgentExecutor }>;
+}
+
+/**
+ * Executor types that support non-interactive chat mode
+ */
+export const CHAT_SUPPORTED_EXECUTORS: ExecutorType[] = [
+  "CLAUDE_CODE",
+  "GEMINI",
+  "CODEX",
+];
+
+/**
+ * Check if an executor type supports non-interactive chat mode
+ */
+export function executorSupportsChat(executorType: ExecutorType): boolean {
+  return CHAT_SUPPORTED_EXECUTORS.includes(executorType);
+}
+
+/**
+ * Spawn a non-interactive chat process for an executor type.
+ * This is a convenience function that creates an executor and calls spawnChat.
+ *
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE", "GEMINI")
+ * @param options - Chat options including prompt, cwd, format, etc.
+ * @returns ChatSpawnResult with the spawned process and exit promise
+ * @throws ExecutorError if the executor type doesn't support chat
+ */
+export async function spawnChat(
+  executorType: ExecutorType,
+  options: ChatOptions
+): Promise<ChatSpawnResult> {
+  const executor = createExecutor(executorType);
+
+  if (!executor.supportsChat?.() || !executor.spawnChat) {
+    throw ExecutorError.chatNotSupported(executorType);
+  }
+
+  return executor.spawnChat(options);
 }

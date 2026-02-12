@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Group,
   Panel,
@@ -81,6 +82,7 @@ function RightWorkArea({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [isTaskPanelCollapsed, setIsTaskPanelCollapsed] = useState(false);
 
   const handleTaskPanelResize = (panelSize: PanelSize) => {
@@ -123,7 +125,7 @@ function RightWorkArea({
                 "transition-all",
                 isTaskPanelCollapsed ? "w-6" : "w-1"
               )}
-              aria-label="Resize panels"
+              aria-label={t("common.resizePanels")}
             >
               <SeparatorHandle isCollapsed={isTaskPanelCollapsed} />
             </Separator>
@@ -161,6 +163,7 @@ function DesktopLayout({
   mode: LayoutMode;
   rightHeader?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const [isKanbanCollapsed, setIsKanbanCollapsed] = useState(false);
 
   const handleKanbanResize = (panelSize: PanelSize) => {
@@ -206,7 +209,7 @@ function DesktopLayout({
           "transition-all",
           isKanbanCollapsed ? "w-6" : "w-1"
         )}
-        aria-label="Resize panels"
+        aria-label={t("common.resizePanels")}
       >
         <SeparatorHandle isCollapsed={isKanbanCollapsed} />
       </Separator>
@@ -248,6 +251,7 @@ export function TasksLayout({
   isMobile = false,
   rightHeader,
 }: TasksLayoutProps) {
+  const { t } = useTranslation();
   const desktopKey = isPanelOpen ? "desktop-with-panel" : "kanban-only";
 
   if (isMobile) {
@@ -284,7 +288,7 @@ export function TasksLayout({
       <div
         className="h-full min-h-0 min-w-0"
         role="region"
-        aria-label="Kanban board"
+        aria-label={t("common.kanbanBoard")}
       >
         {kanban}
       </div>

@@ -59,7 +59,7 @@ export function ToolsTabContent({
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">MCP</span>
-            <span>{mcpTools.length} calls</span>
+            <span>{t("common.calls", { count: mcpTools.length })}</span>
           </div>
           <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2 max-h-[250px] overflow-y-auto">
             {Array.from(new Map(mcpTools.map((t) => [t.displayName, t])).values()).map((tool) => {
@@ -112,8 +112,8 @@ export function ToolsTabContent({
       {builtinTools.length > 0 && (
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <span className="rounded bg-muted px-1.5 py-0.5">Built-in</span>
-            <span>{builtinTools.length} calls</span>
+            <span className="rounded bg-muted px-1.5 py-0.5">{t("common.builtIn")}</span>
+            <span>{t("common.calls", { count: builtinTools.length })}</span>
           </div>
           <div className="space-y-1 rounded-md border border-border/30 bg-muted/20 p-2 max-h-[250px] overflow-y-auto">
             {Array.from(new Map(builtinTools.map((t) => [t.displayName, t])).values()).map((tool) => {

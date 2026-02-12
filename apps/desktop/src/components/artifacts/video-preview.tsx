@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { ExternalLink, Loader2, Video } from "lucide-react";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
@@ -19,6 +20,7 @@ import {
 } from "./utils";
 
 export function VideoPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const [videoUrl, setVideoUrl] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -116,7 +118,7 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
         </h3>
         <div className="text-muted-foreground mt-4 flex items-center gap-2">
           <Loader2 className="size-4 animate-spin" />
-          <span className="text-sm">Loading video...</span>
+          <span className="text-sm">{t("artifacts.loadingVideo", "Loading video...")}</span>
         </div>
       </div>
     );
@@ -133,14 +135,14 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground mb-4 text-sm">
-            File too large to preview ({formatFileSize(fileTooLarge)})
+            {t("artifacts.fileTooLarge", "File too large to preview")} ({formatFileSize(fileTooLarge)})
           </p>
           <button
             onClick={handleOpenExternal}
             className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
           >
             <ExternalLink className="size-4" />
-            Open in Video Player
+            {t("artifacts.openInVideoPlayer", "Open in Video Player")}
           </button>
         </div>
       </div>
@@ -165,7 +167,7 @@ export function VideoPreview({ artifact }: PreviewComponentProps) {
             className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
           >
             <ExternalLink className="size-4" />
-            Open in Video Player
+            {t("artifacts.openInVideoPlayer", "Open in Video Player")}
           </button>
         </div>
       </div>

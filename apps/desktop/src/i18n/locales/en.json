@@ -18,6 +18,15 @@
     "configure": "Configure",
     "apply": "Apply",
     "close": "Close",
+    "clearSearch": "Clear search",
+    "builtIn": "Built-in",
+    "calls": "{{count}} calls",
+    "closePreview": "Close preview",
+    "resizeSidebar": "Resize sidebar",
+    "resizePanels": "Resize panels",
+    "breadcrumb": "Breadcrumb",
+    "kanbanBoard": "Kanban board",
+    "serverLogs": "Server logs",
     "yes": "Yes",
     "no": "No",
     "confirm": "Confirm",
@@ -128,7 +137,13 @@
     "connectionFailed": "Cannot connect to Gateway",
     "connectFirst": "Connect to Gateway first...",
     "debugChat": "Debug Chat",
-    "agentSpawned": "Agent {{agentType}} spawned with session {{sessionId}}. Real-time streaming will be available when Gateway supports SSE."
+    "agentSpawned": "Agent {{agentType}} spawned with session {{sessionId}}. Real-time streaming will be available when Gateway supports SSE.",
+    "connecting": "Connecting...",
+    "error": "Connection Error",
+    "connectedTooltip": "Gateway is running",
+    "connectingTooltip": "Checking gateway connection...",
+    "disconnectedTooltip": "Gateway not started. Click to retry or configure.",
+    "errorTooltip": "Error connecting to gateway"
   },
   "channels": {
     "addChannel": "Add Channel",
@@ -154,6 +169,7 @@
       "description": "Receive messages via Telegram Bot",
       "token": "Bot Token",
       "tokenDescription": "Get from @BotFather",
+      "tokenPlaceholder": "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ",
       "proxy": "Proxy (optional)",
       "proxyDescription": "Support HTTP/SOCKS5 proxy",
       "allowFrom": "Allowed Users (optional)",
@@ -161,18 +177,21 @@
       "chatId": "Chat ID",
       "chatIdDescription": "Target chat ID for sending messages, get from @userinfobot",
       "chatIdPlaceholder": "Enter Chat ID (e.g., 123456789 or @channel_username)",
-      "chatIdHint": "You can get your Chat ID from @userinfobot"
+      "chatIdHint": "You can get your Chat ID from @userinfobot",
+      "instancePlaceholder": "My Telegram Bot"
     },
     "discord": {
       "name": "Discord",
       "description": "Receive messages via Discord Bot",
       "token": "Bot Token",
       "tokenDescription": "Get from Discord Developer Portal",
+      "tokenPlaceholder": "MTIzNDU2Nzg5...",
       "allowFrom": "Allowed Users (optional)",
       "allowFromDescription": "Leave empty to allow all users",
       "channelId": "Channel ID",
       "channelIdPlaceholder": "Enter Channel ID (e.g., 1234567890123456789)",
-      "channelIdHint": "Right-click channel > Copy Channel ID (requires Developer Mode)"
+      "channelIdHint": "Right-click channel > Copy Channel ID (requires Developer Mode)",
+      "instancePlaceholder": "My Discord Bot"
     },
     "feishu": {
       "name": "Feishu",
@@ -187,7 +206,8 @@
       "allowFromDescription": "User open_id, leave empty to allow all users",
       "chatId": "Recipient ID",
       "chatIdPlaceholder": "Enter Open ID (ou_xxx), Chat ID (oc_xxx), or email",
-      "chatIdHint": "You can use Open ID (ou_xxx), Chat ID (oc_xxx), or email address"
+      "chatIdHint": "You can use Open ID (ou_xxx), Chat ID (oc_xxx), or email address",
+      "instancePlaceholder": "My Feishu Bot"
     },
     "whatsapp": {
       "name": "WhatsApp",
@@ -196,7 +216,8 @@
       "bridgeDescription": "WhatsApp Web Bridge WebSocket address",
       "allowFrom": "Allowed Phone Numbers (optional)",
       "allowFromDescription": "Leave empty to allow all users",
-      "testNote": "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication."
+      "testNote": "WhatsApp test will verify the Bridge server connection. Actual message sending requires WhatsApp Web authentication.",
+      "instancePlaceholder": "My WhatsApp Bridge"
     },
     "agentBinding": "Bind Agent/Executor",
     "agentBindingDescription": "Automatically route incoming messages to the specified agent or executor",
@@ -385,7 +406,11 @@
     "setupRequired": "Setup required",
     "showBanner": "Show banner",
     "updates": "UPDATES",
-    "developer": "Developer"
+    "developer": "Developer",
+    "python310": "Python 3.10+",
+    "detected": "Detected",
+    "notFound": "Not found",
+    "browseMcpPackage": "browse-mcp package"
   },
   "settingsProviders": {
     "title": "API Providers",
@@ -429,6 +454,17 @@
     "summary": "Executor Status",
     "summaryText": "{{installed}}/{{total}} executors available",
     "installHint": "Install command:",
+    "executorNames": {
+      "CLAUDE_CODE": "Claude Code",
+      "AMP": "Amp",
+      "GEMINI": "Gemini CLI",
+      "CODEX": "Codex CLI",
+      "OPENCODE": "OpenCode",
+      "CURSOR_AGENT": "Cursor Agent",
+      "QWEN_CODE": "Qwen Coder",
+      "COPILOT": "GitHub Copilot CLI",
+      "DROID": "Droid"
+    },
     "executors": {
       "CLAUDE_CODE": "Anthropic's official CLI for Claude - powerful coding agent",
       "AMP": "Sourcegraph's AI-powered code navigation and editing",
@@ -831,7 +867,8 @@
     "openFolder": "Open Folder",
     "noServerLogs": "No server logs for this session",
     "noServerLogsDesc": "This session only has API logs",
-    "noApiLogsForSession": "No API logs for this session"
+    "noApiLogsForSession": "No API logs for this session",
+    "logFiles": "Log Files"
   },
   "searchService": {
     "title": "Search Service",
@@ -904,11 +941,15 @@
     "profile": "Profile",
     "settings": "Settings",
     "signInRequired": "Sign In Required",
-    "signInRequiredDescription": "Please sign in to access this feature. Your data will be synced across devices."
+    "signInRequiredDescription": "Please sign in to access this feature. Your data will be synced across devices.",
+    "oauthCodeRequired": "Please enter the OAuth code",
+    "devModeOAuthHint": "Dev Mode: Paste the OAuth code from the URL",
+    "oauthCodePlaceholder": "Paste code from viben://oauth?code=..."
   },
   "inspector": {
     "title": "MCP Inspector",
     "subtitle": "Inspect and interact with MCP servers in real-time",
+    "invalidConfiguration": "Invalid configuration",
     "transportType": "Transport Type",
     "selectTransport": "Select transport type",
     "command": "Command",
@@ -1233,7 +1274,11 @@
     "syncingTooltip": "Syncing data",
     "tryReconnect": "Try Reconnect",
     "usingCachedData": "Using cached data",
-    "cannotRefreshOffline": "Cannot refresh cache: offline"
+    "cannotRefreshOffline": "Cannot refresh cache: offline",
+    "cacheSize50": "50 MB",
+    "cacheSize100": "100 MB",
+    "cacheSize200": "200 MB",
+    "cacheSize500": "500 MB"
   },
   "skillsMarket": {
     "title": "Skills Marketplace",
@@ -2263,7 +2308,34 @@
     "forward10s": "Forward 10s",
     "noSearchResults": "No search results",
     "showRawContent": "Show raw content",
-    "openInEditor": "Open in Editor"
+    "openInEditor": "Open in Editor",
+    "loadingFont": "Loading font...",
+    "fontPreviewNotAvailable": "Font preview not available",
+    "openInFontViewer": "Open in Font Viewer",
+    "characterSet": "Character Set",
+    "sizeSamples": "Size Samples",
+    "loadingImage": "Loading image...",
+    "fileTooLarge": "File too large to preview",
+    "fileTooLargeDesc": "This file is too large to preview in the app.",
+    "fileSize": "File size: {{size}}",
+    "defaultApp": "System App",
+    "failedToLoadImage": "Failed to load image",
+    "loadingPdf": "Loading PDF...",
+    "openInPdfViewerHint": "Use the external link button to open in your PDF viewer",
+    "loadingVideo": "Loading video...",
+    "openInVideoPlayer": "Open in Video Player",
+    "searchResults": "Search Results",
+    "results": "results",
+    "search": "search",
+    "searches": "searches",
+    "selectToPreview": "Select an artifact from the sidebar to preview",
+    "openIn": "Open in {{name}}",
+    "exitFullscreen": "Exit Fullscreen",
+    "fullscreen": "Fullscreen",
+    "preview": "Preview",
+    "code": "Code",
+    "previewNotAvailable": "Preview not available",
+    "switchToCodeView": "Switch to Code view to see the content"
   },
   "inspector": {
     "taskStatus": {

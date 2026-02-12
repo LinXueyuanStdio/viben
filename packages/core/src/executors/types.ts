@@ -6,6 +6,51 @@ import type { ExecutorType, AgentCapability, AvailabilityInfo } from "../types";
 
 export type { ExecutorType, AgentCapability, AvailabilityInfo };
 
+// ============================================================================
+// Chat Types (Non-interactive streaming)
+// ============================================================================
+
+/**
+ * Input/output format for chat streaming
+ */
+export type ChatFormat = "text" | "stream-json";
+
+/**
+ * Options for non-interactive chat mode
+ */
+export interface ChatOptions {
+  /** Prompt text (reads from stdin if not provided) */
+  prompt?: string;
+  /** Working directory */
+  cwd?: string;
+  /** Input format (default: text) */
+  inputFormat?: ChatFormat;
+  /** Output format (default: text) */
+  outputFormat?: ChatFormat;
+  /** Enable verbose output */
+  verbose?: boolean;
+  /** Session ID for new session */
+  sessionId?: string;
+  /** Resume existing session */
+  resume?: string;
+  /** Model to use (if executor supports) */
+  model?: string;
+  /** Skip permission checks (dangerous) */
+  dangerouslySkipPermissions?: boolean;
+  /** Additional environment variables */
+  env?: Record<string, string>;
+}
+
+/**
+ * Result of spawning a chat process
+ */
+export interface ChatSpawnResult {
+  /** The spawned child process */
+  child: ChildProcess;
+  /** Promise that resolves when process exits with exit code */
+  exitPromise: Promise<number>;
+}
+
 /**
  * Repository context for executor operations
  */
@@ -128,6 +173,23 @@ export interface StandardCodingAgentExecutor {
     resetToMessageId: string | undefined,
     env: ExecutionEnv
   ): Promise<SpawnedChild>;
+
+  /**
+   * Spawn a non-interactive chat process with transparent I/O streaming.
+   * The process inherits stdin/stdout/stderr from the parent for direct pass-through.
+   * This is designed for CLI usage like `viben executor chat -n CLAUDE_CODE -p "prompt"`.
+   */
+  spawnChat?(options: ChatOptions): Promise<ChatSpawnResult>;
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat?(): boolean;
+
+  /**
+   * Get the CLI command name used for chat (e.g., "claude" for Claude Code)
+   */
+  getChatCommand?(): string | null;
 
   /** Get the default MCP configuration file path */
   defaultMcpConfigPath(): string | null;

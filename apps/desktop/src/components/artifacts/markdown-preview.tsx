@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import type { PreviewComponentProps } from "./types";
 import { parseFrontmatter } from "./utils";
 
@@ -127,6 +128,7 @@ function ExpandableText({
   text: string;
   maxLength?: number;
 }) {
+  const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = React.useState(false);
   const needsTruncation = text.length > maxLength;
 
@@ -141,17 +143,19 @@ function ExpandableText({
         onClick={() => setIsExpanded(!isExpanded)}
         className="text-primary ml-1 text-xs hover:underline"
       >
-        {isExpanded ? "Show less" : "Show more"}
+        {isExpanded ? t("common.less", "Show less") : t("common.more", "Show more")}
       </button>
     </span>
   );
 }
 
 export function MarkdownPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
+
   if (!artifact.content) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-muted-foreground text-sm">No content available</p>
+        <p className="text-muted-foreground text-sm">{t("artifacts.noContentAvailable", "No content available")}</p>
       </div>
     );
   }

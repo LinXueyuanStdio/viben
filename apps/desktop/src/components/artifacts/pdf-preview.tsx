@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { FileText, Loader2 } from "lucide-react";
 
@@ -13,6 +14,7 @@ import type { PreviewComponentProps } from "./types";
 import { isRemoteUrl, MAX_PREVIEW_SIZE, formatFileSize } from "./utils";
 
 export function PdfPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const [pdfUrl, setPdfUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -91,7 +93,7 @@ export function PdfPreview({ artifact }: PreviewComponentProps) {
     return (
       <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
         <Loader2 className="text-muted-foreground size-8 animate-spin" />
-        <p className="text-muted-foreground mt-4 text-sm">Loading PDF...</p>
+        <p className="text-muted-foreground mt-4 text-sm">{t("artifacts.loadingPdf", "Loading PDF...")}</p>
       </div>
     );
   }
@@ -107,10 +109,10 @@ export function PdfPreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground text-sm">
-            File too large to preview ({formatFileSize(fileTooLarge)})
+            {t("artifacts.fileTooLarge", "File too large to preview")} ({formatFileSize(fileTooLarge)})
           </p>
           <p className="text-muted-foreground mt-2 text-xs">
-            Use the external link button to open in your PDF viewer
+            {t("artifacts.openInPdfViewerHint", "Use the external link button to open in your PDF viewer")}
           </p>
         </div>
       </div>

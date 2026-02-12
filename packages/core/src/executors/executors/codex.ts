@@ -14,6 +14,8 @@ import type {
   StandardCodingAgentExecutor,
   AgentCapability,
   AvailabilityInfo,
+  ChatOptions,
+  ChatSpawnResult,
 } from "../types";
 import { ExecutorError } from "../../error";
 import { which } from "../utils";
@@ -144,6 +146,81 @@ export class Codex implements StandardCodingAgentExecutor {
 
   capabilities(): AgentCapability[] {
     return ["SESSION_FORK", "SETUP_HELPER", "CONTEXT_USAGE"];
+  }
+
+  /**
+   * Check if this executor supports non-interactive chat mode
+   */
+  supportsChat(): boolean {
+    return true;
+  }
+
+  /**
+   * Get the CLI command name used for chat
+   */
+  getChatCommand(): string {
+    return "codex";
+  }
+
+  /**
+   * Spawn a non-interactive chat process with transparent I/O streaming.
+   */
+  async spawnChat(options: ChatOptions): Promise<ChatSpawnResult> {
+    const {
+      prompt,
+      cwd = process.cwd(),
+      verbose = false,
+      sessionId,
+      model,
+      env: extraEnv = {},
+    } = options;
+
+    const programPath = await which("npx");
+    if (!programPath) {
+      throw ExecutorError.executableNotFound("npx");
+    }
+
+    const args: string[] = ["-y", "codex-cli@latest"];
+
+    if (prompt) {
+      args.push("--prompt", prompt);
+    }
+
+    if (model || this.config.model) {
+      args.push("--model", model || this.config.model!);
+    }
+
+    if (sessionId) {
+      args.push("--session", sessionId);
+    }
+
+    if (verbose) {
+      args.push("--verbose");
+    }
+
+    const spawnEnv = {
+      ...process.env,
+      ...this.config.env,
+      ...extraEnv,
+      NPM_CONFIG_LOGLEVEL: "error",
+    };
+
+    const child = spawn(programPath, args, {
+      cwd,
+      env: spawnEnv,
+      stdio: "inherit",
+    });
+
+    const exitPromise = new Promise<number>((resolve, reject) => {
+      child.on("exit", (code) => {
+        resolve(code ?? 1);
+      });
+      child.on("error", (err) => {
+        reject(err);
+      });
+    });
+
+    return { child, exitPromise };
   }
 }
 

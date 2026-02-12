@@ -5,7 +5,7 @@
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse, errorResponse } from '../../lib/output';
-import { stopService, getServiceStatus } from '../../lib/services';
+import { stopService, getServiceStatusAsync } from '../../lib/services';
 
 /**
  * Options for stop command
@@ -24,7 +24,7 @@ export async function stopServiceCommand(
   const { name } = options;
 
   // Check if running
-  const current = getServiceStatus(name);
+  const current = await getServiceStatusAsync(name);
   if (current.status !== 'running') {
     output(
       ctx,
@@ -41,7 +41,7 @@ export async function stopServiceCommand(
   }
 
   try {
-    const info = await stopService(name);
+    await stopService(name);
 
     output(
       ctx,

@@ -1,0 +1,554 @@
+/**
+ * Model management CLI commands
+ */
+import type { Command } from "commander";
+import chalk from "chalk";
+import type { OutputContext } from "../types";
+import {
+  output,
+  successResponse,
+  outputTable,
+  outputKeyValue,
+  outputSuccess,
+  outputList,
+  handleCommandError,
+} from "../lib";
+import { modelManager, KNOWN_MODELS, DEFAULT_ALIASES } from "../../models";
+
+/**
+ * Get output context from command
+ */
+function getContext(cmd: Command): OutputContext {
+  const opts = cmd.optsWithGlobals();
+  return {
+    json: opts.json ?? false,
+    verbose: opts.verbose ?? false,
+    quiet: opts.quiet ?? false,
+  };
+}
+
+/**
+ * Format price for display
+ */
+function formatPrice(price: number | undefined): string {
+  if (price === undefined) return "-";
+  return `$${price.toFixed(2)}/1M`;
+}
+
+/**
+ * Format context length for display
+ */
+function formatContextLength(length: number | undefined): string {
+  if (length === undefined) return "-";
+  if (length >= 1000000) return `${(length / 1000000).toFixed(1)}M`;
+  if (length >= 1000) return `${(length / 1000).toFixed(0)}K`;
+  return length.toString();
+}
+
+/**
+ * Register model command and subcommands
+ */
+export function registerModelCommand(program: Command): void {
+  const model = program.command("model").description("Manage AI models");
+
+  // model list
+  model
+    .command("list")
+    .description("List all known models")
+    .option("-p, --provider <provider>", "Filter by provider")
+    .action(async function (this: Command, options: { provider?: string }) {
+      const ctx = getContext(this);
+      try {
+        let models = await modelManager.listModels();
+
+        if (options.provider) {
+          models = models.filter((m) => m.provider === options.provider);
+        }
+
+        const defaultModel = await modelManager.getDefault();
+
+        output(ctx, successResponse({ models, default: defaultModel }), () => {
+          if (models.length === 0) {
+            console.log(chalk.gray("No models found"));
+            return;
+          }
+
+          outputTable(
+            ctx,
+            ["ID", "Name", "Provider", "Context", "Input", "Output", "Default"],
+            models.map((m) => [
+              m.id,
+              m.name,
+              m.provider,
+              formatContextLength(m.contextLength),
+              formatPrice(m.inputPrice),
+              formatPrice(m.outputPrice),
+              defaultModel === m.id ? chalk.green("Yes") : "",
+            ])
+          );
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model show <model>
+  model
+    .command("show <model>")
+    .description("Show model details")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        // Resolve alias first
+        const resolved = await modelManager.resolveAlias(modelId);
+        const info = modelManager.getModelInfo(resolved);
+        const config = await modelManager.getModelConfig(modelId);
+        const defaultModel = await modelManager.getDefault();
+
+        output(
+          ctx,
+          successResponse({
+            model: info,
+            resolved: resolved !== modelId ? resolved : undefined,
+            config,
+            isDefault: defaultModel === resolved,
+          }),
+          () => {
+            if (!info) {
+              console.log(chalk.yellow(`Model "${modelId}" is not a known model`));
+              if (resolved !== modelId) {
+                console.log(chalk.gray(`Resolved alias: ${resolved}`));
+              }
+              return;
+            }
+
+            console.log(chalk.bold(`Model: ${info.id}`));
+            if (resolved !== modelId) {
+              console.log(chalk.gray(`(resolved from alias: ${modelId})`));
+            }
+
+            outputKeyValue(ctx, {
+              Name: info.name,
+              Provider: info.provider,
+              "Context Length": formatContextLength(info.contextLength),
+              "Max Output": formatContextLength(info.maxOutputTokens),
+              "Input Price": formatPrice(info.inputPrice),
+              "Output Price": formatPrice(info.outputPrice),
+              "Is Default": defaultModel === resolved ? "Yes" : "No",
+            });
+
+            if (config) {
+              console.log();
+              console.log(chalk.bold("Custom Configuration:"));
+              outputKeyValue(ctx, {
+                Temperature: config.temperature ?? "-",
+                "Max Tokens": config.maxTokens ?? "-",
+                "Top P": config.topP ?? "-",
+                "Frequency Penalty": config.frequencyPenalty ?? "-",
+                "Presence Penalty": config.presencePenalty ?? "-",
+              });
+            }
+          }
+        );
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model status
+  model
+    .command("status")
+    .description("Show model availability status")
+    .action(async function (this: Command) {
+      const ctx = getContext(this);
+      try {
+        const models = await modelManager.listModels();
+        const aliases = await modelManager.getAliases();
+        const fallbacks = await modelManager.getFallbacks();
+        const defaultModel = await modelManager.getDefault();
+
+        const providers = [...new Set(models.map((m) => m.provider))];
+
+        output(
+          ctx,
+          successResponse({
+            providers,
+            modelCount: models.length,
+            aliasCount: Object.keys(aliases).length,
+            fallbackCount: fallbacks.length,
+            default: defaultModel,
+          }),
+          () => {
+            console.log(chalk.bold("Model Status"));
+            console.log();
+
+            outputKeyValue(ctx, {
+              "Known Models": models.length.toString(),
+              Providers: providers.join(", "),
+              "Configured Aliases": Object.keys(aliases).length.toString(),
+              "Fallback Chain": fallbacks.length.toString(),
+              "Default Model": defaultModel || chalk.gray("(not set)"),
+            });
+
+            console.log();
+            console.log(chalk.bold("Models by Provider:"));
+            for (const provider of providers) {
+              const count = models.filter((m) => m.provider === provider).length;
+              console.log(`  ${provider}: ${count} models`);
+            }
+          }
+        );
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model set-default <model>
+  model
+    .command("set-default <model>")
+    .description("Set the default model")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        // Resolve alias to actual model ID
+        const resolved = await modelManager.resolveAlias(modelId);
+        await modelManager.setDefault(resolved);
+
+        output(ctx, successResponse({ default: resolved }), () => {
+          outputSuccess(ctx, `Set "${resolved}" as default model`);
+          if (resolved !== modelId) {
+            console.log(chalk.gray(`(resolved from alias: ${modelId})`));
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model alias - subcommand group
+  const alias = model.command("alias").description("Manage model aliases");
+
+  // model alias list
+  alias
+    .command("list")
+    .description("List all model aliases")
+    .action(async function (this: Command) {
+      const ctx = getContext(this);
+      try {
+        const aliases = await modelManager.getAliases();
+        const aliasEntries = Object.entries(aliases);
+
+        output(ctx, successResponse({ aliases }), () => {
+          if (aliasEntries.length === 0) {
+            console.log(chalk.gray("No aliases configured"));
+            return;
+          }
+
+          console.log(chalk.bold("Model Aliases:"));
+          outputTable(
+            ctx,
+            ["Alias", "Model", "Built-in"],
+            aliasEntries.map(([aliasName, modelName]) => [
+              aliasName,
+              modelName,
+              DEFAULT_ALIASES[aliasName] ? "Yes" : "",
+            ])
+          );
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model alias set <alias> <model>
+  alias
+    .command("set <alias> <model>")
+    .description("Create or update a model alias")
+    .action(async function (this: Command, aliasName: string, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.createAlias(aliasName, modelId);
+
+        output(ctx, successResponse({ alias: aliasName, model: modelId }), () => {
+          outputSuccess(ctx, `Set alias "${aliasName}" -> "${modelId}"`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model alias remove <alias>
+  alias
+    .command("remove <alias>")
+    .alias("rm")
+    .description("Remove a model alias")
+    .action(async function (this: Command, aliasName: string) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.removeAlias(aliasName);
+
+        output(ctx, successResponse({ removed: aliasName }), () => {
+          outputSuccess(ctx, `Removed alias "${aliasName}"`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model alias resolve <alias>
+  alias
+    .command("resolve <alias>")
+    .description("Resolve an alias to its model ID")
+    .action(async function (this: Command, aliasName: string) {
+      const ctx = getContext(this);
+      try {
+        const resolved = await modelManager.resolveAlias(aliasName);
+
+        output(ctx, successResponse({ alias: aliasName, model: resolved }), () => {
+          if (resolved === aliasName) {
+            console.log(
+              chalk.gray(`"${aliasName}" is not an alias, using as model ID`)
+            );
+          } else {
+            console.log(`${aliasName} -> ${resolved}`);
+          }
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model fallback - subcommand group
+  const fallback = model.command("fallback").description("Manage model fallback chain");
+
+  // model fallback list
+  fallback
+    .command("list")
+    .description("List the fallback chain")
+    .action(async function (this: Command) {
+      const ctx = getContext(this);
+      try {
+        const fallbacks = await modelManager.getFallbacks();
+
+        output(ctx, successResponse({ fallbacks }), () => {
+          if (fallbacks.length === 0) {
+            console.log(chalk.gray("No fallback chain configured"));
+            console.log(
+              chalk.gray(
+                "Use 'viben model fallback set <models...>' to configure fallbacks"
+              )
+            );
+            return;
+          }
+
+          console.log(chalk.bold("Fallback Chain:"));
+          fallbacks.forEach((modelName, index) => {
+            const prefix = index === 0 ? "Primary" : `Fallback ${index}`;
+            console.log(`  ${index + 1}. ${chalk.gray(`[${prefix}]`)} ${modelName}`);
+          });
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model fallback set <models...>
+  fallback
+    .command("set <models...>")
+    .description("Set the fallback chain (comma-separated or space-separated)")
+    .action(async function (this: Command, models: string[]) {
+      const ctx = getContext(this);
+      try {
+        // Handle both comma-separated and space-separated input
+        const modelList = models
+          .flatMap((m) => m.split(","))
+          .map((m) => m.trim())
+          .filter((m) => m.length > 0);
+
+        if (modelList.length === 0) {
+          throw new Error("At least one model must be specified");
+        }
+
+        await modelManager.setFallbacks(modelList);
+
+        output(ctx, successResponse({ fallbacks: modelList }), () => {
+          outputSuccess(ctx, "Set fallback chain:");
+          outputList(ctx, modelList);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model fallback add <model>
+  fallback
+    .command("add <model>")
+    .description("Add a model to the fallback chain")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.addFallback(modelId);
+        const fallbacks = await modelManager.getFallbacks();
+
+        output(ctx, successResponse({ added: modelId, fallbacks }), () => {
+          outputSuccess(ctx, `Added "${modelId}" to fallback chain`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model fallback remove <model>
+  fallback
+    .command("remove <model>")
+    .alias("rm")
+    .description("Remove a model from the fallback chain")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.removeFallback(modelId);
+
+        output(ctx, successResponse({ removed: modelId }), () => {
+          outputSuccess(ctx, `Removed "${modelId}" from fallback chain`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model fallback clear
+  fallback
+    .command("clear")
+    .description("Clear the fallback chain")
+    .action(async function (this: Command) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.clearFallbacks();
+
+        output(ctx, successResponse({ cleared: true }), () => {
+          outputSuccess(ctx, "Cleared fallback chain");
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model config - subcommand group
+  const config = model.command("config").description("Manage model-specific configuration");
+
+  // model config show <model>
+  config
+    .command("show <model>")
+    .description("Show model-specific configuration")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        const modelConfig = await modelManager.getModelConfig(modelId);
+
+        output(ctx, successResponse({ model: modelId, config: modelConfig }), () => {
+          if (!modelConfig) {
+            console.log(chalk.gray(`No custom configuration for "${modelId}"`));
+            return;
+          }
+
+          console.log(chalk.bold(`Configuration for ${modelId}:`));
+          outputKeyValue(ctx, {
+            Temperature: modelConfig.temperature ?? "-",
+            "Max Tokens": modelConfig.maxTokens ?? "-",
+            "Top P": modelConfig.topP ?? "-",
+            "Frequency Penalty": modelConfig.frequencyPenalty ?? "-",
+            "Presence Penalty": modelConfig.presencePenalty ?? "-",
+          });
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model config set <model>
+  config
+    .command("set <model>")
+    .description("Set model-specific configuration")
+    .option("-t, --temperature <value>", "Temperature (0-2)", parseFloat)
+    .option("-m, --max-tokens <value>", "Max tokens", parseInt)
+    .option("--top-p <value>", "Top P (0-1)", parseFloat)
+    .option("--frequency-penalty <value>", "Frequency penalty (-2 to 2)", parseFloat)
+    .option("--presence-penalty <value>", "Presence penalty (-2 to 2)", parseFloat)
+    .action(async function (
+      this: Command,
+      modelId: string,
+      options: {
+        temperature?: number;
+        maxTokens?: number;
+        topP?: number;
+        frequencyPenalty?: number;
+        presencePenalty?: number;
+      }
+    ) {
+      const ctx = getContext(this);
+      try {
+        // Get existing config and merge with new values
+        const existing = await modelManager.getModelConfig(modelId);
+        const newConfig = {
+          temperature: options.temperature ?? existing?.temperature,
+          maxTokens: options.maxTokens ?? existing?.maxTokens,
+          topP: options.topP ?? existing?.topP,
+          frequencyPenalty: options.frequencyPenalty ?? existing?.frequencyPenalty,
+          presencePenalty: options.presencePenalty ?? existing?.presencePenalty,
+        };
+
+        await modelManager.setModelConfig(modelId, newConfig);
+
+        output(ctx, successResponse({ model: modelId, config: newConfig }), () => {
+          outputSuccess(ctx, `Updated configuration for "${modelId}"`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model config remove <model>
+  config
+    .command("remove <model>")
+    .alias("rm")
+    .description("Remove model-specific configuration")
+    .action(async function (this: Command, modelId: string) {
+      const ctx = getContext(this);
+      try {
+        await modelManager.removeModelConfig(modelId);
+
+        output(ctx, successResponse({ removed: modelId }), () => {
+          outputSuccess(ctx, `Removed configuration for "${modelId}"`);
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // model providers
+  model
+    .command("providers")
+    .description("List available model providers")
+    .action(async function (this: Command) {
+      const ctx = getContext(this);
+      try {
+        const models = KNOWN_MODELS;
+        const providers = [...new Set(models.map((m) => m.provider))];
+        const providerInfo = providers.map((p) => ({
+          provider: p,
+          modelCount: models.filter((m) => m.provider === p).length,
+        }));
+
+        output(ctx, successResponse({ providers: providerInfo }), () => {
+          console.log(chalk.bold("Available Providers:"));
+          outputTable(
+            ctx,
+            ["Provider", "Models"],
+            providerInfo.map((p) => [p.provider, p.modelCount.toString()])
+          );
+        });
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+}

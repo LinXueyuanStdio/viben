@@ -22,11 +22,11 @@ export function registerWorkspaceCommand(program: Command): void {
   workspaceCmd
     .command('list')
     .description('List all known workspaces')
-    .action(() => {
+    .action(async () => {
       const ctx = getContext(program);
 
       try {
-        listWorkspacesCommand(ctx);
+        await listWorkspacesCommand(ctx);
       } catch (error) {
         handleError(ctx, error);
       }
@@ -36,11 +36,11 @@ export function registerWorkspaceCommand(program: Command): void {
   workspaceCmd
     .command('current')
     .description('Show current workspace information')
-    .action(() => {
+    .action(async () => {
       const ctx = getContext(program);
 
       try {
-        showCurrentWorkspace(ctx);
+        await showCurrentWorkspace(ctx);
       } catch (error) {
         handleError(ctx, error);
       }

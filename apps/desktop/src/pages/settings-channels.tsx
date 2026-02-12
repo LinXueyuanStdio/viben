@@ -462,7 +462,7 @@ function TelegramForm({
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="My Telegram Bot"
+          placeholder={t("channels.telegram.instancePlaceholder", "My Telegram Bot")}
         />
       </div>
       <SecretInput
@@ -470,7 +470,7 @@ function TelegramForm({
         description={t("channels.telegram.tokenDescription", "从 @BotFather 获取")}
         value={token}
         onChange={(token) => onChange({ token })}
-        placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+        placeholder={t("channels.telegram.tokenPlaceholder", "123456789:ABCdefGHIjklMNOpqrSTUvwxYZ")}
       />
       <div className="space-y-1.5">
         <Label className="text-xs text-muted-foreground">
@@ -518,7 +518,7 @@ function DiscordForm({
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="My Discord Bot"
+          placeholder={t("channels.discord.instancePlaceholder", "My Discord Bot")}
         />
       </div>
       <SecretInput
@@ -526,7 +526,7 @@ function DiscordForm({
         description={t("channels.discord.tokenDescription", "从 Discord Developer Portal 获取")}
         value={token}
         onChange={(token) => onChange({ token })}
-        placeholder="MTIzNDU2Nzg5..."
+        placeholder={t("channels.discord.tokenPlaceholder", "MTIzNDU2Nzg5...")}
       />
     </div>
   );
@@ -551,7 +551,7 @@ function FeishuForm({
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="My Feishu Bot"
+          placeholder={t("channels.feishu.instancePlaceholder", "My Feishu Bot")}
         />
       </div>
       <SecretInput
@@ -588,7 +588,7 @@ function WhatsAppForm({
         <Input
           value={formState.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          placeholder="My WhatsApp Bridge"
+          placeholder={t("channels.whatsapp.instancePlaceholder", "My WhatsApp Bridge")}
         />
       </div>
       <div className="p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">

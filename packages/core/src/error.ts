@@ -107,6 +107,22 @@ export class ExecutorError extends VibenError {
       "UNKNOWN_TYPE"
     );
   }
+
+  static chatNotSupported(executor: string): ExecutorError {
+    return new ExecutorError(
+      `Chat mode is not supported for ${executor}`,
+      executor,
+      "CHAT_NOT_SUPPORTED"
+    );
+  }
+
+  static noPromptProvided(): ExecutorError {
+    return new ExecutorError(
+      "No prompt provided and stdin is empty",
+      undefined,
+      "NO_PROMPT_PROVIDED"
+    );
+  }
 }
 
 /**
@@ -207,5 +223,59 @@ export class GatewayError extends VibenError {
   ) {
     super(message, code);
     this.name = "GatewayError";
+  }
+}
+
+/**
+ * Error thrown by service manager operations
+ */
+export class ServiceError extends VibenError {
+  constructor(
+    message: string,
+    public serviceName?: string,
+    code: string = "SERVICE_ERROR"
+  ) {
+    super(message, code);
+    this.name = "ServiceError";
+  }
+
+  static notFound(serviceName: string): ServiceError {
+    return new ServiceError(
+      `Service not found: ${serviceName}`,
+      serviceName,
+      "SERVICE_NOT_FOUND"
+    );
+  }
+
+  static alreadyRunning(serviceName: string): ServiceError {
+    return new ServiceError(
+      `Service already running: ${serviceName}`,
+      serviceName,
+      "SERVICE_ALREADY_RUNNING"
+    );
+  }
+
+  static startFailed(serviceName: string, cause: string): ServiceError {
+    return new ServiceError(
+      `Failed to start service ${serviceName}: ${cause}`,
+      serviceName,
+      "SERVICE_START_FAILED"
+    );
+  }
+
+  static stopFailed(serviceName: string, cause: string): ServiceError {
+    return new ServiceError(
+      `Failed to stop service ${serviceName}: ${cause}`,
+      serviceName,
+      "SERVICE_STOP_FAILED"
+    );
+  }
+
+  static noCommand(serviceName: string): ServiceError {
+    return new ServiceError(
+      `No command specified for service ${serviceName} and no default is configured`,
+      serviceName,
+      "SERVICE_NO_COMMAND"
+    );
   }
 }

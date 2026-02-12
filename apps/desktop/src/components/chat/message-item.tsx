@@ -291,6 +291,8 @@ export function MessageItem({
   onRejectPlan,
   isPlanPending,
 }: MessageItemProps) {
+  const { t } = useTranslation();
+
   // User message
   if (message.type === "user") {
     return (
@@ -343,7 +345,6 @@ export function MessageItem({
 
   // Thinking message (extended thinking from Claude)
   if (message.type === "thinking") {
-    const { t } = useTranslation();
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}

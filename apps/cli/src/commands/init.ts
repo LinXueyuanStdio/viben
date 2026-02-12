@@ -1,83 +1,19 @@
 /**
  * viben init - Initialize a Viben workspace
+ *
+ * Uses NAPI bindings to viben-core for workspace initialization.
  */
 
-import * as fs from 'fs';
-import * as path from 'path';
 import chalk from 'chalk';
 import type { Command } from 'commander';
-import type { OutputContext, VibenConfig } from '../types';
+import type { OutputContext } from '../types';
 import { CliError } from '../types';
-import { DEFAULT_CONFIG, writeConfigFile } from '../lib/config';
-import { WORKSPACE_DIR, CONFIG_FILE, findWorkspaceRoot } from '../lib/scope';
-import { output, successResponse, errorResponse } from '../lib/output';
+import { output, successResponse } from '../lib/output';
+import { initWorkspace } from '../lib/workspace';
 
 interface InitOptions {
   from?: string;
-}
-
-/**
- * Initialize workspace in the given directory
- */
-function initWorkspace(targetDir: string, template?: string): VibenConfig {
-  const vibenDir = path.join(targetDir, WORKSPACE_DIR);
-  const configPath = path.join(vibenDir, CONFIG_FILE);
-
-  // Check if already initialized
-  if (fs.existsSync(configPath)) {
-    throw new CliError(
-      'Workspace already initialized. Use "viben config" to modify settings.',
-      'WORKSPACE_EXISTS'
-    );
-  }
-
-  // Create .viben directory
-  if (!fs.existsSync(vibenDir)) {
-    fs.mkdirSync(vibenDir, { recursive: true });
-  }
-
-  // Determine config to use
-  let config: VibenConfig;
-
-  if (template) {
-    // TODO: Support template loading from registry or local file
-    // For now, just use default config
-    config = {
-      ...DEFAULT_CONFIG,
-      version: 1,
-    };
-  } else {
-    config = {
-      ...DEFAULT_CONFIG,
-      version: 1,
-    };
-  }
-
-  // Write config file
-  writeConfigFile(configPath, config);
-
-  // Create agents directory
-  const agentsDir = path.join(vibenDir, 'agents');
-  if (!fs.existsSync(agentsDir)) {
-    fs.mkdirSync(agentsDir, { recursive: true });
-  }
-
-  // Create default agent config
-  const mainAgentPath = path.join(agentsDir, 'main.yaml');
-  if (!fs.existsSync(mainAgentPath)) {
-    const mainAgentConfig = `# Main agent configuration
-id: main
-name: Main Agent
-description: Default workspace agent
-
-# Model configuration (optional, uses defaults)
-# model: claude-sonnet-4-20250514
-# provider: anthropic
-`;
-    fs.writeFileSync(mainAgentPath, mainAgentConfig, 'utf-8');
-  }
-
-  return config;
+  force?: boolean;
 }
 
 /**
@@ -88,6 +24,7 @@ export function registerInitCommand(program: Command): void {
     .command('init')
     .description('Initialize a Viben workspace in the current directory')
     .option('--from <template>', 'Initialize from a template')
+    .option('--force', 'Force initialization even if workspace already exists')
     .action(async (options: InitOptions) => {
       const ctx: OutputContext = {
         json: program.opts().json || false,
@@ -96,46 +33,65 @@ export function registerInitCommand(program: Command): void {
       };
 
       try {
-        const targetDir = process.cwd();
-
-        // Check if already inside a workspace
-        const existingWorkspace = findWorkspaceRoot(targetDir);
-        if (existingWorkspace && existingWorkspace !== targetDir) {
-          throw new CliError(
-            `Already inside workspace at ${existingWorkspace}`,
-            'NESTED_WORKSPACE'
-          );
-        }
-
-        const config = initWorkspace(targetDir, options.from);
+        // Use NAPI bindings for initialization
+        const result = initWorkspace({
+          targetDir: process.cwd(),
+          template: options.from,
+          force: options.force,
+        });
 
         output(
           ctx,
           successResponse({
-            workspaceDir: path.join(targetDir, WORKSPACE_DIR),
-            configPath: path.join(targetDir, WORKSPACE_DIR, CONFIG_FILE),
-            config,
+            success: result.success,
+            path: result.path,
+            files: result.files,
           }),
           () => {
             console.log(chalk.green('Workspace initialized successfully!'));
             console.log();
             console.log('Created:');
-            console.log(chalk.gray('  .viben/config.yaml') + '    - Workspace configuration');
-            console.log(chalk.gray('  .viben/agents/main.yaml') + ' - Default agent');
+            for (const file of result.files) {
+              console.log(chalk.gray(`  .viben/${file}`));
+            }
             console.log();
             console.log('Next steps:');
             console.log(chalk.cyan('  viben config list') + '      - View configuration');
             console.log(chalk.cyan('  viben agent list') + '       - List agents');
-            console.log(chalk.cyan('  viben config set <key> <value>') + ' - Modify settings');
+            console.log(chalk.cyan('  viben mcp install <name>') + ' - Install MCP servers');
+            console.log(chalk.cyan('  viben skill install <name>') + ' - Install skills');
           }
         );
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        // Check for specific error types based on message
+        if (message.includes('Already inside workspace') || message.includes('Nested workspace')) {
+          const cliError = new CliError(message, 'NESTED_WORKSPACE');
+          output(ctx, cliError.toResponse(), () => {
+            console.error(chalk.red('Error:'), message);
+          });
+          process.exit(1);
+        }
+
+        if (message.includes('already exists') || message.includes('AlreadyExists')) {
+          const cliError = new CliError(
+            'Workspace already initialized. Use "viben config" to modify settings, or use --force to reinitialize.',
+            'WORKSPACE_EXISTS'
+          );
+          output(ctx, cliError.toResponse(), () => {
+            console.error(chalk.red('Error:'), cliError.message);
+          });
+          process.exit(1);
+        }
+
         if (error instanceof CliError) {
           output(ctx, error.toResponse(), () => {
             console.error(chalk.red('Error:'), error.message);
           });
           process.exit(1);
         }
+
         throw error;
       }
     });

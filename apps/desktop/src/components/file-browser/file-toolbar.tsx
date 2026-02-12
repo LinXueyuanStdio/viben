@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import { useTranslation } from "react-i18next";
 import type { ViewMode } from "@/hooks/use-file-browser";
 
 interface FileToolbarProps {
@@ -51,16 +52,17 @@ interface FileToolbarProps {
 
 /**
  * View mode button configuration
+ * Labels are translation keys
  */
 const VIEW_MODE_BUTTONS: Array<{
   mode: ViewMode;
   icon: React.ElementType;
-  label: string;
+  labelKey: string;
 }> = [
-  { mode: "list", icon: List, label: "List" },
-  { mode: "icon", icon: LayoutGrid, label: "Icon" },
-  { mode: "column", icon: Columns, label: "Column" },
-  { mode: "gallery", icon: GalleryHorizontal, label: "Gallery" },
+  { mode: "list", icon: List, labelKey: "fileBrowser.viewModes.list" },
+  { mode: "icon", icon: LayoutGrid, labelKey: "fileBrowser.viewModes.icon" },
+  { mode: "column", icon: Columns, labelKey: "fileBrowser.viewModes.column" },
+  { mode: "gallery", icon: GalleryHorizontal, labelKey: "fileBrowser.viewModes.gallery" },
 ];
 
 /**
@@ -106,6 +108,7 @@ export function FileToolbar({
   currentPath,
   className,
 }: FileToolbarProps) {
+  const { t } = useTranslation();
   const breadcrumbs = React.useMemo(
     () => parsePathToBreadcrumbs(currentPath),
     [currentPath]
@@ -134,7 +137,7 @@ export function FileToolbar({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Back</TooltipContent>
+            <TooltipContent>{t("fileBrowser.back")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -151,7 +154,7 @@ export function FileToolbar({
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Forward</TooltipContent>
+            <TooltipContent>{t("fileBrowser.forward")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -168,7 +171,7 @@ export function FileToolbar({
                 <ChevronUp className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Go to Parent</TooltipContent>
+            <TooltipContent>{t("fileBrowser.goToParent")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
@@ -177,7 +180,7 @@ export function FileToolbar({
 
       {/* View Mode Toggle Group */}
       <div className="flex items-center gap-0.5 rounded-md bg-muted/50 p-0.5">
-        {VIEW_MODE_BUTTONS.map(({ mode, icon: Icon, label }) => (
+        {VIEW_MODE_BUTTONS.map(({ mode, icon: Icon, labelKey }) => (
           <TooltipProvider key={mode} delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -193,7 +196,7 @@ export function FileToolbar({
                   <Icon className="h-3.5 w-3.5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>{label} View</TooltipContent>
+              <TooltipContent>{t("fileBrowser.viewLabel", { label: t(labelKey) })}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         ))}
@@ -215,7 +218,7 @@ export function FileToolbar({
                 <FilePlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New File</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFile")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -231,7 +234,7 @@ export function FileToolbar({
                 <FolderPlus className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New Folder</TooltipContent>
+            <TooltipContent>{t("fileBrowser.newFolder")}</TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>

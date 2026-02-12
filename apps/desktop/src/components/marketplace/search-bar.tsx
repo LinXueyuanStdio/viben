@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ export const SearchBar = React.memo(function SearchBar({
   className,
   loading = false,
 }: SearchBarProps) {
+  const { t } = useTranslation();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleClear = React.useCallback(() => {
@@ -61,7 +63,7 @@ export const SearchBar = React.memo(function SearchBar({
           onClick={handleClear}
         >
           <X className="h-4 w-4" />
-          <span className="sr-only">Clear search</span>
+          <span className="sr-only">{t("common.clearSearch")}</span>
         </Button>
       )}
     </div>

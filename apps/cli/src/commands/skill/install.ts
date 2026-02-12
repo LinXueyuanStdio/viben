@@ -34,7 +34,7 @@ export async function installSkillCommand(
       console.log();
       console.log(`  Name:      ${skill.id}`);
       console.log(`  Version:   v${skill.version}`);
-      console.log(`  Installed: ${skill.installed_at}`);
+      console.log(`  Installed: ${skill.installedAt}`);
       console.log();
       console.log('The skill is now available for use.');
     }

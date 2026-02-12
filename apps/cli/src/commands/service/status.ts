@@ -5,7 +5,11 @@
 import chalk from 'chalk';
 import type { OutputContext } from '../../types';
 import { output, successResponse, outputTable } from '../../lib/output';
-import { listServices, getServiceStatus, type ServiceInfo } from '../../lib/services';
+import {
+  listServicesAsync,
+  getServiceStatusAsync,
+  type ServiceInfo,
+} from '../../lib/services';
 
 /**
  * Options for status command
@@ -33,15 +37,18 @@ function formatStatus(info: ServiceInfo): string {
 /**
  * Show service status
  */
-export function showServiceStatus(ctx: OutputContext, options: StatusOptions): void {
+export async function showServiceStatus(
+  ctx: OutputContext,
+  options: StatusOptions
+): Promise<void> {
   if (options.name) {
     // Show single service status
-    const info = getServiceStatus(options.name);
+    const info = await getServiceStatusAsync(options.name);
 
     output(ctx, successResponse(info), () => {
       console.log(chalk.bold(`Service: ${info.name}`));
       console.log();
-      console.log(`  ${chalk.cyan('Type:')}    ${info.type}`);
+      console.log(`  ${chalk.cyan('Type:')}    ${info.serviceType}`);
       console.log(`  ${chalk.cyan('Status:')}  ${formatStatus(info)}`);
 
       if (info.pid) {
@@ -67,12 +74,12 @@ export function showServiceStatus(ctx: OutputContext, options: StatusOptions): v
   }
 
   // Show all services status
-  const services = listServices();
+  const services = await listServicesAsync();
 
   const response = successResponse({
     services: services.map((s) => ({
       name: s.name,
-      type: s.type,
+      type: s.serviceType,
       status: s.status,
       pid: s.pid,
       uptime: s.uptime,

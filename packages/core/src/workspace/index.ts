@@ -1,0 +1,486 @@
+/**
+ * Workspace management for Viben
+ *
+ * Handles workspace detection, listing, and information retrieval.
+ */
+import { readdir, stat, mkdir, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { join, basename, resolve, parse } from "node:path";
+import { stringify } from "yaml";
+import { getStateDir } from "../config/paths";
+import { readYaml, writeYaml, fileExists } from "../config/yaml";
+import { AlreadyExistsError, ValidationError } from "../error";
+import type {
+  Workspace,
+  WorkspaceConfigFile,
+  KnownWorkspacesFile,
+  KnownWorkspaceEntry,
+  InitWorkspaceOptions,
+  InitWorkspaceResult,
+} from "./types";
+
+export * from "./types";
+
+// Export init functions
+export {
+  initFromTemplate,
+  listWorkspaceTemplates,
+  getWorkspaceTemplate,
+  createWorkspaceTemplate,
+  deleteWorkspaceTemplate,
+  workspaceExists,
+  isInsideWorkspace,
+} from "./init";
+
+/**
+ * Workspace directory name
+ */
+export const WORKSPACE_DIR = ".viben";
+
+/**
+ * Workspace config file name
+ */
+export const WORKSPACE_CONFIG_FILE = "config.yaml";
+
+/**
+ * Known workspaces file name (in global state dir)
+ */
+const KNOWN_WORKSPACES_FILE = "workspaces.yaml";
+
+/**
+ * Agents directory name within workspace
+ */
+export const AGENTS_DIR = "agents";
+
+/**
+ * Default workspace configuration
+ */
+export const DEFAULT_WORKSPACE_CONFIG: WorkspaceConfigFile = {
+  version: 1,
+  settings: {
+    editor: "code",
+    pager: "less",
+    color: "auto",
+  },
+  agents: [],
+  mcp: {
+    enabled: [],
+  },
+  skills: {
+    enabled: [],
+  },
+};
+
+/**
+ * Default agent configuration YAML content
+ */
+const DEFAULT_AGENT_CONFIG = `# Main agent configuration
+id: main
+name: Main Agent
+description: Default workspace agent
+
+# Model configuration (optional, uses defaults)
+# model: claude-sonnet-4-20250514
+# provider: anthropic
+`;
+
+/**
+ * Get the path to the known workspaces file
+ */
+function getKnownWorkspacesPath(): string {
+  return join(getStateDir(), KNOWN_WORKSPACES_FILE);
+}
+
+/**
+ * WorkspaceManager handles workspace operations
+ */
+export class WorkspaceManager {
+  /**
+   * Find the workspace root directory by traversing up from the given directory.
+   * Returns null if no workspace is found.
+   */
+  findWorkspaceRoot(startDir: string): string | null {
+    let currentDir = resolve(startDir);
+    const root = parse(currentDir).root;
+
+    while (currentDir !== root) {
+      const vibenDir = join(currentDir, WORKSPACE_DIR);
+      const configPath = join(vibenDir, WORKSPACE_CONFIG_FILE);
+
+      if (existsSync(configPath)) {
+        return currentDir;
+      }
+
+      const parentDir = join(currentDir, "..");
+      if (parentDir === currentDir) {
+        break;
+      }
+      currentDir = parentDir;
+    }
+
+    return null;
+  }
+
+  /**
+   * Read the known workspaces from the global state directory
+   */
+  async readKnownWorkspaces(): Promise<KnownWorkspacesFile> {
+    const filePath = getKnownWorkspacesPath();
+
+    if (!fileExists(filePath)) {
+      return { version: 1, workspaces: [] };
+    }
+
+    const data = await readYaml<KnownWorkspacesFile>(filePath);
+    return data || { version: 1, workspaces: [] };
+  }
+
+  /**
+   * Write known workspaces to the global state directory
+   */
+  async writeKnownWorkspaces(data: KnownWorkspacesFile): Promise<void> {
+    const filePath = getKnownWorkspacesPath();
+    await writeYaml(filePath, data);
+  }
+
+  /**
+   * Add a workspace to the known workspaces list
+   */
+  async addKnownWorkspace(workspacePath: string, name?: string): Promise<void> {
+    const known = await this.readKnownWorkspaces();
+    const normalizedPath = resolve(workspacePath);
+
+    // Check if already exists
+    const existingIndex = known.workspaces.findIndex(
+      (w) => w.path === normalizedPath
+    );
+
+    const now = new Date().toISOString();
+
+    if (existingIndex >= 0) {
+      // Update existing
+      known.workspaces[existingIndex].lastAccessed = now;
+      if (name) {
+        known.workspaces[existingIndex].name = name;
+      }
+    } else {
+      // Add new
+      known.workspaces.push({
+        path: normalizedPath,
+        name,
+        registeredAt: now,
+        lastAccessed: now,
+      });
+    }
+
+    await this.writeKnownWorkspaces(known);
+  }
+
+  /**
+   * Register a workspace (alias for addKnownWorkspace)
+   * Adds a workspace to the global registry
+   */
+  async registerWorkspace(workspacePath: string, name?: string): Promise<void> {
+    return this.addKnownWorkspace(workspacePath, name);
+  }
+
+  /**
+   * Remove a workspace from the known workspaces list
+   */
+  async removeKnownWorkspace(workspacePath: string): Promise<void> {
+    const known = await this.readKnownWorkspaces();
+    const normalizedPath = resolve(workspacePath);
+
+    known.workspaces = known.workspaces.filter((w) => w.path !== normalizedPath);
+    await this.writeKnownWorkspaces(known);
+  }
+
+  /**
+   * Unregister a workspace (alias for removeKnownWorkspace)
+   * Removes a workspace from the global registry
+   */
+  async unregisterWorkspace(workspacePath: string): Promise<void> {
+    return this.removeKnownWorkspace(workspacePath);
+  }
+
+  /**
+   * Get workspace info for a given path.
+   * Returns null if the path is not a valid workspace.
+   */
+  async getWorkspaceInfo(workspacePath: string): Promise<Workspace | null> {
+    const vibenDir = join(workspacePath, WORKSPACE_DIR);
+    const configPath = join(vibenDir, WORKSPACE_CONFIG_FILE);
+
+    if (!fileExists(configPath)) {
+      return null;
+    }
+
+    try {
+      const config = await readYaml<WorkspaceConfigFile>(configPath);
+      if (!config) {
+        return null;
+      }
+
+      const fileStat = await stat(configPath);
+
+      return {
+        path: workspacePath,
+        name: config.name || basename(workspacePath),
+        configPath,
+        mcp: config.mcp,
+        skills: config.skills,
+        agents: config.agents,
+        createdAt: config.createdAt || fileStat.birthtime.toISOString(),
+        updatedAt: config.updatedAt || fileStat.mtime.toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * List all known workspaces with their info.
+   * Filters out workspaces that no longer exist.
+   */
+  async listWorkspaces(): Promise<Workspace[]> {
+    const known = await this.readKnownWorkspaces();
+    const workspaces: Workspace[] = [];
+
+    for (const entry of known.workspaces) {
+      const info = await this.getWorkspaceInfo(entry.path);
+      if (info) {
+        // Override name if specified in known workspaces
+        if (entry.name) {
+          info.name = entry.name;
+        }
+        workspaces.push(info);
+      }
+    }
+
+    return workspaces;
+  }
+
+  /**
+   * Get current workspace info based on the current working directory.
+   * Returns null if not in a workspace.
+   */
+  async getCurrentWorkspace(cwd?: string): Promise<Workspace | null> {
+    const workingDir = cwd || process.cwd();
+    const workspaceRoot = this.findWorkspaceRoot(workingDir);
+
+    if (!workspaceRoot) {
+      return null;
+    }
+
+    return this.getWorkspaceInfo(workspaceRoot);
+  }
+
+  /**
+   * Check if a directory is in a workspace
+   */
+  isInWorkspace(cwd?: string): boolean {
+    const workingDir = cwd || process.cwd();
+    return this.findWorkspaceRoot(workingDir) !== null;
+  }
+
+  /**
+   * Get current workspace path (if in a workspace).
+   * Returns null if not in a workspace.
+   */
+  getCurrentWorkspacePath(cwd?: string): string | null {
+    const workingDir = cwd || process.cwd();
+    return this.findWorkspaceRoot(workingDir);
+  }
+
+  /**
+   * List agents in a workspace
+   */
+  async listWorkspaceAgents(workspacePath: string): Promise<string[]> {
+    const agentsDir = join(workspacePath, WORKSPACE_DIR, "agents");
+
+    if (!fileExists(agentsDir)) {
+      return [];
+    }
+
+    try {
+      const entries = await readdir(agentsDir, { withFileTypes: true });
+      return entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Get the agents directory for a workspace
+   */
+  getWorkspaceAgentsDir(workspacePath: string): string {
+    return join(workspacePath, WORKSPACE_DIR, "agents");
+  }
+
+  /**
+   * Get the MCP directory for a workspace
+   */
+  getWorkspaceMcpDir(workspacePath: string): string {
+    return join(workspacePath, WORKSPACE_DIR, "mcp");
+  }
+
+  /**
+   * Get the skills directory for a workspace
+   */
+  getWorkspaceSkillsDir(workspacePath: string): string {
+    return join(workspacePath, WORKSPACE_DIR, "skills");
+  }
+
+  /**
+   * Get the config path for a workspace
+   */
+  getWorkspaceConfigPath(workspacePath: string): string {
+    return join(workspacePath, WORKSPACE_DIR, WORKSPACE_CONFIG_FILE);
+  }
+
+  /**
+   * Check if a directory is inside an existing workspace (but not the root).
+   * Returns the enclosing workspace path if found, null otherwise.
+   */
+  getEnclosingWorkspace(dir: string): string | null {
+    const resolvedDir = resolve(dir);
+    const workspaceRoot = this.findWorkspaceRoot(resolvedDir);
+
+    if (workspaceRoot && workspaceRoot !== resolvedDir) {
+      return workspaceRoot;
+    }
+
+    return null;
+  }
+
+  /**
+   * Initialize a Viben workspace in the target directory.
+   *
+   * Creates:
+   * - .viben/config.yaml - Workspace configuration
+   * - .viben/agents/main.yaml - Default agent configuration
+   *
+   * @param options - Initialization options
+   * @returns Initialization result
+   * @throws AlreadyExistsError if workspace already exists and force is false
+   * @throws ValidationError if inside an existing workspace
+   */
+  async init(options: InitWorkspaceOptions = {}): Promise<InitWorkspaceResult> {
+    const targetDir = resolve(options.targetDir || process.cwd());
+    const vibenDir = join(targetDir, WORKSPACE_DIR);
+    const configPath = join(vibenDir, WORKSPACE_CONFIG_FILE);
+    const agentsDir = join(vibenDir, AGENTS_DIR);
+    const mainAgentPath = join(agentsDir, "main.yaml");
+
+    // Check if already inside a workspace (nested workspace check)
+    const enclosingWorkspace = this.getEnclosingWorkspace(targetDir);
+    if (enclosingWorkspace) {
+      throw new ValidationError(
+        `Already inside workspace at ${enclosingWorkspace}. Nested workspaces are not supported.`
+      );
+    }
+
+    // Check if workspace already exists
+    if (existsSync(configPath) && !options.force) {
+      throw new AlreadyExistsError("Workspace", targetDir);
+    }
+
+    // Determine config to use
+    let config: WorkspaceConfigFile;
+
+    if (options.template) {
+      // TODO: Support template loading from registry or local file
+      // For now, just use default config with a note
+      config = {
+        ...DEFAULT_WORKSPACE_CONFIG,
+        version: 1,
+      };
+    } else {
+      config = {
+        ...DEFAULT_WORKSPACE_CONFIG,
+        version: 1,
+      };
+    }
+
+    // Track created files
+    const createdFiles: string[] = [];
+
+    // Create .viben directory
+    if (!existsSync(vibenDir)) {
+      await mkdir(vibenDir, { recursive: true });
+    }
+
+    // Write config file
+    const configContent = stringify(config, { indent: 2 });
+    await writeFile(configPath, configContent, "utf-8");
+    createdFiles.push(WORKSPACE_CONFIG_FILE);
+
+    // Create agents directory
+    if (!existsSync(agentsDir)) {
+      await mkdir(agentsDir, { recursive: true });
+    }
+
+    // Create default agent config
+    if (!existsSync(mainAgentPath) || options.force) {
+      await writeFile(mainAgentPath, DEFAULT_AGENT_CONFIG, "utf-8");
+      createdFiles.push(`${AGENTS_DIR}/main.yaml`);
+    }
+
+    // Add to known workspaces
+    await this.addKnownWorkspace(targetDir);
+
+    return {
+      success: true,
+      path: vibenDir,
+      files: createdFiles,
+      config,
+    };
+  }
+
+  /**
+   * Read workspace configuration
+   */
+  async readConfig(workspacePath: string): Promise<WorkspaceConfigFile | null> {
+    const configPath = this.getWorkspaceConfigPath(workspacePath);
+
+    if (!fileExists(configPath)) {
+      return null;
+    }
+
+    const config = await readYaml<WorkspaceConfigFile>(configPath);
+    return config ?? null;
+  }
+
+  /**
+   * Write workspace configuration
+   */
+  async writeConfig(
+    workspacePath: string,
+    config: WorkspaceConfigFile
+  ): Promise<void> {
+    const configPath = this.getWorkspaceConfigPath(workspacePath);
+    await writeYaml(configPath, config);
+  }
+}
+
+// Export singleton instance
+export const workspaceManager = new WorkspaceManager();
+
+/**
+ * Standalone function to initialize a workspace (convenience export)
+ *
+ * Note: This function supports templates via options.template.
+ * Use the imported initWorkspace from "./init" for full template support.
+ */
+export async function initWorkspace(
+  options: InitWorkspaceOptions = {}
+): Promise<InitWorkspaceResult> {
+  // Use the new init module if a template is specified
+  if (options.template) {
+    const { initWorkspace: initWithTemplate } = await import("./init");
+    return initWithTemplate(options);
+  }
+  return workspaceManager.init(options);
+}
