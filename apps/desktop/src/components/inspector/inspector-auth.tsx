@@ -182,8 +182,8 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                 </div>
 
                 <div className="text-[10px] text-muted-foreground">
-                  Created: {token.createdAt.toLocaleDateString()}
-                  {token.expiresAt && ` • Expires: ${token.expiresAt.toLocaleDateString()}`}
+                  {t("inspector.created", "Created:")} {token.createdAt.toLocaleDateString()}
+                  {token.expiresAt && ` • ${t("inspector.expires", "Expires:")} ${token.expiresAt.toLocaleDateString()}`}
                 </div>
 
                 {token.scopes && token.scopes.length > 0 && (
@@ -213,7 +213,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
             <Input
               value={newTokenName}
               onChange={(e) => setNewTokenName(e.target.value)}
-              placeholder="My API Key"
+              placeholder={t("inspector.myApiKeyPlaceholder", "My API Key")}
               className="text-sm"
             />
           </div>
@@ -227,8 +227,8 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               onChange={(e) => setNewTokenType(e.target.value as "bearer" | "api_key")}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
             >
-              <option value="bearer">Bearer Token</option>
-              <option value="api_key">API Key</option>
+              <option value="bearer">{t("inspector.bearerTokenOption", "Bearer Token")}</option>
+              <option value="api_key">{t("inspector.apiKeyOption", "API Key")}</option>
             </select>
           </div>
 
@@ -240,7 +240,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
               type="password"
               value={newTokenValue}
               onChange={(e) => setNewTokenValue(e.target.value)}
-              placeholder="sk-..."
+              placeholder={t("inspector.tokenPlaceholder", "sk-...")}
               className="font-mono text-sm"
             />
           </div>

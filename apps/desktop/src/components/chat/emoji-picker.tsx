@@ -6,13 +6,14 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-// Common emojis organized by category
+// Common emojis organized by category (labels are i18n keys)
 const EMOJI_CATEGORIES = {
   smileys: {
-    label: "Smileys",
+    labelKey: "chat.emojiPicker.smileys",
     emojis: [
       "\u{1F600}",
       "\u{1F603}",
@@ -47,7 +48,7 @@ const EMOJI_CATEGORIES = {
     ],
   },
   gestures: {
-    label: "Gestures",
+    labelKey: "chat.emojiPicker.gestures",
     emojis: [
       "\u{1F44D}",
       "\u{1F44E}",
@@ -72,7 +73,7 @@ const EMOJI_CATEGORIES = {
     ],
   },
   objects: {
-    label: "Objects",
+    labelKey: "chat.emojiPicker.objects",
     emojis: [
       "\u{2764}\u{FE0F}",
       "\u{1F525}",
@@ -97,7 +98,7 @@ const EMOJI_CATEGORIES = {
     ],
   },
   nature: {
-    label: "Nature",
+    labelKey: "chat.emojiPicker.nature",
     emojis: [
       "\u{2600}\u{FE0F}",
       "\u{1F324}\u{FE0F}",
@@ -122,7 +123,7 @@ const EMOJI_CATEGORIES = {
     ],
   },
   food: {
-    label: "Food",
+    labelKey: "chat.emojiPicker.food",
     emojis: [
       "\u{2615}",
       "\u{1F375}",
@@ -147,7 +148,7 @@ const EMOJI_CATEGORIES = {
     ],
   },
   symbols: {
-    label: "Symbols",
+    labelKey: "chat.emojiPicker.symbols",
     emojis: [
       "\u{2705}",
       "\u{274C}",
@@ -181,6 +182,7 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] =
     React.useState<CategoryKey>("smileys");
 
@@ -200,8 +202,7 @@ export function EmojiPicker({ onSelect, className }: EmojiPickerProps) {
               size="sm"
               className="h-8 w-8 p-0 text-base flex-shrink-0"
               onClick={() => setSelectedCategory(key)}
-              title={category.label}
-            >
+              title={t(category.labelKey)}
               {firstEmoji}
             </Button>
           );

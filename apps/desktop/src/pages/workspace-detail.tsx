@@ -75,7 +75,7 @@ export function WorkspaceDetailPage() {
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Loading workspace...</p>
+          <p className="text-muted-foreground">{t("common.loadingWorkspace", "Loading workspace...")}</p>
         </div>
       </PageWrapper>
     );
@@ -110,7 +110,7 @@ export function WorkspaceDetailPage() {
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
           <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         </div>
       </PageWrapper>
     );

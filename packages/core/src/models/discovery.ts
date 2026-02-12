@@ -41,6 +41,17 @@ export interface DiscoveryResult {
 }
 
 /**
+ * OpenAI models response type
+ */
+interface OpenAIModelsResponse {
+  data: Array<{
+    id: string;
+    created?: number;
+    owned_by?: string;
+  }>;
+}
+
+/**
  * Discover models from OpenAI API
  */
 async function discoverOpenAI(
@@ -57,7 +68,7 @@ async function discoverOpenAI(
     throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as OpenAIModelsResponse;
   const models: DiscoveredModel[] = [];
 
   for (const model of data.data || []) {
@@ -88,6 +99,18 @@ async function discoverAnthropic(): Promise<DiscoveredModel[]> {
 }
 
 /**
+ * Ollama models response type
+ */
+interface OllamaModelsResponse {
+  models: Array<{
+    name: string;
+    size?: number;
+    digest?: string;
+    modified_at?: string;
+  }>;
+}
+
+/**
  * Discover models from Ollama
  */
 async function discoverOllama(baseUrl = "http://localhost:11434"): Promise<DiscoveredModel[]> {
@@ -97,7 +120,7 @@ async function discoverOllama(baseUrl = "http://localhost:11434"): Promise<Disco
     throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as OllamaModelsResponse;
   const models: DiscoveredModel[] = [];
 
   for (const model of data.models || []) {
@@ -116,6 +139,19 @@ async function discoverOllama(baseUrl = "http://localhost:11434"): Promise<Disco
 }
 
 /**
+ * OpenRouter models response type
+ */
+interface OpenRouterModelsResponse {
+  data: Array<{
+    id: string;
+    name?: string;
+    context_length?: number;
+    pricing?: unknown;
+    architecture?: unknown;
+  }>;
+}
+
+/**
  * Discover models from OpenRouter
  */
 async function discoverOpenRouter(apiKey: string): Promise<DiscoveredModel[]> {
@@ -129,7 +165,7 @@ async function discoverOpenRouter(apiKey: string): Promise<DiscoveredModel[]> {
     throw new Error(`OpenRouter API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as OpenRouterModelsResponse;
   const models: DiscoveredModel[] = [];
 
   for (const model of data.data || []) {
@@ -148,6 +184,23 @@ async function discoverOpenRouter(apiKey: string): Promise<DiscoveredModel[]> {
 }
 
 /**
+ * Google AI models response type
+ */
+interface GoogleAIModelsResponse {
+  models: Array<{
+    name?: string;
+    displayName?: string;
+    supportedGenerationMethods?: string[];
+    description?: string;
+    inputTokenLimit?: number;
+    outputTokenLimit?: number;
+    temperature?: number;
+    topP?: number;
+    topK?: number;
+  }>;
+}
+
+/**
  * Discover models from Google AI (Gemini)
  */
 async function discoverGoogle(apiKey: string): Promise<DiscoveredModel[]> {
@@ -159,12 +212,12 @@ async function discoverGoogle(apiKey: string): Promise<DiscoveredModel[]> {
     throw new Error(`Google AI API error: ${response.status} ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as GoogleAIModelsResponse;
   const models: DiscoveredModel[] = [];
 
   for (const model of data.models || []) {
     models.push({
-      id: model.name?.replace("models/", "") || model.name,
+      id: model.name?.replace("models/", "") || model.name || "",
       name: model.displayName,
       capabilities: model.supportedGenerationMethods,
       metadata: {
@@ -203,7 +256,7 @@ async function discoverAzure(): Promise<DiscoveredModel[]> {
  * @returns Discovery result with models or error
  */
 export async function discoverModels(providerId: string): Promise<DiscoveryResult> {
-  const provider = await providerManager.get(providerId);
+  const provider = await providerManager.getProvider(providerId);
   if (!provider) {
     return {
       providerId,
@@ -275,7 +328,7 @@ export async function discoverModels(providerId: string): Promise<DiscoveryResul
  * @returns Array of discovery results for each provider
  */
 export async function discoverAllModels(): Promise<DiscoveryResult[]> {
-  const providers = await providerManager.list();
+  const providers = await providerManager.listProviders();
   const results: DiscoveryResult[] = [];
 
   for (const provider of providers) {

@@ -343,6 +343,7 @@ export function MessageItem({
 
   // Thinking message (extended thinking from Claude)
   if (message.type === "thinking") {
+    const { t } = useTranslation();
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -354,7 +355,7 @@ export function MessageItem({
         </div>
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="rounded-2xl rounded-tl-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-            <p className="text-xs text-amber-600/80 mb-1 font-medium">Thinking...</p>
+            <p className="text-xs text-amber-600/80 mb-1 font-medium">{t("chat.thinking", "Thinking...")}</p>
             <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground text-sm">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                 {message.content || ""}

@@ -36,15 +36,18 @@ const SkillsMarketPage = lazy(() =>
   import("@/pages/skills-market").then((m) => ({ default: m.SkillsMarketPage }))
 );
 
+import { useTranslation } from "react-i18next";
+
 /**
  * Loading fallback component for lazy-loaded pages
  */
 function PageLoadingFallback() {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-center h-full min-h-[400px]">
       <div className="flex flex-col items-center gap-3 text-muted-foreground">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading...</p>
+        <p className="text-sm">{t("common.loading")}</p>
       </div>
     </div>
   );

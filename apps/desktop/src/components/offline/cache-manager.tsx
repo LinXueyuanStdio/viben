@@ -260,10 +260,10 @@ export function CacheManager({ className }: CacheManagerProps) {
               disabled={!localSettings.enabled}
               className="rounded-xl border bg-background px-3 py-1.5 text-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-50"
             >
-              <option value={50}>50 MB</option>
-              <option value={100}>100 MB</option>
-              <option value={200}>200 MB</option>
-              <option value={500}>500 MB</option>
+              <option value={50}>{t("offline.cacheSize50", "50 MB")}</option>
+              <option value={100}>{t("offline.cacheSize100", "100 MB")}</option>
+              <option value={200}>{t("offline.cacheSize200", "200 MB")}</option>
+              <option value={500}>{t("offline.cacheSize500", "500 MB")}</option>
             </select>
           </div>
         </div>

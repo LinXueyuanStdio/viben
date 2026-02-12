@@ -169,19 +169,19 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
           <div className="grid grid-cols-4 gap-2 mb-3">
             <div className="text-center p-1.5 rounded bg-yellow-500/10">
               <div className="text-sm font-semibold text-yellow-600">{taskCounts.pending}</div>
-              <div className="text-[10px] text-muted-foreground">Pending</div>
+              <div className="text-[10px] text-muted-foreground">{t("inspector.statusPending", "Pending")}</div>
             </div>
             <div className="text-center p-1.5 rounded bg-blue-500/10">
               <div className="text-sm font-semibold text-blue-600">{taskCounts.running}</div>
-              <div className="text-[10px] text-muted-foreground">Running</div>
+              <div className="text-[10px] text-muted-foreground">{t("inspector.statusRunning", "Running")}</div>
             </div>
             <div className="text-center p-1.5 rounded bg-green-500/10">
               <div className="text-sm font-semibold text-green-600">{taskCounts.completed}</div>
-              <div className="text-[10px] text-muted-foreground">Done</div>
+              <div className="text-[10px] text-muted-foreground">{t("inspector.statusDone", "Done")}</div>
             </div>
             <div className="text-center p-1.5 rounded bg-red-500/10">
               <div className="text-sm font-semibold text-red-600">{taskCounts.failed}</div>
-              <div className="text-[10px] text-muted-foreground">Failed</div>
+              <div className="text-[10px] text-muted-foreground">{t("inspector.statusFailed", "Failed")}</div>
             </div>
           </div>
         )}
@@ -235,7 +235,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                       {typeof task.progress === 'number' && (
                         <div>
                           <div className="flex justify-between text-xs mb-1">
-                            <span className="text-muted-foreground">Progress</span>
+                            <span className="text-muted-foreground">{t("inspector.progress", "Progress")}</span>
                             <span>{task.progress}%</span>
                           </div>
                           <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -253,7 +253,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                       {/* Result or Error */}
                       {task.result !== undefined && task.result !== null && (
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Result:</div>
+                          <div className="text-xs text-muted-foreground mb-1">{t("inspector.resultLabel", "Result:")}</div>
                           <pre className="text-xs bg-muted/50 p-2 rounded overflow-x-auto max-h-32">
                             {JSON.stringify(task.result, null, 2)}
                           </pre>
@@ -261,7 +261,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                       )}
                       {task.error && (
                         <div>
-                          <div className="text-xs text-red-500 mb-1">Error:</div>
+                          <div className="text-xs text-red-500 mb-1">{t("inspector.errorLabel", "Error:")}</div>
                           <pre className="text-xs bg-red-500/10 text-red-600 p-2 rounded overflow-x-auto max-h-32">
                             {task.error}
                           </pre>
@@ -284,7 +284,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                           ) : (
                             <Copy className="h-3 w-3 mr-1" />
                           )}
-                          Copy ID
+                          {t("inspector.copyId", "Copy ID")}
                         </Button>
                         {task.status === "running" && (
                           <Button
@@ -297,7 +297,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                             }}
                           >
                             <Square className="h-3 w-3 mr-1" />
-                            Cancel
+                            {t("inspector.cancelTask", "Cancel")}
                           </Button>
                         )}
                       </div>

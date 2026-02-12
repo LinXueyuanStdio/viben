@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { openUrl as openExternal } from "@tauri-apps/plugin-opener";
 import { ExternalLink, Loader2, Type } from "lucide-react";
@@ -24,6 +25,7 @@ const PANGRAM_SENTENCES = [
 const FONT_SIZES = [12, 16, 24, 32, 48, 72];
 
 export function FontPreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const [fontLoaded, setFontLoaded] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -116,7 +118,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
     return (
       <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
         <Loader2 className="text-muted-foreground size-8 animate-spin" />
-        <p className="text-muted-foreground mt-4 text-sm">Loading font...</p>
+        <p className="text-muted-foreground mt-4 text-sm">{t("artifacts.loadingFont", "Loading font...")}</p>
       </div>
     );
   }
@@ -132,14 +134,14 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
             {artifact.name}
           </h3>
           <p className="text-muted-foreground mb-6 text-sm break-all whitespace-pre-wrap">
-            {error || "Font preview not available"}
+            {error || t("artifacts.fontPreviewNotAvailable", "Font preview not available")}
           </p>
           <button
             onClick={handleOpenExternal}
             className="bg-primary text-primary-foreground hover:bg-primary/90 flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors"
           >
             <ExternalLink className="size-4" />
-            Open in Font Viewer
+            {t("artifacts.openInFontViewer", "Open in Font Viewer")}
           </button>
         </div>
       </div>
@@ -181,7 +183,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
           {/* Character sets */}
           <div className="space-y-4">
             <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-              Character Set
+              {t("artifacts.characterSet", "Character Set")}
             </h3>
             <div className="border-border rounded-xl border p-4">
               {PANGRAM_SENTENCES.map((text, idx) => (
@@ -199,7 +201,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
           {/* Size samples */}
           <div className="space-y-4">
             <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-              Size Samples
+              {t("artifacts.sizeSamples", "Size Samples")}
             </h3>
             <div className="border-border space-y-4 rounded-xl border p-4">
               {FONT_SIZES.map((size) => (

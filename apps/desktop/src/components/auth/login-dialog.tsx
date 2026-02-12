@@ -119,7 +119,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const handleDevOAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!oauthCode.trim()) {
-      setFormError("Please enter the OAuth code");
+      setFormError(t("auth.oauthCodeRequired", "Please enter the OAuth code"));
       return;
     }
     try {
@@ -185,7 +185,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
             <form onSubmit={handleDevOAuthSubmit} className="space-y-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Terminal className="h-3 w-3" />
-                <span>Dev Mode: Paste the OAuth code from the URL</span>
+                <span>{t("auth.devModeOAuthHint", "Dev Mode: Paste the OAuth code from the URL")}</span>
               </div>
               <div className="flex gap-2">
                 <Input
@@ -197,7 +197,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
                   className="flex-1 text-sm"
                 />
                 <Button type="submit" size="sm" disabled={isLoading || !oauthCode.trim()}>
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Submit"}
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.submit", "Submit")}
                 </Button>
               </div>
             </form>

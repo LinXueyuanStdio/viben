@@ -6,12 +6,14 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores";
 import type { PreviewComponentProps } from "./types";
 import { getLanguageHint } from "./utils";
 
 export function CodePreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const { theme } = useAppStore();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [lineNumbers, setLineNumbers] = React.useState<string[]>([]);
@@ -34,7 +36,7 @@ export function CodePreview({ artifact }: PreviewComponentProps) {
   if (!artifact.content) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <p className="text-muted-foreground text-sm">No content available</p>
+        <p className="text-muted-foreground text-sm">{t("artifacts.noContentAvailable", "No content available")}</p>
       </div>
     );
   }

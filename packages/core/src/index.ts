@@ -80,6 +80,13 @@ export {
   DEFAULT_ALIASES,
   getKnownModel,
   getModelsByProvider,
+  // Model discovery
+  discoverModels,
+  discoverAllModels,
+  enrichModel,
+  type DiscoveredModel,
+  type DiscoveryResult,
+  // Types
   type ModelsFile,
   type ModelConfigEntry,
   type KnownModel,
@@ -267,6 +274,42 @@ export {
   type OutboundMessage,
   type InboundMessageHandler,
 } from "./services";
+
+// Group Chat
+export {
+  // Service
+  GroupChatService,
+  groupChatService,
+  // Types
+  type BroadcastMode,
+  type GroupChatSettings,
+  type GroupChatConfig,
+  type MemberConfig,
+  type GroupChatSessionStatus,
+  type GroupChatSessionConfig,
+  type UIMessageType,
+  type GroupChatUIMessage,
+  type AgentResponse,
+  type AgentRolloutMessage,
+  type FileInfo,
+  type FileUploadMeta,
+  type CreateGroupChatRequest,
+  type UpdateGroupChatRequest,
+  type SendMessageRequest,
+  type CreateSessionRequest,
+  type UpdateSessionRequest,
+  type ListMessagesQuery,
+} from "./group-chat";
+
+// Notifications
+export {
+  sendNotification,
+  notifyCronCompletion,
+  notifyAgentCompletion,
+  notifyChannelMessage,
+  notify,
+  type NotificationOptions,
+} from "./notifications";
 
 // Gateway (optional - requires fastify)
 // Note: Gateway is excluded from the main build because it requires optional dependencies.

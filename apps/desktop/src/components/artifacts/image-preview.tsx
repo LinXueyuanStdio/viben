@@ -6,6 +6,7 @@
  */
 
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { readFile, stat } from "@tauri-apps/plugin-fs";
 import { Loader2, ImageIcon } from "lucide-react";
 
@@ -18,6 +19,7 @@ import {
 } from "./utils";
 
 export function ImagePreview({ artifact }: PreviewComponentProps) {
+  const { t } = useTranslation();
   const [imageUrl, setImageUrl] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -104,7 +106,7 @@ export function ImagePreview({ artifact }: PreviewComponentProps) {
     return (
       <div className="bg-muted/20 flex h-full flex-col items-center justify-center p-8">
         <Loader2 className="text-muted-foreground size-8 animate-spin" />
-        <p className="text-muted-foreground mt-4 text-sm">Loading image...</p>
+        <p className="text-muted-foreground mt-4 text-sm">{t("artifacts.loadingImage", "Loading image...")}</p>
       </div>
     );
   }
