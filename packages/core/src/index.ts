@@ -376,6 +376,15 @@ export {
   type StartServiceOptions,
   type WatchLogsOptions,
   type ServiceDefaults,
+  // Background tasks
+  BackgroundTaskManager,
+  backgroundTaskManager,
+  type BackgroundTask,
+  // Agent service (session lifecycle and plan approval)
+  AgentService,
+  agentService,
+  type AgentSession,
+  type AgentPlan,
 } from "./services";
 
 // Group Chat

@@ -12,8 +12,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-CRATES_DIR="$PROJECT_ROOT/crates"
-BINARY="$CRATES_DIR/target/debug/viben"
+# Note: Binary is in root target directory (workspace builds to root)
+BINARY="$PROJECT_ROOT/target/debug/viben"
 LOG_FILE="$PROJECT_ROOT/.gateway.log"
 PORT=18790
 
@@ -29,9 +29,9 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}=== Viben Gateway Restart (Debug) ===${NC}"
 
-# Always build in debug mode
+# Always build in debug mode (from project root)
 echo -e "${CYAN}Building viben (debug)...${NC}"
-cd "$CRATES_DIR"
+cd "$PROJECT_ROOT"
 cargo build -p viben-core --bin viben
 echo -e "${GREEN}Build complete${NC}"
 

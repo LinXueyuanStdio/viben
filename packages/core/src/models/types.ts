@@ -26,12 +26,15 @@ export interface ModelConfigEntry {
 
 /**
  * Known model definitions
+ *
+ * Synced with crates/viben-core/src/models/types.rs KnownModel
  */
 export interface KnownModel {
   id: string;
   name: string;
   provider: string;
-  contextLength: number;
+  description?: string;
+  contextLength?: number;
   maxOutputTokens?: number;
   inputPrice?: number; // per 1M tokens
   outputPrice?: number; // per 1M tokens

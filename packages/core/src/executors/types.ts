@@ -39,6 +39,22 @@ export interface ChatOptions {
   dangerouslySkipPermissions?: boolean;
   /** Additional environment variables */
   env?: Record<string, string>;
+
+  // Agent-specific options (for SDK mode)
+  /** Custom system prompt (replaces default) */
+  systemPrompt?: string;
+  /** Text appended to system prompt */
+  appendPrompt?: string;
+  /** Allowed tools list */
+  allowedTools?: string[];
+  /** Disallowed tools list */
+  disallowedTools?: string[];
+  /** MCP servers to use */
+  mcpServers?: string[];
+  /** Skills to use */
+  skills?: string[];
+  /** Permission mode */
+  permissionMode?: string;
 }
 
 /**

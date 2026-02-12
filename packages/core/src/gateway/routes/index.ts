@@ -19,6 +19,8 @@ import { registerTerminalRoutes } from "./terminal";
 import { registerGroupChatRoutes } from "./group-chats";
 import { registerWorkspaceRoutes } from "./workspaces";
 import { registerChatListRoutes } from "./chat-list";
+import { registerMcpRoutes } from "./mcp";
+import { registerAgentRunRoutes } from "./agent-run";
 
 /**
  * Register all routes
@@ -40,6 +42,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerWorkspaceRoutes(fastify);
   registerGroupChatRoutes(fastify, state);
   registerChatListRoutes(fastify);
+  registerMcpRoutes(fastify);
+  registerAgentRunRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -59,3 +63,18 @@ export { registerTerminalRoutes, getActiveSessionCount, killAllSessions } from "
 export { registerWorkspaceRoutes } from "./workspaces";
 export { registerGroupChatRoutes } from "./group-chats";
 export { registerChatListRoutes } from "./chat-list";
+export { registerMcpRoutes } from "./mcp";
+export { registerAgentRunRoutes } from "./agent-run";
+export type {
+  SSEEventType,
+  SSEMessage,
+  SSESessionMessage,
+  SSETextMessage,
+  SSEToolUseMessage,
+  SSEToolResultMessage,
+  SSEPlanMessage,
+  SSEQuestionMessage,
+  SSEResultMessage,
+  SSEErrorMessage,
+  SSEDoneMessage,
+} from "./agent-run";

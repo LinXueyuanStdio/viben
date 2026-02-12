@@ -8,6 +8,87 @@
 import type { ChatProxy, ChatResult } from "./types";
 import type { ChatOptions } from "../types";
 
+// ============================================================================
+// SSE Message Types for Streaming
+// ============================================================================
+
+/**
+ * SSE text message - Agent generated text content
+ */
+export interface SSETextMessage {
+  type: "text";
+  content: string;
+}
+
+/**
+ * SSE tool use message - Agent calling a tool
+ */
+export interface SSEToolUseMessage {
+  type: "tool_use";
+  id: string;
+  name: string;
+  input: unknown;
+}
+
+/**
+ * SSE tool result message - Result from tool execution
+ */
+export interface SSEToolResultMessage {
+  type: "tool_result";
+  toolUseId: string;
+  output: string;
+  isError?: boolean;
+}
+
+/**
+ * SSE result message - Task completion status
+ */
+export interface SSEResultMessage {
+  type: "result";
+  subtype?: "success" | "error";
+  cost?: number;
+  duration?: number;
+}
+
+/**
+ * SSE error message - Error occurred during execution
+ */
+export interface SSEErrorMessage {
+  type: "error";
+  message: string;
+}
+
+/**
+ * Union type for all SSE messages from streaming execution
+ */
+export type SSEMessage =
+  | SSETextMessage
+  | SSEToolUseMessage
+  | SSEToolResultMessage
+  | SSEResultMessage
+  | SSEErrorMessage;
+
+/**
+ * Environment variables that interfere with SDK execution.
+ * These are set when running inside Claude Code CLI and cause the SDK to fail.
+ */
+const INTERFERING_ENV_VARS = [
+  "CLAUDE_CODE_ENTRYPOINT",
+  "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC",
+  "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS",
+  "CLAUDE_CODE_ATTRIBUTION_HEADER",
+  "CLAUDECODE",
+];
+
+/**
+ * Clear environment variables that interfere with SDK execution
+ */
+function clearInterferingEnvVars(): void {
+  for (const varName of INTERFERING_ENV_VARS) {
+    delete process.env[varName];
+  }
+}
+
 // Dynamic import for optional SDK dependency
 let claudeSdk: typeof import("@anthropic-ai/claude-agent-sdk") | null = null;
 
@@ -68,20 +149,65 @@ export class SdkChatProxy implements ChatProxy {
       resume,
       verbose = false,
       dangerouslySkipPermissions = false,
+      // Agent-specific options
+      systemPrompt,
+      appendPrompt,
+      allowedTools,
+      disallowedTools,
+      mcpServers,
+      skills,
+      permissionMode,
     } = options;
 
     if (!prompt) {
       throw new Error("Prompt is required for SDK chat execution");
     }
 
+    // Clear environment variables that interfere with SDK execution
+    // These are set when running inside Claude Code CLI
+    clearInterferingEnvVars();
+
     try {
-      // Build query options
-      const queryOptions: Parameters<typeof sdk.query>[0]["options"] = {
+      // Build query options based on official SDK documentation
+      // See: https://platform.claude.com/docs/en/agent-sdk/typescript
+      const queryOptions: Record<string, unknown> = {
         cwd,
-        // Use Claude Code preset for system prompt and tools
-        systemPrompt: { type: "preset", preset: "claude_code" },
-        tools: { type: "preset", preset: "claude_code" },
+        // Load user settings from ~/.claude/settings.json
+        // This includes env vars (auth), permissions, and other config
+        settingSources: ["user"],
       };
+
+      // System prompt configuration
+      // If agent has custom systemPrompt, use it; otherwise use Claude Code preset
+      if (systemPrompt) {
+        // Agent has custom system prompt
+        if (appendPrompt) {
+          // Combine custom system prompt with append prompt
+          queryOptions.systemPrompt = systemPrompt + "\n\n" + appendPrompt;
+        } else {
+          queryOptions.systemPrompt = systemPrompt;
+        }
+      } else if (appendPrompt) {
+        // Use Claude Code preset and append custom text
+        queryOptions.systemPrompt = {
+          type: "preset",
+          preset: "claude_code",
+          append: appendPrompt,
+        };
+      } else {
+        // Use Claude Code preset as default
+        queryOptions.systemPrompt = { type: "preset", preset: "claude_code" };
+      }
+
+      // Tools configuration
+      // Use Claude Code preset as base, then apply allowed/disallowed filters
+      queryOptions.tools = { type: "preset", preset: "claude_code" };
+      if (allowedTools && allowedTools.length > 0) {
+        queryOptions.allowedTools = allowedTools;
+      }
+      if (disallowedTools && disallowedTools.length > 0) {
+        queryOptions.disallowedTools = disallowedTools;
+      }
 
       // Add optional parameters
       if (model) {
@@ -91,18 +217,31 @@ export class SdkChatProxy implements ChatProxy {
         queryOptions.sessionId = sessionId;
       }
       if (resume) {
-        // Resume takes a session ID string
         queryOptions.resume = resume;
       }
-      if (dangerouslySkipPermissions) {
+      if (permissionMode) {
+        queryOptions.permissionMode = permissionMode;
+      } else if (dangerouslySkipPermissions) {
         queryOptions.permissionMode = "bypassPermissions";
-        queryOptions.allowDangerouslySkipPermissions = true;
       }
 
-      // Execute the query
+      // MCP servers (if agent has custom MCP config)
+      // Note: This needs proper MCP server config format
+      // For now, we log it in verbose mode
+      if (mcpServers && mcpServers.length > 0 && verbose) {
+        console.log(`Agent MCP servers: ${mcpServers.join(", ")}`);
+      }
+
+      // Skills (if agent has custom skills)
+      // Note: Skills are typically loaded from project config
+      if (skills && skills.length > 0 && verbose) {
+        console.log(`Agent skills: ${skills.join(", ")}`);
+      }
+
+      // Execute the query - returns AsyncGenerator<SDKMessage>
       const queryResult = sdk.query({
         prompt,
-        options: queryOptions,
+        options: queryOptions as Parameters<typeof sdk.query>[0]["options"],
       });
 
       // Stream messages to stdout
@@ -121,8 +260,24 @@ export class SdkChatProxy implements ChatProxy {
       const errorMessage = error instanceof Error ? error.message : String(error);
       // Always show errors to stderr
       console.error(`SDK Error: ${errorMessage}`);
-      if (verbose && error instanceof Error && error.stack) {
-        console.error(error.stack);
+
+      // Check for common issues and provide helpful hints
+      if (errorMessage.includes("exited with code 1")) {
+        console.error(`\nHint: This may happen when Claude Code runs in background mode.`);
+        console.error(`Try using --no-sdk to use spawn proxy instead:`);
+        console.error(`  viben agent chat -n <agent> -p "..." --no-sdk`);
+      }
+
+      if (error instanceof Error) {
+        // Check for cause (nested error)
+        const cause = (error as Error & { cause?: Error }).cause;
+        if (cause) {
+          console.error(`Cause: ${cause.message}`);
+        }
+        // Show stack in verbose mode
+        if (verbose && error.stack) {
+          console.error(error.stack);
+        }
       }
       return {
         exitCode: 1,
@@ -131,8 +286,16 @@ export class SdkChatProxy implements ChatProxy {
     }
   }
 
+  // Track if we've already output content from assistant messages
+  private hasOutputContent = false;
+
   /**
    * Output message content in normal mode
+   *
+   * Message flow:
+   * 1. [system] init - skip
+   * 2. [assistant] { message: { content: [...] } } - output text blocks
+   * 3. [result] { result: "..." } - only output if no assistant content was output
    */
   private outputMessage(message: unknown): void {
     // Type guard for message structure
@@ -140,14 +303,71 @@ export class SdkChatProxy implements ChatProxy {
 
     const msg = message as Record<string, unknown>;
 
-    // Handle assistant messages
-    if (msg.type === "assistant" && typeof msg.content === "string") {
-      process.stdout.write(msg.content);
+    // Handle assistant messages with nested message object
+    // SDK returns: { type: "assistant", message: { content: [...] } }
+    if (msg.type === "assistant" && msg.message && typeof msg.message === "object") {
+      const innerMsg = msg.message as Record<string, unknown>;
+      if (Array.isArray(innerMsg.content)) {
+        for (const block of innerMsg.content) {
+          if (block && typeof block === "object") {
+            const contentBlock = block as Record<string, unknown>;
+            if (contentBlock.type === "text" && typeof contentBlock.text === "string") {
+              process.stdout.write(contentBlock.text);
+              this.hasOutputContent = true;
+            }
+          }
+        }
+      }
+      return;
     }
 
-    // Handle text content blocks
+    // Handle assistant messages with string content
+    if (msg.type === "assistant" && typeof msg.content === "string") {
+      process.stdout.write(msg.content);
+      this.hasOutputContent = true;
+      return;
+    }
+
+    // Handle assistant messages with array content (content blocks)
+    if (msg.type === "assistant" && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block && typeof block === "object") {
+          const contentBlock = block as Record<string, unknown>;
+          if (contentBlock.type === "text" && typeof contentBlock.text === "string") {
+            process.stdout.write(contentBlock.text);
+            this.hasOutputContent = true;
+          }
+        }
+      }
+      return;
+    }
+
+    // Handle text content blocks directly
     if (msg.type === "text" && typeof msg.text === "string") {
       process.stdout.write(msg.text);
+      this.hasOutputContent = true;
+      return;
+    }
+
+    // Handle content_block_delta for streaming
+    if (msg.type === "content_block_delta") {
+      const delta = msg.delta as Record<string, unknown> | undefined;
+      if (delta && delta.type === "text_delta" && typeof delta.text === "string") {
+        process.stdout.write(delta.text);
+        this.hasOutputContent = true;
+      }
+      return;
+    }
+
+    // Handle result message - only output if no assistant content was output
+    // This prevents duplicate output
+    if (msg.type === "result" && typeof msg.result === "string") {
+      if (!this.hasOutputContent) {
+        process.stdout.write(msg.result);
+      }
+      // Always add final newline
+      process.stdout.write("\n");
+      return;
     }
   }
 
@@ -162,6 +382,208 @@ export class SdkChatProxy implements ChatProxy {
 
     // Log all messages with their type
     console.log(`[${msg.type || "unknown"}]`, JSON.stringify(message, null, 2));
+  }
+
+  /**
+   * Execute chat with streaming - returns AsyncGenerator of SSE messages
+   *
+   * This method streams messages as they are generated by the SDK,
+   * converting them to SSE message format for real-time frontend updates.
+   */
+  async *executeStreaming(
+    options: ChatOptions
+  ): AsyncGenerator<SSEMessage, void, unknown> {
+    const sdk = await loadClaudeSdk();
+    if (!sdk) {
+      yield { type: "error", message: "Claude Agent SDK not installed" };
+      return;
+    }
+
+    const {
+      prompt,
+      cwd = process.cwd(),
+      model,
+      sessionId,
+      resume,
+      dangerouslySkipPermissions = false,
+      systemPrompt,
+      appendPrompt,
+      allowedTools,
+      disallowedTools,
+      permissionMode,
+    } = options;
+
+    if (!prompt) {
+      yield { type: "error", message: "Prompt is required" };
+      return;
+    }
+
+    clearInterferingEnvVars();
+
+    try {
+      // Build query options (same as execute method)
+      const queryOptions: Record<string, unknown> = {
+        cwd,
+        settingSources: ["user"],
+      };
+
+      // System prompt configuration
+      if (systemPrompt) {
+        queryOptions.systemPrompt = appendPrompt
+          ? systemPrompt + "\n\n" + appendPrompt
+          : systemPrompt;
+      } else if (appendPrompt) {
+        queryOptions.systemPrompt = {
+          type: "preset",
+          preset: "claude_code",
+          append: appendPrompt,
+        };
+      } else {
+        queryOptions.systemPrompt = { type: "preset", preset: "claude_code" };
+      }
+
+      // Tools configuration
+      queryOptions.tools = { type: "preset", preset: "claude_code" };
+      if (allowedTools?.length) {
+        queryOptions.allowedTools = allowedTools;
+      }
+      if (disallowedTools?.length) {
+        queryOptions.disallowedTools = disallowedTools;
+      }
+
+      // Optional parameters
+      if (model) queryOptions.model = model;
+      if (sessionId) queryOptions.sessionId = sessionId;
+      if (resume) queryOptions.resume = resume;
+      if (permissionMode) {
+        queryOptions.permissionMode = permissionMode;
+      } else if (dangerouslySkipPermissions) {
+        queryOptions.permissionMode = "bypassPermissions";
+      }
+
+      // Execute query
+      const queryResult = sdk.query({
+        prompt,
+        options: queryOptions as Parameters<typeof sdk.query>[0]["options"],
+      });
+
+      // Stream messages
+      for await (const message of queryResult) {
+        const sseMessage = this.convertToSSEMessage(message);
+        if (sseMessage) {
+          yield sseMessage;
+        }
+      }
+
+      // Yield success result at the end
+      yield { type: "result", subtype: "success" };
+    } catch (error) {
+      yield {
+        type: "error",
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Convert SDK message to SSE message format
+   *
+   * Handles various message types from the Claude Agent SDK:
+   * - assistant messages with text content
+   * - tool_use messages
+   * - tool_result messages
+   * - content_block_delta for streaming text
+   */
+  private convertToSSEMessage(message: unknown): SSEMessage | null {
+    if (!message || typeof message !== "object") return null;
+
+    const msg = message as Record<string, unknown>;
+
+    // Handle assistant text messages
+    if (msg.type === "assistant") {
+      // Handle nested message object structure:
+      // { type: "assistant", message: { content: [...] } }
+      if (msg.message && typeof msg.message === "object") {
+        const innerMsg = msg.message as Record<string, unknown>;
+        if (Array.isArray(innerMsg.content)) {
+          const textParts: string[] = [];
+          for (const block of innerMsg.content) {
+            if (
+              block &&
+              typeof block === "object" &&
+              (block as Record<string, unknown>).type === "text"
+            ) {
+              textParts.push((block as Record<string, unknown>).text as string);
+            }
+          }
+          if (textParts.length > 0) {
+            return { type: "text", content: textParts.join("") };
+          }
+        }
+      }
+      // Handle direct string content
+      if (typeof msg.content === "string") {
+        return { type: "text", content: msg.content };
+      }
+      // Handle array content (content blocks)
+      if (Array.isArray(msg.content)) {
+        const textParts: string[] = [];
+        for (const block of msg.content) {
+          if (
+            block &&
+            typeof block === "object" &&
+            (block as Record<string, unknown>).type === "text"
+          ) {
+            textParts.push((block as Record<string, unknown>).text as string);
+          }
+        }
+        if (textParts.length > 0) {
+          return { type: "text", content: textParts.join("") };
+        }
+      }
+    }
+
+    // Handle tool use
+    if (msg.type === "tool_use") {
+      return {
+        type: "tool_use",
+        id: msg.id as string,
+        name: msg.name as string,
+        input: msg.input,
+      };
+    }
+
+    // Handle tool result
+    if (msg.type === "tool_result") {
+      return {
+        type: "tool_result",
+        toolUseId: msg.tool_use_id as string,
+        output:
+          typeof msg.content === "string"
+            ? msg.content
+            : JSON.stringify(msg.content),
+        isError: msg.is_error as boolean | undefined,
+      };
+    }
+
+    // Handle streaming deltas (content_block_delta)
+    if (msg.type === "content_block_delta") {
+      const delta = msg.delta as Record<string, unknown> | undefined;
+      if (
+        delta &&
+        delta.type === "text_delta" &&
+        typeof delta.text === "string"
+      ) {
+        return { type: "text", content: delta.text };
+      }
+    }
+
+    // Handle text content blocks directly
+    if (msg.type === "text" && typeof msg.text === "string") {
+      return { type: "text", content: msg.text };
+    }
+
+    return null;
   }
 }
 

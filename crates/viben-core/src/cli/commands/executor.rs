@@ -310,7 +310,7 @@ pub struct ChatOptions {
 ///
 /// Returns a vector of arguments to pass to the executor CLI.
 /// This function is separated from spawn_chat_process for testability.
-fn build_chat_args(opts: &ChatOptions) -> Vec<String> {
+pub fn build_chat_args(opts: &ChatOptions) -> Vec<String> {
     let mut args = Vec::new();
 
     // Core parameter: -p for non-interactive mode
@@ -356,7 +356,7 @@ fn build_chat_args(opts: &ChatOptions) -> Vec<String> {
 }
 
 /// Spawn a chat process for the given executor
-async fn spawn_chat_process(
+pub async fn spawn_chat_process(
     executor: &CodingAgent,
     work_dir: &std::path::Path,
     opts: &ChatOptions,

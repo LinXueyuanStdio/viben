@@ -8,7 +8,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { randomUUID } from "crypto";
 
 /**
- * History entry structure
+ * History entry structure (internal camelCase)
  */
 export interface HistoryEntry {
   id: string;
@@ -18,6 +18,34 @@ export interface HistoryEntry {
   workspacePath?: string;
   exitCode?: number;
   duration?: number;
+}
+
+/**
+ * History entry response structure (snake_case for API)
+ */
+interface HistoryEntryResponse {
+  id: string;
+  agent_id?: string;
+  command: string;
+  timestamp: string;
+  workspace_path?: string;
+  exit_code?: number;
+  duration?: number;
+}
+
+/**
+ * Transform history entry to snake_case response format
+ */
+function toSnakeCaseEntry(entry: HistoryEntry): HistoryEntryResponse {
+  return {
+    id: entry.id,
+    agent_id: entry.agentId,
+    command: entry.command,
+    timestamp: entry.timestamp,
+    workspace_path: entry.workspacePath,
+    exit_code: entry.exitCode,
+    duration: entry.duration,
+  };
 }
 
 /**
@@ -44,7 +72,7 @@ interface CreateHistoryBody {
  * Response for list history endpoint
  */
 interface ListHistoryResponse {
-  entries: HistoryEntry[];
+  entries: HistoryEntryResponse[];
   total: number;
   limit: number;
   offset: number;
@@ -99,7 +127,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
     const entries = allEntries.slice(offset, offset + limit);
 
     return {
-      entries,
+      entries: entries.map(toSnakeCaseEntry),
       total,
       limit,
       offset,
@@ -109,7 +137,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
   // Get a specific history entry by id
   fastify.get<{
     Params: { id: string };
-  }>("/api/history/:id", async (request, reply): Promise<HistoryEntry | { error: string }> => {
+  }>("/api/history/:id", async (request, reply): Promise<HistoryEntryResponse | { error: string }> => {
     const { id } = request.params;
     const entry = historyStore.get(id);
 
@@ -118,13 +146,13 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
       return { error: `History entry not found: ${id}` };
     }
 
-    return entry;
+    return toSnakeCaseEntry(entry);
   });
 
   // Create a new history entry
   fastify.post<{
     Body: CreateHistoryBody;
-  }>("/api/history", async (request, reply): Promise<HistoryEntry | { error: string }> => {
+  }>("/api/history", async (request, reply): Promise<HistoryEntryResponse | { error: string }> => {
     const body = request.body;
 
     if (!body.command) {
@@ -136,7 +164,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
     historyStore.set(entry.id, entry);
 
     reply.code(201);
-    return entry;
+    return toSnakeCaseEntry(entry);
   });
 
   // Delete a specific history entry

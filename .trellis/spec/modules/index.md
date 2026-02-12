@@ -105,6 +105,20 @@ This directory contains detailed specifications for implementing each module of 
 
 ---
 
+## Chat System (Agent 对话)
+
+> **新增**: WorkAny 核心功能迁移 - 智能体对话、SSE 流式通信、后台任务
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [chat/](./chat/) | **Chat 模块索引** | - |
+| [chat/workany-migration.md](./chat/workany-migration.md) | WorkAny 核心功能迁移规范 | 🟡 规划中 |
+| [chat/agent-hooks-spec.md](./chat/agent-hooks-spec.md) | Agent Hooks 统一架构规范 | ✅ Done |
+| [chat/sse-streaming.md](./chat/sse-streaming.md) | SSE 流式通信规范 | 🟡 规划中 |
+| [chat/background-tasks.md](./chat/background-tasks.md) | 后台任务管理规范 | 🟡 规划中 |
+
+---
+
 ## Social Chat System
 
 > **新增**: Desktop 社交聊天功能，类微信设计
@@ -118,6 +132,24 @@ This directory contains detailed specifications for implementing each module of 
 | social-chat/chat-spec.md | 聊天功能开发规范 | 📝 TODO |
 | social-chat/contacts-spec.md | 联系人功能开发规范 | 📝 TODO |
 | social-chat/data-model.md | 数据模型设计 | 📝 TODO |
+
+---
+
+## Kanban System (vibe-kanban 迁移)
+
+> **新增**: 将 vibe-kanban 核心功能迁移到 packages/core，使用基于文件的存储
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [kanban/](./kanban/) | **Kanban 模块索引** | - |
+| [kanban/storage.md](./kanban/storage.md) | 文件存储系统设计 | Specification |
+| [kanban/project.md](./kanban/project.md) | 项目管理模块 | Specification |
+| [kanban/task.md](./kanban/task.md) | 任务管理模块 | Specification |
+| [kanban/workspace.md](./kanban/workspace.md) | 工作区 (Worktree) 管理 | Specification |
+| [kanban/session.md](./kanban/session.md) | 会话管理模块 | Specification |
+| [kanban/git-operations.md](./kanban/git-operations.md) | Git 操作封装 | Specification |
+
+**迁移参考**: [docs/kanban/README.md](/docs/kanban/README.md) - vibe-kanban 端点详细分析
 
 ---
 

@@ -12,40 +12,40 @@ import * as os from "node:os";
 import * as readline from "node:readline";
 
 /**
- * Executor session discovered from file system
+ * Executor session discovered from file system (snake_case to match Rust gateway)
  */
 interface ExecutorSession {
   /** Session ID (UUID format) */
   id: string;
   /** Executor type (claude-code, codex, etc.) */
-  executorType: string;
+  executor_type: string;
   /** Workspace path this session belongs to */
-  workspacePath: string;
+  workspace_path: string;
   /** When the session was created */
-  createdAt: string;
+  created_at: string;
   /** When the session was last updated */
-  updatedAt: string;
+  updated_at: string;
   /** Optional session name or description */
   name?: string;
   /** Number of messages in the session (estimated) */
-  messageCount?: number;
+  message_count?: number;
 }
 
 /**
- * UI message converted from Claude Code format
+ * UI message converted from Claude Code format (snake_case to match Rust gateway)
  */
 interface ExecutorUIMessage {
   id: string;
   timestamp: string;
   type: string;
   content?: string;
-  toolUseId?: string;
-  toolName?: string;
-  toolInput?: Record<string, unknown>;
-  toolOutput?: string;
-  isError?: boolean;
-  subagentId?: string;
-  subagentMessages?: ExecutorUIMessage[];
+  tool_use_id?: string;
+  tool_name?: string;
+  tool_input?: Record<string, unknown>;
+  tool_output?: string;
+  is_error?: boolean;
+  subagent_id?: string;
+  subagent_messages?: ExecutorUIMessage[];
 }
 
 /**
@@ -89,18 +89,18 @@ async function discoverClaudeCodeSessions(workspacePath: string): Promise<Execut
 
       sessions.push({
         id: sessionId,
-        executorType: "claude-code",
-        workspacePath,
-        createdAt: stats.birthtime.toISOString(),
-        updatedAt: stats.mtime.toISOString(),
+        executor_type: "claude-code",
+        workspace_path: workspacePath,
+        created_at: stats.birthtime.toISOString(),
+        updated_at: stats.mtime.toISOString(),
         name,
-        messageCount: Math.floor(stats.size / 1024), // Rough estimate
+        message_count: Math.floor(stats.size / 1024), // Rough estimate
       });
     }
   }
 
   // Sort by updated_at (newest first)
-  sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  sessions.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
   return sessions;
 }
@@ -178,10 +178,10 @@ async function readClaudeCodeSessionMessages(
 
       // Add subagent_id for Task tool calls
       for (const uiMsg of uiMsgs) {
-        if (uiMsg.type === "tool_use" && uiMsg.toolName === "Task" && uiMsg.toolUseId) {
-          const agentId = taskAgentMap.get(uiMsg.toolUseId);
+        if (uiMsg.type === "tool_use" && uiMsg.tool_name === "Task" && uiMsg.tool_use_id) {
+          const agentId = taskAgentMap.get(uiMsg.tool_use_id);
           if (agentId) {
-            uiMsg.subagentId = agentId;
+            uiMsg.subagent_id = agentId;
           }
         }
       }
@@ -229,8 +229,8 @@ function convertClaudeMessageToUI(msg: Record<string, unknown>): ExecutorUIMessa
             timestamp,
             type: "tool_result",
             content: block.content as string | undefined,
-            toolUseId: block.tool_use_id as string,
-            isError: block.is_error as boolean | undefined,
+            tool_use_id: block.tool_use_id as string,
+            is_error: block.is_error as boolean | undefined,
           }));
       }
       return [];
@@ -263,9 +263,9 @@ function convertClaudeMessageToUI(msg: Record<string, unknown>): ExecutorUIMessa
                 id: `${baseId}-${i}`,
                 timestamp,
                 type: "tool_use",
-                toolUseId: block.id as string,
-                toolName: block.name as string,
-                toolInput: block.input as Record<string, unknown>,
+                tool_use_id: block.id as string,
+                tool_name: block.name as string,
+                tool_input: block.input as Record<string, unknown>,
               };
             default:
               return null;

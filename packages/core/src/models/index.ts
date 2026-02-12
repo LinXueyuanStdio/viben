@@ -35,11 +35,17 @@ export class ModelManager {
       return this.config;
     }
 
-    const loaded = await readYaml<ModelsFile>(path);
-    this.config = loaded || {
-      aliases: { ...DEFAULT_ALIASES },
-      fallbacks: [],
-      configs: {},
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const loaded = await readYaml<any>(path);
+
+    // Handle YAML field name differences (Rust uses model_config, TypeScript uses configs)
+    this.config = {
+      default: loaded?.default,
+      // Merge loaded aliases with defaults (loaded takes precedence)
+      aliases: { ...DEFAULT_ALIASES, ...(loaded?.aliases || {}) },
+      fallbacks: loaded?.fallbacks || [],
+      // Handle both field names: Rust uses model_config, TypeScript uses configs
+      configs: loaded?.configs || loaded?.model_config || {},
     };
     return this.config;
   }
