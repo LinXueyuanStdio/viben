@@ -8,6 +8,21 @@
 // Types
 export * from "./types";
 
+// Errors
+export {
+  VibenError,
+  NotFoundError,
+  AlreadyExistsError,
+  ValidationError,
+  ExecutorError,
+  DatabaseError,
+  CronError,
+  EventError,
+  SessionStoreError,
+  HistoryError,
+  GatewayError,
+} from "./error";
+
 // Config management
 export {
   ConfigManager,
@@ -51,6 +66,8 @@ export {
 export {
   ProviderManager,
   providerManager,
+  DEFAULT_BASE_URLS,
+  ENV_VAR_NAMES,
   type ProviderEntry,
   type ProvidersFile,
 } from "./providers";
@@ -111,6 +128,152 @@ export {
   type SendMessageResult,
   type TestChannelResult,
 } from "./channels";
+
+// Executors
+export {
+  // Types
+  type RepoContext,
+  type ExecutionEnv,
+  type CommandParts,
+  type ExecutorExitResult,
+  type SpawnedChild,
+  type ProcessRunStatus,
+  type ProcessState,
+  type ExecutorConfig,
+  type ExecutorApprovalService,
+  type StandardCodingAgentExecutor,
+  // Utilities
+  createExecutionEnv,
+  applyEnvToSpawnOptions,
+  CommandBuilder,
+  CommandBuildError,
+  createCommandParts,
+  which,
+  whichSync,
+  getConfigDir,
+  getDataDir,
+  // Factory
+  createExecutor,
+  EXECUTOR_TYPES,
+  isExecutorType,
+  getAllExecutorsAvailability,
+  // Executors
+  ClaudeCode,
+  createClaudeCode,
+  type ClaudeCodeConfig,
+  Amp,
+  createAmp,
+  type AmpConfig,
+  Gemini,
+  createGemini,
+  type GeminiConfig,
+  Codex,
+  createCodex,
+  type CodexConfig,
+  Opencode,
+  createOpencode,
+  type OpencodeConfig,
+  CursorAgent,
+  createCursorAgent,
+  type CursorAgentConfig,
+  QwenCode,
+  createQwenCode,
+  type QwenCodeConfig,
+  Copilot,
+  createCopilot,
+  type CopilotConfig,
+  Droid,
+  createDroid,
+  type DroidConfig,
+} from "./executors";
+
+// Database (file-based)
+export {
+  // Types
+  type TaskStatus,
+  type Task,
+  type CreateTask,
+  type UpdateTask,
+  type SessionStatus,
+  type Session,
+  type CreateSession,
+  type UpdateSession,
+  type ExecutionProcessStatus,
+  type ExecutionProcess,
+  type CreateExecutionProcess,
+  type UpdateExecutionProcess,
+  type MemberType,
+  type MemberRole,
+  type GroupChat,
+  type GroupChatMember,
+  type MessageContentType,
+  type GroupChatMessage,
+  // Models
+  TaskModel,
+  SessionModel,
+  ExecutionProcessModel,
+  GroupChatModel,
+  GroupChatMemberModel,
+  GroupChatMessageModel,
+  type CreateGroupChat,
+  type UpdateGroupChat,
+  type CreateGroupChatMember,
+  type UpdateGroupChatMember,
+  type CreateGroupChatMessage,
+} from "./db";
+
+// Services
+export {
+  // Event service
+  EventService,
+  eventService,
+  type GatewayEvent,
+  type CronJobData,
+  type EventListener,
+  // Session store service
+  SessionStoreService,
+  sessionStoreService,
+  createSessionConfig,
+  createSessionConfigWithWorkspace,
+  createSessionConfigWithAgentInfo,
+  createUserMessage,
+  createAssistantMessage,
+  createSystemMessage,
+  UIMessageHelpers,
+  type SessionConfig,
+  type SessionMessage,
+  type UIMessage,
+  type AgentMessage,
+  type SessionStats,
+  // Cron service
+  CronService,
+  type CronJob,
+  type CreateCronJob,
+  type UpdateCronJob,
+  type CronJobType,
+  type JobStatus,
+  type CronNotificationSettings,
+  // Container service
+  ContainerService,
+  type ProcessState as ContainerProcessState,
+  type ProcessRunStatus as ContainerProcessRunStatus,
+  // History service
+  HistoryService,
+  historyService,
+  type HistoryEntry,
+  // Message bus
+  MessageBus,
+  type InboundMessage,
+  type OutboundMessage,
+  type InboundMessageHandler,
+} from "./services";
+
+// Gateway (optional - requires fastify)
+// Note: Gateway is excluded from the main build because it requires optional dependencies.
+// To use the gateway, install fastify and @fastify/cors, then:
+//   import { createGateway, runGateway } from "@viben/core/gateway";
+// Or dynamically import:
+//   const gateway = await import("@viben/core/gateway");
 
 /**
  * Initialize all core managers

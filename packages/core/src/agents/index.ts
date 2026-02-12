@@ -25,6 +25,7 @@ import type {
   DailyLog,
   LogEntry,
   CreateAgentOptions,
+  AgentUpdate,
 } from "../types";
 import type { AgentConfigFile, SessionFile } from "./types";
 
@@ -87,8 +88,15 @@ export class AgentManager {
       model: config.model,
       provider: config.provider,
       systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
+      executorType: config.executorType as Agent["executorType"],
+      executorConfig: config.executorConfig,
+      mcpServers: config.mcpServers ?? [],
+      skills: config.skills ?? [],
+      planMode: config.planMode ?? false,
+      approvals: config.approvals ?? false,
       createdAt: config.createdAt,
       updatedAt: config.updatedAt,
     };
@@ -122,8 +130,15 @@ export class AgentManager {
       model: options.model || baseConfig.model,
       provider: options.provider || baseConfig.provider,
       systemPrompt: options.systemPrompt || baseConfig.systemPrompt,
+      appendPrompt: options.appendPrompt,
       temperature: options.temperature ?? baseConfig.temperature,
       maxTokens: options.maxTokens ?? baseConfig.maxTokens,
+      executorType: options.executorType,
+      executorConfig: options.executorConfig,
+      mcpServers: options.mcpServers ?? [],
+      skills: options.skills ?? [],
+      planMode: options.planMode ?? false,
+      approvals: options.approvals ?? false,
       createdAt: now,
       updatedAt: now,
     };
@@ -138,7 +153,22 @@ export class AgentManager {
 
     return {
       id,
-      ...config,
+      name: config.name,
+      description: config.description,
+      model: config.model,
+      provider: config.provider,
+      systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      executorType: config.executorType as Agent["executorType"],
+      executorConfig: config.executorConfig,
+      mcpServers: config.mcpServers ?? [],
+      skills: config.skills ?? [],
+      planMode: config.planMode ?? false,
+      approvals: config.approvals ?? false,
+      createdAt: config.createdAt,
+      updatedAt: config.updatedAt,
     };
   }
 
@@ -175,8 +205,15 @@ export class AgentManager {
       model: updates.model ?? agent.model,
       provider: updates.provider ?? agent.provider,
       systemPrompt: updates.systemPrompt ?? agent.systemPrompt,
+      appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
       temperature: updates.temperature ?? agent.temperature,
       maxTokens: updates.maxTokens ?? agent.maxTokens,
+      executorType: updates.executorType ?? agent.executorType,
+      executorConfig: updates.executorConfig ?? agent.executorConfig,
+      mcpServers: updates.mcpServers ?? agent.mcpServers,
+      skills: updates.skills ?? agent.skills,
+      planMode: updates.planMode ?? agent.planMode,
+      approvals: updates.approvals ?? agent.approvals,
       createdAt: agent.createdAt,
       updatedAt: new Date().toISOString(),
     };
@@ -185,7 +222,22 @@ export class AgentManager {
 
     return {
       id,
-      ...config,
+      name: config.name,
+      description: config.description,
+      model: config.model,
+      provider: config.provider,
+      systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      executorType: config.executorType as Agent["executorType"],
+      executorConfig: config.executorConfig,
+      mcpServers: config.mcpServers ?? [],
+      skills: config.skills ?? [],
+      planMode: config.planMode ?? false,
+      approvals: config.approvals ?? false,
+      createdAt: config.createdAt,
+      updatedAt: config.updatedAt,
     };
   }
 
