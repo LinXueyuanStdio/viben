@@ -12,7 +12,33 @@ import { output, successResponse, outputTable } from '../../lib/output';
 import { getWorkspaceDir, getStateDir } from '../../lib/scope';
 
 /**
+ * Read agent from a config file path
+ */
+function readAgentFromFile(filePath: string, id: string): Agent | null {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const parsed = yaml.parse(content) as Record<string, unknown>;
+
+    const stat = fs.statSync(filePath);
+    return {
+      id: (parsed.id as string) || id,
+      name: (parsed.name as string) || undefined,
+      description: (parsed.description as string) || undefined,
+      model: (parsed.model as string) || undefined,
+      provider: (parsed.provider as string) || undefined,
+      createdAt: stat.birthtime.toISOString(),
+      updatedAt: stat.mtime.toISOString(),
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
  * Read agent files from a directory
+ * Supports two formats:
+ * - Legacy: agents/<id>.yaml (created by CLI)
+ * - Current: agents/<id>/config.yaml (created by Gateway/Desktop)
  */
 function readAgentsFromDir(agentsDir: string, source: string): Agent[] {
   if (!fs.existsSync(agentsDir)) {
@@ -20,33 +46,28 @@ function readAgentsFromDir(agentsDir: string, source: string): Agent[] {
   }
 
   const agents: Agent[] = [];
-  const files = fs.readdirSync(agentsDir);
+  const entries = fs.readdirSync(agentsDir);
 
-  for (const file of files) {
-    if (!file.endsWith('.yaml') && !file.endsWith('.yml')) {
-      continue;
-    }
+  for (const entry of entries) {
+    const entryPath = path.join(agentsDir, entry);
+    const stat = fs.statSync(entryPath);
 
-    const filePath = path.join(agentsDir, file);
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = yaml.parse(content) as Record<string, unknown>;
-
-      const stat = fs.statSync(filePath);
-      const agent: Agent = {
-        id: (parsed.id as string) || path.basename(file, path.extname(file)),
-        name: (parsed.name as string) || undefined,
-        description: (parsed.description as string) || undefined,
-        model: (parsed.model as string) || undefined,
-        provider: (parsed.provider as string) || undefined,
-        createdAt: stat.birthtime.toISOString(),
-        updatedAt: stat.mtime.toISOString(),
-      };
-
-      agents.push(agent);
-    } catch (error) {
-      // Skip invalid files
-      continue;
+    if (stat.isDirectory()) {
+      // New format: agents/<id>/config.yaml
+      const configPath = path.join(entryPath, 'config.yaml');
+      if (fs.existsSync(configPath)) {
+        const agent = readAgentFromFile(configPath, entry);
+        if (agent) {
+          agents.push(agent);
+        }
+      }
+    } else if (entry.endsWith('.yaml') || entry.endsWith('.yml')) {
+      // Legacy format: agents/<id>.yaml
+      const id = path.basename(entry, path.extname(entry));
+      const agent = readAgentFromFile(entryPath, id);
+      if (agent) {
+        agents.push(agent);
+      }
     }
   }
 

@@ -5,13 +5,16 @@
 use clap::{Args, Subcommand};
 use serde_json::json;
 
+use std::sync::Arc;
+
 use crate::channels::{
-    ChannelType, DiscordConfig, FeishuConfig, ParseMode, SendMessageOptions, SlackConfig,
-    TelegramConfig, WebhookConfig, WhatsAppConfig,
-    send_discord_message, send_feishu_message, send_slack_message, send_telegram_message,
-    send_webhook_message, send_whatsapp_message, test_discord_channel, test_feishu_channel,
-    test_slack_channel, test_telegram_channel, test_webhook_channel, test_whatsapp_channel,
+    ChannelService, ChannelType, DiscordConfig, FeishuConfig, ParseMode, SendMessageOptions,
+    SlackConfig, TelegramConfig, WebhookConfig, WhatsAppConfig, send_discord_message,
+    send_feishu_message, send_slack_message, send_telegram_message, send_webhook_message,
+    send_whatsapp_message, test_discord_channel, test_feishu_channel, test_slack_channel,
+    test_telegram_channel, test_webhook_channel, test_whatsapp_channel,
 };
+use crate::services::EventService;
 use crate::cli::{
     CliContext,
     error::{CliError, CliResult},
@@ -112,11 +115,43 @@ pub enum ChannelAction {
     },
     /// List supported channel types
     Types,
+    /// List configured channels
+    List,
 }
 
 impl ChannelCommand {
     pub async fn execute(self, ctx: CliContext) -> CliResult<()> {
         match self.action {
+            ChannelAction::List => {
+                let events = Arc::new(EventService::new());
+                let channel_service = ChannelService::new(events);
+                let _ = channel_service.load().await;
+                let channels = channel_service.list_channels().await;
+
+                if ctx.json {
+                    print_json(&SuccessResponse::new(json!({ "channels": channels })));
+                } else if channels.is_empty() {
+                    println!("No channels configured");
+                    println!();
+                    println!("Use 'viben channel types' to see supported channel types.");
+                } else {
+                    let headers = &["ID", "NAME", "TYPE", "ENABLED", "DEFAULT"];
+                    let rows: Vec<Vec<String>> = channels
+                        .iter()
+                        .map(|c| {
+                            vec![
+                                c.id.clone(),
+                                c.name.clone(),
+                                c.channel_type.to_string(),
+                                if c.enabled { "yes" } else { "no" }.to_string(),
+                                if c.is_default { "*" } else { "" }.to_string(),
+                            ]
+                        })
+                        .collect();
+                    print_simple_table(headers, &rows);
+                }
+            }
+
             ChannelAction::Types => {
                 let types = vec![
                     ("telegram", "Telegram Bot API"),
@@ -415,6 +450,44 @@ mod tests {
     // =========================================================================
     // CLI Integration Tests
     // =========================================================================
+
+    #[tokio::test]
+    async fn test_channel_list_command() {
+        let cmd = ChannelCommand {
+            action: ChannelAction::List,
+        };
+        let ctx = CliContext {
+            json: false,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        // Should not panic
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_channel_list_command_json() {
+        let cmd = ChannelCommand {
+            action: ChannelAction::List,
+        };
+        let ctx = CliContext {
+            json: true,
+            verbose: false,
+            quiet: false,
+            global: false,
+            workspace: false,
+            name: None,
+        };
+
+        // Should not panic
+        let result = cmd.execute(ctx).await;
+        assert!(result.is_ok());
+    }
 
     #[tokio::test]
     async fn test_channel_types_command() {

@@ -8,7 +8,7 @@ description = "Viben core library - unified package including gateway, executors
 default-run = "viben"
 
 [lib]
-crate-type = ["lib"]
+crate-type = ["cdylib", "lib"]
 
 [[bin]]
 name = "viben"
@@ -101,6 +101,9 @@ lazy_static = "1.5"
 
 # CLI
 clap = { workspace = true }
+
+# Workspace initialization
+viben-agent-organization = { path = "../viben-agent-organization" }
 
 # Cron job scheduling
 tokio-cron-scheduler = "0.13"
