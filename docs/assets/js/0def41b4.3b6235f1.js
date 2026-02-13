@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[8993],{93846(s){s.exports=JSON.parse('{"name":"docusaurus-plugin-content-docs","id":"frontend"}')}}]);

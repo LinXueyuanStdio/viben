@@ -1,1 +1,0 @@
-"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[4522],{7186(e){e.exports=JSON.parse('{"authors":[{"name":"Viben Team","title":"Maintainers","url":"https://github.com/LinXueyuanStdio/viben","imageURL":"https://github.com/LinXueyuanStdio.png","key":"viben-team","page":null,"count":1}]}')}}]);
