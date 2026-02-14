@@ -17,8 +17,8 @@ const config: Config = {
   // Set the production url of your site here
   url: 'https://linxueyuan.online',
   // Set the /<baseUrl>/ pathname under which your site is served
-  // Landing page is at /, docs are at /docs/
-  baseUrl: '/docs/',
+  // Landing page is at /viben/, docs are at /viben/docs/
+  baseUrl: '/viben/',
 
   // GitHub pages deployment config.
   organizationName: 'LinXueyuanStdio', // GitHub org/user name
