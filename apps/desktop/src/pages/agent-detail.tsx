@@ -95,7 +95,7 @@ import {
   AGENT_TYPES,
 } from "@/types";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
-import type { AvailabilityInfo, VibenAgentResponse, AgentInfo } from "@/lib/gateway";
+import type { AvailabilityInfo, VibenAgentResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
 
 // ============================================================================
@@ -257,6 +257,7 @@ export function AgentDetailPage() {
     : null;
 
   // Use Gateway API for all agents (global + workspace)
+  // Note: "agents" are user-created configurations, "executors" are underlying AI tools
   const {
     loading: agentsLoading,
     error: agentsError,
@@ -265,12 +266,14 @@ export function AgentDetailPage() {
     getGlobalAgents,
   } = useAgents({ workspacePath: workspace?.path });
 
-  // Filter agents by source
-  const vibenAgents = getGlobalAgents().filter((a: AgentInfo) => a.executor_type === "viben");
-  const workspaceVibenAgents = getWorkspaceAgents().filter((a: AgentInfo) => a.executor_type === "viben");
+  // All agents from useAgents are user-created agents (not executors)
+  // They may use different executor types (claude_code, cursor, etc.)
+  const globalAgents = getGlobalAgents();
+  const workspaceAgents = getWorkspaceAgents();
   const workspaceAgentsLoading = agentsLoading;
 
   // Workspace executors (auto-discovered from .claude, .cursor, etc.)
+  // These are read-only executor configurations, not user-created agents
   const {
     agents: workspaceExecutors,
     loading: executorsLoading,
@@ -290,35 +293,38 @@ export function AgentDetailPage() {
     }
   }, [isWorkspaceScoped]);
 
-  // Find the current agent or executor
-  // First try to find in global Viben Agents (from list - minimal info)
-  const globalVibenAgentInfo = useMemo(
-    () => vibenAgents.find((a) => a.id === agentId) || null,
-    [vibenAgents, agentId]
+  // Find the current agent (user-created) or executor (auto-discovered)
+  // First try to find in global agents (from list - minimal info)
+  const globalAgentInfo = useMemo(
+    () => globalAgents.find((a) => a.id === agentId) || null,
+    [globalAgents, agentId]
   );
 
-  // Then try to find in workspace-scoped Viben Agents (from list - minimal info)
-  const workspaceVibenAgentInfo = useMemo(
-    () => workspaceVibenAgents.find((a) => a.id === agentId) || null,
-    [workspaceVibenAgents, agentId]
+  // Then try to find in workspace-scoped agents (from list - minimal info)
+  const workspaceAgentInfo = useMemo(
+    () => workspaceAgents.find((a) => a.id === agentId) || null,
+    [workspaceAgents, agentId]
   );
 
-  // Then try to find in workspace executors (auto-discovered)
+  // Then try to find in workspace executors (auto-discovered, read-only)
   const workspaceExecutor = useMemo(
     () => workspaceExecutors.find((a) => a.id === agentId) || null,
     [workspaceExecutors, agentId]
   );
 
-  // Use workspace agent if found, otherwise fall back to global (just to check if it exists)
-  const vibenAgentInfo = workspaceVibenAgentInfo || globalVibenAgentInfo;
+  // Use workspace agent if found, otherwise fall back to global
+  const agentInfo = workspaceAgentInfo || globalAgentInfo;
 
   // Full agent details (loaded from Gateway API)
   const [fullAgent, setFullAgent] = useState<VibenAgentResponse | null>(null);
   const [loadingFullAgent, setLoadingFullAgent] = useState(false);
 
   // Load full agent details when agent ID changes
+  // We don't require agentInfo pre-check because:
+  // 1. The agent list might not have loaded yet
+  // 2. We want to try loading the agent directly from API
   useEffect(() => {
-    if (!agentId || !vibenAgentInfo) {
+    if (!agentId) {
       setFullAgent(null);
       return;
     }
@@ -338,10 +344,11 @@ export function AgentDetailPage() {
     };
 
     loadFullAgent();
-  }, [agentId, vibenAgentInfo]);
+  }, [agentId]);
 
   // Determine if we're viewing an executor or an agent
-  const isExecutor = Boolean(workspaceExecutor && !vibenAgentInfo);
+  // If we found a matching executor AND no matching agent, it's an executor
+  const isExecutor = Boolean(workspaceExecutor && !agentInfo && !fullAgent);
   // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
   const agent = fullAgent ? {
     ...fullAgent,

@@ -424,14 +424,29 @@ impl CronService {
     pub async fn shutdown(&self) {
         tracing::info!(target: "viben::services::cron", "Shutting down CronService...");
 
-        // Shutdown scheduler
+        // Shutdown scheduler with timeout to prevent hanging
         if let Some(mut sched) = self.scheduler.write().await.take() {
-            if let Err(e) = sched.shutdown().await {
-                tracing::error!(
-                    target: "viben::services::cron",
-                    "Error shutting down scheduler: {}",
-                    e
-                );
+            let shutdown_future = sched.shutdown();
+            match tokio::time::timeout(std::time::Duration::from_secs(3), shutdown_future).await {
+                Ok(Ok(())) => {
+                    tracing::info!(
+                        target: "viben::services::cron",
+                        "Scheduler shutdown completed"
+                    );
+                }
+                Ok(Err(e)) => {
+                    tracing::error!(
+                        target: "viben::services::cron",
+                        "Error shutting down scheduler: {}",
+                        e
+                    );
+                }
+                Err(_) => {
+                    tracing::warn!(
+                        target: "viben::services::cron",
+                        "Scheduler shutdown timed out after 3s, forcing exit"
+                    );
+                }
             }
         }
 

@@ -327,10 +327,6 @@ export interface UseAgentsReturn {
   // Read operations
   /** Refresh agents */
   refresh: () => Promise<void>;
-  /** Get Viben agents */
-  getVibenAgents: () => AgentInfo[];
-  /** Get IDE agents (Claude Code, Cursor, etc.) */
-  getIdeAgents: () => AgentInfo[];
   /** Get agent by ID */
   getAgent: (id: string) => AgentInfo | undefined;
   /** Get workspace-scoped agents */
@@ -338,12 +334,12 @@ export interface UseAgentsReturn {
   /** Get global agents */
   getGlobalAgents: () => AgentInfo[];
 
-  // CRUD operations (Viben agents only)
-  /** Create a new Viben agent */
+  // CRUD operations (all agents are user-created and editable)
+  /** Create a new agent */
   createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
-  /** Update a Viben agent */
+  /** Update an agent */
   updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
-  /** Remove a Viben agent */
+  /** Remove an agent */
   removeAgent: (id: string) => Promise<void>;
   /** Set the default agent */
   setDefaultAgent: (id: string) => Promise<void>;
@@ -366,7 +362,7 @@ export interface UseAgentsReturn {
  * - Returns both workspace-scoped and global agents
  * - source field indicates "workspace" or "global"
  *
- * Also provides CRUD operations for Viben agents via Gateway API.
+ * Also provides CRUD operations for agents via Gateway API.
  */
 export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const workspacePath = options?.workspacePath;
@@ -422,14 +418,6 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   }, [loadAgents, loadTemplates]);
 
   // Read operations
-  const getVibenAgents = useCallback(() => {
-    return agents.filter((a) => a.executor_type === "viben");
-  }, [agents]);
-
-  const getIdeAgents = useCallback(() => {
-    return agents.filter((a) => a.executor_type !== "viben");
-  }, [agents]);
-
   const getAgent = useCallback(
     (id: string) => {
       return agents.find((a) => a.id === id);
@@ -530,8 +518,6 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
     // Read operations
     refresh: loadAgents,
-    getVibenAgents,
-    getIdeAgents,
     getAgent,
     getWorkspaceAgents,
     getGlobalAgents,
@@ -574,7 +560,7 @@ export interface UseAgentDetailReturn {
  * complete agent info when user clicks, rather than loading
  * all details upfront.
  *
- * @param agentId - The agent ID (with or without "viben:" prefix)
+ * @param agentId - The agent ID
  * @param workspacePath - Optional workspace path to check workspace agents first
  */
 export function useAgentDetail(
@@ -648,10 +634,6 @@ export interface UseWorkspaceAgentsFromGatewayReturn {
   total: number;
   /** Refresh agents */
   refresh: () => Promise<void>;
-  /** Get Viben agents */
-  getVibenAgents: () => AgentInfo[];
-  /** Get IDE agents (Claude Code, Cursor, etc.) */
-  getIdeAgents: () => AgentInfo[];
   /** Get agent by ID */
   getAgent: (id: string) => AgentInfo | undefined;
 }
@@ -699,14 +681,6 @@ export function useWorkspaceAgentsFromGateway(
     loadAgents();
   }, [loadAgents]);
 
-  const getVibenAgents = useCallback(() => {
-    return agents.filter((a) => a.executor_type === "viben");
-  }, [agents]);
-
-  const getIdeAgents = useCallback(() => {
-    return agents.filter((a) => a.executor_type !== "viben");
-  }, [agents]);
-
   const getAgent = useCallback(
     (id: string) => {
       return agents.find((a) => a.id === id);
@@ -720,8 +694,6 @@ export function useWorkspaceAgentsFromGateway(
     error,
     total,
     refresh: loadAgents,
-    getVibenAgents,
-    getIdeAgents,
     getAgent,
   };
 }
@@ -786,11 +758,11 @@ export interface AgentOperations {
   defaultAgentId: string | null;
   /** Set the default agent */
   setDefaultAgent: (id: string) => Promise<void>;
-  /** Remove a Viben agent */
+  /** Remove an agent */
   removeAgent: (id: string) => Promise<void>;
-  /** Update a Viben agent */
+  /** Update an agent */
   updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
-  /** Create a new Viben agent */
+  /** Create a new agent */
   createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
 }
 
@@ -821,9 +793,9 @@ export interface UseChatListReturn {
  * This provides a unified view for the chat sidebar, combining:
  * - Group chats (from workspace + global)
  * - Executors (with config)
- * - Viben agents (from workspace + global)
+ * - Agents (from workspace + global)
  *
- * Also provides agentOperations for managing Viben agents.
+ * Also provides agentOperations for managing agents.
  */
 export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const workspacePath = options?.workspacePath;
