@@ -56,15 +56,16 @@ jobs:
 
       - name: Prepare deployment directory
         run: |
-          mkdir -p build
+          # mkdir -p build
           # Copy landing page to root
           # cp apps/landingpage/index.html build/
-          cp -r apps/landingpage/assets build/
+          # cp -r apps/landingpage/assets build/
           # Copy provider index to assets
-          cp provider.index.json build/assets/
+          # cp provider.index.json build/assets/
           # Move Docusaurus build to docs subdirectory
           # mv apps/docs/build build/docs
-          mv apps/docs/build build/
+          mv apps/docs/build ./build
+          cp provider.index.json ./build/assets/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
