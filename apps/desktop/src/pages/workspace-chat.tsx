@@ -1801,8 +1801,8 @@ export function WorkspaceChatPage() {
                     {t("agent.agents", "Agents")}
                   </div>
                   {filteredChatListAgents.map((chatListAgent) => {
-                    // Get full agent data from useVibenAgents for default status and session count
-                    const fullAgent = agents.find((a) => a.id === chatListAgent.id);
+                    // chatListAgents only contains item_type === "agent" (not executors)
+                    // All agents from chat-list are user-defined agents that support settings/delete
                     return (
                       <AgentListItem
                         key={chatListAgent.id}
@@ -1813,7 +1813,7 @@ export function WorkspaceChatPage() {
                         }}
                         isSelected={chatListAgent.id === selectedAgentId && !isGroupChatMode && !selectedSidebarExecutorId}
                         isDefault={chatListAgent.id === defaultAgentId}
-                        sessionCount={fullAgent ? conversations.filter((c) => c.agentId === chatListAgent.id).length : undefined}
+                        sessionCount={conversations.filter((c) => c.agentId === chatListAgent.id).length}
                         source={
                           chatListAgent.source === "global"
                             ? { type: "global", path: "~/.viben/agents" }
@@ -1828,13 +1828,14 @@ export function WorkspaceChatPage() {
                           setSelectedSidebarExecutorId(null);
                           setSelectedAgentId(chatListAgent.id);
                         }}
-                        onSettings={fullAgent ? () => {
+                        onSettings={() => {
+                          // All agents from chat-list support settings
                           if (workspaceId) {
                             navigate(`/workspace/${workspaceId}/agent/${chatListAgent.id}`);
                           }
-                        } : undefined}
-                        onSetDefault={fullAgent ? () => setDefaultAgent(chatListAgent.id) : undefined}
-                        onDelete={fullAgent ? () => removeAgent(chatListAgent.id) : undefined}
+                        }}
+                        onSetDefault={() => setDefaultAgent(chatListAgent.id)}
+                        onDelete={() => removeAgent(chatListAgent.id)}
                       />
                     );
                   })}
@@ -2249,24 +2250,13 @@ export function WorkspaceChatPage() {
                     type="button"
                     className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
                     onClick={() => {
-                      // Only Viben agents support detail view via getAgentById API
-                      // IDE agents (Claude Code, Cursor, etc.) don't have detail API
-                      const isVibenAgent = currentAgent?.executor_type === "viben" ||
-                        currentChatListAgent?.icon_type === "viben";
-
-                      if (isVibenAgent) {
-                        const agentId = selectedAgentId || currentChatListAgent?.id;
-                        if (agentId) {
-                          // Strip "viben:" prefix if present for the detail fetch
-                          const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
-                          setDetailAgentId(cleanId);
-                          setRightSidebarExecutorDetail(null);
-                          setIsSidebarOpen(true);
-                        }
-                      } else {
-                        // For IDE agents, open sidebar without trying to load details
-                        // This shows the workspace/tools tab instead
-                        setDetailAgentId(null);
+                      // selectedAgentId comes from chatListAgents which only contains real agents
+                      // (not executors), so we can always load agent details
+                      const agentId = selectedAgentId || currentChatListAgent?.id;
+                      if (agentId) {
+                        // Strip "viben:" prefix if present for the detail fetch
+                        const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
+                        setDetailAgentId(cleanId);
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);
                       }

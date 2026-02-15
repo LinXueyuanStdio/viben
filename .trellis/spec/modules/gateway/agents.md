@@ -4,9 +4,17 @@
 
 ## 概述
 
-智能体 API 提供两种类型的智能体管理：
-- **Viben 智能体**: 用户自定义智能体，存储在 YAML 配置中
-- **执行器智能体**: 基于执行器类型的智能体 (如 CLAUDE_CODE)
+智能体 (Agent) 是用户创建的配置，定义了：
+- 使用哪个执行器 (executor_type: claude_code, cursor, etc.)
+- 系统提示词、追加提示词
+- 模型和参数 (temperature, max_tokens)
+- MCP 服务器和技能配置
+
+**重要概念区分**：
+- **智能体 (Agent)**: 用户创建的配置文件，存储在 `.viben/agents/`，**可编辑**
+- **执行器 (Executor)**: 底层 AI 工具运行时 (Claude Code, Cursor 等)，通过 `/api/executors` 管理，**只读**
+
+智能体通过 `executor_type` 字段指定使用哪个执行器来运行。
 
 ## 端点列表
 
@@ -81,7 +89,10 @@
 
 ### GET /api/agents
 
-列出所有智能体 (Viben 智能体 + 执行器智能体)。
+列出所有用户创建的智能体。
+
+**注意**: 此 API 只返回智能体 (agents)，不返回执行器 (executors)。
+执行器通过 `/api/executors` 单独管理。
 
 **查询参数**:
 
@@ -98,20 +109,23 @@
     {
       "id": "my-agent",
       "name": "My Agent",
-      "type": "viben",
+      "executor_type": "claude_code",
       "model": "claude-3-sonnet",
-      "provider": "anthropic",
-      "is_available": true,
-      "workspace_path": null,
-      "is_global": true
+      "description": "A helpful coding assistant",
+      "source": "global",
+      "config_path": "~/.viben/agents/my-agent/config.yaml",
+      "is_available": true
     },
     {
-      "id": "CLAUDE_CODE",
-      "name": "Claude Code",
-      "type": "executor",
-      "is_available": true,
-      "supports_mcp": true,
-      "features": ["chat", "code", "tools"]
+      "id": "project-helper",
+      "name": "Project Helper",
+      "executor_type": "cursor",
+      "model": "gpt-4",
+      "description": "Project-specific assistant",
+      "source": "workspace",
+      "workspace_path": "/path/to/project",
+      "config_path": "/path/to/project/.viben/agents/project-helper/config.yaml",
+      "is_available": true
     }
   ]
 }
@@ -315,29 +329,27 @@
 
 ---
 
-## 智能体类型
+## 智能体存储
 
-### Viben 智能体
-
-用户自定义智能体，存储在：
+智能体配置存储在：
 - 全局: `~/.viben/agents/<id>/config.yaml`
 - 工作空间: `<workspace>/.viben/agents/<id>/config.yaml`
 
-### 执行器智能体
+## 执行器类型 (executor_type)
 
-基于执行器类型，可用类型：
+智能体通过 `executor_type` 字段指定使用哪个执行器：
 
-| ID | 名称 | 说明 |
-|-----|------|------|
-| CLAUDE_CODE | Claude Code | Anthropic Claude Code CLI |
-| AMP | AMP | AMP coding agent |
-| GEMINI | Gemini | Google Gemini |
-| CODEX | Codex | OpenAI Codex |
-| OPENCODE | OpenCode | OpenCode agent |
-| CURSOR_AGENT | Cursor | Cursor IDE agent |
-| QWEN_CODE | Qwen Code | Qwen coding agent |
-| COPILOT | Copilot | GitHub Copilot |
-| DROID | Droid | Droid agent |
+| executor_type | 执行器 | 说明 |
+|---------------|--------|------|
+| claude_code | Claude Code | Anthropic Claude Code CLI |
+| amp | AMP | AMP coding agent |
+| gemini | Gemini | Google Gemini CLI |
+| codex | Codex | OpenAI Codex |
+| cursor | Cursor | Cursor IDE agent |
+| qwen | Qwen Code | Qwen coding agent |
+| copilot | Copilot | GitHub Copilot |
+
+**注意**: 执行器本身通过 [执行器 API](./executors.md) 管理，智能体只是引用执行器类型。
 
 ---
 

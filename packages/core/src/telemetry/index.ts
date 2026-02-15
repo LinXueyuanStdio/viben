@@ -106,7 +106,16 @@ export function initTelemetry(config: TelemetryConfig): TelemetryInstance {
       new HttpInstrumentation({
         ignoreIncomingRequestHook: (req) => {
           // 忽略健康检查
-          return req.url === "/health" || req.url === "/api/health";
+          if (req.url === "/health" || req.url === "/api/health") {
+            return true;
+          }
+          // 忽略 WebSocket 升级请求，避免与 @fastify/websocket 冲突
+          // HttpInstrumentation 会拦截升级请求导致 "ServerResponse has an already assigned socket" 错误
+          const upgrade = req.headers?.upgrade;
+          if (upgrade && upgrade.toLowerCase() === "websocket") {
+            return true;
+          }
+          return false;
         },
       }),
       new FastifyInstrumentation(),

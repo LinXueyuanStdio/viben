@@ -167,6 +167,41 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
 
   const app = await createGateway(config);
 
+  // Track if we're already shutting down to prevent multiple shutdowns
+  let isShuttingDown = false;
+
+  // Handle graceful shutdown
+  const shutdown = async (signal: string) => {
+    if (isShuttingDown) {
+      console.log(`[Gateway] Already shutting down, ignoring ${signal}`);
+      return;
+    }
+    isShuttingDown = true;
+
+    console.log(`\n[Gateway] Received ${signal}, shutting down gracefully...`);
+    telemetry?.logger.info({ signal }, "Received shutdown signal");
+
+    try {
+      // Close Fastify server with a timeout
+      const closePromise = app.close();
+      const timeoutPromise = new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error("Shutdown timeout")), 5000)
+      );
+
+      await Promise.race([closePromise, timeoutPromise]);
+      console.log("[Gateway] Server closed successfully");
+    } catch (err) {
+      console.warn("[Gateway] Shutdown timed out or failed, forcing exit");
+      telemetry?.logger.warn({ error: err }, "Shutdown error");
+    }
+
+    process.exit(0);
+  };
+
+  // Register signal handlers
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+
   try {
     await app.listen({ host, port });
 
@@ -185,6 +220,9 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
     if (enableTelemetry) {
       console.log(`[Gateway] Telemetry enabled, data stored in: ${telemetryDir}`);
     }
+
+    // Keep the process running
+    await new Promise<void>(() => {});
   } catch (err) {
     telemetry?.logger.error({ error: err }, "Failed to start gateway");
     app.log.error(err);

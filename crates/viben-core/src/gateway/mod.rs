@@ -141,13 +141,27 @@ pub async fn run_gateway(addr: SocketAddr) -> anyhow::Result<()> {
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // Shutdown channel router
-    tracing::info!(target: "viben::gateway", "Stopping channel router...");
-    channel_router_for_shutdown.stop().await;
+    // Perform cleanup with a total timeout to prevent hanging
+    let cleanup = async {
+        // Shutdown channel router
+        tracing::info!(target: "viben::gateway", "Stopping channel router...");
+        channel_router_for_shutdown.stop().await;
 
-    // Shutdown cron scheduler
-    tracing::info!(target: "viben::gateway", "Stopping cron scheduler...");
-    cron_for_shutdown.shutdown().await;
+        // Shutdown cron scheduler
+        tracing::info!(target: "viben::gateway", "Stopping cron scheduler...");
+        cron_for_shutdown.shutdown().await;
+    };
+
+    // Give cleanup 5 seconds max
+    if tokio::time::timeout(std::time::Duration::from_secs(5), cleanup)
+        .await
+        .is_err()
+    {
+        tracing::warn!(
+            target: "viben::gateway",
+            "Cleanup timed out after 5s, forcing exit"
+        );
+    }
 
     tracing::info!(
         target: "viben::gateway",
