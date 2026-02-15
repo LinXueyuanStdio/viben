@@ -296,7 +296,7 @@ export function WorkspaceChatPage() {
   const [conversationSearchQuery, setConversationSearchQuery] = React.useState("");
 
   // Resizable panel widths
-  const [leftPanelWidth, setLeftPanelWidth] = React.useState(320); // Default 320px (w-80)
+  const [leftPanelWidth, setLeftPanelWidth] = React.useState(240); // Default to minimum width
   const [rightPanelWidth, setRightPanelWidth] = React.useState(320); // Default 320px (w-80)
   const [isLeftPanelCollapsed, setIsLeftPanelCollapsed] = React.useState(false);
 
@@ -2249,12 +2249,24 @@ export function WorkspaceChatPage() {
                     type="button"
                     className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm hover:opacity-90 transition-opacity cursor-pointer"
                     onClick={() => {
-                      // Use on-demand loading: set the agent ID and let useAgentDetail fetch the full data
-                      const agentId = selectedAgentId || currentChatListAgent?.id;
-                      if (agentId) {
-                        // Strip "viben:" prefix if present for the detail fetch
-                        const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
-                        setDetailAgentId(cleanId);
+                      // Only Viben agents support detail view via getAgentById API
+                      // IDE agents (Claude Code, Cursor, etc.) don't have detail API
+                      const isVibenAgent = currentAgent?.executor_type === "viben" ||
+                        currentChatListAgent?.icon_type === "viben";
+
+                      if (isVibenAgent) {
+                        const agentId = selectedAgentId || currentChatListAgent?.id;
+                        if (agentId) {
+                          // Strip "viben:" prefix if present for the detail fetch
+                          const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
+                          setDetailAgentId(cleanId);
+                          setRightSidebarExecutorDetail(null);
+                          setIsSidebarOpen(true);
+                        }
+                      } else {
+                        // For IDE agents, open sidebar without trying to load details
+                        // This shows the workspace/tools tab instead
+                        setDetailAgentId(null);
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);
                       }
