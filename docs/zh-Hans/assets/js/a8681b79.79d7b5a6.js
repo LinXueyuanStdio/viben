@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunk_viben_docs=globalThis.webpackChunk_viben_docs||[]).push([[1955],{45916(n){n.exports=JSON.parse('{"tags":[{"label":"announcement","permalink":"/viben/zh-Hans/blog/tags/announcement","count":1},{"label":"mcp","permalink":"/viben/zh-Hans/blog/tags/mcp","count":1}]}')}}]);
