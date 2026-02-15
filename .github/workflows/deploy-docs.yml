@@ -59,7 +59,7 @@ jobs:
           mkdir -p build
           # Copy landing page to root
           # cp apps/landingpage/index.html build/
-          # cp -r apps/landingpage/assets build/
+          cp -r apps/landingpage/assets build/
           # Copy provider index to assets
           cp provider.index.json build/assets/
           # Move Docusaurus build to docs subdirectory
