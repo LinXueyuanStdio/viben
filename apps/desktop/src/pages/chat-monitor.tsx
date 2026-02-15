@@ -62,6 +62,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { JsonViewer } from "@/components/ui/json-viewer";
 import { useTranslation } from "react-i18next";
 import { getGatewayUrl } from "@/lib/gateway";
 
@@ -168,16 +169,6 @@ function hasDetailData(span: TraceSpan): boolean {
     span.attributes["tool.input"] ||
     span.attributes["tool_result.output"]
   );
-}
-
-// Parse JSON safely
-function safeParseJson(str: unknown): object | null {
-  if (typeof str !== "string") return null;
-  try {
-    return JSON.parse(str);
-  } catch {
-    return null;
-  }
 }
 
 // Route filter options
@@ -727,7 +718,7 @@ export function ChatMonitorPage() {
 
       {/* Detail Dialog - Two column view for request/response */}
       <Dialog open={detailDialogOpen} onOpenChange={setDetailDialogOpen}>
-        <DialogContent className="max-w-5xl max-h-[80vh] flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileJson className="h-5 w-5" />
@@ -736,10 +727,10 @@ export function ChatMonitorPage() {
           </DialogHeader>
 
           {detailSpan && (
-            <div className="flex-1 min-h-0 flex gap-4">
+            <div className="flex-1 min-h-0 flex gap-4" style={{ height: "calc(85vh - 100px)" }}>
               {/* Input/Request Column */}
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b shrink-0">
                   <ArrowRight className="h-4 w-4 text-blue-500" />
                   <h3 className="font-semibold text-sm">
                     {detailSpan.attributes["tool.input"]
@@ -747,25 +738,25 @@ export function ChatMonitorPage() {
                       : t("observability.requestBody")}
                   </h3>
                 </div>
-                <ScrollArea className="flex-1 rounded-lg border bg-[#1e1e1e]">
-                  <pre className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">
-                    {(() => {
-                      const input = detailSpan.attributes["tool.input"] ||
-                        detailSpan.attributes["http.request.body"];
-                      if (!input) return <span className="text-gray-500 italic">{t("observability.noInputData")}</span>;
-                      const parsed = safeParseJson(input);
-                      if (parsed) {
-                        return JSON.stringify(parsed, null, 2);
-                      }
-                      return String(input);
-                    })()}
-                  </pre>
-                </ScrollArea>
+                <div className="flex-1 min-h-0 rounded-lg border overflow-hidden">
+                  {(() => {
+                    const input = detailSpan.attributes["tool.input"] ||
+                      detailSpan.attributes["http.request.body"];
+                    if (!input) {
+                      return (
+                        <div className="h-full flex items-center justify-center bg-[#1e1e1e] text-gray-500 italic">
+                          {t("observability.noInputData")}
+                        </div>
+                      );
+                    }
+                    return <JsonViewer data={input} darkTheme mode="tree" />;
+                  })()}
+                </div>
               </div>
 
               {/* Output/Response Column */}
-              <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b shrink-0">
                   <ArrowLeft className="h-4 w-4 text-green-500" />
                   <h3 className="font-semibold text-sm">
                     {detailSpan.attributes["tool_result.output"]
@@ -773,20 +764,20 @@ export function ChatMonitorPage() {
                       : t("observability.responseBody")}
                   </h3>
                 </div>
-                <ScrollArea className="flex-1 rounded-lg border bg-[#1e1e1e]">
-                  <pre className="p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap">
-                    {(() => {
-                      const output = detailSpan.attributes["tool_result.output"] ||
-                        detailSpan.attributes["http.response.body"];
-                      if (!output) return <span className="text-gray-500 italic">{t("observability.noOutputData")}</span>;
-                      const parsed = safeParseJson(output);
-                      if (parsed) {
-                        return JSON.stringify(parsed, null, 2);
-                      }
-                      return String(output);
-                    })()}
-                  </pre>
-                </ScrollArea>
+                <div className="flex-1 min-h-0 rounded-lg border overflow-hidden">
+                  {(() => {
+                    const output = detailSpan.attributes["tool_result.output"] ||
+                      detailSpan.attributes["http.response.body"];
+                    if (!output) {
+                      return (
+                        <div className="h-full flex items-center justify-center bg-[#1e1e1e] text-gray-500 italic">
+                          {t("observability.noOutputData")}
+                        </div>
+                      );
+                    }
+                    return <JsonViewer data={output} darkTheme mode="tree" />;
+                  })()}
+                </div>
               </div>
             </div>
           )}
