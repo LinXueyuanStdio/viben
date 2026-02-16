@@ -195,7 +195,7 @@ export function ChatMonitorPage() {
   const [selectedSpan, setSelectedSpan] = useState<TraceSpanNode | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [routeFilter, setRouteFilter] = useState<string>("all");
+  const [routeFilter, setRouteFilter] = useState<string>("/api/agent/run");
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailSpan, setDetailSpan] = useState<TraceSpanNode | null>(null);
 

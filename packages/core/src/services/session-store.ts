@@ -449,27 +449,73 @@ export class SessionStoreService {
 
   /**
    * Read all UI messages from a session
+   * Falls back to converting rollout messages if UI messages are empty
    */
   async readUIMessages(agentId: string, sessionId: string): Promise<UIMessage[]> {
     const messagesPath = this.uiMessagesPath(agentId, sessionId);
 
-    if (!existsSync(messagesPath)) {
-      return [];
-    }
+    // Try to read UI messages first
+    if (existsSync(messagesPath)) {
+      const content = await readFile(messagesPath, "utf-8");
+      const lines = content.split("\n").filter((line) => line.trim());
+      const messages: UIMessage[] = [];
 
-    const content = await readFile(messagesPath, "utf-8");
-    const lines = content.split("\n").filter((line) => line.trim());
-    const messages: UIMessage[] = [];
+      for (const line of lines) {
+        try {
+          messages.push(JSON.parse(line));
+        } catch {
+          // Skip invalid lines
+        }
+      }
 
-    for (const line of lines) {
-      try {
-        messages.push(JSON.parse(line));
-      } catch {
-        // Skip invalid lines
+      if (messages.length > 0) {
+        return messages;
       }
     }
 
-    return messages;
+    // Fallback: convert rollout messages to UI messages
+    const rolloutMessages = await this.readMessages(agentId, sessionId);
+    return rolloutMessages.map((msg, index) => this.sessionMessageToUIMessage(msg, index));
+  }
+
+  /**
+   * Convert a SessionMessage (rollout format) to UIMessage (UI format)
+   */
+  private sessionMessageToUIMessage(msg: SessionMessage, index: number): UIMessage {
+    const id = `rollout-${index}-${Date.now()}`;
+    const timestamp = msg.timestamp || new Date().toISOString();
+
+    // Map role to UI message type
+    if (msg.role === "user") {
+      return {
+        id,
+        timestamp,
+        type: "user",
+        content: msg.content,
+      };
+    } else if (msg.role === "assistant") {
+      return {
+        id,
+        timestamp,
+        type: "text",
+        content: msg.content,
+      };
+    } else if (msg.role === "system") {
+      return {
+        id,
+        timestamp,
+        type: "text",
+        content: msg.content,
+      };
+    }
+
+    // Default fallback
+    return {
+      id,
+      timestamp,
+      type: "text",
+      content: msg.content,
+    };
   }
 
   /**

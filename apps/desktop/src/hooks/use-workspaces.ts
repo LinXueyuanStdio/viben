@@ -86,7 +86,7 @@ export function useLocalWorkspaces() {
           id: a.id,
           workspace_id: workspaceId,
           name: a.name,
-          type: (a.type as any) || "unknown",
+          type: (a.type as any) || "UNKNOWN",
           config_path: a.config_path || "",
           mcp_config_file: null,
           skills_config_file: null,
@@ -187,56 +187,8 @@ export function useLocalWorkspaces() {
 }
 
 /**
- * Hook for getting executors (Claude Code, Cursor, etc.) with availability and config info
- *
- * Uses /api/executors which returns merged executor info:
- * - Global availability status
- * - Workspace-level config path (if exists)
- * - Global-level config path
- *
- * @param workspacePath - Optional workspace path to check for workspace-level configs
- */
-export function useExecutors(workspacePath?: string | null) {
-  const [executors, setExecutors] = useState<import("@/lib/gateway").ExecutorInfo[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadExecutors = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const client = getGatewayClient();
-      const response = await client.getExecutors({
-        workspacePath: workspacePath || undefined,
-        includeGlobal: true,
-      });
-      setExecutors(response.executors);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      console.error("[useExecutors] Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspacePath]);
-
-  // Load on mount and when workspace changes
-  useEffect(() => {
-    loadExecutors();
-  }, [loadExecutors]);
-
-  return {
-    executors,
-    loading,
-    error,
-    refresh: loadExecutors,
-  };
-}
-
-/**
- * @deprecated Use useExecutors instead
- * Legacy hook for backwards compatibility
+ * @deprecated Use useExecutors from use-workspace-resources.ts instead
+ * Legacy hook for backwards compatibility - uses Tauri-based workspace agent detection
  */
 export function useWorkspaceAgents(workspaceId: string | null) {
   const [agents, setAgents] = useState<WorkspaceAgent[]>([]);
@@ -284,7 +236,7 @@ export function useWorkspaceAgents(workspaceId: string | null) {
         id: a.id,
         workspace_id: workspaceId,
         name: a.name,
-        type: (a.type as any) || "unknown",
+        type: (a.type as any) || "UNKNOWN",
         config_path: a.config_path || "",
         mcp_config_file: null,
         skills_config_file: null,
