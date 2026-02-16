@@ -1170,7 +1170,7 @@ export class GatewayClient {
   /**
    * Discover sessions for an executor type in a workspace
    *
-   * @param executorType - The executor type (e.g., "claude-code")
+   * @param executorType - The executor type (e.g., "CLAUDE_CODE")
    * @param workspacePath - Absolute path to the workspace
    * @returns Array of discovered sessions
    */
@@ -1201,7 +1201,7 @@ export class GatewayClient {
   /**
    * Get messages for an executor session
    *
-   * @param executorType - The executor type (e.g., "claude-code")
+   * @param executorType - The executor type (e.g., "CLAUDE_CODE")
    * @param sessionId - The session ID
    * @param workspacePath - Absolute path to the workspace
    * @param limit - Optional limit on number of messages to return
@@ -2996,7 +2996,7 @@ export class GatewayClient {
    * Get MCP servers for an executor in a workspace
    *
    * @param workspacePath - The workspace path (defaults to home dir)
-   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
    */
   async getMcpServers(
     workspacePath: string | undefined,
@@ -3251,7 +3251,7 @@ export class GatewayClient {
    * Get agent configs for an executor in a workspace
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
    */
   async getAgentConfigs(
     workspacePath: string | undefined,
@@ -3321,7 +3321,7 @@ export class GatewayClient {
    * Get commands for an executor in a workspace
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The executor type (e.g., "claude-code", "cursor")
+   * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
    */
   async getCommands(
     workspacePath: string | undefined,
@@ -3811,7 +3811,7 @@ export interface SendGroupChatMessageRequest {
 export interface ExecutorSession {
   /** Unique session ID */
   id: string;
-  /** Executor type (e.g., "claude-code") */
+  /** Executor type (e.g., "CLAUDE_CODE") */
   executor_type: string;
   /** Workspace path where this session was found */
   workspace_path: string;
@@ -4025,14 +4025,14 @@ export interface WorkspaceModelsResponse {
 
 /** Workspace agent type */
 export type WorkspaceAgentType =
-  | "viben"
-  | "claude_code"
-  | "cursor"
-  | "vscode"
-  | "continue"
-  | "zed"
-  | "windsurf"
-  | "other";
+  | "VIBEN"
+  | "CLAUDE_CODE"
+  | "CURSOR"
+  | "VSCODE"
+  | "CONTINUE"
+  | "ZED"
+  | "WINDSURF"
+  | "OTHER";
 
 /**
  * Agent info - basic agent information for listing.

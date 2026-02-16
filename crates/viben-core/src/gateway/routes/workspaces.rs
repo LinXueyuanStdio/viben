@@ -643,7 +643,7 @@ pub async fn list_agents(
                     let config_path = entry.path().join("config.yaml");
 
                     agents.push(WorkspaceAgent {
-                        id: format!("viben:{}", agent_id),
+                        id: agent_id.clone(),
                         name: agent_id.clone(),
                         agent_type: WorkspaceAgentType::Viben,
                         source: "workspace".to_string(),
@@ -667,17 +667,16 @@ pub async fn list_agents(
                     for entry in entries.flatten() {
                         if entry.path().is_dir() {
                             let agent_id = entry.file_name().to_string_lossy().to_string();
-                            let full_id = format!("viben:{}", agent_id);
 
                             // Skip if already exists from workspace (workspace takes precedence)
-                            if agents.iter().any(|a| a.id == full_id) {
+                            if agents.iter().any(|a| a.id == agent_id) {
                                 continue;
                             }
 
                             let config_path = entry.path().join("config.yaml");
 
                             agents.push(WorkspaceAgent {
-                                id: full_id,
+                                id: agent_id.clone(),
                                 name: agent_id.clone(),
                                 agent_type: WorkspaceAgentType::Viben,
                                 source: "global".to_string(),
@@ -1039,7 +1038,7 @@ pub async fn list_chat_items(
                 if entry.path().is_dir() {
                     let agent_id = entry.file_name().to_string_lossy().to_string();
                     items.push(ChatListItem {
-                        id: format!("viben:{}", agent_id),
+                        id: agent_id.clone(),
                         name: agent_id.clone(),
                         item_type: ChatListItemType::Agent,
                         source: "workspace".to_string(),
@@ -1063,12 +1062,11 @@ pub async fn list_chat_items(
                 for entry in entries.flatten() {
                     if entry.path().is_dir() {
                         let agent_id = entry.file_name().to_string_lossy().to_string();
-                        let full_id = format!("viben:{}", agent_id);
 
                         // Skip if already exists from workspace
-                        if !items.iter().any(|i| i.id == full_id) {
+                        if !items.iter().any(|i| i.id == agent_id) {
                             items.push(ChatListItem {
-                                id: full_id,
+                                id: agent_id.clone(),
                                 name: agent_id.clone(),
                                 item_type: ChatListItemType::Agent,
                                 source: "global".to_string(),

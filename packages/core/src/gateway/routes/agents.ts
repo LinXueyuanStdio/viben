@@ -115,8 +115,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       );
 
       return {
-        // Add viben: prefix to match Rust gateway format
-        id: `viben:${a.id}`,
+        id: a.id,
         name: a.name,
         agent_type: "viben",
         source,
@@ -242,9 +241,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           ? "global"
           : "workspace";
 
-      // Return agent with viben: prefix and snake_case fields to match Rust gateway
+      // Return agent with snake_case fields
       return {
-        id: `viben:${agent.id}`,
+        id: agent.id,
         name: agent.name,
         agent_type: "viben",
         source,
@@ -395,9 +394,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
             ? "global"
             : "workspace";
 
-        // Return agent with viben: prefix and snake_case fields to match Rust gateway
+        // Return agent with snake_case fields
         return {
-          id: `viben:${agent.id}`,
+          id: agent.id,
           name: agent.name,
           agent_type: "viben",
           source,
@@ -824,9 +823,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       return { error: `Agent not found: ${id}` };
     }
 
-    // Return agent with viben: prefix and snake_case fields to match Rust gateway
+    // Return agent with snake_case fields
     return {
-      id: `viben:${agent.id}`,
+      id: agent.id,
       name: agent.name,
       agent_type: "viben",
       source,
@@ -910,9 +909,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           ? "global"
           : "workspace";
 
-      // Return agent with viben: prefix and snake_case fields to match Rust gateway
+      // Return agent with snake_case fields
       return {
-        id: `viben:${agent.id}`,
+        id: agent.id,
         name: agent.name,
         agent_type: "viben",
         source,

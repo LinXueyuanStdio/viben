@@ -243,14 +243,14 @@ function AgentCard({ agent, workspaceId }: AgentCardProps) {
   const { t } = useTranslation();
 
   const agentIcons: Record<string, string> = {
-    "claude-code": "CC",
-    codex: "Cx",
-    cursor: "Cu",
-    windsurf: "W",
-    vscode: "VS",
-    continue: "Co",
-    zed: "Z",
-    unknown: "?",
+    CLAUDE_CODE: "CC",
+    CODEX: "Cx",
+    CURSOR: "Cu",
+    WINDSURF: "W",
+    VSCODE: "VS",
+    CONTINUE: "Co",
+    ZED: "Z",
+    UNKNOWN: "?",
   };
 
   return (

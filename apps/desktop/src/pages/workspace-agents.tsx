@@ -92,7 +92,7 @@ interface ListItem {
   name: string;
   description?: string;
   type: "executor" | "agent" | "workspace-agent";
-  executorType?: string; // e.g., "claude-code", "codex"
+  executorType?: string; // e.g., "CLAUDE_CODE", "CODEX"
   /** Path to the agent configuration */
   path?: string;
   /** Workspace path this agent belongs to (for workspace-agent type) */

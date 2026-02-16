@@ -44,14 +44,14 @@ export interface UseExecutorSessionMessagesReturn {
 /**
  * Hook for discovering and loading executor sessions in a workspace
  *
- * @param executorType - The executor type (e.g., "claude-code"), or null to skip loading
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE"), or null to skip loading
  * @param workspacePath - Absolute path to the workspace, or null to skip loading
  * @returns Sessions, loading state, error, and refresh function
  *
  * @example
  * ```tsx
  * const { sessions, isLoading, error, refresh } = useExecutorSessions(
- *   "claude-code",
+ *   "CLAUDE_CODE",
  *   "/path/to/workspace"
  * );
  * ```
@@ -150,7 +150,7 @@ export function useExecutorSessions(
 /**
  * Hook for loading messages from an executor session
  *
- * @param executorType - The executor type (e.g., "claude-code"), or null to skip loading
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE"), or null to skip loading
  * @param sessionId - The session ID, or null to skip loading
  * @param workspacePath - Absolute path to the workspace, or null to skip loading
  * @param limit - Optional limit on number of messages
@@ -159,7 +159,7 @@ export function useExecutorSessions(
  * @example
  * ```tsx
  * const { messages, isLoading, error, refresh } = useExecutorSessionMessages(
- *   "claude-code",
+ *   "CLAUDE_CODE",
  *   "session-123",
  *   "/path/to/workspace"
  * );
