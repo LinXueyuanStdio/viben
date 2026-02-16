@@ -49,14 +49,14 @@ export interface ExecutorListItemProps {
  */
 export function getExecutorGradient(type: ExecutorType): string {
   const gradientMap: Record<ExecutorType, string> = {
-    "claude-code": gradients.claudeCode,
-    codex: gradients.codex,
-    cursor: gradients.cursor,
-    windsurf: gradients.windsurf,
-    vscode: gradients.vscode,
-    continue: gradients.continue,
-    zed: gradients.zed,
-    unknown: gradients.unknown,
+    CLAUDE_CODE: gradients.claudeCode,
+    CODEX: gradients.codex,
+    CURSOR: gradients.cursor,
+    WINDSURF: gradients.windsurf,
+    VSCODE: gradients.vscode,
+    CONTINUE: gradients.continue,
+    ZED: gradients.zed,
+    UNKNOWN: gradients.unknown,
   };
   return gradientMap[type] || gradients.unknown;
 }
@@ -66,14 +66,14 @@ export function getExecutorGradient(type: ExecutorType): string {
  */
 export function getExecutorDisplayName(type: ExecutorType): string {
   const names: Record<ExecutorType, string> = {
-    "claude-code": "Claude Code",
-    codex: "Codex",
-    cursor: "Cursor",
-    windsurf: "Windsurf",
-    vscode: "VS Code",
-    continue: "Continue",
-    zed: "Zed",
-    unknown: "Unknown",
+    CLAUDE_CODE: "Claude Code",
+    CODEX: "Codex",
+    CURSOR: "Cursor",
+    WINDSURF: "Windsurf",
+    VSCODE: "VS Code",
+    CONTINUE: "Continue",
+    ZED: "Zed",
+    UNKNOWN: "Unknown",
   };
   return names[type] || type;
 }

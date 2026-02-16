@@ -282,14 +282,14 @@ export interface Workspace {
 
 /** Executor type identifier (auto-discovered backend) */
 export type ExecutorType =
-  | "claude-code"
-  | "codex"
-  | "cursor"
-  | "windsurf"
-  | "vscode"
-  | "continue"
-  | "zed"
-  | "unknown";
+  | "CLAUDE_CODE"
+  | "CODEX"
+  | "CURSOR"
+  | "WINDSURF"
+  | "VSCODE"
+  | "CONTINUE"
+  | "ZED"
+  | "UNKNOWN";
 
 /** @deprecated Use ExecutorType instead */
 export type WorkspaceAgentType = ExecutorType;

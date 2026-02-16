@@ -92,6 +92,7 @@ export {
   useAgents,
   useAgents as useGatewayAgents, // Alias for backwards compatibility
   useAgentDetail,
+  useAgentList,
   useChatList,
   // Legacy hooks (for backwards compatibility)
   useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
@@ -105,6 +106,11 @@ export type {
   UseAgentsOptions,
   UseAgentsReturn,
   UseAgentDetailReturn,
+  UseAgentListOptions,
+  UseAgentListReturn,
+  AgentListItem,
+  AgentListItemType,
+  AgentListCounts,
   UseChatListOptions,
   UseChatListReturn,
   AgentOperations,

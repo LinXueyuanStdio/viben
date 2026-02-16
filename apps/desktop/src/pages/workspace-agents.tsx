@@ -52,7 +52,7 @@ import {
   AgentDetailPanel,
 } from "@/components/chat";
 import { Separator } from "@/components/ui/separator";
-import { useLocalWorkspaces, useAgents, useModels, useWorkspaceAgents, useWorkspaceAgentsFromGateway } from "@/hooks";
+import { useLocalWorkspaces, useModels, useAgentList } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types";
@@ -156,30 +156,20 @@ export function WorkspaceAgentsPage({
   const workspaceId = workspaceOverride?.id ?? routeWorkspaceId;
   const workspace = workspaceOverride ?? (workspaceId ? getWorkspace(workspaceId) : undefined);
 
-  // Workspace executors (auto-discovered from Tauri)
+  // Combined executors + agents from Gateway API
   const {
-    agents: workspaceExecutorsList,
-    loading: loadingWorkspaceExecutors,
-    loadAgents: loadWorkspaceExecutors,
-  } = useWorkspaceAgents(workspaceId || null);
-
-  // All agents from Gateway API (combined global + workspace)
-  const {
-    agents: gatewayAgents,
-    loading: loadingGatewayAgents,
-    refresh: refreshGatewayAgents,
-  } = useWorkspaceAgentsFromGateway(workspace?.path || null);
-
-  // Viben agents for CRUD operations (now using Gateway API)
-  const {
-    defaultAgentId,
-    loading: loadingAgents,
-    createAgent,
-    removeAgent,
-    updateAgent,
-    setDefaultAgent,
-    refresh: refreshVibenAgents,
-  } = useAgents({ workspacePath: workspace?.path });
+    executors: agentListExecutors,
+    agents: agentListAgents,
+    loading: loadingAgentList,
+    refresh: refreshAgentList,
+    agentOperations: {
+      defaultAgentId,
+      setDefaultAgent,
+      removeAgent,
+      updateAgent,
+      createAgent,
+    },
+  } = useAgentList({ workspacePath: workspace?.path });
 
   const {
     models,
@@ -204,41 +194,42 @@ export function WorkspaceAgentsPage({
       setGlobalVibenPath(`${home}.viben/agents/`);
     });
   }, []);
-  const loading = loadingAgents || loadingModels || loadingWorkspaceExecutors || loadingGatewayAgents;
+
+  const loading = loadingAgentList || loadingModels;
 
   // Refresh all
   const refreshAll = async () => {
-    await Promise.all([refreshVibenAgents(), refreshGatewayAgents(), loadWorkspaceExecutors()]);
+    await refreshAgentList();
   };
 
-  // Convert workspace executors to list items
+  // Convert executors to list items for display
   const executorItems: ListItem[] = useMemo(() => {
-    return workspaceExecutorsList.map((e) => ({
+    return agentListExecutors.map((e) => ({
       id: e.id,
       name: e.name,
       type: "executor" as const,
-      executorType: e.type,
+      executorType: e.id, // executor ID like "CLAUDE_CODE"
       path: e.config_path,
-      // Mark as workspace source since these come from workspace discovery
-      source: "project" as const,
+      source: e.source === "workspace" ? "project" as const : "global" as const,
+      projectConfigPath: e.config_path,
+      globalConfigPath: e.global_config_path,
     }));
-  }, [workspaceExecutorsList]);
+  }, [agentListExecutors]);
 
-  // Convert gateway agents (combined global + workspace) to list items
-  // All agents from gateway are user-created agents
+  // Convert agents to list items for display
   const agentItems: ListItem[] = useMemo(() => {
-    return gatewayAgents.map((a) => ({
+    return agentListAgents.map((a) => ({
       id: a.id,
       name: a.name,
-      description: undefined, // Gateway API doesn't return description, will load on select
+      description: undefined, // Will load on select
       type: a.source === "workspace" ? "workspace-agent" as const : "agent" as const,
-      source: (a.source === "workspace" ? "workspace" : "global") as "workspace" | "global",
+      source: a.source,
       path: a.config_path,
       workspacePath: a.config_path ? a.config_path.replace(/\/[^/]+\.json$/, "/") : undefined,
     }));
-  }, [gatewayAgents]);
+  }, [agentListAgents]);
 
-  // All items combined (executors + agents from gateway)
+  // All items combined
   const allItems = useMemo(() => {
     return [...executorItems, ...agentItems];
   }, [executorItems, agentItems]);
@@ -265,20 +256,17 @@ export function WorkspaceAgentsPage({
     [filteredItems]
   );
 
-  // All agents from gateway for detail display
-  const allAgents = gatewayAgents;
-
-  // Selected agent data (from Gateway API - includes both global and workspace agents)
+  // Selected agent data (from Agent List - includes both global and workspace agents)
   const selectedAgent = useMemo(() => {
     if (selectedItemType !== "agent" && selectedItemType !== "workspace-agent") return undefined;
-    const gatewayAgent = allAgents.find((a) => a.id === selectedItemId);
-    if (!gatewayAgent) return undefined;
+    const agent = agentListAgents.find((a) => a.id === selectedItemId);
+    if (!agent) return undefined;
     // Gateway API returns minimal info, construct full agent structure
     // The detail panel will handle loading additional data if needed
     return {
-      id: gatewayAgent.id,
-      name: gatewayAgent.name,
-      path: gatewayAgent.config_path,
+      id: agent.id,
+      name: agent.name,
+      path: agent.config_path,
       description: undefined as string | undefined, // Not available from gateway, could be loaded separately
       model: undefined as string | undefined,
       provider: undefined as string | undefined,
@@ -290,19 +278,30 @@ export function WorkspaceAgentsPage({
       created_at: "",
       updated_at: "",
     };
-  }, [allAgents, selectedItemId, selectedItemType]);
+  }, [agentListAgents, selectedItemId, selectedItemType]);
 
   // For workspace-scoped agents
   const isWorkspaceAgent = useMemo(() => {
-    const gatewayAgent = allAgents.find((a) => a.id === selectedItemId);
-    return gatewayAgent?.source === "workspace";
-  }, [allAgents, selectedItemId]);
+    const agent = agentListAgents.find((a) => a.id === selectedItemId);
+    return agent?.source === "workspace";
+  }, [agentListAgents, selectedItemId]);
 
-  // Selected executor (from workspace discovery)
-  const selectedExecutor = useMemo(
-    () => workspaceExecutorsList.find((e) => e.id === selectedItemId && selectedItemType === "executor"),
-    [workspaceExecutorsList, selectedItemId, selectedItemType]
-  );
+  // Selected executor (from executor list)
+  const selectedExecutor = useMemo(() => {
+    if (selectedItemType !== "executor") return undefined;
+    const executor = agentListExecutors.find((e) => e.id === selectedItemId);
+    if (!executor) return undefined;
+    // Transform to the format expected by ExecutorDetailPanel
+    return {
+      id: executor.id,
+      workspace_id: workspace?.id || "",
+      name: executor.name,
+      type: (executor.id || "UNKNOWN") as import("@/types").ExecutorType,
+      config_path: executor.config_path || "",
+      mcp_config_file: null,
+      skills_config_file: null,
+    };
+  }, [agentListExecutors, selectedItemId, selectedItemType, workspace?.id]);
 
   // Auto-select first item when list changes
   useEffect(() => {
@@ -342,8 +341,8 @@ export function WorkspaceAgentsPage({
         // Pass workspace path if creating in workspace, undefined for global
         base_path: isWorkspaceAgent ? workspace.path : undefined,
       });
-      // Refresh the gateway agents list to show the new agent
-      await refreshGatewayAgents();
+      // Refresh the agent list to show the new agent
+      await refreshAgentList();
       setCreateDialogOpen(false);
       setNewAgentName("");
       setNewAgentDescription("");
@@ -532,15 +531,23 @@ export function WorkspaceAgentsPage({
                       </Badge>
                     </div>
                     {filteredExecutors.map((item) => {
-                      // Find the original executor from workspaceExecutorsList
-                      const executor = workspaceExecutorsList.find((e) => e.id === item.id);
-                      if (!executor) return null;
+                      // Convert ListItem to Executor format expected by ExecutorListItem
+                      // Use item data directly since it was derived from agentListExecutors
+                      const executor: import("@/types").Executor = {
+                        id: item.id,
+                        workspace_id: workspace?.id || "",
+                        name: item.name,
+                        type: (item.executorType || "UNKNOWN") as import("@/types").ExecutorType,
+                        config_path: item.path || "",
+                        mcp_config_file: null,
+                        skills_config_file: null,
+                      };
                       return (
                         <ExecutorListItem
                           key={`executor-${item.id}`}
                           executor={executor}
                           isSelected={selectedItemId === item.id && selectedItemType === "executor"}
-                          source={item.path ? { type: "workspace", path: item.path } : undefined}
+                          source={item.path ? { type: item.source === "project" ? "workspace" : "global", path: item.path } : undefined}
                           onSelect={() => {
                             setSelectedItemId(item.id);
                             setSelectedItemType("executor");

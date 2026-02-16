@@ -5,7 +5,7 @@
  * combining global availability with workspace-specific configurations.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   getGatewayClient,
   type ExecutorInfo,
@@ -738,6 +738,249 @@ export function useWorkspaceResources(
     agents,
     refreshAll,
     isLoading,
+  };
+}
+
+// ============================================================================
+// Agent List Hook (Executors + Agents)
+// ============================================================================
+
+export interface UseAgentListOptions {
+  /** Workspace path to scope items */
+  workspacePath?: string | null;
+  /** Include global items (default: true) */
+  includeGlobal?: boolean;
+}
+
+/** Unified list item type: "executor" or "agent" */
+export type AgentListItemType = "executor" | "agent";
+
+/** A unified agent list item that can represent either executor or agent */
+export interface AgentListItem {
+  /** Unique identifier */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Item type */
+  item_type: AgentListItemType;
+  /** Source: "global" or "workspace" */
+  source: "global" | "workspace";
+  /** The workspace path this item belongs to */
+  workspace_path: string;
+  /** Description (optional) */
+  description?: string;
+  /** Config path (for both executors and agents) */
+  config_path?: string;
+
+  // Executor-specific fields
+  /** Whether this executor supports MCP (executors only) */
+  supports_mcp?: boolean;
+  /** Executor capabilities (executors only) */
+  capabilities?: string[];
+  /** Global availability info (executors only) */
+  availability?: import("@/lib/gateway").AvailabilityInfo;
+  /** Path to global config file (executors only) */
+  global_config_path?: string;
+  /** Has workspace-level config (executors only) */
+  has_workspace_config?: boolean;
+
+  // Agent-specific fields
+  /** Executor type this agent uses (agents only) */
+  executor_type?: string;
+}
+
+/** Counts by item type */
+export interface AgentListCounts {
+  executors: number;
+  agents: number;
+}
+
+export interface UseAgentListReturn {
+  /** All items (executors + agents) */
+  items: AgentListItem[];
+  /** Executors only */
+  executors: AgentListItem[];
+  /** Agents only */
+  agents: AgentListItem[];
+  /** Counts by type */
+  counts: AgentListCounts;
+  /** Total count */
+  total: number;
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Refresh all data */
+  refresh: () => Promise<void>;
+  /** Agent CRUD operations */
+  agentOperations: AgentOperations;
+}
+
+/**
+ * Hook to get a unified list of executors and agents
+ *
+ * This provides a combined view for agent management pages:
+ * - Executors: From /api/executors (with merged project/global configs)
+ * - Agents: From /api/agents (user-created agents)
+ *
+ * When workspacePath is provided with includeGlobal=true (default):
+ * - Project-level configs are merged with global configs
+ * - If project-level doesn't exist, global-level is still included
+ *
+ * @param options - Configuration options
+ * @returns Combined list of executors and agents with operations
+ */
+export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn {
+  const workspacePath = options?.workspacePath;
+  const includeGlobal = options?.includeGlobal ?? true;
+
+  const [executorItems, setExecutorItems] = useState<AgentListItem[]>([]);
+  const [agentItems, setAgentItems] = useState<AgentListItem[]>([]);
+  const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const client = getGatewayClient();
+
+      // Fetch executors, agents, and default agent ID in parallel
+      const [executorsResponse, agentsResponse, defaultId] = await Promise.all([
+        client.getExecutors({
+          workspacePath: workspacePath || undefined,
+          includeGlobal,
+        }),
+        client.getAgents({
+          workspacePath: workspacePath || undefined,
+          includeGlobal,
+        }),
+        client.getDefaultAgentId().catch(() => null),
+      ]);
+
+      // Transform executors to unified format
+      const executors: AgentListItem[] = executorsResponse.executors.map((e) => ({
+        id: e.id,
+        name: e.name,
+        item_type: "executor" as const,
+        source: e.has_workspace_config ? "workspace" as const : "global" as const,
+        workspace_path: e.workspace_path,
+        config_path: e.workspace_config_path || e.global_config_path,
+        supports_mcp: e.supports_mcp,
+        capabilities: e.capabilities,
+        availability: e.availability,
+        global_config_path: e.global_config_path,
+        has_workspace_config: e.has_workspace_config,
+      }));
+
+      // Transform agents to unified format
+      const agents: AgentListItem[] = agentsResponse.agents.map((a) => ({
+        id: a.id,
+        name: a.name,
+        item_type: "agent" as const,
+        source: a.source as "global" | "workspace",
+        workspace_path: workspacePath || "",
+        config_path: a.config_path,
+        executor_type: a.executor_type,
+      }));
+
+      setExecutorItems(executors);
+      setAgentItems(agents);
+      setDefaultAgentIdState(defaultId);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to load agent list";
+      setError(message);
+      console.error("[useAgentList] Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, includeGlobal]);
+
+  // Load on mount and when options change
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Combined items
+  const items = useMemo(
+    () => [...executorItems, ...agentItems],
+    [executorItems, agentItems]
+  );
+
+  // Counts
+  const counts = useMemo<AgentListCounts>(
+    () => ({
+      executors: executorItems.length,
+      agents: agentItems.length,
+    }),
+    [executorItems, agentItems]
+  );
+
+  // Agent operations
+  const setDefaultAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      await client.setDefaultAgent(id);
+      setDefaultAgentIdState(id);
+    },
+    []
+  );
+
+  const removeAgent = useCallback(
+    async (id: string): Promise<void> => {
+      const client = getGatewayClient();
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      await client.deleteVibenAgent(agentId);
+      await loadData();
+    },
+    [loadData]
+  );
+
+  const updateAgent = useCallback(
+    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
+      const result = await client.updateVibenAgent(agentId, updates);
+      await loadData();
+      return result;
+    },
+    [loadData]
+  );
+
+  const createAgent = useCallback(
+    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+      const client = getGatewayClient();
+      const optionsWithPath = workspacePath
+        ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
+        : createOptions;
+      const result = await client.createVibenAgent(optionsWithPath);
+      await loadData();
+      return result;
+    },
+    [workspacePath, loadData]
+  );
+
+  const agentOperations: AgentOperations = {
+    defaultAgentId,
+    setDefaultAgent,
+    removeAgent,
+    updateAgent,
+    createAgent,
+  };
+
+  return {
+    items,
+    executors: executorItems,
+    agents: agentItems,
+    counts,
+    total: items.length,
+    loading,
+    error,
+    refresh: loadData,
+    agentOperations,
   };
 }
 
