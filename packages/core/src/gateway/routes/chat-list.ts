@@ -290,7 +290,7 @@ export function registerChatListRoutes(fastify: FastifyInstance): void {
           const entries = readdirSync(vibenAgentsDir, { withFileTypes: true });
           for (const entry of entries) {
             if (entry.isDirectory()) {
-              const agentId = `viben:${entry.name}`;
+              const agentId = entry.name;
               // Skip if already in global agents
               if (!items.some((i) => i.id === agentId)) {
                 items.push({

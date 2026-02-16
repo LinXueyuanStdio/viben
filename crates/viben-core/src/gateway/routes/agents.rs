@@ -829,7 +829,7 @@ impl From<Agent> for VibenAgentResponse {
         };
 
         Self {
-            id: format!("viben:{}", agent.id),
+            id: agent.id.clone(),
             name: agent.name,
             agent_type: "viben".to_string(),
             source,

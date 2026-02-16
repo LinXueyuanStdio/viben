@@ -165,15 +165,15 @@ function AgentCard({
   );
 
   const iconMap: Record<string, string> = {
-    claude: "C",
-    "claude-code": "CC",
-    cursor: "Cu",
-    windsurf: "W",
-    vscode: "VS",
-    continue: "Co",
-    codex: "Cx",
-    opencode: "OC",
-    zed: "Z",
+    CLAUDE: "C",
+    CLAUDE_CODE: "CC",
+    CURSOR: "Cu",
+    WINDSURF: "W",
+    VSCODE: "VS",
+    CONTINUE: "Co",
+    CODEX: "Cx",
+    OPENCODE: "OC",
+    ZED: "Z",
   };
 
   const handleApply = () => {

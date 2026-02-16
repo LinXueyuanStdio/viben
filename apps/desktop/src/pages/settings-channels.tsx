@@ -794,7 +794,7 @@ export function SettingsChannelsPage() {
   const { agents } = useAgents();
 
   // Load executor sessions for binding selector (global workspace)
-  const { sessions: executorSessions } = useExecutorSessions("claude-code", null);
+  const { sessions: executorSessions } = useExecutorSessions("CLAUDE_CODE", null);
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<GatewayChannel | null>(null);

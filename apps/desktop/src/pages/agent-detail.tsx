@@ -1556,10 +1556,11 @@ function ExecutorDetailView({
     loading: commandsLoading,
   } = useWorkspaceCommands(workspacePath || null, executor.type);
 
-  // Chat functionality - map executor type to executor type string
+  // Chat functionality - use executor type directly (already uppercase)
   const executorTypeString = useMemo((): string => {
-    if (executor.type === "claude-code") return "CLAUDE_CODE";
-    if (executor.type === "codex") return "CODEX";
+    // executor.type is already in uppercase format (CLAUDE_CODE, CODEX, etc.)
+    if (executor.type === "CLAUDE_CODE") return "CLAUDE_CODE";
+    if (executor.type === "CODEX") return "CODEX";
     // All other executor types default to CLAUDE_CODE for chat
     return "CLAUDE_CODE";
   }, [executor.type]);

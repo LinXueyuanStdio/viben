@@ -14,7 +14,7 @@ export type WorkspaceCommand = WorkspaceCommandData;
  * Uses HTTP API via Gateway client
  *
  * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
- * @param executorType - The executor type (e.g., "claude_code", "cursor")
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
  */
 export function useWorkspaceAgentConfigs(
   workspacePath: string | null,
@@ -93,7 +93,7 @@ export function useAgentConfigContent() {
  * Uses HTTP API via Gateway client
  *
  * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
- * @param executorType - The executor type (e.g., "claude_code", "cursor")
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
  */
 export function useWorkspaceCommands(
   workspacePath: string | null,
