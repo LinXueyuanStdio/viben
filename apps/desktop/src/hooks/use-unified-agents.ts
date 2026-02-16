@@ -81,20 +81,20 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   const { getWorkspace } = useLocalWorkspaces();
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
-  // Viben agents (from Gateway API)
+  // User-created agents (from Gateway API)
   const {
+    agents: gatewayAgents,
     defaultAgentId,
-    loading: vibenLoading,
-    error: vibenError,
-    refresh: refreshVibenAgents,
-    getVibenAgents,
+    loading: agentsLoading,
+    error: agentsError,
+    refresh: refreshAgents,
     createAgent,
     updateAgent,
-    removeAgent: removeVibenAgent,
+    removeAgent: removeAgentFn,
     setDefaultAgent,
   } = useAgents();
 
-  // Workspace executors (auto-discovered)
+  // Workspace executors (auto-discovered, read-only)
   const {
     agents: workspaceExecutors,
     loading: workspaceLoading,
@@ -103,11 +103,8 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   } = useWorkspaceAgents(includeExecutors ? workspaceId : null);
 
   // Combined loading and error states
-  const loading = vibenLoading || workspaceLoading;
-  const error = vibenError || workspaceError;
-
-  // Filter viben agents only (agent_type === "viben")
-  const vibenAgents = useMemo(() => getVibenAgents(), [getVibenAgents]);
+  const loading = agentsLoading || workspaceLoading;
+  const error = agentsError || workspaceError;
 
   // Convert and merge
   const { all, executors, agents } = useMemo(() => {
@@ -116,7 +113,7 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
       : [];
 
     const agentList: UnifiedAgent[] = includeAgents
-      ? vibenAgents.map(vibenAgentToUnified)
+      ? gatewayAgents.map(vibenAgentToUnified)
       : [];
 
     return {
@@ -124,19 +121,19 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
       executors: execList,
       agents: agentList,
     };
-  }, [workspaceExecutors, vibenAgents, workspace?.path, includeExecutors, includeAgents]);
+  }, [workspaceExecutors, gatewayAgents, workspace?.path, includeExecutors, includeAgents]);
 
   // Refresh all
   const refresh = useCallback(async () => {
     const promises: Promise<void>[] = [];
     if (includeAgents) {
-      promises.push(refreshVibenAgents());
+      promises.push(refreshAgents());
     }
     if (includeExecutors && workspaceId) {
       promises.push(loadWorkspaceExecutors());
     }
     await Promise.all(promises);
-  }, [refreshVibenAgents, loadWorkspaceExecutors, includeAgents, includeExecutors, workspaceId]);
+  }, [refreshAgents, loadWorkspaceExecutors, includeAgents, includeExecutors, workspaceId]);
 
   // Get item by ID
   const getItem = useCallback(
@@ -156,9 +153,9 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
       if (isExecutor(item)) {
         throw new Error("Cannot remove executor via this hook. Please delete the config file directly.");
       }
-      await removeVibenAgent(id);
+      await removeAgentFn(id);
     },
-    [getItem, removeVibenAgent]
+    [getItem, removeAgentFn]
   );
 
   return {

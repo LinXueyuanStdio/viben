@@ -165,9 +165,9 @@ export function WorkspaceAgentsPage({
 
   // All agents from Gateway API (combined global + workspace)
   const {
+    agents: gatewayAgents,
     loading: loadingGatewayAgents,
     refresh: refreshGatewayAgents,
-    getVibenAgents,
   } = useWorkspaceAgentsFromGateway(workspace?.path || null);
 
   // Viben agents for CRUD operations (now using Gateway API)
@@ -225,10 +225,9 @@ export function WorkspaceAgentsPage({
   }, [workspaceExecutorsList]);
 
   // Convert gateway agents (combined global + workspace) to list items
+  // All agents from gateway are user-created agents
   const agentItems: ListItem[] = useMemo(() => {
-    // Filter to only viben agents (not IDE configs)
-    const vibenAgents = getVibenAgents();
-    return vibenAgents.map((a) => ({
+    return gatewayAgents.map((a) => ({
       id: a.id,
       name: a.name,
       description: undefined, // Gateway API doesn't return description, will load on select
@@ -237,7 +236,7 @@ export function WorkspaceAgentsPage({
       path: a.config_path,
       workspacePath: a.config_path ? a.config_path.replace(/\/[^/]+\.json$/, "/") : undefined,
     }));
-  }, [getVibenAgents]);
+  }, [gatewayAgents]);
 
   // All items combined (executors + agents from gateway)
   const allItems = useMemo(() => {
@@ -266,13 +265,13 @@ export function WorkspaceAgentsPage({
     [filteredItems]
   );
 
-  // Get all viben agents from gateway for detail display
-  const allVibenAgents = useMemo(() => getVibenAgents(), [getVibenAgents]);
+  // All agents from gateway for detail display
+  const allAgents = gatewayAgents;
 
   // Selected agent data (from Gateway API - includes both global and workspace agents)
   const selectedAgent = useMemo(() => {
     if (selectedItemType !== "agent" && selectedItemType !== "workspace-agent") return undefined;
-    const gatewayAgent = allVibenAgents.find((a) => a.id === selectedItemId);
+    const gatewayAgent = allAgents.find((a) => a.id === selectedItemId);
     if (!gatewayAgent) return undefined;
     // Gateway API returns minimal info, construct full agent structure
     // The detail panel will handle loading additional data if needed
@@ -291,13 +290,13 @@ export function WorkspaceAgentsPage({
       created_at: "",
       updated_at: "",
     };
-  }, [allVibenAgents, selectedItemId, selectedItemType]);
+  }, [allAgents, selectedItemId, selectedItemType]);
 
   // For workspace-scoped agents
   const isWorkspaceAgent = useMemo(() => {
-    const gatewayAgent = allVibenAgents.find((a) => a.id === selectedItemId);
+    const gatewayAgent = allAgents.find((a) => a.id === selectedItemId);
     return gatewayAgent?.source === "workspace";
-  }, [allVibenAgents, selectedItemId]);
+  }, [allAgents, selectedItemId]);
 
   // Selected executor (from workspace discovery)
   const selectedExecutor = useMemo(

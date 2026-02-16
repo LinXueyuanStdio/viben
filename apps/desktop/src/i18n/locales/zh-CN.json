@@ -1842,6 +1842,7 @@
     "toolExecuting": "执行中...",
     "toolInput": "输入",
     "toolOutput": "输出",
+    "running": "运行中...",
     "executionPlan": "执行计划",
     "planApprovalPrompt": "是否执行此计划？",
     "approvePlan": "批准",

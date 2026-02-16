@@ -8,6 +8,10 @@
  */
 import type { FastifyInstance } from "fastify";
 import type { AppState } from "../state";
+import { trace, SpanKind, SpanStatusCode, type Span } from "@opentelemetry/api";
+
+// WebSocket tracer
+const tracer = trace.getTracer("viben-gateway-ws", "1.0.0");
 
 /**
  * WebSocket message types (client to server)
@@ -82,6 +86,19 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
       await instance.register(websocket.default);
 
       instance.get("/ws", { websocket: true }, (socket) => {
+        // Create a session span that covers the entire WebSocket connection lifetime
+        const sessionSpan = tracer.startSpan("ws.session", {
+          kind: SpanKind.SERVER,
+          attributes: {
+            "ws.url": "/ws",
+            "ws.protocol": "websocket",
+          },
+        });
+
+        // Track message counts for metrics
+        let messagesSent = 0;
+        let messagesReceived = 0;
+
         // Set of subscribed channels
         const subscribedChannels = new Set<string>();
 
@@ -98,18 +115,31 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
               data: event.data,
             };
             socket.send(JSON.stringify(serverMsg));
+            messagesSent++;
           }
         });
 
         // Handle incoming messages
         socket.on("message", (data: Buffer) => {
+          messagesReceived++;
+
+          // Create a span for each message received
+          const messageSpan = tracer.startSpan("ws.message.receive", {
+            kind: SpanKind.SERVER,
+            attributes: {
+              "ws.message.size": data.length,
+            },
+          });
+
           try {
             const msg = JSON.parse(data.toString()) as ClientMessage;
+            messageSpan.setAttribute("ws.message.type", msg.type);
 
             switch (msg.type) {
               case "ping": {
                 const pong: ServerMessage = { type: "pong" };
                 socket.send(JSON.stringify(pong));
+                messagesSent++;
                 break;
               }
 
@@ -121,6 +151,8 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
                     channels: Array.from(subscribedChannels),
                   };
                   socket.send(JSON.stringify(response));
+                  messagesSent++;
+                  messageSpan.setAttribute("ws.channels.subscribed", msg.channels.join(","));
                 }
                 break;
               }
@@ -133,6 +165,8 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
                     channels: Array.from(subscribedChannels),
                   };
                   socket.send(JSON.stringify(response));
+                  messagesSent++;
+                  messageSpan.setAttribute("ws.channels.unsubscribed", msg.channels.join(","));
                 }
                 break;
               }
@@ -146,10 +180,13 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
                 // interaction, use the /api/sessions/:sessionId/messages endpoint.
                 if (msg.sessionId && msg.content) {
                   state.events.sessionMessage(msg.sessionId, msg.content, "user");
+                  messageSpan.setAttribute("ws.session.id", msg.sessionId);
                 }
                 break;
               }
             }
+
+            messageSpan.setStatus({ code: SpanStatusCode.OK });
           } catch {
             const errorMsg: ServerMessage = {
               type: "error",
@@ -157,18 +194,31 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
               message: "Failed to parse message",
             };
             socket.send(JSON.stringify(errorMsg));
+            messagesSent++;
+            messageSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Failed to parse message" });
+          } finally {
+            messageSpan.end();
           }
         });
 
         // Handle close
         socket.on("close", () => {
           unsubscribe();
+          sessionSpan.setAttribute("ws.messages.sent", messagesSent);
+          sessionSpan.setAttribute("ws.messages.received", messagesReceived);
+          sessionSpan.setStatus({ code: SpanStatusCode.OK });
+          sessionSpan.end();
         });
 
         // Handle error
         socket.on("error", (err) => {
           console.error("[WebSocket] Error:", err);
           unsubscribe();
+          sessionSpan.setAttribute("ws.messages.sent", messagesSent);
+          sessionSpan.setAttribute("ws.messages.received", messagesReceived);
+          sessionSpan.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+          sessionSpan.recordException(err);
+          sessionSpan.end();
         });
       });
     } catch {
