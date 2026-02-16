@@ -324,13 +324,12 @@ export function WorkspaceKanbanPage() {
   const createTask = useCreateVibeKanbanTask();
 
   // Fetch available agents and models for task creation
+  // All agents from useAgents are user-created agents
   const {
+    agents,
     defaultAgentId,
     loading: isLoadingAgents,
-    getVibenAgents,
   } = useAgents({ workspacePath: workspace?.path });
-  // Filter to only viben agents for task assignment
-  const vibenAgents = getVibenAgents();
 
   const {
     models: vibenModels,
@@ -340,12 +339,12 @@ export function WorkspaceKanbanPage() {
 
   // Transform agents and models for CreateTaskDialog
   const availableAgents = useMemo(() =>
-    vibenAgents.map((a) => ({
+    agents.map((a) => ({
       id: a.id,
       name: a.name,
       description: a.description,
     })),
-    [vibenAgents]
+    [agents]
   );
 
   const availableModels = useMemo(() =>

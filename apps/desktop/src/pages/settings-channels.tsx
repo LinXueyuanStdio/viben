@@ -790,9 +790,8 @@ export function SettingsChannelsPage() {
   } = useChannelInstances();
 
   // Load agents for binding selector (use Gateway API)
-  const { getVibenAgents } = useAgents();
-  // Filter to only Viben agents for the binding selector
-  const agents = getVibenAgents();
+  // All agents from useAgents are user-created agents
+  const { agents } = useAgents();
 
   // Load executor sessions for binding selector (global workspace)
   const { sessions: executorSessions } = useExecutorSessions("claude-code", null);

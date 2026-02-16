@@ -914,6 +914,19 @@ export function WorkspaceChatPage() {
       return;
     }
 
+    // Guard: agents not loaded yet - wait for InitAgent effect to set the agent
+    // This prevents race condition where Sessions effect runs before agents are available
+    if (agents.length === 0) {
+      console.log("[WorkspaceChat:Effect:Sessions] Agents not loaded yet, waiting");
+      return;
+    }
+
+    // Guard: selected agent not in the list (stale selection from persist store)
+    if (!agents.some((a) => a.id === selectedAgentId)) {
+      console.log(`[WorkspaceChat:Effect:Sessions] Agent ${selectedAgentId} not in agents list, waiting for InitAgent`);
+      return;
+    }
+
     // Guard: already loading
     if (isLoadingRef.current) {
       console.log("[WorkspaceChat:Effect:Sessions] Already loading, skipping");
@@ -1007,7 +1020,7 @@ export function WorkspaceChatPage() {
     };
 
     loadAndSelect();
-  }, [selectedAgentId]);
+  }, [selectedAgentId, agents]);
 
   // Save last selected session whenever it changes
   React.useEffect(() => {
