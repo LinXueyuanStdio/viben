@@ -13,6 +13,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
+import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { trace, context, SpanStatusCode } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
@@ -35,6 +36,33 @@ export interface AgentConfigPayload {
   skills?: string[];
   planMode?: boolean;
   approvals?: boolean;
+}
+
+/**
+ * Resolve agent ID from request parameters
+ *
+ * Priority:
+ * 1. Extract from agentPath (e.g., .../agents/<agent-id>/config.yaml)
+ * 2. Use agentConfig.name if provided
+ * 3. Default to 'default'
+ */
+function resolveAgentId(agentPath?: string, agentConfig?: AgentConfigPayload | null): string {
+  // 1. From agentPath: extract agent-id from path like .../agents/<agent-id>/config.yaml
+  if (agentPath) {
+    const match = agentPath.match(/agents\/([^/]+)\/config\.yaml$/);
+    if (match) return match[1];
+  }
+  // 2. From agentConfig.name
+  if (agentConfig?.name) return agentConfig.name;
+  // 3. Default
+  return "default";
+}
+
+/**
+ * Generate a unique message ID
+ */
+function generateMessageId(): string {
+  return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /**
@@ -248,9 +276,20 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       agentPath?: string;
       /** Inline agent configuration (fallback) */
       agentConfig?: AgentConfigPayload;
+      /** File system session ID for persistence (optional) */
+      sessionId?: string;
+      /** File system task ID for persistence (optional) */
+      taskId?: string;
     };
   }>("/api/agent/run", async (request, reply) => {
-    const { prompt, cwd, agentPath, agentConfig: inlineConfig } = request.body;
+    const {
+      prompt,
+      cwd,
+      agentPath,
+      agentConfig: inlineConfig,
+      sessionId: persistSessionId,
+      taskId: persistTaskId,
+    } = request.body;
 
     // Load agent config: prefer agentPath, fallback to inline config
     let agentConfig: AgentConfigPayload | null = null;
@@ -431,6 +470,35 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         }
 
         sendSSE(reply, message);
+
+        // Persist message to file system if sessionId and taskId provided
+        if (persistSessionId && persistTaskId) {
+          try {
+            const persistAgentId = resolveAgentId(agentPath, agentConfig);
+            await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
+              id: generateMessageId(),
+              taskId: persistTaskId,
+              timestamp: new Date().toISOString(),
+              type: message.type,
+              content: "content" in message ? (message as SSETextMessage).content : undefined,
+              toolUseId:
+                message.type === "tool_use"
+                  ? (message as SSEToolUseMessage).id
+                  : message.type === "tool_result"
+                    ? (message as SSEToolResultMessage).toolUseId
+                    : undefined,
+              toolName: message.type === "tool_use" ? (message as SSEToolUseMessage).name : undefined,
+              toolInput: message.type === "tool_use" ? (message as SSEToolUseMessage).input : undefined,
+              toolOutput:
+                message.type === "tool_result" ? (message as SSEToolResultMessage).output : undefined,
+              isError:
+                message.type === "tool_result" ? (message as SSEToolResultMessage).isError : undefined,
+            });
+          } catch (persistError) {
+            console.error("[agent-run] Failed to persist message:", persistError);
+            // Don't fail the request, just log the error
+          }
+        }
 
         // Check if session was cancelled
         const currentSession = agentService.getSession(sessionId);

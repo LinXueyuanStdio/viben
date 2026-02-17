@@ -90,7 +90,7 @@ import { homeDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
-import type { ExecutorType } from "@viben/core";
+import type { ExecutorType } from "@viben/core/browser";
 import { AGENT_TYPES } from "@/types";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
 import type { AvailabilityInfo, VibenAgentResponse } from "@/lib/gateway";

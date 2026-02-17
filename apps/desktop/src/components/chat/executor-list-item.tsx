@@ -108,14 +108,6 @@ export function ExecutorListItem({
     : executor.type;
   const displayName = executor.name || getExecutorDisplayName(executorType);
 
-  // Build badges - use human-readable display name instead of raw type
-  const badges: ListItemBadge[] = [
-    { label: getExecutorDisplayName(executorType), variant: "outline" },
-  ];
-  if (additionalBadges) {
-    badges.push(...additionalBadges);
-  }
-
   return (
     <ListItem
       name={displayName}
@@ -134,7 +126,7 @@ export function ExecutorListItem({
         online: true,
         source,
       }}
-      badges={badges}
+      badges={additionalBadges}
       isSelected={isSelected}
       onClick={onSelect}
       actions={

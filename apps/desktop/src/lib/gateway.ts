@@ -86,7 +86,7 @@ async function pingGatewayUrl(url: string): Promise<boolean> {
 // Types (re-exported from @viben/core)
 // ============================================================================
 
-import type { ExecutorType } from "@viben/core";
+import type { ExecutorType } from "@viben/core/browser";
 export type { ExecutorType };
 
 /** Agent availability information */
@@ -3940,6 +3940,10 @@ export interface ExecutorInfo {
   id: ExecutorType;
   /** Display name */
   name: string;
+  /** Description for UI display */
+  description: string;
+  /** Documentation URL (optional) */
+  docs_url?: string;
   /** Global availability info */
   availability: AvailabilityInfo;
   /** Whether this executor supports MCP */

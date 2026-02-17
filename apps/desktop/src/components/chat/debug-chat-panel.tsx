@@ -22,7 +22,7 @@ import { DesktopChatInput } from "./desktop-chat-input";
 import { DesktopMessageList } from "./desktop-message-list";
 import type { SlashCommand } from "@viben/chat";
 import { cn } from "@/lib/utils";
-import type { ExecutorType } from "@viben/core";
+import type { ExecutorType } from "@viben/core/browser";
 import {
   type ExecutorConfig,
   getAgentTypeInfo,
