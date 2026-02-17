@@ -1873,9 +1873,15 @@
     "closeSidebar": "关闭侧边栏",
     "openSidebar": "打开侧边栏",
     "clearMessages": "清空消息",
-    "artifacts": "产物",
+    "artifacts": {
+      "title": "产物",
+      "createdBy": "已创建",
+      "editedBy": "已编辑",
+      "searchResult": "搜索结果",
+      "truncated": "已截断"
+    },
     "files": "文件",
-    "noArtifacts": "暂无生成的产物",
+    "noArtifacts": "暂无产物",
     "noFiles": "暂无工作文件",
     "noTools": "暂无使用的工具",
     "sidebar.workspace": "工作区",

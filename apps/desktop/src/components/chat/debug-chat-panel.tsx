@@ -22,8 +22,8 @@ import { DesktopChatInput } from "./desktop-chat-input";
 import { DesktopMessageList } from "./desktop-message-list";
 import type { SlashCommand } from "@viben/chat";
 import { cn } from "@/lib/utils";
+import type { ExecutorType } from "@viben/core";
 import {
-  type BaseCodingAgent,
   type ExecutorConfig,
   getAgentTypeInfo,
 } from "@/types";
@@ -96,7 +96,7 @@ interface DebugChatPanelProps {
   /** Callback when panel open state changes */
   onOpenChange: (open: boolean) => void;
   /** Current agent type being configured */
-  agentType: BaseCodingAgent;
+  agentType: ExecutorType;
   /** Current executor config (unsaved) */
   executorConfig?: ExecutorConfig;
 }

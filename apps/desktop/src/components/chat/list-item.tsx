@@ -391,14 +391,16 @@ export function ListItem(props: ListItemProps) {
 // ============================================================================
 
 export const gradients = {
-  // Executor types
+  // Executor types (matching ExecutorType from @viben/core)
   claudeCode: "from-amber-500 to-orange-400",
+  amp: "from-blue-600 to-indigo-500",
+  gemini: "from-cyan-500 to-blue-400",
   codex: "from-green-500 to-emerald-400",
+  opencode: "from-teal-500 to-cyan-400",
   cursor: "from-purple-500 to-violet-400",
-  windsurf: "from-blue-500 to-cyan-400",
-  vscode: "from-sky-500 to-blue-400",
-  continue: "from-pink-500 to-rose-400",
-  zed: "from-yellow-500 to-amber-400",
+  qwen: "from-indigo-500 to-purple-400",
+  copilot: "from-sky-500 to-blue-400",
+  droid: "from-rose-500 to-pink-400",
   unknown: "from-gray-500 to-slate-400",
 
   // General purpose

@@ -18,12 +18,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getGatewayClient, type AvailabilityInfo, type BaseCodingAgent } from "@/lib/gateway";
+import type { ExecutorType } from "@viben/core";
+import { getGatewayClient, type AvailabilityInfo } from "@/lib/gateway";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
 
 // Executor metadata
 interface ExecutorInfo {
-  id: BaseCodingAgent;
+  id: ExecutorType;
   name: string;
   description: string;
   website?: string;
@@ -112,7 +113,7 @@ export function SettingsExecutorsPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Check single executor availability
-  const checkExecutor = useCallback(async (executorId: BaseCodingAgent) => {
+  const checkExecutor = useCallback(async (executorId: ExecutorType) => {
     setExecutors((prev) =>
       prev.map((e) =>
         e.info.id === executorId ? { ...e, checking: true, error: undefined } : e

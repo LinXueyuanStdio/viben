@@ -230,10 +230,10 @@ function EditorTab({
       {count !== undefined && count > 0 && tab.type === "category" && (
         <span
           className={cn(
-            "min-w-[18px] h-[18px] rounded-full px-1.5 text-[10px] font-semibold flex items-center justify-center",
+            "min-w-[18px] h-[18px] rounded-full px-1.5 text-[10px] font-medium flex items-center justify-center",
             isActive
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground"
+              ? "bg-primary/20 text-primary"
+              : "bg-primary/10 text-primary"
           )}
         >
           {count}
@@ -396,7 +396,7 @@ export function RightSidebar({
   React.useEffect(() => {
     const baseTabs: OpenTab[] = [
       { id: "workspace", type: "category", category: "workspace", label: t("chat.sidebar.workspace", "Workspace"), icon: Folder },
-      { id: "artifacts", type: "category", category: "artifacts", label: t("chat.artifacts"), icon: Package },
+      { id: "artifacts", type: "category", category: "artifacts", label: t("chat.artifacts.title"), icon: Package },
       { id: "tools", type: "category", category: "tools", label: t("chat.tools"), icon: Wrench },
       { id: "skills", type: "category", category: "skills", label: t("chat.sidebar.skills", "Skills"), icon: Sparkles },
     ];

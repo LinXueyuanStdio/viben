@@ -86,10 +86,8 @@ async function pingGatewayUrl(url: string): Promise<boolean> {
 // Types (re-exported from @viben/core)
 // ============================================================================
 
-import type { ExecutorType as CoreExecutorType } from "@viben/core";
-
-/** All supported AI coding agent types (re-exported from @viben/core) */
-export type BaseCodingAgent = CoreExecutorType;
+import type { ExecutorType } from "@viben/core";
+export type { ExecutorType };
 
 /** Agent availability information */
 export type AvailabilityInfo =
@@ -549,7 +547,7 @@ export class GatewayClient {
   /**
    * List all available agent types
    */
-  async listAgents(): Promise<BaseCodingAgent[]> {
+  async listAgents(): Promise<ExecutorType[]> {
     const response = await fetch(`${this.baseUrl}/api/agents`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -563,13 +561,13 @@ export class GatewayClient {
     }
 
     const data = await response.json();
-    return data.agents as BaseCodingAgent[];
+    return data.agents as ExecutorType[];
   }
 
   /**
    * Get agent details by type
    */
-  async getAgent(executorType: BaseCodingAgent): Promise<AgentDetails> {
+  async getAgent(executorType: ExecutorType): Promise<AgentDetails> {
     const response = await fetch(`${this.baseUrl}/api/agents/${executorType}`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -588,7 +586,7 @@ export class GatewayClient {
   /**
    * Check agent availability
    */
-  async checkAvailability(executorType: BaseCodingAgent): Promise<AvailabilityInfo> {
+  async checkAvailability(executorType: ExecutorType): Promise<AvailabilityInfo> {
     const response = await fetch(
       `${this.baseUrl}/api/agents/${executorType}/availability`,
       {
@@ -883,7 +881,7 @@ export class GatewayClient {
    * Returns the session ID
    */
   async spawnAgent(
-    executorType: BaseCodingAgent,
+    executorType: ExecutorType,
     request: SpawnAgentRequest
   ): Promise<SpawnAgentResponse> {
     const url = `${this.baseUrl}/api/agents/${executorType}/spawn`;
@@ -936,7 +934,7 @@ export class GatewayClient {
    * Returns an async generator that yields SSE events
    */
   async *spawnAgentStream(
-    executorType: BaseCodingAgent,
+    executorType: ExecutorType,
     request: SpawnAgentRequest
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
@@ -1020,7 +1018,7 @@ export class GatewayClient {
    * Stop an agent process
    */
   async stopAgent(
-    _executorType: BaseCodingAgent,
+    _executorType: ExecutorType,
     sessionId: string
   ): Promise<void> {
     // Cancel any ongoing stream
@@ -1050,7 +1048,7 @@ export class GatewayClient {
    * Continue an existing session
    */
   async continueSession(
-    executorType: BaseCodingAgent,
+    executorType: ExecutorType,
     request: ContinueSessionRequest
   ): Promise<SpawnAgentResponse> {
     const response = await fetch(
@@ -1080,7 +1078,7 @@ export class GatewayClient {
    * Continue session with SSE streaming
    */
   async *continueSessionStream(
-    executorType: BaseCodingAgent,
+    executorType: ExecutorType,
     request: ContinueSessionRequest
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
@@ -3939,7 +3937,7 @@ export function sseEventToAgentMessage(
 /** Executor info with merged configs */
 export interface ExecutorInfo {
   /** Executor ID (e.g., "CLAUDE_CODE") */
-  id: BaseCodingAgent;
+  id: ExecutorType;
   /** Display name */
   name: string;
   /** Global availability info */
@@ -3968,7 +3966,7 @@ export interface ExecutorsResponse {
 /** @deprecated Use ExecutorInfo instead */
 export interface WorkspaceExecutor {
   /** Executor ID (e.g., "CLAUDE_CODE") */
-  id: BaseCodingAgent;
+  id: ExecutorType;
   /** Display name */
   name: string;
   /** Global availability info */

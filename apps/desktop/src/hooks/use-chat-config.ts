@@ -22,7 +22,7 @@ import type {
   ChatContextInfo,
   ChatSelectorVisibility,
 } from "@/types/chat-config";
-import type { BaseCodingAgent } from "@/types/agent";
+import type { ExecutorType } from "@viben/core";
 import { AGENT_TYPES } from "@/types/agent";
 
 // ============================================================================
@@ -83,12 +83,12 @@ export interface UseChatConfigReturn {
   selectedModelId: string | null;
   selectedAgent: ChatAgentConfig | undefined;
   selectedModel: ChatModelConfig | undefined;
-  selectedExecutor: BaseCodingAgent;
+  selectedExecutor: ExecutorType;
 
   // Actions
   setSelectedAgentId: (id: string) => void;
   setSelectedModelId: (id: string) => void;
-  setSelectedExecutor: (executor: BaseCodingAgent) => void;
+  setSelectedExecutor: (executor: ExecutorType) => void;
 
   // Visibility control
   visibility: ChatSelectorVisibility;
@@ -251,7 +251,7 @@ export function useChatConfig(): UseChatConfigReturn {
   );
 
   const handleSetExecutor = useCallback(
-    (executor: BaseCodingAgent) => {
+    (executor: ExecutorType) => {
       setSelectedExecutor(executor);
     },
     [setSelectedExecutor]

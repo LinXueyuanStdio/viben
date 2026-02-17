@@ -38,6 +38,10 @@ export {
   type UIMessage,
   type AgentMessage,
   type SessionStats,
+  type TaskConfig,
+  type TaskStatus,
+  type LibraryFile,
+  type ArtifactType,
 } from "./session-store";
 
 // Cron service

@@ -546,7 +546,7 @@ export function TaskDetailPanel({
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
-            {t("chat.artifacts", "Comments")}
+            {t("chat.artifacts.title", "Comments")}
             {comments.length > 0 && (
               <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
                 {comments.length}

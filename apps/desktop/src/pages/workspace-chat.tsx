@@ -375,6 +375,9 @@ export function WorkspaceChatPage() {
   const [highlightedArtifactId, setHighlightedArtifactId] = React.useState<string | null>(null);
   const [highlightedMessageId, setHighlightedMessageId] = React.useState<string | null>(null);
 
+  // Auto-expand sidebar ref - tracks if sidebar has been auto-expanded for current conversation
+  const hasAutoExpandedSidebarRef = React.useRef(false);
+
   // Get workspace info
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
@@ -843,6 +846,54 @@ export function WorkspaceChatPage() {
     }
     prevErrorRef.current = error;
   }, [error, currentAgent, notifyChatError]);
+
+  // Auto-expand right sidebar when artifacts or file operations are detected
+  // Similar to WorkAny's TaskDetail implementation
+  React.useEffect(() => {
+    // Don't auto-expand while streaming (wait for content to stabilize)
+    if (isStreaming) return;
+
+    // Don't auto-expand if no conversation is selected
+    if (!selectedConversationId && !selectedGroupChatId && !selectedSidebarExecutorId) return;
+
+    // Only auto-expand once per conversation session
+    if (hasAutoExpandedSidebarRef.current) return;
+
+    const hasArtifacts = artifacts.length > 0;
+    const hasWorkspace = !!workspace?.path;
+    const hasFileOps = messages.some(
+      (m) =>
+        m.type === "tool_use" &&
+        ["Read", "Write", "Edit", "Bash", "Glob"].includes(m.name || "")
+    );
+    const hasMcpTools = messages.some(
+      (m) => m.type === "tool_use" && (m.name || "").startsWith("mcp__")
+    );
+    const hasSkills = messages.some(
+      (m) => m.type === "tool_use" && m.name === "Skill"
+    );
+
+    const hasContent =
+      hasArtifacts || (hasWorkspace && hasFileOps) || hasMcpTools || hasSkills;
+
+    if (hasContent) {
+      setIsSidebarOpen(true);
+      hasAutoExpandedSidebarRef.current = true;
+    }
+  }, [
+    artifacts.length,
+    messages,
+    workspace?.path,
+    isStreaming,
+    selectedConversationId,
+    selectedGroupChatId,
+    selectedSidebarExecutorId,
+  ]);
+
+  // Reset auto-expand ref when conversation changes
+  React.useEffect(() => {
+    hasAutoExpandedSidebarRef.current = false;
+  }, [selectedConversationId, selectedGroupChatId, selectedSidebarExecutorId]);
 
   // Refresh sessions for current agent (manual refresh button)
   const refreshAgentSessions = React.useCallback(async () => {
