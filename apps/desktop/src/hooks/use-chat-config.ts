@@ -22,7 +22,7 @@ import type {
   ChatContextInfo,
   ChatSelectorVisibility,
 } from "@/types/chat-config";
-import type { ExecutorType } from "@viben/core";
+import type { ExecutorType } from "@viben/core/browser";
 import { AGENT_TYPES } from "@/types/agent";
 
 // ============================================================================

@@ -76,7 +76,7 @@ import {
 } from "./context-details-popover";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks/use-chat-config";
-import type { ExecutorType } from "@viben/core";
+import type { ExecutorType } from "@viben/core/browser";
 import type { MessageAttachment, AgentTypeInfo } from "@/types";
 
 // ============================================================================

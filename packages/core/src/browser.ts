@@ -8,6 +8,7 @@
  */
 
 // Re-export all types (types are always browser-safe)
+// This includes ExecutorType, AgentTypeInfo, AGENT_TYPES, getAgentTypeInfo
 export * from "./types";
 
 // Re-export known models (pure data, no file I/O)
