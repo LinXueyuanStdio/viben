@@ -90,10 +90,8 @@ import { homeDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
-import {
-  type BaseCodingAgent,
-  AGENT_TYPES,
-} from "@/types";
+import type { ExecutorType } from "@viben/core";
+import { AGENT_TYPES } from "@/types";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
 import type { AvailabilityInfo, VibenAgentResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
@@ -365,7 +363,7 @@ export function AgentDetailPage() {
   const [formTemperature, setFormTemperature] = useState(0.7);
   const [formMaxTokens, setFormMaxTokens] = useState(4096);
   const [formModel, setFormModel] = useState("");
-  const [formExecutorType, setFormExecutorType] = useState<BaseCodingAgent>("CLAUDE_CODE");
+  const [formExecutorType, setFormExecutorType] = useState<ExecutorType>("CLAUDE_CODE");
   const [formPlanMode, setFormPlanMode] = useState(false);
   const [formApprovals, setFormApprovals] = useState(false);
 
@@ -446,7 +444,7 @@ export function AgentDetailPage() {
       setFormTemperature(agent.temperature ?? 0.7);
       setFormMaxTokens(agent.max_tokens ?? 4096);
       setFormModel(agent.model || "");
-      setFormExecutorType((agent.executor_type as BaseCodingAgent) || "CLAUDE_CODE");
+      setFormExecutorType((agent.executor_type as ExecutorType) || "CLAUDE_CODE");
       setFormPlanMode(agent.plan_mode ?? false);
       setFormApprovals(agent.approvals ?? false);
       setSelectedMcpServers(agent.mcp_servers || []);
@@ -1003,7 +1001,7 @@ export function AgentDetailPage() {
                   <div className="space-y-3">
                     <Select
                       value={formExecutorType}
-                      onValueChange={(v) => setFormExecutorType(v as BaseCodingAgent)}
+                      onValueChange={(v) => setFormExecutorType(v as ExecutorType)}
                     >
                       <SelectTrigger>
                         <SelectValue />

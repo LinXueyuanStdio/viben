@@ -204,7 +204,7 @@ export function ArtifactPreview({
           <div className="flex items-center gap-2">
             <Eye className="text-muted-foreground size-4" />
             <span className="text-muted-foreground text-sm font-medium">
-              {t("chat.artifacts")}
+              {t("chat.artifacts.title")}
             </span>
           </div>
         </div>

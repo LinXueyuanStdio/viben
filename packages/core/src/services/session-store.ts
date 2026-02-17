@@ -64,6 +64,8 @@ export interface SessionMessage {
 export interface UIMessage {
   /** Unique message ID */
   id: string;
+  /** Task ID (optional for backward compatibility) */
+  taskId?: string;
   /** Timestamp */
   timestamp: string;
   /** Message type: "user", "text", "tool_use", "tool_result", "thinking", "error" */
@@ -106,6 +108,85 @@ export interface SessionStats {
   messageCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Task status type
+ */
+export type TaskStatus = "running" | "completed" | "error" | "stopped";
+
+/**
+ * Task configuration stored in ~/.viben/tasks/<task-id>.yaml
+ */
+export interface TaskConfig {
+  /** Task ID */
+  id: string;
+  /** Session ID this task belongs to */
+  sessionId: string;
+  /** Agent ID */
+  agentId: string;
+  /** Task index within the session */
+  taskIndex: number;
+  /** User prompt for this task */
+  prompt: string;
+  /** Task status */
+  status: TaskStatus;
+  /** API call cost in USD */
+  cost?: number;
+  /** Execution duration in ms */
+  duration?: number;
+  /** Whether the task is favorited */
+  favorite?: boolean;
+  /** Created timestamp */
+  createdAt: string;
+  /** Updated timestamp */
+  updatedAt: string;
+}
+
+/**
+ * Artifact type for library files
+ */
+export type ArtifactType =
+  | "html"
+  | "jsx"
+  | "css"
+  | "json"
+  | "text"
+  | "image"
+  | "code"
+  | "markdown"
+  | "csv"
+  | "document"
+  | "spreadsheet"
+  | "presentation"
+  | "pdf"
+  | "audio"
+  | "video"
+  | "font"
+  | "websearch";
+
+/**
+ * Library file stored in ~/.viben/files/<file-id>/
+ */
+export interface LibraryFile {
+  /** File ID */
+  id: string;
+  /** Task ID this file belongs to */
+  taskId: string;
+  /** File name */
+  name: string;
+  /** Artifact type */
+  type: ArtifactType;
+  /** Path to the actual file */
+  path: string;
+  /** Preview content (optional) */
+  preview?: string;
+  /** Thumbnail base64 (optional) */
+  thumbnail?: string;
+  /** Whether the file is favorited */
+  isFavorite?: boolean;
+  /** Created timestamp */
+  createdAt: string;
 }
 
 /**
@@ -298,6 +379,45 @@ export class SessionStoreService {
    */
   private agentMessagesPath(agentId: string, sessionId: string): string {
     return join(this.sessionDir(agentId, sessionId), "messages.agent.jsonl");
+  }
+
+  // ============ Task Path Helpers ============
+
+  /**
+   * Get the tasks directory
+   */
+  private tasksDir(): string {
+    return join(this.stateDir, "tasks");
+  }
+
+  /**
+   * Get the task file path
+   */
+  private taskPath(taskId: string): string {
+    return join(this.tasksDir(), `${taskId}.yaml`);
+  }
+
+  // ============ File Path Helpers ============
+
+  /**
+   * Get the files directory
+   */
+  private filesDir(): string {
+    return join(this.stateDir, "files");
+  }
+
+  /**
+   * Get the file directory for a specific file
+   */
+  private filePath(fileId: string): string {
+    return join(this.filesDir(), fileId);
+  }
+
+  /**
+   * Get the file metadata path
+   */
+  private fileMetaPath(fileId: string): string {
+    return join(this.filePath(fileId), "meta.yaml");
   }
 
   /**
@@ -575,6 +695,206 @@ export class SessionStoreService {
     };
   }
 
+  // ============ Task CRUD Operations ============
+
+  /**
+   * Create a new task
+   */
+  async createTask(config: TaskConfig): Promise<void> {
+    const tasksDir = this.tasksDir();
+
+    // Create tasks directory if it doesn't exist
+    await mkdir(tasksDir, { recursive: true });
+
+    // Write task.yaml
+    const taskPath = this.taskPath(config.id);
+    const yaml = this.taskConfigToYaml(config);
+    await writeFile(taskPath, yaml);
+  }
+
+  /**
+   * Get a task by ID
+   */
+  async getTask(taskId: string): Promise<TaskConfig | null> {
+    const taskPath = this.taskPath(taskId);
+
+    if (!existsSync(taskPath)) {
+      return null;
+    }
+
+    const yaml = await readFile(taskPath, "utf-8");
+    return this.yamlToTaskConfig(yaml);
+  }
+
+  /**
+   * List all tasks for a session
+   */
+  async listTasksBySession(sessionId: string): Promise<TaskConfig[]> {
+    const tasksDir = this.tasksDir();
+
+    if (!existsSync(tasksDir)) {
+      return [];
+    }
+
+    const entries = await readdir(tasksDir, { withFileTypes: true });
+    const tasks: TaskConfig[] = [];
+
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith(".yaml")) {
+        const taskId = entry.name.replace(".yaml", "");
+        try {
+          const config = await this.getTask(taskId);
+          if (config && config.sessionId === sessionId) {
+            tasks.push(config);
+          }
+        } catch {
+          // Skip invalid tasks
+        }
+      }
+    }
+
+    // Sort by taskIndex ascending
+    tasks.sort((a, b) => a.taskIndex - b.taskIndex);
+
+    return tasks;
+  }
+
+  /**
+   * Update a task
+   */
+  async updateTask(taskId: string, updates: Partial<TaskConfig>): Promise<void> {
+    const taskPath = this.taskPath(taskId);
+
+    if (!existsSync(taskPath)) {
+      throw new SessionStoreError(`Task not found: ${taskId}`);
+    }
+
+    const yaml = await readFile(taskPath, "utf-8");
+    const config = this.yamlToTaskConfig(yaml);
+
+    // Apply updates
+    const updatedConfig: TaskConfig = {
+      ...config,
+      ...updates,
+      id: config.id, // Prevent ID from being changed
+      updatedAt: new Date().toISOString(),
+    };
+
+    const updatedYaml = this.taskConfigToYaml(updatedConfig);
+    await writeFile(taskPath, updatedYaml);
+  }
+
+  /**
+   * Delete a task
+   */
+  async deleteTask(taskId: string): Promise<void> {
+    const taskPath = this.taskPath(taskId);
+
+    if (!existsSync(taskPath)) {
+      throw new SessionStoreError(`Task not found: ${taskId}`);
+    }
+
+    await rm(taskPath);
+  }
+
+  // ============ File CRUD Operations ============
+
+  /**
+   * Create a new file entry
+   */
+  async createFile(file: LibraryFile, content?: Buffer): Promise<void> {
+    const fileDir = this.filePath(file.id);
+
+    // Create file directory
+    await mkdir(fileDir, { recursive: true });
+
+    // Write meta.yaml
+    const metaPath = this.fileMetaPath(file.id);
+    const yaml = this.libraryFileToYaml(file);
+    await writeFile(metaPath, yaml);
+
+    // Write actual file content if provided
+    if (content) {
+      const contentPath = join(fileDir, file.name);
+      await writeFile(contentPath, content);
+      // Update the path in meta to point to the actual file
+      file.path = contentPath;
+      const updatedYaml = this.libraryFileToYaml(file);
+      await writeFile(metaPath, updatedYaml);
+    }
+  }
+
+  /**
+   * Get a file by ID
+   */
+  async getFile(fileId: string): Promise<LibraryFile | null> {
+    const metaPath = this.fileMetaPath(fileId);
+
+    if (!existsSync(metaPath)) {
+      return null;
+    }
+
+    const yaml = await readFile(metaPath, "utf-8");
+    return this.yamlToLibraryFile(yaml);
+  }
+
+  /**
+   * List all files for a task
+   */
+  async listFilesByTask(taskId: string): Promise<LibraryFile[]> {
+    const filesDir = this.filesDir();
+
+    if (!existsSync(filesDir)) {
+      return [];
+    }
+
+    const entries = await readdir(filesDir, { withFileTypes: true });
+    const files: LibraryFile[] = [];
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        try {
+          const file = await this.getFile(entry.name);
+          if (file && file.taskId === taskId) {
+            files.push(file);
+          }
+        } catch {
+          // Skip invalid files
+        }
+      }
+    }
+
+    // Sort by createdAt descending
+    files.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return files;
+  }
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(fileId: string): Promise<void> {
+    const fileDir = this.filePath(fileId);
+
+    if (!existsSync(fileDir)) {
+      throw new SessionStoreError(`File not found: ${fileId}`);
+    }
+
+    await rm(fileDir, { recursive: true });
+  }
+
+  // ============ UI Message by Task ============
+
+  /**
+   * Read UI messages filtered by task ID
+   */
+  async readUIMessagesByTask(agentId: string, sessionId: string, taskId: string): Promise<UIMessage[]> {
+    const messages = await this.readUIMessages(agentId, sessionId);
+    return messages.filter((msg) => msg.taskId === taskId);
+  }
+
+  // ============ YAML Serialization Helpers ============
+
   /**
    * Convert config to YAML (simple implementation without dependency)
    */
@@ -653,6 +973,158 @@ export class SessionStoreService {
     }
 
     return config as SessionConfig;
+  }
+
+  /**
+   * Convert TaskConfig to YAML
+   */
+  private taskConfigToYaml(config: TaskConfig): string {
+    const lines: string[] = [];
+    lines.push(`id: ${JSON.stringify(config.id)}`);
+    lines.push(`sessionId: ${JSON.stringify(config.sessionId)}`);
+    lines.push(`agentId: ${JSON.stringify(config.agentId)}`);
+    lines.push(`taskIndex: ${JSON.stringify(config.taskIndex)}`);
+    lines.push(`prompt: ${JSON.stringify(config.prompt)}`);
+    lines.push(`status: ${JSON.stringify(config.status)}`);
+    if (config.cost !== undefined) lines.push(`cost: ${JSON.stringify(config.cost)}`);
+    if (config.duration !== undefined) lines.push(`duration: ${JSON.stringify(config.duration)}`);
+    if (config.favorite !== undefined) lines.push(`favorite: ${JSON.stringify(config.favorite)}`);
+    lines.push(`createdAt: ${JSON.stringify(config.createdAt)}`);
+    lines.push(`updatedAt: ${JSON.stringify(config.updatedAt)}`);
+    return lines.join("\n") + "\n";
+  }
+
+  /**
+   * Parse YAML to TaskConfig
+   */
+  private yamlToTaskConfig(yaml: string): TaskConfig {
+    const config: Partial<TaskConfig> = {};
+    const lines = yaml.split("\n");
+
+    for (const line of lines) {
+      const colonIndex = line.indexOf(":");
+      if (colonIndex === -1) continue;
+
+      const key = line.slice(0, colonIndex).trim();
+      const value = line.slice(colonIndex + 1).trim();
+
+      if (!value) continue;
+
+      try {
+        const parsed = JSON.parse(value);
+        switch (key) {
+          case "id":
+            config.id = parsed;
+            break;
+          case "sessionId":
+            config.sessionId = parsed;
+            break;
+          case "agentId":
+            config.agentId = parsed;
+            break;
+          case "taskIndex":
+            config.taskIndex = parsed;
+            break;
+          case "prompt":
+            config.prompt = parsed;
+            break;
+          case "status":
+            config.status = parsed;
+            break;
+          case "cost":
+            config.cost = parsed;
+            break;
+          case "duration":
+            config.duration = parsed;
+            break;
+          case "favorite":
+            config.favorite = parsed;
+            break;
+          case "createdAt":
+            config.createdAt = parsed;
+            break;
+          case "updatedAt":
+            config.updatedAt = parsed;
+            break;
+        }
+      } catch {
+        // Skip invalid values
+      }
+    }
+
+    return config as TaskConfig;
+  }
+
+  /**
+   * Convert LibraryFile to YAML
+   */
+  private libraryFileToYaml(file: LibraryFile): string {
+    const lines: string[] = [];
+    lines.push(`id: ${JSON.stringify(file.id)}`);
+    lines.push(`taskId: ${JSON.stringify(file.taskId)}`);
+    lines.push(`name: ${JSON.stringify(file.name)}`);
+    lines.push(`type: ${JSON.stringify(file.type)}`);
+    lines.push(`path: ${JSON.stringify(file.path)}`);
+    if (file.preview) lines.push(`preview: ${JSON.stringify(file.preview)}`);
+    if (file.thumbnail) lines.push(`thumbnail: ${JSON.stringify(file.thumbnail)}`);
+    if (file.isFavorite !== undefined) lines.push(`isFavorite: ${JSON.stringify(file.isFavorite)}`);
+    lines.push(`createdAt: ${JSON.stringify(file.createdAt)}`);
+    return lines.join("\n") + "\n";
+  }
+
+  /**
+   * Parse YAML to LibraryFile
+   */
+  private yamlToLibraryFile(yaml: string): LibraryFile {
+    const file: Partial<LibraryFile> = {};
+    const lines = yaml.split("\n");
+
+    for (const line of lines) {
+      const colonIndex = line.indexOf(":");
+      if (colonIndex === -1) continue;
+
+      const key = line.slice(0, colonIndex).trim();
+      const value = line.slice(colonIndex + 1).trim();
+
+      if (!value) continue;
+
+      try {
+        const parsed = JSON.parse(value);
+        switch (key) {
+          case "id":
+            file.id = parsed;
+            break;
+          case "taskId":
+            file.taskId = parsed;
+            break;
+          case "name":
+            file.name = parsed;
+            break;
+          case "type":
+            file.type = parsed;
+            break;
+          case "path":
+            file.path = parsed;
+            break;
+          case "preview":
+            file.preview = parsed;
+            break;
+          case "thumbnail":
+            file.thumbnail = parsed;
+            break;
+          case "isFavorite":
+            file.isFavorite = parsed;
+            break;
+          case "createdAt":
+            file.createdAt = parsed;
+            break;
+        }
+      } catch {
+        // Skip invalid values
+      }
+    }
+
+    return file as LibraryFile;
   }
 }
 

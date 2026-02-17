@@ -31,13 +31,30 @@ async function gatewayFetch<T>(
 ): Promise<T> {
   const client = getGatewayClient();
   const baseUrl = client.getBaseUrl();
+
+  // Build headers - only set Content-Type for requests with body
+  const headers: HeadersInit = {
+    Accept: "application/json",
+    ...options?.headers,
+  };
+
+  // For POST/PUT/PATCH requests, always send JSON body (empty object if no body provided)
+  const method = options?.method?.toUpperCase();
+  const needsBody = method === "POST" || method === "PUT" || method === "PATCH";
+  let body = options?.body;
+
+  if (needsBody) {
+    (headers as Record<string, string>)["Content-Type"] = "application/json";
+    // If no body provided, send empty JSON object to avoid "Body cannot be empty" error
+    if (!body) {
+      body = "{}";
+    }
+  }
+
   const response = await fetch(`${baseUrl}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      ...options?.headers,
-    },
     ...options,
+    headers,
+    body,
   });
 
   if (!response.ok) {

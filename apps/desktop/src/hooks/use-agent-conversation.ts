@@ -24,6 +24,12 @@ import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
 const generateId = () => crypto.randomUUID();
 
 /**
+ * File size limits for artifact preview
+ */
+const MAX_PREVIEW_SIZE = 50000; // 50KB max preview content
+const LARGE_FILE_THRESHOLD = 100000; // 100KB - files larger than this are marked as "too large"
+
+/**
  * Mock delay for fallback implementation
  */
 const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -823,7 +829,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     if (sessionId && !mockMode && gatewayConnected) {
       try {
         // Use executor type from config or default to CLAUDE_CODE
-        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as import("@/types").BaseCodingAgent;
+        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as import("@viben/core").ExecutorType;
         await client.stopAgent(executorType, sessionId);
       } catch (err) {
         console.error("[useAgent] Failed to stop agent:", err);
@@ -990,20 +996,29 @@ The workspace ID for this session is: \`${workspaceId}\`
           const filename = filePath.split("/").pop() || filePath;
           const ext = filename.split(".").pop()?.toLowerCase();
 
+          // Calculate file size and determine if it's too large
+          const fileSize = content ? new TextEncoder().encode(content).length : 0;
+          const fileTooLarge = fileSize > LARGE_FILE_THRESHOLD;
+
           extractedArtifacts.push({
             id: filePath,
             name: filename,
             type: getArtifactTypeFromExt(ext),
-            content,
+            // Truncate preview content for large files
+            content: fileTooLarge ? content?.slice(0, MAX_PREVIEW_SIZE) : content,
             path: filePath,
             sourceMessageId: msg.id,
             toolName: "Write",
             createdAt: Date.now(),
+            fileSize,
+            fileTooLarge,
           });
         }
       }
 
       // 2. Extract from Edit tool messages (modified files)
+      // Note: Edit tool only has old_string/new_string, not full content,
+      // so fileSize remains undefined (cannot determine actual file size)
       if (msg.type === "tool_use" && msg.name === "Edit") {
         const input = msg.input as Record<string, unknown> | undefined;
         const filePath = input?.file_path as string | undefined;
@@ -1021,6 +1036,7 @@ The workspace ID for this session is: \`${workspaceId}\`
             sourceMessageId: msg.id,
             toolName: "Edit",
             createdAt: Date.now(),
+            // fileSize and fileTooLarge remain undefined for Edit tool
           });
         }
       }

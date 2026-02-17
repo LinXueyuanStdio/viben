@@ -1873,9 +1873,15 @@
     "closeSidebar": "Close sidebar",
     "openSidebar": "Open sidebar",
     "clearMessages": "Clear messages",
-    "artifacts": "Artifacts",
+    "artifacts": {
+      "title": "Artifacts",
+      "createdBy": "Created",
+      "editedBy": "Edited",
+      "searchResult": "Search",
+      "truncated": "truncated"
+    },
     "files": "Files",
-    "noArtifacts": "No artifacts generated yet",
+    "noArtifacts": "No artifacts yet",
     "noFiles": "No working files",
     "noTools": "No tools used yet",
     "sidebar.workspace": "Workspace",

@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatAgentConfig, ChatModelConfig } from "@/types/chat-config";
-import type { BaseCodingAgent } from "@/types/agent";
+import type { ExecutorType } from "@viben/core";
 
 // ============================================================================
 // Store Interface
@@ -26,7 +26,7 @@ interface ChatConfigState {
   selectedModelId: string | null;
 
   // Executor selection (which coding agent to use: CLAUDE_CODE, CODEX, etc.)
-  selectedExecutor: BaseCodingAgent;
+  selectedExecutor: ExecutorType;
 
   // Loading state
   isLoading: boolean;
@@ -39,7 +39,7 @@ interface ChatConfigState {
   // Actions - Selection
   setSelectedAgentId: (id: string | null) => void;
   setSelectedModelId: (id: string | null) => void;
-  setSelectedExecutor: (executor: BaseCodingAgent) => void;
+  setSelectedExecutor: (executor: ExecutorType) => void;
 
   // Actions - Loading state
   setLoading: (loading: boolean) => void;
@@ -62,7 +62,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
       globalModels: [],
       selectedAgentId: null,
       selectedModelId: null,
-      selectedExecutor: "CLAUDE_CODE" as BaseCodingAgent,
+      selectedExecutor: "CLAUDE_CODE" as ExecutorType,
       isLoading: false,
       error: null,
 

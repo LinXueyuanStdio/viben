@@ -76,7 +76,8 @@ import {
 } from "./context-details-popover";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks/use-chat-config";
-import type { MessageAttachment, BaseCodingAgent, AgentTypeInfo } from "@/types";
+import type { ExecutorType } from "@viben/core";
+import type { MessageAttachment, AgentTypeInfo } from "@/types";
 
 // ============================================================================
 // Types
@@ -136,8 +137,8 @@ export interface ChatInputProps {
   onModelChange?: (modelId: string) => void;
   /** Executor selection (CLAUDE_CODE, CODEX, etc.) */
   executors?: AgentTypeInfo[];
-  selectedExecutor?: BaseCodingAgent;
-  onExecutorChange?: (executor: BaseCodingAgent) => void;
+  selectedExecutor?: ExecutorType;
+  onExecutorChange?: (executor: ExecutorType) => void;
 
   // Tools/Skills (for config bar)
   enabledToolsCount?: number;

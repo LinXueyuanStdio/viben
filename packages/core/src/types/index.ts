@@ -21,6 +21,81 @@ export type ExecutorType =
   | "DROID";
 
 /**
+ * Agent type metadata for UI display
+ */
+export interface AgentTypeInfo {
+  id: ExecutorType;
+  name: string;
+  description: string;
+  icon?: string;
+  docsUrl?: string;
+}
+
+/**
+ * All agent types with their metadata
+ */
+export const AGENT_TYPES: AgentTypeInfo[] = [
+  {
+    id: "CLAUDE_CODE",
+    name: "Claude Code",
+    description: "Anthropic's coding assistant powered by Claude",
+    docsUrl: "https://claude.ai",
+  },
+  {
+    id: "AMP",
+    name: "Amp",
+    description: "AI-powered code assistant",
+  },
+  {
+    id: "GEMINI",
+    name: "Gemini",
+    description: "Google's AI coding assistant",
+    docsUrl: "https://gemini.google.com",
+  },
+  {
+    id: "CODEX",
+    name: "Codex",
+    description: "OpenAI's code-specialized model",
+    docsUrl: "https://openai.com",
+  },
+  {
+    id: "OPENCODE",
+    name: "Opencode",
+    description: "Open source coding assistant",
+  },
+  {
+    id: "CURSOR_AGENT",
+    name: "Cursor Agent",
+    description: "Cursor's AI coding assistant",
+    docsUrl: "https://cursor.so",
+  },
+  {
+    id: "QWEN_CODE",
+    name: "Qwen Code",
+    description: "Alibaba's Qwen coding model",
+    docsUrl: "https://qwen.aliyun.com",
+  },
+  {
+    id: "COPILOT",
+    name: "GitHub Copilot",
+    description: "GitHub's AI pair programmer",
+    docsUrl: "https://github.com/features/copilot",
+  },
+  {
+    id: "DROID",
+    name: "Droid",
+    description: "Droid AI coding assistant",
+  },
+];
+
+/**
+ * Get agent type info by ID
+ */
+export function getAgentTypeInfo(id: ExecutorType): AgentTypeInfo | undefined {
+  return AGENT_TYPES.find((a) => a.id === id);
+}
+
+/**
  * Agent capabilities
  */
 export type AgentCapability =

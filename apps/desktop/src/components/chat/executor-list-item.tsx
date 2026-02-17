@@ -48,14 +48,16 @@ export interface ExecutorListItemProps {
  * Get gradient colors for executor avatar based on type
  */
 export function getExecutorGradient(type: ExecutorType): string {
-  const gradientMap: Record<ExecutorType, string> = {
+  const gradientMap: Partial<Record<ExecutorType, string>> = {
     CLAUDE_CODE: gradients.claudeCode,
+    AMP: gradients.amp,
+    GEMINI: gradients.gemini,
     CODEX: gradients.codex,
-    CURSOR: gradients.cursor,
-    WINDSURF: gradients.windsurf,
-    VSCODE: gradients.vscode,
-    CONTINUE: gradients.continue,
-    ZED: gradients.zed,
+    OPENCODE: gradients.opencode,
+    CURSOR_AGENT: gradients.cursor,
+    QWEN_CODE: gradients.qwen,
+    COPILOT: gradients.copilot,
+    DROID: gradients.droid,
     UNKNOWN: gradients.unknown,
   };
   return gradientMap[type] || gradients.unknown;
@@ -65,14 +67,16 @@ export function getExecutorGradient(type: ExecutorType): string {
  * Get display name for executor type
  */
 export function getExecutorDisplayName(type: ExecutorType): string {
-  const names: Record<ExecutorType, string> = {
+  const names: Partial<Record<ExecutorType, string>> = {
     CLAUDE_CODE: "Claude Code",
+    AMP: "Amp",
+    GEMINI: "Gemini",
     CODEX: "Codex",
-    CURSOR: "Cursor",
-    WINDSURF: "Windsurf",
-    VSCODE: "VS Code",
-    CONTINUE: "Continue",
-    ZED: "Zed",
+    OPENCODE: "OpenCode",
+    CURSOR_AGENT: "Cursor",
+    QWEN_CODE: "Qwen Coder",
+    COPILOT: "GitHub Copilot",
+    DROID: "Droid",
     UNKNOWN: "Unknown",
   };
   return names[type] || type;
@@ -104,9 +108,9 @@ export function ExecutorListItem({
     : executor.type;
   const displayName = executor.name || getExecutorDisplayName(executorType);
 
-  // Build badges
+  // Build badges - use human-readable display name instead of raw type
   const badges: ListItemBadge[] = [
-    { label: executorType, variant: "outline" },
+    { label: getExecutorDisplayName(executorType), variant: "outline" },
   ];
   if (additionalBadges) {
     badges.push(...additionalBadges);

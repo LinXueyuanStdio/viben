@@ -8,6 +8,16 @@ import { cn } from "@/lib/utils";
 import type { ArtifactsTabContentProps } from "./types";
 import { getArtifactIcon } from "./utils";
 
+/**
+ * Format file size in human-readable format
+ */
+function formatFileSize(bytes?: number): string {
+  if (bytes === undefined) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 // Default number of items to show before "show more"
 const DEFAULT_VISIBLE_COUNT = 10;
 
@@ -142,21 +152,38 @@ export function ArtifactsTabContent({
                 >
                   {artifact.name}
                 </span>
-                {/* Show source tool badge */}
-                {artifact.toolName && ToolBadgeIcon && (
+                {/* Show source tool badge and file size */}
+                {(artifact.toolName && ToolBadgeIcon) || artifact.fileSize !== undefined ? (
                   <span className="flex items-center gap-1 text-[10px] text-muted-foreground/60 mt-0.5">
-                    <ToolBadgeIcon className="h-2.5 w-2.5" />
-                    <span>
-                      {artifact.toolName === "Write"
-                        ? t("chat.artifacts.createdBy", "Created")
-                        : artifact.toolName === "Edit"
-                          ? t("chat.artifacts.editedBy", "Edited")
-                          : artifact.toolName === "WebSearch"
-                            ? t("chat.artifacts.searchResult", "Search")
-                            : artifact.toolName}
-                    </span>
+                    {artifact.toolName && ToolBadgeIcon && (
+                      <>
+                        <ToolBadgeIcon className="h-2.5 w-2.5" />
+                        <span>
+                          {artifact.toolName === "Write"
+                            ? t("chat.artifacts.createdBy", "Created")
+                            : artifact.toolName === "Edit"
+                              ? t("chat.artifacts.editedBy", "Edited")
+                              : artifact.toolName === "WebSearch"
+                                ? t("chat.artifacts.searchResult", "Search")
+                                : artifact.toolName}
+                        </span>
+                      </>
+                    )}
+                    {artifact.fileSize !== undefined && (
+                      <>
+                        {artifact.toolName && ToolBadgeIcon && (
+                          <span className="mx-0.5">·</span>
+                        )}
+                        <span>{formatFileSize(artifact.fileSize)}</span>
+                        {artifact.fileTooLarge && (
+                          <span className="text-amber-500/70">
+                            ({t("chat.artifacts.truncated", "truncated")})
+                          </span>
+                        )}
+                      </>
+                    )}
                   </span>
-                )}
+                ) : null}
               </div>
             </button>
           );
