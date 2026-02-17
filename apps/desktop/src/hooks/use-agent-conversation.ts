@@ -876,6 +876,246 @@ The workspace ID for this session is: \`${workspaceId}\`
     setPhase("idle");
   }, []);
 
+  /**
+   * Extract artifacts from messages (Write/Edit tools and WebSearch results)
+   * Updates the artifacts state whenever messages change
+   */
+  useEffect(() => {
+    const extractedArtifacts: Artifact[] = [];
+    const seenPaths = new Set<string>();
+
+    // Helper to get artifact type from file extension
+    const getArtifactTypeFromExt = (ext?: string): Artifact["type"] => {
+      if (!ext) return "text";
+      switch (ext.toLowerCase()) {
+        case "html":
+        case "htm":
+          return "html";
+        case "jsx":
+        case "tsx":
+          return "jsx";
+        case "css":
+        case "scss":
+        case "less":
+          return "css";
+        case "json":
+          return "json";
+        case "md":
+        case "markdown":
+          return "markdown";
+        case "csv":
+          return "csv";
+        case "pdf":
+          return "pdf";
+        case "doc":
+        case "docx":
+          return "document";
+        case "xls":
+        case "xlsx":
+          return "spreadsheet";
+        case "ppt":
+        case "pptx":
+          return "presentation";
+        case "png":
+        case "jpg":
+        case "jpeg":
+        case "gif":
+        case "svg":
+        case "webp":
+        case "bmp":
+        case "ico":
+          return "image";
+        case "mp3":
+        case "wav":
+        case "ogg":
+        case "m4a":
+        case "aac":
+        case "flac":
+          return "audio";
+        case "mp4":
+        case "webm":
+        case "mov":
+        case "avi":
+        case "mkv":
+          return "video";
+        case "ttf":
+        case "otf":
+        case "woff":
+        case "woff2":
+          return "font";
+        case "js":
+        case "ts":
+        case "py":
+        case "rb":
+        case "go":
+        case "rs":
+        case "java":
+        case "c":
+        case "cpp":
+        case "h":
+        case "sh":
+        case "yaml":
+        case "yml":
+        case "toml":
+        case "sql":
+        case "graphql":
+          return "code";
+        default:
+          return "text";
+      }
+    };
+
+    // Helper to check if WebSearch output has valid results
+    const hasValidSearchResults = (output: string): boolean => {
+      if (!output) return false;
+      // Check for common patterns that indicate actual search results
+      return (
+        output.includes("http") ||
+        output.includes("www.") ||
+        output.includes("Source") ||
+        output.includes("result") ||
+        output.length > 100
+      );
+    };
+
+    // 1. Extract from Write tool messages
+    messages.forEach((msg) => {
+      if (msg.type === "tool_use" && msg.name === "Write") {
+        const input = msg.input as Record<string, unknown> | undefined;
+        const filePath = input?.file_path as string | undefined;
+        const content = input?.content as string | undefined;
+
+        if (filePath && !seenPaths.has(filePath)) {
+          seenPaths.add(filePath);
+          const filename = filePath.split("/").pop() || filePath;
+          const ext = filename.split(".").pop()?.toLowerCase();
+
+          extractedArtifacts.push({
+            id: filePath,
+            name: filename,
+            type: getArtifactTypeFromExt(ext),
+            content,
+            path: filePath,
+            sourceMessageId: msg.id,
+            toolName: "Write",
+            createdAt: Date.now(),
+          });
+        }
+      }
+
+      // 2. Extract from Edit tool messages (modified files)
+      if (msg.type === "tool_use" && msg.name === "Edit") {
+        const input = msg.input as Record<string, unknown> | undefined;
+        const filePath = input?.file_path as string | undefined;
+
+        if (filePath && !seenPaths.has(filePath)) {
+          seenPaths.add(filePath);
+          const filename = filePath.split("/").pop() || filePath;
+          const ext = filename.split(".").pop()?.toLowerCase();
+
+          extractedArtifacts.push({
+            id: filePath,
+            name: filename,
+            type: getArtifactTypeFromExt(ext),
+            path: filePath,
+            sourceMessageId: msg.id,
+            toolName: "Edit",
+            createdAt: Date.now(),
+          });
+        }
+      }
+
+      // 3. Extract WebSearch results as artifacts
+      if (msg.type === "tool_use" && msg.name === "WebSearch") {
+        const input = msg.input as Record<string, unknown> | undefined;
+        const query = input?.query as string | undefined;
+        const toolUseId = msg.id;
+
+        if (query) {
+          // Find the corresponding tool_result by toolUseId
+          let output = "";
+          if (toolUseId) {
+            const resultMsg = messages.find(
+              (m) => m.type === "tool_result" && m.toolUseId === toolUseId
+            );
+            output = resultMsg?.output || "";
+          }
+          // Fallback: find the next tool_result after this tool_use
+          if (!output) {
+            const msgIndex = messages.indexOf(msg);
+            for (let i = msgIndex + 1; i < messages.length; i++) {
+              if (messages[i].type === "tool_result") {
+                output = messages[i].output || "";
+                break;
+              }
+              if (messages[i].type === "tool_use") break;
+            }
+          }
+
+          const artifactId = `websearch-${query}`;
+          if (
+            !seenPaths.has(artifactId) &&
+            output &&
+            hasValidSearchResults(output)
+          ) {
+            seenPaths.add(artifactId);
+            extractedArtifacts.push({
+              id: artifactId,
+              name: `Search: ${query.slice(0, 50)}${query.length > 50 ? "..." : ""}`,
+              type: "websearch",
+              content: output,
+              sourceMessageId: msg.id,
+              toolName: "WebSearch",
+              createdAt: Date.now(),
+            });
+          }
+        }
+      }
+    });
+
+    // 4. Extract files mentioned in tool_result and text messages
+    const filePatterns = [
+      // Match paths in backticks
+      /`([^`]+\.(?:pptx|xlsx|docx|pdf|png|jpg|jpeg|gif|svg|mp4|mp3|csv))`/gi,
+      // Match absolute paths
+      /(\/[^\s"'`\n]+\.(?:pptx|xlsx|docx|pdf|png|jpg|jpeg|gif|svg|mp4|mp3|csv))/gi,
+    ];
+
+    messages.forEach((msg) => {
+      const textToSearch =
+        msg.type === "tool_result"
+          ? msg.output
+          : msg.type === "text"
+            ? msg.content
+            : null;
+
+      if (textToSearch) {
+        for (const pattern of filePatterns) {
+          const matches = textToSearch.matchAll(pattern);
+          for (const match of matches) {
+            const filePath = match[1] || match[0];
+            if (filePath && !seenPaths.has(filePath)) {
+              seenPaths.add(filePath);
+              const filename = filePath.split("/").pop() || filePath;
+              const ext = filename.split(".").pop()?.toLowerCase();
+
+              extractedArtifacts.push({
+                id: filePath,
+                name: filename,
+                type: getArtifactTypeFromExt(ext),
+                path: filePath,
+                sourceMessageId: msg.id,
+                createdAt: Date.now(),
+              });
+            }
+          }
+        }
+      }
+    });
+
+    setArtifacts(extractedArtifacts);
+  }, [messages]);
+
   return {
     // State
     messages,

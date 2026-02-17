@@ -452,9 +452,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const updateAgent = useCallback(
     async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
       const client = getGatewayClient();
-      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      const result = await client.updateVibenAgent(agentId, updates);
+      const result = await client.updateVibenAgent(id, updates);
       // Refresh agent list after update
       await loadAgents();
       return result;
@@ -465,9 +463,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      await client.deleteVibenAgent(agentId);
+      await client.deleteVibenAgent(id);
       // Refresh agent list after deletion
       await loadAgents();
     },
@@ -487,9 +483,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const createTemplate = useCallback(
     async (agentId: string, templateId: string): Promise<VibenAgentTemplate> => {
       const client = getGatewayClient();
-      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
-      const cleanAgentId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
-      const result = await client.createAgentTemplate(cleanAgentId, templateId);
+      const result = await client.createAgentTemplate(agentId, templateId);
       // Refresh templates after creation
       await loadTemplates();
       return result;
@@ -587,9 +581,7 @@ export function useAgentDetail(
 
     try {
       const client = getGatewayClient();
-      // Strip "viben:" prefix if present
-      const cleanAgentId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
-      const agentData = await client.getAgentById(cleanAgentId, workspacePath || undefined);
+      const agentData = await client.getAgentById(agentId, workspacePath || undefined);
       setAgent(agentData);
     } catch (err) {
       if (err instanceof GatewayError && err.statusCode === 404) {
@@ -932,8 +924,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      await client.deleteVibenAgent(agentId);
+      await client.deleteVibenAgent(id);
       await loadData();
     },
     [loadData]
@@ -942,8 +933,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const updateAgent = useCallback(
     async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
       const client = getGatewayClient();
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      const result = await client.updateVibenAgent(agentId, updates);
+      const result = await client.updateVibenAgent(id, updates);
       await loadData();
       return result;
     },
@@ -1103,9 +1093,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      await client.deleteVibenAgent(agentId);
+      await client.deleteVibenAgent(id);
       // Refresh chat list after deletion
       await loadChatList();
     },
@@ -1115,9 +1103,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const updateAgent = useCallback(
     async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
       const client = getGatewayClient();
-      // Extract the agent ID from the full ID (remove "viben:" prefix if present)
-      const agentId = id.startsWith("viben:") ? id.slice(6) : id;
-      const result = await client.updateVibenAgent(agentId, updates);
+      const result = await client.updateVibenAgent(id, updates);
       // Refresh chat list after update
       await loadChatList();
       return result;

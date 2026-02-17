@@ -124,6 +124,10 @@ interface RightSidebarProps {
   onFileSelect?: (file: WorkingFile) => void;
   onToolSelect?: (tool: ToolUsage) => void;
   selectedArtifact?: Artifact | null;
+  /** ID of the artifact to highlight (for message-artifact linking) */
+  highlightedArtifactId?: string | null;
+  /** Called when user wants to navigate to the source message (double-click on artifact) */
+  onArtifactMessageClick?: (messageId: string) => void;
   workingDir?: string;
   /** @deprecated Reserved for future use */
   sessionFolder?: string;
@@ -264,6 +268,8 @@ export function RightSidebar({
   onArtifactSelect,
   onFileSelect,
   onToolSelect,
+  highlightedArtifactId,
+  onArtifactMessageClick,
   workingDir,
   filesVersion,
   isOpen = true,
@@ -586,7 +592,9 @@ export function RightSidebar({
             <ArtifactsTabContent
               artifacts={artifacts}
               selectedArtifact={null}
+              highlightedArtifactId={highlightedArtifactId}
               onArtifactSelect={handleArtifactSelectWithPreview}
+              onArtifactMessageClick={onArtifactMessageClick}
             />
           </div>
         )}

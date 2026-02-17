@@ -10,9 +10,22 @@ import {
   XCircle,
   Bot,
   X,
+  FileText,
+  FileCode,
+  FileJson,
+  File,
+  Globe,
+  Image,
 } from "lucide-react";
 import { cn } from "@viben/ui";
 import type { AgentMessage } from "./types";
+
+/** Artifact info for linking tool_use messages to artifacts */
+export interface ArtifactInfo {
+  id: string;
+  name: string;
+  type: string;
+}
 
 export interface ToolExecutionItemProps {
   name: string;
@@ -30,6 +43,10 @@ export interface ToolExecutionItemProps {
   subagentMessages?: AgentMessage[];
   /** Render function for subagent messages */
   renderMessage?: (message: AgentMessage, index: number) => React.ReactNode;
+  /** Artifact info when this tool created/modified a file */
+  artifactInfo?: ArtifactInfo;
+  /** Callback when artifact badge is clicked */
+  onArtifactClick?: (artifactId: string) => void;
 }
 
 // ============================================================================
@@ -77,6 +94,35 @@ function getToolParam(
 function truncateParam(param: string, maxLen: number = 60): string {
   if (param.length <= maxLen) return param;
   return param.slice(0, maxLen) + "...";
+}
+
+/**
+ * Check if output is an expected non-fatal message (warning, not error)
+ */
+/**
+ * Get the appropriate icon component for an artifact type
+ */
+function getArtifactIcon(type: string): React.ComponentType<{ className?: string }> {
+  switch (type) {
+    case "html":
+    case "jsx":
+      return FileCode;
+    case "json":
+      return FileJson;
+    case "markdown":
+    case "text":
+    case "document":
+      return FileText;
+    case "image":
+      return Image;
+    case "websearch":
+      return Globe;
+    case "code":
+    case "css":
+      return FileCode;
+    default:
+      return File;
+  }
 }
 
 /**
@@ -307,6 +353,40 @@ function ToolDetailModal({
 }
 
 // ============================================================================
+// Artifact Badge Component
+// ============================================================================
+
+interface ArtifactBadgeProps {
+  artifactInfo: ArtifactInfo;
+  onClick?: (artifactId: string) => void;
+}
+
+function ArtifactBadge({ artifactInfo, onClick }: ArtifactBadgeProps) {
+  const IconComponent = getArtifactIcon(artifactInfo.type);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the parent click handler
+    onClick?.(artifactInfo.id);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-md",
+        "bg-accent/50 hover:bg-accent text-foreground/80",
+        "transition-colors cursor-pointer",
+        "border border-border/50"
+      )}
+    >
+      <IconComponent className="h-3 w-3 shrink-0" />
+      <span className="truncate max-w-[150px]">{artifactInfo.name}</span>
+    </button>
+  );
+}
+
+// ============================================================================
 // Main Component
 // ============================================================================
 
@@ -322,6 +402,8 @@ export function ToolExecutionItem({
   subagentId,
   subagentMessages,
   renderMessage,
+  artifactInfo,
+  onArtifactClick,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
   const [showModal, setShowModal] = React.useState(false);
@@ -423,6 +505,16 @@ export function ToolExecutionItem({
               >
                 {isRunning ? t("chat.running", "Running...") : summary}
               </span>
+            </div>
+          )}
+
+          {/* Artifact badge */}
+          {artifactInfo && !isRunning && (
+            <div className="mt-1 ml-4">
+              <ArtifactBadge
+                artifactInfo={artifactInfo}
+                onClick={onArtifactClick}
+              />
             </div>
           )}
         </div>
@@ -676,6 +768,16 @@ export function ToolExecutionItem({
                   >
                     {isRunning ? t("chat.running", "Running...") : summary}
                   </span>
+                </div>
+              )}
+
+              {/* Artifact badge */}
+              {artifactInfo && !isRunning && (
+                <div className="mt-1.5 ml-4">
+                  <ArtifactBadge
+                    artifactInfo={artifactInfo}
+                    onClick={onArtifactClick}
+                  />
                 </div>
               )}
             </div>

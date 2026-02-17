@@ -17,7 +17,7 @@
  */
 
 import * as React from "react";
-import { MessageList, type MessageListProps } from "@viben/chat";
+import { MessageList, type MessageListProps, type MessageListHandle } from "@viben/chat";
 
 // ============================================================================
 // Types
@@ -29,6 +29,12 @@ import { MessageList, type MessageListProps } from "@viben/chat";
  */
 export type DesktopMessageListProps = Omit<MessageListProps, "onLinkClick">;
 
+/**
+ * Handle type for DesktopMessageList ref
+ * Exposes scrollToMessage for programmatic scrolling
+ */
+export type DesktopMessageListHandle = MessageListHandle;
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -38,24 +44,28 @@ export type DesktopMessageListProps = Omit<MessageListProps, "onLinkClick">;
  *
  * Provides Tauri implementation for link handling using the shell plugin
  * to open URLs in the system's default browser.
+ *
+ * Supports ref forwarding for scrollToMessage functionality.
  */
-export function DesktopMessageList(props: DesktopMessageListProps) {
-  /**
-   * Handle link clicks by opening in system browser via Tauri shell
-   */
-  const handleLinkClick = React.useCallback(async (href: string) => {
-    try {
-      const { open } = await import("@tauri-apps/plugin-shell");
-      await open(href);
-    } catch (err) {
-      // Fallback to window.open if Tauri shell is not available
-      console.warn(
-        "[DesktopMessageList] Tauri shell not available, falling back to window.open:",
-        err
-      );
-      window.open(href, "_blank");
-    }
-  }, []);
+export const DesktopMessageList = React.forwardRef<MessageListHandle, DesktopMessageListProps>(
+  function DesktopMessageList(props, ref) {
+    /**
+     * Handle link clicks by opening in system browser via Tauri shell
+     */
+    const handleLinkClick = React.useCallback(async (href: string) => {
+      try {
+        const { open } = await import("@tauri-apps/plugin-shell");
+        await open(href);
+      } catch (err) {
+        // Fallback to window.open if Tauri shell is not available
+        console.warn(
+          "[DesktopMessageList] Tauri shell not available, falling back to window.open:",
+          err
+        );
+        window.open(href, "_blank");
+      }
+    }, []);
 
-  return <MessageList {...props} onLinkClick={handleLinkClick} />;
-}
+    return <MessageList ref={ref} {...props} onLinkClick={handleLinkClick} />;
+  }
+);

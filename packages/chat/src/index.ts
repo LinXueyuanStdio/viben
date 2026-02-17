@@ -50,9 +50,10 @@ export type { ContextDetailsPopoverProps } from "./context-details-popover";
 
 // Message components
 export { MessageList } from "./message-list";
-export type { MessageListProps } from "./message-list";
+export type { MessageListProps, MessageListHandle } from "./message-list";
 export { MessageItem } from "./message-item";
 export type { MessageItemProps } from "./message-item";
 export { ToolExecutionItem } from "./tool-execution-item";
+export type { ToolExecutionItemProps, ArtifactInfo } from "./tool-execution-item";
 export { PlanApproval } from "./plan-approval";
 export { QuestionInput } from "./question-input";
