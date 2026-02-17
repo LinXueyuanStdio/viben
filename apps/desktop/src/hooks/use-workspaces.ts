@@ -294,7 +294,7 @@ export function useWorkspaceAgents(workspaceId: string | null) {
  * Uses HTTP API via Gateway client
  *
  * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
- * @param executorType - The executor type (e.g., "claude_code", "cursor")
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE", "CURSOR")
  */
 export function useWorkspaceMcpServers(
   workspacePath: string | null,
@@ -395,7 +395,7 @@ export function useWorkspaceMcpServers(
  * Uses HTTP API via Gateway client
  *
  * @param workspacePath - The workspace path (e.g., "/Users/foo/project")
- * @param executorType - The executor type (e.g., "claude_code", "cursor")
+ * @param executorType - The executor type (e.g., "CLAUDE_CODE", "CURSOR")
  */
 export function useWorkspaceSkills(
   workspacePath: string | null,

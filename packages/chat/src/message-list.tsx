@@ -3,9 +3,26 @@ import { useTranslation } from "react-i18next";
 import { Bot, ChevronDown, CheckCircle2, ArrowDown } from "lucide-react";
 import { cn, ScrollArea } from "@viben/ui";
 import { MessageItem } from "./message-item";
-import { ToolExecutionItem } from "./tool-execution-item";
+import { ToolExecutionItem, type ArtifactInfo } from "./tool-execution-item";
 import { QuestionInput } from "./question-input";
 import type { AgentMessage, PendingQuestion, TaskPlan } from "./types";
+
+/** Artifact definition for linking with tool_use messages */
+export interface Artifact {
+  id: string;
+  name: string;
+  type: string;
+  /** ID of the message that created this artifact */
+  sourceMessageId?: string;
+  /** Tool name that created this artifact (e.g., "Write", "Edit", "WebSearch") */
+  toolName?: string;
+}
+
+/** Handle for imperative MessageList methods */
+export interface MessageListHandle {
+  /** Scroll to a message by ID */
+  scrollToMessage: (messageId: string) => void;
+}
 
 export interface MessageListProps {
   messages: AgentMessage[];
@@ -36,6 +53,24 @@ export interface MessageListProps {
    * If not provided, messages will fill the available width.
    */
   maxMessageWidth?: string;
+  /**
+   * ID of message to highlight. When set, the message will have a highlight ring/glow effect
+   * that fades out after ~2-3 seconds.
+   */
+  highlightedMessageId?: string | null;
+  /**
+   * Callback when scroll to message completes
+   */
+  onScrollToMessage?: (messageId: string) => void;
+  /**
+   * Artifacts for linking with tool_use messages.
+   * When a Write/Edit tool creates/modifies a file, a badge will be shown linking to the artifact.
+   */
+  artifacts?: Artifact[];
+  /**
+   * Callback when an artifact badge is clicked in a tool_use message.
+   */
+  onArtifactClick?: (artifactId: string) => void;
 }
 
 // Types for message grouping
@@ -61,6 +96,32 @@ interface OtherMessageGroup {
 type MessageGroup = TaskMessageGroup | OtherMessageGroup;
 
 /**
+ * Get artifact info for a tool_use message if it created/modified a file
+ */
+function getArtifactInfoForMessage(
+  message: AgentMessage,
+  artifacts?: Artifact[]
+): ArtifactInfo | undefined {
+  if (!artifacts || artifacts.length === 0) return undefined;
+  if (message.type !== "tool_use") return undefined;
+  if (!message.id) return undefined;
+
+  // Only show artifact badges for Write and Edit tools
+  const toolName = message.name;
+  if (toolName !== "Write" && toolName !== "Edit") return undefined;
+
+  // Find artifact that was created by this message
+  const artifact = artifacts.find((a) => a.sourceMessageId === message.id);
+  if (!artifact) return undefined;
+
+  return {
+    id: artifact.id,
+    name: artifact.name,
+    type: artifact.type,
+  };
+}
+
+/**
  * Task Group Component - shows text description and collapsible tool list
  */
 function TaskGroupComponent({
@@ -69,12 +130,16 @@ function TaskGroupComponent({
   tools,
   isCompleted,
   isRunning,
+  artifacts,
+  onArtifactClick,
 }: {
   title: string;
   description: string;
   tools: ToolWithResult[];
   isCompleted: boolean;
   isRunning: boolean;
+  artifacts?: Artifact[];
+  onArtifactClick?: (artifactId: string) => void;
 }) {
   const { t } = useTranslation();
   // Default: collapsed when completed, expanded when running or in progress
@@ -144,6 +209,8 @@ function TaskGroupComponent({
                   isError={result?.isError}
                   isExecuting={!result}
                   compact
+                  artifactInfo={getArtifactInfoForMessage(message, artifacts)}
+                  onArtifactClick={onArtifactClick}
                 />
               ))}
             </div>
@@ -453,7 +520,7 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
   );
 }
 
-export function MessageList({
+export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>(function MessageList({
   messages,
   isStreaming,
   pendingPlan,
@@ -469,7 +536,11 @@ export function MessageList({
   autoScroll,
   simpleMode,
   maxMessageWidth,
-}: MessageListProps) {
+  highlightedMessageId,
+  onScrollToMessage,
+  artifacts,
+  onArtifactClick,
+}, ref) {
   const { t } = useTranslation();
 
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -608,6 +679,50 @@ export function MessageList({
     return () => resizeObserver.disconnect();
   }, []);
 
+  // Message refs for scroll-to-message functionality
+  const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Track highlight animation state
+  const [activeHighlight, setActiveHighlight] = React.useState<string | null>(null);
+
+  // Scroll to message function
+  const scrollToMessage = React.useCallback((messageId: string) => {
+    const element = messageRefsMap.current.get(messageId);
+    if (element) {
+      // Temporarily disable auto-scroll during manual scroll
+      userScrolledUpRef.current = true;
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Set active highlight
+      setActiveHighlight(messageId);
+      // Call callback after scroll completes (approximate timing)
+      setTimeout(() => {
+        onScrollToMessage?.(messageId);
+      }, 500);
+    }
+  }, [onScrollToMessage]);
+
+  // Expose scrollToMessage via ref
+  React.useImperativeHandle(ref, () => ({
+    scrollToMessage,
+  }), [scrollToMessage]);
+
+  // Handle highlightedMessageId prop changes - scroll and highlight
+  React.useEffect(() => {
+    if (highlightedMessageId) {
+      scrollToMessage(highlightedMessageId);
+    }
+  }, [highlightedMessageId, scrollToMessage]);
+
+  // Auto-clear highlight after animation (2.5 seconds)
+  React.useEffect(() => {
+    if (activeHighlight) {
+      const timer = setTimeout(() => {
+        setActiveHighlight(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeHighlight]);
+
   // Empty state
   if (messages.length === 0) {
     // Use custom welcome content if provided
@@ -671,28 +786,46 @@ export function MessageList({
                   tools={group.tools}
                   isCompleted={group.isCompleted}
                   isRunning={isStreaming || false}
+                  artifacts={artifacts}
+                  onArtifactClick={onArtifactClick}
                 />
               );
             }
 
             const message = group.message;
             const isPlanMessage = message.type === "plan" && message.plan;
+            const messageId = message.id;
+            const isHighlighted = activeHighlight === messageId;
 
             return (
-              <MessageItem
-                key={message.id || index}
-                message={message}
-                isStreaming={
-                  index === groups.length - 1 &&
-                  isStreaming &&
-                  message.type === "text"
-                }
-                onApprovePlan={onApprovePlan}
-                onRejectPlan={onRejectPlan}
-                isPlanPending={isPlanMessage && pendingPlan !== null}
-                onLinkClick={onLinkClick}
-                maxWidth={maxMessageWidth}
-              />
+              <div
+                key={messageId || index}
+                ref={(el) => {
+                  if (messageId && el) {
+                    messageRefsMap.current.set(messageId, el);
+                  } else if (messageId && !el) {
+                    messageRefsMap.current.delete(messageId);
+                  }
+                }}
+                className={cn(
+                  "transition-all duration-300",
+                  isHighlighted && "ring-2 ring-primary/50 bg-primary/5 rounded-2xl"
+                )}
+              >
+                <MessageItem
+                  message={message}
+                  isStreaming={
+                    index === groups.length - 1 &&
+                    isStreaming &&
+                    message.type === "text"
+                  }
+                  onApprovePlan={onApprovePlan}
+                  onRejectPlan={onRejectPlan}
+                  isPlanPending={isPlanMessage && pendingPlan !== null}
+                  onLinkClick={onLinkClick}
+                  maxWidth={maxMessageWidth}
+                />
+              </div>
             );
           })}
 
@@ -730,4 +863,4 @@ export function MessageList({
       )}
     </div>
   );
-}
+});

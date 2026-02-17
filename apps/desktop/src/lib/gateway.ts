@@ -83,20 +83,13 @@ async function pingGatewayUrl(url: string): Promise<boolean> {
 }
 
 // ============================================================================
-// Types (matching Rust types from viben-executors)
+// Types (re-exported from @viben/core)
 // ============================================================================
 
-/** All supported AI coding agent types */
-export type BaseCodingAgent =
-  | "CLAUDE_CODE"
-  | "AMP"
-  | "GEMINI"
-  | "CODEX"
-  | "OPENCODE"
-  | "CURSOR_AGENT"
-  | "QWEN_CODE"
-  | "COPILOT"
-  | "DROID";
+import type { ExecutorType as CoreExecutorType } from "@viben/core";
+
+/** All supported AI coding agent types (re-exported from @viben/core) */
+export type BaseCodingAgent = CoreExecutorType;
 
 /** Agent availability information */
 export type AvailabilityInfo =
@@ -788,7 +781,7 @@ export class GatewayClient {
   /**
    * Get a single agent by ID
    *
-   * @param agentId - The agent ID (without "viben:" prefix)
+   * @param agentId - The agent ID
    * @param workspacePath - Optional workspace path to check workspace agents first
    *
    * When workspacePath is provided, checks workspace first, then falls back to global.
@@ -2007,7 +2000,7 @@ export class GatewayClient {
   /**
    * Get a Viben agent by ID
    *
-   * @param agentId - The agent ID (without viben: prefix)
+   * @param agentId - The agent ID
    * @returns Agent response
    */
   async getVibenAgent(agentId: string): Promise<VibenAgentResponse> {
@@ -2033,7 +2026,7 @@ export class GatewayClient {
   /**
    * Update a Viben agent
    *
-   * @param agentId - The agent ID (without viben: prefix)
+   * @param agentId - The agent ID
    * @param options - Update options
    * @returns Updated agent response
    */
@@ -2067,7 +2060,7 @@ export class GatewayClient {
   /**
    * Delete a Viben agent
    *
-   * @param agentId - The agent ID (without viben: prefix)
+   * @param agentId - The agent ID
    */
   async deleteVibenAgent(agentId: string): Promise<void> {
     const response = await fetch(

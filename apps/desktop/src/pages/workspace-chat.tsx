@@ -370,6 +370,11 @@ export function WorkspaceChatPage() {
     config_path?: string;
   } | null>(null);
 
+  // Artifact-message linking state
+  // Tracks highlighted artifact in sidebar and message in chat for bidirectional navigation
+  const [highlightedArtifactId, setHighlightedArtifactId] = React.useState<string | null>(null);
+  const [highlightedMessageId, setHighlightedMessageId] = React.useState<string | null>(null);
+
   // Get workspace info
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
@@ -1235,6 +1240,46 @@ export function WorkspaceChatPage() {
       clearMessages();
     }
   };
+
+  // Handle artifact selection from sidebar - highlight artifact and its source message
+  const handleArtifactSelect = React.useCallback((artifact: import("@/types").Artifact) => {
+    // Highlight the selected artifact in sidebar
+    setHighlightedArtifactId(artifact.id);
+
+    // Also highlight the source message if available
+    if (artifact.sourceMessageId) {
+      setHighlightedMessageId(artifact.sourceMessageId);
+    }
+
+    // Open sidebar and switch to artifacts tab if not already open
+    setIsSidebarOpen(true);
+
+    // Clear highlight after a short delay for visual feedback
+    setTimeout(() => {
+      setHighlightedArtifactId(null);
+      setHighlightedMessageId(null);
+    }, 3000);
+  }, []);
+
+  // Handle navigation from artifact to source message
+  // Called when user double-clicks on artifact in sidebar
+  const handleArtifactMessageClick = React.useCallback((messageId: string) => {
+    // Find the artifact that was created by this message
+    const sourceArtifact = artifacts.find((a) => a.sourceMessageId === messageId);
+    if (sourceArtifact) {
+      setHighlightedArtifactId(sourceArtifact.id);
+    }
+    setHighlightedMessageId(messageId);
+
+    // TODO: Scroll to message when MessageList supports scrollToMessage
+    // For now, just highlight the message
+
+    // Clear highlight after delay
+    setTimeout(() => {
+      setHighlightedArtifactId(null);
+      setHighlightedMessageId(null);
+    }, 3000);
+  }, [artifacts]);
 
   // Rename session (local state only for now)
   const handleRenameSession = (sessionId: string, newTitle: string) => {
@@ -2267,9 +2312,7 @@ export function WorkspaceChatPage() {
                       // (not executors), so we can always load agent details
                       const agentId = selectedAgentId || currentChatListAgent?.id;
                       if (agentId) {
-                        // Strip "viben:" prefix if present for the detail fetch
-                        const cleanId = agentId.startsWith("viben:") ? agentId.slice(6) : agentId;
-                        setDetailAgentId(cleanId);
+                        setDetailAgentId(agentId);
                         setRightSidebarExecutorDetail(null);
                         setIsSidebarOpen(true);
                       }
@@ -2453,6 +2496,15 @@ export function WorkspaceChatPage() {
                 onAnswerQuestions={answerQuestions}
                 className="flex-1 min-w-0 overflow-hidden"
                 maxMessageWidth="100%"
+                artifacts={artifacts}
+                highlightedMessageId={highlightedMessageId}
+                onArtifactClick={(artifactId) => {
+                  // Find artifact and highlight it in sidebar
+                  const artifact = artifacts.find((a) => a.id === artifactId);
+                  if (artifact) {
+                    handleArtifactSelect(artifact);
+                  }
+                }}
               />
 
               {/* Error display */}
@@ -2521,6 +2573,10 @@ export function WorkspaceChatPage() {
           onClose={() => setIsSidebarOpen(false)}
           width={rightPanelWidth}
           onResize={handleRightPanelResize}
+          // Artifact-message linking props
+          highlightedArtifactId={highlightedArtifactId}
+          onArtifactSelect={handleArtifactSelect}
+          onArtifactMessageClick={handleArtifactMessageClick}
           // Group chat props (only when in group chat mode)
           groupChat={isGroupChatMode && currentGroupChat ? currentGroupChat.group_chat : null}
           groupChatMembers={isGroupChatMode ? groupChatMembers : []}

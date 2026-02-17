@@ -21,7 +21,7 @@ import type {
 } from "@/types";
 
 export interface UseConversationOptions {
-  /** Selected agent ID (可带或不带 "viben:" 前缀) */
+  /** Selected agent ID */
   selectedAgentId?: string | null;
   /** Enable mock mode (for testing) */
   mockMode?: boolean;

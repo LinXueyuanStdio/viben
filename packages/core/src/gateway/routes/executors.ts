@@ -17,6 +17,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import * as readline from "node:readline";
 
+import type { ExecutorType } from "../../types/index.js";
+
 /**
  * Executor session discovered from file system (snake_case to match Rust gateway)
  */
@@ -596,19 +598,20 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     }
 
     let sessions: ExecutorSession[] = [];
+    const executorType = type as ExecutorType;
 
-    switch (type.toLowerCase().replace(/_|-/g, "")) {
-      case "claudecode":
+    switch (executorType) {
+      case "CLAUDE_CODE":
         sessions = await discoverClaudeCodeSessions(workspacePath);
         break;
-      case "codex":
+      case "CODEX":
         // Codex session discovery - similar to Claude Code pattern
         // Codex stores sessions in ~/.config/codex/sessions/ or platform-specific location
         sessions = await discoverCodexSessions(workspacePath);
         break;
       default:
         reply.code(404);
-        return { error: `Unknown executor type: ${type}` };
+        return { error: `Unknown executor type: ${type}. Use uppercase format like CLAUDE_CODE` };
     }
 
     return { sessions, total: sessions.length };
@@ -628,16 +631,17 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     }
 
     let messages: ExecutorUIMessage[] = [];
+    const executorType = type as ExecutorType;
 
-    switch (type.toLowerCase().replace(/_|-/g, "")) {
-      case "claudecode": {
+    switch (executorType) {
+      case "CLAUDE_CODE": {
         const projectsDir = getClaudeProjectsDir();
         const encodedPath = encodeWorkspacePath(workspacePath);
         const filePath = path.join(projectsDir, encodedPath, `${sessionId}.jsonl`);
         messages = await readClaudeCodeSessionMessages(filePath, limit);
         break;
       }
-      case "codex": {
+      case "CODEX": {
         // Codex message reading - similar to Claude Code pattern
         const codexSessionDir = getCodexSessionsDir();
         const codexFilePath = path.join(codexSessionDir, `${sessionId}.jsonl`);
@@ -648,7 +652,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
       }
       default:
         reply.code(404);
-        return { error: `Unknown executor type: ${type}` };
+        return { error: `Unknown executor type: ${type}. Use uppercase format like CLAUDE_CODE` };
     }
 
     return { messages, total: messages.length };
@@ -660,23 +664,20 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
 
   /**
    * Get MCP config path based on executor type
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function getMcpConfigPath(workspacePath: string | undefined, executorType: string): string | null {
+  function getMcpConfigPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
     const base = workspacePath || os.homedir();
 
     switch (executorType) {
-      case "claude_code":
-      case "claude-code":
+      case "CLAUDE_CODE":
         // Claude Code: project-level .mcp.json or global ~/.claude.json
         const projectMcp = path.join(base, ".mcp.json");
         if (fs.existsSync(projectMcp)) return projectMcp;
         return path.join(os.homedir(), ".claude.json");
-      case "cursor":
+      case "CURSOR_AGENT":
         // Cursor: .cursor/mcp.json
         return path.join(base, ".cursor", "mcp.json");
-      case "vscode":
-        // VSCode: .vscode/mcp.json
-        return path.join(base, ".vscode", "mcp.json");
       default:
         // Generic: .viben/mcp.json
         return path.join(base, ".viben", "mcp.json");
@@ -685,8 +686,9 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
 
   /**
    * Parse MCP servers from config file
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function parseMcpServers(configPath: string, executorType: string): Array<{
+  function parseMcpServers(configPath: string, executorType: ExecutorType): Array<{
     name: string;
     command?: string;
     args?: string[];
@@ -705,7 +707,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
       const config = JSON.parse(content);
 
       // Claude Code format: { mcpServers: { name: config } }
-      if (executorType === "claude_code" || executorType === "claude-code") {
+      if (executorType === "CLAUDE_CODE") {
         const mcpServers = config.mcpServers || {};
         return Object.entries(mcpServers).map(([name, serverConfig]) => ({
           name,
@@ -740,12 +742,13 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type } = request.params;
     const { workspace_path } = request.query;
 
-    const configPath = getMcpConfigPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const configPath = getMcpConfigPath(workspace_path, executorType);
     if (!configPath) {
       return { servers: [], total: 0 };
     }
 
-    const servers = parseMcpServers(configPath, type);
+    const servers = parseMcpServers(configPath, executorType);
     return { servers, total: servers.length };
   });
 
@@ -755,21 +758,21 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
 
   /**
    * Get skills config path based on executor type
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function getSkillsConfigPath(workspacePath: string | undefined, executorType: string): {
+  function getSkillsConfigPath(workspacePath: string | undefined, executorType: ExecutorType): {
     jsonPath: string | null;
     folderPath: string | null;
   } {
     const base = workspacePath || os.homedir();
 
     switch (executorType) {
-      case "claude_code":
-      case "claude-code":
+      case "CLAUDE_CODE":
         return {
           jsonPath: path.join(base, ".claude", "skills.json"),
           folderPath: path.join(base, ".claude", "skills"),
         };
-      case "cursor":
+      case "CURSOR_AGENT":
         return {
           jsonPath: path.join(base, ".cursor", "skills.json"),
           folderPath: path.join(base, ".cursor", "skills"),
@@ -881,7 +884,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type } = request.params;
     const { workspace_path } = request.query;
 
-    const { jsonPath, folderPath } = getSkillsConfigPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const { jsonPath, folderPath } = getSkillsConfigPath(workspace_path, executorType);
     const skills: Array<{
       id: string;
       name: string;
@@ -924,15 +928,15 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
 
   /**
    * Get agent configs path based on executor type
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function getAgentConfigsPath(workspacePath: string | undefined, executorType: string): string | null {
+  function getAgentConfigsPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
     const base = workspacePath || os.homedir();
 
     switch (executorType) {
-      case "claude_code":
-      case "claude-code":
+      case "CLAUDE_CODE":
         return path.join(base, ".claude", "agents");
-      case "cursor":
+      case "CURSOR_AGENT":
         return path.join(base, ".cursor", "agents");
       default:
         return path.join(base, ".viben", "agents");
@@ -1040,7 +1044,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type } = request.params;
     const { workspace_path } = request.query;
 
-    const configsPath = getAgentConfigsPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const configsPath = getAgentConfigsPath(workspace_path, executorType);
     if (!configsPath) {
       return { configs: [] };
     }
@@ -1059,7 +1064,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type, config_id } = request.params;
     const { workspace_path } = request.query;
 
-    const configsPath = getAgentConfigsPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const configsPath = getAgentConfigsPath(workspace_path, executorType);
     if (!configsPath) {
       reply.code(404);
       return { error: "Config path not found" };
@@ -1087,15 +1093,15 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
 
   /**
    * Get commands path based on executor type
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function getCommandsPath(workspacePath: string | undefined, executorType: string): string | null {
+  function getCommandsPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
     const base = workspacePath || os.homedir();
 
     switch (executorType) {
-      case "claude_code":
-      case "claude-code":
+      case "CLAUDE_CODE":
         return path.join(base, ".claude", "commands");
-      case "cursor":
+      case "CURSOR_AGENT":
         return path.join(base, ".cursor", "commands");
       default:
         return path.join(base, ".viben", "commands");
@@ -1190,7 +1196,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type } = request.params;
     const { workspace_path } = request.query;
 
-    const commandsPath = getCommandsPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const commandsPath = getCommandsPath(workspace_path, executorType);
     if (!commandsPath) {
       return { commands: [] };
     }
@@ -1210,7 +1217,8 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     const { type, command_id } = request.params;
     const { workspace_path } = request.query;
 
-    const commandsPath = getCommandsPath(workspace_path, type);
+    const executorType = type as ExecutorType;
+    const commandsPath = getCommandsPath(workspace_path, executorType);
     if (!commandsPath) {
       reply.code(404);
       return { error: "Commands path not found" };

@@ -64,7 +64,7 @@
   "workspace_path": "/path/to/project",
   "agents": [
     {
-      "id": "viben:本地助手",
+      "id": "本地助手",
       "name": "本地助手",
       "agent_type": "viben",
       "source": "workspace",
@@ -74,7 +74,7 @@
       "skill_count": 5
     },
     {
-      "id": "viben:全局助手",
+      "id": "全局助手",
       "name": "全局助手",
       "agent_type": "viben",
       "source": "global",

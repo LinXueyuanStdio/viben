@@ -50,7 +50,11 @@ export interface WorkspaceTabContentProps {
 export interface ArtifactsTabContentProps {
   artifacts: Artifact[];
   selectedArtifact?: Artifact | null;
+  /** ID of the artifact to highlight (for message-artifact linking) */
+  highlightedArtifactId?: string | null;
   onArtifactSelect?: (artifact: Artifact) => void;
+  /** Called when user wants to navigate to the source message (double-click) */
+  onArtifactMessageClick?: (messageId: string) => void;
 }
 
 export interface ToolsTabContentProps {

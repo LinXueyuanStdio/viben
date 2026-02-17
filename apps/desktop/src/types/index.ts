@@ -280,16 +280,12 @@ export interface Workspace {
   last_accessed: string;
 }
 
-/** Executor type identifier (auto-discovered backend) */
-export type ExecutorType =
-  | "CLAUDE_CODE"
-  | "CODEX"
-  | "CURSOR"
-  | "WINDSURF"
-  | "VSCODE"
-  | "CONTINUE"
-  | "ZED"
-  | "UNKNOWN";
+/**
+ * Executor type identifier (auto-discovered backend)
+ * Re-exported from @viben/core with additional "UNKNOWN" fallback
+ */
+import type { ExecutorType as CoreExecutorType } from "@viben/core";
+export type ExecutorType = CoreExecutorType | "UNKNOWN";
 
 /** @deprecated Use ExecutorType instead */
 export type WorkspaceAgentType = ExecutorType;

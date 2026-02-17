@@ -116,6 +116,12 @@ export interface Artifact {
   path?: string;
   fileSize?: number;
   fileTooLarge?: boolean;
+  /** ID of the message that created this artifact (for message-artifact linking) */
+  sourceMessageId?: string;
+  /** Tool name that created this artifact (e.g., "Write", "Edit", "WebSearch") */
+  toolName?: string;
+  /** Timestamp when the artifact was created */
+  createdAt?: number;
 }
 
 /** Working file in file tree */

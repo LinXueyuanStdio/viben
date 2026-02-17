@@ -5,7 +5,7 @@
 ## 概述
 
 智能体 (Agent) 是用户创建的配置，定义了：
-- 使用哪个执行器 (executor_type: claude_code, cursor, etc.)
+- 使用哪个执行器 (executor_type: CLAUDE_CODE, CURSOR, etc.)
 - 系统提示词、追加提示词
 - 模型和参数 (temperature, max_tokens)
 - MCP 服务器和技能配置
@@ -109,7 +109,7 @@
     {
       "id": "my-agent",
       "name": "My Agent",
-      "executor_type": "claude_code",
+      "executor_type": "CLAUDE_CODE",
       "model": "claude-3-sonnet",
       "description": "A helpful coding assistant",
       "source": "global",
@@ -119,7 +119,7 @@
     {
       "id": "project-helper",
       "name": "Project Helper",
-      "executor_type": "cursor",
+      "executor_type": "CURSOR",
       "model": "gpt-4",
       "description": "Project-specific assistant",
       "source": "workspace",
@@ -337,17 +337,17 @@
 
 ## 执行器类型 (executor_type)
 
-智能体通过 `executor_type` 字段指定使用哪个执行器：
+智能体通过 `executor_type` 字段指定使用哪个执行器。**统一使用大写格式**：
 
 | executor_type | 执行器 | 说明 |
 |---------------|--------|------|
-| claude_code | Claude Code | Anthropic Claude Code CLI |
-| amp | AMP | AMP coding agent |
-| gemini | Gemini | Google Gemini CLI |
-| codex | Codex | OpenAI Codex |
-| cursor | Cursor | Cursor IDE agent |
-| qwen | Qwen Code | Qwen coding agent |
-| copilot | Copilot | GitHub Copilot |
+| CLAUDE_CODE | Claude Code | Anthropic Claude Code CLI |
+| AMP | AMP | AMP coding agent |
+| GEMINI | Gemini | Google Gemini CLI |
+| CODEX | Codex | OpenAI Codex |
+| CURSOR | Cursor | Cursor IDE agent |
+| QWEN_CODE | Qwen Code | Qwen coding agent |
+| COPILOT | Copilot | GitHub Copilot |
 
 **注意**: 执行器本身通过 [执行器 API](./executors.md) 管理，智能体只是引用执行器类型。
 

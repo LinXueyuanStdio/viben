@@ -338,7 +338,7 @@ describe("Workspace Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      const vibenAgent = body.agents.find((a: { id: string }) => a.id === "viben:my-agent");
+      const vibenAgent = body.agents.find((a: { id: string }) => a.id === "my-agent");
       expect(vibenAgent).toBeDefined();
       expect(vibenAgent.agentType).toBe("viben");
       expect(vibenAgent.source).toBe("workspace");
@@ -370,7 +370,7 @@ describe("Workspace Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      const globalAgent = body.agents.find((a: { id: string }) => a.id === "viben:global-agent");
+      const globalAgent = body.agents.find((a: { id: string }) => a.id === "global-agent");
       expect(globalAgent).toBeDefined();
       expect(globalAgent.source).toBe("global");
     });
@@ -615,7 +615,7 @@ describe("Workspace Routes", () => {
 
       // Should only have one shared-agent from workspace, not duplicate from global
       const sharedAgents = body.agents.filter(
-        (a: { id: string }) => a.id === "viben:shared-agent"
+        (a: { id: string }) => a.id === "shared-agent"
       );
       expect(sharedAgents.length).toBe(1);
       expect(sharedAgents[0].source).toBe("workspace");
@@ -876,7 +876,7 @@ describe("Workspace Routes", () => {
 
       const agentItem = body.items.find(
         (i: { id: string; itemType: string }) =>
-          i.id === "viben:my-agent" && i.itemType === "agent"
+          i.id === "my-agent" && i.itemType === "agent"
       );
       expect(agentItem).toBeDefined();
       expect(agentItem.iconType).toBe("viben");

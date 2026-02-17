@@ -676,11 +676,12 @@ pub async fn discover_sessions(
         executor_type, query.workspace_path
     );
 
-    let sessions = match executor_type.to_lowercase().as_str() {
-        "claude-code" | "claude_code" | "claudecode" => {
+    // Only accept uppercase underscore format: CLAUDE_CODE, CODEX, etc.
+    let sessions = match executor_type.as_str() {
+        "CLAUDE_CODE" => {
             discover_claude_code_sessions(&query.workspace_path).await?
         }
-        "codex" => {
+        "CODEX" => {
             // TODO: Implement Codex session discovery
             tracing::warn!(
                 target: "viben::gateway::executors",
@@ -690,7 +691,7 @@ pub async fn discover_sessions(
         }
         _ => {
             return Err(GatewayError::NotFound(format!(
-                "Unknown executor type: {}",
+                "Unknown executor type: {}. Use uppercase format like CLAUDE_CODE",
                 executor_type
             )));
         }
@@ -713,8 +714,9 @@ pub async fn get_session_messages(
         executor_type, session_id, query.workspace_path
     );
 
-    let messages = match executor_type.to_lowercase().as_str() {
-        "claude-code" | "claude_code" | "claudecode" => {
+    // Only accept uppercase underscore format: CLAUDE_CODE, CODEX, etc.
+    let messages = match executor_type.as_str() {
+        "CLAUDE_CODE" => {
             // Build the file path
             let projects_dir = get_claude_projects_dir()
                 .ok_or_else(|| GatewayError::Internal("Cannot determine home directory".to_string()))?;
@@ -729,7 +731,7 @@ pub async fn get_session_messages(
                 true, // Load subagent messages for Task tool calls
             ).await?
         }
-        "codex" => {
+        "CODEX" => {
             // TODO: Implement Codex message reading
             tracing::warn!(
                 target: "viben::gateway::executors",
@@ -739,7 +741,7 @@ pub async fn get_session_messages(
         }
         _ => {
             return Err(GatewayError::NotFound(format!(
-                "Unknown executor type: {}",
+                "Unknown executor type: {}. Use uppercase format like CLAUDE_CODE",
                 executor_type
             )));
         }

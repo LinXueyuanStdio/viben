@@ -90,7 +90,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * - workspace_path: Optional workspace path to include workspace agents
    * - include_global: Whether to include global agents (default: true)
    *
-   * Returns workspace-scoped agents with viben: prefix to match Rust gateway format.
+   * Returns workspace-scoped agents with snake_case fields to match Rust gateway format.
    * When workspace_path is provided, workspace agents take priority (deduped by ID).
    */
   fastify.get<{
@@ -180,7 +180,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Create a new agent
    * POST /api/agents
    *
-   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
+   * Returns agent with snake_case fields to match Rust gateway format
    */
   fastify.post<{
     Body: {
@@ -376,7 +376,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Create an agent from a template
    * POST /api/agents/templates/:id/instantiate
    *
-   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
+   * Returns agent with snake_case fields to match Rust gateway format
    */
   fastify.post<{ Params: { id: string }; Body: { agent_id: string } }>(
     "/api/agents/templates/:id/instantiate",
@@ -783,7 +783,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Query params:
    * - workspace_path: Optional workspace path to check workspace agents first
    *
-   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format.
+   * Returns agent with snake_case fields to match Rust gateway format.
    * When workspace_path is provided, checks workspace first, then falls back to global.
    */
   fastify.get<{
@@ -853,7 +853,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Update an agent
    * PATCH /api/agents/:id
    *
-   * Returns agent with viben: prefix and snake_case fields to match Rust gateway format
+   * Returns agent with snake_case fields to match Rust gateway format
    */
   fastify.patch<{
     Params: { id: string };

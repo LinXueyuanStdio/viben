@@ -26,6 +26,7 @@
 |------|-------------|--------|
 | [workspace-management.md](./workspace-management.md) | Desktop 工作空间核心架构 | Done |
 | [desktop-chat-workany.md](./desktop-chat-workany.md) | Chat 功能集成 (参考 workany) | Planning |
+| [session-persistence.md](./session-persistence.md) | Session/Task/Message 持久化设计 | Specification |
 
 ### Web Workspace System
 
@@ -92,6 +93,7 @@ Web App
 - **Adding new workspace features**: Start with [workspace-management.md](./workspace-management.md)
 - **Kanban development**: Start with [kanban-integration.md](./kanban-integration.md)
 - **Chat integration**: See [desktop-chat-workany.md](./desktop-chat-workany.md)
+- **Session persistence**: See [session-persistence.md](./session-persistence.md)
 - **Web workspace API**: See [workspace-api.md](./workspace-api.md)
 
 ---
