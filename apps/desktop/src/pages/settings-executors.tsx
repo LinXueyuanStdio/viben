@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ExecutorType } from "@viben/core/browser";
+import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, type AvailabilityInfo } from "@/lib/gateway";
 import { useGatewayStatus } from "@/hooks/use-gateway-status";
 

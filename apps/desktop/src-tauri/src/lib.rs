@@ -20,12 +20,6 @@ use tauri::{
 };
 use tauri_plugin_deep_link::DeepLinkExt;
 
-/// Initialize viben-core on app startup
-async fn initialize_viben_core() -> Result<(), Box<dyn std::error::Error>> {
-    viben_core::initialize().await?;
-    Ok(())
-}
-
 /// Auto-start gateway on app startup
 async fn auto_start_gateway(state: &GatewayState) {
     // Check config for auto_start
@@ -228,13 +222,6 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             setup_tray(app)?;
-
-            // Initialize viben-core synchronously to ensure it's ready before Tauri commands
-            tauri::async_runtime::block_on(async {
-                if let Err(e) = initialize_viben_core().await {
-                    eprintln!("Failed to initialize viben-core: {}", e);
-                }
-            });
 
             // Auto-start gateway in background
             let gateway_state = app.state::<GatewayState>();
@@ -462,68 +449,6 @@ commands::workspace::write_skill_file,
             commands::official_registry::get_official_server_versions,
             commands::official_registry::clear_official_registry_cache,
             commands::official_registry::invalidate_official_server_cache,
-            // Viben-core Agent commands
-            commands::viben_agents::viben_list_agents,
-            commands::viben_agents::viben_list_agents_from_path,
-            commands::viben_agents::viben_get_agent,
-            commands::viben_agents::viben_get_agent_from_path,
-            commands::viben_agents::viben_create_agent,
-            commands::viben_agents::viben_remove_agent,
-            commands::viben_agents::viben_update_agent,
-            commands::viben_agents::viben_set_default_agent,
-            commands::viben_agents::viben_get_default_agent,
-            // Viben-core Template commands
-            commands::viben_agents::viben_list_templates,
-            commands::viben_agents::viben_get_template,
-            commands::viben_agents::viben_create_template,
-            commands::viben_agents::viben_create_from_template,
-            // Viben-core Session commands
-            commands::viben_agents::viben_list_sessions,
-            commands::viben_agents::viben_create_session,
-            commands::viben_agents::viben_remove_session,
-            // Viben-core Memory commands
-            commands::viben_agents::viben_get_memory,
-            commands::viben_agents::viben_append_memory,
-            // Viben-core Channel commands
-            commands::viben_channels::viben_send_telegram_message,
-            commands::viben_channels::viben_test_telegram_channel,
-            commands::viben_channels::viben_send_discord_message,
-            commands::viben_channels::viben_test_discord_channel,
-            commands::viben_channels::viben_send_feishu_message,
-            commands::viben_channels::viben_test_feishu_channel,
-            commands::viben_channels::viben_send_whatsapp_message,
-            commands::viben_channels::viben_test_whatsapp_channel,
-            commands::viben_channels::viben_send_slack_message,
-            commands::viben_channels::viben_test_slack_channel,
-            commands::viben_channels::viben_send_webhook_message,
-            commands::viben_channels::viben_test_webhook_channel,
-            commands::viben_channels::viben_send_test_message,
-            // Viben-core Provider commands
-            commands::viben_providers::viben_list_providers,
-            commands::viben_providers::viben_get_provider,
-            commands::viben_providers::viben_create_provider,
-            commands::viben_providers::viben_remove_provider,
-            commands::viben_providers::viben_update_provider,
-            commands::viben_providers::viben_set_default_provider,
-            commands::viben_providers::viben_get_default_provider,
-            commands::viben_providers::viben_enable_provider,
-            commands::viben_providers::viben_disable_provider,
-            commands::viben_providers::viben_test_provider_connection,
-            // Viben-core Model commands
-            commands::viben_models::viben_list_models,
-            commands::viben_models::viben_list_models_for_provider,
-            commands::viben_models::viben_get_model,
-            commands::viben_models::viben_create_model,
-            commands::viben_models::viben_remove_model,
-            commands::viben_models::viben_update_model,
-            commands::viben_models::viben_set_default_model,
-            commands::viben_models::viben_get_default_model,
-            commands::viben_models::viben_enable_model,
-            commands::viben_models::viben_disable_model,
-            commands::viben_models::viben_discover_provider_models,
-            commands::viben_models::viben_list_provider_enabled_models,
-            commands::viben_models::viben_enable_model_for_provider,
-            commands::viben_models::viben_disable_model_for_provider,
             // Vite Preview commands
             commands::vite_preview::check_node_available,
             commands::vite_preview::start_vite_preview,

@@ -16,12 +16,19 @@ import type {
   Artifact,
   ToolUsage,
 } from "@/types";
+import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
 
 /**
  * Generate a unique ID
  */
 const generateId = () => crypto.randomUUID();
+
+/**
+ * Generate a task ID for message persistence
+ * Format: task_${Date.now()}_${random}
+ */
+const generateTaskId = () => `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
 /**
  * File size limits for artifact preview
@@ -101,6 +108,10 @@ export interface UseAgentConversationOptions {
   agentConfig?: AgentConfig;
   /** Enable mock mode (for testing) */
   mockMode?: boolean;
+  /** File system session ID for persistence */
+  sessionId?: string;
+  /** File system task ID for persistence */
+  taskId?: string;
 }
 
 /**
@@ -112,6 +123,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     agentPath,
     agentConfig,
     mockMode = false,
+    sessionId: persistSessionId,
+    taskId: persistTaskId,
   } = options || {};
 
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -384,10 +397,15 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Build request body
         // Prefer agentPath (backend reads config from disk), fallback to inline agentConfig
         // workspaceId is actually workspace path, use it as cwd
+        // Generate taskId for each conversation turn if sessionId is provided
+        const currentTaskId = persistSessionId ? (persistTaskId || generateTaskId()) : undefined;
         const requestBody: Record<string, unknown> = {
           prompt: content,
           agentPath: agentPath || undefined,
           agentConfig: agentPath ? undefined : (agentConfig || undefined),
+          // Session persistence: pass session/task IDs for backend to persist messages
+          sessionId: persistSessionId || undefined,
+          taskId: currentTaskId,
         };
         if (workspaceId) {
           requestBody.cwd = workspaceId;
@@ -469,7 +487,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setIsStreaming(false);
       }
     },
-    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase]
+    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId]
   );
 
   /**
@@ -829,7 +847,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     if (sessionId && !mockMode && gatewayConnected) {
       try {
         // Use executor type from config or default to CLAUDE_CODE
-        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as import("@viben/core").ExecutorType;
+        const executorType = (agentConfig?.executorType || "CLAUDE_CODE") as ExecutorType;
         await client.stopAgent(executorType, sessionId);
       } catch (err) {
         console.error("[useAgent] Failed to stop agent:", err);

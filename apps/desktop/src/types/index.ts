@@ -282,10 +282,10 @@ export interface Workspace {
 
 /**
  * Executor type identifier (auto-discovered backend)
- * Re-exported from @viben/core/browser with additional "UNKNOWN" fallback
- * Note: Using /browser subpath to avoid Node.js-only dependencies like undici
+ * Re-exported from @viben/core/shared with additional "UNKNOWN" fallback
+ * Note: Using /shared subpath to avoid Node.js-only dependencies like undici
  */
-import type { ExecutorType as CoreExecutorType } from "@viben/core/browser";
+import type { ExecutorType as CoreExecutorType } from "@viben/core/shared";
 export type ExecutorType = CoreExecutorType | "UNKNOWN";
 
 /** @deprecated Use ExecutorType instead */

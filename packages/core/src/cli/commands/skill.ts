@@ -199,7 +199,7 @@ export function registerSkillCommand(program: Command): void {
     .option("--path <path>", "Install to custom path")
     .option("--source <path>", "Install from local path")
     .option("--version <version>", "Specific version to install")
-    .option("--executor <name>", "Use executor for installation (e.g., claude-code)")
+    .option("--executor <name>", "Use executor for installation (e.g., CLAUDE_CODE)")
     .option("-f, --force", "Overwrite if already installed")
     .action(
       async (
@@ -459,8 +459,8 @@ function parseNameWithVersion(nameWithVersion: string): {
  * Get skill target from executor name
  */
 function getTargetFromExecutor(executor: string): SkillTarget {
-  switch (executor) {
-    case "claude-code":
+  switch (executor.toUpperCase()) {
+    case "CLAUDE_CODE":
       return "claude";
     default:
       return "global";

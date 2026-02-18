@@ -203,12 +203,13 @@ export function WorkspaceAgentsPage({
   };
 
   // Convert executors to list items for display
+  // executor.id is the type (e.g., "CLAUDE_CODE") - already merged by API
   const executorItems: ListItem[] = useMemo(() => {
     return agentListExecutors.map((e) => ({
       id: e.id,
       name: e.name,
       type: "executor" as const,
-      executorType: e.id, // executor ID like "CLAUDE_CODE"
+      executorType: e.id,
       path: e.config_path,
       source: e.source === "workspace" ? "project" as const : "global" as const,
       projectConfigPath: e.config_path,
@@ -309,7 +310,8 @@ export function WorkspaceAgentsPage({
       const first = filteredItems[0];
       setSelectedItemId(first.id);
       setSelectedItemType(first.type);
-    } else if (selectedItemId && !filteredItems.find((a) => a.id === selectedItemId)) {
+    } else if (selectedItemId && !filteredItems.find((a) => a.id === selectedItemId && a.type === selectedItemType)) {
+      // Current selection no longer exists in filtered list, select first item
       const first = filteredItems[0];
       if (first) {
         setSelectedItemId(first.id);
@@ -318,7 +320,7 @@ export function WorkspaceAgentsPage({
         setSelectedItemId(null);
       }
     }
-  }, [filteredItems, selectedItemId]);
+  }, [filteredItems, selectedItemId, selectedItemType]);
 
   // Open create dialog with template
   const openCreateDialog = (template?: AgentTemplate) => {

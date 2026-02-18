@@ -57,7 +57,7 @@ export interface InstallSkillOptions {
   version?: string;
   /** Source path for local skills */
   sourcePath?: string;
-  /** Executor name (e.g., "claude-code") - affects installation target */
+  /** Executor name (e.g., "CLAUDE_CODE") - affects installation target */
   executor?: string;
 }
 

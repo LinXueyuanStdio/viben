@@ -33,7 +33,7 @@ function mapExecutorToDisplay(executor: ExecutorInfo): ExecutorDisplayInfo {
     executor.availability.type === "INSTALLATION_FOUND";
 
   return {
-    id: executor.id.toLowerCase().replace("_", "-"),
+    id: executor.type.toLowerCase().replace("_", "-"),
     name: executor.name,
     installed: isInstalled,
     config_path: executor.workspace_config_path || executor.global_config_path || null,

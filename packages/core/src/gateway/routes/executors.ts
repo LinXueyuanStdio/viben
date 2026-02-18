@@ -25,7 +25,7 @@ import type { ExecutorType } from "../../types/index.js";
 interface ExecutorSession {
   /** Session ID (UUID format) */
   id: string;
-  /** Executor type (claude-code, codex, etc.) */
+  /** Executor type (CLAUDE_CODE, CODEX, etc.) */
   executor_type: string;
   /** Workspace path this session belongs to */
   workspace_path: string;
@@ -97,7 +97,7 @@ async function discoverClaudeCodeSessions(workspacePath: string): Promise<Execut
 
       sessions.push({
         id: sessionId,
-        executor_type: "claude-code",
+        executor_type: "CLAUDE_CODE",
         workspace_path: workspacePath,
         created_at: stats.birthtime.toISOString(),
         updated_at: stats.mtime.toISOString(),
@@ -452,12 +452,68 @@ function convertCodexMessageToUI(msg: Record<string, unknown>): ExecutorUIMessag
  * Executor info for discovery response
  */
 interface ExecutorInfo {
-  type: string;
+  /** Executor type (uppercase format, e.g., "CLAUDE_CODE") */
+  type: ExecutorType;
   name: string;
+  description: string;
+  docs_url?: string;
   available: boolean;
   version?: string;
   config_path?: string;
 }
+
+/**
+ * Executor metadata (name, description, docs_url)
+ * Keys use uppercase ExecutorType format
+ */
+const EXECUTOR_METADATA: Record<ExecutorType, { name: string; description: string; docsUrl?: string }> = {
+  CLAUDE_CODE: {
+    name: "Claude Code",
+    description: "Anthropic's coding assistant powered by Claude",
+    docsUrl: "https://claude.ai",
+  },
+  CODEX: {
+    name: "Codex",
+    description: "OpenAI's code-specialized model",
+    docsUrl: "https://openai.com",
+  },
+  CURSOR_AGENT: {
+    name: "Cursor Agent",
+    description: "Cursor's AI coding assistant",
+    docsUrl: "https://cursor.so",
+  },
+  GEMINI: {
+    name: "Gemini",
+    description: "Google's AI coding assistant",
+    docsUrl: "https://gemini.google.com",
+  },
+  AMP: {
+    name: "Amp",
+    description: "AI-powered code assistant",
+  },
+  OPENCODE: {
+    name: "Opencode",
+    description: "Open source coding assistant",
+  },
+  QWEN_CODE: {
+    name: "Qwen Code",
+    description: "Alibaba's Qwen coding model",
+    docsUrl: "https://qwen.aliyun.com",
+  },
+  COPILOT: {
+    name: "GitHub Copilot",
+    description: "GitHub's AI pair programmer",
+    docsUrl: "https://github.com/features/copilot",
+  },
+  DROID: {
+    name: "Droid",
+    description: "Droid AI coding assistant",
+  },
+  UNKNOWN: {
+    name: "Unknown",
+    description: "Unknown executor type",
+  },
+};
 
 /**
  * Check if Claude Code is available by looking for ~/.claude.json
@@ -465,9 +521,12 @@ interface ExecutorInfo {
 function checkClaudeCodeAvailability(): ExecutorInfo {
   const configPath = path.join(os.homedir(), ".claude.json");
   const available = fs.existsSync(configPath);
+  const meta = EXECUTOR_METADATA["CLAUDE_CODE"];
   return {
-    type: "claude-code",
-    name: "Claude Code",
+    type: "CLAUDE_CODE",
+    name: meta.name,
+    description: meta.description,
+    docs_url: meta.docsUrl,
     available,
     config_path: available ? configPath : undefined,
   };
@@ -488,9 +547,12 @@ function checkCodexAvailability(): ExecutorInfo {
   }
   const configPath = path.join(configDir, "config.json");
   const available = fs.existsSync(configPath);
+  const meta = EXECUTOR_METADATA["CODEX"];
   return {
-    type: "codex",
-    name: "Codex (OpenAI)",
+    type: "CODEX",
+    name: meta.name,
+    description: meta.description,
+    docs_url: meta.docsUrl,
     available,
     config_path: available ? configPath : undefined,
   };
@@ -509,9 +571,12 @@ function checkCursorAvailability(): ExecutorInfo {
     configDir = path.join(os.homedir(), ".config", "Cursor", "User");
   }
   const available = fs.existsSync(configDir);
+  const meta = EXECUTOR_METADATA["CURSOR_AGENT"];
   return {
-    type: "cursor",
-    name: "Cursor",
+    type: "CURSOR_AGENT",
+    name: meta.name,
+    description: meta.description,
+    docs_url: meta.docsUrl,
     available,
     config_path: available ? configDir : undefined,
   };
@@ -523,9 +588,12 @@ function checkCursorAvailability(): ExecutorInfo {
 function checkGeminiAvailability(): ExecutorInfo {
   const configPath = path.join(os.homedir(), ".gemini", "config.json");
   const available = fs.existsSync(configPath);
+  const meta = EXECUTOR_METADATA["GEMINI"];
   return {
-    type: "gemini",
-    name: "Gemini",
+    type: "GEMINI",
+    name: meta.name,
+    description: meta.description,
+    docs_url: meta.docsUrl,
     available,
     config_path: available ? configPath : undefined,
   };
@@ -545,9 +613,12 @@ function checkAmpAvailability(): ExecutorInfo {
   }
   const configPath = path.join(configDir, "settings.json");
   const available = fs.existsSync(configPath);
+  const meta = EXECUTOR_METADATA["AMP"];
   return {
-    type: "amp",
-    name: "AMP",
+    type: "AMP",
+    name: meta.name,
+    description: meta.description,
+    docs_url: meta.docsUrl,
     available,
     config_path: available ? configPath : undefined,
   };

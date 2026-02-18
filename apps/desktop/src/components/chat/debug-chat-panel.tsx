@@ -22,11 +22,9 @@ import { DesktopChatInput } from "./desktop-chat-input";
 import { DesktopMessageList } from "./desktop-message-list";
 import type { SlashCommand } from "@viben/chat";
 import { cn } from "@/lib/utils";
-import type { ExecutorType } from "@viben/core/browser";
-import {
-  type ExecutorConfig,
-  getAgentTypeInfo,
-} from "@/types";
+import type { ExecutorType } from "@viben/core/shared";
+import type { ExecutorConfig } from "@/types";
+import { useExecutors } from "@/hooks";
 import {
   getGatewayClient,
   getGatewayUrl,
@@ -109,6 +107,16 @@ export function DebugChatPanel({
 }: DebugChatPanelProps) {
   const { t } = useTranslation();
   const client = React.useMemo(() => getGatewayClient(), []);
+  const { executors } = useExecutors();
+
+  // Helper to get executor display name from Gateway API
+  const getExecutorName = React.useCallback(
+    (execType: ExecutorType) => {
+      const executor = executors.find((e) => e.type === execType);
+      return executor?.name || execType;
+    },
+    [executors]
+  );
 
   // Chat state
   const [messages, setMessages] = React.useState<AgentMessage[]>([]);
@@ -460,7 +468,7 @@ export function DebugChatPanel({
     setToolUsages([]);
   };
 
-  const agentInfo = getAgentTypeInfo(agentType);
+  const executorDisplayName = getExecutorName(agentType);
   const availabilityStatus = availability ? getAvailabilityStatus(availability) : null;
 
   // Slash commands for debug chat
@@ -507,7 +515,7 @@ export function DebugChatPanel({
                     {t("gateway.debugChat", { defaultValue: "Debug Chat" })}
                   </SheetTitle>
                   <SheetDescription className="text-xs">
-                    {agentInfo?.name || agentType}
+                    {executorDisplayName}
                   </SheetDescription>
                 </div>
               </div>

@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useChatConfigStore } from "@/stores/chat-config-store";
-import { useAgents } from "./use-workspace-resources";
+import { useAgents, useExecutors } from "./use-workspace-resources";
 import { useModels } from "./use-models";
 import type {
   ChatAgentConfig,
@@ -22,8 +22,8 @@ import type {
   ChatContextInfo,
   ChatSelectorVisibility,
 } from "@/types/chat-config";
-import type { ExecutorType } from "@viben/core/browser";
-import { AGENT_TYPES } from "@/types/agent";
+import type { ExecutorType } from "@viben/core/shared";
+import type { ExecutorInfo } from "@/lib/gateway";
 
 // ============================================================================
 // Route Detection
@@ -76,7 +76,8 @@ export interface UseChatConfigReturn {
   // Filtered lists based on context
   agents: ChatAgentConfig[];
   models: ChatModelConfig[];
-  executors: typeof AGENT_TYPES;
+  /** Executors loaded from Gateway API */
+  executors: ExecutorInfo[];
 
   // Selection state
   selectedAgentId: string | null;
@@ -86,8 +87,8 @@ export interface UseChatConfigReturn {
   selectedExecutor: ExecutorType;
 
   // Actions
-  setSelectedAgentId: (id: string) => void;
-  setSelectedModelId: (id: string) => void;
+  setSelectedAgentId: (id: string | null) => void;
+  setSelectedModelId: (id: string | null) => void;
   setSelectedExecutor: (executor: ExecutorType) => void;
 
   // Visibility control
@@ -142,6 +143,13 @@ export function useChatConfig(): UseChatConfigReturn {
     error: modelsError,
   } = useModels();
 
+  // Load executors from Gateway API
+  const {
+    executors,
+    loading: executorsLoading,
+    error: executorsError,
+  } = useExecutors();
+
   // Sync viben agents to store
   useEffect(() => {
     if (!agentsLoading && vibenAgents.length > 0) {
@@ -171,14 +179,14 @@ export function useChatConfig(): UseChatConfigReturn {
 
   // Update loading state
   useEffect(() => {
-    setLoading(agentsLoading || modelsLoading);
-  }, [agentsLoading, modelsLoading, setLoading]);
+    setLoading(agentsLoading || modelsLoading || executorsLoading);
+  }, [agentsLoading, modelsLoading, executorsLoading, setLoading]);
 
   // Update error state
   useEffect(() => {
-    const errorMsg = agentsError || modelsError || null;
+    const errorMsg = agentsError || modelsError || executorsError || null;
     setError(errorMsg);
-  }, [agentsError, modelsError, setError]);
+  }, [agentsError, modelsError, executorsError, setError]);
 
   // Filter agents based on context
   const filteredAgents = useMemo((): ChatAgentConfig[] => {
@@ -237,14 +245,14 @@ export function useChatConfig(): UseChatConfigReturn {
 
   // Memoized selection handlers
   const handleSetAgentId = useCallback(
-    (id: string) => {
+    (id: string | null) => {
       setSelectedAgentId(id);
     },
     [setSelectedAgentId]
   );
 
   const handleSetModelId = useCallback(
-    (id: string) => {
+    (id: string | null) => {
       setSelectedModelId(id);
     },
     [setSelectedModelId]
@@ -265,7 +273,7 @@ export function useChatConfig(): UseChatConfigReturn {
     // Filtered lists
     agents: filteredAgents,
     models: filteredModels,
-    executors: AGENT_TYPES,
+    executors,
 
     // Selection state
     selectedAgentId,
@@ -286,7 +294,7 @@ export function useChatConfig(): UseChatConfigReturn {
     context,
 
     // Loading state
-    isLoading: storeLoading || agentsLoading || modelsLoading,
+    isLoading: storeLoading || agentsLoading || modelsLoading || executorsLoading,
     error,
   };
 }

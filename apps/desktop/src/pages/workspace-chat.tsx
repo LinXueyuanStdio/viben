@@ -708,7 +708,8 @@ export function WorkspaceChatPage() {
   } : undefined;
 
   // Agent hook - use workspace path as workdir for the agent
-  // Pass complete agent configuration directly
+  // Pass agent config path (preferred) or inline config as fallback
+  // Also pass sessionId for message persistence
   const {
     messages,
     phase,
@@ -727,7 +728,11 @@ export function WorkspaceChatPage() {
     loadMessages,
     gatewayConnected,
     checkGatewayConnection,
-  } = useAgentConversation(workspace?.path || "", { agentConfig: currentAgentConfig });
+  } = useAgentConversation(workspace?.path || "", {
+    agentPath: currentAgent?.config_path,
+    agentConfig: currentAgent?.config_path ? undefined : currentAgentConfig,
+    sessionId: selectedConversationId || undefined,
+  });
 
   // Debug: Log messages changes
   React.useEffect(() => {
@@ -1888,9 +1893,10 @@ export function WorkspaceChatPage() {
                 selectedExecutorId={selectedSidebarExecutorId}
                 source={workspace?.path ? { type: "workspace", path: workspace.path } : undefined}
                 onSelect={(executor) => {
-                  // Exit group chat mode and select executor
+                  // Exit group chat mode and agent mode, select executor
                   setSelectedGroupChatId(null);
                   setSelectedGroupSessionId(null);
+                  setSelectedAgentId(null);
                   setSelectedSidebarExecutorId(executor.id);
                 }}
                 onSettings={(executor) => {
