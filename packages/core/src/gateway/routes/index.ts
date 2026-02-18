@@ -23,7 +23,6 @@ import { registerMcpRoutes } from "./mcp";
 import { registerAgentRunRoutes } from "./agent-run";
 import { registerFileRoutes } from "./files";
 import { registerTelemetryRoutes } from "./telemetry";
-import { registerSessionTaskRoutes } from "./session-tasks";
 
 /**
  * Register all routes
@@ -49,7 +48,6 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerAgentRunRoutes(fastify);
   registerFileRoutes(fastify);
   registerTelemetryRoutes(fastify);
-  registerSessionTaskRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -73,7 +71,6 @@ export { registerMcpRoutes } from "./mcp";
 export { registerAgentRunRoutes } from "./agent-run";
 export { registerFileRoutes } from "./files";
 export { registerTelemetryRoutes } from "./telemetry";
-export { registerSessionTaskRoutes } from "./session-tasks";
 export type {
   SSEEventType,
   SSEMessage,

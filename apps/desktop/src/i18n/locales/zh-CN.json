@@ -91,7 +91,8 @@
     "loadMore": "加载更多",
     "send": "发送",
     "you": "你",
-    "unknown": "未知"
+    "unknown": "未知",
+    "openInExplorer": "在文件管理器中打开"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -660,6 +661,7 @@
     "mergedConfig": "合并配置",
     "projectConfig": "项目配置",
     "globalConfig": "全局配置",
+    "workspaceConfig": "工作空间配置",
     "projectConfigPath": "项目配置路径",
     "globalConfigPath": "全局配置路径",
     "prioritized": "优先",

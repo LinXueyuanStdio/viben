@@ -107,11 +107,11 @@ async function listJobs(ctx: OutputContext): Promise<void> {
         id: j.id,
         name: j.name,
         enabled: j.enabled,
-        jobType: j.jobType,
+        job_type: j.job_type,
         schedule: j.cron || (j.every ? `every ${j.every}s` : null),
         agent: j.agent,
-        lastStatus: j.lastStatus,
-        nextRun: j.nextRun,
+        last_status: j.last_status,
+        next_run: j.next_run,
       })),
       count: jobs.length,
     }),
@@ -132,10 +132,10 @@ async function listJobs(ctx: OutputContext): Promise<void> {
         j.id,
         j.name,
         formatEnabled(j.enabled),
-        j.jobType,
+        j.job_type,
         formatSchedule(j),
-        formatStatus(j.lastStatus),
-        formatTimestamp(j.nextRun),
+        formatStatus(j.last_status),
+        formatTimestamp(j.next_run),
       ]);
 
       outputTable(ctx, headers, rows);
@@ -169,7 +169,7 @@ async function showJob(ctx: OutputContext, id: string): Promise<void> {
       ID: job.id,
       Name: job.name,
       Enabled: job.enabled ? "Yes" : "No",
-      Type: job.jobType,
+      Type: job.job_type,
       Agent: job.agent,
     };
 
@@ -189,19 +189,19 @@ async function showJob(ctx: OutputContext, id: string): Promise<void> {
       details["Channel"] = job.channel;
     }
 
-    details["Created"] = formatTimestamp(job.createdAt);
-    details["Updated"] = formatTimestamp(job.updatedAt);
-    details["Last Run"] = formatTimestamp(job.lastRun);
-    details["Last Status"] = job.lastStatus || "-";
-    details["Next Run"] = formatTimestamp(job.nextRun);
+    details["Created"] = formatTimestamp(job.created_at);
+    details["Updated"] = formatTimestamp(job.updated_at);
+    details["Last Run"] = formatTimestamp(job.last_run);
+    details["Last Status"] = job.last_status || "-";
+    details["Next Run"] = formatTimestamp(job.next_run);
 
-    if (job.lastError) {
-      details["Last Error"] = job.lastError;
+    if (job.last_error) {
+      details["Last Error"] = job.last_error;
     }
-    if (job.lastOutput) {
-      details["Last Output"] = job.lastOutput.length > 100
-        ? job.lastOutput.slice(0, 100) + "..."
-        : job.lastOutput;
+    if (job.last_output) {
+      details["Last Output"] = job.last_output.length > 100
+        ? job.last_output.slice(0, 100) + "..."
+        : job.last_output;
     }
 
     outputKeyValue(ctx, details);
@@ -244,7 +244,7 @@ async function addJob(
   const createJob: CreateCronJob = {
     name,
     agent: options.agentId || "main",
-    jobType: options.script ? "script" : "agent",
+    job_type: options.script ? "script" : "agent",
     cron: options.cron,
     every: options.every ? parseInt(options.every, 10) : undefined,
     message: options.message,
@@ -258,11 +258,11 @@ async function addJob(
   output(ctx, successResponse(job), () => {
     console.log(chalk.green(`Created cron job: ${job.name}`));
     console.log(`  ID: ${job.id}`);
-    console.log(`  Type: ${job.jobType}`);
+    console.log(`  Type: ${job.job_type}`);
     console.log(`  Schedule: ${formatSchedule(job)}`);
     console.log(`  Agent: ${job.agent}`);
-    if (job.nextRun) {
-      console.log(`  Next Run: ${formatTimestamp(job.nextRun)}`);
+    if (job.next_run) {
+      console.log(`  Next Run: ${formatTimestamp(job.next_run)}`);
     }
   });
 }
@@ -309,8 +309,8 @@ async function enableJob(ctx: OutputContext, id: string): Promise<void> {
   output(ctx, successResponse(job), () => {
     console.log(chalk.green(`Enabled cron job: ${job.name}`));
     console.log(`  ID: ${id}`);
-    if (job.nextRun) {
-      console.log(`  Next Run: ${formatTimestamp(job.nextRun)}`);
+    if (job.next_run) {
+      console.log(`  Next Run: ${formatTimestamp(job.next_run)}`);
     }
   });
 }
@@ -360,24 +360,24 @@ async function runJob(ctx: OutputContext, id: string): Promise<void> {
     successResponse({
       id,
       name: job.name,
-      status: updatedJob?.lastStatus,
-      output: updatedJob?.lastOutput,
-      error: updatedJob?.lastError,
+      status: updatedJob?.last_status,
+      output: updatedJob?.last_output,
+      error: updatedJob?.last_error,
     }),
     () => {
-      if (updatedJob?.lastStatus === "success") {
+      if (updatedJob?.last_status === "success") {
         console.log(chalk.green(`Job completed successfully`));
-      } else if (updatedJob?.lastStatus === "failure") {
+      } else if (updatedJob?.last_status === "failure") {
         console.log(chalk.red(`Job failed`));
-        if (updatedJob.lastError) {
-          console.log(`  Error: ${updatedJob.lastError}`);
+        if (updatedJob.last_error) {
+          console.log(`  Error: ${updatedJob.last_error}`);
         }
       }
 
-      if (updatedJob?.lastOutput) {
+      if (updatedJob?.last_output) {
         console.log();
         console.log(chalk.bold("Output:"));
-        console.log(updatedJob.lastOutput);
+        console.log(updatedJob.last_output);
       }
     }
   );

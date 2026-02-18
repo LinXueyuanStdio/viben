@@ -80,7 +80,6 @@ import {
   useAgentConversation,
   useCloudSkillPackages,
   useLocalWorkspaces,
-  useWorkspaceAgents,
   useWorkspaceMcpServers,
   useWorkspaceSkills,
   useWorkspaceAgentConfigs,
@@ -272,10 +271,24 @@ export function AgentDetailPage() {
 
   // Workspace executors (auto-discovered from .claude, .cursor, etc.)
   // These are read-only executor configurations, not user-created agents
+  // Use useExecutors with workspacePath (not workspaceId) per API convention
   const {
-    agents: workspaceExecutors,
+    executors: workspaceExecutorsRaw,
     loading: executorsLoading,
-  } = useWorkspaceAgents(workspaceId || null);
+  } = useExecutors({ workspacePath: workspace?.path });
+
+  // Transform ExecutorInfo to the format expected by ExecutorDetailView
+  const workspaceExecutors = useMemo(() => {
+    return workspaceExecutorsRaw.map((e) => ({
+      id: e.type, // Use type as ID for matching URL param (e.g., "CLAUDE_CODE")
+      workspace_id: workspaceId || "",
+      name: e.name,
+      type: e.type,
+      config_path: e.workspace_config_path || e.global_config_path || "",
+      mcp_config_file: null,
+      skills_config_file: null,
+    }));
+  }, [workspaceExecutorsRaw, workspaceId]);
 
   const { models } = useModels();
   const { executors: availableExecutors } = useExecutors();
@@ -326,8 +339,12 @@ export function AgentDetailPage() {
   );
 
   // Then try to find in workspace executors (auto-discovered, read-only)
+  // Note: agentId from URL can be either:
+  // 1. An executor type (e.g., "CLAUDE_CODE") - used by useAgentList
+  // 2. An actual executor ID (UUID) - used by legacy useWorkspaceAgents
+  // We need to search by both type and id to handle both cases
   const workspaceExecutor = useMemo(
-    () => workspaceExecutors.find((a) => a.id === agentId) || null,
+    () => workspaceExecutors.find((a) => a.type === agentId || a.id === agentId) || null,
     [workspaceExecutors, agentId]
   );
 
@@ -339,12 +356,21 @@ export function AgentDetailPage() {
   const [loadingFullAgent, setLoadingFullAgent] = useState(false);
 
   // Load full agent details when agent ID changes
+  // Skip loading if we already found a matching executor (executors don't need API loading)
   // We don't require agentInfo pre-check because:
   // 1. The agent list might not have loaded yet
   // 2. We want to try loading the agent directly from API
   useEffect(() => {
     if (!agentId) {
       setFullAgent(null);
+      return;
+    }
+
+    // If we found a matching executor, don't try to load as agent
+    // Note: workspaceExecutor is memoized, so this check is safe
+    if (workspaceExecutor) {
+      setFullAgent(null);
+      setLoadingFullAgent(false);
       return;
     }
 
@@ -363,7 +389,7 @@ export function AgentDetailPage() {
     };
 
     loadFullAgent();
-  }, [agentId]);
+  }, [agentId, workspaceExecutor]);
 
   // Determine if we're viewing an executor or an agent
   // If we found a matching executor AND no matching agent, it's an executor

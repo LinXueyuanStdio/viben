@@ -1,7 +1,7 @@
 /**
  * Cron Service Tests
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,42 +11,42 @@ import { EventService } from "./events";
 describe("CronService", () => {
   let service: CronService;
   let events: EventService;
-  let tempDir: string;
+  let temp_dir: string;
 
   beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "viben-cron-test-"));
+    temp_dir = await mkdtemp(join(tmpdir(), "viben-cron-test-"));
     events = new EventService();
-    service = new CronService(events, join(tempDir, "cron.yaml"));
+    service = new CronService(events, join(temp_dir, "cron.yaml"));
     await service.load();
   });
 
   afterEach(async () => {
     await service.shutdown();
-    await rm(tempDir, { recursive: true, force: true });
+    await rm(temp_dir, { recursive: true, force: true });
   });
 
   describe("createJob", () => {
     it("should create a new cron job with cron expression", async () => {
       const job = await service.createJob({
         name: "Test Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo test",
       });
 
       expect(job.id).toBeDefined();
       expect(job.name).toBe("Test Job");
-      expect(job.jobType).toBe("script");
+      expect(job.job_type).toBe("script");
       expect(job.cron).toBe("0 * * * *");
       expect(job.enabled).toBe(true);
-      // lastStatus could be "Success", "Failure", "Running" or undefined for new jobs
-      expect(job.lastStatus === undefined || ["Success", "Failure", "Running"].includes(job.lastStatus)).toBe(true);
+      // last_status could be "success", "failure", "running" or undefined for new jobs
+      expect(job.last_status === undefined || ["success", "failure", "running"].includes(job.last_status)).toBe(true);
     });
 
     it("should create job with every interval", async () => {
       const job = await service.createJob({
         name: "Interval Job",
-        jobType: "script",
+        job_type: "script",
         every: 300, // 5 minutes
         script: "echo interval",
       });
@@ -57,7 +57,7 @@ describe("CronService", () => {
     it("should create disabled job", async () => {
       const job = await service.createJob({
         name: "Disabled Job",
-        jobType: "script",
+        job_type: "script",
         cron: "*/5 * * * *",
         script: "echo hello",
         enabled: false,
@@ -69,19 +69,19 @@ describe("CronService", () => {
     it("should create job with notification settings", async () => {
       const job = await service.createJob({
         name: "Notify Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 0 * * *",
         script: "echo daily",
         notifications: {
-          inApp: true,
+          in_app: true,
           system: true,
-          channelIds: ["telegram"],
+          channel_ids: ["telegram"],
         },
       });
 
-      expect(job.notifications?.inApp).toBe(true);
+      expect(job.notifications?.in_app).toBe(true);
       expect(job.notifications?.system).toBe(true);
-      expect(job.notifications?.channelIds).toEqual(["telegram"]);
+      expect(job.notifications?.channel_ids).toEqual(["telegram"]);
     });
   });
 
@@ -89,7 +89,7 @@ describe("CronService", () => {
     it("should get job by id", async () => {
       const created = await service.createJob({
         name: "Get Test",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "ls",
       });
@@ -108,13 +108,13 @@ describe("CronService", () => {
     it("should list all jobs", async () => {
       await service.createJob({
         name: "Job 1",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo 1",
       });
       await service.createJob({
         name: "Job 2",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo 2",
       });
@@ -133,7 +133,7 @@ describe("CronService", () => {
     it("should update job name", async () => {
       const job = await service.createJob({
         name: "Original",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo",
       });
@@ -145,7 +145,7 @@ describe("CronService", () => {
     it("should update job cron expression", async () => {
       const job = await service.createJob({
         name: "Cron Test",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo",
       });
@@ -167,7 +167,7 @@ describe("CronService", () => {
     it("should delete job", async () => {
       const job = await service.createJob({
         name: "To Delete",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo",
       });
@@ -187,7 +187,7 @@ describe("CronService", () => {
     it("should enable a disabled job", async () => {
       const job = await service.createJob({
         name: "Enable Test",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo",
         enabled: false,
@@ -200,7 +200,7 @@ describe("CronService", () => {
     it("should disable an enabled job", async () => {
       const job = await service.createJob({
         name: "Disable Test",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo",
         enabled: true,
@@ -215,7 +215,7 @@ describe("CronService", () => {
     it("should run script job immediately", async () => {
       const job = await service.createJob({
         name: "Run Test",
-        jobType: "script",
+        job_type: "script",
         cron: "0 0 1 1 *", // Never runs automatically
         script: "echo hello",
       });
@@ -233,27 +233,161 @@ describe("CronService", () => {
     it("should create script type job", async () => {
       const job = await service.createJob({
         name: "Script Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "npm run build",
       });
 
-      expect(job.jobType).toBe("script");
+      expect(job.job_type).toBe("script");
       expect(job.script).toBe("npm run build");
     });
 
     it("should create agent type job", async () => {
       const job = await service.createJob({
         name: "Agent Job",
-        jobType: "agent",
+        job_type: "agent",
         cron: "0 * * * *",
         agent: "claude-1",
         message: "Do something",
       });
 
-      expect(job.jobType).toBe("agent");
+      expect(job.job_type).toBe("agent");
       expect(job.agent).toBe("claude-1");
       expect(job.message).toBe("Do something");
+    });
+  });
+
+  describe("event broadcasting", () => {
+    it("should broadcast cron_job_created event with snake_case fields", async () => {
+      const broadcast_spy = vi.spyOn(events, "broadcast");
+
+      await service.createJob({
+        name: "Event Test",
+        job_type: "script",
+        cron: "0 * * * *",
+        script: "echo test",
+      });
+
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_created",
+          data: expect.objectContaining({
+            job: expect.objectContaining({
+              name: "Event Test",
+              job_type: "script",
+            }),
+          }),
+        })
+      );
+    });
+
+    it("should broadcast cron_job_updated event with snake_case fields", async () => {
+      const job = await service.createJob({
+        name: "Update Event Test",
+        job_type: "script",
+        cron: "0 * * * *",
+        script: "echo test",
+      });
+
+      const broadcast_spy = vi.spyOn(events, "broadcast");
+
+      await service.updateJob(job.id, { name: "Updated Name" });
+
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_updated",
+          data: expect.objectContaining({
+            job: expect.objectContaining({
+              name: "Updated Name",
+              job_type: "script",
+            }),
+          }),
+        })
+      );
+    });
+
+    it("should broadcast cron_job_deleted event with snake_case fields", async () => {
+      const job = await service.createJob({
+        name: "Delete Event Test",
+        job_type: "script",
+        cron: "0 * * * *",
+        script: "echo test",
+      });
+
+      const broadcast_spy = vi.spyOn(events, "broadcast");
+
+      await service.deleteJob(job.id);
+
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_deleted",
+          data: { job_id: job.id },
+        })
+      );
+    });
+
+    it("should broadcast cron_job_triggered and cron_job_completed events on runJob", async () => {
+      const job = await service.createJob({
+        name: "Run Event Test",
+        job_type: "script",
+        cron: "0 0 1 1 *",
+        script: "echo hello",
+      });
+
+      const broadcast_spy = vi.spyOn(events, "broadcast");
+
+      await service.runJob(job.id);
+
+      // Should have triggered event
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_triggered",
+          data: expect.objectContaining({
+            job_id: job.id,
+            triggered_at: expect.any(Number),
+          }),
+        })
+      );
+
+      // Should have completed event
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_completed",
+          data: expect.objectContaining({
+            job_id: job.id,
+            job_name: "Run Event Test",
+            job_type: "script",
+            status: expect.stringMatching(/success|failure/),
+            duration_ms: expect.any(Number),
+            completed_at: expect.any(Number),
+          }),
+        })
+      );
+    });
+
+    it("should broadcast cron_job_message event for agent jobs", async () => {
+      const job = await service.createJob({
+        name: "Agent Event Test",
+        job_type: "agent",
+        cron: "0 0 1 1 *",
+        agent: "test-agent",
+        message: "Test message",
+      });
+
+      const broadcast_spy = vi.spyOn(events, "broadcast");
+
+      await service.runJob(job.id);
+
+      expect(broadcast_spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "cron_job_message",
+          data: {
+            job_id: job.id,
+            agent_id: "test-agent",
+            message: "Test message",
+          },
+        })
+      );
     });
   });
 });

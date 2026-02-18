@@ -3,6 +3,8 @@
  *
  * Provides scheduled task execution using node-cron.
  * Jobs are persisted to a YAML configuration file.
+ *
+ * All field names use snake_case for consistency.
  */
 import { join } from "node:path";
 import { homedir } from "node:os";
@@ -26,15 +28,16 @@ export type CronJobType = "agent" | "script";
  */
 export interface CronNotificationSettings {
   /** Enable in-app notifications */
-  inApp?: boolean;
+  in_app?: boolean;
   /** Enable system notifications (OS-level) */
   system?: boolean;
   /** Channel instance IDs to notify */
-  channelIds?: string[];
+  channel_ids?: string[];
 }
 
 /**
  * A scheduled cron job
+ * All fields use snake_case naming convention
  */
 export interface CronJob {
   /** Unique job ID */
@@ -44,7 +47,7 @@ export interface CronJob {
   /** Whether the job is enabled */
   enabled: boolean;
   /** Job type: agent or script */
-  jobType: CronJobType;
+  job_type: CronJobType;
   /** Message to send to agent (optional - uses name if empty) */
   message?: string;
   /** Bash script to execute (for script type) */
@@ -60,19 +63,19 @@ export interface CronJob {
   /** Notification settings */
   notifications?: CronNotificationSettings;
   /** Last execution timestamp (milliseconds) */
-  lastRun?: number;
+  last_run?: number;
   /** Last execution status */
-  lastStatus?: JobStatus;
+  last_status?: JobStatus;
   /** Last error message if failed */
-  lastError?: string;
+  last_error?: string;
   /** Last script output */
-  lastOutput?: string;
+  last_output?: string;
   /** Next scheduled execution timestamp (milliseconds) */
-  nextRun?: number;
+  next_run?: number;
   /** Creation timestamp (milliseconds) */
-  createdAt: number;
+  created_at: number;
   /** Last update timestamp (milliseconds) */
-  updatedAt: number;
+  updated_at: number;
 }
 
 /**
@@ -84,7 +87,7 @@ export interface CreateCronJob {
   /** Human-readable name */
   name: string;
   /** Job type: agent or script */
-  jobType?: CronJobType;
+  job_type?: CronJobType;
   /** Message to send to agent (optional - defaults to name if empty) */
   message?: string;
   /** Bash script to execute (for script type) */
@@ -108,7 +111,7 @@ export interface CreateCronJob {
  */
 export interface UpdateCronJob {
   name?: string;
-  jobType?: CronJobType;
+  job_type?: CronJobType;
   message?: string;
   script?: string;
   cron?: string;
@@ -131,16 +134,16 @@ interface CronConfig {
  * Cron service for managing scheduled jobs
  */
 export class CronService {
-  private configPath: string;
+  private config_path: string;
   private events: EventService;
   private jobs: Map<string, CronJob> = new Map();
-  private scheduledJobs: Map<string, NodeJS.Timeout> = new Map();
+  private scheduled_jobs: Map<string, NodeJS.Timeout> = new Map();
   private started = false;
 
-  constructor(events: EventService, configPath?: string) {
+  constructor(events: EventService, config_path?: string) {
     this.events = events;
-    this.configPath =
-      configPath ||
+    this.config_path =
+      config_path ||
       join(homedir(), ".viben", "cron.yaml");
   }
 
@@ -148,11 +151,11 @@ export class CronService {
    * Load jobs from config file
    */
   private async loadConfig(): Promise<CronConfig> {
-    if (!existsSync(this.configPath)) {
+    if (!existsSync(this.config_path)) {
       return { version: 1, jobs: {} };
     }
 
-    const content = await readFile(this.configPath, "utf-8");
+    const content = await readFile(this.config_path, "utf-8");
     return this.parseYaml(content);
   }
 
@@ -160,7 +163,7 @@ export class CronService {
    * Save jobs to config file
    */
   private async saveConfig(): Promise<void> {
-    const dir = join(this.configPath, "..");
+    const dir = join(this.config_path, "..");
     await mkdir(dir, { recursive: true });
 
     const config: CronConfig = {
@@ -169,7 +172,7 @@ export class CronService {
     };
 
     const yaml = this.configToYaml(config);
-    await writeFile(this.configPath, yaml);
+    await writeFile(this.config_path, yaml);
   }
 
   /**
@@ -202,9 +205,9 @@ export class CronService {
    */
   async shutdown(): Promise<void> {
     // Clear all scheduled jobs
-    for (const [id, timer] of this.scheduledJobs) {
+    for (const [id, timer] of this.scheduled_jobs) {
       clearTimeout(timer);
-      this.scheduledJobs.delete(id);
+      this.scheduled_jobs.delete(id);
     }
 
     // Save current state
@@ -218,37 +221,37 @@ export class CronService {
    */
   private scheduleJob(job: CronJob): void {
     // Clear existing schedule
-    const existingTimer = this.scheduledJobs.get(job.id);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-      this.scheduledJobs.delete(job.id);
+    const existing_timer = this.scheduled_jobs.get(job.id);
+    if (existing_timer) {
+      clearTimeout(existing_timer);
+      this.scheduled_jobs.delete(job.id);
     }
 
     if (job.cron) {
       // Calculate next run time from cron expression
-      const nextRun = this.getNextCronTime(job.cron);
-      if (nextRun) {
-        job.nextRun = nextRun.getTime();
-        const delay = nextRun.getTime() - Date.now();
+      const next_run = this.getNextCronTime(job.cron);
+      if (next_run) {
+        job.next_run = next_run.getTime();
+        const delay = next_run.getTime() - Date.now();
         if (delay > 0) {
           const timer = setTimeout(() => {
             this.executeJob(job.id);
             // Reschedule for next cron time
             this.scheduleJob(job);
           }, delay);
-          this.scheduledJobs.set(job.id, timer);
+          this.scheduled_jobs.set(job.id, timer);
         }
       }
     } else if (job.every) {
       // Interval scheduling
       const delay = job.every * 1000;
-      job.nextRun = Date.now() + delay;
+      job.next_run = Date.now() + delay;
       const timer = setTimeout(() => {
         this.executeJob(job.id);
         // Reschedule
         this.scheduleJob(job);
       }, delay);
-      this.scheduledJobs.set(job.id, timer);
+      this.scheduled_jobs.set(job.id, timer);
     }
 
     this.jobs.set(job.id, job);
@@ -257,10 +260,10 @@ export class CronService {
   /**
    * Get next cron time (simple implementation for common patterns)
    */
-  private getNextCronTime(cronExpr: string): Date | null {
+  private getNextCronTime(cron_expr: string): Date | null {
     try {
       // Simple cron parser for common patterns
-      const parts = cronExpr.trim().split(/\s+/);
+      const parts = cron_expr.trim().split(/\s+/);
       if (parts.length !== 5 && parts.length !== 6) return null;
 
       // For now, just return a time in the near future for interval-like patterns
@@ -295,21 +298,21 @@ export class CronService {
   /**
    * Execute a job
    */
-  private async executeJob(jobId: string): Promise<void> {
-    const job = this.jobs.get(jobId);
+  private async executeJob(job_id: string): Promise<void> {
+    const job = this.jobs.get(job_id);
     if (!job) return;
 
     const now = Date.now();
 
     // Mark job as running
-    job.lastRun = now;
-    job.lastStatus = "running";
-    this.jobs.set(jobId, job);
+    job.last_run = now;
+    job.last_status = "running";
+    this.jobs.set(job_id, job);
 
     // Broadcast triggered event
     this.events.broadcast({
       type: "cron_job_triggered",
-      data: { jobId, triggeredAt: now },
+      data: { job_id, triggered_at: now },
     });
 
     let status: JobStatus;
@@ -317,7 +320,7 @@ export class CronService {
     let output: string | undefined;
 
     try {
-      if (job.jobType === "script") {
+      if (job.job_type === "script") {
         const result = await this.executeScript(job);
         status = result.status;
         error = result.error;
@@ -327,7 +330,7 @@ export class CronService {
         const message = job.message || job.name;
         this.events.broadcast({
           type: "cron_job_message",
-          data: { jobId, agentId: job.agent, message },
+          data: { job_id, agent_id: job.agent, message },
         });
         status = "success";
         output = `Message sent to agent '${job.agent}': ${message}`;
@@ -338,32 +341,32 @@ export class CronService {
     }
 
     // Update job status
-    job.lastStatus = status;
-    job.lastError = error;
-    job.lastOutput = output;
-    this.jobs.set(jobId, job);
+    job.last_status = status;
+    job.last_error = error;
+    job.last_output = output;
+    this.jobs.set(job_id, job);
 
     // Save config
     await this.saveConfig();
 
     // Calculate execution duration
-    const completedAt = Date.now();
-    const durationMs = completedAt - now;
+    const completed_at = Date.now();
+    const duration_ms = completed_at - now;
 
     // Truncate output for notification
-    const truncatedOutput = output && output.length > 200 ? output.slice(0, 200) + "..." : output;
+    const truncated_output = output && output.length > 200 ? output.slice(0, 200) + "..." : output;
 
     // Broadcast completed event
     this.events.broadcast({
       type: "cron_job_completed",
       data: {
-        jobId,
-        jobName: job.name,
-        jobType: job.jobType,
+        job_id,
+        job_name: job.name,
+        job_type: job.job_type,
         status,
-        durationMs,
-        output: truncatedOutput,
-        completedAt,
+        duration_ms,
+        output: truncated_output,
+        completed_at,
       },
     });
   }
@@ -400,15 +403,15 @@ export class CronService {
       });
 
       child.on("close", (code: number | null) => {
-        const combinedOutput = stderr ? `${stdout}\n[stderr]\n${stderr}` : stdout;
+        const combined_output = stderr ? `${stdout}\n[stderr]\n${stderr}` : stdout;
 
         if (code === 0) {
-          resolve({ status: "success", output: combinedOutput });
+          resolve({ status: "success", output: combined_output });
         } else {
           resolve({
             status: "failure",
             error: `Script exited with code: ${code}`,
-            output: combinedOutput,
+            output: combined_output,
           });
         }
       });
@@ -466,7 +469,7 @@ export class CronService {
       id,
       name: create.name,
       enabled: create.enabled ?? true,
-      jobType: create.jobType || "agent",
+      job_type: create.job_type || "agent",
       message: create.message,
       script: create.script,
       cron: create.cron,
@@ -474,8 +477,8 @@ export class CronService {
       channel: create.channel,
       agent: create.agent || "main",
       notifications: create.notifications,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     // Store job
@@ -507,12 +510,12 @@ export class CronService {
       throw new CronError(`Job not found: ${id}`);
     }
 
-    const scheduleChanged = update.cron !== undefined || update.every !== undefined;
-    const enabledChanged = update.enabled !== undefined;
+    const schedule_changed = update.cron !== undefined || update.every !== undefined;
+    const enabled_changed = update.enabled !== undefined;
 
     // Apply updates
     if (update.name !== undefined) job.name = update.name;
-    if (update.jobType !== undefined) job.jobType = update.jobType;
+    if (update.job_type !== undefined) job.job_type = update.job_type;
     if (update.message !== undefined) job.message = update.message;
     if (update.script !== undefined) job.script = update.script;
     if (update.cron !== undefined) {
@@ -527,7 +530,7 @@ export class CronService {
     if (update.agent !== undefined) job.agent = update.agent;
     if (update.enabled !== undefined) job.enabled = update.enabled;
     if (update.notifications !== undefined) job.notifications = update.notifications;
-    job.updatedAt = Date.now();
+    job.updated_at = Date.now();
 
     // Store updated job
     this.jobs.set(id, job);
@@ -536,12 +539,12 @@ export class CronService {
     await this.saveConfig();
 
     // Reschedule if needed
-    if ((scheduleChanged || enabledChanged) && this.started) {
+    if ((schedule_changed || enabled_changed) && this.started) {
       // Clear existing schedule
-      const timer = this.scheduledJobs.get(id);
+      const timer = this.scheduled_jobs.get(id);
       if (timer) {
         clearTimeout(timer);
-        this.scheduledJobs.delete(id);
+        this.scheduled_jobs.delete(id);
       }
 
       // Reschedule if enabled
@@ -568,10 +571,10 @@ export class CronService {
     }
 
     // Clear schedule
-    const timer = this.scheduledJobs.get(id);
+    const timer = this.scheduled_jobs.get(id);
     if (timer) {
       clearTimeout(timer);
-      this.scheduledJobs.delete(id);
+      this.scheduled_jobs.delete(id);
     }
 
     // Remove from jobs
@@ -583,7 +586,7 @@ export class CronService {
     // Broadcast event
     this.events.broadcast({
       type: "cron_job_deleted",
-      data: { jobId: id },
+      data: { job_id: id },
     });
   }
 
@@ -620,16 +623,16 @@ export class CronService {
       id: job.id,
       name: job.name,
       enabled: job.enabled,
-      jobType: job.jobType,
+      job_type: job.job_type,
       message: job.message,
       script: job.script,
       cron: job.cron,
       every: job.every,
       channel: job.channel,
       agent: job.agent,
-      lastRun: job.lastRun,
-      lastStatus: job.lastStatus,
-      nextRun: job.nextRun,
+      last_run: job.last_run,
+      last_status: job.last_status,
+      next_run: job.next_run,
     };
   }
 
@@ -639,7 +642,7 @@ export class CronService {
   private parseYaml(yaml: string): CronConfig {
     try {
       // Try to parse as JSON first (our format is JSON-like)
-      const jsonLike = yaml
+      const json_like = yaml
         .split("\n")
         .map((line) => {
           const trimmed = line.trim();
@@ -652,46 +655,46 @@ export class CronService {
       const config: CronConfig = { version: 1, jobs: {} };
 
       // Look for jobs entries
-      const jobsMatch = yaml.match(/jobs:\s*\n([\s\S]*?)(?=\n\w|$)/);
-      if (jobsMatch) {
+      const jobs_match = yaml.match(/jobs:\s*\n([\s\S]*?)(?=\n\w|$)/);
+      if (jobs_match) {
         // Parse each job - this is a simplified parser
-        const jobLines = jobsMatch[1].split("\n");
-        let currentJob: Partial<CronJob> | null = null;
-        let currentId = "";
+        const job_lines = jobs_match[1].split("\n");
+        let current_job: Partial<CronJob> | null = null;
+        let current_id = "";
 
-        for (const line of jobLines) {
-          const indentMatch = line.match(/^(\s*)/);
-          const indent = indentMatch ? indentMatch[1].length : 0;
+        for (const line of job_lines) {
+          const indent_match = line.match(/^(\s*)/);
+          const indent = indent_match ? indent_match[1].length : 0;
 
           if (indent === 2 && line.includes(":")) {
             // New job entry
-            const idMatch = line.match(/^\s+"?([^":]+)"?:/);
-            if (idMatch) {
-              if (currentJob && currentId) {
-                config.jobs[currentId] = currentJob as CronJob;
+            const id_match = line.match(/^\s+"?([^":]+)"?:/);
+            if (id_match) {
+              if (current_job && current_id) {
+                config.jobs[current_id] = current_job as CronJob;
               }
-              currentId = idMatch[1];
-              currentJob = { id: currentId };
+              current_id = id_match[1];
+              current_job = { id: current_id };
             }
-          } else if (indent === 4 && currentJob) {
+          } else if (indent === 4 && current_job) {
             // Job property
-            const propMatch = line.match(/^\s+(\w+):\s*(.+)?$/);
-            if (propMatch) {
-              const [, key, valueStr] = propMatch;
-              if (valueStr) {
+            const prop_match = line.match(/^\s+(\w+):\s*(.+)?$/);
+            if (prop_match) {
+              const [, key, value_str] = prop_match;
+              if (value_str) {
                 try {
-                  const value = JSON.parse(valueStr);
-                  (currentJob as Record<string, unknown>)[key] = value;
+                  const value = JSON.parse(value_str);
+                  (current_job as Record<string, unknown>)[key] = value;
                 } catch {
-                  (currentJob as Record<string, unknown>)[key] = valueStr.replace(/^["']|["']$/g, "");
+                  (current_job as Record<string, unknown>)[key] = value_str.replace(/^["']|["']$/g, "");
                 }
               }
             }
           }
         }
 
-        if (currentJob && currentId) {
-          config.jobs[currentId] = currentJob as CronJob;
+        if (current_job && current_id) {
+          config.jobs[current_id] = current_job as CronJob;
         }
       }
 

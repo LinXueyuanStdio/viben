@@ -95,7 +95,6 @@ export {
   useAgentList,
   useChatList,
   // Legacy hooks (for backwards compatibility)
-  useWorkspaceExecutors as useWorkspaceExecutorsFromGateway,
   useWorkspaceAgentsFromGateway,
   useWorkspaceResources,
 } from "./use-workspace-resources";
@@ -115,7 +114,6 @@ export type {
   UseChatListReturn,
   AgentOperations,
   // Legacy types (for backwards compatibility)
-  UseWorkspaceExecutorsReturn,
   UseWorkspaceAgentsFromGatewayReturn,
   UseWorkspaceResourcesReturn,
 } from "./use-workspace-resources";
@@ -162,7 +160,7 @@ export type {
 // Types are now available via @/lib/gateway (AgentInfo, VibenAgentResponse, etc.)
 
 // Unified Agents (combines executors and agents)
-export { useUnifiedAgents, useVibenAgentsOnly, useWorkspaceExecutors } from "./use-unified-agents";
+export { useUnifiedAgents, useVibenAgentsOnly } from "./use-unified-agents";
 export type { UseUnifiedAgentsOptions, UseUnifiedAgentsReturn } from "./use-unified-agents";
 
 // Workspace Chat - Agent Conversation

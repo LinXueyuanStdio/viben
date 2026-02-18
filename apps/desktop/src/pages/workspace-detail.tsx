@@ -20,10 +20,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DashboardCard } from "@/components/ui/dashboard-card";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
-import { useLocalWorkspaces, useWorkspaceAgents } from "@/hooks";
+import { useLocalWorkspaces, useExecutors } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import type { WorkspaceAgent } from "@/types";
+import type { ExecutorInfo } from "@/lib/gateway";
 
 // Auto-refresh interval (10 minutes)
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
@@ -38,9 +38,12 @@ export function WorkspaceDetailPage() {
     isLoading: isLoadingWorkspaces,
     workspaces,
   } = useLocalWorkspaces();
-  const { agents, loading: isDiscovering, loadAgents } = useWorkspaceAgents(
-    workspaceId || null
-  );
+  // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
+  const {
+    executors,
+    loading: isDiscovering,
+    refresh: loadAgents,
+  } = useExecutors({ workspacePath: workspace?.path });
 
   const initialLoadDoneRef = useRef<string | null>(null);
 
@@ -175,7 +178,7 @@ export function WorkspaceDetailPage() {
             title={t("agents.title")}
             description={t("agents.list", "Manage your AI agents")}
             actionLabel={t("common.open", "打开")}
-            footer={`${agents.length} ${t("workspace.agentsDetected", "个智能体")}`}
+            footer={`${executors.length} ${t("workspace.agentsDetected", "个智能体")}`}
             footerIcon={Bot}
             onClick={() => navigate(`/workspace/${workspaceId}/agents`)}
           />
@@ -201,11 +204,11 @@ export function WorkspaceDetailPage() {
             </h2>
           </div>
 
-          {isDiscovering && agents.length === 0 ? (
+          {isDiscovering && executors.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : agents.length === 0 ? (
+          ) : executors.length === 0 ? (
             <Card interactive={false}>
               <CardContent className="py-12 text-center">
                 <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -219,10 +222,10 @@ export function WorkspaceDetailPage() {
             </Card>
           ) : (
             <div className="grid gap-4" key={workspaceId}>
-              {agents.map((agent) => (
-                <AgentCard
-                  key={agent.id}
-                  agent={agent}
+              {executors.map((executor) => (
+                <ExecutorCard
+                  key={executor.type}
+                  executor={executor}
                   workspaceId={workspace.id}
                 />
               ))}
@@ -234,15 +237,15 @@ export function WorkspaceDetailPage() {
   );
 }
 
-interface AgentCardProps {
-  agent: WorkspaceAgent;
+interface ExecutorCardProps {
+  executor: ExecutorInfo;
   workspaceId: string;
 }
 
-function AgentCard({ agent, workspaceId }: AgentCardProps) {
+function ExecutorCard({ executor, workspaceId }: ExecutorCardProps) {
   const { t } = useTranslation();
 
-  const agentIcons: Record<string, string> = {
+  const executorIcons: Record<string, string> = {
     CLAUDE_CODE: "CC",
     CODEX: "Cx",
     CURSOR: "Cu",
@@ -253,8 +256,9 @@ function AgentCard({ agent, workspaceId }: AgentCardProps) {
     UNKNOWN: "?",
   };
 
+  // Use executor.type as the route param (e.g., "CLAUDE_CODE")
   return (
-    <Link to={`/workspace/${workspaceId}/agent/${agent.id}`}>
+    <Link to={`/workspace/${workspaceId}/agent/${executor.type}`}>
       <Card
         className={cn(
           "cursor-pointer",
@@ -265,34 +269,24 @@ function AgentCard({ agent, workspaceId }: AgentCardProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold text-sm">
-                {agentIcons[agent.type] || agent.name[0]}
+                {executorIcons[executor.type] || executor.name[0]}
               </div>
               <div>
-                <h3 className="font-semibold">{agent.name}</h3>
+                <h3 className="font-semibold">{executor.name}</h3>
                 <p className="text-xs text-muted-foreground font-mono truncate max-w-xs">
-                  {agent.config_path}
+                  {executor.workspace_config_path || executor.global_config_path}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-4">
-              {/* MCP Config Status */}
+              {/* MCP Support Status */}
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Server className="h-3 w-3" />
                 <span>
-                  {agent.mcp_config_file
+                  {executor.supports_mcp
                     ? t("workspace.mcpConfigured")
                     : t("workspace.mcpNotConfigured")}
-                </span>
-              </div>
-
-              {/* Skills Config Status */}
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Sparkles className="h-3 w-3" />
-                <span>
-                  {agent.skills_config_file
-                    ? t("workspace.skillsConfigured")
-                    : t("workspace.skillsNotConfigured")}
                 </span>
               </div>
 

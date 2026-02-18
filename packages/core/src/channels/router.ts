@@ -137,19 +137,19 @@ export class ChannelRouter {
     const listener: EventListener = (event: GatewayEvent) => {
       if (event.type === "channel_message_received") {
         const data = event.data as {
-          channelType: string;
-          channelName: string;
-          chatId: string;
-          senderName?: string;
+          channel_type: string;
+          channel_name: string;
+          chat_id: string;
+          sender_name?: string;
           message: string;
           timestamp: number;
         };
 
         const msg: IncomingMessage = {
-          channelType: data.channelType,
-          channelName: data.channelName,
-          chatId: data.chatId,
-          senderName: data.senderName,
+          channelType: data.channel_type,
+          channelName: data.channel_name,
+          chatId: data.chat_id,
+          senderName: data.sender_name,
           message: data.message,
           timestamp: data.timestamp,
         };
@@ -283,10 +283,10 @@ export class ChannelRouter {
     this.events.broadcast({
       type: "channel_message_received",
       data: {
-        channelType: msg.channelType,
-        channelName: msg.channelName,
-        chatId: msg.chatId,
-        senderName: msg.senderName,
+        channel_type: msg.channelType,
+        channel_name: msg.channelName,
+        chat_id: msg.chatId,
+        sender_name: msg.senderName,
         message: msg.message,
         timestamp: msg.timestamp,
       },
@@ -371,7 +371,7 @@ export class ChannelRouter {
     // Broadcast session start event
     this.events.broadcast({
       type: "session_created",
-      data: { sessionId },
+      data: { session_id: sessionId },
     });
 
     // Check if we have a container service for spawning agents
@@ -382,7 +382,7 @@ export class ChannelRouter {
       this.events.broadcast({
         type: "session_message",
         data: {
-          sessionId,
+          session_id: sessionId,
           content: msg.message,
           role: "user",
         },

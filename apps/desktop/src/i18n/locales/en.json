@@ -91,7 +91,8 @@
     "loadMore": "Load more",
     "send": "Send",
     "you": "You",
-    "unknown": "Unknown"
+    "unknown": "Unknown",
+    "openInExplorer": "Open in file manager"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -657,9 +658,10 @@
     "workspaceScoped": "Workspace",
     "globalScopedDesc": "This agent is available across all workspaces",
     "workspaceScopedDesc": "This agent is only available in the current workspace",
-    "mergedConfig": "Merged",
+    "mergedConfig": "Merged config",
     "projectConfig": "Project",
-    "globalConfig": "Global",
+    "globalConfig": "Global config",
+    "workspaceConfig": "Workspace config",
     "projectConfigPath": "Project Config Path",
     "globalConfigPath": "Global Config Path",
     "prioritized": "Prioritized",
