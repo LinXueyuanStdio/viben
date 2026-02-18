@@ -211,10 +211,10 @@ describe("MessageBus", () => {
       expect(eventListener).toHaveBeenCalledWith({
         type: "channel_message_received",
         data: {
-          channelType: "telegram",
-          channelName: "test-channel",
-          chatId: "chat-123",
-          senderName: "TestUser",
+          channel_type: "telegram",
+          channel_name: "test-channel",
+          chat_id: "chat-123",
+          sender_name: "TestUser",
           message: "Hello",
           timestamp: 1234567890,
         },
@@ -550,8 +550,8 @@ describe("MessageBus", () => {
       expect(eventListener).toHaveBeenCalledWith({
         type: "channel_connection_status",
         data: {
-          channelType: "telegram",
-          channelName: "my-bot",
+          channel_type: "telegram",
+          channel_name: "my-bot",
           connected: true,
           error: undefined,
         },
@@ -567,8 +567,8 @@ describe("MessageBus", () => {
       expect(eventListener).toHaveBeenCalledWith({
         type: "channel_connection_status",
         data: {
-          channelType: "discord",
-          channelName: "my-bot",
+          channel_type: "discord",
+          channel_name: "my-bot",
           connected: false,
           error: "Connection timeout",
         },

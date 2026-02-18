@@ -5,7 +5,6 @@ import {
   FolderOpen,
   Bot,
   Server,
-  Sparkles,
   ChevronRight,
   MessageCircle,
   KanbanSquare,
@@ -38,6 +37,9 @@ export function WorkspaceDetailPage() {
     isLoading: isLoadingWorkspaces,
     workspaces,
   } = useLocalWorkspaces();
+
+  const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+
   // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
   const {
     executors,
@@ -46,8 +48,6 @@ export function WorkspaceDetailPage() {
   } = useExecutors({ workspacePath: workspace?.path });
 
   const initialLoadDoneRef = useRef<string | null>(null);
-
-  const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
   // Auto-refresh on workspace enter (only once per workspace)
   useEffect(() => {
@@ -226,7 +226,7 @@ export function WorkspaceDetailPage() {
                 <ExecutorCard
                   key={executor.type}
                   executor={executor}
-                  workspaceId={workspace.id}
+                  workspacePath={workspace.path}
                 />
               ))}
             </div>
@@ -239,10 +239,10 @@ export function WorkspaceDetailPage() {
 
 interface ExecutorCardProps {
   executor: ExecutorInfo;
-  workspaceId: string;
+  workspacePath: string;
 }
 
-function ExecutorCard({ executor, workspaceId }: ExecutorCardProps) {
+function ExecutorCard({ executor, workspacePath }: ExecutorCardProps) {
   const { t } = useTranslation();
 
   const executorIcons: Record<string, string> = {
@@ -256,9 +256,13 @@ function ExecutorCard({ executor, workspaceId }: ExecutorCardProps) {
     UNKNOWN: "?",
   };
 
-  // Use executor.type as the route param (e.g., "CLAUDE_CODE")
+  // Use new routing with query params
+  const executorUrl = workspacePath
+    ? `/executor/${executor.type}?workspace_path=${encodeURIComponent(workspacePath)}`
+    : `/executor/${executor.type}`;
+
   return (
-    <Link to={`/workspace/${workspaceId}/agent/${executor.type}`}>
+    <Link to={executorUrl}>
       <Card
         className={cn(
           "cursor-pointer",

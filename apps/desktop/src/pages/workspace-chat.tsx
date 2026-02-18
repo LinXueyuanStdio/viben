@@ -23,7 +23,10 @@ import {
   MoreHorizontal,
   History,
   Settings,
+  FolderOpen,
 } from "lucide-react";
+import { homeDir } from "@tauri-apps/api/path";
+import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,6 +82,7 @@ import {
   useExecutorSessions,
   useExecutorSessionMessages,
   useChatList,
+  isExecutorType,
 } from "@/hooks";
 import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
@@ -1749,8 +1753,37 @@ export function WorkspaceChatPage() {
   // Use the agent selected in config bar, or fall back to conversation's agent
   const handleNavigateToAgentSettings = () => {
     const targetAgentId = selectedAgentId || currentAgent?.id;
-    if (targetAgentId && workspaceId) {
-      navigate(`/workspace/${workspaceId}/agent/${targetAgentId}`);
+    if (targetAgentId && workspace?.path) {
+      const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
+      if (isExecutorType(targetAgentId)) {
+        navigate(`/executor/${targetAgentId}${params}`);
+      } else {
+        navigate(`/agent/${targetAgentId}${params}`);
+      }
+    }
+  };
+
+  // Open session folder in file manager
+  const handleOpenSessionFolder = async () => {
+    console.log("[WorkspaceChat] handleOpenSessionFolder called", { selectedAgentId, selectedConversationId, configPath: currentAgent?.config_path });
+    if (!selectedConversationId) {
+      console.log("[WorkspaceChat] No conversation selected");
+      return;
+    }
+    if (!currentAgent?.config_path) {
+      console.log("[WorkspaceChat] No agent config path available");
+      return;
+    }
+    try {
+      // Agent config path: /path/to/agents/<agentId>/config.yaml
+      // Session path: /path/to/agents/<agentId>/.agent_sessions/<sessionId>/config.yaml
+      const agentDir = currentAgent.config_path.replace(/\/config\.yaml$/, "");
+      const sessionPath = `${agentDir}/.agent_sessions/${selectedConversationId}/config.yaml`;
+      console.log("[WorkspaceChat] Opening session folder:", sessionPath);
+      await revealItemInDir(sessionPath);
+      console.log("[WorkspaceChat] revealItemInDir completed");
+    } catch (err) {
+      console.error("[WorkspaceChat] Failed to open session folder:", err);
     }
   };
 
@@ -1945,8 +1978,13 @@ export function WorkspaceChatPage() {
                         }}
                         onSettings={() => {
                           // All agents from chat-list support settings
-                          if (workspaceId) {
-                            navigate(`/workspace/${workspaceId}/agent/${chatListAgent.id}`);
+                          if (workspace?.path) {
+                            const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
+                            if (isExecutorType(chatListAgent.id)) {
+                              navigate(`/executor/${chatListAgent.id}${params}`);
+                            } else {
+                              navigate(`/agent/${chatListAgent.id}${params}`);
+                            }
                           }
                         }}
                         onSetDefault={() => setDefaultAgent(chatListAgent.id)}
@@ -2521,6 +2559,12 @@ export function WorkspaceChatPage() {
                         {t("chat.agentSettings")}
                       </DropdownMenuItem>
 
+                      {/* Open session folder */}
+                      <DropdownMenuItem onClick={handleOpenSessionFolder}>
+                        <FolderOpen className="h-4 w-4 mr-3" />
+                        {t("chat.openSessionFolder", "Open Session Folder")}
+                      </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
 
                       {/* Archive */}
@@ -2595,8 +2639,13 @@ export function WorkspaceChatPage() {
                   hideModelSelector
                   onAgentSettings={(agentId) => {
                     // Navigate to agent orchestration page
-                    if (workspaceId) {
-                      navigate(`/workspace/${workspaceId}/agent/${agentId}`);
+                    if (workspace?.path) {
+                      const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
+                      if (isExecutorType(agentId)) {
+                        navigate(`/executor/${agentId}${params}`);
+                      } else {
+                        navigate(`/agent/${agentId}${params}`);
+                      }
                     }
                   }}
                 />
@@ -2652,13 +2701,16 @@ export function WorkspaceChatPage() {
           executorDetail={rightSidebarExecutorDetail}
           workspacePath={workspace.path}
           onAgentSettings={(agentId) => {
-            if (workspaceId) {
-              navigate(`/workspace/${workspaceId}/agent/${agentId}`);
+            if (workspace?.path) {
+              const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
+              navigate(`/agent/${agentId}${params}`);
             }
           }}
           onExecutorSettings={(executorId) => {
-            // Navigate to executor settings or show modal
-            console.log("[WorkspaceChat] Executor settings:", executorId);
+            if (workspace?.path) {
+              const params = `?workspace_path=${encodeURIComponent(workspace.path)}`;
+              navigate(`/executor/${executorId}${params}`);
+            }
           }}
           // Agent detail panel props (for full editing support)
           isAgentDefault={rightSidebarAgentDetail?.id === defaultAgentId}

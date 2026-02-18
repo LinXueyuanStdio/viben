@@ -85,14 +85,15 @@ import {
   useWorkspaceAgentConfigs,
   useWorkspaceCommands,
   useExecutors,
+  useWorkspaceParam,
 } from "@/hooks";
 import { homeDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
-import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
+import { MessageList, ChatInput, type SlashCommand, ExecutorCapabilities } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
-import type { AvailabilityInfo, VibenAgentResponse } from "@/lib/gateway";
+import type { AvailabilityInfo, AgentResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
 
 // ============================================================================
@@ -242,16 +243,14 @@ function CollapsibleSection({
 export function AgentDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
+  const { agentId } = useParams<{ agentId: string }>();
+
+  // Get workspace from query params (new routing) or path params (legacy routing)
+  const { workspacePath, workspace, isGlobal } = useWorkspaceParam();
+  const { isLoading: workspacesLoading } = useLocalWorkspaces();
 
   // Determine if this is a workspace-scoped agent
-  const isWorkspaceScoped = Boolean(workspaceId);
-
-  // Get workspace info first (needed for workspace agent hook)
-  const { workspaces, isLoading: workspacesLoading } = useLocalWorkspaces();
-  const workspace = isWorkspaceScoped
-    ? workspaces.find((w) => w.id === workspaceId)
-    : null;
+  const isWorkspaceScoped = !isGlobal;
 
   // Use Gateway API for all agents (global + workspace)
   // Note: "agents" are user-created configurations, "executors" are underlying AI tools
@@ -281,14 +280,16 @@ export function AgentDetailPage() {
   const workspaceExecutors = useMemo(() => {
     return workspaceExecutorsRaw.map((e) => ({
       id: e.type, // Use type as ID for matching URL param (e.g., "CLAUDE_CODE")
-      workspace_id: workspaceId || "",
+      workspace_id: workspace?.id || "",
       name: e.name,
       type: e.type,
-      config_path: e.workspace_config_path || e.global_config_path || "",
+      // Use workspace_config_path for workspace config (empty if none)
+      config_path: e.workspace_config_path || "",
+      global_config_path: e.global_config_path,
       mcp_config_file: null,
       skills_config_file: null,
     }));
-  }, [workspaceExecutorsRaw, workspaceId]);
+  }, [workspaceExecutorsRaw, workspace?.id]);
 
   const { models } = useModels();
   const { executors: availableExecutors } = useExecutors();
@@ -352,7 +353,7 @@ export function AgentDetailPage() {
   const agentInfo = workspaceAgentInfo || globalAgentInfo;
 
   // Full agent details (loaded from Gateway API)
-  const [fullAgent, setFullAgent] = useState<VibenAgentResponse | null>(null);
+  const [fullAgent, setFullAgent] = useState<AgentResponse | null>(null);
   const [loadingFullAgent, setLoadingFullAgent] = useState(false);
 
   // Load full agent details when agent ID changes
@@ -378,7 +379,10 @@ export function AgentDetailPage() {
       setLoadingFullAgent(true);
       try {
         const gateway = getGatewayClient();
-        const agentData = await gateway.getVibenAgent(agentId);
+        // Pass workspace path to find workspace-scoped agents
+        const agentData = await gateway.getAgent(agentId, {
+          workspacePath: workspace?.path,
+        });
         setFullAgent(agentData);
       } catch (err) {
         console.error("Failed to load agent details:", err);
@@ -389,7 +393,7 @@ export function AgentDetailPage() {
     };
 
     loadFullAgent();
-  }, [agentId, workspaceExecutor]);
+  }, [agentId, workspaceExecutor, workspace?.path]);
 
   // Determine if we're viewing an executor or an agent
   // If we found a matching executor AND no matching agent, it's an executor
@@ -669,12 +673,12 @@ export function AgentDetailPage() {
   // Navigate back to appropriate location based on scope
   // Must be before early returns to maintain hooks order
   const handleNavigateBack = useCallback(() => {
-    if (isWorkspaceScoped) {
-      navigate(`/workspace/${workspaceId}/agents`);
+    if (isWorkspaceScoped && workspace) {
+      navigate(`/workspace/${workspace.id}/agents`);
     } else {
       navigate("/settings/agents");
     }
-  }, [navigate, isWorkspaceScoped, workspaceId]);
+  }, [navigate, isWorkspaceScoped, workspace]);
 
   // Slash commands for agent debug chat
   const slashCommands = useMemo<SlashCommand[]>(() => [
@@ -717,7 +721,7 @@ export function AgentDetailPage() {
     return (
       <ExecutorDetailView
         executor={executor}
-        workspaceId={workspaceId || ""}
+        workspacePath={workspacePath || ""}
         onNavigateBack={handleNavigateBack}
       />
     );
@@ -1512,24 +1516,42 @@ interface ExecutorDetailViewProps {
     name: string;
     type: string;
     config_path: string;
+    global_config_path?: string;
     mcp_config_file: string | null;
     skills_config_file: string | null;
   };
-  workspaceId: string;
+  workspacePath: string;
   onNavigateBack: () => void;
+}
+
+// Get executor icon color based on type
+function getExecutorColor(type: string) {
+  const colors: Record<string, { bg: string; text: string; border: string }> = {
+    CLAUDE_CODE: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/30" },
+    CODEX: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/30" },
+    GEMINI_CLI: { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-500/30" },
+    AIDER: { bg: "bg-violet-500/10", text: "text-violet-600", border: "border-violet-500/30" },
+  };
+  return colors[type] || { bg: "bg-muted", text: "text-foreground", border: "border-border" };
 }
 
 function ExecutorDetailView({
   executor,
-  workspaceId,
+  workspacePath,
   onNavigateBack,
 }: ExecutorDetailViewProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
-  // Get workspace path for chat and CLAUDE.md
-  const { workspaces } = useLocalWorkspaces();
-  const workspace = workspaces.find((w) => w.id === workspaceId);
-  const workspacePath = workspace?.path || "";
+  // Navigate to skill detail page
+  const handleSkillClick = (skillId: string) => {
+    const params = new URLSearchParams();
+    if (workspacePath) {
+      params.set("workspace_path", workspacePath);
+    }
+    params.set("agent_id", executor.type);
+    navigate(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`);
+  };
 
   // State for CLAUDE.md content
   const [claudeMdContent, setClaudeMdContent] = useState<string>("");
@@ -1576,30 +1598,6 @@ function ExecutorDetailView({
 
     loadClaudeMd();
   }, [workspacePath]);
-
-  // Load MCP servers for this executor (using workspacePath and executor.type)
-  const {
-    servers: mcpServers,
-    loading: mcpLoading,
-  } = useWorkspaceMcpServers(workspacePath || null, executor.type);
-
-  // Load skills for this executor (using workspacePath and executor.type)
-  const {
-    skills,
-    loading: skillsLoading,
-  } = useWorkspaceSkills(workspacePath || null, executor.type);
-
-  // Load agent configs (prompts) for this executor
-  const {
-    configs: agentConfigs,
-    loading: configsLoading,
-  } = useWorkspaceAgentConfigs(workspacePath || null, executor.type);
-
-  // Load commands for this executor
-  const {
-    commands,
-    loading: commandsLoading,
-  } = useWorkspaceCommands(workspacePath || null, executor.type);
 
   // Chat functionality - use executor type directly (already uppercase)
   const executorTypeString = useMemo((): string => {
@@ -1696,21 +1694,64 @@ function ExecutorDetailView({
     }
   }, [clearMessages]);
 
+  // Get executor colors
+  const executorColor = getExecutorColor(executor.type);
+
+  // Determine config source
+  const hasWorkspaceConfig = !!executor.config_path;
+  const hasGlobalConfig = !!executor.global_config_path;
+  const configSource = hasWorkspaceConfig && hasGlobalConfig
+    ? "merged" as const
+    : hasWorkspaceConfig
+      ? "workspace" as const
+      : "global" as const;
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-orange-500/5">
+      <div className="flex items-center justify-between p-4 border-b bg-muted/10">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onNavigateBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-orange-500/20 text-orange-600 text-xs">
+            <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
               {executor.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <h1 className="font-semibold">{executor.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="font-semibold">{executor.name}</h1>
+              <Badge variant="secondary" className="text-xs font-mono">
+                {executor.type}
+              </Badge>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="text-xs gap-1">
+                      {configSource === "workspace" ? (
+                        <FolderOpen className="h-3 w-3" />
+                      ) : configSource === "global" ? (
+                        <Globe className="h-3 w-3" />
+                      ) : (
+                        <>
+                          <FolderOpen className="h-3 w-3" />
+                          <span>+</span>
+                          <Globe className="h-3 w-3" />
+                        </>
+                      )}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {configSource === "workspace"
+                      ? t("settingsAgents.workspaceConfig")
+                      : configSource === "global"
+                        ? t("settingsAgents.globalConfig")
+                        : t("settingsAgents.mergedConfig")}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             {/* Path with copy button */}
             {executorFolderPath && (
               <div className="flex items-center gap-1">
@@ -1750,7 +1791,7 @@ function ExecutorDetailView({
               </div>
             )}
           </div>
-          <Badge variant="outline" className="border-orange-500/30 text-orange-600">
+          <Badge variant="outline" className={cn("text-xs", executorColor.border, executorColor.text)}>
             <Terminal className="h-3 w-3 mr-1" />
             {t("settingsAgents.executors")}
           </Badge>
@@ -1829,210 +1870,93 @@ function ExecutorDetailView({
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-1">
-              {/* Config Section */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("workspace.configuration")}
-                </h4>
+              {/* Config Section - show if any config path exists */}
+              {(executor.config_path?.trim() || executor.global_config_path?.trim()) && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                    {t("workspace.configuration")}
+                  </h4>
 
-                <CollapsibleSection
-                  title={t("workspace.configPath")}
-                  icon={<Terminal className="h-4 w-4" />}
-                  defaultOpen
-                >
-                  <code className="block text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                    {executor.config_path}
-                  </code>
-                </CollapsibleSection>
-              </div>
-
-              {/* Capabilities Section */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("settingsAgents.tools")}
-                </h4>
-
-                {/* MCP Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.mcpTitle", "MCP")}
-                  icon={<Database className="h-4 w-4" />}
-                  badge={
-                    mcpLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{mcpServers.length}</Badge>
-                    )
-                  }
-                  defaultOpen
-                >
-                  <div className="py-2 space-y-2">
-                    {mcpServers.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noMcp")}
-                        </p>
-                        {executor.mcp_config_file && (
-                          <code className="block text-[10px] bg-muted px-2 py-1 rounded font-mono break-all text-muted-foreground">
-                            {executor.mcp_config_file}
+                  {/* Workspace Config */}
+                  {executor.config_path?.trim() && (
+                    <CollapsibleSection
+                      title={t("settingsAgents.workspaceConfig")}
+                      icon={<FolderOpen className="h-4 w-4" />}
+                      defaultOpen
+                    >
+                      <div className="py-2">
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                            {executor.config_path}
                           </code>
-                        )}
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {mcpServers.map((server) => (
-                          <div
-                            key={server.name}
-                            className={cn(
-                              "flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50",
-                              server.disabled && "opacity-60"
-                            )}
-                          >
-                            <Server className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{server.name}</span>
-                            {server.transport && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                                {server.transport}
-                              </Badge>
-                            )}
-                            {server.disabled && (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
-                                {t("common.disabled")}
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0"
+                                  onClick={handleOpenFolder}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                    </CollapsibleSection>
+                  )}
 
-                {/* Skills Section */}
-                <CollapsibleSection
-                  title={t("chat.skills")}
-                  icon={<Sparkles className="h-4 w-4" />}
-                  badge={
-                    skillsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{skills.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {skills.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noSkills")}
-                        </p>
-                        {executor.skills_config_file && (
-                          <code className="block text-[10px] bg-muted px-2 py-1 rounded font-mono break-all text-muted-foreground">
-                            {executor.skills_config_file}
+                  {/* Global Config */}
+                  {executor.global_config_path?.trim() && (
+                    <CollapsibleSection
+                      title={t("settingsAgents.globalConfig")}
+                      icon={<Globe className="h-4 w-4" />}
+                      defaultOpen={!executor.config_path?.trim()}
+                    >
+                      <div className="py-2">
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                            {executor.global_config_path}
                           </code>
-                        )}
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {skills.map((skill) => (
-                          <div
-                            key={skill.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{skill.name}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                              v{skill.version}
-                            </Badge>
-                          </div>
-                        ))}
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 shrink-0"
+                                  onClick={async () => {
+                                    try {
+                                      const dir = executor.global_config_path!.replace(/\/[^/]+$/, "");
+                                      await invoke("open_path", { path: dir });
+                                    } catch (err) {
+                                      console.error("Failed to open folder:", err);
+                                    }
+                                  }}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
+                    </CollapsibleSection>
+                  )}
+                </div>
+              )}
 
-                {/* Prompts Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.prompts")}
-                  icon={<MessageSquare className="h-4 w-4" />}
-                  badge={
-                    configsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {agentConfigs.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noPrompts")}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {t("settingsAgents.noPromptsHint")}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {agentConfigs.map((config) => (
-                          <div
-                            key={config.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{config.name}</span>
-                            {config.model && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                                {config.model}
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Commands Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.commands")}
-                  icon={<Command className="h-4 w-4" />}
-                  badge={
-                    commandsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{commands.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {commands.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noCommands")}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {t("settingsAgents.noCommandsHint")}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {commands.map((command) => (
-                          <div
-                            key={command.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <Command className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate font-mono">/{command.id}</span>
-                            <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-                              {command.namespace}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-              </div>
+              {/* Capabilities Section - using reusable component */}
+              <ExecutorCapabilities
+                executorType={executor.type}
+                workspacePath={workspacePath}
+                className="mb-4"
+                sectionHeaderText={t("settingsAgents.tools")}
+              />
 
               {/* Info Section */}
               <div>
@@ -2040,7 +1964,7 @@ function ExecutorDetailView({
                   {t("common.overview")}
                 </h4>
 
-                <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20">
+                <div className="p-3 rounded-xl bg-muted/50 border">
                   <p className="text-xs text-muted-foreground">
                     {t("settingsAgents.executorsDesc")}
                   </p>
@@ -2062,7 +1986,7 @@ function ExecutorDetailView({
           <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-orange-500/20 text-orange-600 text-xs">
+                <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
                   {executor.name.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>

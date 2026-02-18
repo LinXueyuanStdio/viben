@@ -462,8 +462,8 @@ export class ChannelRouter {
       this.events.broadcast({
         type: "execution_log",
         data: {
-          sessionId,
-          logType: "channel_message",
+          session_id: sessionId,
+          log_type: "channel_message",
           content: `Received message for executor '${binding.name}': ${msg.message}`,
         },
       });
@@ -634,13 +634,13 @@ export class ResponseCollector {
 
       const unsubscribe = this.events.subscribe((event: GatewayEvent) => {
         if (event.type === "session_message") {
-          const data = event.data as { sessionId: string; content: string; role: string };
-          if (data.sessionId === this.sessionId && data.role === "assistant") {
+          const data = event.data as { session_id: string; content: string; role: string };
+          if (data.session_id === this.sessionId && data.role === "assistant") {
             this.responseParts.push(data.content);
           }
         } else if (event.type === "agent_completed") {
-          const data = event.data as { sessionId: string; success: boolean };
-          if (data.sessionId === this.sessionId) {
+          const data = event.data as { session_id: string; success: boolean };
+          if (data.session_id === this.sessionId) {
             clearTimeout(timeout);
             unsubscribe();
 

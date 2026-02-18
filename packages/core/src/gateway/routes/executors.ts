@@ -230,16 +230,29 @@ function convertClaudeMessageToUI(msg: Record<string, unknown>): ExecutorUIMessa
       }
 
       if (Array.isArray(message.content)) {
-        return message.content
-          .filter((block) => block.type === "tool_result")
-          .map((block, i) => ({
-            id: `${baseId}-${i}`,
-            timestamp,
-            type: "tool_result",
-            content: block.content as string | undefined,
-            tool_use_id: block.tool_use_id as string,
-            is_error: block.is_error as boolean | undefined,
-          }));
+        const results: ExecutorUIMessage[] = [];
+        message.content.forEach((block, i) => {
+          if (block.type === "text" && block.text) {
+            // User message with text content
+            results.push({
+              id: `${baseId}-${i}`,
+              timestamp,
+              type: "user",
+              content: block.text as string,
+            });
+          } else if (block.type === "tool_result") {
+            // Tool result response
+            results.push({
+              id: `${baseId}-${i}`,
+              timestamp,
+              type: "tool_result",
+              content: block.content as string | undefined,
+              tool_use_id: block.tool_use_id as string,
+              is_error: block.is_error as boolean | undefined,
+            });
+          }
+        });
+        return results;
       }
       return [];
     }
@@ -459,7 +472,20 @@ interface ExecutorInfo {
   docs_url?: string;
   available: boolean;
   version?: string;
+  /** @deprecated Use workspace_config_path or global_config_path instead */
   config_path?: string;
+  /** Path to workspace/project config (e.g., ~/Github/xxx/.claude) */
+  workspace_config_path?: string;
+  /** Path to global config (e.g., ~/.claude) */
+  global_config_path?: string;
+  /** Whether MCP is supported */
+  supports_mcp: boolean;
+  /** Executor capabilities */
+  capabilities: string[];
+  /** Has workspace-specific config */
+  has_workspace_config: boolean;
+  /** Workspace path */
+  workspace_path: string;
 }
 
 /**
@@ -512,126 +538,173 @@ const EXECUTOR_METADATA: Record<ExecutorType, { name: string; description: strin
 };
 
 /**
- * Check if Claude Code is available by looking for ~/.claude.json
+ * Get executor config paths for a given type
+ * Returns both global and workspace-specific paths
  */
-function checkClaudeCodeAvailability(): ExecutorInfo {
-  const configPath = path.join(os.homedir(), ".claude.json");
-  const available = fs.existsSync(configPath);
-  const meta = EXECUTOR_METADATA["CLAUDE_CODE"];
-  return {
-    type: "CLAUDE_CODE",
-    name: meta.name,
-    description: meta.description,
-    docs_url: meta.docsUrl,
-    available,
-    config_path: available ? configPath : undefined,
-  };
-}
+function getExecutorConfigPaths(type: ExecutorType, workspacePath?: string): {
+  globalConfigPath?: string;
+  workspaceConfigPath?: string;
+  globalConfigDir: string;
+  workspaceConfigDir?: string;
+} {
+  const homedir = os.homedir();
 
-/**
- * Check if Codex (OpenAI) is available
- */
-function checkCodexAvailability(): ExecutorInfo {
-  // Check platform-specific config paths
-  let configDir: string;
-  if (process.platform === "darwin") {
-    configDir = path.join(os.homedir(), "Library", "Application Support", "codex");
-  } else if (process.platform === "win32") {
-    configDir = path.join(process.env.APPDATA || "", "codex");
-  } else {
-    configDir = path.join(os.homedir(), ".config", "codex");
+  switch (type) {
+    case "CLAUDE_CODE": {
+      // Claude Code: ~/.claude for global, {workspace}/.claude for workspace
+      const globalConfigDir = path.join(homedir, ".claude");
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".claude") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(globalConfigDir) ? globalConfigDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir,
+        workspaceConfigDir,
+      };
+    }
+    case "CODEX": {
+      // Codex: platform-specific global config
+      let configDir: string;
+      if (process.platform === "darwin") {
+        configDir = path.join(homedir, "Library", "Application Support", "codex");
+      } else if (process.platform === "win32") {
+        configDir = path.join(process.env.APPDATA || "", "codex");
+      } else {
+        configDir = path.join(homedir, ".config", "codex");
+      }
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".codex") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(configDir) ? configDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir: configDir,
+        workspaceConfigDir,
+      };
+    }
+    case "CURSOR_AGENT": {
+      // Cursor: platform-specific global config, workspace/.cursor
+      let configDir: string;
+      if (process.platform === "darwin") {
+        configDir = path.join(homedir, "Library", "Application Support", "Cursor", "User");
+      } else if (process.platform === "win32") {
+        configDir = path.join(process.env.APPDATA || "", "Cursor", "User");
+      } else {
+        configDir = path.join(homedir, ".config", "Cursor", "User");
+      }
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".cursor") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(configDir) ? configDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir: configDir,
+        workspaceConfigDir,
+      };
+    }
+    case "GEMINI": {
+      // Gemini: ~/.gemini for global, {workspace}/.gemini for workspace
+      const globalConfigDir = path.join(homedir, ".gemini");
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".gemini") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(globalConfigDir) ? globalConfigDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir,
+        workspaceConfigDir,
+      };
+    }
+    case "AMP": {
+      // Amp: platform-specific global config
+      let configDir: string;
+      if (process.platform === "darwin") {
+        configDir = path.join(homedir, "Library", "Application Support", "amp");
+      } else if (process.platform === "win32") {
+        configDir = path.join(process.env.APPDATA || "", "amp");
+      } else {
+        configDir = path.join(homedir, ".config", "amp");
+      }
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".amp") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(configDir) ? configDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir: configDir,
+        workspaceConfigDir,
+      };
+    }
+    default: {
+      // Generic: ~/.viben for global
+      const globalConfigDir = path.join(homedir, ".viben");
+      const workspaceConfigDir = workspacePath ? path.join(workspacePath, ".viben") : undefined;
+      return {
+        globalConfigPath: fs.existsSync(globalConfigDir) ? globalConfigDir : undefined,
+        workspaceConfigPath: workspaceConfigDir && fs.existsSync(workspaceConfigDir) ? workspaceConfigDir : undefined,
+        globalConfigDir,
+        workspaceConfigDir,
+      };
+    }
   }
-  const configPath = path.join(configDir, "config.json");
-  const available = fs.existsSync(configPath);
-  const meta = EXECUTOR_METADATA["CODEX"];
-  return {
-    type: "CODEX",
-    name: meta.name,
-    description: meta.description,
-    docs_url: meta.docsUrl,
-    available,
-    config_path: available ? configPath : undefined,
-  };
 }
 
 /**
- * Check if Cursor is available
+ * Check executor availability and return full info
  */
-function checkCursorAvailability(): ExecutorInfo {
-  let configDir: string;
-  if (process.platform === "darwin") {
-    configDir = path.join(os.homedir(), "Library", "Application Support", "Cursor", "User");
-  } else if (process.platform === "win32") {
-    configDir = path.join(process.env.APPDATA || "", "Cursor", "User");
-  } else {
-    configDir = path.join(os.homedir(), ".config", "Cursor", "User");
+function checkExecutorAvailability(type: ExecutorType, workspacePath?: string): ExecutorInfo {
+  const meta = EXECUTOR_METADATA[type] || { name: type, description: `${type} executor` };
+  const configPaths = getExecutorConfigPaths(type, workspacePath);
+
+  const available = !!(configPaths.globalConfigPath || configPaths.workspaceConfigPath);
+  const hasWorkspaceConfig = !!configPaths.workspaceConfigPath;
+
+  // Determine capabilities based on type
+  const capabilities: string[] = [];
+  let supportsMcp = false;
+
+  switch (type) {
+    case "CLAUDE_CODE":
+      capabilities.push("chat", "code-edit", "file-ops", "terminal");
+      supportsMcp = true;
+      break;
+    case "CURSOR_AGENT":
+      capabilities.push("chat", "code-edit");
+      supportsMcp = true;
+      break;
+    case "CODEX":
+      capabilities.push("chat", "code-edit");
+      break;
+    case "GEMINI":
+      capabilities.push("chat", "code-edit");
+      break;
+    case "AMP":
+      capabilities.push("chat", "code-edit");
+      break;
+    default:
+      capabilities.push("chat");
   }
-  const available = fs.existsSync(configDir);
-  const meta = EXECUTOR_METADATA["CURSOR_AGENT"];
+
   return {
-    type: "CURSOR_AGENT",
+    type,
     name: meta.name,
     description: meta.description,
     docs_url: meta.docsUrl,
     available,
-    config_path: available ? configDir : undefined,
+    // Legacy field - prefer workspace or global config path
+    config_path: configPaths.workspaceConfigPath || configPaths.globalConfigPath,
+    workspace_config_path: configPaths.workspaceConfigPath,
+    global_config_path: configPaths.globalConfigPath,
+    supports_mcp: supportsMcp,
+    capabilities,
+    has_workspace_config: hasWorkspaceConfig,
+    workspace_path: workspacePath || os.homedir(),
   };
 }
 
 /**
- * Check if Gemini CLI is available
+ * Discover all available executors for a workspace
  */
-function checkGeminiAvailability(): ExecutorInfo {
-  const configPath = path.join(os.homedir(), ".gemini", "config.json");
-  const available = fs.existsSync(configPath);
-  const meta = EXECUTOR_METADATA["GEMINI"];
-  return {
-    type: "GEMINI",
-    name: meta.name,
-    description: meta.description,
-    docs_url: meta.docsUrl,
-    available,
-    config_path: available ? configPath : undefined,
-  };
-}
-
-/**
- * Check if AMP is available
- */
-function checkAmpAvailability(): ExecutorInfo {
-  let configDir: string;
-  if (process.platform === "darwin") {
-    configDir = path.join(os.homedir(), "Library", "Application Support", "amp");
-  } else if (process.platform === "win32") {
-    configDir = path.join(process.env.APPDATA || "", "amp");
-  } else {
-    configDir = path.join(os.homedir(), ".config", "amp");
-  }
-  const configPath = path.join(configDir, "settings.json");
-  const available = fs.existsSync(configPath);
-  const meta = EXECUTOR_METADATA["AMP"];
-  return {
-    type: "AMP",
-    name: meta.name,
-    description: meta.description,
-    docs_url: meta.docsUrl,
-    available,
-    config_path: available ? configPath : undefined,
-  };
-}
-
-/**
- * Discover all available executors
- */
-function discoverExecutors(): ExecutorInfo[] {
-  const executors: ExecutorInfo[] = [
-    checkClaudeCodeAvailability(),
-    checkCodexAvailability(),
-    checkCursorAvailability(),
-    checkGeminiAvailability(),
-    checkAmpAvailability(),
+function discoverExecutors(workspacePath?: string): ExecutorInfo[] {
+  const types: ExecutorType[] = [
+    "CLAUDE_CODE",
+    "CODEX",
+    "CURSOR_AGENT",
+    "GEMINI",
+    "AMP",
   ];
-  return executors;
+  return types.map((type) => checkExecutorAvailability(type, workspacePath));
 }
 
 /**
@@ -642,13 +715,17 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   fastify.get<{
     Querystring: { workspace_path?: string; include_global?: boolean };
   }>("/api/executors", async (request) => {
-    const workspacePath = request.query.workspace_path || os.homedir();
+    const workspacePath = request.query.workspace_path;
     const includeGlobal = request.query.include_global !== false;
 
-    // Discover available executors
-    const executors = discoverExecutors();
+    // Discover available executors with workspace context
+    const executors = discoverExecutors(workspacePath);
 
-    return { executors, workspacePath, includeGlobal };
+    return {
+      executors,
+      workspace_path: workspacePath || os.homedir(),
+      total: executors.length,
+    };
   });
 
   // Discover sessions for an executor type

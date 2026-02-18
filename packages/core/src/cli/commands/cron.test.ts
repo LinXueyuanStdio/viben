@@ -70,10 +70,10 @@ function createMockJob(overrides: Partial<CronJob> = {}): CronJob {
     id: "test-job",
     name: "Test Job",
     enabled: true,
-    jobType: "agent",
+    job_type: "agent",
     agent: "main",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    created_at: Date.now(),
+    updated_at: Date.now(),
     ...overrides,
   };
 }
@@ -134,7 +134,7 @@ describe("Cron CLI Commands", () => {
           name: "Daily Greeting",
           cron: "0 9 * * *",
           agent: "main",
-          lastStatus: "success" as JobStatus,
+          last_status: "success" as JobStatus,
         }),
         createMockJob({
           id: "hourly-check",
@@ -195,9 +195,9 @@ describe("Cron CLI Commands", () => {
         agent: "main",
         message: "Good morning!",
         channel: "telegram",
-        lastStatus: "success" as JobStatus,
-        lastRun: Date.now() - 86400000,
-        nextRun: Date.now() + 86400000,
+        last_status: "success" as JobStatus,
+        last_run: Date.now() - 86400000,
+        next_run: Date.now() + 86400000,
       });
 
       mockGetJob.mockResolvedValue(mockJob);
@@ -238,10 +238,10 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "backup-job",
         name: "Backup Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 0 * * *",
         script: "tar -czf backup.tar.gz /data",
-        lastOutput: "Backup completed successfully",
+        last_output: "Backup completed successfully",
       });
 
       mockGetJob.mockResolvedValue(mockJob);
@@ -350,7 +350,7 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "backup-job",
         name: "Backup Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 0 * * *",
         script: "tar -czf backup.tar.gz /data",
         agent: "main",
@@ -526,7 +526,7 @@ describe("Cron CLI Commands", () => {
         id: "disabled-job",
         name: "Disabled Job",
         enabled: true,
-        nextRun: Date.now() + 3600000,
+        next_run: Date.now() + 3600000,
       });
 
       mockEnableJob.mockResolvedValue(mockJob);
@@ -545,7 +545,7 @@ describe("Cron CLI Commands", () => {
         id: "disabled-job",
         name: "Disabled Job",
         enabled: true,
-        nextRun: nextRunTime,
+        next_run: nextRunTime,
       });
 
       mockEnableJob.mockResolvedValue(mockJob);
@@ -622,15 +622,15 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "run-job",
         name: "Run Job",
-        lastStatus: "success" as JobStatus,
-        lastOutput: "Job output",
+        last_status: "success" as JobStatus,
+        last_output: "Job output",
       });
 
       // First call returns the job, second call returns updated status
       mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce({
         ...mockJob,
-        lastStatus: "success" as JobStatus,
-        lastOutput: "Job completed",
+        last_status: "success" as JobStatus,
+        last_output: "Job completed",
       });
       mockRunJob.mockResolvedValue(undefined);
 
@@ -661,8 +661,8 @@ describe("Cron CLI Commands", () => {
 
       const failedJob = {
         ...mockJob,
-        lastStatus: "failure" as JobStatus,
-        lastError: "Script execution failed",
+        last_status: "failure" as JobStatus,
+        last_error: "Script execution failed",
       };
 
       mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce(failedJob);
@@ -683,8 +683,8 @@ describe("Cron CLI Commands", () => {
 
       const completedJob = {
         ...mockJob,
-        lastStatus: "success" as JobStatus,
-        lastOutput: "This is the job output",
+        last_status: "success" as JobStatus,
+        last_output: "This is the job output",
       };
 
       mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce(completedJob);
@@ -701,12 +701,12 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "run-job",
         name: "Run Job",
-        lastStatus: "success" as JobStatus,
+        last_status: "success" as JobStatus,
       });
 
       mockGetJob.mockResolvedValueOnce(mockJob).mockResolvedValueOnce({
         ...mockJob,
-        lastStatus: "success" as JobStatus,
+        last_status: "success" as JobStatus,
       });
       mockRunJob.mockResolvedValue(undefined);
 
@@ -1041,19 +1041,19 @@ describe("Cron CLI Commands", () => {
           id: "success-job",
           name: "Success Job",
           cron: "0 * * * *",
-          lastStatus: "success" as JobStatus,
+          last_status: "success" as JobStatus,
         }),
         createMockJob({
           id: "failure-job",
           name: "Failure Job",
           cron: "0 * * * *",
-          lastStatus: "failure" as JobStatus,
+          last_status: "failure" as JobStatus,
         }),
         createMockJob({
           id: "running-job",
           name: "Running Job",
           cron: "0 * * * *",
-          lastStatus: "running" as JobStatus,
+          last_status: "running" as JobStatus,
         }),
       ];
 
@@ -1074,7 +1074,7 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "agent-job",
         name: "Agent Job",
-        jobType: "agent",
+        job_type: "agent",
         cron: "0 * * * *",
       });
 
@@ -1091,7 +1091,7 @@ describe("Cron CLI Commands", () => {
 
       expect(mockCreateJob).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobType: "agent",
+          job_type: "agent",
         })
       );
     });
@@ -1100,7 +1100,7 @@ describe("Cron CLI Commands", () => {
       const mockJob = createMockJob({
         id: "script-job",
         name: "Script Job",
-        jobType: "script",
+        job_type: "script",
         cron: "0 * * * *",
         script: "echo hello",
       });
@@ -1120,7 +1120,7 @@ describe("Cron CLI Commands", () => {
 
       expect(mockCreateJob).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobType: "script",
+          job_type: "script",
           script: "echo hello",
         })
       );

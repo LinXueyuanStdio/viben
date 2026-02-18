@@ -186,7 +186,7 @@ describe("ContainerService", () => {
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "agent_spawned",
-          data: { agentId: "claude_code", sessionId: "session-123" },
+          data: { agent_id: "claude_code", session_id: "session-123" },
         })
       );
     });
@@ -406,7 +406,7 @@ describe("ContainerService", () => {
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "agent_completed",
-          data: { agentId: "claude_code", sessionId, success: true },
+          data: { agent_id: "claude_code", session_id: sessionId, success: true },
         })
       );
     });
@@ -464,7 +464,7 @@ describe("ContainerService", () => {
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "agent_completed",
-          data: { agentId: "claude_code", sessionId, success: false },
+          data: { agent_id: "claude_code", session_id: sessionId, success: false },
         })
       );
     });
@@ -655,7 +655,7 @@ describe("ContainerService", () => {
       expect(listener).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "agent_spawned",
-          data: { agentId: "claude_code", sessionId },
+          data: { agent_id: "claude_code", session_id: sessionId },
         })
       );
     });
@@ -687,7 +687,7 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "session_message",
           data: expect.objectContaining({
-            sessionId,
+            session_id: sessionId,
             content: "Hello from agent",
             role: "assistant",
           }),
@@ -719,8 +719,8 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "execution_log",
           data: expect.objectContaining({
-            sessionId,
-            logType: "output",
+            session_id: sessionId,
+            log_type: "output",
             content: "Plain text output",
           }),
         })
@@ -823,8 +823,8 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "execution_log",
           data: expect.objectContaining({
-            sessionId,
-            logType: "tool_use",
+            session_id: sessionId,
+            log_type: "tool_use",
           }),
         })
       );
@@ -868,8 +868,8 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "execution_log",
           data: expect.objectContaining({
-            sessionId,
-            logType: "tool_result",
+            session_id: sessionId,
+            log_type: "tool_result",
           }),
         })
       );
@@ -984,7 +984,7 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "execution_log",
           data: expect.objectContaining({
-            logType: "tool_use",
+            log_type: "tool_use",
           }),
         })
       );
@@ -1057,7 +1057,7 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "agent_completed",
           data: expect.objectContaining({
-            sessionId,
+            session_id: sessionId,
             success: true,
           }),
         })
@@ -1091,7 +1091,7 @@ describe("ContainerService", () => {
         expect.objectContaining({
           type: "agent_completed",
           data: expect.objectContaining({
-            sessionId: "session-123",
+            session_id: "session-123",
             success: true,
           }),
         })

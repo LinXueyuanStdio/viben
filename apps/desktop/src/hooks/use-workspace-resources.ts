@@ -13,10 +13,10 @@ import {
   type WorkspaceModel,
   type ChatListItem,
   type ChatListCounts,
-  type CreateVibenAgentOptions,
-  type UpdateVibenAgentOptions,
-  type VibenAgentResponse,
-  type VibenAgentTemplate,
+  type CreateAgentOptions,
+  type UpdateAgentOptions,
+  type AgentResponse,
+  type AgentTemplate,
   GatewayError,
 } from "@/lib/gateway";
 
@@ -281,9 +281,9 @@ export interface UseAgentsReturn {
 
   // CRUD operations (all agents are user-created and editable)
   /** Create a new agent */
-  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  createAgent: (options: CreateAgentOptions) => Promise<AgentResponse>;
   /** Update an agent */
-  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  updateAgent: (id: string, updates: UpdateAgentOptions) => Promise<AgentResponse>;
   /** Remove an agent */
   removeAgent: (id: string) => Promise<void>;
   /** Set the default agent */
@@ -291,13 +291,13 @@ export interface UseAgentsReturn {
 
   // Templates
   /** List of agent templates */
-  templates: VibenAgentTemplate[];
+  templates: AgentTemplate[];
   /** Refresh templates */
   refreshTemplates: () => Promise<void>;
   /** Create a template from an agent */
-  createTemplate: (agentId: string, templateId: string) => Promise<VibenAgentTemplate>;
+  createTemplate: (agentId: string, templateId: string) => Promise<AgentTemplate>;
   /** Create an agent from a template */
-  createFromTemplate: (templateId: string, agentId: string) => Promise<VibenAgentResponse>;
+  createFromTemplate: (templateId: string, agentId: string) => Promise<AgentResponse>;
 }
 
 /**
@@ -315,7 +315,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<VibenAgentTemplate[]>([]);
+  const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
@@ -399,13 +399,13 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   // CRUD operations
   const createAgent = useCallback(
-    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (createOptions: CreateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
       // Add workspace path if creating workspace-scoped agent
       const optionsWithPath = workspacePath
         ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
         : createOptions;
-      const result = await client.createVibenAgent(optionsWithPath);
+      const result = await client.createAgent(optionsWithPath);
       // Refresh agent list after creation
       await loadAgents();
       return result;
@@ -414,9 +414,9 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   );
 
   const updateAgent = useCallback(
-    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (id: string, updates: UpdateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.updateVibenAgent(id, updates);
+      const result = await client.updateAgent(id, updates);
       // Refresh agent list after update
       await loadAgents();
       return result;
@@ -427,7 +427,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteVibenAgent(id);
+      await client.deleteAgent(id);
       // Refresh agent list after deletion
       await loadAgents();
     },
@@ -445,7 +445,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
   // Template operations
   const createTemplate = useCallback(
-    async (agentId: string, templateId: string): Promise<VibenAgentTemplate> => {
+    async (agentId: string, templateId: string): Promise<AgentTemplate> => {
       const client = getGatewayClient();
       const result = await client.createAgentTemplate(agentId, templateId);
       // Refresh templates after creation
@@ -456,7 +456,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   );
 
   const createFromTemplate = useCallback(
-    async (templateId: string, agentId: string): Promise<VibenAgentResponse> => {
+    async (templateId: string, agentId: string): Promise<AgentResponse> => {
       const client = getGatewayClient();
       const result = await client.createAgentFromTemplate(templateId, agentId);
       // Refresh agent list after creation
@@ -500,7 +500,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
 
 export interface UseAgentDetailReturn {
   /** The agent data */
-  agent: VibenAgentResponse | null;
+  agent: AgentResponse | null;
   /** Loading state */
   loading: boolean;
   /** Error message */
@@ -525,7 +525,7 @@ export function useAgentDetail(
   agentId: string | null,
   workspacePath?: string | null
 ): UseAgentDetailReturn {
-  const [agent, setAgent] = useState<VibenAgentResponse | null>(null);
+  const [agent, setAgent] = useState<AgentResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -744,6 +744,8 @@ export interface AgentListItem {
   availability?: import("@/lib/gateway").AvailabilityInfo;
   /** Path to global config file (executors only) */
   global_config_path?: string;
+  /** Path to workspace config file (executors only) */
+  workspace_config_path?: string;
   /** Has workspace-level config (executors only) */
   has_workspace_config?: boolean;
 
@@ -852,6 +854,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
         capabilities: e.capabilities,
         availability: e.availability,
         global_config_path: e.global_config_path,
+        workspace_config_path: e.workspace_config_path,
         has_workspace_config: e.has_workspace_config,
       }));
 
@@ -918,16 +921,16 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteVibenAgent(id);
+      await client.deleteAgent(id);
       await loadData();
     },
     [loadData]
   );
 
   const updateAgent = useCallback(
-    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (id: string, updates: UpdateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.updateVibenAgent(id, updates);
+      const result = await client.updateAgent(id, updates);
       await loadData();
       return result;
     },
@@ -935,12 +938,12 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   );
 
   const createAgent = useCallback(
-    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (createOptions: CreateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
       const optionsWithPath = workspacePath
         ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
         : createOptions;
-      const result = await client.createVibenAgent(optionsWithPath);
+      const result = await client.createAgent(optionsWithPath);
       await loadData();
       return result;
     },
@@ -988,9 +991,9 @@ export interface AgentOperations {
   /** Remove an agent */
   removeAgent: (id: string) => Promise<void>;
   /** Update an agent */
-  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  updateAgent: (id: string, updates: UpdateAgentOptions) => Promise<AgentResponse>;
   /** Create a new agent */
-  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  createAgent: (options: CreateAgentOptions) => Promise<AgentResponse>;
 }
 
 export interface UseChatListReturn {
@@ -1108,7 +1111,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteVibenAgent(id);
+      await client.deleteAgent(id);
       // Refresh chat list after deletion
       await loadChatList();
     },
@@ -1116,9 +1119,9 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   );
 
   const updateAgent = useCallback(
-    async (id: string, updates: UpdateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (id: string, updates: UpdateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.updateVibenAgent(id, updates);
+      const result = await client.updateAgent(id, updates);
       // Refresh chat list after update
       await loadChatList();
       return result;
@@ -1127,13 +1130,13 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   );
 
   const createAgent = useCallback(
-    async (createOptions: CreateVibenAgentOptions): Promise<VibenAgentResponse> => {
+    async (createOptions: CreateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
       // Add workspace path if creating workspace-scoped agent
       const optionsWithPath = workspacePath
         ? { ...createOptions, base_path: createOptions.base_path || workspacePath }
         : createOptions;
-      const result = await client.createVibenAgent(optionsWithPath);
+      const result = await client.createAgent(optionsWithPath);
       // Refresh chat list after creation
       await loadChatList();
       return result;

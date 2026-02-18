@@ -6,6 +6,7 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   RefreshCw,
@@ -15,6 +16,7 @@ import {
   Loader2,
   ExternalLink,
   Terminal,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -102,6 +104,7 @@ interface ExecutorStatus {
 
 export function SettingsExecutorsPage() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { status: gatewayStatus } = useGatewayStatus();
   const [executors, setExecutors] = useState<ExecutorStatus[]>(
     EXECUTORS.map((info) => ({
@@ -319,13 +322,22 @@ export function SettingsExecutorsPage() {
       <div className="space-y-3">
         {executors.map((executor) => {
           const status = getStatusDisplay(executor);
+          const isAvailable = executor.availability?.type === "LOGIN_DETECTED" ||
+            executor.availability?.type === "INSTALLATION_FOUND";
+
           return (
             <div
               key={executor.info.id}
               className={cn(
                 "p-4 rounded-xl border bg-card transition-all duration-300",
-                "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
+                "hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30",
+                isAvailable && "cursor-pointer"
               )}
+              onClick={() => {
+                if (isAvailable) {
+                  navigate(`/executor/${executor.info.id}`);
+                }
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -372,7 +384,10 @@ export function SettingsExecutorsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => window.open(executor.info.website, "_blank")}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(executor.info.website, "_blank");
+                      }}
                     >
                       <ExternalLink className="h-4 w-4" />
                     </Button>
@@ -380,7 +395,10 @@ export function SettingsExecutorsPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => checkExecutor(executor.info.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      checkExecutor(executor.info.id);
+                    }}
                     disabled={gatewayStatus !== "connected" || executor.checking}
                   >
                     <RefreshCw
@@ -390,6 +408,9 @@ export function SettingsExecutorsPage() {
                       )}
                     />
                   </Button>
+                  {isAvailable && (
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  )}
                 </div>
               </div>
             </div>

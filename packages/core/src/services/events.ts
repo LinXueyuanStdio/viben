@@ -46,7 +46,7 @@ export type GatewayEvent =
   | { type: "cron_job_updated"; data: { job: CronJobData } }
   | { type: "cron_job_deleted"; data: { job_id: string } }
   | { type: "cron_job_triggered"; data: { job_id: string; triggered_at: number } }
-  | { type: "cron_job_completed"; data: { job_id: string; job_name: string; job_type: string; status: string; duration_ms: number; output?: string; completed_at: number } }
+  | { type: "cron_job_completed"; data: { job_id: string; job_name: string; job_type: string; status: string; duration_ms: number; output?: string; completed_at: number; next_run?: number } }
   | { type: "cron_job_message"; data: { job_id: string; agent_id: string; message: string } }
   // Channel events
   | { type: "channel_message_received"; data: { channel_type: string; channel_name: string; chat_id: string; sender_name?: string; message: string; timestamp: number } }

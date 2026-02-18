@@ -62,13 +62,18 @@ export function useCronNotificationAdapter() {
   // Handle incoming cron events
   const handleCronEvent = useCallback(
     async (channel: string, payload: GatewayEventPayload) => {
+      // Debug logging
+      console.log("[CronNotificationAdapter] Received event:", { channel, payload });
+
       // Only handle cron channel events
       if (channel !== "cron") {
+        console.log("[CronNotificationAdapter] Ignoring non-cron channel:", channel);
         return;
       }
 
       // Check if cron notifications are enabled
       if (!shouldShowNotification("cron")) {
+        console.log("[CronNotificationAdapter] Cron notifications disabled");
         return;
       }
 

@@ -6,12 +6,12 @@
  * - 智能体 (Agent): 来自 ~/.viben/agents/，Viben Agent 使用执行器作为运行后端
  */
 import { useCallback, useMemo } from "react";
-import { useAgents } from "./use-workspace-resources";
-import type { CreateVibenAgentOptions, UpdateVibenAgentOptions, VibenAgentResponse } from "@/lib/gateway";
-import { useWorkspaceAgents, useLocalWorkspaces } from "./use-workspaces";
+import { useAgents, useExecutors } from "./use-workspace-resources";
+import type { CreateAgentOptions, UpdateAgentOptions, AgentResponse } from "@/lib/gateway";
+import { useLocalWorkspaces } from "./use-workspaces";
 import {
   type UnifiedAgent,
-  executorToUnified,
+  executorInfoToUnified,
   vibenAgentToUnified,
   isExecutor,
   isAgent,
@@ -51,9 +51,9 @@ export interface UseUnifiedAgentsReturn {
   /** 获取单个项目 */
   getItem: (id: string) => UnifiedAgent | undefined;
   /** 创建智能体 (全局) */
-  createAgent: (options: CreateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  createAgent: (options: CreateAgentOptions) => Promise<AgentResponse>;
   /** 更新智能体 */
-  updateAgent: (id: string, updates: UpdateVibenAgentOptions) => Promise<VibenAgentResponse>;
+  updateAgent: (id: string, updates: UpdateAgentOptions) => Promise<AgentResponse>;
   /** 删除智能体 */
   removeAgent: (id: string) => Promise<void>;
   /** 设置默认智能体 */
@@ -95,12 +95,15 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   } = useAgents();
 
   // Workspace executors (auto-discovered, read-only)
+  // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
   const {
-    agents: workspaceExecutors,
+    executors: workspaceExecutors,
     loading: workspaceLoading,
     error: workspaceError,
-    loadAgents: loadWorkspaceExecutors,
-  } = useWorkspaceAgents(includeExecutors ? workspaceId : null);
+    refresh: refreshExecutors,
+  } = useExecutors({
+    workspacePath: includeExecutors ? workspace?.path : undefined,
+  });
 
   // Combined loading and error states
   const loading = agentsLoading || workspaceLoading;
@@ -109,7 +112,7 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
   // Convert and merge
   const { all, executors, agents } = useMemo(() => {
     const execList: UnifiedAgent[] = includeExecutors
-      ? workspaceExecutors.map((a) => executorToUnified(a, workspace?.path))
+      ? workspaceExecutors.map((e) => executorInfoToUnified(e))
       : [];
 
     const agentList: UnifiedAgent[] = includeAgents
@@ -121,7 +124,7 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
       executors: execList,
       agents: agentList,
     };
-  }, [workspaceExecutors, gatewayAgents, workspace?.path, includeExecutors, includeAgents]);
+  }, [workspaceExecutors, gatewayAgents, includeExecutors, includeAgents]);
 
   // Refresh all
   const refresh = useCallback(async () => {
@@ -129,11 +132,11 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
     if (includeAgents) {
       promises.push(refreshAgents());
     }
-    if (includeExecutors && workspaceId) {
-      promises.push(loadWorkspaceExecutors());
+    if (includeExecutors && workspace?.path) {
+      promises.push(refreshExecutors());
     }
     await Promise.all(promises);
-  }, [refreshAgents, loadWorkspaceExecutors, includeAgents, includeExecutors, workspaceId]);
+  }, [refreshAgents, refreshExecutors, includeAgents, includeExecutors, workspace?.path]);
 
   // Get item by ID
   const getItem = useCallback(

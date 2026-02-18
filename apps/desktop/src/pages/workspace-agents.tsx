@@ -293,20 +293,22 @@ export function WorkspaceAgentsPage({
     const executor = agentListExecutors.find((e) => e.id === selectedItemId);
     if (!executor) return undefined;
     // Transform to the format expected by ExecutorDetailPanel
-    // Determine source based on config paths
-    const hasWorkspaceConfig = !!executor.config_path;
+    // Use workspace_config_path directly from API (not the computed config_path)
+    const hasWorkspaceConfig = !!executor.workspace_config_path;
     const hasGlobalConfig = !!executor.global_config_path;
     const source = hasWorkspaceConfig && hasGlobalConfig
       ? "merged" as const
       : hasWorkspaceConfig
         ? "workspace" as const
         : "global" as const;
+
     return {
       id: executor.id,
       workspace_id: workspace?.id || "",
       name: executor.name,
       type: (executor.id || "UNKNOWN") as import("@/types").ExecutorType,
-      config_path: executor.config_path || "",
+      // Use workspace_config_path for workspace config, empty if none
+      config_path: executor.workspace_config_path || "",
       global_config_path: executor.global_config_path,
       source,
       mcp_config_file: null,
@@ -395,9 +397,14 @@ export function WorkspaceAgentsPage({
   };
 
   // Navigate to detail/edit page
-  // Both executors and agents use the same route
-  const handleEditItem = (itemId: string, _itemType: "executor" | "agent" | "workspace-agent") => {
-    navigate(`/workspace/${workspaceId}/agent/${itemId}`);
+  // Executors use /executor/:type, agents use /agent/:id
+  const handleEditItem = (itemId: string, itemType: "executor" | "agent" | "workspace-agent") => {
+    const params = workspace?.path ? `?workspace_path=${encodeURIComponent(workspace.path)}` : "";
+    if (itemType === "executor") {
+      navigate(`/executor/${itemId}${params}`);
+    } else {
+      navigate(`/agent/${itemId}${params}`);
+    }
   };
 
   // Helper to wrap content based on mode

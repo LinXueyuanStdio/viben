@@ -20,6 +20,7 @@ interface CronJobData {
   status?: JobStatus;
   triggered_at?: number;
   completed_at?: number;
+  next_run?: number;
 }
 
 /**
@@ -102,9 +103,15 @@ export function useCronJobs() {
 
   // Handle WebSocket events
   const handleWsEvent = useCallback((channel: string, payload: GatewayEventPayload) => {
-    if (channel !== "cron") return;
+    console.log("[useCronJobs] Received WebSocket event:", { channel, payload });
+
+    if (channel !== "cron") {
+      console.log("[useCronJobs] Ignoring non-cron channel:", channel);
+      return;
+    }
 
     const data = payload.data as unknown as CronJobData;
+    console.log("[useCronJobs] Processing cron event:", { type: payload.type, data });
 
     switch (payload.type) {
       case "CronJobCreated": {
@@ -141,28 +148,32 @@ export function useCronJobs() {
 
       case "CronJobTriggered": {
         const { job_id, triggered_at } = data || {};
+        console.log("[useCronJobs] CronJobTriggered:", { job_id, triggered_at });
         if (job_id && triggered_at) {
-          setJobs((prev) =>
-            prev.map((j) =>
+          setJobs((prev) => {
+            console.log("[useCronJobs] Updating job to running:", job_id);
+            return prev.map((j) =>
               j.id === job_id
                 ? { ...j, last_status: "running" as JobStatus, last_run: triggered_at }
                 : j
-            )
-          );
+            );
+          });
         }
         break;
       }
 
       case "CronJobCompleted": {
-        const { job_id, status, completed_at } = data || {};
+        const { job_id, status, completed_at, next_run } = data || {};
+        console.log("[useCronJobs] CronJobCompleted:", { job_id, status, completed_at, next_run });
         if (job_id && status && completed_at) {
-          setJobs((prev) =>
-            prev.map((j) =>
+          setJobs((prev) => {
+            console.log("[useCronJobs] Updating job status to:", status, "next_run:", next_run);
+            return prev.map((j) =>
               j.id === job_id
-                ? { ...j, last_status: status, last_run: completed_at }
+                ? { ...j, last_status: status, last_run: completed_at, next_run: next_run ?? j.next_run }
                 : j
-            )
-          );
+            );
+          });
         }
         break;
       }
