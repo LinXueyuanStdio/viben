@@ -82,6 +82,7 @@ import {
   useExecutorSessionMessages,
   useChatList,
   isExecutorType,
+  buildWorkspaceUrl,
 } from "@/hooks";
 import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
@@ -1932,9 +1933,8 @@ export function WorkspaceChatPage() {
                   setSelectedSidebarExecutorId(executor.id);
                 }}
                 onSettings={(executor) => {
-                  if (workspaceId) {
-                    navigate(`/workspace/${workspaceId}/executor/${executor.id}`);
-                  }
+                  const url = buildWorkspaceUrl(`/executor/${executor.id}`, workspace?.path);
+                  navigate(url);
                 }}
                 onRefresh={loadExecutors}
                 isLoading={isLoadingExecutors}

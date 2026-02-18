@@ -15,6 +15,9 @@ export { AgentDetailPage } from "./agent-detail";
 export { WorkspaceSkillDetailPage } from "./workspace-skill-detail";
 export { SkillDetailPage } from "./skill-detail";
 export { ExecutorDetailPage } from "./executor-detail";
+export { McpServerDetailPage } from "./mcp-server-detail";
+export { PromptDetailPage } from "./prompt-detail";
+export { CommandDetailPage } from "./command-detail";
 export { WorkspaceAgentsPage } from "./workspace-agents";
 export { HomeRedirect } from "./home-redirect";
 export { OnboardingPage } from "./onboarding";
@@ -23,6 +26,12 @@ export { MyPackagesPage } from "./my-packages";
 export { AnalyticsPage } from "./analytics";
 export { DocumentsPage } from "./documents";
 export { ChatMonitorPage } from "./chat-monitor";
+// Legacy redirects for backward compatibility
+export {
+  LegacyAgentRedirect,
+  LegacyWorkspaceAgentRedirect,
+  LegacyWorkspaceSkillRedirect,
+} from "./legacy-redirects";
 // Note: MarketplacePage and SkillsMarketPage are lazy-loaded in App.tsx for code splitting
 // They should be imported directly from their modules when lazy loading
 // Note: AgentsPage has been removed - agent configuration is now integrated into WorkspaceDetailPage
