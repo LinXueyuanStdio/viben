@@ -7,13 +7,14 @@ import type { AppState } from "../state";
 
 /**
  * Transform CronJob to snake_case response format (to match Rust gateway)
+ * Note: CronJob interface now uses snake_case, so this is a simple passthrough
  */
 function toSnakeCaseJob(job: CronJob) {
   return {
     id: job.id,
     name: job.name,
     enabled: job.enabled,
-    job_type: job.jobType,
+    job_type: job.job_type,
     message: job.message,
     script: job.script,
     cron: job.cron,
@@ -21,13 +22,13 @@ function toSnakeCaseJob(job: CronJob) {
     channel: job.channel,
     agent: job.agent,
     notifications: job.notifications,
-    last_run: job.lastRun,
-    last_status: job.lastStatus,
-    last_error: job.lastError,
-    last_output: job.lastOutput,
-    next_run: job.nextRun,
-    created_at: job.createdAt,
-    updated_at: job.updatedAt,
+    last_run: job.last_run,
+    last_status: job.last_status,
+    last_error: job.last_error,
+    last_output: job.last_output,
+    next_run: job.next_run,
+    created_at: job.created_at,
+    updated_at: job.updated_at,
   };
 }
 

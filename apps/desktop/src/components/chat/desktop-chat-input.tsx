@@ -102,7 +102,13 @@ export function DesktopChatInput({
   // Merge props with global config (props take precedence)
   const agents = propAgents ?? (useGlobalConfig ? chatConfig.agents : []);
   const models = propModels ?? (useGlobalConfig ? chatConfig.models : []);
-  const executors = propExecutors ?? (useGlobalConfig ? chatConfig.executors : []);
+  // Convert ExecutorInfo[] to AgentTypeInfo[] for ChatInput
+  const executors = propExecutors ?? (useGlobalConfig ? chatConfig.executors.map((e) => ({
+    id: e.type,
+    name: e.name,
+    description: e.description,
+    docsUrl: e.docs_url,
+  })) : []);
   const selectedAgentId = propSelectedAgentId ?? (useGlobalConfig ? chatConfig.selectedAgentId : null);
   const selectedModelId = propSelectedModelId ?? (useGlobalConfig ? chatConfig.selectedModelId : null);
   const selectedExecutor = propSelectedExecutor ?? (useGlobalConfig ? chatConfig.selectedExecutor : "CLAUDE_CODE");

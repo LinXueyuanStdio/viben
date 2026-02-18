@@ -4,71 +4,75 @@
  * Provides event broadcasting and streaming for the gateway, including:
  * - Gateway events (agent spawned, completed, etc.)
  * - JSON Patch streams for task/session updates
+ *
+ * All field names use snake_case for consistency.
  */
 import { EventEmitter } from "node:events";
 import type { Task, Session } from "../db/types";
 
 /**
  * Gateway event types
+ * All data fields use snake_case naming convention
  */
 export type GatewayEvent =
-  | { type: "agent_spawned"; data: { agentId: string; sessionId: string } }
-  | { type: "agent_completed"; data: { agentId: string; sessionId: string; success: boolean } }
-  | { type: "task_status_changed"; data: { taskId: string; oldStatus: string; newStatus: string } }
-  | { type: "task_created"; data: { taskId: string } }
-  | { type: "task_updated"; data: { taskId: string } }
-  | { type: "task_deleted"; data: { taskId: string } }
-  | { type: "session_created"; data: { sessionId: string } }
-  | { type: "session_updated"; data: { sessionId: string } }
-  | { type: "session_deleted"; data: { sessionId: string } }
-  | { type: "session_message"; data: { sessionId: string; content: string; role: string } }
-  | { type: "execution_log"; data: { sessionId: string; logType: string; content: string } }
+  | { type: "agent_spawned"; data: { agent_id: string; session_id: string } }
+  | { type: "agent_completed"; data: { agent_id: string; session_id: string; success: boolean } }
+  | { type: "task_status_changed"; data: { task_id: string; old_status: string; new_status: string } }
+  | { type: "task_created"; data: { task_id: string } }
+  | { type: "task_updated"; data: { task_id: string } }
+  | { type: "task_deleted"; data: { task_id: string } }
+  | { type: "session_created"; data: { session_id: string } }
+  | { type: "session_updated"; data: { session_id: string } }
+  | { type: "session_deleted"; data: { session_id: string } }
+  | { type: "session_message"; data: { session_id: string; content: string; role: string } }
+  | { type: "execution_log"; data: { session_id: string; log_type: string; content: string } }
   | { type: "json_patch"; data: { patch: unknown } }
   | { type: "error"; data: { message: string; code?: string } }
   // Group chat events
-  | { type: "group_chat_created"; data: { groupChatId: string } }
-  | { type: "group_chat_updated"; data: { groupChatId: string } }
-  | { type: "group_chat_deleted"; data: { groupChatId: string } }
-  | { type: "group_chat_member_joined"; data: { groupChatId: string; memberId: string } }
-  | { type: "group_chat_member_left"; data: { groupChatId: string; memberId: string } }
-  | { type: "group_chat_message"; data: { groupChatId: string; messageId: string } }
-  | { type: "group_chat_agent_thinking"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string } }
-  | { type: "group_chat_agent_progress"; data: { groupChatId: string; sessionId: string; agentId: string; delta: string } }
-  | { type: "group_chat_agent_response"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string; content: string; duration?: number } }
-  | { type: "group_chat_agent_error"; data: { groupChatId: string; sessionId: string; agentId: string; agentName: string; error: string } }
-  | { type: "group_chat_error"; data: { groupChatId: string; sessionId: string; error: string } }
-  | { type: "group_chat_round_complete"; data: { groupChatId: string; sessionId: string; successCount: number; errorCount: number; duration: number } }
+  | { type: "group_chat_created"; data: { group_chat_id: string } }
+  | { type: "group_chat_updated"; data: { group_chat_id: string } }
+  | { type: "group_chat_deleted"; data: { group_chat_id: string } }
+  | { type: "group_chat_member_joined"; data: { group_chat_id: string; member_id: string } }
+  | { type: "group_chat_member_left"; data: { group_chat_id: string; member_id: string } }
+  | { type: "group_chat_message"; data: { group_chat_id: string; message_id: string } }
+  | { type: "group_chat_agent_thinking"; data: { group_chat_id: string; session_id: string; agent_id: string; agent_name: string } }
+  | { type: "group_chat_agent_progress"; data: { group_chat_id: string; session_id: string; agent_id: string; delta: string } }
+  | { type: "group_chat_agent_response"; data: { group_chat_id: string; session_id: string; agent_id: string; agent_name: string; content: string; duration?: number } }
+  | { type: "group_chat_agent_error"; data: { group_chat_id: string; session_id: string; agent_id: string; agent_name: string; error: string } }
+  | { type: "group_chat_error"; data: { group_chat_id: string; session_id: string; error: string } }
+  | { type: "group_chat_round_complete"; data: { group_chat_id: string; session_id: string; success_count: number; error_count: number; duration: number } }
   // Cron job events
   | { type: "cron_job_created"; data: { job: CronJobData } }
   | { type: "cron_job_updated"; data: { job: CronJobData } }
-  | { type: "cron_job_deleted"; data: { jobId: string } }
-  | { type: "cron_job_triggered"; data: { jobId: string; triggeredAt: number } }
-  | { type: "cron_job_completed"; data: { jobId: string; jobName: string; jobType: string; status: string; durationMs: number; output?: string; completedAt: number } }
-  | { type: "cron_job_message"; data: { jobId: string; agentId: string; message: string } }
+  | { type: "cron_job_deleted"; data: { job_id: string } }
+  | { type: "cron_job_triggered"; data: { job_id: string; triggered_at: number } }
+  | { type: "cron_job_completed"; data: { job_id: string; job_name: string; job_type: string; status: string; duration_ms: number; output?: string; completed_at: number } }
+  | { type: "cron_job_message"; data: { job_id: string; agent_id: string; message: string } }
   // Channel events
-  | { type: "channel_message_received"; data: { channelType: string; channelName: string; chatId: string; senderName?: string; message: string; timestamp: number } }
-  | { type: "channel_connection_status"; data: { channelType: string; channelName: string; connected: boolean; error?: string } }
+  | { type: "channel_message_received"; data: { channel_type: string; channel_name: string; chat_id: string; sender_name?: string; message: string; timestamp: number } }
+  | { type: "channel_connection_status"; data: { channel_type: string; channel_name: string; connected: boolean; error?: string } }
   | { type: "channel_created"; data: { channel: unknown } }
   | { type: "channel_updated"; data: { channel: unknown } }
-  | { type: "channel_deleted"; data: { channelId: string } };
+  | { type: "channel_deleted"; data: { channel_id: string } };
 
 /**
  * Cron job data for events
+ * All fields use snake_case naming convention
  */
 export interface CronJobData {
   id: string;
   name: string;
   enabled: boolean;
-  jobType: "agent" | "script";
+  job_type: "agent" | "script";
   message?: string;
   script?: string;
   cron?: string;
   every?: number;
   channel?: string;
   agent: string;
-  lastRun?: number;
-  lastStatus?: string;
-  nextRun?: number;
+  last_run?: number;
+  last_status?: string;
+  next_run?: number;
 }
 
 /**
@@ -81,13 +85,13 @@ export type EventListener = (event: GatewayEvent) => void;
  */
 export class EventService {
   private emitter: EventEmitter;
-  private patchEmitter: EventEmitter;
+  private patch_emitter: EventEmitter;
 
   constructor() {
     this.emitter = new EventEmitter();
     this.emitter.setMaxListeners(1000);
-    this.patchEmitter = new EventEmitter();
-    this.patchEmitter.setMaxListeners(1000);
+    this.patch_emitter = new EventEmitter();
+    this.patch_emitter.setMaxListeners(1000);
   }
 
   /**
@@ -101,7 +105,7 @@ export class EventService {
    * Broadcast a JSON Patch
    */
   broadcastPatch(patch: unknown): void {
-    this.patchEmitter.emit("patch", patch);
+    this.patch_emitter.emit("patch", patch);
   }
 
   /**
@@ -116,8 +120,8 @@ export class EventService {
    * Subscribe to patches
    */
   subscribePatch(listener: (patch: unknown) => void): () => void {
-    this.patchEmitter.on("patch", listener);
-    return () => this.patchEmitter.off("patch", listener);
+    this.patch_emitter.on("patch", listener);
+    return () => this.patch_emitter.off("patch", listener);
   }
 
   // Convenience methods for common events
@@ -125,30 +129,30 @@ export class EventService {
   /**
    * Broadcast agent spawned event
    */
-  agentSpawned(agentId: string, sessionId: string): void {
+  agentSpawned(agent_id: string, session_id: string): void {
     this.broadcast({
       type: "agent_spawned",
-      data: { agentId, sessionId },
+      data: { agent_id, session_id },
     });
   }
 
   /**
    * Broadcast agent completed event
    */
-  agentCompleted(agentId: string, sessionId: string, success: boolean): void {
+  agentCompleted(agent_id: string, session_id: string, success: boolean): void {
     this.broadcast({
       type: "agent_completed",
-      data: { agentId, sessionId, success },
+      data: { agent_id, session_id, success },
     });
   }
 
   /**
    * Broadcast task status changed event
    */
-  taskStatusChanged(taskId: string, oldStatus: string, newStatus: string): void {
+  taskStatusChanged(task_id: string, old_status: string, new_status: string): void {
     this.broadcast({
       type: "task_status_changed",
-      data: { taskId, oldStatus, newStatus },
+      data: { task_id, old_status, new_status },
     });
   }
 
@@ -158,7 +162,7 @@ export class EventService {
   taskCreated(task: Task): void {
     this.broadcast({
       type: "task_created",
-      data: { taskId: task.id },
+      data: { task_id: task.id },
     });
     this.broadcastPatch([
       {
@@ -175,7 +179,7 @@ export class EventService {
   taskUpdated(task: Task): void {
     this.broadcast({
       type: "task_updated",
-      data: { taskId: task.id },
+      data: { task_id: task.id },
     });
     this.broadcastPatch([
       {
@@ -189,15 +193,15 @@ export class EventService {
   /**
    * Broadcast task deleted event and JSON patch
    */
-  taskDeleted(taskId: string): void {
+  taskDeleted(task_id: string): void {
     this.broadcast({
       type: "task_deleted",
-      data: { taskId },
+      data: { task_id },
     });
     this.broadcastPatch([
       {
         op: "remove",
-        path: `/tasks/${taskId}`,
+        path: `/tasks/${task_id}`,
       },
     ]);
   }
@@ -208,7 +212,7 @@ export class EventService {
   sessionCreated(session: Session): void {
     this.broadcast({
       type: "session_created",
-      data: { sessionId: session.id },
+      data: { session_id: session.id },
     });
     this.broadcastPatch([
       {
@@ -225,7 +229,7 @@ export class EventService {
   sessionUpdated(session: Session): void {
     this.broadcast({
       type: "session_updated",
-      data: { sessionId: session.id },
+      data: { session_id: session.id },
     });
     this.broadcastPatch([
       {
@@ -239,15 +243,15 @@ export class EventService {
   /**
    * Broadcast session deleted event and JSON patch
    */
-  sessionDeleted(sessionId: string): void {
+  sessionDeleted(session_id: string): void {
     this.broadcast({
       type: "session_deleted",
-      data: { sessionId },
+      data: { session_id },
     });
     this.broadcastPatch([
       {
         op: "remove",
-        path: `/sessions/${sessionId}`,
+        path: `/sessions/${session_id}`,
       },
     ]);
   }
@@ -255,20 +259,20 @@ export class EventService {
   /**
    * Broadcast session message event
    */
-  sessionMessage(sessionId: string, content: string, role: string): void {
+  sessionMessage(session_id: string, content: string, role: string): void {
     this.broadcast({
       type: "session_message",
-      data: { sessionId, content, role },
+      data: { session_id, content, role },
     });
   }
 
   /**
    * Broadcast execution log event
    */
-  executionLog(sessionId: string, logType: string, content: string): void {
+  executionLog(session_id: string, log_type: string, content: string): void {
     this.broadcast({
       type: "execution_log",
-      data: { sessionId, logType, content },
+      data: { session_id, log_type, content },
     });
   }
 

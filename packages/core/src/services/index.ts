@@ -101,6 +101,5 @@ export {
 export {
   AgentService,
   agentService,
-  type AgentSession,
   type AgentPlan,
 } from "./agent";

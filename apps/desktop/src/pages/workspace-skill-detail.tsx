@@ -21,7 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   useLocalWorkspaces,
-  useWorkspaceAgents,
+  useExecutors,
   useWorkspaceSkills,
   useSkillReadme,
   useSkillFiles,
@@ -46,9 +46,11 @@ export function WorkspaceSkillDetailPage() {
     skillId: string;
   }>();
   const { getWorkspace } = useLocalWorkspaces();
-  const { agents } = useWorkspaceAgents(workspaceId || null);
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  const agent = agents.find((a) => a.id === agentId);
+  // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
+  const { executors } = useExecutors({ workspacePath: workspace?.path });
+  // agentId from URL is the executor type (e.g., "CLAUDE_CODE")
+  const executor = executors.find((e) => e.type === agentId);
 
   // Load skills using workspacePath and executor.type (agent.type maps to executor type)
   const { skills, loading: skillsLoading } = useWorkspaceSkills(

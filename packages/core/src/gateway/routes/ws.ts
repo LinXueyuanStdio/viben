@@ -8,32 +8,51 @@
  */
 import type { FastifyInstance } from "fastify";
 import type { AppState } from "../state";
-import { trace, SpanKind, SpanStatusCode, type Span } from "@opentelemetry/api";
+import type { GatewayEvent } from "../../services/events";
+import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
 
 // WebSocket tracer
 const tracer = trace.getTracer("viben-gateway-ws", "1.0.0");
 
 /**
  * WebSocket message types (client to server)
+ * Uses PascalCase for type field to match Rust gateway
  */
 interface ClientMessage {
-  type: "ping" | "subscribe" | "unsubscribe" | "send_message";
-  channels?: string[];
-  sessionId?: string;
-  content?: string;
+  type: "Ping" | "Subscribe" | "Unsubscribe" | "SendMessage";
+  data?: {
+    channels?: string[];
+    sessionId?: string;
+    content?: string;
+  };
 }
 
 /**
  * WebSocket message types (server to client)
+ * Must match the format expected by desktop/web clients (same as Rust gateway)
  */
 interface ServerMessage {
-  type: "pong" | "subscribed" | "unsubscribed" | "event" | "error";
-  channels?: string[];
-  channel?: string;
-  eventType?: string;
-  data?: unknown;
-  code?: string;
-  message?: string;
+  type: "Pong" | "Subscribed" | "Unsubscribed" | "Event" | "Error";
+  data?: {
+    channels?: string[];
+    channel?: string;
+    payload?: {
+      type: string;
+      data: unknown;
+    };
+    message?: string;
+  };
+}
+
+/**
+ * Convert snake_case event type to PascalCase
+ * e.g., "cron_job_completed" -> "CronJobCompleted"
+ */
+function snakeToPascal(str: string): string {
+  return str
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join("");
 }
 
 /**
@@ -75,6 +94,26 @@ function eventToChannel(eventType: string): string {
 }
 
 /**
+ * Transform gateway event to WebSocket message format
+ * Keeps camelCase field names as-is (packages/core standard)
+ */
+function transformEvent(event: GatewayEvent): ServerMessage {
+  const channel = eventToChannel(event.type);
+  const eventType = snakeToPascal(event.type);
+
+  return {
+    type: "Event",
+    data: {
+      channel,
+      payload: {
+        type: eventType,
+        data: event.data,
+      },
+    },
+  };
+}
+
+/**
  * Register WebSocket routes
  */
 export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppState): void {
@@ -108,12 +147,7 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
 
           // Only send if client is subscribed to this channel (or no specific subscriptions)
           if (subscribedChannels.size === 0 || subscribedChannels.has(channel)) {
-            const serverMsg: ServerMessage = {
-              type: "event",
-              channel,
-              eventType: event.type,
-              data: event.data,
-            };
+            const serverMsg = transformEvent(event);
             socket.send(JSON.stringify(serverMsg));
             messagesSent++;
           }
@@ -136,51 +170,55 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
             messageSpan.setAttribute("ws.message.type", msg.type);
 
             switch (msg.type) {
-              case "ping": {
-                const pong: ServerMessage = { type: "pong" };
+              case "Ping": {
+                const pong: ServerMessage = { type: "Pong" };
                 socket.send(JSON.stringify(pong));
                 messagesSent++;
                 break;
               }
 
-              case "subscribe": {
-                if (msg.channels) {
-                  msg.channels.forEach((ch) => subscribedChannels.add(ch));
+              case "Subscribe": {
+                const channels = msg.data?.channels;
+                if (channels) {
+                  channels.forEach((ch) => subscribedChannels.add(ch));
                   const response: ServerMessage = {
-                    type: "subscribed",
-                    channels: Array.from(subscribedChannels),
+                    type: "Subscribed",
+                    data: { channels: Array.from(subscribedChannels) },
                   };
                   socket.send(JSON.stringify(response));
                   messagesSent++;
-                  messageSpan.setAttribute("ws.channels.subscribed", msg.channels.join(","));
+                  messageSpan.setAttribute("ws.channels.subscribed", channels.join(","));
                 }
                 break;
               }
 
-              case "unsubscribe": {
-                if (msg.channels) {
-                  msg.channels.forEach((ch) => subscribedChannels.delete(ch));
+              case "Unsubscribe": {
+                const channels = msg.data?.channels;
+                if (channels) {
+                  channels.forEach((ch) => subscribedChannels.delete(ch));
                   const response: ServerMessage = {
-                    type: "unsubscribed",
-                    channels: Array.from(subscribedChannels),
+                    type: "Unsubscribed",
+                    data: { channels: Array.from(subscribedChannels) },
                   };
                   socket.send(JSON.stringify(response));
                   messagesSent++;
-                  messageSpan.setAttribute("ws.channels.unsubscribed", msg.channels.join(","));
+                  messageSpan.setAttribute("ws.channels.unsubscribed", channels.join(","));
                 }
                 break;
               }
 
-              case "send_message": {
+              case "SendMessage": {
                 // Forward message to running agent process via event broadcast.
                 // Note: Direct stdin forwarding would require maintaining a registry
                 // of running agent processes and their stdin pipes. The current
                 // implementation broadcasts the message to WebSocket subscribers,
                 // which allows UI clients to receive messages. For actual agent
                 // interaction, use the /api/sessions/:sessionId/messages endpoint.
-                if (msg.sessionId && msg.content) {
-                  state.events.sessionMessage(msg.sessionId, msg.content, "user");
-                  messageSpan.setAttribute("ws.session.id", msg.sessionId);
+                const sessionId = msg.data?.sessionId;
+                const content = msg.data?.content;
+                if (sessionId && content) {
+                  state.events.sessionMessage(sessionId, content, "user");
+                  messageSpan.setAttribute("ws.session.id", sessionId);
                 }
                 break;
               }
@@ -189,9 +227,8 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
             messageSpan.setStatus({ code: SpanStatusCode.OK });
           } catch {
             const errorMsg: ServerMessage = {
-              type: "error",
-              code: "INVALID_MESSAGE",
-              message: "Failed to parse message",
+              type: "Error",
+              data: { message: "Failed to parse message" },
             };
             socket.send(JSON.stringify(errorMsg));
             messagesSent++;

@@ -509,10 +509,6 @@ const EXECUTOR_METADATA: Record<ExecutorType, { name: string; description: strin
     name: "Droid",
     description: "Droid AI coding assistant",
   },
-  UNKNOWN: {
-    name: "Unknown",
-    description: "Unknown executor type",
-  },
 };
 
 /**

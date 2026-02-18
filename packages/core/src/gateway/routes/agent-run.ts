@@ -66,6 +66,13 @@ function generateMessageId(): string {
 }
 
 /**
+ * Generate a unique internal session ID for abort control
+ */
+function generateInternalSessionId(): string {
+  return `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
  * Load agent config from a YAML file path
  * @param configPath - Path to the agent config.yaml file
  * @returns AgentConfigPayload or null if not found
@@ -346,7 +353,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     // Create context with agent run span as parent
     const agentRunContext = trace.setSpan(context.active(), agentRunSpan);
 
-    let sessionId: string | null = null;
+    // Generate internal session ID for abort control
+    const sessionId = generateInternalSessionId();
 
     try {
       // Create session span as child of agentRunSpan
@@ -360,9 +368,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         agentRunContext
       );
 
-      // Create session with agent name (if provided)
-      const session = agentService.createSession(agentConfig?.name || "default", prompt);
-      sessionId = session.sessionId;
+      // Register session for abort control
+      agentService.registerSession(sessionId);
 
       sessionSpan.setAttribute("session.id", sessionId);
       sessionSpan.setStatus({ code: SpanStatusCode.OK });
@@ -500,9 +507,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           }
         }
 
-        // Check if session was cancelled
-        const currentSession = agentService.getSession(sessionId);
-        if (currentSession?.status === "cancelled") {
+        // Check if session was cancelled (via abort controller)
+        if (agentService.isSessionAborted(sessionId)) {
           streamSpan.setStatus({
             code: SpanStatusCode.ERROR,
             message: "Session cancelled by user",
@@ -532,9 +538,6 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       streamSpan.setStatus({ code: SpanStatusCode.OK });
       streamSpan.end();
 
-      // Mark completed
-      agentService.updateSessionStatus(sessionId, "completed", new Date());
-
       // Update agent run span with final statistics
       agentRunSpan.setAttributes({
         "agent.status": "completed",
@@ -548,10 +551,6 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      if (sessionId) {
-        agentService.updateSessionStatus(sessionId, "error", new Date());
-      }
-
       agentRunSpan.setStatus({
         code: SpanStatusCode.ERROR,
         message: errorMessage,
@@ -560,6 +559,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
       sendSSE(reply, { type: "error", message: errorMessage });
     } finally {
+      // Cleanup: unregister the session
+      agentService.unregisterSession(sessionId);
       agentRunSpan.end();
       sendSSE(reply, { type: "done" });
       reply.raw.end();
@@ -676,25 +677,27 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
   );
 
   /**
-   * Get session info
+   * Get session info (runtime status only)
    * GET /api/agent/session/:sessionId
+   *
+   * Note: This only returns runtime abort status.
+   * For full session data, use SessionStoreService.
    */
   fastify.get<{ Params: { sessionId: string } }>(
     "/api/agent/session/:sessionId",
     async (request, reply) => {
       const { sessionId } = request.params;
-      const session = agentService.getSession(sessionId);
-      if (!session) {
+      const hasController = agentService.getAbortSignal(sessionId) !== undefined;
+
+      if (!hasController) {
         reply.code(404);
         return { error: `Session not found: ${sessionId}` };
       }
+
+      const isAborted = agentService.isSessionAborted(sessionId);
       return {
-        sessionId: session.sessionId,
-        agentId: session.agentId,
-        prompt: session.prompt,
-        status: session.status,
-        startedAt: session.startedAt.toISOString(),
-        completedAt: session.completedAt?.toISOString(),
+        sessionId,
+        status: isAborted ? "cancelled" : "active",
       };
     }
   );

@@ -5,7 +5,7 @@
  * combining global availability with workspace-specific configurations.
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   getGatewayClient,
   type ExecutorInfo,
@@ -17,8 +17,6 @@ import {
   type UpdateVibenAgentOptions,
   type VibenAgentResponse,
   type VibenAgentTemplate,
-  // Legacy types for backwards compatibility
-  type WorkspaceExecutor,
   GatewayError,
 } from "@/lib/gateway";
 
@@ -71,6 +69,10 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
+  // Track current workspacePath to prevent stale data from old requests
+  const currentPathRef = useRef(workspacePath);
+  currentPathRef.current = workspacePath;
+
   // Clear state when workspacePath changes to avoid showing stale data
   useEffect(() => {
     setExecutors([]);
@@ -79,6 +81,7 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
   }, [workspacePath]);
 
   const loadExecutors = useCallback(async () => {
+    const requestPath = workspacePath; // Capture at request time
     setLoading(true);
     setError(null);
 
@@ -88,15 +91,22 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
         workspacePath: workspacePath || undefined,
         includeGlobal,
       });
-      setExecutors(response.executors);
-      setTotal(response.total);
+      // Only update state if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        setExecutors(response.executors);
+        setTotal(response.total);
+      }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load executors";
-      setError(message);
-      console.error("[useExecutors] Error:", err);
+      if (currentPathRef.current === requestPath) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load executors";
+        setError(message);
+        console.error("[useExecutors] Error:", err);
+      }
     } finally {
-      setLoading(false);
+      if (currentPathRef.current === requestPath) {
+        setLoading(false);
+      }
     }
   }, [workspacePath, includeGlobal]);
 
@@ -141,91 +151,6 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
   };
 }
 
-// ============================================================================
-// Workspace Executors Hook (Legacy - uses new API internally)
-// ============================================================================
-
-export interface UseWorkspaceExecutorsReturn {
-  /** List of executors with workspace context */
-  executors: WorkspaceExecutor[];
-  /** Loading state */
-  loading: boolean;
-  /** Error message */
-  error: string | null;
-  /** Refresh executors */
-  refresh: () => Promise<void>;
-  /** Get available executors (installed or logged in) */
-  getAvailableExecutors: () => WorkspaceExecutor[];
-  /** Get executors with workspace config */
-  getConfiguredExecutors: () => WorkspaceExecutor[];
-}
-
-/**
- * Hook to get executors available for a workspace
- * @deprecated Use useExecutors() instead for more detailed config info
- */
-export function useWorkspaceExecutors(
-  workspacePath: string | null
-): UseWorkspaceExecutorsReturn {
-  const [executors, setExecutors] = useState<WorkspaceExecutor[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Clear state when workspacePath changes to avoid showing stale data
-  useEffect(() => {
-    setExecutors([]);
-    setError(null);
-  }, [workspacePath]);
-
-  const loadExecutors = useCallback(async () => {
-    if (!workspacePath) {
-      setExecutors([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const client = getGatewayClient();
-      const response = await client.getExecutors({ workspacePath, includeGlobal: true });
-      setExecutors(response.executors);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load executors";
-      setError(message);
-      console.error("[useWorkspaceExecutors] Error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [workspacePath]);
-
-  // Load on mount and when workspace changes
-  useEffect(() => {
-    loadExecutors();
-  }, [loadExecutors]);
-
-  const getAvailableExecutors = useCallback(() => {
-    return executors.filter(
-      (e) =>
-        e.availability.type === "LOGIN_DETECTED" ||
-        e.availability.type === "INSTALLATION_FOUND"
-    );
-  }, [executors]);
-
-  const getConfiguredExecutors = useCallback(() => {
-    return executors.filter((e) => e.has_workspace_config);
-  }, [executors]);
-
-  return {
-    executors,
-    loading,
-    error,
-    refresh: loadExecutors,
-    getAvailableExecutors,
-    getConfiguredExecutors,
-  };
-}
 
 // ============================================================================
 // Workspace Models Hook
@@ -395,6 +320,10 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
+  // Track current workspacePath to prevent stale data from old requests
+  const currentPathRef = useRef(workspacePath);
+  currentPathRef.current = workspacePath;
+
   // Clear state when workspacePath changes to avoid showing stale data
   useEffect(() => {
     setAgents([]);
@@ -403,6 +332,7 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   }, [workspacePath]);
 
   const loadAgents = useCallback(async () => {
+    const requestPath = workspacePath; // Capture at request time
     setLoading(true);
     setError(null);
 
@@ -415,16 +345,23 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
         }),
         client.getDefaultAgentId().catch(() => null),
       ]);
-      setAgents(agentsResponse.agents);
-      setTotal(agentsResponse.total);
-      setDefaultAgentIdState(defaultId);
+      // Only update state if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        setAgents(agentsResponse.agents);
+        setTotal(agentsResponse.total);
+        setDefaultAgentIdState(defaultId);
+      }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load agents";
-      setError(message);
-      console.error("[useAgents] Error:", err);
+      if (currentPathRef.current === requestPath) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load agents";
+        setError(message);
+        console.error("[useAgents] Error:", err);
+      }
     } finally {
-      setLoading(false);
+      if (currentPathRef.current === requestPath) {
+        setLoading(false);
+      }
     }
   }, [workspacePath, includeGlobal]);
 
@@ -729,7 +666,7 @@ export function useWorkspaceAgentsFromGateway(
 // ============================================================================
 
 export interface UseWorkspaceResourcesReturn {
-  executors: UseWorkspaceExecutorsReturn;
+  executors: UseExecutorsReturn;
   models: UseWorkspaceModelsReturn;
   agents: UseWorkspaceAgentsFromGatewayReturn;
   /** Refresh all resources */
@@ -744,7 +681,7 @@ export interface UseWorkspaceResourcesReturn {
 export function useWorkspaceResources(
   workspacePath: string | null
 ): UseWorkspaceResourcesReturn {
-  const executors = useWorkspaceExecutors(workspacePath);
+  const executors = useExecutors({ workspacePath, includeGlobal: true });
   const models = useWorkspaceModels(workspacePath);
   const agents = useWorkspaceAgentsFromGateway(workspacePath);
 
@@ -866,6 +803,10 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track current workspacePath to prevent stale data from old requests
+  const currentPathRef = useRef(workspacePath);
+  currentPathRef.current = workspacePath;
+
   // Clear state when workspacePath changes to avoid showing stale data
   useEffect(() => {
     setExecutorItems([]);
@@ -874,6 +815,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   }, [workspacePath]);
 
   const loadData = useCallback(async () => {
+    const requestPath = workspacePath; // Capture at request time
     setLoading(true);
     setError(null);
 
@@ -892,6 +834,11 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
         }),
         client.getDefaultAgentId().catch(() => null),
       ]);
+
+      // Only update state if this request is still relevant
+      if (currentPathRef.current !== requestPath) {
+        return;
+      }
 
       // Transform executors to unified format
       const executors: AgentListItem[] = executorsResponse.executors.map((e) => ({
@@ -923,12 +870,18 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
       setAgentItems(agents);
       setDefaultAgentIdState(defaultId);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load agent list";
-      setError(message);
-      console.error("[useAgentList] Error:", err);
+      // Only update error if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load agent list";
+        setError(message);
+        console.error("[useAgentList] Error:", err);
+      }
     } finally {
-      setLoading(false);
+      // Only update loading if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        setLoading(false);
+      }
     }
   }, [workspacePath, includeGlobal]);
 
@@ -1085,6 +1038,10 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track current workspacePath to prevent stale data from old requests
+  const currentPathRef = useRef(workspacePath);
+  currentPathRef.current = workspacePath;
+
   // Clear state when workspacePath changes to avoid showing stale data
   useEffect(() => {
     setItems([]);
@@ -1093,6 +1050,7 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   }, [workspacePath]);
 
   const loadChatList = useCallback(async () => {
+    const requestPath = workspacePath; // Capture at request time
     setLoading(true);
     setError(null);
 
@@ -1105,16 +1063,25 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
         }),
         client.getDefaultAgentId().catch(() => null),
       ]);
-      setItems(response.items);
-      setCounts(response.counts);
-      setDefaultAgentIdState(defaultId);
+      // Only update state if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        setItems(response.items);
+        setCounts(response.counts);
+        setDefaultAgentIdState(defaultId);
+      }
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to load chat list";
-      setError(message);
-      console.error("[useChatList] Error:", err);
+      // Only update error if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        const message =
+          err instanceof Error ? err.message : "Failed to load chat list";
+        setError(message);
+        console.error("[useChatList] Error:", err);
+      }
     } finally {
-      setLoading(false);
+      // Only update loading if this request is still relevant
+      if (currentPathRef.current === requestPath) {
+        setLoading(false);
+      }
     }
   }, [workspacePath, includeGlobal]);
 

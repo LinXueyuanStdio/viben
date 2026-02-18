@@ -196,14 +196,3 @@ export function useVibenAgentsOnly() {
     includeExecutors: false,
   });
 }
-
-/**
- * Hook for getting workspace executors only (auto-discovered)
- */
-export function useWorkspaceExecutors(workspaceId: string | null) {
-  return useUnifiedAgents({
-    workspaceId,
-    includeAgents: false,
-    includeExecutors: true,
-  });
-}

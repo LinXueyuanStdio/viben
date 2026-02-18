@@ -33,25 +33,14 @@ vi.mock("../../executors/chat/sdk-proxy", () => ({
   })),
 }));
 
-// Mock agent service
+// Mock agent service (simplified - only abort control + plans)
 vi.mock("../../services/agent", () => ({
   agentService: {
-    createSession: vi.fn(() => ({
-      sessionId: "test-session-123",
-      agentId: "CLAUDE_CODE",
-      prompt: "test prompt",
-      status: "running",
-      startedAt: new Date(),
-    })),
-    getSession: vi.fn(() => ({
-      sessionId: "test-session-123",
-      agentId: "CLAUDE_CODE",
-      prompt: "test prompt",
-      status: "running",
-      startedAt: new Date(),
-    })),
-    updateSessionStatus: vi.fn(),
+    registerSession: vi.fn(() => new AbortController()),
+    getAbortSignal: vi.fn(() => new AbortController().signal),
     stopSession: vi.fn(() => true),
+    unregisterSession: vi.fn(),
+    isSessionAborted: vi.fn(() => false),
     getPlan: vi.fn(() => ({
       id: "test-plan-123",
       sessionId: "test-session-123",
@@ -338,7 +327,7 @@ describe("Agent Run Routes", () => {
   // ============================================================================
 
   describe("POST /api/agent/run", () => {
-    it("should create session and stream SSE messages", async () => {
+    it("should register session and stream SSE messages", async () => {
       const response = await fastify.inject({
         method: "POST",
         url: "/api/agent/run",
@@ -367,11 +356,8 @@ describe("Agent Run Routes", () => {
         "http://localhost:1420"
       );
 
-      // Check session was created
-      expect(agentService.createSession).toHaveBeenCalledWith(
-        "CLAUDE_CODE",
-        "Hello"
-      );
+      // Check session was registered for abort control
+      expect(agentService.registerSession).toHaveBeenCalled();
 
       // Parse SSE messages
       const messages = parseSSEMessages(response.sseMessages);
@@ -379,11 +365,10 @@ describe("Agent Run Routes", () => {
       // Should have session, text, result, and done messages
       expect(messages.length).toBeGreaterThanOrEqual(3);
 
-      // First message should be session
-      expect(messages[0]).toEqual({
-        type: "session",
-        sessionId: "test-session-123",
-      });
+      // First message should be session with generated ID
+      expect(messages[0].type).toBe("session");
+      expect(messages[0].sessionId).toBeDefined();
+      expect(typeof messages[0].sessionId).toBe("string");
 
       // Should have text message from mock
       const textMsg = messages.find((m) => m.type === "text");
@@ -401,23 +386,9 @@ describe("Agent Run Routes", () => {
 
       // Stream should be ended
       expect(response.rawResponse?.end).toHaveBeenCalled();
-    });
 
-    it("should update session status to completed on success", async () => {
-      await fastify.inject({
-        method: "POST",
-        url: "/api/agent/run",
-        payload: {
-          agentId: "CLAUDE_CODE",
-          prompt: "Hello",
-        },
-      });
-
-      expect(agentService.updateSessionStatus).toHaveBeenCalledWith(
-        "test-session-123",
-        "completed",
-        expect.any(Date)
-      );
+      // Session should be unregistered in finally block
+      expect(agentService.unregisterSession).toHaveBeenCalled();
     });
   });
 
@@ -541,7 +512,7 @@ describe("Agent Run Routes", () => {
   // ============================================================================
 
   describe("GET /api/agent/session/:sessionId", () => {
-    it("should return session info", async () => {
+    it("should return session runtime status", async () => {
       const response = await fastify.inject({
         method: "GET",
         url: "/api/agent/session/test-session-123",
@@ -550,13 +521,25 @@ describe("Agent Run Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.sessionId).toBe("test-session-123");
-      expect(body.agentId).toBe("CLAUDE_CODE");
-      expect(body.prompt).toBe("test prompt");
-      expect(body.status).toBe("running");
+      expect(body.status).toBe("active");
+    });
+
+    it("should return cancelled status when session is aborted", async () => {
+      vi.mocked(agentService.isSessionAborted).mockReturnValueOnce(true);
+
+      const response = await fastify.inject({
+        method: "GET",
+        url: "/api/agent/session/test-session-123",
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.sessionId).toBe("test-session-123");
+      expect(body.status).toBe("cancelled");
     });
 
     it("should return 404 for non-existent session", async () => {
-      vi.mocked(agentService.getSession).mockReturnValueOnce(null);
+      vi.mocked(agentService.getAbortSignal).mockReturnValueOnce(undefined);
 
       const response = await fastify.inject({
         method: "GET",
@@ -589,7 +572,7 @@ describe("Agent Run Routes", () => {
     });
 
     it("should return 404 for non-existent plan", async () => {
-      vi.mocked(agentService.getPlan).mockReturnValueOnce(null);
+      vi.mocked(agentService.getPlan).mockReturnValueOnce(undefined);
 
       const response = await fastify.inject({
         method: "GET",
@@ -691,26 +674,16 @@ describe("Agent Run Routes", () => {
       const doneMsg = messages.find((m) => m.type === "done");
       expect(doneMsg).toBeDefined();
 
-      // Session status should be updated to error
-      expect(agentService.updateSessionStatus).toHaveBeenCalledWith(
-        "test-session-123",
-        "error",
-        expect.any(Date)
-      );
+      // Session should still be unregistered
+      expect(agentService.unregisterSession).toHaveBeenCalled();
     });
 
-    it("should stop streaming when session is stopped", async () => {
-      // Mock getSession to return stopped status after first call
+    it("should stop streaming when session is aborted", async () => {
+      // Mock isSessionAborted to return true after first check
       let callCount = 0;
-      vi.mocked(agentService.getSession).mockImplementation(() => {
+      vi.mocked(agentService.isSessionAborted).mockImplementation(() => {
         callCount++;
-        return {
-          sessionId: "test-session-123",
-          agentId: "CLAUDE_CODE",
-          prompt: "test prompt",
-          status: callCount > 1 ? "stopped" : "running",
-          startedAt: new Date(),
-        };
+        return callCount > 1;
       });
 
       // Mock SDK to yield multiple messages
@@ -734,10 +707,10 @@ describe("Agent Run Routes", () => {
 
       const messages = parseSSEMessages(response.sseMessages);
 
-      // Should have error message about session stopped
+      // Should have error message about session cancelled
       const errorMsg = messages.find((m) => m.type === "error");
       expect(errorMsg).toBeDefined();
-      expect(errorMsg?.message).toContain("stopped by user");
+      expect(errorMsg?.message).toContain("cancelled by user");
     });
   });
 
@@ -1013,7 +986,7 @@ describe("Agent Run Routes", () => {
       );
     });
 
-    it("should pass model parameter to SDK proxy", async () => {
+    it("should pass model parameter to SDK proxy via agentConfig", async () => {
       const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
       const mockExecuteStreaming = vi.fn(async function* () {
         yield { type: "text", content: "Done" };
@@ -1029,7 +1002,9 @@ describe("Agent Run Routes", () => {
         payload: {
           agentId: "CLAUDE_CODE",
           prompt: "Test",
-          model: "claude-3-opus",
+          agentConfig: {
+            model: "claude-3-opus",
+          },
         },
       });
 
@@ -1040,7 +1015,7 @@ describe("Agent Run Routes", () => {
       );
     });
 
-    it("should pass sessionId to SDK proxy", async () => {
+    it("should pass generated sessionId to SDK proxy", async () => {
       const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
       const mockExecuteStreaming = vi.fn(async function* () {
         yield { type: "text", content: "Done" };
@@ -1061,7 +1036,7 @@ describe("Agent Run Routes", () => {
 
       expect(mockExecuteStreaming).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionId: "test-session-123",
+          sessionId: expect.stringMatching(/^run_\d+_[a-z0-9]+$/),
         })
       );
     });
@@ -1229,7 +1204,7 @@ describe("Agent Run Routes", () => {
   // ============================================================================
 
   describe("Session Lifecycle", () => {
-    it("should create session at start", async () => {
+    it("should register session at start", async () => {
       await fastify.inject({
         method: "POST",
         url: "/api/agent/run",
@@ -1239,13 +1214,10 @@ describe("Agent Run Routes", () => {
         },
       });
 
-      expect(agentService.createSession).toHaveBeenCalledWith(
-        "GEMINI",
-        "Hello Gemini"
-      );
+      expect(agentService.registerSession).toHaveBeenCalled();
     });
 
-    it("should update session to completed on success", async () => {
+    it("should unregister session in finally block", async () => {
       await fastify.inject({
         method: "POST",
         url: "/api/agent/run",
@@ -1255,14 +1227,10 @@ describe("Agent Run Routes", () => {
         },
       });
 
-      expect(agentService.updateSessionStatus).toHaveBeenCalledWith(
-        "test-session-123",
-        "completed",
-        expect.any(Date)
-      );
+      expect(agentService.unregisterSession).toHaveBeenCalled();
     });
 
-    it("should update session to error on failure", async () => {
+    it("should unregister session even on error", async () => {
       const { SdkChatProxy } = await import("../../executors/chat/sdk-proxy");
       vi.mocked(SdkChatProxy).mockImplementationOnce(() => ({
         executeStreaming: vi.fn(async function* () {
@@ -1279,11 +1247,7 @@ describe("Agent Run Routes", () => {
         },
       });
 
-      expect(agentService.updateSessionStatus).toHaveBeenCalledWith(
-        "test-session-123",
-        "error",
-        expect.any(Date)
-      );
+      expect(agentService.unregisterSession).toHaveBeenCalled();
     });
   });
 });

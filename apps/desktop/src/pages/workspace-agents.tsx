@@ -293,12 +293,22 @@ export function WorkspaceAgentsPage({
     const executor = agentListExecutors.find((e) => e.id === selectedItemId);
     if (!executor) return undefined;
     // Transform to the format expected by ExecutorDetailPanel
+    // Determine source based on config paths
+    const hasWorkspaceConfig = !!executor.config_path;
+    const hasGlobalConfig = !!executor.global_config_path;
+    const source = hasWorkspaceConfig && hasGlobalConfig
+      ? "merged" as const
+      : hasWorkspaceConfig
+        ? "workspace" as const
+        : "global" as const;
     return {
       id: executor.id,
       workspace_id: workspace?.id || "",
       name: executor.name,
       type: (executor.id || "UNKNOWN") as import("@/types").ExecutorType,
       config_path: executor.config_path || "",
+      global_config_path: executor.global_config_path,
+      source,
       mcp_config_file: null,
       skills_config_file: null,
     };

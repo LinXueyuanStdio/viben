@@ -380,10 +380,9 @@ export {
   BackgroundTaskManager,
   backgroundTaskManager,
   type BackgroundTask,
-  // Agent service (session lifecycle and plan approval)
+  // Agent service (runtime state and plan approval)
   AgentService,
   agentService,
-  type AgentSession,
   type AgentPlan,
 } from "./services";
 

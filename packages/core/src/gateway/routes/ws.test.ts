@@ -3,8 +3,8 @@
  *
  * Tests for:
  * - WebSocket connection (GET /ws)
- * - Client messages (ping, subscribe, unsubscribe, send_message)
- * - Server messages (event broadcasting, channel filtering)
+ * - Client messages (Ping, Subscribe, Unsubscribe, SendMessage)
+ * - Server messages (Event broadcasting with PascalCase types, snake_case data)
  * - Event channel mapping (eventToChannel function)
  * - Error handling (invalid messages, plugin unavailable)
  */
@@ -182,11 +182,11 @@ describe("WebSocket Routes", () => {
   });
 
   // ============================================================================
-  // Client Messages - ping
+  // Client Messages - Ping (PascalCase)
   // ============================================================================
 
-  describe("Client message: ping", () => {
-    it("should respond with pong", async () => {
+  describe("Client message: Ping", () => {
+    it("should respond with Pong", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -197,20 +197,20 @@ describe("WebSocket Routes", () => {
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
       expect(messageHandler).toBeDefined();
 
-      // Send ping message
-      const pingMessage = Buffer.from(JSON.stringify({ type: "ping" }));
+      // Send Ping message (PascalCase)
+      const pingMessage = Buffer.from(JSON.stringify({ type: "Ping" }));
       messageHandler(pingMessage);
 
-      expect(mockSocket.send).toHaveBeenCalledWith(JSON.stringify({ type: "pong" }));
+      expect(mockSocket.send).toHaveBeenCalledWith(JSON.stringify({ type: "Pong" }));
     });
   });
 
   // ============================================================================
-  // Client Messages - subscribe
+  // Client Messages - Subscribe (PascalCase with nested data)
   // ============================================================================
 
-  describe("Client message: subscribe", () => {
-    it("should add channels and respond with subscribed", async () => {
+  describe("Client message: Subscribe", () => {
+    it("should add channels and respond with Subscribed", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -219,23 +219,23 @@ describe("WebSocket Routes", () => {
 
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
 
-      // Subscribe to channels
+      // Subscribe to channels (PascalCase with nested data)
       const subscribeMessage = Buffer.from(
         JSON.stringify({
-          type: "subscribe",
-          channels: ["cron", "sessions"],
+          type: "Subscribe",
+          data: { channels: ["cron", "sessions"] },
         })
       );
       messageHandler(subscribeMessage);
 
       expect(mockSocket.send).toHaveBeenCalledWith(
-        expect.stringContaining('"type":"subscribed"')
+        expect.stringContaining('"type":"Subscribed"')
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("subscribed");
-      expect(sentMessage.channels).toContain("cron");
-      expect(sentMessage.channels).toContain("sessions");
+      expect(sentMessage.type).toBe("Subscribed");
+      expect(sentMessage.data.channels).toContain("cron");
+      expect(sentMessage.data.channels).toContain("sessions");
     });
 
     it("should accumulate channels on multiple subscribes", async () => {
@@ -251,8 +251,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron"],
+            type: "Subscribe",
+            data: { channels: ["cron"] },
           })
         )
       );
@@ -261,17 +261,17 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["sessions", "agents"],
+            type: "Subscribe",
+            data: { channels: ["sessions", "agents"] },
           })
         )
       );
 
       const lastCall = mockSocket.send.mock.calls[mockSocket.send.mock.calls.length - 1][0];
       const sentMessage = JSON.parse(lastCall);
-      expect(sentMessage.channels).toContain("cron");
-      expect(sentMessage.channels).toContain("sessions");
-      expect(sentMessage.channels).toContain("agents");
+      expect(sentMessage.data.channels).toContain("cron");
+      expect(sentMessage.data.channels).toContain("sessions");
+      expect(sentMessage.data.channels).toContain("agents");
     });
 
     it("should not respond if channels is missing", async () => {
@@ -284,18 +284,18 @@ describe("WebSocket Routes", () => {
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
 
       // Subscribe without channels
-      messageHandler(Buffer.from(JSON.stringify({ type: "subscribe" })));
+      messageHandler(Buffer.from(JSON.stringify({ type: "Subscribe" })));
 
       expect(mockSocket.send).not.toHaveBeenCalled();
     });
   });
 
   // ============================================================================
-  // Client Messages - unsubscribe
+  // Client Messages - Unsubscribe (PascalCase)
   // ============================================================================
 
-  describe("Client message: unsubscribe", () => {
-    it("should remove channels and respond with unsubscribed", async () => {
+  describe("Client message: Unsubscribe", () => {
+    it("should remove channels and respond with Unsubscribed", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -308,8 +308,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron", "sessions", "agents"],
+            type: "Subscribe",
+            data: { channels: ["cron", "sessions", "agents"] },
           })
         )
       );
@@ -320,17 +320,17 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "unsubscribe",
-            channels: ["sessions"],
+            type: "Unsubscribe",
+            data: { channels: ["sessions"] },
           })
         )
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("unsubscribed");
-      expect(sentMessage.channels).toContain("cron");
-      expect(sentMessage.channels).toContain("agents");
-      expect(sentMessage.channels).not.toContain("sessions");
+      expect(sentMessage.type).toBe("Unsubscribed");
+      expect(sentMessage.data.channels).toContain("cron");
+      expect(sentMessage.data.channels).toContain("agents");
+      expect(sentMessage.data.channels).not.toContain("sessions");
     });
 
     it("should not respond if channels is missing", async () => {
@@ -343,17 +343,17 @@ describe("WebSocket Routes", () => {
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
 
       // Unsubscribe without channels
-      messageHandler(Buffer.from(JSON.stringify({ type: "unsubscribe" })));
+      messageHandler(Buffer.from(JSON.stringify({ type: "Unsubscribe" })));
 
       expect(mockSocket.send).not.toHaveBeenCalled();
     });
   });
 
   // ============================================================================
-  // Client Messages - send_message
+  // Client Messages - SendMessage (PascalCase with snake_case fields)
   // ============================================================================
 
-  describe("Client message: send_message", () => {
+  describe("Client message: SendMessage", () => {
     it("should forward message to event service", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
@@ -363,13 +363,15 @@ describe("WebSocket Routes", () => {
 
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
 
-      // Send message
+      // Send message with snake_case fields
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "send_message",
-            sessionId: "session-123",
-            content: "Hello, world!",
+            type: "SendMessage",
+            data: {
+              session_id: "session-123",
+              content: "Hello, world!",
+            },
           })
         )
       );
@@ -377,7 +379,7 @@ describe("WebSocket Routes", () => {
       expect(mockState.events.sessionMessage).toHaveBeenCalledWith("session-123", "Hello, world!", "user");
     });
 
-    it("should not call sessionMessage if sessionId is missing", async () => {
+    it("should not call sessionMessage if session_id is missing", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -386,12 +388,12 @@ describe("WebSocket Routes", () => {
 
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
 
-      // Send message without sessionId
+      // Send message without session_id
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "send_message",
-            content: "Hello",
+            type: "SendMessage",
+            data: { content: "Hello" },
           })
         )
       );
@@ -412,8 +414,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "send_message",
-            sessionId: "session-123",
+            type: "SendMessage",
+            data: { session_id: "session-123" },
           })
         )
       );
@@ -423,7 +425,7 @@ describe("WebSocket Routes", () => {
   });
 
   // ============================================================================
-  // Server Messages - Event Broadcasting
+  // Server Messages - Event Broadcasting (with PascalCase type and snake_case data)
   // ============================================================================
 
   describe("Server messages: event broadcasting", () => {
@@ -442,10 +444,10 @@ describe("WebSocket Routes", () => {
 
       expect(mockSocket.send).toHaveBeenCalled();
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("event");
-      expect(sentMessage.channel).toBe("tasks");
-      expect(sentMessage.eventType).toBe("task_created");
-      expect(sentMessage.data).toEqual({ taskId: "task-1" });
+      expect(sentMessage.type).toBe("Event");
+      expect(sentMessage.data.channel).toBe("tasks");
+      expect(sentMessage.data.payload.type).toBe("TaskCreated");
+      expect(sentMessage.data.payload.data).toEqual({ task_id: "task-1" });
     });
 
     it("should filter events by subscribed channels", async () => {
@@ -461,8 +463,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron"],
+            type: "Subscribe",
+            data: { channels: ["cron"] },
           })
         )
       );
@@ -485,7 +487,7 @@ describe("WebSocket Routes", () => {
 
       expect(mockSocket.send).toHaveBeenCalled();
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("cron");
+      expect(sentMessage.data.channel).toBe("cron");
     });
 
     it("should send events for all subscribed channels", async () => {
@@ -501,8 +503,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron", "tasks"],
+            type: "Subscribe",
+            data: { channels: ["cron", "tasks"] },
           })
         )
       );
@@ -514,6 +516,37 @@ describe("WebSocket Routes", () => {
       mockState.events._broadcast({ type: "cron_job_triggered", data: { jobId: "job-1", triggeredAt: Date.now() } });
 
       expect(mockSocket.send).toHaveBeenCalledTimes(2);
+    });
+
+    it("should convert camelCase data fields to snake_case", async () => {
+      registerWebSocketRoutes(mockFastify, mockState);
+      await mockFastify._executePlugins();
+
+      const route = mockFastify._routes.find((r) => r.path === "/ws");
+      route!.handler(mockSocket);
+
+      // Broadcast cron_job_completed event with camelCase fields
+      mockState.events._broadcast({
+        type: "cron_job_completed",
+        data: {
+          jobId: "job-1",
+          jobName: "Test Job",
+          jobType: "script",
+          durationMs: 1234,
+          completedAt: 1234567890,
+        },
+      });
+
+      const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
+      expect(sentMessage.type).toBe("Event");
+      expect(sentMessage.data.payload.type).toBe("CronJobCompleted");
+      expect(sentMessage.data.payload.data).toEqual({
+        job_id: "job-1",
+        job_name: "Test Job",
+        job_type: "script",
+        duration_ms: 1234,
+        completed_at: 1234567890,
+      });
     });
   });
 
@@ -531,7 +564,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "cron_job_created", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("cron");
+      expect(sentMessage.data.channel).toBe("cron");
     });
 
     it("should map channel events to channels channel", async () => {
@@ -543,7 +576,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "channel_message_received", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("channels");
+      expect(sentMessage.data.channel).toBe("channels");
     });
 
     it("should map group events to group channel", async () => {
@@ -555,7 +588,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "group_chat_created", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("group");
+      expect(sentMessage.data.channel).toBe("group");
     });
 
     it("should map task events to tasks channel", async () => {
@@ -567,7 +600,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "task_updated", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("tasks");
+      expect(sentMessage.data.channel).toBe("tasks");
     });
 
     it("should map session events to sessions channel", async () => {
@@ -579,7 +612,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "session_created", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("sessions");
+      expect(sentMessage.data.channel).toBe("sessions");
     });
 
     it("should map execution_log to sessions channel", async () => {
@@ -591,7 +624,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "execution_log", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("sessions");
+      expect(sentMessage.data.channel).toBe("sessions");
     });
 
     it("should map agent events to agents channel", async () => {
@@ -603,7 +636,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "agent_spawned", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("agents");
+      expect(sentMessage.data.channel).toBe("agents");
     });
 
     it("should map unknown events to gateway channel", async () => {
@@ -615,7 +648,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "unknown_event", data: {} });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("gateway");
+      expect(sentMessage.data.channel).toBe("gateway");
     });
 
     it("should map error events to gateway channel", async () => {
@@ -627,7 +660,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({ type: "error", data: { message: "test" } });
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.channel).toBe("gateway");
+      expect(sentMessage.data.channel).toBe("gateway");
     });
   });
 
@@ -636,7 +669,7 @@ describe("WebSocket Routes", () => {
   // ============================================================================
 
   describe("Error handling", () => {
-    it("should send error response for invalid JSON", async () => {
+    it("should send Error response for invalid JSON", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -650,9 +683,8 @@ describe("WebSocket Routes", () => {
 
       expect(mockSocket.send).toHaveBeenCalled();
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("error");
-      expect(sentMessage.code).toBe("INVALID_MESSAGE");
-      expect(sentMessage.message).toBe("Failed to parse message");
+      expect(sentMessage.type).toBe("Error");
+      expect(sentMessage.data.message).toBe("Failed to parse message");
     });
 
     it("should unsubscribe on connection close", async () => {
@@ -793,7 +825,7 @@ describe("WebSocket Routes", () => {
   // ============================================================================
 
   describe("ServerMessage format", () => {
-    it("should format pong message correctly", async () => {
+    it("should format Pong message correctly", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -801,13 +833,13 @@ describe("WebSocket Routes", () => {
       route!.handler(mockSocket);
 
       const messageHandler = mockSocket.on.mock.calls.find((call) => call[0] === "message")?.[1];
-      messageHandler(Buffer.from(JSON.stringify({ type: "ping" })));
+      messageHandler(Buffer.from(JSON.stringify({ type: "Ping" })));
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage).toEqual({ type: "pong" });
+      expect(sentMessage).toEqual({ type: "Pong" });
     });
 
-    it("should format subscribed message with channels array", async () => {
+    it("should format Subscribed message with channels in data", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -818,19 +850,20 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron", "tasks"],
+            type: "Subscribe",
+            data: { channels: ["cron", "tasks"] },
           })
         )
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("subscribed");
-      expect(Array.isArray(sentMessage.channels)).toBe(true);
-      expect(sentMessage.channels.length).toBe(2);
+      expect(sentMessage.type).toBe("Subscribed");
+      expect(sentMessage.data).toBeDefined();
+      expect(Array.isArray(sentMessage.data.channels)).toBe(true);
+      expect(sentMessage.data.channels.length).toBe(2);
     });
 
-    it("should format event message with all fields", async () => {
+    it("should format Event message with nested payload structure", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -843,13 +876,13 @@ describe("WebSocket Routes", () => {
       });
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("event");
-      expect(sentMessage.channel).toBe("tasks");
-      expect(sentMessage.eventType).toBe("task_created");
-      expect(sentMessage.data).toEqual({ taskId: "task-123", title: "Test Task" });
+      expect(sentMessage.type).toBe("Event");
+      expect(sentMessage.data.channel).toBe("tasks");
+      expect(sentMessage.data.payload.type).toBe("TaskCreated");
+      expect(sentMessage.data.payload.data).toEqual({ task_id: "task-123", title: "Test Task" });
     });
 
-    it("should format error message with code and message", async () => {
+    it("should format Error message with message in data", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -860,9 +893,8 @@ describe("WebSocket Routes", () => {
       messageHandler(Buffer.from("invalid"));
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("error");
-      expect(sentMessage.code).toBe("INVALID_MESSAGE");
-      expect(sentMessage.message).toBe("Failed to parse message");
+      expect(sentMessage.type).toBe("Error");
+      expect(sentMessage.data.message).toBe("Failed to parse message");
     });
   });
 
@@ -882,15 +914,15 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: [],
+            type: "Subscribe",
+            data: { channels: [] },
           })
         )
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("subscribed");
-      expect(sentMessage.channels).toEqual([]);
+      expect(sentMessage.type).toBe("Subscribed");
+      expect(sentMessage.data.channels).toEqual([]);
     });
 
     it("should handle duplicate channel subscriptions", async () => {
@@ -906,16 +938,16 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron", "cron", "cron"],
+            type: "Subscribe",
+            data: { channels: ["cron", "cron", "cron"] },
           })
         )
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("subscribed");
+      expect(sentMessage.type).toBe("Subscribed");
       // Set should deduplicate
-      expect(sentMessage.channels).toEqual(["cron"]);
+      expect(sentMessage.data.channels).toEqual(["cron"]);
     });
 
     it("should handle unsubscribe from non-subscribed channel", async () => {
@@ -931,8 +963,8 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "subscribe",
-            channels: ["cron"],
+            type: "Subscribe",
+            data: { channels: ["cron"] },
           })
         )
       );
@@ -943,15 +975,15 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "unsubscribe",
-            channels: ["tasks"],
+            type: "Unsubscribe",
+            data: { channels: ["tasks"] },
           })
         )
       );
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);
-      expect(sentMessage.type).toBe("unsubscribed");
-      expect(sentMessage.channels).toEqual(["cron"]);
+      expect(sentMessage.type).toBe("Unsubscribed");
+      expect(sentMessage.data.channels).toEqual(["cron"]);
     });
 
     it("should handle unknown message type gracefully", async () => {
@@ -967,7 +999,7 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "unknown_type",
+            type: "UnknownType",
             data: "test",
           })
         )
@@ -977,7 +1009,7 @@ describe("WebSocket Routes", () => {
       expect(mockSocket.send).not.toHaveBeenCalled();
     });
 
-    it("should handle empty content in send_message", async () => {
+    it("should handle empty content in SendMessage", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
@@ -990,9 +1022,11 @@ describe("WebSocket Routes", () => {
       messageHandler(
         Buffer.from(
           JSON.stringify({
-            type: "send_message",
-            sessionId: "session-123",
-            content: "",
+            type: "SendMessage",
+            data: {
+              session_id: "session-123",
+              content: "",
+            },
           })
         )
       );

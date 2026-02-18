@@ -1,11 +1,11 @@
 /**
  * Agent Service
  *
- * Manages agent session lifecycle and plan approvals.
- * This service provides:
- * - Session creation and management
- * - Plan storage and approval workflow
- * - Session status updates with observer pattern
+ * Manages runtime agent state:
+ * - Abort controllers for session cancellation
+ * - Plan approval workflow
+ *
+ * Note: Session persistence is handled by SessionStoreService
  */
 
 import { randomUUID } from "node:crypto";
@@ -13,19 +13,6 @@ import { randomUUID } from "node:crypto";
 // ============================================================================
 // Types
 // ============================================================================
-
-/**
- * Agent session state
- */
-export interface AgentSession {
-  sessionId: string;
-  agentId: string;
-  prompt: string;
-  status: "running" | "paused" | "completed" | "error" | "cancelled";
-  startedAt: Date;
-  completedAt?: Date;
-  abortController: AbortController;
-}
 
 /**
  * Agent plan for approval
@@ -44,108 +31,37 @@ export interface AgentPlan {
   createdAt: Date;
 }
 
-/**
- * Session listener callback type
- */
-type SessionListener = (session: AgentSession) => void;
-
 // ============================================================================
 // AgentService Class
 // ============================================================================
 
 /**
- * AgentService - Manages agent session lifecycle and plan approvals
+ * AgentService - Manages runtime agent state
  *
  * Features:
- * - Create and manage agent sessions
- * - Track session status with observer pattern
+ * - Track abort controllers for session cancellation
  * - Store and manage execution plans
  * - Handle plan approval/rejection workflow
- * - Automatic cleanup of completed sessions
  */
 export class AgentService {
-  private sessions = new Map<string, AgentSession>();
+  private abortControllers = new Map<string, AbortController>();
   private plans = new Map<string, AgentPlan>();
-  private sessionListeners = new Map<string, Set<SessionListener>>();
 
   // ==========================================================================
-  // Session Management
+  // Abort Controller Management
   // ==========================================================================
 
   /**
-   * Create a new session
-   *
-   * @param agentId - The agent identifier
-   * @param prompt - The initial prompt for the session
-   * @returns The created session
-   */
-  createSession(agentId: string, prompt: string): AgentSession {
-    const sessionId = randomUUID();
-    const session: AgentSession = {
-      sessionId,
-      agentId,
-      prompt,
-      status: "running",
-      startedAt: new Date(),
-      abortController: new AbortController(),
-    };
-    this.sessions.set(sessionId, session);
-    console.log(`[AgentService] Created session: ${sessionId}`);
-    return session;
-  }
-
-  /**
-   * Get a session by ID
+   * Register a session for abort control
    *
    * @param sessionId - The session identifier
-   * @returns The session or undefined if not found
+   * @returns The created AbortController
    */
-  getSession(sessionId: string): AgentSession | undefined {
-    return this.sessions.get(sessionId);
-  }
-
-  /**
-   * Update session status
-   *
-   * @param sessionId - The session identifier
-   * @param status - The new status
-   * @param completedAt - Optional completion timestamp
-   */
-  updateSessionStatus(
-    sessionId: string,
-    status: AgentSession["status"],
-    completedAt?: Date
-  ): void {
-    const session = this.sessions.get(sessionId);
-    if (!session) return;
-
-    session.status = status;
-    if (completedAt) session.completedAt = completedAt;
-
-    // Notify listeners
-    const listeners = this.sessionListeners.get(sessionId);
-    if (listeners) {
-      for (const listener of listeners) {
-        listener(session);
-      }
-    }
-
-    console.log(`[AgentService] Session ${sessionId} status: ${status}`);
-  }
-
-  /**
-   * Stop a session
-   *
-   * @param sessionId - The session identifier
-   * @returns True if session was stopped, false if not found
-   */
-  stopSession(sessionId: string): boolean {
-    const session = this.sessions.get(sessionId);
-    if (!session) return false;
-
-    session.abortController.abort();
-    this.updateSessionStatus(sessionId, "cancelled", new Date());
-    return true;
+  registerSession(sessionId: string): AbortController {
+    const controller = new AbortController();
+    this.abortControllers.set(sessionId, controller);
+    console.log(`[AgentService] Registered session: ${sessionId}`);
+    return controller;
   }
 
   /**
@@ -155,44 +71,42 @@ export class AgentService {
    * @returns The abort signal or undefined if session not found
    */
   getAbortSignal(sessionId: string): AbortSignal | undefined {
-    return this.sessions.get(sessionId)?.abortController.signal;
+    return this.abortControllers.get(sessionId)?.signal;
   }
 
   /**
-   * Subscribe to session updates
+   * Stop a session by triggering abort
    *
    * @param sessionId - The session identifier
-   * @param listener - Callback to invoke on session updates
-   * @returns Unsubscribe function
+   * @returns True if session was stopped, false if not found
    */
-  subscribeSession(sessionId: string, listener: SessionListener): () => void {
-    if (!this.sessionListeners.has(sessionId)) {
-      this.sessionListeners.set(sessionId, new Set());
-    }
-    this.sessionListeners.get(sessionId)!.add(listener);
-    return () => {
-      this.sessionListeners.get(sessionId)?.delete(listener);
-    };
+  stopSession(sessionId: string): boolean {
+    const controller = this.abortControllers.get(sessionId);
+    if (!controller) return false;
+
+    controller.abort();
+    console.log(`[AgentService] Stopped session: ${sessionId}`);
+    return true;
   }
 
   /**
-   * List all sessions
+   * Unregister a session (cleanup)
    *
-   * @returns Array of all sessions
+   * @param sessionId - The session identifier
    */
-  listSessions(): AgentSession[] {
-    return Array.from(this.sessions.values());
+  unregisterSession(sessionId: string): void {
+    this.abortControllers.delete(sessionId);
   }
 
   /**
-   * List running sessions
+   * Check if a session is aborted
    *
-   * @returns Array of running sessions
+   * @param sessionId - The session identifier
+   * @returns True if session is aborted, false otherwise
    */
-  listRunningSessions(): AgentSession[] {
-    return Array.from(this.sessions.values()).filter(
-      (s) => s.status === "running"
-    );
+  isSessionAborted(sessionId: string): boolean {
+    const controller = this.abortControllers.get(sessionId);
+    return controller?.signal.aborted ?? false;
   }
 
   // ==========================================================================
@@ -273,7 +187,7 @@ export class AgentService {
     if (!plan || plan.status !== "pending") return false;
 
     plan.status = "rejected";
-    // Also cancel the associated session
+    // Also trigger abort for the associated session
     this.stopSession(plan.sessionId);
     console.log(`[AgentService] Plan rejected: ${planId}`);
     return true;
@@ -308,45 +222,31 @@ export class AgentService {
   // ==========================================================================
 
   /**
-   * Cleanup completed sessions older than specified age
+   * Cleanup old plans
    *
    * @param maxAgeMs - Maximum age in milliseconds (default: 1 hour)
    */
   cleanup(maxAgeMs: number = 3600000): void {
     const now = Date.now();
-    for (const [id, session] of this.sessions) {
-      if (
-        session.status !== "running" &&
-        session.completedAt &&
-        now - session.completedAt.getTime() > maxAgeMs
-      ) {
-        this.sessions.delete(id);
-        this.sessionListeners.delete(id);
-        // Also cleanup associated plans
-        for (const [planId, plan] of this.plans) {
-          if (plan.sessionId === id) {
-            this.plans.delete(planId);
-          }
-        }
-        console.log(`[AgentService] Cleaned up session: ${id}`);
+    for (const [planId, plan] of this.plans) {
+      if (now - plan.createdAt.getTime() > maxAgeMs && plan.status !== "pending") {
+        this.plans.delete(planId);
+        console.log(`[AgentService] Cleaned up plan: ${planId}`);
       }
     }
   }
 
   /**
-   * Clear all sessions and plans (for testing)
+   * Clear all state (for testing)
    */
   clearAll(): void {
-    // Abort all running sessions
-    for (const session of this.sessions.values()) {
-      if (session.status === "running") {
-        session.abortController.abort();
-      }
+    // Abort all sessions
+    for (const controller of this.abortControllers.values()) {
+      controller.abort();
     }
-    this.sessions.clear();
+    this.abortControllers.clear();
     this.plans.clear();
-    this.sessionListeners.clear();
-    console.log(`[AgentService] Cleared all sessions and plans`);
+    console.log(`[AgentService] Cleared all state`);
   }
 }
 

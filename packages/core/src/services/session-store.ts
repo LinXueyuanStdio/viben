@@ -141,6 +141,10 @@ export interface TaskConfig {
   createdAt: string;
   /** Updated timestamp */
   updatedAt: string;
+  /** Task title (optional, for Kanban-style display) */
+  title?: string;
+  /** Task description (optional, detailed description) */
+  description?: string;
 }
 
 /**
@@ -760,6 +764,39 @@ export class SessionStoreService {
   }
 
   /**
+   * List all tasks from the ~/.viben/tasks/ directory
+   */
+  async listAllTasks(): Promise<TaskConfig[]> {
+    const tasksDir = this.tasksDir();
+
+    if (!existsSync(tasksDir)) {
+      return [];
+    }
+
+    const entries = await readdir(tasksDir, { withFileTypes: true });
+    const tasks: TaskConfig[] = [];
+
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith(".yaml")) {
+        const taskId = entry.name.replace(".yaml", "");
+        try {
+          const task = await this.getTask(taskId);
+          if (task) {
+            tasks.push(task);
+          }
+        } catch {
+          // Skip invalid task files
+        }
+      }
+    }
+
+    // Sort by createdAt descending
+    tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return tasks;
+  }
+
+  /**
    * Update a task
    */
   async updateTask(taskId: string, updates: Partial<TaskConfig>): Promise<void> {
@@ -991,6 +1028,8 @@ export class SessionStoreService {
     if (config.favorite !== undefined) lines.push(`favorite: ${JSON.stringify(config.favorite)}`);
     lines.push(`createdAt: ${JSON.stringify(config.createdAt)}`);
     lines.push(`updatedAt: ${JSON.stringify(config.updatedAt)}`);
+    if (config.title !== undefined) lines.push(`title: ${JSON.stringify(config.title)}`);
+    if (config.description !== undefined) lines.push(`description: ${JSON.stringify(config.description)}`);
     return lines.join("\n") + "\n";
   }
 
@@ -1045,6 +1084,12 @@ export class SessionStoreService {
             break;
           case "updatedAt":
             config.updatedAt = parsed;
+            break;
+          case "title":
+            config.title = parsed;
+            break;
+          case "description":
+            config.description = parsed;
             break;
         }
       } catch {
