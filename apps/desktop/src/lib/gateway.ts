@@ -1234,15 +1234,19 @@ export class GatewayClient {
 
   /**
    * List all file-based sessions for an agent
+   * @param agentId - Agent ID
+   * @param workspacePath - Optional workspace path to find workspace agents
    */
-  async listAgentSessions(agentId: string): Promise<FileSession[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
+  async listAgentSessions(agentId: string, workspacePath?: string): Promise<FileSession[]> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+    const query = params.toString();
+    const url = `${this.baseUrl}/api/agents/${agentId}/sessions${query ? `?${query}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       throw new GatewayError(
@@ -1354,18 +1358,24 @@ export class GatewayClient {
 
   /**
    * List all UI messages in a session (for frontend rendering)
+   * @param agentId - Agent ID
+   * @param sessionId - Session ID
+   * @param workspacePath - Optional workspace path to find workspace agents
    */
   async listSessionUIMessages(
     agentId: string,
-    sessionId: string
+    sessionId: string,
+    workspacePath?: string
   ): Promise<UIMessage[]> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/ui-messages`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+    const query = params.toString();
+    const url = `${this.baseUrl}/api/agents/${agentId}/sessions/${sessionId}/ui-messages${query ? `?${query}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       throw new GatewayError(

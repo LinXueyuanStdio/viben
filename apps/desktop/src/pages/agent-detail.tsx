@@ -37,7 +37,6 @@ import {
   Trash2,
   HelpCircle,
   Terminal,
-  Server,
   Command,
   MessageSquare,
   GripVertical,
@@ -80,10 +79,6 @@ import {
   useAgentConversation,
   useCloudSkillPackages,
   useLocalWorkspaces,
-  useWorkspaceMcpServers,
-  useWorkspaceSkills,
-  useWorkspaceAgentConfigs,
-  useWorkspaceCommands,
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
@@ -243,10 +238,10 @@ function CollapsibleSection({
 export function AgentDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { agentId } = useParams<{ agentId: string }>();
+  const { agentId, workspaceId } = useParams<{ agentId: string; workspaceId?: string }>();
 
   // Get workspace from query params (new routing) or path params (legacy routing)
-  const { workspacePath, workspace, isGlobal } = useWorkspaceParam();
+  const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
   const { isLoading: workspacesLoading } = useLocalWorkspaces();
 
   // Determine if this is a workspace-scoped agent
@@ -977,6 +972,85 @@ export function AgentDetailPage() {
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-1">
+              {/* Config Section - show paths */}
+              <div className="mb-4">
+                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                  {t("workspace.configuration")}
+                </h4>
+
+                {/* Workspace Config */}
+                <CollapsibleSection
+                  title={t("settingsAgents.workspaceConfig")}
+                  icon={<FolderOpen className="h-4 w-4" />}
+                  defaultOpen={!!agentFolderPath && isWorkspaceScoped}
+                >
+                  <div className="py-2">
+                    {isWorkspaceScoped && agentFolderPath ? (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                          {agentFolderPath}
+                        </code>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={handleOpenFolder}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {t("settingsAgents.noWorkspaceConfig")}
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleSection>
+
+                {/* Global Config */}
+                <CollapsibleSection
+                  title={t("settingsAgents.globalConfig")}
+                  icon={<Globe className="h-4 w-4" />}
+                  defaultOpen={!!agentFolderPath && !isWorkspaceScoped}
+                >
+                  <div className="py-2">
+                    {!isWorkspaceScoped && agentFolderPath ? (
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                          {agentFolderPath}
+                        </code>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0"
+                                onClick={handleOpenFolder}
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        {t("settingsAgents.noGlobalConfig")}
+                      </p>
+                    )}
+                  </div>
+                </CollapsibleSection>
+              </div>
+
               {/* Model Settings Section */}
               <div className="mb-4">
                 <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
@@ -1541,17 +1615,6 @@ function ExecutorDetailView({
   onNavigateBack,
 }: ExecutorDetailViewProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-
-  // Navigate to skill detail page
-  const handleSkillClick = (skillId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("agent_id", executor.type);
-    navigate(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`);
-  };
 
   // State for CLAUDE.md content
   const [claudeMdContent, setClaudeMdContent] = useState<string>("");

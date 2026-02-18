@@ -15,6 +15,34 @@ import type { AppState } from "../state";
 import type { SessionMessage, SessionConfig, UIMessage } from "../../services/session-store";
 import { createSessionConfigWithAgentInfo } from "../../services/session-store";
 import type { ExecutorType } from "../../types";
+import { join } from "node:path";
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Resolve the agent's config path from agent ID and optional workspace path
+ * Returns the path to the agent's config.yaml if found, undefined otherwise
+ */
+async function resolveAgentPath(agentId: string, workspacePath?: string): Promise<string | undefined> {
+  // 1. Try workspace agent first
+  if (workspacePath) {
+    const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
+    const agent = await agentManager.getAgentFromDir(workspaceAgentsDir, agentId);
+    if (agent?.path) {
+      return join(agent.path, "config.yaml");
+    }
+  }
+
+  // 2. Try global agent
+  const agent = await agentManager.getAgent(agentId);
+  if (agent?.path) {
+    return join(agent.path, "config.yaml");
+  }
+
+  return undefined;
+}
 
 // ============================================================================
 // Response Transformers (camelCase to snake_case for API consistency)
@@ -433,12 +461,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * List sessions for an agent
    * GET /api/agents/:id/sessions
    */
-  fastify.get<{ Params: { id: string } }>(
+  fastify.get<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions",
     async (request, reply) => {
       const { id } = request.params;
+      const { workspace_path } = request.query;
       try {
-        const sessions = await state.sessionStore.listSessions(id);
+        const agentPath = await resolveAgentPath(id, workspace_path);
+        const sessions = await state.sessionStore.listSessions(id, agentPath);
         return {
           sessions: sessions.map(toSnakeCaseSession),
           total: sessions.length,
@@ -493,12 +523,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Get a session
    * GET /api/agents/:id/sessions/:session_id
    */
-  fastify.get<{ Params: { id: string; session_id: string } }>(
+  fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions/:session_id",
     async (request, reply) => {
       const { id, session_id } = request.params;
+      const { workspace_path } = request.query;
       try {
-        const session = await state.sessionStore.getSession(id, session_id);
+        const agentPath = await resolveAgentPath(id, workspace_path);
+        const session = await state.sessionStore.getSession(id, session_id, agentPath);
         return toSnakeCaseSession(session);
       } catch (e) {
         reply.code(404);
@@ -511,12 +543,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * Delete a session
    * DELETE /api/agents/:id/sessions/:session_id
    */
-  fastify.delete<{ Params: { id: string; session_id: string } }>(
+  fastify.delete<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions/:session_id",
     async (request, reply) => {
       const { id, session_id } = request.params;
+      const { workspace_path } = request.query;
       try {
-        await state.sessionStore.deleteSession(id, session_id);
+        const agentPath = await resolveAgentPath(id, workspace_path);
+        await state.sessionStore.deleteSession(id, session_id, agentPath);
         return { deleted: session_id, agent_id: id };
       } catch (e) {
         reply.code(500);
@@ -533,12 +567,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * List messages in a session
    * GET /api/agents/:id/sessions/:session_id/messages
    */
-  fastify.get<{ Params: { id: string; session_id: string } }>(
+  fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions/:session_id/messages",
     async (request, reply) => {
       const { id, session_id } = request.params;
+      const { workspace_path } = request.query;
       try {
-        const messages = await state.sessionStore.readMessages(id, session_id);
+        const agentPath = await resolveAgentPath(id, workspace_path);
+        const messages = await state.sessionStore.readMessages(id, session_id, agentPath);
         return {
           messages: messages.map(toSnakeCaseMessage),
           total: messages.length,
@@ -556,6 +592,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    */
   fastify.post<{
     Params: { id: string; session_id: string };
+    Querystring: { workspace_path?: string };
     Body: {
       role: string;
       content: string;
@@ -564,9 +601,11 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     };
   }>("/api/agents/:id/sessions/:session_id/messages", async (request, reply) => {
     const { id, session_id } = request.params;
+    const { workspace_path } = request.query;
     const body = request.body;
 
     try {
+      const agentPath = await resolveAgentPath(id, workspace_path);
       const message: SessionMessage = {
         timestamp: new Date().toISOString(),
         role: body.role,
@@ -575,7 +614,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         toolResult: body.tool_result,
       };
 
-      await state.sessionStore.appendMessage(id, session_id, message);
+      await state.sessionStore.appendMessage(id, session_id, message, agentPath);
       reply.code(201);
       return toSnakeCaseMessage(message);
     } catch (e) {
@@ -592,12 +631,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    * List UI messages in a session
    * GET /api/agents/:id/sessions/:session_id/ui-messages
    */
-  fastify.get<{ Params: { id: string; session_id: string } }>(
+  fastify.get<{ Params: { id: string; session_id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions/:session_id/ui-messages",
     async (request, reply) => {
       const { id, session_id } = request.params;
+      const { workspace_path } = request.query;
       try {
-        const messages = await state.sessionStore.readUIMessages(id, session_id);
+        const agentPath = await resolveAgentPath(id, workspace_path);
+        const messages = await state.sessionStore.readUIMessages(id, session_id, agentPath);
         return {
           messages: messages.map(toSnakeCaseUIMessage),
           total: messages.length,

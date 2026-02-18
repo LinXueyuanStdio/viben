@@ -30,6 +30,11 @@ export function isExecutorType(id: string): id is ExecutorType {
   return EXECUTOR_TYPES.has(id);
 }
 
+export interface UseWorkspaceParamOptions {
+  /** Optional workspaceId from path params (legacy routing fallback) */
+  workspaceId?: string;
+}
+
 export interface UseWorkspaceParamReturn {
   /** The workspace path from URL query param or global workspace path */
   workspacePath: string | null;
@@ -42,25 +47,22 @@ export interface UseWorkspaceParamReturn {
 /**
  * Hook to get workspace information from URL query parameters.
  *
- * Reads `workspace_path` from query params. If not present or empty,
- * falls back to the global workspace.
+ * Priority:
+ * 1. `workspace_path` query param
+ * 2. `workspaceId` option (from path params, for legacy route support)
+ * 3. Global workspace (fallback)
  *
  * Usage:
  * ```tsx
- * // URL: /agent/my-agent?workspace_path=/path/to/project
+ * // New routing: /agent/my-agent?workspace_path=/path/to/project
  * const { workspacePath, workspace, isGlobal } = useWorkspaceParam();
- * // workspacePath = "/path/to/project"
- * // workspace = { id: "...", path: "/path/to/project", ... }
- * // isGlobal = false
  *
- * // URL: /agent/my-agent (no workspace_path)
- * const { workspacePath, workspace, isGlobal } = useWorkspaceParam();
- * // workspacePath = "~/.viben" (global workspace path)
- * // workspace = { id: "global", type: "global", ... }
- * // isGlobal = true
+ * // Legacy routing: /workspace/:workspaceId/agent/:agentId
+ * const { workspaceId } = useParams();
+ * const { workspacePath, workspace, isGlobal } = useWorkspaceParam({ workspaceId });
  * ```
  */
-export function useWorkspaceParam(): UseWorkspaceParamReturn {
+export function useWorkspaceParam(options?: UseWorkspaceParamOptions): UseWorkspaceParamReturn {
   const [searchParams] = useSearchParams();
   const { workspaces } = useLocalWorkspaces();
 
@@ -70,24 +72,35 @@ export function useWorkspaceParam(): UseWorkspaceParamReturn {
     // Find global workspace
     const globalWorkspace = workspaces.find((w) => w.type === "global");
 
-    // If no workspace_path provided, use global workspace
-    if (!workspacePathParam) {
+    // Priority 1: workspace_path query param
+    if (workspacePathParam) {
+      const workspace = workspaces.find((w) => w.path === workspacePathParam);
       return {
-        workspacePath: globalWorkspace?.path || null,
-        workspace: globalWorkspace,
-        isGlobal: true,
+        workspacePath: workspacePathParam,
+        workspace,
+        isGlobal: workspace?.type === "global",
       };
     }
 
-    // Find workspace by path
-    const workspace = workspaces.find((w) => w.path === workspacePathParam);
+    // Priority 2: workspaceId from path params (legacy routing)
+    if (options?.workspaceId) {
+      const workspace = workspaces.find((w) => w.id === options.workspaceId);
+      if (workspace) {
+        return {
+          workspacePath: workspace.path,
+          workspace,
+          isGlobal: workspace.type === "global",
+        };
+      }
+    }
 
+    // Priority 3: fallback to global workspace
     return {
-      workspacePath: workspacePathParam,
-      workspace,
-      isGlobal: workspace?.type === "global",
+      workspacePath: globalWorkspace?.path || null,
+      workspace: globalWorkspace,
+      isGlobal: true,
     };
-  }, [searchParams, workspaces]);
+  }, [searchParams, workspaces, options?.workspaceId]);
 }
 
 /**

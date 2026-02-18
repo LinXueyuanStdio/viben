@@ -145,6 +145,8 @@ export function ExecutorCapabilities({
   );
 
   // Navigation handlers
+  // Only skills have a detail page route currently (/skill/:skillId)
+  // TODO: Add routes for /mcp-server/:name, /prompt/:id, /command/:id when detail pages are created
   const handleSkillClick = (skillId: string) => {
     const params = new URLSearchParams();
     if (workspacePath) {
@@ -152,33 +154,6 @@ export function ExecutorCapabilities({
     }
     params.set("agent_id", executorType);
     navigate(`/skill/${encodeURIComponent(skillId)}?${params.toString()}`);
-  };
-
-  const handleMcpServerClick = (serverName: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigate(`/mcp-server/${encodeURIComponent(serverName)}?${params.toString()}`);
-  };
-
-  const handlePromptClick = (configId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigate(`/prompt/${encodeURIComponent(configId)}?${params.toString()}`);
-  };
-
-  const handleCommandClick = (commandId: string) => {
-    const params = new URLSearchParams();
-    if (workspacePath) {
-      params.set("workspace_path", workspacePath);
-    }
-    params.set("executor_type", executorType);
-    navigate(`/command/${encodeURIComponent(commandId)}?${params.toString()}`);
   };
 
   return (

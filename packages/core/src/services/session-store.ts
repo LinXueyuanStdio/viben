@@ -345,44 +345,51 @@ export class SessionStoreService {
 
   /**
    * Get the sessions directory for an agent
+   * @param agentId - Agent ID
+   * @param agentPath - Optional absolute path to agent directory (e.g., /path/to/agents/myagent)
    */
-  private sessionsDir(agentId: string): string {
+  private sessionsDir(agentId: string, agentPath?: string): string {
+    if (agentPath) {
+      // Use the agent's directory directly (for workspace agents)
+      return join(agentPath, ".agent_sessions");
+    }
+    // Fallback to global state dir (for global agents)
     return join(this.stateDir, "agents", agentId, ".agent_sessions");
   }
 
   /**
    * Get the session directory
    */
-  private sessionDir(agentId: string, sessionId: string): string {
-    return join(this.sessionsDir(agentId), sessionId);
+  private sessionDir(agentId: string, sessionId: string, agentPath?: string): string {
+    return join(this.sessionsDir(agentId, agentPath), sessionId);
   }
 
   /**
    * Get the config file path for a session
    */
-  private configPath(agentId: string, sessionId: string): string {
-    return join(this.sessionDir(agentId, sessionId), "config.yaml");
+  private configPath(agentId: string, sessionId: string, agentPath?: string): string {
+    return join(this.sessionDir(agentId, sessionId, agentPath), "config.yaml");
   }
 
   /**
    * Get the messages file path for a session (rollout - for sending to agent)
    */
-  private messagesPath(agentId: string, sessionId: string): string {
-    return join(this.sessionDir(agentId, sessionId), "messages.rollout.jsonl");
+  private messagesPath(agentId: string, sessionId: string, agentPath?: string): string {
+    return join(this.sessionDir(agentId, sessionId, agentPath), "messages.rollout.jsonl");
   }
 
   /**
    * Get the UI messages file path for a session
    */
-  private uiMessagesPath(agentId: string, sessionId: string): string {
-    return join(this.sessionDir(agentId, sessionId), "messages.ui.jsonl");
+  private uiMessagesPath(agentId: string, sessionId: string, agentPath?: string): string {
+    return join(this.sessionDir(agentId, sessionId, agentPath), "messages.ui.jsonl");
   }
 
   /**
    * Get the agent messages file path for a session
    */
-  private agentMessagesPath(agentId: string, sessionId: string): string {
-    return join(this.sessionDir(agentId, sessionId), "messages.agent.jsonl");
+  private agentMessagesPath(agentId: string, sessionId: string, agentPath?: string): string {
+    return join(this.sessionDir(agentId, sessionId, agentPath), "messages.agent.jsonl");
   }
 
   // ============ Task Path Helpers ============
@@ -428,27 +435,33 @@ export class SessionStoreService {
    * Create a new session
    */
   async createSession(config: SessionConfig): Promise<void> {
-    const sessionDir = this.sessionDir(config.agentId, config.id);
+    // Derive agent directory from agentPath (e.g., /path/to/agents/myagent/config.yaml -> /path/to/agents/myagent)
+    const agentDir = config.agentPath?.replace(/\/config\.yaml$/, "");
+    const sessionDir = this.sessionDir(config.agentId, config.id, agentDir);
 
     // Create session directory
     await mkdir(sessionDir, { recursive: true });
 
     // Write config.yaml
-    const configPath = this.configPath(config.agentId, config.id);
+    const configPath = this.configPath(config.agentId, config.id, agentDir);
     const yaml = this.configToYaml(config);
     await writeFile(configPath, yaml);
 
     // Create empty messages files
-    await writeFile(this.messagesPath(config.agentId, config.id), "");
-    await writeFile(this.uiMessagesPath(config.agentId, config.id), "");
-    await writeFile(this.agentMessagesPath(config.agentId, config.id), "");
+    await writeFile(this.messagesPath(config.agentId, config.id, agentDir), "");
+    await writeFile(this.uiMessagesPath(config.agentId, config.id, agentDir), "");
+    await writeFile(this.agentMessagesPath(config.agentId, config.id, agentDir), "");
   }
 
   /**
    * Get session config
+   * @param agentId - Agent ID
+   * @param sessionId - Session ID
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async getSession(agentId: string, sessionId: string): Promise<SessionConfig> {
-    const configPath = this.configPath(agentId, sessionId);
+  async getSession(agentId: string, sessionId: string, agentPath?: string): Promise<SessionConfig> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const configPath = this.configPath(agentId, sessionId, agentDir);
 
     if (!existsSync(configPath)) {
       throw new SessionStoreError(`Session not found: ${sessionId}`);
@@ -462,7 +475,8 @@ export class SessionStoreService {
    * Update session config
    */
   async updateSession(config: SessionConfig): Promise<void> {
-    const configPath = this.configPath(config.agentId, config.id);
+    const agentDir = config.agentPath?.replace(/\/config\.yaml$/, "");
+    const configPath = this.configPath(config.agentId, config.id, agentDir);
 
     if (!existsSync(configPath)) {
       throw new SessionStoreError(`Session not found: ${config.id}`);
@@ -475,9 +489,13 @@ export class SessionStoreService {
 
   /**
    * Delete a session
+   * @param agentId - Agent ID
+   * @param sessionId - Session ID
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async deleteSession(agentId: string, sessionId: string): Promise<void> {
-    const sessionDir = this.sessionDir(agentId, sessionId);
+  async deleteSession(agentId: string, sessionId: string, agentPath?: string): Promise<void> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const sessionDir = this.sessionDir(agentId, sessionId, agentDir);
 
     if (!existsSync(sessionDir)) {
       throw new SessionStoreError(`Session not found: ${sessionId}`);
@@ -488,9 +506,12 @@ export class SessionStoreService {
 
   /**
    * List all sessions for an agent
+   * @param agentId - Agent ID
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async listSessions(agentId: string): Promise<SessionConfig[]> {
-    const sessionsDir = this.sessionsDir(agentId);
+  async listSessions(agentId: string, agentPath?: string): Promise<SessionConfig[]> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const sessionsDir = this.sessionsDir(agentId, agentDir);
 
     if (!existsSync(sessionsDir)) {
       return [];
@@ -518,10 +539,12 @@ export class SessionStoreService {
 
   /**
    * Append a message to the session
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async appendMessage(agentId: string, sessionId: string, message: SessionMessage): Promise<void> {
-    const messagesPath = this.messagesPath(agentId, sessionId);
-    const parentDir = this.sessionDir(agentId, sessionId);
+  async appendMessage(agentId: string, sessionId: string, message: SessionMessage, agentPath?: string): Promise<void> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const messagesPath = this.messagesPath(agentId, sessionId, agentDir);
+    const parentDir = this.sessionDir(agentId, sessionId, agentDir);
 
     if (!existsSync(parentDir)) {
       throw new SessionStoreError(`Session not found: ${sessionId}`);
@@ -533,9 +556,11 @@ export class SessionStoreService {
 
   /**
    * Read all messages from a session
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async readMessages(agentId: string, sessionId: string): Promise<SessionMessage[]> {
-    const messagesPath = this.messagesPath(agentId, sessionId);
+  async readMessages(agentId: string, sessionId: string, agentPath?: string): Promise<SessionMessage[]> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const messagesPath = this.messagesPath(agentId, sessionId, agentDir);
 
     if (!existsSync(messagesPath)) {
       return [];
@@ -558,10 +583,12 @@ export class SessionStoreService {
 
   /**
    * Append a UI message to the session
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async appendUIMessage(agentId: string, sessionId: string, message: UIMessage): Promise<void> {
-    const messagesPath = this.uiMessagesPath(agentId, sessionId);
-    const parentDir = this.sessionDir(agentId, sessionId);
+  async appendUIMessage(agentId: string, sessionId: string, message: UIMessage, agentPath?: string): Promise<void> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const messagesPath = this.uiMessagesPath(agentId, sessionId, agentDir);
+    const parentDir = this.sessionDir(agentId, sessionId, agentDir);
 
     if (!existsSync(parentDir)) {
       throw new SessionStoreError(`Session not found: ${sessionId}`);
@@ -574,9 +601,11 @@ export class SessionStoreService {
   /**
    * Read all UI messages from a session
    * Falls back to converting rollout messages if UI messages are empty
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async readUIMessages(agentId: string, sessionId: string): Promise<UIMessage[]> {
-    const messagesPath = this.uiMessagesPath(agentId, sessionId);
+  async readUIMessages(agentId: string, sessionId: string, agentPath?: string): Promise<UIMessage[]> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const messagesPath = this.uiMessagesPath(agentId, sessionId, agentDir);
 
     // Try to read UI messages first
     if (existsSync(messagesPath)) {
@@ -598,7 +627,7 @@ export class SessionStoreService {
     }
 
     // Fallback: convert rollout messages to UI messages
-    const rolloutMessages = await this.readMessages(agentId, sessionId);
+    const rolloutMessages = await this.readMessages(agentId, sessionId, agentPath);
     return rolloutMessages.map((msg, index) => this.sessionMessageToUIMessage(msg, index));
   }
 
@@ -644,10 +673,12 @@ export class SessionStoreService {
 
   /**
    * Append an agent message to the session
+   * @param agentPath - Optional absolute path to agent config.yaml (for workspace agents)
    */
-  async appendAgentMessage(agentId: string, sessionId: string, message: AgentMessage): Promise<void> {
-    const messagesPath = this.agentMessagesPath(agentId, sessionId);
-    const parentDir = this.sessionDir(agentId, sessionId);
+  async appendAgentMessage(agentId: string, sessionId: string, message: AgentMessage, agentPath?: string): Promise<void> {
+    const agentDir = agentPath?.replace(/\/config\.yaml$/, "");
+    const messagesPath = this.agentMessagesPath(agentId, sessionId, agentDir);
+    const parentDir = this.sessionDir(agentId, sessionId, agentDir);
 
     if (!existsSync(parentDir)) {
       throw new SessionStoreError(`Session not found: ${sessionId}`);

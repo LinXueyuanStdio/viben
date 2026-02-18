@@ -25,7 +25,6 @@ import {
   Settings,
   FolderOpen,
 } from "lucide-react";
-import { homeDir } from "@tauri-apps/api/path";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
@@ -919,7 +918,7 @@ export function WorkspaceChatPage() {
         return;
       }
 
-      const sessions = await client.listAgentSessions(selectedAgentId);
+      const sessions = await client.listAgentSessions(selectedAgentId, workspace?.path);
       // Filter out sessions with missing id (invalid data from API)
       const validSessions = sessions.filter(s => s && s.id);
       const convs = validSessions.map(fileSessionToConversation);
@@ -932,7 +931,7 @@ export function WorkspaceChatPage() {
     } finally {
       setIsLoadingSessions(false);
     }
-  }, [selectedAgentId]);
+  }, [selectedAgentId, workspace?.path]);
 
   // Restore last selected agent on mount - run only once when agents are available
   const hasInitializedAgentRef = React.useRef(false);
@@ -1048,7 +1047,7 @@ export function WorkspaceChatPage() {
         }
 
         console.log(`[WorkspaceChat:Effect:Sessions] Fetching sessions for ${targetAgentId}`);
-        const sessions = await client.listAgentSessions(targetAgentId);
+        const sessions = await client.listAgentSessions(targetAgentId, workspace?.path);
 
         // Check if agent changed during fetch
         if (prevAgentRef.current !== targetAgentId) {
@@ -1150,7 +1149,7 @@ export function WorkspaceChatPage() {
       try {
         const client = getGatewayClient();
         // Use the new UI messages endpoint for proper rendering
-        const uiMessages = await client.listSessionUIMessages(agentId, sessionId);
+        const uiMessages = await client.listSessionUIMessages(agentId, sessionId, workspace?.path);
 
         // Check if session is still the same after async call
         if (prevSessionRef.current !== sessionId) {

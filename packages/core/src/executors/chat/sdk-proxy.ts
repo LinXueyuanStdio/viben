@@ -438,6 +438,7 @@ export class SdkChatProxy implements ChatProxy {
     }
 
     clearInterferingEnvVars();
+    console.log('[SdkChatProxy] After clearInterferingEnvVars - CLAUDECODE:', process.env.CLAUDECODE);
 
     const startTime = Date.now();
 

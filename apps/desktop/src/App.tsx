@@ -27,8 +27,6 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
-  LegacyAgentRedirect,
-  LegacySkillRedirect,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -144,9 +142,9 @@ function App() {
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
           <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
-          {/* Legacy routes - redirect to new URL structure with query params */}
-          <Route path="workspace/:workspaceId/agent/:agentId" element={<LegacyAgentRedirect />} />
-          <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<LegacySkillRedirect />} />
+          {/* Legacy routes - pages handle both path params and query params */}
+          <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
+          <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<SkillDetailPage />} />
         </Route>
 
         {/* Tray popup - separate window without layout */}

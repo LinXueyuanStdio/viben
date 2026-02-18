@@ -268,7 +268,7 @@ export function WorkspaceAgentsPage({
       id: agent.id,
       name: agent.name,
       path: agent.config_path,
-      description: undefined as string | undefined, // Not available from gateway, could be loaded separately
+      description: agent.description,
       model: undefined as string | undefined,
       provider: undefined as string | undefined,
       system_prompt: undefined as string | undefined,
@@ -278,6 +278,10 @@ export function WorkspaceAgentsPage({
       skills: [] as string[],
       created_at: "",
       updated_at: "",
+      // New fields for capabilities and config display
+      executor_type: agent.executor_type,
+      global_config_path: agent.global_config_path,
+      source: agent.source as "global" | "workspace" | "merged",
     };
   }, [agentListAgents, selectedItemId, selectedItemType]);
 
@@ -636,6 +640,7 @@ export function WorkspaceAgentsPage({
           {selectedAgent ? (
             <AgentDetailPanel
               agent={selectedAgent}
+              workspacePath={workspace?.path || ""}
               isDefault={!isWorkspaceAgent && selectedAgent.id === defaultAgentId}
               models={models.map((m) => ({
                 id: m.id,

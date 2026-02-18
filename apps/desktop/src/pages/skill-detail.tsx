@@ -55,11 +55,16 @@ export function SkillDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { skillId } = useParams<{ skillId: string }>();
+  const { skillId, workspaceId, agentId: pathAgentId } = useParams<{
+    skillId: string;
+    workspaceId?: string;
+    agentId?: string;
+  }>();
 
-  // Get workspace and agent from query params
-  const { workspacePath, workspace } = useWorkspaceParam();
-  const agentId = searchParams.get("agent_id");
+  // Get workspace from query params (new routing) or path params (legacy routing)
+  const { workspacePath, workspace } = useWorkspaceParam({ workspaceId });
+  // Get agent_id from query params or path params
+  const agentId = searchParams.get("agent_id") || pathAgentId;
 
   // Use useExecutors to find the executor
   const { executors } = useExecutors({ workspacePath: workspacePath || undefined });
