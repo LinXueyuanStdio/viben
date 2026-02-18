@@ -69,6 +69,8 @@ export interface SkillsTabContentProps {
 export interface AgentDetailTabContentProps {
   /** Agent data to display (uses AgentDetailData from panel) */
   agent: import("@/components/chat/agent-detail-panel").AgentDetailData;
+  /** Workspace path for loading capabilities */
+  workspacePath?: string;
   /** Whether this is the default agent */
   isDefault?: boolean;
   /** Available models for selection */

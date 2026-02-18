@@ -17,6 +17,7 @@ import type { AgentDetailTabContentProps } from "./types";
  */
 export function AgentDetailTabContent({
   agent,
+  workspacePath,
   isDefault,
   models,
   onUpdate,
@@ -28,6 +29,7 @@ export function AgentDetailTabContent({
   return (
     <AgentDetailPanel
       agent={agent}
+      workspacePath={workspacePath}
       isDefault={isDefault}
       models={models}
       onUpdate={onUpdate}

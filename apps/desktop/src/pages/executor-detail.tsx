@@ -223,10 +223,10 @@ function getExecutorColor(type: string) {
 export function ExecutorDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { executorType } = useParams<{ executorType: string }>();
+  const { executorType, workspaceId } = useParams<{ executorType: string; workspaceId?: string }>();
 
-  // Get workspace from query parameters
-  const { workspacePath, workspace } = useWorkspaceParam();
+  // Get workspace from query params (new routing) or path params (legacy routing)
+  const { workspacePath, workspace } = useWorkspaceParam({ workspaceId });
 
   // Load executors for this workspace
   const {
