@@ -76,8 +76,9 @@ import {
 } from "./context-details-popover";
 import { useScreenshot } from "@/hooks/use-screenshot";
 import { useChatConfig } from "@/hooks/use-chat-config";
-import type { ExecutorType } from "@viben/core/browser";
-import type { MessageAttachment, AgentTypeInfo } from "@/types";
+import type { ExecutorType } from "@viben/core/shared";
+import type { MessageAttachment } from "@/types";
+import type { ExecutorInfo } from "@/lib/gateway";
 
 // ============================================================================
 // Types
@@ -136,7 +137,7 @@ export interface ChatInputProps {
   selectedModelId?: string | null;
   onModelChange?: (modelId: string) => void;
   /** Executor selection (CLAUDE_CODE, CODEX, etc.) */
-  executors?: AgentTypeInfo[];
+  executors?: ExecutorInfo[];
   selectedExecutor?: ExecutorType;
   onExecutorChange?: (executor: ExecutorType) => void;
 
@@ -1344,7 +1345,7 @@ export function ChatInput({
                   >
                     <Terminal className="h-3.5 w-3.5" />
                     <span className="max-w-[80px] truncate">
-                      {executors.find((e) => e.id === selectedExecutor)?.name || t("chat.selectExecutor", "Executor")}
+                      {executors.find((e) => e.type === selectedExecutor)?.name || t("chat.selectExecutor", "Executor")}
                     </span>
                     <ChevronDown className="h-3 w-3" />
                   </Button>
@@ -1352,14 +1353,14 @@ export function ChatInput({
                 <PopoverContent className="w-56 p-1" align="start">
                   {executors.map((executor) => (
                     <Button
-                      key={executor.id}
+                      key={executor.type}
                       variant="ghost"
                       size="sm"
                       className="w-full justify-start gap-2 h-8"
-                      onClick={() => onExecutorChange(executor.id)}
+                      onClick={() => onExecutorChange(executor.type)}
                     >
-                      {executor.id === selectedExecutor && <Check className="h-3.5 w-3.5" />}
-                      <span className={executor.id !== selectedExecutor ? "ml-5" : ""}>
+                      {executor.type === selectedExecutor && <Check className="h-3.5 w-3.5" />}
+                      <span className={executor.type !== selectedExecutor ? "ml-5" : ""}>
                         {executor.name}
                       </span>
                     </Button>

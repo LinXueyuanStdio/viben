@@ -86,7 +86,7 @@ async function pingGatewayUrl(url: string): Promise<boolean> {
 // Types (re-exported from @viben/core)
 // ============================================================================
 
-import type { ExecutorType } from "@viben/core/browser";
+import type { ExecutorType } from "@viben/core/shared";
 export type { ExecutorType };
 
 /** Agent availability information */
@@ -3936,8 +3936,8 @@ export function sseEventToAgentMessage(
 
 /** Executor info with merged configs */
 export interface ExecutorInfo {
-  /** Executor ID (e.g., "CLAUDE_CODE") */
-  id: ExecutorType;
+  /** Executor type (e.g., "CLAUDE_CODE") */
+  type: ExecutorType;
   /** Display name */
   name: string;
   /** Description for UI display */
@@ -3969,8 +3969,8 @@ export interface ExecutorsResponse {
 
 /** @deprecated Use ExecutorInfo instead */
 export interface WorkspaceExecutor {
-  /** Executor ID (e.g., "CLAUDE_CODE") */
-  id: ExecutorType;
+  /** Executor type (e.g., "CLAUDE_CODE") */
+  type: ExecutorType;
   /** Display name */
   name: string;
   /** Global availability info */

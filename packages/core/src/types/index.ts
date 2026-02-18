@@ -22,6 +22,7 @@ export type ExecutorType =
 
 /**
  * Agent type metadata for UI display
+ * @deprecated Use ExecutorInfo from Gateway API instead. The metadata is now served by the backend.
  */
 export interface AgentTypeInfo {
   id: ExecutorType;
@@ -33,6 +34,7 @@ export interface AgentTypeInfo {
 
 /**
  * All agent types with their metadata
+ * @deprecated Use Gateway API /api/executors to get executor metadata. This constant will be removed.
  */
 export const AGENT_TYPES: AgentTypeInfo[] = [
   {
@@ -90,6 +92,7 @@ export const AGENT_TYPES: AgentTypeInfo[] = [
 
 /**
  * Get agent type info by ID
+ * @deprecated Use Gateway API /api/executors to get executor metadata.
  */
 export function getAgentTypeInfo(id: ExecutorType): AgentTypeInfo | undefined {
   return AGENT_TYPES.find((a) => a.id === id);

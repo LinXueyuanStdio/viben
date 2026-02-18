@@ -89,6 +89,11 @@ pub struct WorkspaceExecutor {
     pub id: String,
     /// Display name
     pub name: String,
+    /// Description for UI display
+    pub description: String,
+    /// Documentation URL (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub docs_url: Option<String>,
     /// Global availability info (installed, version, path)
     pub availability: AvailabilityInfo,
     /// Whether this executor supports MCP
@@ -116,17 +121,18 @@ pub struct WorkspaceExecutorsResponse {
     pub total: usize,
 }
 
-/// Executor config folder patterns
-const EXECUTOR_CONFIGS: &[(&str, &str, &[&str])] = &[
-    ("CLAUDE_CODE", "Claude Code", &[".claude"]),
-    ("CURSOR_AGENT", "Cursor", &[".cursor"]),
-    ("AMP", "Amp", &[".amp"]),
-    ("GEMINI", "Gemini CLI", &[".gemini"]),
-    ("CODEX", "Codex CLI", &[".codex"]),
-    ("OPENCODE", "OpenCode", &[".opencode"]),
-    ("QWEN_CODE", "Qwen Coder", &[".qwen"]),
-    ("COPILOT", "GitHub Copilot", &[".copilot"]),
-    ("DROID", "Droid", &[".droid"]),
+/// Executor metadata with config folder patterns
+/// (id, name, description, docs_url, config_folders)
+const EXECUTOR_CONFIGS: &[(&str, &str, &str, Option<&str>, &[&str])] = &[
+    ("CLAUDE_CODE", "Claude Code", "Anthropic's coding assistant powered by Claude", Some("https://claude.ai"), &[".claude"]),
+    ("CURSOR_AGENT", "Cursor Agent", "Cursor's AI coding assistant", Some("https://cursor.so"), &[".cursor"]),
+    ("AMP", "Amp", "AI-powered code assistant", None, &[".amp"]),
+    ("GEMINI", "Gemini", "Google's AI coding assistant", Some("https://gemini.google.com"), &[".gemini"]),
+    ("CODEX", "Codex", "OpenAI's code-specialized model", Some("https://openai.com"), &[".codex"]),
+    ("OPENCODE", "Opencode", "Open source coding assistant", None, &[".opencode"]),
+    ("QWEN_CODE", "Qwen Code", "Alibaba's Qwen coding model", Some("https://qwen.aliyun.com"), &[".qwen"]),
+    ("COPILOT", "GitHub Copilot", "GitHub's AI pair programmer", Some("https://github.com/features/copilot"), &[".copilot"]),
+    ("DROID", "Droid", "Droid AI coding assistant", None, &[".droid"]),
 ];
 
 /// List executors available for a workspace (legacy endpoint)
@@ -532,7 +538,7 @@ pub async fn list_executors(
 
     let mut executors = Vec::new();
 
-    for (id, name, config_folders) in EXECUTOR_CONFIGS {
+    for (id, name, description, docs_url, config_folders) in EXECUTOR_CONFIGS {
         // Check global availability
         let availability = match create_executor_by_type(id) {
             Ok(executor) => executor.get_availability_info(),
@@ -582,6 +588,8 @@ pub async fn list_executors(
         executors.push(WorkspaceExecutor {
             id: id.to_string(),
             name: name.to_string(),
+            description: description.to_string(),
+            docs_url: docs_url.map(|s| s.to_string()),
             availability,
             supports_mcp,
             capabilities,
@@ -976,7 +984,7 @@ pub async fn list_chat_items(
     }
 
     // 2. Load Executors (only those with workspace config)
-    for (id, name, config_folders) in EXECUTOR_CONFIGS {
+    for (id, name, description, docs_url, config_folders) in EXECUTOR_CONFIGS {
         let mut has_workspace_config = false;
         let mut executor_source = "global".to_string();
         let mut executor_workspace_path = global_workspace_path.clone();
@@ -1019,11 +1027,12 @@ pub async fn list_chat_items(
                 item_type: ChatListItemType::Executor,
                 source: executor_source,
                 workspace_path: executor_workspace_path,
-                description: None,
+                description: Some(description.to_string()),
                 icon_type: Some(id.to_lowercase()),
                 metadata: Some(serde_json::json!({
                     "is_installed": is_installed,
                     "executor_type": id,
+                    "docs_url": docs_url,
                 })),
             });
         }

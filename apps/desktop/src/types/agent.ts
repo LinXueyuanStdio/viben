@@ -4,11 +4,10 @@
  * TypeScript types matching Rust CodingAgent from viben-executors
  */
 
-// Re-export from @viben/core/browser for browser compatibility
-// Note: Using /browser subpath to avoid Node.js-only dependencies like undici
-export type { ExecutorType, AgentTypeInfo } from "@viben/core/browser";
-export { AGENT_TYPES, getAgentTypeInfo } from "@viben/core/browser";
-import type { ExecutorType } from "@viben/core/browser";
+// Re-export from @viben/core/shared for browser compatibility
+// Note: Using /shared subpath to avoid Node.js-only dependencies like undici
+export type { ExecutorType } from "@viben/core/shared";
+import type { ExecutorType } from "@viben/core/shared";
 
 // ============================================================================
 // Availability Info (matching Rust AvailabilityInfo)

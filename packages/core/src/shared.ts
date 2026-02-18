@@ -1,10 +1,10 @@
 /**
- * Browser-safe exports from @viben/core
+ * Shared exports from @viben/core
  *
- * This module exports only types and pure functions that work in browsers.
- * Use this in frontend/browser environments (e.g., Tauri webview).
+ * This module exports only types and pure functions that work in both
+ * browser and Node.js environments. Use this for shared code.
  *
- * For Node.js environments (CLI), use the main index.ts instead.
+ * For Node.js-only features (file I/O, CLI), use the main index.ts instead.
  */
 
 // Re-export all types (types are always browser-safe)

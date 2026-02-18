@@ -596,18 +596,18 @@ describe("Skill CLI Commands", () => {
       );
     });
 
-    it("should install skill with --executor claude-code option", async () => {
+    it("should install skill with --executor CLAUDE_CODE option", async () => {
       const mockResult = createMockInstallResult({ target: "claude" });
 
       vi.mocked(skillsManager.installSkill).mockResolvedValue(mockResult);
 
-      await runCommand(["skill", "install", "my-skill", "--executor", "claude-code"]);
+      await runCommand(["skill", "install", "my-skill", "--executor", "CLAUDE_CODE"]);
 
       expect(skillsManager.installSkill).toHaveBeenCalledWith(
         expect.objectContaining({
           name: "my-skill",
           target: "claude",
-          executor: "claude-code",
+          executor: "CLAUDE_CODE",
         })
       );
     });

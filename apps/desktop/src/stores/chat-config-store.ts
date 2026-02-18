@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatAgentConfig, ChatModelConfig } from "@/types/chat-config";
-import type { ExecutorType } from "@viben/core/browser";
+import type { ExecutorType } from "@viben/core/shared";
 
 // ============================================================================
 // Store Interface

@@ -3,7 +3,7 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: {
     index: "src/index.ts",
-    browser: "src/browser.ts",
+    shared: "src/shared.ts",
     "agents/index": "src/agents/index.ts",
     "providers/index": "src/providers/index.ts",
     "models/index": "src/models/index.ts",

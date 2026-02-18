@@ -22,12 +22,6 @@ pub mod usage;
 pub mod workspace;
 pub mod workspace_sync;
 
-// Viben-core integration modules
-pub mod viben_agents;
-pub mod viben_channels;
-pub mod viben_models;
-pub mod viben_providers;
-
 // Live preview module
 pub mod vite_preview;
 

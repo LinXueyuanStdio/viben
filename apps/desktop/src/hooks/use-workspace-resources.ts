@@ -71,6 +71,13 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setExecutors([]);
+    setTotal(0);
+    setError(null);
+  }, [workspacePath]);
+
   const loadExecutors = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -164,6 +171,12 @@ export function useWorkspaceExecutors(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setExecutors([]);
+    setError(null);
+  }, [workspacePath]);
+
   const loadExecutors = useCallback(async () => {
     if (!workspacePath) {
       setExecutors([]);
@@ -245,6 +258,13 @@ export function useWorkspaceModels(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setModels([]);
+    setTotal(0);
+    setError(null);
+  }, [workspacePath]);
 
   const loadModels = useCallback(async () => {
     if (!workspacePath) {
@@ -374,6 +394,13 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setAgents([]);
+    setTotal(0);
+    setError(null);
+  }, [workspacePath]);
 
   const loadAgents = useCallback(async () => {
     setLoading(true);
@@ -643,6 +670,13 @@ export function useWorkspaceAgentsFromGateway(
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
 
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setAgents([]);
+    setTotal(0);
+    setError(null);
+  }, [workspacePath]);
+
   const loadAgents = useCallback(async () => {
     if (!workspacePath) {
       setAgents([]);
@@ -832,6 +866,13 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setExecutorItems([]);
+    setAgentItems([]);
+    setError(null);
+  }, [workspacePath]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -854,7 +895,7 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
 
       // Transform executors to unified format
       const executors: AgentListItem[] = executorsResponse.executors.map((e) => ({
-        id: e.id,
+        id: e.type,
         name: e.name,
         item_type: "executor" as const,
         source: e.has_workspace_config ? "workspace" as const : "global" as const,
@@ -1043,6 +1084,13 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const [defaultAgentId, setDefaultAgentIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Clear state when workspacePath changes to avoid showing stale data
+  useEffect(() => {
+    setItems([]);
+    setCounts({ group_chats: 0, executors: 0, agents: 0 });
+    setError(null);
+  }, [workspacePath]);
 
   const loadChatList = useCallback(async () => {
     setLoading(true);

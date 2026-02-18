@@ -85,13 +85,13 @@ import {
   useWorkspaceSkills,
   useWorkspaceAgentConfigs,
   useWorkspaceCommands,
+  useExecutors,
 } from "@/hooks";
 import { homeDir } from "@tauri-apps/api/path";
 import { invoke } from "@tauri-apps/api/core";
 import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
-import type { ExecutorType } from "@viben/core/browser";
-import { AGENT_TYPES } from "@/types";
+import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getAvailabilityStatus } from "@/lib/gateway";
 import type { AvailabilityInfo, VibenAgentResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores/app-store";
@@ -278,6 +278,27 @@ export function AgentDetailPage() {
   } = useWorkspaceAgents(workspaceId || null);
 
   const { models } = useModels();
+  const { executors: availableExecutors } = useExecutors();
+
+  // Helper to get executor name by type (using Gateway API data)
+  const getExecutorName = useCallback(
+    (executorType: ExecutorType) => {
+      const executor = availableExecutors.find((e) => e.type === executorType);
+      return executor?.name || executorType;
+    },
+    [availableExecutors]
+  );
+
+  // List of executor types for Select dropdown (from Gateway API)
+  const executorTypeOptions = useMemo(
+    () =>
+      availableExecutors.map((e) => ({
+        id: e.type,
+        name: e.name,
+      })),
+    [availableExecutors]
+  );
+
   const mcpServers = useAppStore((state) => state.mcpServers);
   const { packages: skillPackages } = useCloudSkillPackages();
 
@@ -782,7 +803,7 @@ export function AgentDetailPage() {
             </Tooltip>
           </TooltipProvider>
           <Badge variant="outline" className="text-xs">
-            {AGENT_TYPES.find((t) => t.id === formExecutorType)?.name || formExecutorType}
+            {getExecutorName(formExecutorType)}
           </Badge>
         </div>
         <div className="flex items-center gap-2">
@@ -993,7 +1014,7 @@ export function AgentDetailPage() {
                         <XCircle className="h-3 w-3 text-red-500" />
                       )}
                       <Badge variant="outline" className="text-xs">
-                        {AGENT_TYPES.find((t) => t.id === formExecutorType)?.name}
+                        {getExecutorName(formExecutorType)}
                       </Badge>
                     </div>
                   }
@@ -1007,7 +1028,7 @@ export function AgentDetailPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {AGENT_TYPES.map((type) => (
+                        {executorTypeOptions.map((type) => (
                           <SelectItem key={type.id} value={type.id}>
                             {type.name}
                           </SelectItem>

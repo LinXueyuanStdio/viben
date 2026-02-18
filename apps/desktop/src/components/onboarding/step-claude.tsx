@@ -57,8 +57,8 @@ export function StepClaude({ onComplete, onBack }: StepClaudeProps) {
         executor.availability.type === "INSTALLATION_FOUND";
       if (!isInstalled) continue;
 
-      // Map executor IDs to client IDs
-      const executorId = executor.id.toLowerCase();
+      // Map executor types to client IDs
+      const executorId = executor.type.toLowerCase();
       if (executorId.includes("claude")) {
         // CLAUDE_CODE -> claude for Claude Desktop detection
         if (executor.global_config_path?.includes("Claude")) {

@@ -235,7 +235,7 @@ describe("Executors Routes", () => {
 
       const body = JSON.parse(response.body);
       const claudeCode = body.executors.find(
-        (e: { type: string }) => e.type === "claude-code"
+        (e: { type: string }) => e.type === "CLAUDE_CODE"
       );
 
       expect(claudeCode).toBeDefined();
@@ -292,7 +292,7 @@ describe("Executors Routes", () => {
     it("should return 400 when workspacePath is missing", async () => {
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions",
       });
 
       expect(response.statusCode).toBe(400);
@@ -316,7 +316,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       expect(response.statusCode).toBe(200);
@@ -350,7 +350,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       expect(response.statusCode).toBe(200);
@@ -365,7 +365,7 @@ describe("Executors Routes", () => {
 
       await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/foo/bar",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/foo/bar",
       });
 
       // Verify existsSync was called with encoded path
@@ -404,14 +404,14 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       const body = JSON.parse(response.body);
       const session = body.sessions[0];
 
       expect(session.id).toBe("abc-def-123");
-      expect(session.executorType).toBe("claude-code");
+      expect(session.executorType).toBe("CLAUDE_CODE");
       expect(session.workspacePath).toBe("/Users/test/project");
       expect(session.createdAt).toBe(birthtime.toISOString());
       expect(session.updatedAt).toBe(mtime.toISOString());
@@ -456,7 +456,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       const body = JSON.parse(response.body);
@@ -468,22 +468,15 @@ describe("Executors Routes", () => {
       );
     });
 
-    it("should handle executor type variations (claude_code, claude-code)", async () => {
+    it("should use CLAUDE_CODE as the standard executor type format", async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      // Test with underscore
-      const response1 = await fastify.inject({
+      // Standard uppercase format should work
+      const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude_code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
-      expect(response1.statusCode).toBe(200);
-
-      // Test with hyphen
-      const response2 = await fastify.inject({
-        method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
-      });
-      expect(response2.statusCode).toBe(200);
+      expect(response.statusCode).toBe(200);
     });
 
     it("should return empty sessions for codex executor (not yet implemented)", async () => {
@@ -524,7 +517,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       const body = JSON.parse(response.body);
@@ -559,7 +552,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       const body = JSON.parse(response.body);
@@ -576,7 +569,7 @@ describe("Executors Routes", () => {
     it("should return 400 when workspacePath is missing", async () => {
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages",
       });
 
       expect(response.statusCode).toBe(400);
@@ -618,7 +611,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test/project",
       });
 
       expect(response.statusCode).toBe(200);
@@ -640,7 +633,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -667,7 +660,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -692,7 +685,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -724,7 +717,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -758,7 +751,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -792,7 +785,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -819,7 +812,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test&limit=3",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test&limit=3",
       });
 
       const body = JSON.parse(response.body);
@@ -858,7 +851,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -892,7 +885,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       expect(response.statusCode).toBe(200);
@@ -923,7 +916,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -944,7 +937,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -982,7 +975,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -1025,7 +1018,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -1053,7 +1046,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -1072,7 +1065,7 @@ describe("Executors Routes", () => {
 
       await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/foo/bar",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/foo/bar",
       });
 
       expect(fs.existsSync).toHaveBeenCalledWith(
@@ -1085,7 +1078,7 @@ describe("Executors Routes", () => {
 
       await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/",
       });
 
       expect(fs.existsSync).toHaveBeenCalledWith(
@@ -1098,7 +1091,7 @@ describe("Executors Routes", () => {
 
       await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/home/user/projects/my-app/src",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/home/user/projects/my-app/src",
       });
 
       expect(fs.existsSync).toHaveBeenCalledWith(
@@ -1120,7 +1113,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/discover-sessions?workspacePath=/Users/test/project",
+        url: "/api/executors/CLAUDE_CODE/discover-sessions?workspacePath=/Users/test/project",
       });
 
       expect(response.statusCode).toBe(500);
@@ -1131,7 +1124,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/nonexistent/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/nonexistent/messages?workspacePath=/Users/test",
       });
 
       expect(response.statusCode).toBe(500);
@@ -1145,7 +1138,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       expect(response.statusCode).toBe(500);
@@ -1183,7 +1176,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -1205,7 +1198,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       expect(response.statusCode).toBe(200);
@@ -1225,7 +1218,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       expect(response.statusCode).toBe(200);
@@ -1245,7 +1238,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);
@@ -1265,7 +1258,7 @@ describe("Executors Routes", () => {
 
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/claude-code/sessions/session-123/messages?workspacePath=/Users/test",
+        url: "/api/executors/CLAUDE_CODE/sessions/session-123/messages?workspacePath=/Users/test",
       });
 
       const body = JSON.parse(response.body);

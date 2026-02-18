@@ -220,7 +220,7 @@ async function runSimpleGatewayServer(options: {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({
         executors: [
-          { type: "claude-code", name: "Claude Code", available: true },
+          { type: "CLAUDE_CODE", name: "Claude Code", available: true },
         ],
       }));
       return;
