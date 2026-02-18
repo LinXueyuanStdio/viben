@@ -19,7 +19,7 @@ describe("EventService", () => {
 
       const event: GatewayEvent = {
         type: "agent_spawned",
-        data: { agentId: "agent-1", sessionId: "session-1" },
+        data: { agent_id: "agent-1", session_id: "session-1" },
       };
       service.broadcast(event);
 
@@ -34,7 +34,7 @@ describe("EventService", () => {
 
       const event: GatewayEvent = {
         type: "agent_completed",
-        data: { agentId: "agent-1", sessionId: "session-1", success: true },
+        data: { agent_id: "agent-1", session_id: "session-1", success: true },
       };
       service.broadcast(event);
 
@@ -51,7 +51,7 @@ describe("EventService", () => {
 
       const event: GatewayEvent = {
         type: "agent_spawned",
-        data: { agentId: "agent-1", sessionId: "session-1" },
+        data: { agent_id: "agent-1", session_id: "session-1" },
       };
       service.broadcast(event);
 
@@ -68,7 +68,7 @@ describe("EventService", () => {
 
       expect(listener).toHaveBeenCalledWith({
         type: "agent_spawned",
-        data: { agentId: "agent-1", sessionId: "session-1" },
+        data: { agent_id: "agent-1", session_id: "session-1" },
       });
     });
 
@@ -80,7 +80,7 @@ describe("EventService", () => {
 
       expect(listener).toHaveBeenCalledWith({
         type: "agent_completed",
-        data: { agentId: "agent-1", sessionId: "session-1", success: true },
+        data: { agent_id: "agent-1", session_id: "session-1", success: true },
       });
     });
 
@@ -92,7 +92,7 @@ describe("EventService", () => {
 
       expect(listener).toHaveBeenCalledWith({
         type: "task_status_changed",
-        data: { taskId: "task-1", oldStatus: "pending", newStatus: "completed" },
+        data: { task_id: "task-1", old_status: "pending", new_status: "completed" },
       });
     });
   });
@@ -103,12 +103,12 @@ describe("EventService", () => {
       service.subscribe(listener);
 
       const events: GatewayEvent[] = [
-        { type: "agent_spawned", data: { agentId: "a", sessionId: "s" } },
-        { type: "agent_completed", data: { agentId: "a", sessionId: "s", success: true } },
-        { type: "task_created", data: { taskId: "t" } },
-        { type: "task_updated", data: { taskId: "t" } },
-        { type: "session_created", data: { sessionId: "s" } },
-        { type: "session_updated", data: { sessionId: "s" } },
+        { type: "agent_spawned", data: { agent_id: "a", session_id: "s" } },
+        { type: "agent_completed", data: { agent_id: "a", session_id: "s", success: true } },
+        { type: "task_created", data: { task_id: "t" } },
+        { type: "task_updated", data: { task_id: "t" } },
+        { type: "session_created", data: { session_id: "s" } },
+        { type: "session_updated", data: { session_id: "s" } },
       ];
 
       for (const event of events) {

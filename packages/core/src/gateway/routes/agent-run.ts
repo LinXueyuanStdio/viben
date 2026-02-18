@@ -382,6 +382,24 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         traceId,
       });
 
+      // Persist user message to UI messages file BEFORE streaming
+      // This ensures user messages appear when loading the session
+      if (persistSessionId && persistTaskId && prompt) {
+        try {
+          const persistAgentId = resolveAgentId(agentPath, agentConfig);
+          await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
+            id: generateMessageId(),
+            taskId: persistTaskId,
+            timestamp: new Date().toISOString(),
+            type: "user",
+            content: prompt,
+          });
+        } catch (e) {
+          // Non-fatal: log but continue
+          console.warn("[agent-run] Failed to persist user message:", e);
+        }
+      }
+
       // SDK initialization span
       const sdkInitSpan = tracer.startSpan(
         getSpanName("agent.run.sdk_init"),

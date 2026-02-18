@@ -67,10 +67,11 @@ export { useTrayStatus, useTrayStatusSync } from "./use-tray-status";
 export { useStoreSync, useMainWindowStoreSync, useTrayWindowStoreSync } from "./use-store-sync";
 export {
   useLocalWorkspaces,
-  useWorkspaceAgents,
   useWorkspaceMcpServers,
   useWorkspaceSkills,
 } from "./use-workspaces";
+export { useWorkspaceParam, buildWorkspaceUrl, isExecutorType } from "./use-workspace-param";
+export type { UseWorkspaceParamReturn } from "./use-workspace-param";
 export {
   useSkillReadme,
   useSkillFiles,
@@ -87,19 +88,15 @@ export {
 
 // Workspace Resources (Gateway API)
 export {
-  // New API hooks
   useExecutors,
   useAgents,
   useAgents as useGatewayAgents, // Alias for backwards compatibility
   useAgentDetail,
   useAgentList,
   useChatList,
-  // Legacy hooks (for backwards compatibility)
-  useWorkspaceAgentsFromGateway,
   useWorkspaceResources,
 } from "./use-workspace-resources";
 export type {
-  // New API types
   UseExecutorsOptions,
   UseExecutorsReturn,
   UseAgentsOptions,
@@ -113,8 +110,6 @@ export type {
   UseChatListOptions,
   UseChatListReturn,
   AgentOperations,
-  // Legacy types (for backwards compatibility)
-  UseWorkspaceAgentsFromGatewayReturn,
   UseWorkspaceResourcesReturn,
 } from "./use-workspace-resources";
 
@@ -154,10 +149,6 @@ export type {
   OfficialPackage,
   OfficialPackageRegistryType,
 } from "./use-official-registry";
-
-// Viben-core Agents
-// NOTE: useVibenAgents is DEPRECATED and will be removed. Use useAgents from use-workspace-resources.ts instead
-// Types are now available via @/lib/gateway (AgentInfo, VibenAgentResponse, etc.)
 
 // Unified Agents (combines executors and agents)
 export { useUnifiedAgents, useVibenAgentsOnly } from "./use-unified-agents";

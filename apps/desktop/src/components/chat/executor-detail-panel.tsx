@@ -13,13 +13,6 @@ import { useTranslation } from "react-i18next";
 import {
   Terminal,
   Settings2,
-  Loader2,
-  Database,
-  Server,
-  Sparkles,
-  MessageSquare,
-  FileText,
-  Command,
   FolderOpen,
   Globe,
   ExternalLink,
@@ -30,17 +23,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { CollapsibleSection } from "./collapsible-section";
-import {
-  useWorkspaceMcpServers,
-  useWorkspaceSkills,
-} from "@/hooks/use-workspaces";
-import {
-  useWorkspaceAgentConfigs,
-  useWorkspaceCommands,
-} from "@/hooks/use-agent-configs";
+import { ExecutorCapabilities } from "./executor-capabilities";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -90,24 +77,6 @@ export function ExecutorDetailPanel({
   compact = false,
 }: ExecutorDetailPanelProps) {
   const { t } = useTranslation();
-
-  // Load data for executor using workspacePath and executor.type
-  const { servers: mcpServers, loading: mcpLoading } = useWorkspaceMcpServers(
-    workspacePath || null,
-    executor.type
-  );
-  const { skills, loading: skillsLoading } = useWorkspaceSkills(
-    workspacePath || null,
-    executor.type
-  );
-  const { configs: agentConfigs, loading: configsLoading } = useWorkspaceAgentConfigs(
-    workspacePath || null,
-    executor.type
-  );
-  const { commands, loading: commandsLoading } = useWorkspaceCommands(
-    workspacePath || null,
-    executor.type
-  );
 
   // Get executor icon color based on type
   const getExecutorColor = (type: string) => {
@@ -161,30 +130,32 @@ export function ExecutorDetailPanel({
                     {executor.type}
                   </Badge>
                   {executor.source && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="outline" className="text-xs gap-1">
-                          {executor.source === "workspace" ? (
-                            <FolderOpen className="h-3 w-3" />
-                          ) : executor.source === "global" ? (
-                            <Globe className="h-3 w-3" />
-                          ) : (
-                            <>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="text-xs gap-1">
+                            {executor.source === "workspace" ? (
                               <FolderOpen className="h-3 w-3" />
-                              <span>+</span>
+                            ) : executor.source === "global" ? (
                               <Globe className="h-3 w-3" />
-                            </>
-                          )}
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {executor.source === "workspace"
-                          ? t("settingsAgents.workspaceConfig")
-                          : executor.source === "global"
-                            ? t("settingsAgents.globalConfig")
-                            : t("settingsAgents.mergedConfig")}
-                      </TooltipContent>
-                    </Tooltip>
+                            ) : (
+                              <>
+                                <FolderOpen className="h-3 w-3" />
+                                <span>+</span>
+                                <Globe className="h-3 w-3" />
+                              </>
+                            )}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {executor.source === "workspace"
+                            ? t("settingsAgents.workspaceConfig")
+                            : executor.source === "global"
+                              ? t("settingsAgents.globalConfig")
+                              : t("settingsAgents.mergedConfig")}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                 </div>
               </div>
@@ -202,25 +173,25 @@ export function ExecutorDetailPanel({
       {/* Content */}
       <ScrollArea className="flex-1">
         <div className={cn("space-y-1", compact ? "p-4" : "p-6")}>
-          {/* Config Section */}
-          {(executor.config_path || executor.global_config_path) && (
-            <div className="mb-4">
-              <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                {t("workspace.configuration")}
-              </h4>
+          {/* Config Section - always show */}
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+              {t("workspace.configuration")}
+            </h4>
 
-              {/* Workspace Config */}
-              {executor.config_path && (
-                <CollapsibleSection
-                  title={t("settingsAgents.workspaceConfig")}
-                  icon={<FolderOpen className="h-4 w-4" />}
-                  defaultOpen
-                >
-                  <div className="py-2">
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                        {executor.config_path}
-                      </code>
+            {/* Workspace Config */}
+            <CollapsibleSection
+              title={t("settingsAgents.workspaceConfig")}
+              icon={<FolderOpen className="h-4 w-4" />}
+              defaultOpen={!!executor.config_path?.trim()}
+            >
+              <div className="py-2">
+                {executor.config_path?.trim() ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                      {executor.config_path}
+                    </code>
+                    <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -234,23 +205,29 @@ export function ExecutorDetailPanel({
                         </TooltipTrigger>
                         <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
                       </Tooltip>
-                    </div>
+                    </TooltipProvider>
                   </div>
-                </CollapsibleSection>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {t("settingsAgents.noWorkspaceConfig")}
+                  </p>
+                )}
+              </div>
+            </CollapsibleSection>
 
-              {/* Global Config */}
-              {executor.global_config_path && (
-                <CollapsibleSection
-                  title={t("settingsAgents.globalConfig")}
-                  icon={<Globe className="h-4 w-4" />}
-                  defaultOpen={!executor.config_path}
-                >
-                  <div className="py-2">
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                        {executor.global_config_path}
-                      </code>
+            {/* Global Config */}
+            <CollapsibleSection
+              title={t("settingsAgents.globalConfig")}
+              icon={<Globe className="h-4 w-4" />}
+              defaultOpen={!!executor.global_config_path?.trim()}
+            >
+              <div className="py-2">
+                {executor.global_config_path?.trim() ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
+                      {executor.global_config_path}
+                    </code>
+                    <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -264,173 +241,23 @@ export function ExecutorDetailPanel({
                         </TooltipTrigger>
                         <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
                       </Tooltip>
-                    </div>
+                    </TooltipProvider>
                   </div>
-                </CollapsibleSection>
-              )}
-            </div>
-          )}
-
-          {/* Capabilities Section */}
-          <div className="mb-4">
-            <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-              {t("settingsAgents.capabilities")}
-            </h4>
-
-            {/* MCP */}
-            <CollapsibleSection
-              title={t("settingsAgents.mcpTitle", "MCP")}
-              icon={<Database className="h-4 w-4" />}
-              badge={
-                mcpLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <Badge variant="secondary" className="text-xs">{mcpServers.length}</Badge>
-                )
-              }
-              defaultOpen
-            >
-              <div className="py-2 space-y-1">
-                {mcpServers.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.noMcp")}
+                    {t("settingsAgents.noGlobalConfig")}
                   </p>
-                ) : (
-                  mcpServers.map((server) => (
-                    <div
-                      key={server.name}
-                      className={cn(
-                        "flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50",
-                        server.disabled && "opacity-60"
-                      )}
-                    >
-                      <Server className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{server.name}</span>
-                      {server.transport && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                          {server.transport}
-                        </Badge>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </CollapsibleSection>
-
-            {/* Skills */}
-            <CollapsibleSection
-              title={t("chat.skills")}
-              icon={<Sparkles className="h-4 w-4" />}
-              badge={
-                skillsLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Badge variant="secondary" className="text-xs">{skills.length}</Badge>
-                )
-              }
-            >
-              <div className="py-2 space-y-1">
-                {skills.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.noSkills")}
-                  </p>
-                ) : (
-                  skills.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                    >
-                      <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{skill.name}</span>
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                        v{skill.version}
-                      </Badge>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CollapsibleSection>
-
-            {/* Prompts */}
-            <CollapsibleSection
-              title={t("settingsAgents.prompts")}
-              icon={<MessageSquare className="h-4 w-4" />}
-              badge={
-                configsLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
-                )
-              }
-            >
-              <div className="py-2 space-y-1">
-                {agentConfigs.length === 0 ? (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noPrompts")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70">
-                      {t("settingsAgents.noPromptsHint")}
-                    </p>
-                  </>
-                ) : (
-                  agentConfigs.map((config) => (
-                    <div
-                      key={config.id}
-                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                    >
-                      <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{config.name}</span>
-                      {config.model && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                          {config.model}
-                        </Badge>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </CollapsibleSection>
-
-            {/* Commands */}
-            <CollapsibleSection
-              title={t("settingsAgents.commands")}
-              icon={<Command className="h-4 w-4" />}
-              badge={
-                commandsLoading ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Badge variant="secondary" className="text-xs">{commands.length}</Badge>
-                )
-              }
-            >
-              <div className="py-2 space-y-1">
-                {commands.length === 0 ? (
-                  <>
-                    <p className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noCommands")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70">
-                      {t("settingsAgents.noCommandsHint")}
-                    </p>
-                  </>
-                ) : (
-                  commands.map((command) => (
-                    <div
-                      key={command.id}
-                      className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                    >
-                      <Command className="h-3 w-3 text-muted-foreground shrink-0" />
-                      <span className="truncate font-mono">/{command.id}</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-                        {command.namespace}
-                      </span>
-                    </div>
-                  ))
                 )}
               </div>
             </CollapsibleSection>
           </div>
+
+          {/* Capabilities Section - using reusable component */}
+          <ExecutorCapabilities
+            executorType={executor.type}
+            workspacePath={workspacePath}
+            className="mb-4"
+          />
 
           {/* Info */}
           <div className="p-3 rounded-xl bg-muted/50 border">

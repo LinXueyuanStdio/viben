@@ -204,12 +204,7 @@ export class WebSocketManager {
     this.resetHeartbeatTimeout();
     this.lastPongTime = Date.now();
 
-    // Handle pong messages
-    if (event.data === "pong" || event.data === '{"type":"pong"}') {
-      return;
-    }
-
-    // Try to parse JSON
+    // Try to parse JSON first
     let data: unknown = event.data;
     if (typeof event.data === "string") {
       try {
@@ -217,6 +212,16 @@ export class WebSocketManager {
       } catch {
         // Not JSON, use raw data
       }
+    }
+
+    // Handle pong messages (check both string and parsed JSON)
+    if (
+      event.data === "pong" ||
+      event.data === '{"type":"pong"}' ||
+      event.data === '{"type":"Pong"}' ||
+      (typeof data === "object" && data !== null && (data as { type?: string }).type === "Pong")
+    ) {
+      return;
     }
 
     this.options.onMessage?.(data);
@@ -227,10 +232,8 @@ export class WebSocketManager {
 
     this.heartbeatTimer = setInterval(() => {
       if (this.isConnected()) {
-        // Send ping
-        this.send("ping");
-        // Or send JSON ping if server expects it
-        // this.sendJSON({ type: "ping" });
+        // Send JSON ping (server expects { type: "Ping" })
+        this.sendJSON({ type: "Ping" });
 
         // Set timeout for pong response
         this.heartbeatTimeoutTimer = setTimeout(() => {

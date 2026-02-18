@@ -565,9 +565,9 @@ export class GatewayClient {
   }
 
   /**
-   * Get agent details by type
+   * Get executor details by type
    */
-  async getAgent(executorType: ExecutorType): Promise<AgentDetails> {
+  async getExecutorDetails(executorType: ExecutorType): Promise<AgentDetails> {
     const response = await fetch(`${this.baseUrl}/api/agents/${executorType}`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -575,7 +575,7 @@ export class GatewayClient {
 
     if (!response.ok) {
       throw new GatewayError(
-        `Failed to get agent: ${response.statusText}`,
+        `Failed to get executor details: ${response.statusText}`,
         response.status
       );
     }
@@ -787,7 +787,7 @@ export class GatewayClient {
   async getAgentById(
     agentId: string,
     workspacePath?: string
-  ): Promise<VibenAgentResponse> {
+  ): Promise<AgentResponse> {
     const params = new URLSearchParams();
     if (workspacePath) {
       params.set("workspace_path", workspacePath);
@@ -1967,14 +1967,12 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * Create a new Viben agent
+   * Create a new agent
    *
    * @param options - Agent creation options
    * @returns Created agent response
    */
-  async createVibenAgent(
-    options: CreateVibenAgentOptions
-  ): Promise<VibenAgentResponse> {
+  async createAgent(options: CreateAgentOptions): Promise<AgentResponse> {
     const response = await fetch(`${this.baseUrl}/api/agents`, {
       method: "POST",
       headers: {
@@ -1987,7 +1985,7 @@ export class GatewayClient {
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to create Viben agent: ${errorMessage}`,
+        `Failed to create agent: ${errorMessage}`,
         response.status
       );
     }
@@ -1995,25 +1993,37 @@ export class GatewayClient {
     return response.json();
   }
 
+  /** @deprecated Use createAgent instead */
+  createVibenAgent = this.createAgent.bind(this);
+
   /**
-   * Get a Viben agent by ID
+   * Get an agent by ID
    *
    * @param agentId - The agent ID
+   * @param options - Optional parameters
+   * @param options.workspacePath - Workspace path to check first for workspace-scoped agents
    * @returns Agent response
    */
-  async getVibenAgent(agentId: string): Promise<VibenAgentResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      }
-    );
+  async getAgent(
+    agentId: string,
+    options?: { workspacePath?: string }
+  ): Promise<AgentResponse> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    const queryString = params.toString();
+    const url = `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get Viben agent: ${errorMessage}`,
+        `Failed to get agent: ${errorMessage}`,
         response.status
       );
     }
@@ -2021,17 +2031,20 @@ export class GatewayClient {
     return response.json();
   }
 
+  /** @deprecated Use getAgent instead */
+  getVibenAgent = this.getAgent.bind(this);
+
   /**
-   * Update a Viben agent
+   * Update an agent
    *
    * @param agentId - The agent ID
    * @param options - Update options
    * @returns Updated agent response
    */
-  async updateVibenAgent(
+  async updateAgent(
     agentId: string,
-    options: UpdateVibenAgentOptions
-  ): Promise<VibenAgentResponse> {
+    options: UpdateAgentOptions
+  ): Promise<AgentResponse> {
     const response = await fetch(
       `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
       {
@@ -2047,7 +2060,7 @@ export class GatewayClient {
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to update Viben agent: ${errorMessage}`,
+        `Failed to update agent: ${errorMessage}`,
         response.status
       );
     }
@@ -2055,12 +2068,15 @@ export class GatewayClient {
     return response.json();
   }
 
+  /** @deprecated Use updateAgent instead */
+  updateVibenAgent = this.updateAgent.bind(this);
+
   /**
-   * Delete a Viben agent
+   * Delete an agent
    *
    * @param agentId - The agent ID
    */
-  async deleteVibenAgent(agentId: string): Promise<void> {
+  async deleteAgent(agentId: string): Promise<void> {
     const response = await fetch(
       `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
       {
@@ -2072,11 +2088,14 @@ export class GatewayClient {
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to delete Viben agent: ${errorMessage}`,
+        `Failed to delete agent: ${errorMessage}`,
         response.status
       );
     }
   }
+
+  /** @deprecated Use deleteAgent instead */
+  deleteVibenAgent = this.deleteAgent.bind(this);
 
   // ==========================================================================
   // Default Agent Management
@@ -2138,7 +2157,7 @@ export class GatewayClient {
    *
    * @returns List of templates
    */
-  async listAgentTemplates(): Promise<VibenAgentTemplate[]> {
+  async listAgentTemplates(): Promise<AgentTemplate[]> {
     const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -2162,7 +2181,7 @@ export class GatewayClient {
    * @param templateId - The template ID
    * @returns Template
    */
-  async getAgentTemplate(templateId: string): Promise<VibenAgentTemplate> {
+  async getAgentTemplate(templateId: string): Promise<AgentTemplate> {
     const response = await fetch(
       `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}`,
       {
@@ -2192,7 +2211,7 @@ export class GatewayClient {
   async createAgentTemplate(
     agentId: string,
     templateId: string
-  ): Promise<VibenAgentTemplate> {
+  ): Promise<AgentTemplate> {
     const response = await fetch(`${this.baseUrl}/api/agents/templates`, {
       method: "POST",
       headers: {
@@ -2223,7 +2242,7 @@ export class GatewayClient {
   async createAgentFromTemplate(
     templateId: string,
     agentId: string
-  ): Promise<VibenAgentResponse> {
+  ): Promise<AgentResponse> {
     const response = await fetch(
       `${this.baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}/instantiate`,
       {
@@ -4031,7 +4050,7 @@ export type WorkspaceAgentType =
 
 /**
  * Agent info - basic agent information for listing.
- * For full agent details (Viben agents), use VibenAgentResponse.
+ * For full agent details (Viben agents), use AgentResponse.
  */
 export interface AgentInfo {
   /** Agent ID */
@@ -4415,11 +4434,11 @@ export interface FileContentResponse {
 }
 
 // ============================================================================
-// Viben Agent CRUD Types
+// Agent CRUD Types
 // ============================================================================
 
-/** Options for creating a Viben agent */
-export interface CreateVibenAgentOptions {
+/** Options for creating an agent */
+export interface CreateAgentOptions {
   name: string;
   id?: string;
   description?: string;
@@ -4433,8 +4452,11 @@ export interface CreateVibenAgentOptions {
   base_path?: string;
 }
 
-/** Response from creating/updating a Viben agent */
-export interface VibenAgentResponse {
+/** @deprecated Use CreateAgentOptions instead */
+export type CreateVibenAgentOptions = CreateAgentOptions;
+
+/** Response from creating/updating an agent */
+export interface AgentResponse {
   id: string;
   name: string;
   executor_type: string;
@@ -4461,8 +4483,11 @@ export interface VibenAgentResponse {
   updated_at: string;
 }
 
-/** Options for updating a Viben agent */
-export interface UpdateVibenAgentOptions {
+/** @deprecated Use AgentResponse instead */
+export type VibenAgentResponse = AgentResponse;
+
+/** Options for updating an agent */
+export interface UpdateAgentOptions {
   name?: string;
   description?: string;
   model?: string;
@@ -4479,13 +4504,16 @@ export interface UpdateVibenAgentOptions {
   approvals?: boolean;
 }
 
+/** @deprecated Use UpdateAgentOptions instead */
+export type UpdateVibenAgentOptions = UpdateAgentOptions;
+
 /** Response for default agent */
 export interface DefaultAgentResponse {
   default_agent_id: string | null;
 }
 
-/** Viben agent template */
-export interface VibenAgentTemplate {
+/** Agent template */
+export interface AgentTemplate {
   id: string;
   name: string;
   description?: string;
@@ -4493,9 +4521,12 @@ export interface VibenAgentTemplate {
   created_at: string;
 }
 
+/** @deprecated Use AgentTemplate instead */
+export type VibenAgentTemplate = AgentTemplate;
+
 /** Response for listing templates */
 export interface ListTemplatesResponse {
-  templates: VibenAgentTemplate[];
+  templates: AgentTemplate[];
   total: number;
 }
 

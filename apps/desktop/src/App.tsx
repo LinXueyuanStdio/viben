@@ -17,7 +17,8 @@ import {
   WorkspaceFilesPage,
   WorkspaceCronPage,
   AgentDetailPage,
-  WorkspaceSkillDetailPage,
+  SkillDetailPage,
+  ExecutorDetailPage,
   WorkspaceAgentsPage,
   HomeRedirect,
   OnboardingPage,
@@ -26,6 +27,8 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
+  LegacyAgentRedirect,
+  LegacySkillRedirect,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -121,7 +124,12 @@ function App() {
           </Route>
           <Route path="about" element={<AboutPage />} />
 
-          {/* Agent detail page from settings */}
+          {/* Agent, Executor, and Skill detail pages (new routing with query params) */}
+          <Route path="agent/:agentId" element={<AgentDetailPage />} />
+          <Route path="executor/:executorType" element={<ExecutorDetailPage />} />
+          <Route path="skill/:skillId" element={<SkillDetailPage />} />
+
+          {/* Legacy agent detail page from settings (redirects to new route) */}
           <Route path="agents/:agentId" element={<AgentDetailPage />} />
 
           {/* Creator routes (require authentication, handled in sidebar visibility) */}
@@ -136,8 +144,9 @@ function App() {
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
           <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
-          <Route path="workspace/:workspaceId/agent/:agentId" element={<AgentDetailPage />} />
-          <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<WorkspaceSkillDetailPage />} />
+          {/* Legacy routes - redirect to new URL structure with query params */}
+          <Route path="workspace/:workspaceId/agent/:agentId" element={<LegacyAgentRedirect />} />
+          <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<LegacySkillRedirect />} />
         </Route>
 
         {/* Tray popup - separate window without layout */}

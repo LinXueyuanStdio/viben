@@ -7,7 +7,7 @@
  */
 
 import type { Executor, ExecutorType } from "./index";
-import type { AgentInfo } from "@/lib/gateway";
+import type { AgentInfo, ExecutorInfo } from "@/lib/gateway";
 
 // Legacy Agent type for backwards compatibility
 export type Agent = AgentInfo;
@@ -118,8 +118,25 @@ export function executorToUnified(
   };
 }
 
-/** @deprecated Use executorToUnified instead */
+/** @deprecated Use executorInfoToUnified instead */
 export const workspaceAgentToExecutor = executorToUnified;
+
+/**
+ * 将 ExecutorInfo (from Gateway API) 转换为统一执行器
+ * 这是新的推荐方式，使用 Gateway API 返回的 ExecutorInfo 类型
+ */
+export function executorInfoToUnified(executor: ExecutorInfo): UnifiedAgent {
+  return {
+    id: executor.type, // Use type as ID for consistency with routing
+    name: executor.name,
+    description: undefined,
+    source: executor.has_workspace_config ? "workspace" : "global",
+    role: "executor",
+    workspacePath: executor.workspace_path,
+    executorType: executor.type as ExecutorType,
+    configPath: executor.workspace_config_path || executor.global_config_path,
+  };
+}
 
 /**
  * 将 Viben Agent (AgentInfo from Gateway API) 转换为统一智能体

@@ -346,6 +346,18 @@ export class CronService {
     job.last_output = output;
     this.jobs.set(job_id, job);
 
+    // Calculate next run time BEFORE broadcasting completed event
+    // This ensures the client receives the updated next_run value
+    let next_run: number | undefined;
+    if (job.cron) {
+      const nextTime = this.getNextCronTime(job.cron);
+      if (nextTime) {
+        next_run = nextTime.getTime();
+      }
+    } else if (job.every) {
+      next_run = Date.now() + job.every * 1000;
+    }
+
     // Save config
     await this.saveConfig();
 
@@ -356,7 +368,7 @@ export class CronService {
     // Truncate output for notification
     const truncated_output = output && output.length > 200 ? output.slice(0, 200) + "..." : output;
 
-    // Broadcast completed event
+    // Broadcast completed event with next_run included
     this.events.broadcast({
       type: "cron_job_completed",
       data: {
@@ -367,6 +379,7 @@ export class CronService {
         duration_ms,
         output: truncated_output,
         completed_at,
+        next_run,
       },
     });
   }

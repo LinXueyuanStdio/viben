@@ -22,7 +22,7 @@ interface ClientMessage {
   type: "Ping" | "Subscribe" | "Unsubscribe" | "SendMessage";
   data?: {
     channels?: string[];
-    sessionId?: string;
+    session_id?: string;
     content?: string;
   };
 }
@@ -213,12 +213,12 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
                 // of running agent processes and their stdin pipes. The current
                 // implementation broadcasts the message to WebSocket subscribers,
                 // which allows UI clients to receive messages. For actual agent
-                // interaction, use the /api/sessions/:sessionId/messages endpoint.
-                const sessionId = msg.data?.sessionId;
+                // interaction, use the /api/sessions/:session_id/messages endpoint.
+                const session_id = msg.data?.session_id;
                 const content = msg.data?.content;
-                if (sessionId && content) {
-                  state.events.sessionMessage(sessionId, content, "user");
-                  messageSpan.setAttribute("ws.session.id", sessionId);
+                if (session_id && content) {
+                  state.events.sessionMessage(session_id, content, "user");
+                  messageSpan.setAttribute("ws.session.id", session_id);
                 }
                 break;
               }

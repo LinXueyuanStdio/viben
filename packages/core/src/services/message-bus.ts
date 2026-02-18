@@ -100,10 +100,10 @@ export class MessageBus {
     this.eventService.broadcast({
       type: "channel_message_received",
       data: {
-        channelType: message.channelType,
-        channelName: message.channelName,
-        chatId: message.chatId,
-        senderName: message.senderName,
+        channel_type: message.channelType,
+        channel_name: message.channelName,
+        chat_id: message.chatId,
+        sender_name: message.senderName,
         message: message.message,
         timestamp: message.timestamp,
       },
@@ -160,8 +160,8 @@ export class MessageBus {
     this.eventService.broadcast({
       type: "channel_connection_status",
       data: {
-        channelType,
-        channelName,
+        channel_type: channelType,
+        channel_name: channelName,
         connected,
         error,
       },

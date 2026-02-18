@@ -436,10 +436,10 @@ describe("WebSocket Routes", () => {
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
-      // Broadcast an event
+      // Broadcast an event (using snake_case as per codebase standard)
       mockState.events._broadcast({
         type: "task_created",
-        data: { taskId: "task-1" },
+        data: { task_id: "task-1" },
       });
 
       expect(mockSocket.send).toHaveBeenCalled();
@@ -474,7 +474,7 @@ describe("WebSocket Routes", () => {
       // Broadcast a task event (should be filtered out)
       mockState.events._broadcast({
         type: "task_created",
-        data: { taskId: "task-1" },
+        data: { task_id: "task-1" },
       });
 
       expect(mockSocket.send).not.toHaveBeenCalled();
@@ -482,7 +482,7 @@ describe("WebSocket Routes", () => {
       // Broadcast a cron event (should be sent)
       mockState.events._broadcast({
         type: "cron_job_triggered",
-        data: { jobId: "job-1", triggeredAt: Date.now() },
+        data: { job_id: "job-1", triggered_at: Date.now() },
       });
 
       expect(mockSocket.send).toHaveBeenCalled();
@@ -511,29 +511,29 @@ describe("WebSocket Routes", () => {
 
       mockSocket.send.mockClear();
 
-      // Broadcast events for subscribed channels
-      mockState.events._broadcast({ type: "task_created", data: { taskId: "task-1" } });
-      mockState.events._broadcast({ type: "cron_job_triggered", data: { jobId: "job-1", triggeredAt: Date.now() } });
+      // Broadcast events for subscribed channels (using snake_case)
+      mockState.events._broadcast({ type: "task_created", data: { task_id: "task-1" } });
+      mockState.events._broadcast({ type: "cron_job_triggered", data: { job_id: "job-1", triggered_at: Date.now() } });
 
       expect(mockSocket.send).toHaveBeenCalledTimes(2);
     });
 
-    it("should convert camelCase data fields to snake_case", async () => {
+    it("should pass through snake_case data fields as-is", async () => {
       registerWebSocketRoutes(mockFastify, mockState);
       await mockFastify._executePlugins();
 
       const route = mockFastify._routes.find((r) => r.path === "/ws");
       route!.handler(mockSocket);
 
-      // Broadcast cron_job_completed event with camelCase fields
+      // Broadcast cron_job_completed event with snake_case fields (codebase standard)
       mockState.events._broadcast({
         type: "cron_job_completed",
         data: {
-          jobId: "job-1",
-          jobName: "Test Job",
-          jobType: "script",
-          durationMs: 1234,
-          completedAt: 1234567890,
+          job_id: "job-1",
+          job_name: "Test Job",
+          job_type: "script",
+          duration_ms: 1234,
+          completed_at: 1234567890,
         },
       });
 
@@ -779,7 +779,7 @@ describe("WebSocket Routes", () => {
       expect(mockState.events._getSubscribers().length).toBe(2);
 
       // Broadcast an event
-      mockState.events._broadcast({ type: "task_created", data: { taskId: "task-1" } });
+      mockState.events._broadcast({ type: "task_created", data: { task_id: "task-1" } });
 
       // Both should receive the event
       expect(socket1.send).toHaveBeenCalled();
@@ -812,7 +812,7 @@ describe("WebSocket Routes", () => {
       // Broadcast an event
       socket1.send.mockClear();
       socket2.send.mockClear();
-      mockState.events._broadcast({ type: "task_created", data: { taskId: "task-1" } });
+      mockState.events._broadcast({ type: "task_created", data: { task_id: "task-1" } });
 
       // Only socket2 should receive
       expect(socket1.send).not.toHaveBeenCalled();
@@ -872,7 +872,7 @@ describe("WebSocket Routes", () => {
 
       mockState.events._broadcast({
         type: "task_created",
-        data: { taskId: "task-123", title: "Test Task" },
+        data: { task_id: "task-123", title: "Test Task" },
       });
 
       const sentMessage = JSON.parse(mockSocket.send.mock.calls[0][0]);

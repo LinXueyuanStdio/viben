@@ -1,5 +1,18 @@
+/**
+ * Skill Detail Page - Skill viewer and editor
+ *
+ * Two-column layout:
+ * - Left: Skill list sidebar
+ * - Right: Skill content with file tree and code editor
+ *
+ * Route: /skill/:skillId?workspace_path=...&agent_id=...
+ *
+ * Query Parameters:
+ * - workspace_path: The workspace path (optional, falls back to global)
+ * - agent_id: The executor/agent type (e.g., "CLAUDE_CODE")
+ */
 import { useState, useEffect } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Bot,
@@ -20,7 +33,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
-  useLocalWorkspaces,
+  useWorkspaceParam,
+  buildWorkspaceUrl,
   useExecutors,
   useWorkspaceSkills,
   useSkillReadme,
@@ -37,25 +51,24 @@ interface Tab {
   skill: WorkspaceSkill;
 }
 
-export function WorkspaceSkillDetailPage() {
+export function SkillDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { workspaceId, agentId, skillId } = useParams<{
-    workspaceId: string;
-    agentId: string;
-    skillId: string;
-  }>();
-  const { getWorkspace } = useLocalWorkspaces();
-  const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
-  // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents
-  const { executors } = useExecutors({ workspacePath: workspace?.path });
-  // agentId from URL is the executor type (e.g., "CLAUDE_CODE")
+  const [searchParams] = useSearchParams();
+  const { skillId } = useParams<{ skillId: string }>();
+
+  // Get workspace and agent from query params
+  const { workspacePath, workspace } = useWorkspaceParam();
+  const agentId = searchParams.get("agent_id");
+
+  // Use useExecutors to find the executor
+  const { executors } = useExecutors({ workspacePath: workspacePath || undefined });
   const executor = executors.find((e) => e.type === agentId);
 
   // Load skills using workspacePath and executor.type
   const { skills, loading: skillsLoading } = useWorkspaceSkills(
-    workspace?.path || null,
-    executor?.type || null
+    workspacePath || null,
+    executor?.type || agentId || null
   );
 
   // Tab management
@@ -63,10 +76,9 @@ export function WorkspaceSkillDetailPage() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const selectedSkill = skills.find((s) => s.id === skillId);
 
-  // Auto-open tab for selected skill (useEffect instead of useMemo to avoid side effects)
+  // Auto-open tab for selected skill
   useEffect(() => {
     if (selectedSkill) {
-      // Check if tab already exists
       const existingTab = openTabs.find((t) => t.id === selectedSkill.id);
       if (!existingTab) {
         const newTab: Tab = {
@@ -79,26 +91,34 @@ export function WorkspaceSkillDetailPage() {
     }
   }, [selectedSkill?.id]); // Only depend on skill ID to avoid infinite loops
 
-  if (!workspace || !executor) {
+  if (!agentId) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh]">
-        <Bot className="h-12 w-12 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold mb-2">
-          {t("workspace.agentNotFound")}
-        </h2>
-        <Button asChild>
-          <Link to={workspaceId ? `/workspace/${workspaceId}` : "/"}>
+      <PageWrapper>
+        <div className="flex flex-col items-center justify-center h-[60vh]">
+          <Bot className="h-12 w-12 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">
+            {t("workspace.agentNotFound")}
+          </h2>
+          <p className="text-muted-foreground mb-4">
+            {t("workspace.missingAgentId", "Missing agent_id parameter")}
+          </p>
+          <Button onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            {t("workspace.backToWorkspace")}
-          </Link>
-        </Button>
-      </div>
+            {t("common.back")}
+          </Button>
+        </div>
+      </PageWrapper>
     );
   }
 
   const handleSelectSkill = (skill: WorkspaceSkill) => {
-    // Navigate to the skill
-    navigate(`/workspace/${workspaceId}/agent/${agentId}/skill/${skill.id}`);
+    // Navigate to the skill with query params
+    const url = buildWorkspaceUrl(
+      `/skill/${skill.id}`,
+      workspacePath,
+      { agent_id: agentId }
+    );
+    navigate(url);
 
     // Open tab if not already open
     if (!openTabs.find((t) => t.id === skill.id)) {
@@ -121,12 +141,31 @@ export function WorkspaceSkillDetailPage() {
       if (newTabs.length > 0) {
         const newActiveTab = newTabs[newTabs.length - 1];
         setActiveTabId(newActiveTab.id);
-        navigate(`/workspace/${workspaceId}/agent/${agentId}/skill/${newActiveTab.id}`);
+        const url = buildWorkspaceUrl(
+          `/skill/${newActiveTab.id}`,
+          workspacePath,
+          { agent_id: agentId }
+        );
+        navigate(url);
       } else {
         setActiveTabId(null);
-        navigate(`/workspace/${workspaceId}/agent/${agentId}`);
+        // Navigate back to executor detail
+        const url = buildWorkspaceUrl(
+          `/executor/${agentId}`,
+          workspacePath
+        );
+        navigate(url);
       }
     }
+  };
+
+  const handleNavigateBack = () => {
+    // Navigate back to executor detail
+    const url = buildWorkspaceUrl(
+      `/executor/${agentId}`,
+      workspacePath
+    );
+    navigate(url);
   };
 
   const activeTab = openTabs.find((t) => t.id === activeTabId);
@@ -134,17 +173,35 @@ export function WorkspaceSkillDetailPage() {
   return (
     <PageWrapper className="flex flex-col h-full">
       {/* Header with Breadcrumb */}
-      <WorkspaceHeader
-        workspace={workspace}
-        segments={[
-          { label: executor.name, href: `/workspace/${workspaceId}/agent/${agentId}` },
-          ...(selectedSkill
-            ? [{ label: selectedSkill.name, href: `/workspace/${workspaceId}/agent/${agentId}/skill/${skillId}` }]
-            : []),
-        ]}
-        showRefresh={false}
-        showRemove={false}
-      />
+      {workspace && (
+        <WorkspaceHeader
+          workspace={workspace}
+          segments={[
+            {
+              label: executor?.name || agentId,
+              href: buildWorkspaceUrl(`/executor/${agentId}`, workspacePath),
+            },
+            ...(selectedSkill
+              ? [{
+                  label: selectedSkill.name,
+                  href: buildWorkspaceUrl(`/skill/${skillId}`, workspacePath, { agent_id: agentId }),
+                }]
+              : []),
+          ]}
+          showRefresh={false}
+          showRemove={false}
+        />
+      )}
+
+      {/* Back button if no workspace header */}
+      {!workspace && (
+        <div className="p-4 border-b">
+          <Button variant="ghost" onClick={handleNavigateBack}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t("common.back")}
+          </Button>
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar - Skill List */}
@@ -203,7 +260,12 @@ export function WorkspaceSkillDetailPage() {
                   key={tab.id}
                   onClick={() => {
                     setActiveTabId(tab.id);
-                    navigate(`/workspace/${workspaceId}/agent/${agentId}/skill/${tab.id}`);
+                    const url = buildWorkspaceUrl(
+                      `/skill/${tab.id}`,
+                      workspacePath,
+                      { agent_id: agentId }
+                    );
+                    navigate(url);
                   }}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 border-r cursor-pointer text-sm",

@@ -72,5 +72,9 @@ export type { ExecutorDetailPanelProps, ExecutorDetailData } from "./executor-de
 export { AgentDetailPanel } from "./agent-detail-panel";
 export type { AgentDetailPanelProps, AgentDetailData, ModelOption } from "./agent-detail-panel";
 
+// Executor Capabilities (reusable)
+export { ExecutorCapabilities } from "./executor-capabilities";
+export type { ExecutorCapabilitiesProps } from "./executor-capabilities";
+
 // Background Task Indicator
 export { BackgroundTaskIndicator } from "./background-task-indicator";

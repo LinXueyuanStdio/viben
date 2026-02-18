@@ -649,8 +649,8 @@ async function executeAgentsInBackground(
     state.events.broadcast({
       type: "group_chat_error",
       data: {
-        groupChatId,
-        sessionId,
+        group_chat_id: groupChatId,
+        session_id: sessionId,
         error: err instanceof Error ? err.message : String(err),
       },
     });
@@ -675,10 +675,10 @@ function handleOrchestratorEvent(
       state.events.broadcast({
         type: "group_chat_agent_thinking",
         data: {
-          groupChatId,
-          sessionId,
-          agentId: event.agentId,
-          agentName: event.agentName,
+          group_chat_id: groupChatId,
+          session_id: sessionId,
+          agent_id: event.agentId,
+          agent_name: event.agentName,
         },
       });
       break;
@@ -687,9 +687,9 @@ function handleOrchestratorEvent(
       state.events.broadcast({
         type: "group_chat_agent_progress",
         data: {
-          groupChatId,
-          sessionId,
-          agentId: event.agentId,
+          group_chat_id: groupChatId,
+          session_id: sessionId,
+          agent_id: event.agentId,
           delta: event.delta,
         },
       });
@@ -699,10 +699,10 @@ function handleOrchestratorEvent(
       state.events.broadcast({
         type: "group_chat_agent_response",
         data: {
-          groupChatId,
-          sessionId,
-          agentId: event.agentId,
-          agentName: event.agentName,
+          group_chat_id: groupChatId,
+          session_id: sessionId,
+          agent_id: event.agentId,
+          agent_name: event.agentName,
           content: event.content,
           duration: event.duration,
         },
@@ -713,10 +713,10 @@ function handleOrchestratorEvent(
       state.events.broadcast({
         type: "group_chat_agent_error",
         data: {
-          groupChatId,
-          sessionId,
-          agentId: event.agentId,
-          agentName: event.agentName,
+          group_chat_id: groupChatId,
+          session_id: sessionId,
+          agent_id: event.agentId,
+          agent_name: event.agentName,
           error: event.error,
         },
       });
@@ -726,10 +726,10 @@ function handleOrchestratorEvent(
       state.events.broadcast({
         type: "group_chat_round_complete",
         data: {
-          groupChatId,
-          sessionId,
-          successCount: event.successCount,
-          errorCount: event.errorCount,
+          group_chat_id: groupChatId,
+          session_id: sessionId,
+          success_count: event.successCount,
+          error_count: event.errorCount,
           duration: event.duration,
         },
       });
@@ -886,7 +886,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         // Broadcast event
         state.events.broadcast({
           type: "group_chat_created",
-          data: { groupChatId: groupChat.id },
+          data: { group_chat_id: groupChat.id },
         });
 
         reply.code(201);
@@ -926,7 +926,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         // Broadcast event
         state.events.broadcast({
           type: "group_chat_updated",
-          data: { groupChatId: id },
+          data: { group_chat_id: id },
         });
 
         return toGroupChatResponse(updated, responseWorkspacePath, isGlobal);
@@ -958,7 +958,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         // Broadcast event
         state.events.broadcast({
           type: "group_chat_deleted",
-          data: { groupChatId: id },
+          data: { group_chat_id: id },
         });
 
         return { deleted: id };
@@ -1040,7 +1040,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         // Broadcast event
         state.events.broadcast({
           type: "group_chat_member_joined",
-          data: { groupChatId: id, memberId: member_id },
+          data: { group_chat_id: id, member_id: member_id },
         });
 
         reply.code(201);
@@ -1078,7 +1078,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
         // Broadcast event
         state.events.broadcast({
           type: "group_chat_member_left",
-          data: { groupChatId: id, memberId },
+          data: { group_chat_id: id, member_id: memberId },
         });
 
         return { deleted: memberId };
@@ -1811,7 +1811,7 @@ export function registerGroupChatRoutes(fastify: FastifyInstance, state: AppStat
       // Broadcast message event
       state.events.broadcast({
         type: "group_chat_message",
-        data: { groupChatId: id, messageId: userMessage.id },
+        data: { group_chat_id: id, message_id: userMessage.id },
       });
 
       // Broadcast to WebSocket connections
