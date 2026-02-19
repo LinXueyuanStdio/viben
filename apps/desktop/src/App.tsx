@@ -30,9 +30,6 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
-  LegacyAgentRedirect,
-  LegacyWorkspaceAgentRedirect,
-  LegacyWorkspaceSkillRedirect,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -128,16 +125,13 @@ function App() {
           </Route>
           <Route path="about" element={<AboutPage />} />
 
-          {/* Agent, Executor, Skill, MCP, Prompt, Command detail pages (new routing with query params) */}
+          {/* Detail pages with query params: ?workspace_path=...&agent_id=... */}
           <Route path="agent/:agentId" element={<AgentDetailPage />} />
           <Route path="executor/:executorType" element={<ExecutorDetailPage />} />
           <Route path="skill/:skillId" element={<SkillDetailPage />} />
           <Route path="mcp-server/:serverName" element={<McpServerDetailPage />} />
           <Route path="prompt/:configId" element={<PromptDetailPage />} />
           <Route path="command/:commandId" element={<CommandDetailPage />} />
-
-          {/* Legacy route: /agents/:agentId → /agent/:agentId */}
-          <Route path="agents/:agentId" element={<LegacyAgentRedirect />} />
 
           {/* Creator routes (require authentication, handled in sidebar visibility) */}
           <Route path="publish" element={<PublishPage />} />
@@ -151,9 +145,6 @@ function App() {
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
           <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
-          {/* Legacy routes redirect to new query-param based routes */}
-          <Route path="workspace/:workspaceId/agent/:agentId" element={<LegacyWorkspaceAgentRedirect />} />
-          <Route path="workspace/:workspaceId/agent/:agentId/skill/:skillId" element={<LegacyWorkspaceSkillRedirect />} />
         </Route>
 
         {/* Tray popup - separate window without layout */}
