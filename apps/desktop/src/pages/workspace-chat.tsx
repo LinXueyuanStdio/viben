@@ -26,6 +26,7 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
+import { homeDir } from "@tauri-apps/api/path";
 import { getGatewayClient, type FileSession, type UIMessage, type ExecutorUIMessage, type MemberType, type MemberRole } from "@/lib/gateway";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1770,21 +1771,51 @@ export function WorkspaceChatPage() {
       console.log("[WorkspaceChat] No conversation selected");
       return;
     }
-    if (!currentAgent?.config_path) {
-      console.log("[WorkspaceChat] No agent config path available");
+
+    const agentId = selectedAgentId || currentAgent?.id;
+    if (!agentId) {
+      console.log("[WorkspaceChat] No agent ID available");
       return;
     }
-    try {
-      // Agent config path: /path/to/agents/<agentId>/config.yaml
-      // Session path: /path/to/agents/<agentId>/.agent_sessions/<sessionId>/config.yaml
+
+    // Try multiple possible paths for the session:
+    // 1. Workspace agent path (if currentAgent.config_path exists)
+    // 2. Global agent path (~/.viben/agents/<agentId>/.agent_sessions/<sessionId>/)
+
+    const possiblePaths: string[] = [];
+
+    // Path 1: From currentAgent.config_path (workspace agent)
+    if (currentAgent?.config_path) {
       const agentDir = currentAgent.config_path.replace(/\/config\.yaml$/, "");
-      const sessionPath = `${agentDir}/.agent_sessions/${selectedConversationId}/config.yaml`;
-      console.log("[WorkspaceChat] Opening session folder:", sessionPath);
-      await revealItemInDir(sessionPath);
-      console.log("[WorkspaceChat] revealItemInDir completed");
-    } catch (err) {
-      console.error("[WorkspaceChat] Failed to open session folder:", err);
+      possiblePaths.push(`${agentDir}/.agent_sessions/${selectedConversationId}/config.yaml`);
     }
+
+    // Path 2: Global agent path
+    const home = await homeDir();
+    possiblePaths.push(`${home}/.viben/agents/${agentId}/.agent_sessions/${selectedConversationId}/config.yaml`);
+
+    console.log("[WorkspaceChat] Trying session paths:", possiblePaths);
+
+    // Try each path - if it fails with "No such file", try the next one
+    for (const sessionPath of possiblePaths) {
+      console.log("[WorkspaceChat] Trying to open path:", sessionPath);
+      try {
+        await revealItemInDir(sessionPath);
+        console.log("[WorkspaceChat] revealItemInDir completed for:", sessionPath);
+        return;
+      } catch (err) {
+        const errorMsg = String(err);
+        // If file doesn't exist, try next path
+        if (errorMsg.includes("No such file") || errorMsg.includes("os error 2")) {
+          console.log("[WorkspaceChat] Path not found, trying next:", sessionPath);
+          continue;
+        }
+        // For other errors, log and try next path
+        console.error("[WorkspaceChat] Error opening path:", sessionPath, err);
+      }
+    }
+
+    console.error("[WorkspaceChat] Session not found at any of the paths:", possiblePaths);
   };
 
   if (isLoadingWorkspace) {

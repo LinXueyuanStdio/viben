@@ -1213,175 +1213,20 @@ export function AgentDetailPage() {
                 </CollapsibleSection>
               </div>
 
-              {/* Capabilities Section */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("settingsAgents.capabilities")}
-                </h4>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.mcpTitle", "MCP")}
-                  icon={<Database className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">{selectedMcpServers.length}</Badge>}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMcpDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {selectedMcpServers.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noMcp")}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs h-7"
-                          onClick={() => setMcpDialogOpen(true)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          {t("settingsAgents.addMcp")}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="space-y-1">
-                          {selectedMcpServers.map((serverId) => {
-                            const server = mcpServers.find((s) => s.id === serverId);
-                            return (
-                              <div
-                                key={serverId}
-                                className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                              >
-                                <Database className="h-3 w-3 text-muted-foreground" />
-                                <span className="truncate">{server?.name || serverId}</span>
-                                {server && (
-                                  <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                                    {server.transport.toUpperCase()}
-                                  </Badge>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs h-7 mt-2"
-                          onClick={() => setMcpDialogOpen(true)}
-                        >
-                          {t("common.configure")}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                <CollapsibleSection
-                  title={t("settingsAgents.skills")}
-                  icon={<Sparkles className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">{selectedSkills.length}</Badge>}
-                  action={
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSkillsDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {selectedSkills.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noSkills")}
-                        </p>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs h-7"
-                          onClick={() => setSkillsDialogOpen(true)}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          {t("settingsAgents.addSkill")}
-                        </Button>
-                      </>
-                    ) : (
-                      <>
-                        <div className="space-y-1">
-                          {selectedSkills.map((skillId) => {
-                            const skill = skillPackages.find((s) => s.id === skillId);
-                            return (
-                              <div
-                                key={skillId}
-                                className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                              >
-                                <Sparkles className="h-3 w-3 text-muted-foreground" />
-                                <span className="truncate">{skill?.name || skillId}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-xs h-7 mt-2"
-                          onClick={() => setSkillsDialogOpen(true)}
-                        >
-                          {t("common.configure")}
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Prompts Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.prompts")}
-                  icon={<MessageSquare className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
-                >
-                  <div className="py-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noPrompts")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70">
-                      {t("settingsAgents.noPromptsHint")}
-                    </p>
-                  </div>
-                </CollapsibleSection>
-
-                {/* Commands Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.commands")}
-                  icon={<Command className="h-4 w-4" />}
-                  badge={<Badge variant="secondary" className="text-xs">0</Badge>}
-                >
-                  <div className="py-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {t("settingsAgents.noCommands")}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground/70">
-                      {t("settingsAgents.noCommandsHint")}
-                    </p>
-                  </div>
-                </CollapsibleSection>
-              </div>
+              {/* Capabilities Section - using reusable component in editable mode */}
+              <ExecutorCapabilities
+                executorType={formExecutorType}
+                workspacePath={workspacePath}
+                className="mb-4"
+                sectionHeaderText={t("settingsAgents.capabilities")}
+                editable
+                selectedMcpServers={selectedMcpServers}
+                selectedSkills={selectedSkills}
+                mcpServerOptions={mcpServers.map((s) => ({ id: s.id, name: s.name, transport: s.transport }))}
+                skillPackageOptions={skillPackages.map((s) => ({ id: s.id, name: s.name }))}
+                onConfigureMcp={() => setMcpDialogOpen(true)}
+                onConfigureSkills={() => setSkillsDialogOpen(true)}
+              />
 
               {/* Memory Section */}
               <div>

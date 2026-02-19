@@ -74,7 +74,7 @@ export type { AgentDetailPanelProps, AgentDetailData, ModelOption } from "./agen
 
 // Executor Capabilities (reusable)
 export { ExecutorCapabilities } from "./executor-capabilities";
-export type { ExecutorCapabilitiesProps } from "./executor-capabilities";
+export type { ExecutorCapabilitiesProps, McpServerInfo, SkillPackageInfo } from "./executor-capabilities";
 
 // Background Task Indicator
 export { BackgroundTaskIndicator } from "./background-task-indicator";
