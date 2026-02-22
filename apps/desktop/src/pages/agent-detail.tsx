@@ -1440,6 +1440,10 @@ interface ExecutorDetailViewProps {
     skills_config_file: string | null;
   };
   workspacePath: string;
+  /** Available MCP servers for selection */
+  mcpServerOptions: Array<{ id: string; name: string; transport: string }>;
+  /** Available skill packages for selection */
+  skillPackageOptions: Array<{ id: string; name: string }>;
   onNavigateBack: () => void;
 }
 
