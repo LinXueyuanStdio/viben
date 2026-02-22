@@ -16,8 +16,8 @@ const DEFAULT_GATEWAY_PORT = 18790;
 /** Candidate ports to try when auto-discovering Gateway */
 const DISCOVERY_PORTS = [18790, 18791, 18800, 3790, 8790];
 
-/** Default Gateway URL */
-const DEFAULT_GATEWAY_URL = `http://localhost:${DEFAULT_GATEWAY_PORT}`;
+/** Default Gateway URL - use 127.0.0.1 to avoid proxy issues */
+const DEFAULT_GATEWAY_URL = `http://127.0.0.1:${DEFAULT_GATEWAY_PORT}`;
 
 /**
  * Get the Gateway base URL from localStorage or use default
@@ -49,9 +49,9 @@ export async function discoverGateway(): Promise<string | null> {
     return configuredUrl;
   }
 
-  // Try discovery ports
+  // Try discovery ports - use 127.0.0.1 to avoid proxy issues
   for (const port of DISCOVERY_PORTS) {
-    const url = `http://localhost:${port}`;
+    const url = `http://127.0.0.1:${port}`;
     if (url !== configuredUrl && await pingGatewayUrl(url)) {
       // Found a working Gateway, save it
       setGatewayUrl(url);
@@ -3404,6 +3404,76 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // Prompts (.claude/prompts/ or similar)
+  // ==========================================================================
+
+  /**
+   * Get all prompts for an executor type
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type
+   */
+  async getPrompts(
+    workspacePath: string | undefined,
+    executorType: string
+  ): Promise<WorkspacePromptsResponse> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/prompts?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get prompts: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a single prompt file
+   *
+   * @param workspacePath - The workspace path
+   * @param executorType - The executor type
+   * @param promptId - The prompt ID
+   */
+  async getPrompt(
+    workspacePath: string | undefined,
+    executorType: string,
+    promptId: string
+  ): Promise<{ prompt: WorkspacePromptData }> {
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/prompts/${encodeURIComponent(promptId)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get prompt: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
   // File Operations
   // ==========================================================================
 
@@ -4409,6 +4479,24 @@ export interface WorkspaceCommandData {
 /** Response for listing commands */
 export interface WorkspaceCommandsResponse {
   commands: WorkspaceCommandData[];
+}
+
+// ============================================================================
+// Prompts Types (.claude/prompts/ or similar)
+// ============================================================================
+
+/** Prompt data from .claude/prompts/ */
+export interface WorkspacePromptData {
+  id: string;
+  name: string;
+  description: string;
+  path: string;
+  content: string;
+}
+
+/** Response for listing prompts */
+export interface WorkspacePromptsResponse {
+  prompts: WorkspacePromptData[];
 }
 
 // ============================================================================

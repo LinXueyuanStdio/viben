@@ -524,12 +524,23 @@ export class SdkChatProxy implements ChatProxy {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
+      // Log the full error for debugging
+      console.error('[SdkChatProxy] Execution error:', errorMessage);
+      if (error instanceof Error && error.stack) {
+        console.error('[SdkChatProxy] Stack:', error.stack);
+      }
+      const cause = (error as Error & { cause?: Error }).cause;
+      if (cause) {
+        console.error('[SdkChatProxy] Cause:', cause.message);
+      }
+
       // Handle specific error types following WorkAny patterns
       if (errorMessage.includes("exited with code")) {
-        // Claude Code process crashed
+        // Claude Code process crashed - include the actual error for debugging
+        console.error('[SdkChatProxy] Process exit error:', errorMessage);
         yield {
           type: "error",
-          message: "Agent process terminated unexpectedly. Please try again.",
+          message: `Agent process terminated unexpectedly: ${errorMessage}`,
         };
       } else if (
         errorMessage.includes("API key") ||
