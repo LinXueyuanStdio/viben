@@ -1,26 +1,25 @@
 /**
- * MCP Server Detail Page - File-based editor
+ * SubAgent Detail Page (Agent Config from .claude/agents/*.md)
  *
  * Two-column layout following skill-detail pattern:
  * - Left: File tree showing config file(s)
  * - Right: Overview + Code editor
  *
- * Route: /mcp-server/:serverName?workspace_path=...&executor_type=...
+ * Route: /subagent/:configId?workspace_path=...&executor_type=...
  */
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Server,
+  Bot,
   Loader2,
-  Database,
-  Terminal,
-  Settings2,
-  ExternalLink,
+  FileText,
+  Cpu,
   Copy,
   Check,
-  FileText,
   File,
+  ExternalLink,
+  Package,
 } from "lucide-react";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
@@ -37,11 +36,12 @@ import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
   buildWorkspaceUrl,
-  useWorkspaceMcpServers,
   useConfigFileContent,
   useConfigFileWriter,
   useConfigFiles,
+  getParentDir,
 } from "@/hooks";
+import { useWorkspaceAgentConfigs } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
 import type { SkillFileEntry } from "@/types";
@@ -74,11 +74,11 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 
 type SelectedItem = { type: "overview" } | { type: "file"; entry: SkillFileEntry };
 
-export function McpServerDetailPage() {
+export function SubAgentDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { serverName } = useParams<{ serverName: string }>();
+  const { configId } = useParams<{ configId: string }>();
 
   // Get workspace and executor from query params
   const workspacePathParam = searchParams.get("workspace_path");
@@ -88,20 +88,17 @@ export function McpServerDetailPage() {
   // Use workspace_path from query params if provided
   const effectiveWorkspacePath = workspacePathParam || workspacePath;
 
-  // Load MCP servers
-  const { servers, loading } = useWorkspaceMcpServers(
+  // Load agent configs (subagents from .claude/agents/*.md)
+  const { configs, loading } = useWorkspaceAgentConfigs(
     effectiveWorkspacePath || null,
     executorType
   );
 
-  // Find the specific server
-  const server = servers.find((s) => s.name === serverName);
+  // Find the specific config
+  const config = configs.find((c) => c.id === configId);
 
-  // Compute config path based on executor type
-  // For Claude Code, MCP config is in .claude/ or .mcp/
-  const configDir = effectiveWorkspacePath
-    ? `${effectiveWorkspacePath}/.claude`
-    : null;
+  // File operations
+  const configDir = config?.path ? getParentDir(config.path) : null;
   const { files, loading: filesLoading, error: filesError, loadFiles } = useConfigFiles(configDir);
   const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useConfigFileContent();
   const { saveStatus, writeFile, resetStatus } = useConfigFileWriter();
@@ -165,16 +162,16 @@ export function McpServerDetailPage() {
     );
   }
 
-  if (!server) {
+  if (!config) {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Server className="h-12 w-12 text-muted-foreground mb-4" />
+          <Bot className="h-12 w-12 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">
-            {t("settingsAgents.mcpNotFound", "MCP Server Not Found")}
+            {t("settingsAgents.subagentNotFound", "SubAgent Not Found")}
           </h2>
           <p className="text-muted-foreground mb-4">
-            {t("settingsAgents.mcpNotFoundDesc", "The requested MCP server could not be found.")}
+            {t("settingsAgents.subagentNotFoundDesc", "The requested subagent configuration could not be found.")}
           </p>
           <Button onClick={handleNavigateBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -197,7 +194,7 @@ export function McpServerDetailPage() {
               href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
             },
             {
-              label: server.name,
+              label: config.name,
               href: "#",
             },
           ]}
@@ -210,24 +207,19 @@ export function McpServerDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <Server className="h-5 w-5 text-blue-600" />
+            <div className="h-10 w-10 rounded-lg bg-violet-500/10 flex items-center justify-center">
+              <Bot className="h-5 w-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="font-semibold">{server.name}</h1>
+              <h1 className="font-semibold">{config.name}</h1>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  <Database className="h-3 w-3 mr-1" />
-                  MCP
+                  <Bot className="h-3 w-3 mr-1" />
+                  {t("settingsAgents.subagent", "SubAgent")}
                 </Badge>
-                {server.transport && (
-                  <Badge variant="secondary" className="text-xs">
-                    {server.transport}
-                  </Badge>
-                )}
-                {server.disabled && (
-                  <Badge variant="destructive" className="text-xs">
-                    {t("common.disabled")}
+                {config.model && (
+                  <Badge variant="secondary" className="text-xs font-mono">
+                    {config.model}
                   </Badge>
                 )}
               </div>
@@ -241,8 +233,8 @@ export function McpServerDetailPage() {
         {/* Left Sidebar - File Tree */}
         <div className="w-64 border-r flex flex-col bg-muted/30">
           <div className="p-3 border-b flex items-center gap-2">
-            <Server className="h-4 w-4 text-blue-500" />
-            <span className="text-sm font-medium truncate">{server.name}</span>
+            <Bot className="h-4 w-4 text-violet-500" />
+            <span className="text-sm font-medium truncate">{config.name}</span>
           </div>
 
           <ScrollArea className="flex-1">
@@ -261,10 +253,10 @@ export function McpServerDetailPage() {
               </button>
 
               {/* Separator */}
-              {configDir && <div className="border-t my-2" />}
+              {config.path && <div className="border-t my-2" />}
 
               {/* File Tree */}
-              {configDir && (
+              {config.path && (
                 filesLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -286,7 +278,7 @@ export function McpServerDetailPage() {
         {/* Right Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col">
           {selected.type === "overview" ? (
-            <McpServerOverview server={server} configDir={configDir} onCopy={handleCopy} copied={copied} />
+            <SubAgentOverview config={config} onCopy={handleCopy} copied={copied} />
           ) : selectedFile ? (
             <>
               <div className="p-3 border-b flex items-center justify-between">
@@ -346,26 +338,24 @@ export function McpServerDetailPage() {
 }
 
 // ============================================================================
-// MCP Server Overview Component
+// SubAgent Overview Component
 // ============================================================================
 
-interface McpServerOverviewProps {
-  server: {
+interface SubAgentOverviewProps {
+  config: {
+    id: string;
     name: string;
-    command?: string;
-    args?: string[];
-    env?: Record<string, string>;
-    url?: string;
-    transport?: string;
-    headers?: Record<string, string>;
-    disabled?: boolean;
+    description: string;
+    tools: string[];
+    model: string;
+    path: string;
+    content: string;
   };
-  configDir: string | null;
   onCopy: (text: string) => void;
   copied: boolean;
 }
 
-function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverviewProps) {
+function SubAgentOverview({ config, onCopy, copied }: SubAgentOverviewProps) {
   const { t } = useTranslation();
 
   return (
@@ -373,51 +363,38 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
       <div className="p-6 max-w-3xl">
         {/* Header */}
         <div className="flex items-start gap-4 mb-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-            <Server className="h-7 w-7" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+            <Bot className="h-7 w-7" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold">{server.name}</h1>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="outline" className="text-xs">
-                <Database className="h-3 w-3 mr-1" />
-                MCP Server
-              </Badge>
-              {server.transport && (
-                <Badge variant="secondary" className="text-xs font-mono">
-                  {server.transport}
-                </Badge>
-              )}
-              {server.disabled && (
-                <Badge variant="destructive" className="text-xs">
-                  {t("common.disabled")}
-                </Badge>
-              )}
-            </div>
+            <h1 className="text-2xl font-bold">{config.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              {config.description || t("settingsAgents.subagent", "SubAgent")}
+            </p>
           </div>
         </div>
 
         {/* Metadata Grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <InfoCard
-            icon={<Settings2 className="h-4 w-4" />}
-            label={t("settingsAgents.transport", "Transport")}
-            value={server.transport || "stdio"}
+            icon={<Cpu className="h-4 w-4" />}
+            label={t("settingsAgents.model", "Model")}
+            value={config.model || "-"}
           />
           <InfoCard
-            icon={<Terminal className="h-4 w-4" />}
-            label={t("settingsAgents.command", "Command")}
-            value={server.command || server.url || "-"}
+            icon={<Package className="h-4 w-4" />}
+            label={t("settingsAgents.tools", "Tools")}
+            value={config.tools?.length ? `${config.tools.length} tools` : "-"}
           />
         </div>
 
-        {/* Config Directory */}
-        {configDir && (
+        {/* Path */}
+        {config.path && (
           <div className="mb-6 space-y-2">
-            <h3 className="text-sm font-medium">{t("workspace.configPath", "Config Directory")}</h3>
+            <h3 className="text-sm font-medium">{t("workspace.configPath", "Config Path")}</h3>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                {configDir}
+                {config.path}
               </code>
               <TooltipProvider>
                 <Tooltip>
@@ -426,7 +403,7 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0"
-                      onClick={() => onCopy(configDir)}
+                      onClick={() => onCopy(config.path)}
                     >
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
@@ -440,7 +417,7 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
               </TooltipProvider>
             </div>
             <Button variant="outline" size="sm" asChild>
-              <a href={`file://${configDir}`} target="_blank" rel="noopener noreferrer">
+              <a href={`file://${getParentDir(config.path)}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5 mr-2" />
                 {t("workspace.openInFinder")}
               </a>
@@ -448,68 +425,42 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
           </div>
         )}
 
-        {/* Arguments */}
-        {server.args && server.args.length > 0 && (
+        {/* Tools */}
+        {config.tools && config.tools.length > 0 && (
           <div className="mb-6 space-y-2">
-            <h3 className="text-sm font-medium">{t("settingsAgents.arguments", "Arguments")}</h3>
-            <div className="space-y-1">
-              {server.args.map((arg, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 text-xs px-3 py-2 rounded-md bg-muted/50 font-mono"
-                >
-                  <span className="text-muted-foreground w-6">{index}:</span>
-                  <span className="truncate">{arg}</span>
-                </div>
+            <h3 className="text-sm font-medium">{t("settingsAgents.tools", "Tools")}</h3>
+            <div className="flex flex-wrap gap-2">
+              {config.tools.map((tool) => (
+                <Badge key={tool} variant="secondary" className="text-xs font-mono">
+                  {tool}
+                </Badge>
               ))}
             </div>
           </div>
         )}
 
-        {/* Environment Variables */}
-        {server.env && Object.keys(server.env).length > 0 && (
-          <div className="mb-6 space-y-2">
-            <h3 className="text-sm font-medium">{t("settingsAgents.environment", "Environment Variables")}</h3>
-            <div className="space-y-1">
-              {Object.entries(server.env).map(([key, value]) => (
-                <div
-                  key={key}
-                  className="flex items-start gap-2 text-xs px-3 py-2 rounded-md bg-muted/50"
-                >
-                  <span className="font-mono font-medium text-blue-600 dark:text-blue-400 shrink-0">
-                    {key}
-                  </span>
-                  <span className="text-muted-foreground">=</span>
-                  <span className="font-mono truncate">
-                    {value.includes("***") ? "••••••••" : value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* URL (for SSE transport) */}
-        {server.url && (
-          <div className="mb-6 space-y-2">
-            <h3 className="text-sm font-medium">{t("settingsAgents.url", "URL")}</h3>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                {server.url}
-              </code>
+        {/* Content Preview */}
+        {config.content && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">{t("settingsAgents.subagentContent", "SubAgent Content")}</h3>
+            <div className="relative">
+              <pre className="text-xs bg-muted/50 p-4 rounded-lg font-mono whitespace-pre-wrap max-h-64 overflow-auto">
+                {config.content.slice(0, 500)}
+                {config.content.length > 500 && "..."}
+              </pre>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0"
-                      onClick={() => onCopy(server.url!)}
+                      className="absolute top-2 right-2 h-7 w-7"
+                      onClick={() => onCopy(config.content)}
                     >
                       {copied ? (
-                        <Check className="h-4 w-4 text-green-500" />
+                        <Check className="h-3.5 w-3.5 text-green-500" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-3.5 w-3.5" />
                       )}
                     </Button>
                   </TooltipTrigger>
@@ -517,13 +468,16 @@ function McpServerOverview({ server, configDir, onCopy, copied }: McpServerOverv
                 </Tooltip>
               </TooltipProvider>
             </div>
+            <p className="text-xs text-muted-foreground">
+              {t("settingsAgents.editInFilesTab", "Select a file from the sidebar to edit the full content.")}
+            </p>
           </div>
         )}
 
         {/* Info */}
         <div className="mt-6 p-4 rounded-xl bg-muted/30 border">
           <p className="text-xs text-muted-foreground">
-            {t("settingsAgents.mcpServerDesc", "MCP (Model Context Protocol) servers provide additional tools and capabilities to AI agents. This server is configured for the selected executor.")}
+            {t("settingsAgents.subagentDesc", "SubAgents are specialized agent configurations defined in .claude/agents/*.md files. They can be invoked using the Task tool to handle specific types of tasks with their own tools and context.")}
           </p>
         </div>
       </div>

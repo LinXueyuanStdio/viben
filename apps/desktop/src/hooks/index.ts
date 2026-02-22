@@ -80,6 +80,13 @@ export {
 } from "./use-skill-content";
 export type { SaveStatus } from "./use-skill-content";
 export {
+  useConfigFileContent,
+  useConfigFileWriter,
+  useConfigFiles,
+  getParentDir,
+  getFilename,
+} from "./use-config-file";
+export {
   useWorkspaceAgentConfigs,
   useAgentConfigContent,
   useWorkspaceCommands,

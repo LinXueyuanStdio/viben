@@ -460,6 +460,9 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * List sessions for an agent
    * GET /api/agents/:id/sessions
+   *
+   * Lists sessions from both workspace and global locations to ensure
+   * compatibility with sessions created before the workspace-first fix.
    */
   fastify.get<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
     "/api/agents/:id/sessions",
@@ -467,11 +470,43 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       const { id } = request.params;
       const { workspace_path } = request.query;
       try {
-        const agentPath = await resolveAgentPath(id, workspace_path);
-        const sessions = await state.sessionStore.listSessions(id, agentPath);
+        // Collect sessions from both workspace and global locations
+        const allSessions: SessionConfig[] = [];
+        const seenIds = new Set<string>();
+
+        // 1. Try workspace agent first (if workspace_path provided)
+        if (workspace_path) {
+          const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
+          const workspaceAgent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
+          if (workspaceAgent?.path) {
+            const workspaceSessions = await state.sessionStore.listSessions(id, join(workspaceAgent.path, "config.yaml"));
+            for (const session of workspaceSessions) {
+              if (!seenIds.has(session.id)) {
+                seenIds.add(session.id);
+                allSessions.push(session);
+              }
+            }
+          }
+        }
+
+        // 2. Also check global agent (for backward compatibility)
+        const globalAgent = await agentManager.getAgent(id);
+        if (globalAgent?.path) {
+          const globalSessions = await state.sessionStore.listSessions(id, join(globalAgent.path, "config.yaml"));
+          for (const session of globalSessions) {
+            if (!seenIds.has(session.id)) {
+              seenIds.add(session.id);
+              allSessions.push(session);
+            }
+          }
+        }
+
+        // Sort by created_at descending
+        allSessions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
         return {
-          sessions: sessions.map(toSnakeCaseSession),
-          total: sessions.length,
+          sessions: allSessions.map(toSnakeCaseSession),
+          total: allSessions.length,
         };
       } catch (e) {
         reply.code(500);
@@ -500,10 +535,14 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     const sessionId = body.session_id || randomUUID();
 
     try {
+      // Resolve agent path: use provided agent_path, or resolve from workspace_path
+      // This ensures sessions are created in project level when workspace_path is provided
+      const agentPath = body.agent_path || await resolveAgentPath(id, body.workspace_path);
+
       const config = createSessionConfigWithAgentInfo(
         sessionId,
         id,
-        body.agent_path,
+        agentPath,
         body.agent_config,
         body.workspace_path
       );

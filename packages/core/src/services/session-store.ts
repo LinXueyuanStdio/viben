@@ -523,7 +523,8 @@ export class SessionStoreService {
     for (const entry of entries) {
       if (entry.isDirectory()) {
         try {
-          const config = await this.getSession(agentId, entry.name);
+          // Pass agentPath to getSession to read from the correct location
+          const config = await this.getSession(agentId, entry.name, agentPath);
           sessions.push(config);
         } catch {
           // Skip invalid sessions

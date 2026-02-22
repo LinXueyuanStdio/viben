@@ -20,7 +20,7 @@ import {
   SkillDetailPage,
   ExecutorDetailPage,
   McpServerDetailPage,
-  PromptDetailPage,
+  SubAgentDetailPage,
   CommandDetailPage,
   WorkspaceAgentsPage,
   HomeRedirect,
@@ -130,7 +130,7 @@ function App() {
           <Route path="executor/:executorType" element={<ExecutorDetailPage />} />
           <Route path="skill/:skillId" element={<SkillDetailPage />} />
           <Route path="mcp-server/:serverName" element={<McpServerDetailPage />} />
-          <Route path="prompt/:configId" element={<PromptDetailPage />} />
+          <Route path="subagent/:configId" element={<SubAgentDetailPage />} />
           <Route path="command/:commandId" element={<CommandDetailPage />} />
 
           {/* Creator routes (require authentication, handled in sidebar visibility) */}
