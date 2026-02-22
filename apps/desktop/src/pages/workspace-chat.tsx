@@ -1271,6 +1271,9 @@ export function WorkspaceChatPage() {
 
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: t("chat.newConversation") + (agent ? ` - ${agent.name}` : ""),
+        // Save agent path for correct session location (workspace vs global)
+        // config_path includes /config.yaml, backend will strip it
+        agent_path: agent?.config_path,
         // Save agent config snapshot for reliable reference
         agent_config: agentConfigSnapshot,
         // Save workspace path for global agents running in this workspace
@@ -1435,6 +1438,8 @@ export function WorkspaceChatPage() {
 
       const newSession = await client.createAgentSession(selectedAgentId, {
         prompt: t("chat.copyName", { name: original.title }),
+        // Save agent path for correct session location (workspace vs global)
+        agent_path: agent?.config_path,
         agent_config: agentConfigSnapshot,
         workspace_path: workspace?.path,
       });
