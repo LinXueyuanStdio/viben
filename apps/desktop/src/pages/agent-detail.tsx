@@ -23,10 +23,7 @@ import {
   ChevronDown,
   Cpu,
   Settings2,
-  Sparkles,
   Brain,
-  Database,
-  Plus,
   FileText,
   RefreshCw,
   CheckCircle2,
@@ -37,8 +34,6 @@ import {
   Trash2,
   HelpCircle,
   Terminal,
-  Command,
-  MessageSquare,
   GripVertical,
   Copy,
   Check,
@@ -1216,7 +1211,7 @@ export function AgentDetailPage() {
               {/* Capabilities Section - using reusable component in editable mode */}
               <ExecutorCapabilities
                 executorType={formExecutorType}
-                workspacePath={workspacePath}
+                workspacePath={workspacePath || ""}
                 className="mb-4"
                 sectionHeaderText={t("settingsAgents.capabilities")}
                 editable
@@ -1440,10 +1435,6 @@ interface ExecutorDetailViewProps {
     skills_config_file: string | null;
   };
   workspacePath: string;
-  /** Available MCP servers for selection */
-  mcpServerOptions: Array<{ id: string; name: string; transport: string }>;
-  /** Available skill packages for selection */
-  skillPackageOptions: Array<{ id: string; name: string }>;
   onNavigateBack: () => void;
 }
 
@@ -1465,10 +1456,22 @@ function ExecutorDetailView({
 }: ExecutorDetailViewProps) {
   const { t } = useTranslation();
 
+  // Get MCP servers and skill packages from store/hooks
+  const mcpServers = useAppStore((state) => state.mcpServers);
+  const { packages: skillPackages } = useCloudSkillPackages();
+
   // State for CLAUDE.md content
   const [claudeMdContent, setClaudeMdContent] = useState<string>("");
   const [claudeMdLoading, setClaudeMdLoading] = useState(true);
   const [claudeMdError, setClaudeMdError] = useState<string | null>(null);
+
+  // MCP and Skills selection state (for editable mode)
+  const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+
+  // Dialog states
+  const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
+  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
 
   // Load CLAUDE.md content
   useEffect(() => {
@@ -1862,12 +1865,19 @@ function ExecutorDetailView({
                 </div>
               )}
 
-              {/* Capabilities Section - using reusable component */}
+              {/* Capabilities Section - using reusable component in editable mode */}
               <ExecutorCapabilities
                 executorType={executor.type}
                 workspacePath={workspacePath}
                 className="mb-4"
                 sectionHeaderText={t("settingsAgents.tools")}
+                editable
+                selectedMcpServers={selectedMcpServers}
+                selectedSkills={selectedSkills}
+                mcpServerOptions={mcpServers.map((s) => ({ id: s.id, name: s.name, transport: s.transport }))}
+                skillPackageOptions={skillPackages.map((s) => ({ id: s.id, name: s.name }))}
+                onConfigureMcp={() => setMcpDialogOpen(true)}
+                onConfigureSkills={() => setSkillsDialogOpen(true)}
               />
 
               {/* Info Section */}
@@ -1970,6 +1980,21 @@ function ExecutorDetailView({
           </div>
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AgentMcpDialog
+        open={mcpDialogOpen}
+        onOpenChange={setMcpDialogOpen}
+        selectedServerIds={selectedMcpServers}
+        onServersChange={setSelectedMcpServers}
+      />
+
+      <AgentSkillsDialog
+        open={skillsDialogOpen}
+        onOpenChange={setSkillsDialogOpen}
+        selectedSkillIds={selectedSkills}
+        onSkillsChange={setSelectedSkills}
+      />
     </div>
   );
 }
