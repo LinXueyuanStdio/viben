@@ -52,10 +52,15 @@ export class JsonlTraceExporter implements SpanExporter {
   private getDisplayName(span: ReadableSpan): string {
     const method = span.attributes["http.method"] as string | undefined;
     const route = span.attributes["http.route"] as string | undefined;
+    const target = span.attributes["http.target"] as string | undefined;
 
     // HTTP 请求使用路由名称映射
-    if (method && route) {
-      return getRouteName(method, route);
+    // 优先使用 http.route，如果没有则使用 http.target（去掉查询参数）
+    if (method) {
+      const routePath = route || (target ? target.split("?")[0] : undefined);
+      if (routePath) {
+        return getRouteName(method, routePath);
+      }
     }
 
     // 其他 span 使用 span 名称映射
