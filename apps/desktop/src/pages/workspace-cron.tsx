@@ -30,6 +30,10 @@ import {
   Settings2,
   MessageSquare,
   Send,
+  History,
+  XCircle,
+  Zap,
+  Timer,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -86,10 +90,12 @@ import {
   useRunCronJob,
   useCronNotifications,
   useChannelInstances,
+  useCronExecutionLogs,
 } from "@/hooks";
 import { useUnifiedAgents } from "@/hooks/use-unified-agents";
 import { useTranslation } from "react-i18next";
 import type { CronJob, CreateCronJob, UpdateCronJob, CronNotificationSettings, CronJobType } from "@/types/cron";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { getChannelTypeName, type ChannelType } from "@/types/channel";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -177,6 +183,9 @@ export function WorkspaceCronPage() {
   const { instances: allChannels, getEnabledInstances } = useChannelInstances();
   const enabledChannels = getEnabledInstances();
 
+  // Execution logs
+  const { logs: executionLogs, loading: loadingLogs, fetchLogs, clearLogs } = useCronExecutionLogs();
+
   // Create a map of channel IDs to channel info for quick lookup
   const channelMap = useMemo(() => {
     const map = new Map<string, { name: string; type: ChannelType }>();
@@ -196,6 +205,9 @@ export function WorkspaceCronPage() {
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
   const [wizardStep, setWizardStep] = useState(1);
   const totalSteps = 3;
+
+  // Logs dialog state
+  const [logsDialogJob, setLogsDialogJob] = useState<CronJob | null>(null);
 
   // Real-time countdown state - update every second
   const [, setTick] = useState(0);
@@ -315,6 +327,27 @@ export function WorkspaceCronPage() {
 
     setRunningJobId(null);
     refreshJobs();
+  };
+
+  const handleViewLogs = async (job: CronJob) => {
+    setLogsDialogJob(job);
+    await fetchLogs(job.id);
+  };
+
+  const handleClearLogs = async () => {
+    if (!logsDialogJob) return;
+    if (!confirm(t("cron.clearLogsConfirm"))) return;
+    await clearLogs(logsDialogJob.id);
+  };
+
+  const formatLogDuration = (ms: number): string => {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
+  };
+
+  const formatLogTimestamp = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleString();
   };
 
   const formatSchedule = (job: CronJob): string => {
@@ -656,6 +689,10 @@ export function WorkspaceCronPage() {
                                 <DropdownMenuItem onClick={() => setEditingJob(job)}>
                                   <Pencil className="h-4 w-4 mr-2" />
                                   {t("common.edit")}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleViewLogs(job)}>
+                                  <History className="h-4 w-4 mr-2" />
+                                  {t("cron.viewLogs")}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={() => handleToggleEnabled(job)}>
                                   {job.enabled ? (
@@ -1132,6 +1169,160 @@ export function WorkspaceCronPage() {
                   {editingJob ? t("common.update") : t("common.create")}
                 </Button>
               )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Execution Logs Dialog */}
+      <Dialog
+        open={!!logsDialogJob}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLogsDialogJob(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              {t("cron.executionLogs")}
+              {logsDialogJob && (
+                <Badge variant="outline" className="ml-2 font-normal">
+                  {logsDialogJob.name}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="flex-1 min-h-0">
+            {loadingLogs ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : executionLogs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <History className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">{t("cron.noLogs")}</p>
+                <p className="text-sm text-muted-foreground/70 mt-1">
+                  {t("cron.noLogsDesc")}
+                </p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[400px] pr-4">
+                <div className="space-y-3">
+                  {executionLogs.map((log) => (
+                    <div
+                      key={log.execution_id}
+                      className={`p-3 rounded-lg border ${
+                        log.status === "success"
+                          ? "border-green-500/30 bg-green-500/5"
+                          : log.status === "failure"
+                          ? "border-red-500/30 bg-red-500/5"
+                          : "border-muted"
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {log.status === "success" ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : log.status === "failure" ? (
+                            <XCircle className="h-4 w-4 text-red-500" />
+                          ) : (
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                          )}
+                          <span className="font-medium text-sm">
+                            {log.status === "success"
+                              ? t("common.success")
+                              : log.status === "failure"
+                              ? t("common.failed")
+                              : t("common.running")}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 ${
+                              log.trigger === "manual"
+                                ? "border-orange-500/50 text-orange-600"
+                                : "border-blue-500/50 text-blue-600"
+                            }`}
+                          >
+                            {log.trigger === "manual" ? (
+                              <Zap className="h-2.5 w-2.5 mr-0.5" />
+                            ) : (
+                              <Timer className="h-2.5 w-2.5 mr-0.5" />
+                            )}
+                            {log.trigger === "manual"
+                              ? t("cron.triggerManual")
+                              : t("cron.triggerScheduled")}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatLogDuration(log.duration_ms)}</span>
+                          <span>·</span>
+                          <span>{formatLogTimestamp(log.started_at)}</span>
+                        </div>
+                      </div>
+
+                      {/* Error */}
+                      {log.error && (
+                        <div className="mt-2 p-2 rounded bg-red-500/10 text-sm text-red-600 dark:text-red-400">
+                          <span className="font-medium">{t("common.error")}:</span> {log.error}
+                        </div>
+                      )}
+
+                      {/* Output */}
+                      {log.output && (
+                        <div className="mt-2">
+                          <details className="group">
+                            <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                              <span>{t("cron.output")}</span>
+                              <span className="text-muted-foreground/60">
+                                ({log.output_length} {t("cron.chars")})
+                              </span>
+                            </summary>
+                            <pre className="mt-2 p-2 rounded bg-muted/50 text-xs font-mono whitespace-pre-wrap break-all max-h-[200px] overflow-auto">
+                              {log.output}
+                            </pre>
+                          </details>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row justify-between sm:justify-between gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearLogs}
+              disabled={loadingLogs || executionLogs.length === 0}
+              className="text-destructive hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t("cron.clearLogs")}
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => logsDialogJob && fetchLogs(logsDialogJob.id)}
+                disabled={loadingLogs}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingLogs ? "animate-spin" : ""}`} />
+                {t("common.refresh")}
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setLogsDialogJob(null)}
+              >
+                {t("common.close")}
+              </Button>
             </div>
           </DialogFooter>
         </DialogContent>

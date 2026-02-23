@@ -9,9 +9,55 @@
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { CronError } from "../error";
 import { EventService, type CronJobData } from "./events";
+import { trace, SpanStatusCode } from "../telemetry";
+import { getSpanName } from "../telemetry/route-names";
+
+// Get tracer for cron service
+const tracer = trace.getTracer("viben-cron", "1.0.0");
+
+/**
+ * Cron job execution log entry
+ * Stored in JSONL format for easy querying and analysis
+ */
+export interface CronExecutionLog {
+  /** Unique execution ID */
+  execution_id: string;
+  /** Job ID */
+  job_id: string;
+  /** Job name at execution time */
+  job_name: string;
+  /** Job type at execution time */
+  job_type: CronJobType;
+  /** Agent ID used */
+  agent: string;
+  /** Channel ID if specified */
+  channel?: string;
+  /** Execution start timestamp (milliseconds) */
+  started_at: number;
+  /** Execution end timestamp (milliseconds) */
+  completed_at: number;
+  /** Execution duration (milliseconds) */
+  duration_ms: number;
+  /** Execution status */
+  status: JobStatus;
+  /** Error message if failed */
+  error?: string;
+  /** Output (truncated if too long) */
+  output?: string;
+  /** Full output length */
+  output_length: number;
+  /** Next scheduled run timestamp */
+  next_run?: number;
+  /** Trigger type: scheduled or manual */
+  trigger: "scheduled" | "manual";
+  /** Cron expression if using cron schedule */
+  cron?: string;
+  /** Interval in seconds if using interval schedule */
+  every?: number;
+}
 
 /**
  * Job execution status
@@ -60,6 +106,8 @@ export interface CronJob {
   channel?: string;
   /** Agent ID to use */
   agent: string;
+  /** Workspace path for workspace-level cron jobs (optional) */
+  workspace_path?: string;
   /** Notification settings */
   notifications?: CronNotificationSettings;
   /** Last execution timestamp (milliseconds) */
@@ -100,6 +148,8 @@ export interface CreateCronJob {
   channel?: string;
   /** Agent ID */
   agent?: string;
+  /** Workspace path for workspace-level cron jobs */
+  workspace_path?: string;
   /** Whether enabled (default true) */
   enabled?: boolean;
   /** Notification settings */
@@ -118,6 +168,7 @@ export interface UpdateCronJob {
   every?: number;
   channel?: string;
   agent?: string;
+  workspace_path?: string;
   enabled?: boolean;
   notifications?: CronNotificationSettings;
 }
@@ -130,6 +181,12 @@ interface CronConfig {
   jobs: Record<string, CronJob>;
 }
 
+/** Maximum output length to store in logs */
+const MAX_LOG_OUTPUT_LENGTH = 10000;
+
+/** Maximum number of log entries to keep per job */
+const MAX_LOG_ENTRIES_PER_JOB = 1000;
+
 /**
  * Cron service for managing scheduled jobs
  */
@@ -139,12 +196,157 @@ export class CronService {
   private jobs: Map<string, CronJob> = new Map();
   private scheduled_jobs: Map<string, NodeJS.Timeout> = new Map();
   private started = false;
+  /** Track if current execution is manual (for log trigger field) */
+  private manual_executions: Set<string> = new Set();
 
   constructor(events: EventService, config_path?: string) {
     this.events = events;
     this.config_path =
       config_path ||
       join(homedir(), ".viben", "cron.yaml");
+  }
+
+  /**
+   * Get the log directory for a cron job
+   * - Global jobs: ~/.viben/cron/<cron-id>/
+   * - Workspace jobs: <workspace_path>/.viben/cron/<cron-id>/
+   */
+  private getLogDir(job: CronJob): string {
+    if (job.workspace_path) {
+      return join(job.workspace_path, ".viben", "cron", job.id);
+    }
+    return join(homedir(), ".viben", "cron", job.id);
+  }
+
+  /**
+   * Get the log file path for a cron job
+   */
+  private getLogPath(job: CronJob): string {
+    return join(this.getLogDir(job), "logs.jsonl");
+  }
+
+  /**
+   * Generate a unique execution ID
+   */
+  private generateExecutionId(): string {
+    return `exec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  /**
+   * Append an execution log entry
+   */
+  private async appendExecutionLog(job: CronJob, log: CronExecutionLog): Promise<void> {
+    const logDir = this.getLogDir(job);
+    const logPath = this.getLogPath(job);
+
+    try {
+      // Ensure log directory exists
+      await mkdir(logDir, { recursive: true });
+
+      // Append log entry as JSONL
+      const logLine = JSON.stringify(log) + "\n";
+      await appendFile(logPath, logLine, "utf-8");
+
+      // Rotate logs if needed (async, don't block)
+      this.rotateLogsIfNeeded(job).catch(() => {
+        // Ignore rotation errors
+      });
+    } catch (e) {
+      // Log error but don't fail the execution
+      console.error(`[cron] Failed to write execution log for job ${job.id}:`, e);
+    }
+  }
+
+  /**
+   * Rotate logs if they exceed the maximum entries
+   */
+  private async rotateLogsIfNeeded(job: CronJob): Promise<void> {
+    const logPath = this.getLogPath(job);
+
+    try {
+      if (!existsSync(logPath)) return;
+
+      const content = await readFile(logPath, "utf-8");
+      const lines = content.trim().split("\n").filter(line => line.length > 0);
+
+      if (lines.length > MAX_LOG_ENTRIES_PER_JOB) {
+        // Keep only the most recent entries
+        const trimmedLines = lines.slice(-MAX_LOG_ENTRIES_PER_JOB);
+        await writeFile(logPath, trimmedLines.join("\n") + "\n", "utf-8");
+      }
+    } catch (e) {
+      // Ignore rotation errors
+    }
+  }
+
+  /**
+   * Get execution logs for a job
+   * @param jobId - Job ID
+   * @param limit - Maximum number of entries to return (default 100)
+   * @param offset - Number of entries to skip from the end (default 0)
+   * @returns Array of execution logs (newest first)
+   */
+  async getExecutionLogs(
+    jobId: string,
+    limit = 100,
+    offset = 0
+  ): Promise<CronExecutionLog[]> {
+    const job = this.jobs.get(jobId);
+    if (!job) {
+      throw new CronError(`Job not found: ${jobId}`);
+    }
+
+    const logPath = this.getLogPath(job);
+
+    try {
+      if (!existsSync(logPath)) {
+        return [];
+      }
+
+      const content = await readFile(logPath, "utf-8");
+      const lines = content.trim().split("\n").filter(line => line.length > 0);
+
+      // Parse and return logs (newest first)
+      const logs: CronExecutionLog[] = [];
+      const startIndex = Math.max(0, lines.length - offset - limit);
+      const endIndex = Math.max(0, lines.length - offset);
+
+      for (let i = endIndex - 1; i >= startIndex; i--) {
+        try {
+          const log = JSON.parse(lines[i]) as CronExecutionLog;
+          logs.push(log);
+        } catch {
+          // Skip invalid lines
+        }
+      }
+
+      return logs;
+    } catch (e) {
+      console.error(`[cron] Failed to read execution logs for job ${jobId}:`, e);
+      return [];
+    }
+  }
+
+  /**
+   * Clear execution logs for a job
+   * @param jobId - Job ID
+   */
+  async clearExecutionLogs(jobId: string): Promise<void> {
+    const job = this.jobs.get(jobId);
+    if (!job) {
+      throw new CronError(`Job not found: ${jobId}`);
+    }
+
+    const logPath = this.getLogPath(job);
+
+    try {
+      if (existsSync(logPath)) {
+        await writeFile(logPath, "", "utf-8");
+      }
+    } catch (e) {
+      console.error(`[cron] Failed to clear execution logs for job ${jobId}:`, e);
+      throw new CronError(`Failed to clear execution logs: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   /**
@@ -303,6 +505,26 @@ export class CronService {
     if (!job) return;
 
     const now = Date.now();
+    const execution_id = this.generateExecutionId();
+    const is_manual = this.manual_executions.has(job_id);
+
+    // Clear manual flag after reading
+    this.manual_executions.delete(job_id);
+
+    // Create telemetry span for job execution
+    const span = tracer.startSpan(getSpanName("cron.execute"), {
+      attributes: {
+        "cron.job_id": job_id,
+        "cron.job_name": job.name,
+        "cron.job_type": job.job_type,
+        "cron.job_agent": job.agent,
+        "cron.job_channel": job.channel || "",
+        "cron.job_workspace": job.workspace_path || "",
+        "cron.triggered_at": now,
+        "cron.execution_id": execution_id,
+        "cron.trigger": is_manual ? "manual" : "scheduled",
+      },
+    });
 
     // Mark job as running
     job.last_run = now;
@@ -321,10 +543,34 @@ export class CronService {
 
     try {
       if (job.job_type === "script") {
-        const result = await this.executeScript(job);
-        status = result.status;
-        error = result.error;
-        output = result.output;
+        // Create child span for script execution
+        const scriptSpan = tracer.startSpan(getSpanName("cron.script_execute"), {
+          attributes: {
+            "cron.job_id": job_id,
+            "cron.script_length": job.script?.length || 0,
+          },
+        });
+        try {
+          const result = await this.executeScript(job);
+          status = result.status;
+          error = result.error;
+          output = result.output;
+          scriptSpan.setAttributes({
+            "cron.script_status": status,
+            "cron.script_output_length": output?.length || 0,
+          });
+          if (status === "success") {
+            scriptSpan.setStatus({ code: SpanStatusCode.OK });
+          } else {
+            scriptSpan.setStatus({ code: SpanStatusCode.ERROR, message: error || "Script failed" });
+          }
+        } catch (e) {
+          scriptSpan.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : String(e) });
+          scriptSpan.recordException(e instanceof Error ? e : new Error(String(e)));
+          throw e;
+        } finally {
+          scriptSpan.end();
+        }
       } else {
         // Agent job - broadcast message for frontend to handle
         const message = job.message || job.name;
@@ -334,10 +580,12 @@ export class CronService {
         });
         status = "success";
         output = `Message sent to agent '${job.agent}': ${message}`;
+        span.setAttribute("cron.agent_message_sent", true);
       }
     } catch (e) {
       status = "failure";
       error = e instanceof Error ? e.message : String(e);
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
     }
 
     // Update job status
@@ -364,6 +612,44 @@ export class CronService {
     // Calculate execution duration
     const completed_at = Date.now();
     const duration_ms = completed_at - now;
+
+    // Update span with final attributes
+    span.setAttributes({
+      "cron.status": status,
+      "cron.duration_ms": duration_ms,
+      "cron.next_run": next_run || 0,
+      "cron.output_length": output?.length || 0,
+    });
+    if (status === "success") {
+      span.setStatus({ code: SpanStatusCode.OK });
+    } else {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error || "Job failed" });
+    }
+    span.end();
+
+    // Log execution history
+    const executionLog: CronExecutionLog = {
+      execution_id,
+      job_id,
+      job_name: job.name,
+      job_type: job.job_type,
+      agent: job.agent,
+      channel: job.channel,
+      started_at: now,
+      completed_at,
+      duration_ms,
+      status,
+      error,
+      output: output && output.length > MAX_LOG_OUTPUT_LENGTH
+        ? output.slice(0, MAX_LOG_OUTPUT_LENGTH) + "...[truncated]"
+        : output,
+      output_length: output?.length || 0,
+      next_run,
+      trigger: is_manual ? "manual" : "scheduled",
+      cron: job.cron,
+      every: job.every,
+    };
+    await this.appendExecutionLog(job, executionLog);
 
     // Truncate output for notification
     const truncated_output = output && output.length > 200 ? output.slice(0, 200) + "..." : output;
@@ -489,6 +775,7 @@ export class CronService {
       every: create.every,
       channel: create.channel,
       agent: create.agent || "main",
+      workspace_path: create.workspace_path,
       notifications: create.notifications,
       created_at: now,
       updated_at: now,
@@ -541,6 +828,7 @@ export class CronService {
     }
     if (update.channel !== undefined) job.channel = update.channel;
     if (update.agent !== undefined) job.agent = update.agent;
+    if (update.workspace_path !== undefined) job.workspace_path = update.workspace_path;
     if (update.enabled !== undefined) job.enabled = update.enabled;
     if (update.notifications !== undefined) job.notifications = update.notifications;
     job.updated_at = Date.now();
@@ -624,6 +912,9 @@ export class CronService {
     if (!this.jobs.has(id)) {
       throw new CronError(`Job not found: ${id}`);
     }
+
+    // Mark this execution as manual
+    this.manual_executions.add(id);
 
     await this.executeJob(id);
   }

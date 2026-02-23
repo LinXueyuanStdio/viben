@@ -4,6 +4,11 @@
 import type { FastifyInstance } from "fastify";
 import type { CronJob, CreateCronJob, UpdateCronJob } from "../../services/cron";
 import type { AppState } from "../state";
+import { trace, SpanStatusCode } from "../../telemetry";
+import { getSpanName } from "../../telemetry/route-names";
+
+// Get tracer for cron routes
+const tracer = trace.getTracer("viben-gateway", "1.0.0");
 
 /**
  * Transform CronJob to snake_case response format (to match Rust gateway)
@@ -21,6 +26,7 @@ function toSnakeCaseJob(job: CronJob) {
     every: job.every,
     channel: job.channel,
     agent: job.agent,
+    workspace_path: job.workspace_path,
     notifications: job.notifications,
     last_run: job.last_run,
     last_status: job.last_status,
@@ -38,31 +44,85 @@ function toSnakeCaseJob(job: CronJob) {
 export function registerCronRoutes(fastify: FastifyInstance, state: AppState): void {
   // List all cron jobs
   fastify.get("/api/cron", async () => {
-    const jobs = await state.cron.listJobs();
-    return { jobs: jobs.map(toSnakeCaseJob) };
+    const span = tracer.startSpan(getSpanName("cron.list"));
+    try {
+      const jobs = await state.cron.listJobs();
+      span.setAttributes({
+        "cron.job_count": jobs.length,
+        "cron.enabled_count": jobs.filter(j => j.enabled).length,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
+      return { jobs: jobs.map(toSnakeCaseJob) };
+    } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to list cron jobs" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
+      throw e;
+    } finally {
+      span.end();
+    }
   });
 
   // Get a specific cron job
   fastify.get<{ Params: { id: string } }>("/api/cron/:id", async (request, reply) => {
     const { id } = request.params;
-    const job = await state.cron.getJob(id);
-    if (!job) {
-      reply.code(404);
-      return { error: `Cron job not found: ${id}` };
+    const span = tracer.startSpan(getSpanName("cron.get"), {
+      attributes: { "cron.job_id": id },
+    });
+    try {
+      const job = await state.cron.getJob(id);
+      if (!job) {
+        span.setAttributes({ "cron.job_found": false });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: "Cron job not found" });
+        reply.code(404);
+        return { error: `Cron job not found: ${id}` };
+      }
+      span.setAttributes({
+        "cron.job_found": true,
+        "cron.job_name": job.name,
+        "cron.job_type": job.job_type,
+        "cron.job_enabled": job.enabled,
+        "cron.job_agent": job.agent,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
+      return toSnakeCaseJob(job);
+    } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to get cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
+      throw e;
+    } finally {
+      span.end();
     }
-    return toSnakeCaseJob(job);
   });
 
   // Create a new cron job
   fastify.post<{ Body: CreateCronJob }>("/api/cron", async (request, reply) => {
     const input = request.body;
+    const span = tracer.startSpan(getSpanName("cron.create"), {
+      attributes: {
+        "cron.job_name": input.name,
+        "cron.job_type": input.job_type || "agent",
+        "cron.job_enabled": input.enabled !== false,
+        "cron.job_cron": input.cron || "",
+        "cron.job_every": input.every || 0,
+        "cron.job_agent": input.agent || "main",
+      },
+    });
     try {
       const job = await state.cron.createJob(input);
+      span.setAttributes({
+        "cron.job_id": job.id,
+        "cron.job_created": true,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
       reply.code(201);
       return toSnakeCaseJob(job);
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to create cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to create cron job" };
+    } finally {
+      span.end();
     }
   });
 
@@ -70,60 +130,178 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
   fastify.patch<{ Params: { id: string }; Body: UpdateCronJob }>("/api/cron/:id", async (request, reply) => {
     const { id } = request.params;
     const updates = request.body;
+    const span = tracer.startSpan(getSpanName("cron.update"), {
+      attributes: {
+        "cron.job_id": id,
+        "cron.update_fields": Object.keys(updates).join(","),
+      },
+    });
     try {
       const job = await state.cron.updateJob(id, updates);
+      span.setAttributes({
+        "cron.job_name": job.name,
+        "cron.job_type": job.job_type,
+        "cron.job_enabled": job.enabled,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
       return toSnakeCaseJob(job);
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to update cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to update cron job" };
+    } finally {
+      span.end();
     }
   });
 
   // Delete a cron job
   fastify.delete<{ Params: { id: string } }>("/api/cron/:id", async (request, reply) => {
     const { id } = request.params;
+    const span = tracer.startSpan(getSpanName("cron.delete"), {
+      attributes: { "cron.job_id": id },
+    });
     try {
       await state.cron.deleteJob(id);
+      span.setStatus({ code: SpanStatusCode.OK });
       return { deleted: id };
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to delete cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to delete cron job" };
+    } finally {
+      span.end();
     }
   });
 
   // Enable a cron job
   fastify.post<{ Params: { id: string } }>("/api/cron/:id/enable", async (request, reply) => {
     const { id } = request.params;
+    const span = tracer.startSpan(getSpanName("cron.enable"), {
+      attributes: { "cron.job_id": id },
+    });
     try {
       const job = await state.cron.enableJob(id);
+      span.setAttributes({
+        "cron.job_name": job.name,
+        "cron.job_enabled": job.enabled,
+        "cron.job_next_run": job.next_run || 0,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
       return toSnakeCaseJob(job);
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to enable cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to enable cron job" };
+    } finally {
+      span.end();
     }
   });
 
   // Disable a cron job
   fastify.post<{ Params: { id: string } }>("/api/cron/:id/disable", async (request, reply) => {
     const { id } = request.params;
+    const span = tracer.startSpan(getSpanName("cron.disable"), {
+      attributes: { "cron.job_id": id },
+    });
     try {
       const job = await state.cron.disableJob(id);
+      span.setAttributes({
+        "cron.job_name": job.name,
+        "cron.job_enabled": job.enabled,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
       return toSnakeCaseJob(job);
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to disable cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to disable cron job" };
+    } finally {
+      span.end();
     }
   });
 
   // Run a cron job immediately
   fastify.post<{ Params: { id: string } }>("/api/cron/:id/run", async (request, reply) => {
     const { id } = request.params;
+    const span = tracer.startSpan(getSpanName("cron.run"), {
+      attributes: { "cron.job_id": id },
+    });
     try {
+      // Get job info before running for logging
+      const job = await state.cron.getJob(id);
+      if (job) {
+        span.setAttributes({
+          "cron.job_name": job.name,
+          "cron.job_type": job.job_type,
+          "cron.job_agent": job.agent,
+        });
+      }
       await state.cron.runJob(id);
+      span.setStatus({ code: SpanStatusCode.OK });
       return { triggered: id, message: "Job execution started" };
     } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to run cron job" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
       reply.code(400);
       return { error: e instanceof Error ? e.message : "Failed to run cron job" };
+    } finally {
+      span.end();
+    }
+  });
+
+  // Get execution logs for a cron job
+  fastify.get<{
+    Params: { id: string };
+    Querystring: { limit?: string; offset?: string };
+  }>("/api/cron/:id/logs", async (request, reply) => {
+    const { id } = request.params;
+    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 100;
+    const offset = request.query.offset ? parseInt(request.query.offset, 10) : 0;
+    const span = tracer.startSpan(getSpanName("cron.logs"), {
+      attributes: {
+        "cron.job_id": id,
+        "cron.logs_limit": limit,
+        "cron.logs_offset": offset,
+      },
+    });
+    try {
+      const logs = await state.cron.getExecutionLogs(id, limit, offset);
+      span.setAttributes({
+        "cron.logs_count": logs.length,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
+      return { logs };
+    } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to get execution logs" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to get execution logs" };
+    } finally {
+      span.end();
+    }
+  });
+
+  // Clear execution logs for a cron job
+  fastify.delete<{ Params: { id: string } }>("/api/cron/:id/logs", async (request, reply) => {
+    const { id } = request.params;
+    const span = tracer.startSpan(getSpanName("cron.logs_clear"), {
+      attributes: { "cron.job_id": id },
+    });
+    try {
+      await state.cron.clearExecutionLogs(id);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return { cleared: id };
+    } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to clear execution logs" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to clear execution logs" };
+    } finally {
+      span.end();
     }
   });
 }

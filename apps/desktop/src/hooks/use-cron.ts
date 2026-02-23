@@ -8,7 +8,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { getGatewayClient } from "@/lib/gateway";
 import { useGatewayWebSocket, type GatewayEventPayload } from "./use-gateway-websocket";
-import type { CronJob, CreateCronJob, UpdateCronJob, JobStatus } from "@/types/cron";
+import type { CronJob, CreateCronJob, UpdateCronJob, JobStatus, CronExecutionLog } from "@/types/cron";
 
 // ============================================================================
 // WebSocket Event Types
@@ -403,5 +403,68 @@ export function useRunCronJob() {
     runJob,
     loading,
     error,
+  };
+}
+
+/**
+ * Hook to fetch execution logs for a cron job
+ */
+export function useCronExecutionLogs() {
+  const [logs, setLogs] = useState<CronExecutionLog[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchLogs = useCallback(async (
+    jobId: string,
+    limit = 100,
+    offset = 0
+  ): Promise<CronExecutionLog[]> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (limit) params.set("limit", limit.toString());
+      if (offset) params.set("offset", offset.toString());
+      const queryString = params.toString();
+      const url = `/api/cron/${jobId}/logs${queryString ? `?${queryString}` : ""}`;
+
+      const result = await gatewayFetch<{ logs: CronExecutionLog[] }>(url);
+      setLogs(result.logs || []);
+      return result.logs || [];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to fetch execution logs";
+      setError(message);
+      console.error("Failed to fetch execution logs:", err);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearLogs = useCallback(async (jobId: string): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await gatewayFetch(`/api/cron/${jobId}/logs`, {
+        method: "DELETE",
+      });
+      setLogs([]);
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to clear execution logs";
+      setError(message);
+      console.error("Failed to clear execution logs:", err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    logs,
+    loading,
+    error,
+    fetchLogs,
+    clearLogs,
   };
 }

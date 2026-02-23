@@ -2150,7 +2150,17 @@
     "preScript": "Pre-run Script",
     "preScriptPlaceholder": "#!/bin/bash\n# Script to run before sending message...",
     "preScriptHint": "Optional script to execute before sending the message to the agent",
-    "channels": "Channels"
+    "channels": "Channels",
+    "viewLogs": "View Logs",
+    "executionLogs": "Execution Logs",
+    "noLogs": "No execution history",
+    "noLogsDesc": "Logs will appear here after the job is executed.",
+    "clearLogs": "Clear Logs",
+    "clearLogsConfirm": "Are you sure you want to clear all execution logs? This action cannot be undone.",
+    "output": "Output",
+    "chars": "chars",
+    "triggerManual": "Manual",
+    "triggerScheduled": "Scheduled"
   },
   "preview": {
     "livePreview": "Live Preview",

@@ -11,11 +11,13 @@
  */
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { randomUUID } from "node:crypto";
 import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { trace, context, SpanStatusCode } from "../../telemetry";
+import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readYaml } from "../../config/yaml";
 import type { AgentConfigFile } from "../../agents";
@@ -146,9 +148,10 @@ function generateMessageId(): string {
 
 /**
  * Generate a unique internal session ID for abort control
+ * Uses UUID v4 format for compatibility with Claude Agent SDK
  */
 function generateInternalSessionId(): string {
-  return `run_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return randomUUID();
 }
 
 /**
@@ -526,16 +529,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         log.debug("persistence", "saving_user_message", {
           persistSessionId,
           persistTaskId,
+          agentPath,
         });
         try {
           const persistAgentId = resolveAgentId(agentPath, agentConfig);
+          // Pass agentPath for workspace-level agents to find the correct session directory
           await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
             id: generateMessageId(),
             taskId: persistTaskId,
             timestamp: new Date().toISOString(),
             type: "user",
             content: prompt,
-          });
+          }, agentPath);
           log.debug("persistence", "user_message_saved");
         } catch (e) {
           // Non-fatal: log but continue
@@ -600,10 +605,20 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       let errorCount = 0;
       const textParts: string[] = [];
       const toolNames: string[] = [];
+      // Map to track pending tool spans (tool_use -> tool_result pairing)
+      const pendingToolSpans = new Map<string, Span>();
 
       // Stream messages to client
       for await (const message of stream) {
         messageCount++;
+
+        // Record every SSE event to the stream span for telemetry
+        // This allows viewing all events in the trace tree
+        streamSpan.addEvent(`sse.${message.type}`, {
+          "sse.message_index": messageCount,
+          "sse.type": message.type,
+          "sse.payload": JSON.stringify(message).slice(0, 4000), // Truncate large payloads
+        });
 
         // Track message statistics and log by type
         if (message.type === "text" && "content" in message) {
@@ -625,19 +640,23 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             inputPreview: JSON.stringify(toolMsg.input).slice(0, 200),
           });
           // Create a span for each tool use as child of stream span
+          // Use getSpanName to get Chinese display name if available
+          const toolSpanName = `tool.${toolMsg.name}`;
           const toolSpan = tracer.startSpan(
-            `tool.${toolMsg.name}`,
+            getSpanName(toolSpanName),
             {
               attributes: {
                 "tool.id": toolMsg.id,
                 "tool.name": toolMsg.name,
+                "tool.span_name": toolSpanName,
                 // Store tool input as JSON for detailed inspection
                 "tool.input": JSON.stringify(toolMsg.input),
               },
             },
             streamContext
           );
-          toolSpan.end();
+          // Store the span for later when we receive the result
+          pendingToolSpans.set(toolMsg.id, toolSpan);
         } else if (message.type === "tool_result") {
           toolResultCount++;
           const resultMsg = message as SSEToolResultMessage;
@@ -647,27 +666,47 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             outputLength: resultMsg.output?.length || 0,
             toolResultCount,
           });
-          // Create a span for tool result
-          const resultSpan = tracer.startSpan(
-            `tool_result.${resultMsg.toolUseId}`,
-            {
-              attributes: {
-                "tool_result.tool_use_id": resultMsg.toolUseId,
-                "tool_result.is_error": resultMsg.isError || false,
-                // Store output (truncated if too long)
-                "tool_result.output": resultMsg.output?.slice(0, 2000) +
-                  (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
-                "tool_result.output_length": resultMsg.output?.length || 0,
-              },
-            },
-            streamContext
-          );
-          if (resultMsg.isError) {
-            resultSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
+
+          // Find and end the corresponding tool span
+          const toolSpan = pendingToolSpans.get(resultMsg.toolUseId);
+          if (toolSpan) {
+            // Add result attributes to the tool span
+            toolSpan.setAttributes({
+              "tool_result.is_error": resultMsg.isError || false,
+              // Store output (truncated if too long)
+              "tool_result.output": resultMsg.output?.slice(0, 2000) +
+                (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
+              "tool_result.output_length": resultMsg.output?.length || 0,
+            });
+            if (resultMsg.isError) {
+              toolSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
+            } else {
+              toolSpan.setStatus({ code: SpanStatusCode.OK });
+            }
+            toolSpan.end();
+            pendingToolSpans.delete(resultMsg.toolUseId);
           } else {
-            resultSpan.setStatus({ code: SpanStatusCode.OK });
+            // No matching tool span, create a standalone result span
+            const resultSpan = tracer.startSpan(
+              getSpanName("tool_result"),
+              {
+                attributes: {
+                  "tool_result.tool_use_id": resultMsg.toolUseId,
+                  "tool_result.is_error": resultMsg.isError || false,
+                  "tool_result.output": resultMsg.output?.slice(0, 2000) +
+                    (resultMsg.output && resultMsg.output.length > 2000 ? "...[truncated]" : ""),
+                  "tool_result.output_length": resultMsg.output?.length || 0,
+                },
+              },
+              streamContext
+            );
+            if (resultMsg.isError) {
+              resultSpan.setStatus({ code: SpanStatusCode.ERROR, message: "Tool execution failed" });
+            } else {
+              resultSpan.setStatus({ code: SpanStatusCode.OK });
+            }
+            resultSpan.end();
           }
-          resultSpan.end();
         } else if (message.type === "error") {
           errorCount++;
           const errMsg = message as SSEErrorMessage;
@@ -692,6 +731,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         if (persistSessionId && persistTaskId) {
           try {
             const persistAgentId = resolveAgentId(agentPath, agentConfig);
+            // Pass agentPath for workspace-level agents to find the correct session directory
             await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
               id: generateMessageId(),
               taskId: persistTaskId,
@@ -710,7 +750,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 message.type === "tool_result" ? (message as SSEToolResultMessage).output : undefined,
               isError:
                 message.type === "tool_result" ? (message as SSEToolResultMessage).isError : undefined,
-            });
+            }, agentPath);
           } catch (persistError) {
             log.warn("persistence", "message_save_failed", {
               messageType: message.type,
@@ -731,6 +771,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           break;
         }
       }
+
+      // End any pending tool spans that didn't get results
+      for (const [toolId, span] of pendingToolSpans) {
+        log.warn("stream", "tool_span_orphaned", { toolId });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: "No result received" });
+        span.end();
+      }
+      pendingToolSpans.clear();
 
       // Log stream completion summary
       log.info("stream", "completed", {

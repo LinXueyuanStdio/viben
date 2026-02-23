@@ -163,6 +163,19 @@ export class JsonlTraceExporter implements SpanExporter {
   }
 
   /**
+   * 检查是否应该过滤掉该 span
+   * 过滤 CORS 预检请求 (OPTIONS) 等噪音
+   */
+  private shouldFilterSpan(span: ReadableSpan): boolean {
+    const method = span.attributes["http.method"] as string | undefined;
+    // 过滤 OPTIONS 预检请求
+    if (method === "OPTIONS") {
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * 导出 spans
    */
   export(
@@ -170,8 +183,13 @@ export class JsonlTraceExporter implements SpanExporter {
     resultCallback: (result: ExportResult) => void
   ): void {
     try {
-      // 按 traceId 分组
+      // 按 traceId 分组，过滤掉噪音 spans
       for (const span of spans) {
+        // 跳过应该过滤的 spans
+        if (this.shouldFilterSpan(span)) {
+          continue;
+        }
+
         const traceId = span.spanContext().traceId;
         const existing = this.pendingSpans.get(traceId) || [];
         existing.push(span);

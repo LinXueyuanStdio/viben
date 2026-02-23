@@ -914,6 +914,16 @@ function SpanNode({
           </Badge>
         )}
 
+        {/* Events count badge */}
+        {node.events && node.events.length > 0 && (
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1 py-0 h-4 border-purple-500/50 text-purple-400"
+          >
+            {node.events.length} {t("observability.events")}
+          </Badge>
+        )}
+
         {/* Detail button for spans with request/response data */}
         {hasDetailData(node) && onOpenDetail && (
           <TooltipProvider>
@@ -1316,30 +1326,57 @@ function SpanDetailPanel({
               </div>
             ) : (
               <div className="space-y-3">
-                {span.events.map((event, index) => (
-                  <div key={index} className="p-2 rounded border bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{event.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(event.time).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    {event.attributes && Object.keys(event.attributes).length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {Object.entries(event.attributes).map(([key, value]) => (
-                          <div key={key} className="text-xs">
-                            <span className="text-muted-foreground font-mono">{key}:</span>
-                            <span className="ml-1 font-mono">
-                              {typeof value === "object"
-                                ? JSON.stringify(value)
-                                : String(value)}
-                            </span>
-                          </div>
-                        ))}
+                {span.events.map((event, index) => {
+                  // Parse SSE payload for better display
+                  const ssePayload = event.attributes?.["sse.payload"];
+                  let parsedPayload: Record<string, unknown> | null = null;
+                  if (typeof ssePayload === "string") {
+                    try {
+                      parsedPayload = JSON.parse(ssePayload);
+                    } catch {
+                      // Keep as string
+                    }
+                  }
+
+                  return (
+                    <div key={index} className="p-2 rounded border bg-muted/30">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">{event.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(event.time).toLocaleTimeString()}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {parsedPayload ? (
+                        // Display parsed SSE payload in a readable format
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(parsedPayload).map(([key, value]) => (
+                            <div key={key} className="text-xs">
+                              <span className="text-muted-foreground font-mono">{key}:</span>
+                              <span className="ml-1 font-mono break-all">
+                                {typeof value === "object"
+                                  ? JSON.stringify(value, null, 2)
+                                  : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : event.attributes && Object.keys(event.attributes).length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          {Object.entries(event.attributes).map(([key, value]) => (
+                            <div key={key} className="text-xs">
+                              <span className="text-muted-foreground font-mono">{key}:</span>
+                              <span className="ml-1 font-mono break-all">
+                                {typeof value === "object"
+                                  ? JSON.stringify(value)
+                                  : String(value)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </TabsContent>

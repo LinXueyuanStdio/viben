@@ -2150,7 +2150,17 @@
     "preScript": "前置脚本",
     "preScriptPlaceholder": "#!/bin/bash\n# 发送消息前运行的脚本...",
     "preScriptHint": "可选脚本，在发送消息给智能体前执行",
-    "channels": "消息渠道"
+    "channels": "消息渠道",
+    "viewLogs": "查看日志",
+    "executionLogs": "执行日志",
+    "noLogs": "暂无执行记录",
+    "noLogsDesc": "执行任务后，日志将显示在这里。",
+    "clearLogs": "清除日志",
+    "clearLogsConfirm": "确定要清除所有执行日志吗？此操作无法撤销。",
+    "output": "输出",
+    "chars": "字符",
+    "triggerManual": "手动",
+    "triggerScheduled": "定时"
   },
   "preview": {
     "livePreview": "实时预览",
