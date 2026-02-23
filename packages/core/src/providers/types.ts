@@ -37,21 +37,21 @@ export const ENV_VAR_NAMES: Record<string, string | undefined> = {
 };
 
 /**
- * Provider file structure in providers.yaml
+ * Provider file structure in providers.yaml (snake_case to match YAML)
  */
 export interface ProviderEntry {
-  type: string;
+  provider_type: string;
   name: string;
-  apiKey?: string;
-  baseUrl?: string;
-  apiVersion?: string;
+  api_key?: string;
+  base_url?: string;
+  api_version?: string;
   deployment?: string;
   timeout?: number;
-  maxRetries?: number;
+  max_retries?: number;
   headers?: Record<string, string>;
   enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**

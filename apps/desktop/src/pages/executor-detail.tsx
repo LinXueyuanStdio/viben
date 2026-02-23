@@ -17,16 +17,11 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
-  Sparkles,
-  Database,
   FileText,
   Globe,
   FolderOpen,
   Trash2,
   Terminal,
-  Server,
-  Command,
-  MessageSquare,
   GripVertical,
   Copy,
   Check,
@@ -51,15 +46,11 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   useWorkspaceParam,
-  useWorkspaceMcpServers,
-  useWorkspaceSkills,
-  useWorkspaceAgentConfigs,
-  useWorkspaceCommands,
   useExecutors,
   useAgentConversation,
 } from "@/hooks";
 import { invoke } from "@tauri-apps/api/core";
-import { MessageList, ChatInput, type SlashCommand } from "@/components/chat";
+import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
 
 // ============================================================================
 // Panel Width Constants
@@ -297,30 +288,6 @@ export function ExecutorDetailPage() {
 
     loadClaudeMd();
   }, [workspacePath]);
-
-  // Load MCP servers for this executor
-  const {
-    servers: mcpServers,
-    loading: mcpLoading,
-  } = useWorkspaceMcpServers(workspacePath || null, executorType || null);
-
-  // Load skills for this executor
-  const {
-    skills,
-    loading: skillsLoading,
-  } = useWorkspaceSkills(workspacePath || null, executorType || null);
-
-  // Load agent configs (prompts) for this executor
-  const {
-    configs: agentConfigs,
-    loading: configsLoading,
-  } = useWorkspaceAgentConfigs(workspacePath || null, executorType || null);
-
-  // Load commands for this executor
-  const {
-    commands,
-    loading: commandsLoading,
-  } = useWorkspaceCommands(workspacePath || null, executorType || null);
 
   // Chat functionality
   const executorTypeString = useMemo((): string => {
@@ -702,179 +669,13 @@ export function ExecutorDetailPage() {
                 </div>
               )}
 
-              {/* Capabilities Section */}
-              <div className="mb-4">
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("settingsAgents.tools")}
-                </h4>
-
-                {/* MCP Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.mcpTitle", "MCP")}
-                  icon={<Database className="h-4 w-4" />}
-                  badge={
-                    mcpLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{mcpServers.length}</Badge>
-                    )
-                  }
-                  defaultOpen
-                >
-                  <div className="py-2 space-y-2">
-                    {mcpServers.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t("settingsAgents.noMcp")}
-                      </p>
-                    ) : (
-                      <div className="space-y-1">
-                        {mcpServers.map((server) => (
-                          <div
-                            key={server.name}
-                            className={cn(
-                              "flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50",
-                              server.disabled && "opacity-60"
-                            )}
-                          >
-                            <Server className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{server.name}</span>
-                            {server.transport && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                                {server.transport}
-                              </Badge>
-                            )}
-                            {server.disabled && (
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
-                                {t("common.disabled")}
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Skills Section */}
-                <CollapsibleSection
-                  title={t("chat.skills")}
-                  icon={<Sparkles className="h-4 w-4" />}
-                  badge={
-                    skillsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{skills.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {skills.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t("settingsAgents.noSkills")}
-                      </p>
-                    ) : (
-                      <div className="space-y-1">
-                        {skills.map((skill) => (
-                          <div
-                            key={skill.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <Sparkles className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{skill.name}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                              v{skill.version}
-                            </Badge>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Prompts Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.prompts")}
-                  icon={<MessageSquare className="h-4 w-4" />}
-                  badge={
-                    configsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {agentConfigs.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noPrompts")}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {t("settingsAgents.noPromptsHint")}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {agentConfigs.map((config) => (
-                          <div
-                            key={config.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate">{config.name}</span>
-                            {config.model && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 ml-auto shrink-0">
-                                {config.model}
-                              </Badge>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-
-                {/* Commands Section */}
-                <CollapsibleSection
-                  title={t("settingsAgents.commands")}
-                  icon={<Command className="h-4 w-4" />}
-                  badge={
-                    commandsLoading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Badge variant="secondary" className="text-xs">{commands.length}</Badge>
-                    )
-                  }
-                >
-                  <div className="py-2 space-y-2">
-                    {commands.length === 0 ? (
-                      <>
-                        <p className="text-xs text-muted-foreground">
-                          {t("settingsAgents.noCommands")}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/70">
-                          {t("settingsAgents.noCommandsHint")}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="space-y-1">
-                        {commands.map((command) => (
-                          <div
-                            key={command.id}
-                            className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
-                          >
-                            <Command className="h-3 w-3 text-muted-foreground shrink-0" />
-                            <span className="truncate font-mono">/{command.id}</span>
-                            <span className="text-[10px] text-muted-foreground ml-auto shrink-0">
-                              {command.namespace}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CollapsibleSection>
-              </div>
+              {/* Capabilities Section - using reusable component */}
+              <ExecutorCapabilities
+                executorType={executorType || ""}
+                workspacePath={workspacePath || ""}
+                className="mb-4"
+                sectionHeaderText={t("settingsAgents.tools")}
+              />
 
               {/* Info Section */}
               <div>

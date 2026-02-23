@@ -436,6 +436,8 @@ pub fn run() {
             commands::workspace::list_skill_files,
             commands::workspace::read_skill_file,
 commands::workspace::write_skill_file,
+            commands::workspace::read_config_file,
+            commands::workspace::write_config_file,
             commands::workspace::get_workspace_agent_configs,
             commands::workspace::read_agent_config_file,
             commands::workspace::get_workspace_commands,

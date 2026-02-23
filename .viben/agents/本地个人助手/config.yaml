@@ -1,6 +1,10 @@
 name: 本地个人助手
-executor_type: CLAUDE_CODE
-plan_mode: false
+model: claude-sonnet-4-5-20250514
+temperature: 0.7
+maxTokens: 4096
+executorType: CLAUDE_CODE
+mcpServers: []
+skills: []
+planMode: false
 approvals: false
-created_at: 2026-02-10T11:26:19.084006Z
-updated_at: 2026-02-10T11:26:19.084006Z
+updatedAt: 2026-02-26T07:52:11.511Z

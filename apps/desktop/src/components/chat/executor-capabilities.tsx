@@ -4,8 +4,9 @@
  * Reusable component for displaying executor capabilities:
  * - MCP servers
  * - Skills
- * - Prompts (agent configs)
- * - Commands
+ * - SubAgents (.claude/agents/*.md)
+ * - Prompts (.claude/prompts/*.md)
+ * - Commands (.claude/commands/)
  *
  * Two modes:
  * - Read-only (default): Items are clickable and navigate to detail pages
@@ -24,8 +25,8 @@ import {
   Database,
   Server,
   Sparkles,
-  MessageSquare,
-  FileText,
+  Bot,
+  Quote,
   Command,
   ChevronRight,
   Plus,
@@ -41,6 +42,7 @@ import {
 import {
   useWorkspaceAgentConfigs,
   useWorkspaceCommands,
+  useWorkspacePrompts,
 } from "@/hooks/use-agent-configs";
 
 // ============================================================================
@@ -180,7 +182,11 @@ export function ExecutorCapabilities({
     workspacePath || null,
     executorType
   );
-  const { configs: agentConfigs, loading: configsLoading } = useWorkspaceAgentConfigs(
+  const { configs: subAgentConfigs, loading: subAgentsLoading } = useWorkspaceAgentConfigs(
+    workspacePath || null,
+    executorType
+  );
+  const { prompts, loading: promptsLoading } = useWorkspacePrompts(
     workspacePath || null,
     executorType
   );
@@ -208,13 +214,22 @@ export function ExecutorCapabilities({
     navigate(`/mcp-server/${encodeURIComponent(serverName)}?${params.toString()}`);
   };
 
-  const handlePromptClick = (configId: string) => {
+  const handleSubAgentClick = (configId: string) => {
     const params = new URLSearchParams();
     if (workspacePath) {
       params.set("workspace_path", workspacePath);
     }
     params.set("executor_type", executorType);
-    navigate(`/prompt/${encodeURIComponent(configId)}?${params.toString()}`);
+    navigate(`/subagent/${encodeURIComponent(configId)}?${params.toString()}`);
+  };
+
+  const handlePromptClick = (promptId: string) => {
+    const params = new URLSearchParams();
+    if (workspacePath) {
+      params.set("workspace_path", workspacePath);
+    }
+    params.set("executor_type", executorType);
+    navigate(`/prompt/${encodeURIComponent(promptId)}?${params.toString()}`);
   };
 
   const handleCommandClick = (commandId: string) => {
@@ -454,34 +469,34 @@ export function ExecutorCapabilities({
     </CollapsibleSection>
   );
 
-  // ========== Render Prompts section (always read-only) ==========
-  const renderPrompts = () => (
+  // ========== Render SubAgents section (always read-only) ==========
+  const renderSubAgents = () => (
     <CollapsibleSection
-      title={t("settingsAgents.prompts")}
-      icon={<MessageSquare className="h-4 w-4" />}
+      title={t("settingsAgents.subAgents", "SubAgents")}
+      icon={<Bot className="h-4 w-4" />}
       badge={
-        configsLoading ? (
+        subAgentsLoading ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (
-          <Badge variant="secondary" className="text-xs">{agentConfigs.length}</Badge>
+          <Badge variant="secondary" className="text-xs">{subAgentConfigs.length}</Badge>
         )
       }
     >
       <div className="py-2 space-y-1">
-        {agentConfigs.length === 0 ? (
+        {subAgentConfigs.length === 0 ? (
           <>
             <p className="text-xs text-muted-foreground">
-              {t("settingsAgents.noPrompts")}
+              {t("settingsAgents.noSubAgents", "No subagent configurations found.")}
             </p>
             <p className="text-[10px] text-muted-foreground/70">
-              {t("settingsAgents.noPromptsHint")}
+              {t("settingsAgents.noSubAgentsHint", "Create .claude/agents/*.md files to add subagent configurations.")}
             </p>
           </>
         ) : (
-          agentConfigs.map((config) => (
+          subAgentConfigs.map((config) => (
             <CapabilityItem
               key={config.id}
-              icon={<FileText className="h-3 w-3 text-muted-foreground" />}
+              icon={<Bot className="h-3 w-3 text-violet-500" />}
               name={config.name}
               badge={
                 config.model && (
@@ -490,7 +505,49 @@ export function ExecutorCapabilities({
                   </Badge>
                 )
               }
-              onClick={() => handlePromptClick(config.id)}
+              onClick={() => handleSubAgentClick(config.id)}
+            />
+          ))
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+
+  // ========== Render Prompts section (always read-only) ==========
+  const renderPrompts = () => (
+    <CollapsibleSection
+      title={t("settingsAgents.prompts", "Prompts")}
+      icon={<Quote className="h-4 w-4" />}
+      badge={
+        promptsLoading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <Badge variant="secondary" className="text-xs">{prompts.length}</Badge>
+        )
+      }
+    >
+      <div className="py-2 space-y-1">
+        {prompts.length === 0 ? (
+          <>
+            <p className="text-xs text-muted-foreground">
+              {t("settingsAgents.noPrompts", "No prompt templates found.")}
+            </p>
+            <p className="text-[10px] text-muted-foreground/70">
+              {t("settingsAgents.noPromptsHint", "Create .claude/prompts/*.md files to add reusable prompts.")}
+            </p>
+          </>
+        ) : (
+          prompts.map((prompt) => (
+            <CapabilityItem
+              key={prompt.id}
+              icon={<Quote className="h-3 w-3 text-amber-500" />}
+              name={prompt.name}
+              badge={
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  @{prompt.id}
+                </span>
+              }
+              onClick={() => handlePromptClick(prompt.id)}
             />
           ))
         )}
@@ -553,6 +610,9 @@ export function ExecutorCapabilities({
 
       {/* Skills - editable or read-only */}
       {editable ? renderEditableSkills() : renderReadOnlySkills()}
+
+      {/* SubAgents - always read-only with navigation */}
+      {renderSubAgents()}
 
       {/* Prompts - always read-only with navigation */}
       {renderPrompts()}

@@ -79,7 +79,14 @@ export function initTelemetry(config: TelemetryConfig): TelemetryInstance {
       sdk: null,
       logger,
       config,
-      shutdown: async () => {},
+      shutdown: async () => {
+        // Flush pino logger
+        await new Promise<void>((resolve) => {
+          logger.flush();
+          // Give time for async flush to complete
+          setTimeout(resolve, 50);
+        });
+      },
     };
   }
 

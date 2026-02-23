@@ -228,6 +228,13 @@ describe("Executors Routes", () => {
     });
 
     it("should return Claude Code as available executor", async () => {
+      // Mock fs.existsSync to simulate Claude Code config exists
+      vi.mocked(fs.existsSync).mockImplementation((p: fs.PathLike) => {
+        const pathStr = p.toString();
+        // Simulate ~/.claude directory exists
+        return pathStr.includes(".claude");
+      });
+
       const response = await fastify.inject({
         method: "GET",
         url: "/api/executors",
@@ -250,7 +257,7 @@ describe("Executors Routes", () => {
       });
 
       const body = JSON.parse(response.body);
-      expect(body.workspacePath).toBe("/Users/test");
+      expect(body.workspace_path).toBe("/Users/test");
     });
 
     it("should accept custom workspace path via query parameter", async () => {
@@ -260,27 +267,27 @@ describe("Executors Routes", () => {
       });
 
       const body = JSON.parse(response.body);
-      expect(body.workspacePath).toBe("/Users/custom/project");
+      expect(body.workspace_path).toBe("/Users/custom/project");
     });
 
-    it("should include includeGlobal flag in response", async () => {
+    it("should include include_global flag in response", async () => {
       const response = await fastify.inject({
         method: "GET",
         url: "/api/executors?include_global=true",
       });
 
       const body = JSON.parse(response.body);
-      expect(body.includeGlobal).toBe(true);
+      expect(body.include_global).toBe(true);
     });
 
-    it("should default includeGlobal to true when not specified", async () => {
+    it("should default include_global to true when not specified", async () => {
       const response = await fastify.inject({
         method: "GET",
         url: "/api/executors",
       });
 
       const body = JSON.parse(response.body);
-      expect(body.includeGlobal).toBe(true);
+      expect(body.include_global).toBe(true);
     });
   });
 
@@ -411,15 +418,15 @@ describe("Executors Routes", () => {
       const session = body.sessions[0];
 
       expect(session.id).toBe("abc-def-123");
-      expect(session.executorType).toBe("CLAUDE_CODE");
-      expect(session.workspacePath).toBe("/Users/test/project");
-      expect(session.createdAt).toBe(birthtime.toISOString());
-      expect(session.updatedAt).toBe(mtime.toISOString());
+      expect(session.executor_type).toBe("CLAUDE_CODE");
+      expect(session.workspace_path).toBe("/Users/test/project");
+      expect(session.created_at).toBe(birthtime.toISOString());
+      expect(session.updated_at).toBe(mtime.toISOString());
       expect(session.name).toBe("Create a new React component");
-      expect(session.messageCount).toBeDefined();
+      expect(session.message_count).toBeDefined();
     });
 
-    it("should sort sessions by updatedAt descending (newest first)", async () => {
+    it("should sort sessions by updated_at descending (newest first)", async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.promises.readdir).mockResolvedValue([
         { name: "old-session.jsonl", isFile: () => true },
@@ -463,8 +470,8 @@ describe("Executors Routes", () => {
       const sessions = body.sessions;
 
       // Newer session should be first
-      expect(new Date(sessions[0].updatedAt).getTime()).toBeGreaterThan(
-        new Date(sessions[1].updatedAt).getTime()
+      expect(new Date(sessions[0].updated_at).getTime()).toBeGreaterThan(
+        new Date(sessions[1].updated_at).getTime()
       );
     });
 
@@ -479,10 +486,12 @@ describe("Executors Routes", () => {
       expect(response.statusCode).toBe(200);
     });
 
-    it("should return empty sessions for codex executor (not yet implemented)", async () => {
+    it("should return empty sessions for CODEX executor (not yet implemented)", async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/codex/discover-sessions?workspace_path=/Users/test/project",
+        url: "/api/executors/CODEX/discover-sessions?workspace_path=/Users/test/project",
       });
 
       expect(response.statusCode).toBe(200);
@@ -724,9 +733,9 @@ describe("Executors Routes", () => {
       const message = body.messages[0];
 
       expect(message.type).toBe("tool_use");
-      expect(message.toolUseId).toBe("tool-123");
-      expect(message.toolName).toBe("Read");
-      expect(message.toolInput).toEqual({ file_path: "/path/to/file.ts" });
+      expect(message.tool_use_id).toBe("tool-123");
+      expect(message.tool_name).toBe("Read");
+      expect(message.tool_input).toEqual({ file_path: "/path/to/file.ts" });
     });
 
     it("should convert tool_result message type correctly", async () => {
@@ -758,9 +767,9 @@ describe("Executors Routes", () => {
       const message = body.messages[0];
 
       expect(message.type).toBe("tool_result");
-      expect(message.toolUseId).toBe("tool-123");
+      expect(message.tool_use_id).toBe("tool-123");
       expect(message.content).toBe("File content here");
-      expect(message.isError).toBe(false);
+      expect(message.is_error).toBe(false);
     });
 
     it("should handle tool_result with error flag", async () => {
@@ -791,7 +800,7 @@ describe("Executors Routes", () => {
       const body = JSON.parse(response.body);
       const message = body.messages[0];
 
-      expect(message.isError).toBe(true);
+      expect(message.is_error).toBe(true);
     });
 
     it("should respect limit parameter", async () => {
@@ -819,7 +828,7 @@ describe("Executors Routes", () => {
       expect(body.messages.length).toBeLessThanOrEqual(3);
     });
 
-    it("should map subagentId from progress messages for Task tool", async () => {
+    it("should map subagent_id from progress messages for Task tool", async () => {
       const sessionContent = [
         JSON.stringify({
           uuid: "msg-1",
@@ -856,11 +865,11 @@ describe("Executors Routes", () => {
 
       const body = JSON.parse(response.body);
       const taskMessage = body.messages.find(
-        (m: { toolName?: string }) => m.toolName === "Task"
+        (m: { tool_name?: string }) => m.tool_name === "Task"
       );
 
       expect(taskMessage).toBeDefined();
-      expect(taskMessage.subagentId).toBe("subagent-abc");
+      expect(taskMessage.subagent_id).toBe("subagent-abc");
     });
 
     it("should skip invalid JSON lines gracefully", async () => {
@@ -983,10 +992,12 @@ describe("Executors Routes", () => {
       expect(body.messages[0].content).toBe("Actual message");
     });
 
-    it("should return empty messages for codex executor (not implemented)", async () => {
+    it("should return empty messages for CODEX executor (not implemented)", async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
       const response = await fastify.inject({
         method: "GET",
-        url: "/api/executors/codex/sessions/session-123/messages?workspace_path=/Users/test",
+        url: "/api/executors/CODEX/sessions/session-123/messages?workspace_path=/Users/test",
       });
 
       expect(response.statusCode).toBe(200);
@@ -1181,8 +1192,8 @@ describe("Executors Routes", () => {
 
       const body = JSON.parse(response.body);
       expect(body.messages).toHaveLength(2);
-      expect(body.messages[0].toolUseId).toBe("tool-1");
-      expect(body.messages[1].toolUseId).toBe("tool-2");
+      expect(body.messages[0].tool_use_id).toBe("tool-1");
+      expect(body.messages[1].tool_use_id).toBe("tool-2");
     });
 
     it("should handle assistant message without content", async () => {

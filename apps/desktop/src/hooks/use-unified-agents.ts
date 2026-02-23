@@ -92,7 +92,7 @@ export function useUnifiedAgents(options: UseUnifiedAgentsOptions = {}): UseUnif
     updateAgent,
     removeAgent: removeAgentFn,
     setDefaultAgent,
-  } = useAgents();
+  } = useAgents({ workspacePath: workspace?.path });
 
   // Workspace executors (auto-discovered, read-only)
   // Use useExecutors with workspace path instead of deprecated useWorkspaceAgents

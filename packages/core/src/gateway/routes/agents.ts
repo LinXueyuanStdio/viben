@@ -937,6 +937,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
    */
   fastify.patch<{
     Params: { id: string };
+    Querystring: { workspace_path?: string };
     Body: {
       name?: string;
       description?: string;
@@ -962,6 +963,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
     };
   }>("/api/agents/:id", async (request, reply) => {
     const { id } = request.params;
+    const { workspace_path } = request.query;
     const body = request.body;
     const updates = {
       name: body.name,
@@ -980,7 +982,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       approvals: body.approvals,
     };
     try {
-      const agent = await agentManager.updateAgent(id, updates);
+      const agent = await agentManager.updateAgent(id, updates, workspace_path);
 
       const homeDir = process.env.HOME || "/";
       // Determine source based on path (global = ~/.viben/agents/, workspace = elsewhere)
@@ -1022,15 +1024,22 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
   /**
    * Delete an agent
    * DELETE /api/agents/:id
+   *
+   * Query params:
+   * - workspace_path: Optional workspace path to check for workspace-scoped agents first
    */
-  fastify.delete<{ Params: { id: string } }>("/api/agents/:id", async (request, reply) => {
-    const { id } = request.params;
-    try {
-      await agentManager.removeAgent(id);
-      return { success: true, deleted: id };
-    } catch (e) {
-      reply.code(400);
-      return { error: e instanceof Error ? e.message : "Failed to delete agent" };
+  fastify.delete<{ Params: { id: string }; Querystring: { workspace_path?: string } }>(
+    "/api/agents/:id",
+    async (request, reply) => {
+      const { id } = request.params;
+      const { workspace_path } = request.query;
+      try {
+        await agentManager.removeAgent(id, workspace_path);
+        return { success: true, deleted: id };
+      } catch (e) {
+        reply.code(400);
+        return { error: e instanceof Error ? e.message : "Failed to delete agent" };
+      }
     }
-  });
+  );
 }

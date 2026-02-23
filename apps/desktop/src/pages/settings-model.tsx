@@ -54,12 +54,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
-  useVibenProviders,
+  useProviders,
   type ProviderType,
   type Provider,
   DEFAULT_BASE_URLS,
   PROVIDER_TYPE_LABELS,
-} from "@/hooks/use-viben-providers";
+} from "@/hooks/use-providers";
 import {
   useModels,
   type DiscoveredModel,
@@ -127,7 +127,7 @@ export function SettingsModelPage() {
     removeProvider,
     enableProvider,
     disableProvider,
-  } = useVibenProviders();
+  } = useProviders();
 
   const {
     error: modelsError,

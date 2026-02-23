@@ -1520,6 +1520,86 @@ pub async fn read_command_file(path: String) -> Result<WorkspaceCommand, String>
     })
 }
 
+/// Read a config file (for commands, prompts, agent configs, etc.)
+/// Security: Only allows reading files within user's home directory or workspace directories
+#[tauri::command]
+pub async fn read_config_file(file_path: String) -> Result<String, String> {
+    let file = PathBuf::from(&file_path);
+
+    // Security check: ensure file is within home directory
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+    let canonical_file = file.canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+    let canonical_home = home.canonicalize()
+        .map_err(|e| format!("Cannot resolve home directory: {}", e))?;
+
+    if !canonical_file.starts_with(&canonical_home) {
+        return Err("Access denied: file is outside home directory".to_string());
+    }
+
+    if !path_exists(&file) {
+        return Err("File not found".to_string());
+    }
+
+    if is_directory(&file) {
+        return Err("Cannot read directory".to_string());
+    }
+
+    // Check file size (limit to 1MB)
+    let metadata = fs::metadata(&file)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    if metadata.len() > 1_048_576 {
+        return Err("File too large (max 1MB)".to_string());
+    }
+
+    fs::read_to_string(&file)
+        .map_err(|e| format!("Failed to read file: {}", e))
+}
+
+/// Write content to a config file (for commands, prompts, agent configs, etc.)
+/// Security: Only allows writing files within user's home directory
+#[tauri::command]
+pub async fn write_config_file(file_path: String, content: String) -> Result<(), String> {
+    let file = PathBuf::from(&file_path);
+
+    // Security check: ensure file is within home directory
+    let home = dirs::home_dir().ok_or("Cannot determine home directory")?;
+
+    // For new files, check parent directory
+    let check_path = if file.exists() {
+        file.clone()
+    } else {
+        file.parent().ok_or("Invalid file path")?.to_path_buf()
+    };
+
+    let canonical_check = check_path.canonicalize()
+        .map_err(|e| format!("Invalid path: {}", e))?;
+    let canonical_home = home.canonicalize()
+        .map_err(|e| format!("Cannot resolve home directory: {}", e))?;
+
+    if !canonical_check.starts_with(&canonical_home) {
+        return Err("Access denied: file is outside home directory".to_string());
+    }
+
+    if is_directory(&file) {
+        return Err("Cannot write to directory".to_string());
+    }
+
+    // Check content size (limit to 1MB)
+    if content.len() > 1_048_576 {
+        return Err("Content too large (max 1MB)".to_string());
+    }
+
+    // Create parent directories if needed
+    if let Some(parent) = file.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create directories: {}", e))?;
+    }
+
+    fs::write(&file, content)
+        .map_err(|e| format!("Failed to write file: {}", e))
+}
+
 /// Write content to a file in skill folder
 #[tauri::command]
 pub async fn write_skill_file(file_path: String, skill_path: String, content: String) -> Result<(), String> {

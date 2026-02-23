@@ -136,7 +136,7 @@ describe("trace-viewer", () => {
 });
 
 describe("telemetry initialization", () => {
-  it("should initialize telemetry with disabled flag", () => {
+  it("should initialize telemetry with disabled flag", async () => {
     const testDir = path.join(os.tmpdir(), `viben-telemetry-test-${Date.now()}`);
 
     try {
@@ -150,6 +150,11 @@ describe("telemetry initialization", () => {
       expect(instance.sdk).toBeNull();
       expect(instance.logger).toBeDefined();
       expect(instance.config.serviceName).toBe("test-service");
+
+      // Flush and close logger before cleanup
+      await instance.shutdown();
+      // Give async logger time to flush
+      await new Promise((r) => setTimeout(r, 100));
     } finally {
       // 清理
       if (fs.existsSync(testDir)) {

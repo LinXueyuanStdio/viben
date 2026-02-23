@@ -33,7 +33,6 @@ import {
   FolderOpen,
   Trash2,
   HelpCircle,
-  Terminal,
   GripVertical,
   Copy,
   Check,
@@ -49,7 +48,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -258,29 +259,6 @@ export function AgentDetailPage() {
   const workspaceAgents = getWorkspaceAgents();
   const workspaceAgentsLoading = agentsLoading;
 
-  // Workspace executors (auto-discovered from .claude, .cursor, etc.)
-  // These are read-only executor configurations, not user-created agents
-  // Use useExecutors with workspacePath (not workspaceId) per API convention
-  const {
-    executors: workspaceExecutorsRaw,
-    loading: executorsLoading,
-  } = useExecutors({ workspacePath: workspace?.path });
-
-  // Transform ExecutorInfo to the format expected by ExecutorDetailView
-  const workspaceExecutors = useMemo(() => {
-    return workspaceExecutorsRaw.map((e) => ({
-      id: e.type, // Use type as ID for matching URL param (e.g., "CLAUDE_CODE")
-      workspace_id: workspace?.id || "",
-      name: e.name,
-      type: e.type,
-      // Use workspace_config_path for workspace config (empty if none)
-      config_path: e.workspace_config_path || "",
-      global_config_path: e.global_config_path,
-      mcp_config_file: null,
-      skills_config_file: null,
-    }));
-  }, [workspaceExecutorsRaw, workspace?.id]);
-
   const { models } = useModels();
   const { executors: availableExecutors } = useExecutors();
 
@@ -316,52 +294,14 @@ export function AgentDetailPage() {
     }
   }, [isWorkspaceScoped]);
 
-  // Find the current agent (user-created) or executor (auto-discovered)
-  // First try to find in global agents (from list - minimal info)
-  const globalAgentInfo = useMemo(
-    () => globalAgents.find((a) => a.id === agentId) || null,
-    [globalAgents, agentId]
-  );
-
-  // Then try to find in workspace-scoped agents (from list - minimal info)
-  const workspaceAgentInfo = useMemo(
-    () => workspaceAgents.find((a) => a.id === agentId) || null,
-    [workspaceAgents, agentId]
-  );
-
-  // Then try to find in workspace executors (auto-discovered, read-only)
-  // Note: agentId from URL can be either:
-  // 1. An executor type (e.g., "CLAUDE_CODE") - used by useAgentList
-  // 2. An actual executor ID (UUID) - used by legacy useWorkspaceAgents
-  // We need to search by both type and id to handle both cases
-  const workspaceExecutor = useMemo(
-    () => workspaceExecutors.find((a) => a.type === agentId || a.id === agentId) || null,
-    [workspaceExecutors, agentId]
-  );
-
-  // Use workspace agent if found, otherwise fall back to global
-  const agentInfo = workspaceAgentInfo || globalAgentInfo;
-
   // Full agent details (loaded from Gateway API)
   const [fullAgent, setFullAgent] = useState<AgentResponse | null>(null);
   const [loadingFullAgent, setLoadingFullAgent] = useState(false);
 
   // Load full agent details when agent ID changes
-  // Skip loading if we already found a matching executor (executors don't need API loading)
-  // We don't require agentInfo pre-check because:
-  // 1. The agent list might not have loaded yet
-  // 2. We want to try loading the agent directly from API
   useEffect(() => {
     if (!agentId) {
       setFullAgent(null);
-      return;
-    }
-
-    // If we found a matching executor, don't try to load as agent
-    // Note: workspaceExecutor is memoized, so this check is safe
-    if (workspaceExecutor) {
-      setFullAgent(null);
-      setLoadingFullAgent(false);
       return;
     }
 
@@ -383,18 +323,15 @@ export function AgentDetailPage() {
     };
 
     loadFullAgent();
-  }, [agentId, workspaceExecutor, workspace?.path]);
+  }, [agentId, workspace?.path]);
 
-  // Determine if we're viewing an executor or an agent
-  // If we found a matching executor AND no matching agent, it's an executor
-  const isExecutor = Boolean(workspaceExecutor && !agentInfo && !fullAgent);
   // Map VibenAgentResponse to expected agent interface with backwards-compatible fields
-  const agent = fullAgent ? {
+  // Use useMemo to prevent unnecessary re-renders and useEffect triggers
+  const agent = useMemo(() => fullAgent ? {
     ...fullAgent,
     // Map config_path to path for backwards compatibility
     path: fullAgent.config_path,
-  } : null;
-  const executor = workspaceExecutor;
+  } : null, [fullAgent]);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -550,12 +487,16 @@ export function AgentDetailPage() {
       });
       setIsDirty(false);
       setLastSaved(new Date());
+      toast.success(t("settingsAgents.saveSuccess", "保存成功"));
     } catch (err) {
       console.error("Failed to save agent:", err);
+      toast.error(t("settingsAgents.saveFailed", "保存失败"), {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setSaving(false);
     }
-  }, [agentId, updateAgent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills]);
+  }, [agentId, updateAgent, formName, formDescription, formSystemPrompt, formAppendPrompt, formTemperature, formMaxTokens, formModel, formExecutorType, formPlanMode, formApprovals, selectedMcpServers, selectedSkills, t]);
 
   // Debounced save with backpressure protection (using ahooks)
   // - wait: 300ms debounce delay
@@ -698,22 +639,11 @@ export function AgentDetailPage() {
     }
   }, [clearMessages]);
 
-  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || executorsLoading || loadingFullAgent) {
+  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || loadingFullAgent) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-    );
-  }
-
-  // If we found an executor, show a read-only executor detail view with tabs
-  if (isExecutor && executor) {
-    return (
-      <ExecutorDetailView
-        executor={executor}
-        workspacePath={workspacePath || ""}
-        onNavigateBack={handleNavigateBack}
-      />
     );
   }
 
@@ -1070,18 +1000,23 @@ export function AgentDetailPage() {
                         <SelectValue placeholder={t("settingsAgents.selectModel")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.entries(modelsByProvider).map(([provider, providerModels]) => (
-                          <div key={provider}>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                              {provider}
-                            </div>
-                            {providerModels.filter((m) => m.is_available).map((model) => (
-                              <SelectItem key={model.id} value={model.id}>
-                                {model.name}
-                              </SelectItem>
-                            ))}
-                          </div>
-                        ))}
+                        {Object.entries(modelsByProvider).map(([provider, providerModels]) => {
+                          // Filter to available models only (enabled + has API key)
+                          const availableModels = providerModels.filter((m) => m.is_available);
+                          if (availableModels.length === 0) return null;
+                          return (
+                            <SelectGroup key={provider}>
+                              <SelectLabel className="text-xs text-muted-foreground">
+                                {provider}
+                              </SelectLabel>
+                              {availableModels.map((model) => (
+                                <SelectItem key={model.id} value={model.id}>
+                                  {model.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
 
@@ -1415,585 +1350,6 @@ export function AgentDetailPage() {
         onOpenChange={setMemoryDialogOpen}
         agentId={agentId || ""}
         agentName={formName || t("settingsAgents.unnamed")}
-      />
-    </div>
-  );
-}
-
-// ============================================================================
-// Executor Detail View Component (Three-Column Layout)
-// ============================================================================
-
-interface ExecutorDetailViewProps {
-  executor: {
-    id: string;
-    name: string;
-    type: string;
-    config_path: string;
-    global_config_path?: string;
-    mcp_config_file: string | null;
-    skills_config_file: string | null;
-  };
-  workspacePath: string;
-  onNavigateBack: () => void;
-}
-
-// Get executor icon color based on type
-function getExecutorColor(type: string) {
-  const colors: Record<string, { bg: string; text: string; border: string }> = {
-    CLAUDE_CODE: { bg: "bg-amber-500/10", text: "text-amber-600", border: "border-amber-500/30" },
-    CODEX: { bg: "bg-emerald-500/10", text: "text-emerald-600", border: "border-emerald-500/30" },
-    GEMINI_CLI: { bg: "bg-blue-500/10", text: "text-blue-600", border: "border-blue-500/30" },
-    AIDER: { bg: "bg-violet-500/10", text: "text-violet-600", border: "border-violet-500/30" },
-  };
-  return colors[type] || { bg: "bg-muted", text: "text-foreground", border: "border-border" };
-}
-
-function ExecutorDetailView({
-  executor,
-  workspacePath,
-  onNavigateBack,
-}: ExecutorDetailViewProps) {
-  const { t } = useTranslation();
-
-  // Get MCP servers and skill packages from store/hooks
-  const mcpServers = useAppStore((state) => state.mcpServers);
-  const { packages: skillPackages } = useCloudSkillPackages();
-
-  // State for CLAUDE.md content
-  const [claudeMdContent, setClaudeMdContent] = useState<string>("");
-  const [claudeMdLoading, setClaudeMdLoading] = useState(true);
-  const [claudeMdError, setClaudeMdError] = useState<string | null>(null);
-
-  // MCP and Skills selection state (for editable mode)
-  const [selectedMcpServers, setSelectedMcpServers] = useState<string[]>([]);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-
-  // Dialog states
-  const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
-  const [skillsDialogOpen, setSkillsDialogOpen] = useState(false);
-
-  // Load CLAUDE.md content
-  useEffect(() => {
-    async function loadClaudeMd() {
-      if (!workspacePath) {
-        setClaudeMdLoading(false);
-        return;
-      }
-
-      setClaudeMdLoading(true);
-      setClaudeMdError(null);
-
-      try {
-        // Try different possible locations for CLAUDE.md
-        const possiblePaths = [
-          `${workspacePath}/CLAUDE.md`,
-          `${workspacePath}/.claude/CLAUDE.md`,
-          `${workspacePath}/claude.md`,
-        ];
-
-        let content = "";
-        for (const path of possiblePaths) {
-          try {
-            const { readTextFile } = await import("@tauri-apps/plugin-fs");
-            content = await readTextFile(path);
-            if (content) break;
-          } catch {
-            // File doesn't exist, try next path
-          }
-        }
-
-        setClaudeMdContent(content);
-      } catch (err) {
-        setClaudeMdError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setClaudeMdLoading(false);
-      }
-    }
-
-    loadClaudeMd();
-  }, [workspacePath]);
-
-  // Chat functionality - use executor type directly (already uppercase)
-  const executorTypeString = useMemo((): string => {
-    // executor.type is already in uppercase format (CLAUDE_CODE, CODEX, etc.)
-    if (executor.type === "CLAUDE_CODE") return "CLAUDE_CODE";
-    if (executor.type === "CODEX") return "CODEX";
-    // All other executor types default to CLAUDE_CODE for chat
-    return "CLAUDE_CODE";
-  }, [executor.type]);
-
-  const {
-    messages,
-    phase,
-    isStreaming,
-    pendingPlan,
-    pendingQuestions,
-    sendMessage,
-    approvePlan,
-    rejectPlan,
-    answerQuestions,
-    cancel,
-    clearMessages,
-  } = useAgentConversation(workspacePath, {
-    agentConfig: {
-      executorType: executorTypeString,
-      planMode: false,
-      approvals: false,
-    },
-  });
-
-  // Panel width state for resizable panels
-  const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH);
-  const [rightPanelWidth, setRightPanelWidth] = useState(DEFAULT_RIGHT_PANEL_WIDTH);
-
-  // Resize handlers
-  const handleLeftResize = useCallback((delta: number) => {
-    setLeftPanelWidth((prev) =>
-      Math.max(MIN_LEFT_PANEL_WIDTH, Math.min(MAX_LEFT_PANEL_WIDTH, prev + delta))
-    );
-  }, []);
-
-  const handleRightResize = useCallback((delta: number) => {
-    setRightPanelWidth((prev) =>
-      Math.max(MIN_RIGHT_PANEL_WIDTH, Math.min(MAX_RIGHT_PANEL_WIDTH, prev + delta))
-    );
-  }, []);
-
-  // Copy path state
-  const [pathCopied, setPathCopied] = useState(false);
-
-  // Get executor config folder path (parent of config_path)
-  const executorFolderPath = useMemo(() => {
-    if (executor.config_path) {
-      // Get parent directory of config file
-      const parts = executor.config_path.split("/");
-      parts.pop(); // Remove filename
-      return parts.join("/");
-    }
-    return workspacePath;
-  }, [executor.config_path, workspacePath]);
-
-  // Copy path to clipboard
-  const handleCopyPath = useCallback(async () => {
-    if (!executorFolderPath) return;
-    await navigator.clipboard.writeText(executorFolderPath);
-    setPathCopied(true);
-    setTimeout(() => setPathCopied(false), 2000);
-  }, [executorFolderPath]);
-
-  // Open folder in file manager
-  const handleOpenFolder = useCallback(async () => {
-    if (!executorFolderPath) return;
-    try {
-      await invoke("open_path", { path: executorFolderPath });
-    } catch (err) {
-      console.error("Failed to open folder:", err);
-    }
-  }, [executorFolderPath]);
-
-  // Slash commands for executor chat
-  const slashCommands = useMemo<SlashCommand[]>(() => [
-    {
-      id: "clear",
-      name: t("chat.slashCommands.clear", "clear"),
-      description: t("chat.slashCommands.clearDesc", "Clear conversation history"),
-      icon: <Trash2 className="h-4 w-4" />,
-    },
-  ], [t]);
-
-  // Handle slash command execution
-  const handleSlashCommand = useCallback((command: SlashCommand) => {
-    if (command.id === "clear") {
-      clearMessages();
-    }
-  }, [clearMessages]);
-
-  // Get executor colors
-  const executorColor = getExecutorColor(executor.type);
-
-  // Determine config source
-  const hasWorkspaceConfig = !!executor.config_path;
-  const hasGlobalConfig = !!executor.global_config_path;
-  const configSource = hasWorkspaceConfig && hasGlobalConfig
-    ? "merged" as const
-    : hasWorkspaceConfig
-      ? "workspace" as const
-      : "global" as const;
-
-  return (
-    <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-muted/10">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onNavigateBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
-              {executor.name.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold">{executor.name}</h1>
-              <Badge variant="secondary" className="text-xs font-mono">
-                {executor.type}
-              </Badge>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Badge variant="outline" className="text-xs gap-1">
-                      {configSource === "workspace" ? (
-                        <FolderOpen className="h-3 w-3" />
-                      ) : configSource === "global" ? (
-                        <Globe className="h-3 w-3" />
-                      ) : (
-                        <>
-                          <FolderOpen className="h-3 w-3" />
-                          <span>+</span>
-                          <Globe className="h-3 w-3" />
-                        </>
-                      )}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {configSource === "workspace"
-                      ? t("settingsAgents.workspaceConfig")
-                      : configSource === "global"
-                        ? t("settingsAgents.globalConfig")
-                        : t("settingsAgents.mergedConfig")}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-            {/* Path with copy button */}
-            {executorFolderPath && (
-              <div className="flex items-center gap-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="text-xs text-muted-foreground truncate max-w-[200px] cursor-default">
-                        {executorFolderPath.split("/").slice(-3).join("/")}
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-[400px]">
-                      <code className="text-xs break-all">{executorFolderPath}</code>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={handleCopyPath}
-                      >
-                        {pathCopied ? (
-                          <Check className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {pathCopied ? t("common.copied") : t("common.copyPath")}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            )}
-          </div>
-          <Badge variant="outline" className={cn("text-xs", executorColor.border, executorColor.text)}>
-            <Terminal className="h-3 w-3 mr-1" />
-            {t("settingsAgents.executors")}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Open folder button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleOpenFolder}
-                  disabled={!executorFolderPath}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{t("settingsAgents.openFolder")}</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-
-      {/* Three Column Layout */}
-      <div className="flex-1 flex min-h-0">
-        {/* ================================================================
-            LEFT COLUMN: CLAUDE.md Content (System Prompt) - Resizable
-            ================================================================ */}
-        <div
-          className="relative flex flex-col shrink-0"
-          style={{ width: leftPanelWidth }}
-        >
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.systemPrompt")}</h3>
-            <p className="text-xs text-muted-foreground mt-1">CLAUDE.md</p>
-          </div>
-          <ResizeHandle side="left" onResize={handleLeftResize} />
-
-          <ScrollArea className="flex-1">
-            <div className="p-4">
-              {claudeMdLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : claudeMdError ? (
-                <div className="text-xs text-destructive">
-                  {claudeMdError}
-                </div>
-              ) : claudeMdContent ? (
-                <pre className="text-xs whitespace-pre-wrap font-mono text-muted-foreground bg-muted/30 p-3 rounded-lg">
-                  {claudeMdContent}
-                </pre>
-              ) : (
-                <div className="text-center py-8">
-                  <FileText className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
-                  <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.noClaudeMd")}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">
-                    {t("settingsAgents.noClaudeMdHint")}
-                  </p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* ================================================================
-            MIDDLE COLUMN: Configuration & Capabilities
-            ================================================================ */}
-        <div className="flex-1 flex flex-col min-w-0 border-r">
-          <div className="p-4 border-b">
-            <h3 className="font-semibold text-sm">{t("settingsAgents.capabilities")}</h3>
-          </div>
-
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-1">
-              {/* Config Section - show if any config path exists */}
-              {(executor.config_path?.trim() || executor.global_config_path?.trim()) && (
-                <div className="mb-4">
-                  <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                    {t("workspace.configuration")}
-                  </h4>
-
-                  {/* Workspace Config */}
-                  {executor.config_path?.trim() && (
-                    <CollapsibleSection
-                      title={t("settingsAgents.workspaceConfig")}
-                      icon={<FolderOpen className="h-4 w-4" />}
-                      defaultOpen
-                    >
-                      <div className="py-2">
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                            {executor.config_path}
-                          </code>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={handleOpenFolder}
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    </CollapsibleSection>
-                  )}
-
-                  {/* Global Config */}
-                  {executor.global_config_path?.trim() && (
-                    <CollapsibleSection
-                      title={t("settingsAgents.globalConfig")}
-                      icon={<Globe className="h-4 w-4" />}
-                      defaultOpen={!executor.config_path?.trim()}
-                    >
-                      <div className="py-2">
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono break-all">
-                            {executor.global_config_path}
-                          </code>
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 shrink-0"
-                                  onClick={async () => {
-                                    try {
-                                      const dir = executor.global_config_path!.replace(/\/[^/]+$/, "");
-                                      await invoke("open_path", { path: dir });
-                                    } catch (err) {
-                                      console.error("Failed to open folder:", err);
-                                    }
-                                  }}
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>{t("common.openInExplorer")}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </div>
-                      </div>
-                    </CollapsibleSection>
-                  )}
-                </div>
-              )}
-
-              {/* Capabilities Section - using reusable component in editable mode */}
-              <ExecutorCapabilities
-                executorType={executor.type}
-                workspacePath={workspacePath}
-                className="mb-4"
-                sectionHeaderText={t("settingsAgents.tools")}
-                editable
-                selectedMcpServers={selectedMcpServers}
-                selectedSkills={selectedSkills}
-                mcpServerOptions={mcpServers.map((s) => ({ id: s.id, name: s.name, transport: s.transport }))}
-                skillPackageOptions={skillPackages.map((s) => ({ id: s.id, name: s.name }))}
-                onConfigureMcp={() => setMcpDialogOpen(true)}
-                onConfigureSkills={() => setSkillsDialogOpen(true)}
-              />
-
-              {/* Info Section */}
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                  {t("common.overview")}
-                </h4>
-
-                <div className="p-3 rounded-xl bg-muted/50 border">
-                  <p className="text-xs text-muted-foreground">
-                    {t("settingsAgents.executorsDesc")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-        </div>
-
-        {/* ================================================================
-            RIGHT COLUMN: Chat Preview - Resizable
-            ================================================================ */}
-        <div
-          className="relative flex flex-col bg-muted/30 shrink-0"
-          style={{ width: rightPanelWidth }}
-        >
-          <ResizeHandle side="right" onResize={handleRightResize} />
-          {/* Header with actions */}
-          <div className="p-4 border-b flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
-                  {executor.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-semibold text-sm">{executor.name}</h3>
-                <p className="text-xs text-muted-foreground">{t("settingsAgents.previewDebug")}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1">
-              {messages.length > 0 && (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={clearMessages}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{t("settingsAgents.clearChat")}</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
-          </div>
-
-          {/* Chat Messages */}
-          <MessageList
-            messages={messages}
-            isStreaming={isStreaming}
-            pendingPlan={pendingPlan}
-            pendingQuestions={pendingQuestions}
-            onApprovePlan={approvePlan}
-            onRejectPlan={rejectPlan}
-            onAnswerQuestions={answerQuestions}
-            className="flex-1"
-          />
-
-          {/* Chat Input */}
-          <div className="border-t border-border bg-background">
-            <ChatInput
-              onSend={sendMessage}
-              onCancel={cancel}
-              isLoading={isStreaming}
-              disabled={phase === "awaiting_approval" || phase === "awaiting_input"}
-              placeholder={
-                phase === "awaiting_approval"
-                  ? t("chat.waitingForApproval")
-                  : phase === "awaiting_input"
-                    ? t("chat.waitingForInput")
-                    : t("settingsAgents.sendMessage")
-              }
-              autoFocus
-              showTopToolbar
-              showConfigBar
-              showResizeHandle
-              enableWritingMode
-              hideAgentSelector
-              hideModelSelector
-              slashCommands={slashCommands}
-              onSlashCommand={handleSlashCommand}
-            />
-            <p className="text-xs text-muted-foreground py-2 text-center">
-              {t("settingsAgents.aiDisclaimer")}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Dialogs */}
-      <AgentMcpDialog
-        open={mcpDialogOpen}
-        onOpenChange={setMcpDialogOpen}
-        selectedServerIds={selectedMcpServers}
-        onServersChange={setSelectedMcpServers}
-      />
-
-      <AgentSkillsDialog
-        open={skillsDialogOpen}
-        onOpenChange={setSkillsDialogOpen}
-        selectedSkillIds={selectedSkills}
-        onSkillsChange={setSelectedSkills}
       />
     </div>
   );
