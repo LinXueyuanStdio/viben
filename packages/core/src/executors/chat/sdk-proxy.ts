@@ -442,6 +442,9 @@ export class SdkChatProxy implements ChatProxy {
 
     const startTime = Date.now();
 
+    // Capture stderr from Claude Code subprocess for debugging (declared outside try for access in catch)
+    let stderrOutput = '';
+
     try {
       // Find Claude Code executable path
       const claudePath = findClaudeCodeExecutable();
@@ -487,8 +490,15 @@ export class SdkChatProxy implements ChatProxy {
 
       // Optional parameters
       if (model) queryOptions.model = model;
-      if (sessionId) queryOptions.sessionId = sessionId;
-      if (resume) queryOptions.resume = resume;
+      // Only pass sessionId to SDK if it's a valid UUID format
+      // Our internal session IDs (run_xxx) are not valid UUIDs
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (sessionId && uuidRegex.test(sessionId)) {
+        queryOptions.sessionId = sessionId;
+      }
+      if (resume && uuidRegex.test(resume)) {
+        queryOptions.resume = resume;
+      }
 
       // Permission mode - use bypassPermissions by default for gateway usage
       if (permissionMode) {
@@ -514,6 +524,12 @@ export class SdkChatProxy implements ChatProxy {
         hasSystemPrompt: !!queryOptions.systemPrompt,
         settingSources: queryOptions.settingSources,
       }, null, 2));
+
+      // Capture stderr from Claude Code subprocess for debugging
+      queryOptions.stderr = (data: string) => {
+        stderrOutput += data;
+        console.error('[SdkChatProxy] Claude stderr:', data);
+      };
 
       // Execute query
       const queryResult = sdk.query({
@@ -545,13 +561,16 @@ export class SdkChatProxy implements ChatProxy {
         console.error('[SdkChatProxy] Cause:', cause.message);
       }
 
+      // Build detailed error message including stderr output
+      const stderrInfo = stderrOutput.trim() ? `\nDetails: ${stderrOutput.trim()}` : '';
+
       // Handle specific error types following WorkAny patterns
       if (errorMessage.includes("exited with code")) {
-        // Claude Code process crashed - include the actual error for debugging
+        // Claude Code process crashed - include stderr for debugging
         console.error('[SdkChatProxy] Process exit error:', errorMessage);
         yield {
           type: "error",
-          message: `Agent process terminated unexpectedly: ${errorMessage}`,
+          message: `Agent process terminated unexpectedly: ${errorMessage}${stderrInfo}`,
         };
       } else if (
         errorMessage.includes("API key") ||
@@ -559,17 +578,17 @@ export class SdkChatProxy implements ChatProxy {
       ) {
         yield {
           type: "error",
-          message: "API authentication failed. Please check your API key configuration.",
+          message: `API authentication failed. Please check your API key configuration.${stderrInfo}`,
         };
       } else if (errorMessage.includes("not found") || errorMessage.includes("ENOENT")) {
         yield {
           type: "error",
-          message: "Claude Code executable not found. Please ensure Claude Code is installed.",
+          message: `Claude Code executable not found. Please ensure Claude Code is installed.${stderrInfo}`,
         };
       } else {
         yield {
           type: "error",
-          message: errorMessage,
+          message: `${errorMessage}${stderrInfo}`,
         };
       }
     }

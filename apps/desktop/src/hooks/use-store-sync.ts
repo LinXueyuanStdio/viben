@@ -9,6 +9,11 @@ import type { McpServerInstance, McpServerStatusInfo } from "@/types";
  */
 const STORE_SYNC_EVENT = "store-sync-update";
 
+/** Debounce time for mcpServers changes (more important, shorter delay) */
+const DEBOUNCE_SERVERS = 300;
+/** Debounce time for mcpServerStatuses changes (less critical, longer delay) */
+const DEBOUNCE_STATUSES = 1000;
+
 interface StoreSyncPayload {
   /** Timestamp when the update was made */
   timestamp: number;
@@ -27,6 +32,9 @@ interface McpServersFileState {
   lastUpdated: number;
 }
 
+/** Cache of last written content to avoid unnecessary writes */
+let lastWrittenContent: string | null = null;
+
 /**
  * Read MCP servers state from file
  */
@@ -34,6 +42,8 @@ async function readServersFromFile(): Promise<McpServersFileState | null> {
   try {
     const content = await invoke<string | null>("read_mcp_servers_file");
     if (!content) return null;
+    // Update cache when reading
+    lastWrittenContent = content;
     return JSON.parse(content);
   } catch (err) {
     console.debug("Failed to read servers file:", err);
@@ -42,14 +52,24 @@ async function readServersFromFile(): Promise<McpServersFileState | null> {
 }
 
 /**
- * Write MCP servers state to file
+ * Write MCP servers state to file (with content comparison)
+ * Returns true if write was performed, false if skipped
  */
-async function writeServersToFile(state: McpServersFileState): Promise<void> {
+async function writeServersToFile(state: McpServersFileState): Promise<boolean> {
   try {
     const content = JSON.stringify(state, null, 2);
+
+    // Skip write if content hasn't changed
+    if (content === lastWrittenContent) {
+      return false;
+    }
+
     await invoke("write_mcp_servers_file", { content });
+    lastWrittenContent = content;
+    return true;
   } catch (err) {
     console.debug("Failed to write servers file:", err);
+    return false;
   }
 }
 
@@ -71,34 +91,36 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
 
   const lastSyncRef = useRef<number>(0);
   const isInitialMount = useRef(true);
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /**
    * Save current state to file and emit update event
+   * Only emits event if file was actually written (content changed)
    */
   const saveAndEmit = useCallback(
     async (updated: StoreSyncPayload["updated"] = "all") => {
       const timestamp = Date.now();
-      lastSyncRef.current = timestamp;
-
       const store = useAppStore.getState();
 
-      // Save to file
-      await writeServersToFile({
+      // Save to file (returns false if content unchanged)
+      const didWrite = await writeServersToFile({
         mcpServers: store.mcpServers,
         mcpServerStatuses: store.mcpServerStatuses,
         lastUpdated: timestamp,
       });
 
-      // Emit event to other windows
-      try {
-        await emit(STORE_SYNC_EVENT, {
-          timestamp,
-          updated,
-          source: windowType,
-        } as StoreSyncPayload);
-      } catch (err) {
-        console.debug("Failed to emit store sync event:", err);
+      // Only emit event if we actually wrote something
+      if (didWrite) {
+        lastSyncRef.current = timestamp;
+
+        try {
+          await emit(STORE_SYNC_EVENT, {
+            timestamp,
+            updated,
+            source: windowType,
+          } as StoreSyncPayload);
+        } catch (err) {
+          console.debug("Failed to emit store sync event:", err);
+        }
       }
     },
     [windowType]
@@ -138,22 +160,34 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     }
   }, []);
 
-  /**
-   * Debounced save function
-   */
-  const debouncedSave = useCallback(
-    (updated: StoreSyncPayload["updated"]) => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      saveTimeoutRef.current = setTimeout(() => {
-        saveAndEmit(updated);
-      }, 200);
-    },
-    [saveAndEmit]
-  );
+  const serversTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Watch for store changes and save
+  /**
+   * Debounced save for mcpServers (shorter delay)
+   */
+  const debouncedSaveServers = useCallback(() => {
+    if (serversTimeoutRef.current) {
+      clearTimeout(serversTimeoutRef.current);
+    }
+    serversTimeoutRef.current = setTimeout(() => {
+      saveAndEmit("mcpServers");
+    }, DEBOUNCE_SERVERS);
+  }, [saveAndEmit]);
+
+  /**
+   * Debounced save for mcpServerStatuses (longer delay)
+   */
+  const debouncedSaveStatuses = useCallback(() => {
+    if (statusesTimeoutRef.current) {
+      clearTimeout(statusesTimeoutRef.current);
+    }
+    statusesTimeoutRef.current = setTimeout(() => {
+      saveAndEmit("mcpServerStatuses");
+    }, DEBOUNCE_STATUSES);
+  }, [saveAndEmit]);
+
+  // Watch for mcpServers changes
   useEffect(() => {
     // Skip initial mount to avoid unnecessary sync
     if (isInitialMount.current) {
@@ -165,21 +199,27 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       return;
     }
 
-    debouncedSave("mcpServers");
+    debouncedSaveServers();
 
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      if (serversTimeoutRef.current) {
+        clearTimeout(serversTimeoutRef.current);
       }
     };
-  }, [mcpServers, debouncedSave, windowType, reloadFromFile]);
+  }, [mcpServers, debouncedSaveServers, windowType, reloadFromFile]);
 
-  // Watch for status changes
+  // Watch for mcpServerStatuses changes (with longer debounce)
   useEffect(() => {
     if (isInitialMount.current) return;
 
-    debouncedSave("mcpServerStatuses");
-  }, [mcpServerStatuses, debouncedSave]);
+    debouncedSaveStatuses();
+
+    return () => {
+      if (statusesTimeoutRef.current) {
+        clearTimeout(statusesTimeoutRef.current);
+      }
+    };
+  }, [mcpServerStatuses, debouncedSaveStatuses]);
 
   // Listen for sync events from other windows
   useEffect(() => {

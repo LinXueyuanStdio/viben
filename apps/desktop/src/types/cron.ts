@@ -107,3 +107,49 @@ export interface UpdateCronJob {
 export interface CronJobListResponse {
   jobs: CronJob[];
 }
+
+/**
+ * Cron job execution log entry
+ * Stored in JSONL format for easy querying and analysis
+ */
+export interface CronExecutionLog {
+  /** Unique execution ID */
+  execution_id: string;
+  /** Job ID */
+  job_id: string;
+  /** Job name at execution time */
+  job_name: string;
+  /** Job type at execution time */
+  job_type: CronJobType;
+  /** Agent ID used */
+  agent: string;
+  /** Channel ID if specified */
+  channel?: string;
+  /** Execution start timestamp (milliseconds) */
+  started_at: number;
+  /** Execution end timestamp (milliseconds) */
+  completed_at: number;
+  /** Execution duration (milliseconds) */
+  duration_ms: number;
+  /** Execution status */
+  status: JobStatus;
+  /** Error message if failed */
+  error?: string;
+  /** Output (truncated if too long) */
+  output?: string;
+  /** Full output length */
+  output_length: number;
+  /** Next scheduled run timestamp */
+  next_run?: number;
+  /** Trigger type: scheduled or manual */
+  trigger: "scheduled" | "manual";
+  /** Cron expression if using cron schedule */
+  cron?: string;
+  /** Interval in seconds if using interval schedule */
+  every?: number;
+}
+
+/** API response for listing cron execution logs */
+export interface CronExecutionLogResponse {
+  logs: CronExecutionLog[];
+}

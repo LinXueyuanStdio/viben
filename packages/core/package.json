@@ -76,10 +76,12 @@
     "node-pty": "^1.1.0",
     "pino": "^10.3.1",
     "undici": "^7.22.0",
+    "uuid": "^13.0.0",
     "yaml": "^2.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
+    "@types/uuid": "^11.0.0",
     "@types/ws": "^8.18.1",
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",

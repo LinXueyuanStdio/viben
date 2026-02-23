@@ -247,6 +247,7 @@ export {
   useEnableCronJob,
   useDisableCronJob,
   useRunCronJob,
+  useCronExecutionLogs,
 } from "./use-cron";
 export { useCronNotifications } from "./use-cron-notifications";
 export type { CronJobStatus, UseCronNotificationsReturn } from "./use-cron-notifications";
