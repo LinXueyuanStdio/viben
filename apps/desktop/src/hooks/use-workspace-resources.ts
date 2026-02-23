@@ -756,6 +756,10 @@ export interface AgentListItem {
   // Agent-specific fields
   /** Executor type this agent uses (agents only) */
   executor_type?: string;
+  /** Model ID (agents only) */
+  model?: string;
+  /** Provider ID (agents only) */
+  provider?: string;
 }
 
 /** Counts by item type */
@@ -871,6 +875,8 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
         workspace_path: workspacePath || "",
         config_path: a.config_path,
         executor_type: a.executor_type,
+        model: a.model,
+        provider: a.provider,
       }));
 
       setExecutorItems(executors);

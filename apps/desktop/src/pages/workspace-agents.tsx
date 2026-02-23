@@ -262,15 +262,14 @@ export function WorkspaceAgentsPage({
     if (selectedItemType !== "agent" && selectedItemType !== "workspace-agent") return undefined;
     const agent = agentListAgents.find((a) => a.id === selectedItemId);
     if (!agent) return undefined;
-    // Gateway API returns minimal info, construct full agent structure
-    // The detail panel will handle loading additional data if needed
+    // Gateway API now returns model/provider info
     return {
       id: agent.id,
       name: agent.name,
       path: agent.config_path,
       description: agent.description,
-      model: undefined as string | undefined,
-      provider: undefined as string | undefined,
+      model: agent.model,
+      provider: agent.provider,
       system_prompt: undefined as string | undefined,
       temperature: undefined as number | undefined,
       max_tokens: undefined as number | undefined,

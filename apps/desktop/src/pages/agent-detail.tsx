@@ -249,15 +249,7 @@ export function AgentDetailPage() {
     loading: agentsLoading,
     error: agentsError,
     updateAgent,
-    getWorkspaceAgents,
-    getGlobalAgents,
   } = useAgents({ workspacePath: workspace?.path });
-
-  // All agents from useAgents are user-created agents (not executors)
-  // They may use different executor types (claude_code, cursor, etc.)
-  const globalAgents = getGlobalAgents();
-  const workspaceAgents = getWorkspaceAgents();
-  const workspaceAgentsLoading = agentsLoading;
 
   const { models } = useModels();
   const { executors: availableExecutors } = useExecutors();
@@ -487,12 +479,8 @@ export function AgentDetailPage() {
       });
       setIsDirty(false);
       setLastSaved(new Date());
-      toast.success(t("settingsAgents.saveSuccess", "保存成功"));
     } catch (err) {
       console.error("Failed to save agent:", err);
-      toast.error(t("settingsAgents.saveFailed", "保存失败"), {
-        description: err instanceof Error ? err.message : undefined,
-      });
     } finally {
       setSaving(false);
     }
@@ -639,7 +627,7 @@ export function AgentDetailPage() {
     }
   }, [clearMessages]);
 
-  if (workspacesLoading || agentsLoading || workspaceAgentsLoading || loadingFullAgent) {
+  if (workspacesLoading || agentsLoading || loadingFullAgent) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
