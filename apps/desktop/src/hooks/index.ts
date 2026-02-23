@@ -91,6 +91,8 @@ export {
   useAgentConfigContent,
   useWorkspaceCommands,
   useCommandContent,
+  useWorkspacePrompts,
+  usePromptContent,
 } from "./use-agent-configs";
 
 // Workspace Resources (Gateway API)
@@ -119,6 +121,21 @@ export type {
   AgentOperations,
   UseWorkspaceResourcesReturn,
 } from "./use-workspace-resources";
+
+// Providers (Gateway API)
+export {
+  useProviders,
+  DEFAULT_BASE_URLS,
+  PROVIDER_TYPE_LABELS,
+} from "./use-providers";
+export type {
+  UseProvidersReturn,
+  Provider,
+  ProviderType as ProviderConfigType,
+  ProviderStatus,
+  CreateProviderOptions,
+  ProviderUpdate,
+} from "./use-providers";
 
 // Unified Models (Gateway API)
 export { useModels } from "./use-models";

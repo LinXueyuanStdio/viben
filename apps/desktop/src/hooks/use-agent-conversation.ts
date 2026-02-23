@@ -354,12 +354,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // End text streaming on done
         streamingMessageIdRef.current = null;
         setIsStreaming(false);
-        if (phase === "running") {
-          setPhase("completed");
-        }
+        // Use functional update to check current phase value (avoids stale closure)
+        setPhase((currentPhase) => currentPhase === "running" ? "completed" : currentPhase);
         break;
     }
-  }, [phase]);
+  }, []);
 
   /**
    * Send a message to the agent (real Gateway implementation using SSE)
@@ -465,12 +464,9 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           }
         }
 
-        // Stream completed successfully
+        // Stream ended - the handleSSEMessage callback handles all state transitions
+        // (error, result, done events) so we only need to ensure streaming is stopped
         console.log("[useAgent] Stream completed successfully");
-        setIsStreaming(false);
-        if (phase === "running") {
-          setPhase("completed");
-        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[useAgent] Error:", errorMessage);

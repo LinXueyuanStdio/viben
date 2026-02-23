@@ -1,26 +1,24 @@
 /**
- * Command Detail Page - File-based editor with tabs
+ * Prompt Detail Page - File-based editor for prompts with tabs
  *
- * Three-column layout following skill-detail pattern:
- * - Left: File tree showing command file(s)
+ * Two-column layout with tabs following skill-detail pattern:
+ * - Left: File tree showing prompt file(s)
  * - Right: Tabs + Code editor / Overview
  *
- * Route: /command/:commandId?workspace_path=...&executor_type=...
+ * Route: /prompt/:promptId?workspace_path=...&executor_type=...
  */
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Command,
+  MessageSquare,
   Loader2,
-  Terminal,
-  FolderOpen,
   FileText,
-  Code,
   Copy,
   Check,
   File,
   ExternalLink,
+  Quote,
   X,
 } from "lucide-react";
 import { PageWrapper } from "@/components/layout";
@@ -42,8 +40,8 @@ import {
   useConfigFileWriter,
   useConfigFiles,
   getParentDir,
+  useWorkspacePrompts,
 } from "@/hooks";
-import { useWorkspaceCommands } from "@/hooks/use-agent-configs";
 import { useTranslation } from "react-i18next";
 import { FileTree, CodeEditor } from "@/components/skill-files";
 import type { SkillFileEntry } from "@/types";
@@ -75,7 +73,7 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
       <div className="text-muted-foreground">{icon}</div>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="font-medium text-sm font-mono">{value}</p>
+        <p className="font-medium text-sm">{value}</p>
       </div>
     </div>
   );
@@ -85,11 +83,11 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 // Main Component
 // ============================================================================
 
-export function CommandDetailPage() {
+export function PromptDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { commandId } = useParams<{ commandId: string }>();
+  const { promptId } = useParams<{ promptId: string }>();
 
   // Get workspace and executor from query params
   const workspacePathParam = searchParams.get("workspace_path");
@@ -99,18 +97,18 @@ export function CommandDetailPage() {
   // Use workspace_path from query params if provided
   const effectiveWorkspacePath = workspacePathParam || workspacePath;
 
-  // Load commands
-  const { commands, loading } = useWorkspaceCommands(
+  // Load prompts
+  const { prompts, loading } = useWorkspacePrompts(
     effectiveWorkspacePath || null,
     executorType
   );
 
-  // Find the specific command
-  const command = commands.find((c) => c.id === commandId);
+  // Find the specific prompt
+  const prompt = prompts.find((p) => p.id === promptId);
 
   // File operations
-  const commandDir = command?.path ? getParentDir(command.path) : null;
-  const { files, loading: filesLoading, error: filesError, loadFiles } = useConfigFiles(commandDir);
+  const promptDir = prompt?.path ? getParentDir(prompt.path) : null;
+  const { files, loading: filesLoading, error: filesError, loadFiles } = useConfigFiles(promptDir);
   const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useConfigFileContent();
   const { saveStatus, writeFile, resetStatus } = useConfigFileWriter();
 
@@ -121,7 +119,7 @@ export function CommandDetailPage() {
 
   // Initialize with overview tab
   useEffect(() => {
-    if (command && openTabs.length === 0) {
+    if (prompt && openTabs.length === 0) {
       setOpenTabs([{
         id: "overview",
         path: "",
@@ -130,14 +128,14 @@ export function CommandDetailPage() {
       }]);
       setActiveTabId("overview");
     }
-  }, [command, openTabs.length, t]);
+  }, [prompt, openTabs.length, t]);
 
-  // Load files when command path changes
+  // Load files when prompt path changes
   useEffect(() => {
-    if (commandDir) {
+    if (promptDir) {
       loadFiles(3);
     }
-  }, [commandDir, loadFiles]);
+  }, [promptDir, loadFiles]);
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -244,16 +242,16 @@ export function CommandDetailPage() {
     );
   }
 
-  if (!command) {
+  if (!prompt) {
     return (
       <PageWrapper>
         <div className="flex flex-col items-center justify-center h-[60vh]">
-          <Command className="h-12 w-12 text-muted-foreground mb-4" />
+          <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
           <h2 className="text-xl font-semibold mb-2">
-            {t("settingsAgents.commandNotFound", "Command Not Found")}
+            {t("settingsAgents.promptNotFound", "Prompt Not Found")}
           </h2>
           <p className="text-muted-foreground mb-4">
-            {t("settingsAgents.commandNotFoundDesc", "The requested command could not be found.")}
+            {t("settingsAgents.promptNotFoundDesc", "The requested prompt could not be found.")}
           </p>
           <Button onClick={handleNavigateBack}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -276,7 +274,7 @@ export function CommandDetailPage() {
               href: buildWorkspaceUrl(`/executor/${executorType}`, effectiveWorkspacePath || undefined),
             },
             {
-              label: `/${command.id}`,
+              label: prompt.name,
               href: "#",
             },
           ]}
@@ -289,21 +287,16 @@ export function CommandDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Command className="h-5 w-5 text-emerald-600" />
+            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <Quote className="h-5 w-5 text-amber-600" />
             </div>
             <div>
-              <h1 className="font-semibold font-mono">/{command.id}</h1>
+              <h1 className="font-semibold">{prompt.name}</h1>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  <Terminal className="h-3 w-3 mr-1" />
-                  {t("settingsAgents.slashCommand", "Slash Command")}
+                  <MessageSquare className="h-3 w-3 mr-1" />
+                  {t("settingsAgents.prompt", "Prompt")}
                 </Badge>
-                {command.namespace && (
-                  <Badge variant="secondary" className="text-xs">
-                    {command.namespace}
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
@@ -315,8 +308,8 @@ export function CommandDetailPage() {
         {/* Left Sidebar - File Tree */}
         <div className="w-64 border-r flex flex-col bg-muted/30">
           <div className="p-3 border-b flex items-center gap-2">
-            <Command className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm font-medium font-mono">/{command.id}</span>
+            <Quote className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-medium truncate">{prompt.name}</span>
           </div>
 
           <ScrollArea className="flex-1">
@@ -335,10 +328,10 @@ export function CommandDetailPage() {
               </button>
 
               {/* Separator */}
-              {command.path && <div className="border-t my-2" />}
+              {prompt.path && <div className="border-t my-2" />}
 
               {/* File Tree */}
-              {command.path && (
+              {prompt.path && (
                 filesLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -396,7 +389,7 @@ export function CommandDetailPage() {
           {/* Content Area */}
           <div className="flex-1 overflow-hidden">
             {activeTab?.type === "overview" ? (
-              <CommandOverview command={command} onCopy={handleCopy} copied={copied} />
+              <PromptOverview prompt={prompt} onCopy={handleCopy} copied={copied} />
             ) : activeTab?.type === "file" ? (
               fileLoading ? (
                 <div className="flex items-center justify-center h-full">
@@ -426,14 +419,14 @@ export function CommandDetailPage() {
 }
 
 // ============================================================================
-// Command Overview Component
+// Prompt Overview Component
 // ============================================================================
 
-interface CommandOverviewProps {
-  command: {
+interface PromptOverviewProps {
+  prompt: {
     id: string;
-    namespace: string;
     name: string;
+    description: string;
     path: string;
     content: string;
   };
@@ -441,7 +434,7 @@ interface CommandOverviewProps {
   copied: boolean;
 }
 
-function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
+function PromptOverview({ prompt, onCopy, copied }: PromptOverviewProps) {
   const { t } = useTranslation();
 
   return (
@@ -449,13 +442,13 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
       <div className="p-6 max-w-3xl">
         {/* Header */}
         <div className="flex items-start gap-4 mb-6">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-            <Command className="h-7 w-7" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+            <Quote className="h-7 w-7" />
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold font-mono">/{command.id}</h1>
+            <h1 className="text-2xl font-bold">{prompt.name}</h1>
             <p className="text-muted-foreground mt-1">
-              {t("settingsAgents.slashCommand", "Slash Command")}
+              {prompt.description || t("settingsAgents.prompt", "Prompt")}
             </p>
           </div>
         </div>
@@ -463,24 +456,24 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
         {/* Metadata Grid */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <InfoCard
-            icon={<FolderOpen className="h-4 w-4" />}
-            label={t("settingsAgents.namespace", "Namespace")}
-            value={command.namespace || "-"}
+            icon={<FileText className="h-4 w-4" />}
+            label={t("settingsAgents.type", "Type")}
+            value={t("settingsAgents.prompt", "Prompt")}
           />
           <InfoCard
-            icon={<Code className="h-4 w-4" />}
+            icon={<MessageSquare className="h-4 w-4" />}
             label={t("settingsAgents.usage", "Usage")}
-            value={`/${command.id}`}
+            value={`@${prompt.id}`}
           />
         </div>
 
         {/* Path */}
-        {command.path && (
+        {prompt.path && (
           <div className="mb-6 space-y-2">
             <h3 className="text-sm font-medium">{t("workspace.configPath", "Config Path")}</h3>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-lg font-mono break-all">
-                {command.path}
+                {prompt.path}
               </code>
               <TooltipProvider>
                 <Tooltip>
@@ -489,7 +482,7 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0"
-                      onClick={() => onCopy(command.path)}
+                      onClick={() => onCopy(prompt.path)}
                     >
                       {copied ? (
                         <Check className="h-4 w-4 text-green-500" />
@@ -503,7 +496,7 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
               </TooltipProvider>
             </div>
             <Button variant="outline" size="sm" asChild>
-              <a href={`file://${getParentDir(command.path)}`} target="_blank" rel="noopener noreferrer">
+              <a href={`file://${getParentDir(prompt.path)}`} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="h-3.5 w-3.5 mr-2" />
                 {t("workspace.openInFinder")}
               </a>
@@ -512,13 +505,13 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
         )}
 
         {/* Content Preview */}
-        {command.content && (
+        {prompt.content && (
           <div className="space-y-2">
-            <h3 className="text-sm font-medium">{t("settingsAgents.commandContent", "Command Content")}</h3>
+            <h3 className="text-sm font-medium">{t("settingsAgents.promptContent", "Prompt Content")}</h3>
             <div className="relative">
               <pre className="text-xs bg-muted/50 p-4 rounded-lg font-mono whitespace-pre-wrap max-h-64 overflow-auto">
-                {command.content.slice(0, 500)}
-                {command.content.length > 500 && "..."}
+                {prompt.content.slice(0, 500)}
+                {prompt.content.length > 500 && "..."}
               </pre>
               <TooltipProvider>
                 <Tooltip>
@@ -527,7 +520,7 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
                       variant="ghost"
                       size="icon"
                       className="absolute top-2 right-2 h-7 w-7"
-                      onClick={() => onCopy(command.content)}
+                      onClick={() => onCopy(prompt.content)}
                     >
                       {copied ? (
                         <Check className="h-3.5 w-3.5 text-green-500" />
@@ -549,7 +542,7 @@ function CommandOverview({ command, onCopy, copied }: CommandOverviewProps) {
         {/* Info */}
         <div className="mt-6 p-4 rounded-xl bg-muted/30 border">
           <p className="text-xs text-muted-foreground">
-            {t("settingsAgents.commandDesc", "Slash commands are shortcuts that expand into predefined prompts or actions. They help automate common tasks and ensure consistent interactions with AI agents.")}
+            {t("settingsAgents.promptTemplateDesc", "Prompts are reusable text templates stored in .claude/prompts/. They can be referenced using @mention syntax to quickly insert predefined instructions or context into conversations.")}
           </p>
         </div>
       </div>

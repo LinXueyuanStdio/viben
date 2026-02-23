@@ -20,6 +20,85 @@ import { getSpanName } from "../../telemetry/route-names";
 import { readYaml } from "../../config/yaml";
 import type { AgentConfigFile } from "../../agents";
 
+// ============================================================================
+// Structured Logger for Agent Run
+// ============================================================================
+
+/**
+ * Log levels for agent-run logging
+ */
+type LogLevel = "debug" | "info" | "warn" | "error";
+
+/**
+ * Structured log entry for agent-run operations
+ */
+interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  sessionId?: string;
+  traceId?: string;
+  phase: string;
+  event: string;
+  duration?: number;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Create a structured logger for a specific session
+ */
+function createSessionLogger(sessionId: string, traceId?: string) {
+  const startTime = Date.now();
+
+  const log = (level: LogLevel, phase: string, event: string, details?: Record<string, unknown>) => {
+    const entry: LogEntry = {
+      timestamp: new Date().toISOString(),
+      level,
+      sessionId,
+      traceId,
+      phase,
+      event,
+      duration: Date.now() - startTime,
+      details,
+    };
+
+    // Format: [agent-run] [sessionId] [phase] event - details
+    const prefix = `[agent-run] [${sessionId}]`;
+    const message = `${prefix} [${phase}] ${event}`;
+
+    switch (level) {
+      case "debug":
+        if (process.env.DEBUG || process.env.VIBEN_DEBUG) {
+          console.debug(message, details ? JSON.stringify(details) : "");
+        }
+        break;
+      case "info":
+        console.log(message, details ? JSON.stringify(details) : "");
+        break;
+      case "warn":
+        console.warn(message, details ? JSON.stringify(details) : "");
+        break;
+      case "error":
+        console.error(message, details ? JSON.stringify(details) : "");
+        break;
+    }
+
+    return entry;
+  };
+
+  return {
+    debug: (phase: string, event: string, details?: Record<string, unknown>) =>
+      log("debug", phase, event, details),
+    info: (phase: string, event: string, details?: Record<string, unknown>) =>
+      log("info", phase, event, details),
+    warn: (phase: string, event: string, details?: Record<string, unknown>) =>
+      log("warn", phase, event, details),
+    error: (phase: string, event: string, details?: Record<string, unknown>) =>
+      log("error", phase, event, details),
+    /** Get elapsed time since session start */
+    elapsed: () => Date.now() - startTime,
+  };
+}
+
 /**
  * Agent configuration passed from frontend (inline config)
  */
@@ -289,6 +368,28 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       taskId?: string;
     };
   }>("/api/agent/run", async (request, reply) => {
+    // Generate session ID early for logging
+    const sessionId = generateInternalSessionId();
+    const parentSpan = trace.getActiveSpan();
+    const traceId = parentSpan?.spanContext().traceId;
+
+    // Create session-scoped logger
+    const log = createSessionLogger(sessionId, traceId);
+
+    log.info("init", "request_received", {
+      method: request.method,
+      url: request.url,
+      ip: request.ip,
+      userAgent: request.headers["user-agent"],
+    });
+
+    // Early validation - check request body exists
+    if (!request.body) {
+      log.warn("validation", "missing_body");
+      reply.code(400);
+      return { error: "Request body is required" };
+    }
+
     const {
       prompt,
       cwd,
@@ -298,24 +399,58 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       taskId: persistTaskId,
     } = request.body;
 
+    // Validate required fields
+    if (!prompt || typeof prompt !== "string") {
+      log.warn("validation", "invalid_prompt", { type: typeof prompt });
+      reply.code(400);
+      return { error: "Prompt is required and must be a string" };
+    }
+
+    if (prompt.trim().length === 0) {
+      log.warn("validation", "empty_prompt");
+      reply.code(400);
+      return { error: "Prompt cannot be empty" };
+    }
+
+    log.info("validation", "passed", {
+      promptLength: prompt.length,
+      hasCwd: !!cwd,
+      hasAgentPath: !!agentPath,
+      hasInlineConfig: !!inlineConfig,
+      hasPersistSession: !!persistSessionId,
+    });
+
     // Load agent config: prefer agentPath, fallback to inline config
     let agentConfig: AgentConfigPayload | null = null;
     if (agentPath) {
+      log.debug("config", "loading_from_path", { agentPath });
       agentConfig = await loadAgentConfigFromPath(agentPath);
       if (!agentConfig) {
-        console.warn(`[agent-run] Failed to load config from ${agentPath}, using inline config`);
+        log.warn("config", "path_load_failed", { agentPath, fallbackToInline: !!inlineConfig });
         agentConfig = inlineConfig || null;
+      } else {
+        log.info("config", "loaded_from_path", {
+          agentName: agentConfig.name,
+          model: agentConfig.model,
+          provider: agentConfig.provider,
+        });
       }
     } else {
       agentConfig = inlineConfig || null;
+      if (agentConfig) {
+        log.info("config", "using_inline", {
+          agentName: agentConfig.name,
+          model: agentConfig.model,
+          provider: agentConfig.provider,
+        });
+      } else {
+        log.info("config", "using_defaults");
+      }
     }
-
-    // Get parent span from HTTP instrumentation (auto-created by FastifyInstrumentation)
-    const parentSpan = trace.getActiveSpan();
-    const traceId = parentSpan?.spanContext().traceId;
 
     // Set SSE headers (with CORS for raw response)
     setSSEHeaders(reply, request);
+    log.debug("sse", "headers_set");
 
     // Prepare request body for logging (sanitized)
     const requestBody = {
@@ -338,6 +473,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       } : null,
     };
 
+    log.debug("telemetry", "creating_span", { traceId });
+
     // Create main agent run span as child of HTTP span
     const agentRunSpan = tracer.startSpan(getSpanName("agent.run"), {
       attributes: {
@@ -353,10 +490,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     // Create context with agent run span as parent
     const agentRunContext = trace.setSpan(context.active(), agentRunSpan);
 
-    // Generate internal session ID for abort control
-    const sessionId = generateInternalSessionId();
-
     try {
+      log.info("session", "creating", { agentName: agentConfig?.name || "default" });
+
       // Create session span as child of agentRunSpan
       const sessionSpan = tracer.startSpan(
         getSpanName("agent.run.session_create"),
@@ -370,6 +506,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
       // Register session for abort control
       agentService.registerSession(sessionId);
+      log.debug("session", "registered_for_abort_control");
 
       sessionSpan.setAttribute("session.id", sessionId);
       sessionSpan.setStatus({ code: SpanStatusCode.OK });
@@ -381,10 +518,15 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         sessionId,
         traceId,
       });
+      log.info("session", "created", { sessionId, traceId });
 
       // Persist user message to UI messages file BEFORE streaming
       // This ensures user messages appear when loading the session
       if (persistSessionId && persistTaskId && prompt) {
+        log.debug("persistence", "saving_user_message", {
+          persistSessionId,
+          persistTaskId,
+        });
         try {
           const persistAgentId = resolveAgentId(agentPath, agentConfig);
           await sessionStoreService.appendUIMessage(persistAgentId, persistSessionId, {
@@ -394,13 +536,23 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             type: "user",
             content: prompt,
           });
+          log.debug("persistence", "user_message_saved");
         } catch (e) {
           // Non-fatal: log but continue
-          console.warn("[agent-run] Failed to persist user message:", e);
+          log.warn("persistence", "user_message_save_failed", {
+            error: e instanceof Error ? e.message : String(e),
+          });
         }
       }
 
       // SDK initialization span
+      log.info("sdk", "initializing", {
+        model: agentConfig?.model,
+        cwd: cwd || process.cwd(),
+        hasMcpServers: !!(agentConfig?.mcpServers?.length),
+        hasSkills: !!(agentConfig?.skills?.length),
+      });
+
       const sdkInitSpan = tracer.startSpan(
         getSpanName("agent.run.sdk_init"),
         {},
@@ -423,8 +575,11 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
       sdkInitSpan.setStatus({ code: SpanStatusCode.OK });
       sdkInitSpan.end();
+      log.info("sdk", "initialized", { elapsed: log.elapsed() });
 
       // Streaming span
+      log.info("stream", "starting");
+
       const streamSpan = tracer.startSpan(
         getSpanName("agent.run.stream"),
         {
@@ -441,20 +596,34 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       let messageCount = 0;
       let textLength = 0;
       let toolUseCount = 0;
+      let toolResultCount = 0;
+      let errorCount = 0;
       const textParts: string[] = [];
+      const toolNames: string[] = [];
 
       // Stream messages to client
       for await (const message of stream) {
         messageCount++;
 
-        // Track message statistics
+        // Track message statistics and log by type
         if (message.type === "text" && "content" in message) {
           const textContent = (message as SSETextMessage).content;
           textLength += textContent.length;
           textParts.push(textContent);
+          log.debug("stream", "text_chunk", {
+            chunkLength: textContent.length,
+            totalTextLength: textLength,
+          });
         } else if (message.type === "tool_use") {
           toolUseCount++;
           const toolMsg = message as SSEToolUseMessage;
+          toolNames.push(toolMsg.name);
+          log.info("stream", "tool_use", {
+            toolId: toolMsg.id,
+            toolName: toolMsg.name,
+            toolUseCount,
+            inputPreview: JSON.stringify(toolMsg.input).slice(0, 200),
+          });
           // Create a span for each tool use as child of stream span
           const toolSpan = tracer.startSpan(
             `tool.${toolMsg.name}`,
@@ -470,7 +639,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
           );
           toolSpan.end();
         } else if (message.type === "tool_result") {
+          toolResultCount++;
           const resultMsg = message as SSEToolResultMessage;
+          log.info("stream", "tool_result", {
+            toolUseId: resultMsg.toolUseId,
+            isError: resultMsg.isError || false,
+            outputLength: resultMsg.output?.length || 0,
+            toolResultCount,
+          });
           // Create a span for tool result
           const resultSpan = tracer.startSpan(
             `tool_result.${resultMsg.toolUseId}`,
@@ -492,7 +668,23 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             resultSpan.setStatus({ code: SpanStatusCode.OK });
           }
           resultSpan.end();
+        } else if (message.type === "error") {
+          errorCount++;
+          const errMsg = message as SSEErrorMessage;
+          log.error("stream", "error_message", {
+            errorMessage: errMsg.message,
+            errorCount,
+          });
+        } else if (message.type === "result") {
+          const resultMsg = message as SSEResultMessage;
+          log.info("stream", "result", {
+            subtype: resultMsg.subtype,
+            cost: resultMsg.cost,
+            duration: resultMsg.duration,
+          });
         }
+        // Note: plan and question message types are defined but not currently
+        // emitted by SdkChatProxy. When they are supported, add logging here.
 
         sendSSE(reply, message);
 
@@ -520,13 +712,17 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 message.type === "tool_result" ? (message as SSEToolResultMessage).isError : undefined,
             });
           } catch (persistError) {
-            console.error("[agent-run] Failed to persist message:", persistError);
+            log.warn("persistence", "message_save_failed", {
+              messageType: message.type,
+              error: persistError instanceof Error ? persistError.message : String(persistError),
+            });
             // Don't fail the request, just log the error
           }
         }
 
         // Check if session was cancelled (via abort controller)
         if (agentService.isSessionAborted(sessionId)) {
+          log.warn("stream", "cancelled_by_user", { messageCount });
           streamSpan.setStatus({
             code: SpanStatusCode.ERROR,
             message: "Session cancelled by user",
@@ -536,6 +732,17 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         }
       }
 
+      // Log stream completion summary
+      log.info("stream", "completed", {
+        messageCount,
+        textLength,
+        toolUseCount,
+        toolResultCount,
+        errorCount,
+        toolNames: [...new Set(toolNames)], // unique tool names
+        elapsed: log.elapsed(),
+      });
+
       // Combine all text parts for response body
       const fullResponse = textParts.join("");
       const responseBody = {
@@ -543,6 +750,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         text_full_length: fullResponse.length,
         message_count: messageCount,
         tool_use_count: toolUseCount,
+        tool_result_count: toolResultCount,
+        error_count: errorCount,
       };
 
       // Update stream span with statistics
@@ -550,6 +759,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         "stream.message_count": messageCount,
         "stream.text_length": textLength,
         "stream.tool_use_count": toolUseCount,
+        "stream.tool_result_count": toolResultCount,
+        "stream.error_count": errorCount,
         // Store response body as JSON for detailed inspection
         "http.response.body": JSON.stringify(responseBody),
       });
@@ -562,26 +773,88 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         "agent.message_count": messageCount,
         "agent.text_length": textLength,
         "agent.tool_use_count": toolUseCount,
+        "agent.tool_result_count": toolResultCount,
+        "agent.error_count": errorCount,
         // Store full response body for main span too
         "http.response.body": JSON.stringify(responseBody),
       });
       agentRunSpan.setStatus({ code: SpanStatusCode.OK });
+
+      log.info("execution", "success", {
+        messageCount,
+        textLength,
+        toolUseCount,
+        toolResultCount,
+        errorCount,
+        elapsed: log.elapsed(),
+      });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      const cause = (error as Error & { cause?: Error }).cause;
+
+      // Categorize errors for better user feedback
+      let userMessage: string;
+      let errorCategory: string;
+
+      if (rawMessage.includes("API key") || rawMessage.includes("authentication") || rawMessage.includes("401")) {
+        errorCategory = "auth";
+        userMessage = "Authentication failed. Please check your API key configuration in ~/.claude/settings.json";
+      } else if (rawMessage.includes("rate limit") || rawMessage.includes("429")) {
+        errorCategory = "rate_limit";
+        userMessage = "Rate limit exceeded. Please wait a moment and try again.";
+      } else if (rawMessage.includes("not found") || rawMessage.includes("ENOENT")) {
+        errorCategory = "not_found";
+        userMessage = "Claude Code executable not found. Please ensure Claude Code is installed.";
+      } else if (rawMessage.includes("exited with code") || rawMessage.includes("spawn")) {
+        errorCategory = "process";
+        userMessage = `Agent process error: ${rawMessage}`;
+      } else if (rawMessage.includes("timeout") || rawMessage.includes("ETIMEDOUT")) {
+        errorCategory = "timeout";
+        userMessage = "Request timed out. The agent may be under heavy load.";
+      } else if (rawMessage.includes("network") || rawMessage.includes("ECONNREFUSED") || rawMessage.includes("ENOTFOUND")) {
+        errorCategory = "network";
+        userMessage = "Network error. Please check your internet connection.";
+      } else if (rawMessage.includes("SDK") || rawMessage.includes("sdk")) {
+        errorCategory = "sdk";
+        userMessage = `SDK error: ${rawMessage}`;
+      } else {
+        errorCategory = "unknown";
+        userMessage = rawMessage;
+      }
+
+      // Structured error logging
+      log.error("execution", "failed", {
+        category: errorCategory,
+        rawMessage,
+        userMessage,
+        stack: stack?.split("\n").slice(0, 10).join("\n"), // First 10 lines of stack
+        cause: cause?.message,
+        elapsed: log.elapsed(),
+      });
 
       agentRunSpan.setStatus({
         code: SpanStatusCode.ERROR,
-        message: errorMessage,
+        message: rawMessage,
       });
-      agentRunSpan.recordException(error instanceof Error ? error : new Error(errorMessage));
+      agentRunSpan.setAttribute("error.category", errorCategory);
+      agentRunSpan.recordException(error instanceof Error ? error : new Error(rawMessage));
 
-      sendSSE(reply, { type: "error", message: errorMessage });
+      sendSSE(reply, { type: "error", message: userMessage });
     } finally {
       // Cleanup: unregister the session
       agentService.unregisterSession(sessionId);
+      log.debug("cleanup", "session_unregistered");
+
       agentRunSpan.end();
+      log.debug("cleanup", "span_ended");
+
       sendSSE(reply, { type: "done" });
       reply.raw.end();
+
+      log.info("cleanup", "request_completed", {
+        totalElapsed: log.elapsed(),
+      });
     }
   });
 

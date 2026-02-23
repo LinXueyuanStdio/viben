@@ -504,6 +504,17 @@ export class SdkChatProxy implements ChatProxy {
       this.sentTextHashes.clear();
       this.sentToolIds.clear();
 
+      // Log query options for debugging
+      console.log('[SdkChatProxy] Executing query with options:', JSON.stringify({
+        prompt: prompt?.slice(0, 100),
+        cwd: queryOptions.cwd,
+        claudePath: queryOptions.pathToClaudeCodeExecutable,
+        model: queryOptions.model,
+        permissionMode: queryOptions.permissionMode,
+        hasSystemPrompt: !!queryOptions.systemPrompt,
+        settingSources: queryOptions.settingSources,
+      }, null, 2));
+
       // Execute query
       const queryResult = sdk.query({
         prompt,

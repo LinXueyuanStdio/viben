@@ -195,8 +195,23 @@ export class AgentManager {
 
   /**
    * Remove an agent
+   *
+   * @param id - The agent ID
+   * @param workspacePath - Optional workspace path for workspace-scoped agents
    */
-  async removeAgent(id: string): Promise<void> {
+  async removeAgent(id: string, workspacePath?: string): Promise<void> {
+    // Try workspace agent first if workspace path provided
+    if (workspacePath) {
+      const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
+      const workspaceAgent = await this.getAgentFromDir(workspaceAgentsDir, id);
+      if (workspaceAgent) {
+        const agentDir = join(workspaceAgentsDir, id);
+        await rm(agentDir, { recursive: true, force: true });
+        return;
+      }
+    }
+
+    // Fall back to global agent
     const agentDir = getAgentDir(id);
     if (!fileExists(agentDir)) {
       throw new Error(`Agent "${id}" not found`);
@@ -213,8 +228,22 @@ export class AgentManager {
 
   /**
    * Update an agent
+   *
+   * @param id - The agent ID
+   * @param updates - The updates to apply
+   * @param workspacePath - Optional workspace path for workspace-scoped agents
    */
-  async updateAgent(id: string, updates: Partial<AgentConfig>): Promise<Agent> {
+  async updateAgent(id: string, updates: Partial<AgentConfig>, workspacePath?: string): Promise<Agent> {
+    // Try workspace agent first if workspace path provided
+    if (workspacePath) {
+      const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
+      const workspaceAgent = await this.getAgentFromDir(workspaceAgentsDir, id);
+      if (workspaceAgent) {
+        return this.updateAgentInDir(workspaceAgentsDir, id, updates);
+      }
+    }
+
+    // Fall back to global agent
     const agent = await this.getAgent(id);
     if (!agent) {
       throw new Error(`Agent "${id}" not found`);
@@ -244,6 +273,7 @@ export class AgentManager {
     return {
       id,
       name: config.name,
+      path: getAgentDir(id),
       description: config.description,
       model: config.model,
       provider: config.provider,
@@ -603,6 +633,66 @@ export class AgentManager {
     if (!config) {
       return null;
     }
+
+    return {
+      id,
+      name: config.name,
+      path: agentDir,
+      description: config.description,
+      model: config.model,
+      provider: config.provider,
+      systemPrompt: config.systemPrompt,
+      appendPrompt: config.appendPrompt,
+      temperature: config.temperature,
+      maxTokens: config.maxTokens,
+      executorType: config.executorType as Agent["executorType"],
+      executorConfig: config.executorConfig,
+      mcpServers: config.mcpServers ?? [],
+      skills: config.skills ?? [],
+      planMode: config.planMode ?? false,
+      approvals: config.approvals ?? false,
+      createdAt: config.createdAt,
+      updatedAt: config.updatedAt,
+    };
+  }
+
+  /**
+   * Update an agent in a specific agents directory
+   * Used for updating workspace agents in {workspace}/.viben/agents/
+   *
+   * @param agentsDir - The agents directory path (e.g., /path/to/workspace/.viben/agents/)
+   * @param id - The agent ID (directory name)
+   * @param updates - The updates to apply
+   */
+  async updateAgentInDir(agentsDir: string, id: string, updates: Partial<AgentConfig>): Promise<Agent> {
+    const agent = await this.getAgentFromDir(agentsDir, id);
+    if (!agent) {
+      throw new Error(`Agent "${id}" not found in ${agentsDir}`);
+    }
+
+    const agentDir = join(agentsDir, id);
+    const configPath = join(agentDir, "config.yaml");
+
+    const config: AgentConfigFile = {
+      name: updates.name ?? agent.name,
+      description: updates.description ?? agent.description,
+      model: updates.model ?? agent.model,
+      provider: updates.provider ?? agent.provider,
+      systemPrompt: updates.systemPrompt ?? agent.systemPrompt,
+      appendPrompt: updates.appendPrompt ?? agent.appendPrompt,
+      temperature: updates.temperature ?? agent.temperature,
+      maxTokens: updates.maxTokens ?? agent.maxTokens,
+      executorType: updates.executorType ?? agent.executorType,
+      executorConfig: updates.executorConfig ?? agent.executorConfig,
+      mcpServers: updates.mcpServers ?? agent.mcpServers,
+      skills: updates.skills ?? agent.skills,
+      planMode: updates.planMode ?? agent.planMode,
+      approvals: updates.approvals ?? agent.approvals,
+      createdAt: agent.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await writeYaml(configPath, config);
 
     return {
       id,

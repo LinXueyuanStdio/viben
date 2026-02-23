@@ -286,7 +286,7 @@ export function WorkspaceChatPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
 
   // UI State
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Dialog states
@@ -436,8 +436,9 @@ export function WorkspaceChatPage() {
 
   // Get executor sessions for the selected sidebar executor
   const selectedSidebarExecutor = chatListExecutors.find((e) => e.id === selectedSidebarExecutorId);
-  // Get executor type from ChatListItem (stored in icon_type or metadata)
-  const selectedExecutorType = selectedSidebarExecutor?.icon_type || null;
+  // Get executor type from ChatListItem id (uppercase format like CLAUDE_CODE)
+  // Note: icon_type is lowercase (claude_code) but API expects uppercase
+  const selectedExecutorType = selectedSidebarExecutor?.id || null;
 
   const {
     sessions: executorSessions,

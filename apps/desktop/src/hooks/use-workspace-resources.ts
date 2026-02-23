@@ -416,22 +416,26 @@ export function useAgents(options?: UseAgentsOptions): UseAgentsReturn {
   const updateAgent = useCallback(
     async (id: string, updates: UpdateAgentOptions): Promise<AgentResponse> => {
       const client = getGatewayClient();
-      const result = await client.updateAgent(id, updates);
+      // Add workspace path for workspace-scoped agents
+      const updatesWithPath = workspacePath
+        ? { ...updates, workspace_path: workspacePath }
+        : updates;
+      const result = await client.updateAgent(id, updatesWithPath);
       // Refresh agent list after update
       await loadAgents();
       return result;
     },
-    [loadAgents]
+    [workspacePath, loadAgents]
   );
 
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteAgent(id);
+      await client.deleteAgent(id, { workspacePath: workspacePath || undefined });
       // Refresh agent list after deletion
       await loadAgents();
     },
-    [loadAgents]
+    [workspacePath, loadAgents]
   );
 
   const setDefaultAgent = useCallback(
@@ -921,10 +925,10 @@ export function useAgentList(options?: UseAgentListOptions): UseAgentListReturn 
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteAgent(id);
+      await client.deleteAgent(id, { workspacePath: workspacePath || undefined });
       await loadData();
     },
-    [loadData]
+    [workspacePath, loadData]
   );
 
   const updateAgent = useCallback(
@@ -1111,11 +1115,11 @@ export function useChatList(options?: UseChatListOptions): UseChatListReturn {
   const removeAgent = useCallback(
     async (id: string): Promise<void> => {
       const client = getGatewayClient();
-      await client.deleteAgent(id);
+      await client.deleteAgent(id, { workspacePath: workspacePath || undefined });
       // Refresh chat list after deletion
       await loadChatList();
     },
-    [loadChatList]
+    [workspacePath, loadChatList]
   );
 
   const updateAgent = useCallback(

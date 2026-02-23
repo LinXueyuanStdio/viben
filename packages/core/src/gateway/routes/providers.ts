@@ -97,13 +97,15 @@ interface SetDefaultProviderBody {
 }
 
 /**
- * Discovered model with enabled status
+ * Model with enabled status (snake_case for API response)
  */
-interface DiscoveredModelResponse {
+interface ProviderModelResponse {
   id: string;
-  name?: string;
+  name: string;
+  provider: string;
   description?: string;
   enabled: boolean;
+  is_known: boolean;
   capabilities?: {
     chat?: boolean;
     code?: boolean;
@@ -112,23 +114,38 @@ interface DiscoveredModelResponse {
   };
   context_window?: number;
   max_output_tokens?: number;
+  input_price?: number;
+  output_price?: number;
 }
 
 /**
- * Response for discover models
+ * Response for list provider models
+ */
+interface ProviderModelsResponse {
+  provider_id: string;
+  models: ProviderModelResponse[];
+  total: number;
+}
+
+/**
+ * Response for discover models (raw discovery without user config)
  */
 interface DiscoverModelsResponse {
   provider_id: string;
-  models: DiscoveredModelResponse[];
+  models: Array<{
+    id: string;
+    name?: string;
+    description?: string;
+    capabilities?: {
+      chat?: boolean;
+      code?: boolean;
+      vision?: boolean;
+      tools?: boolean;
+    };
+    context_window?: number;
+    max_output_tokens?: number;
+  }>;
   error?: string;
-}
-
-/**
- * Response for list enabled models
- */
-interface EnabledModelsResponse {
-  provider_id: string;
-  enabled_models: string[];
 }
 
 /**
@@ -139,23 +156,6 @@ interface ModelToggleResponse {
   provider_id: string;
   model_id: string;
   enabled: boolean;
-}
-
-// ============================================================================
-// In-memory enabled models tracking
-// Provider-specific model enablement is stored per-provider
-// ============================================================================
-
-const enabledModelsPerProvider = new Map<string, Set<string>>();
-
-/**
- * Get enabled models for a provider
- */
-function getEnabledModels(providerId: string): Set<string> {
-  if (!enabledModelsPerProvider.has(providerId)) {
-    enabledModelsPerProvider.set(providerId, new Set());
-  }
-  return enabledModelsPerProvider.get(providerId)!;
 }
 
 // ============================================================================
@@ -472,12 +472,15 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
   );
 
   // ========================================================================
-  // Model Discovery
+  // Model Discovery (raw API discovery without user config)
   // ========================================================================
 
   /**
-   * Discover all available models from a provider
+   * Discover all available models from a provider's API
    * GET /api/providers/:id/discover-models
+   *
+   * This returns raw models from the provider API without user configuration.
+   * Use GET /api/providers/:id/models for the combined list with enabled status.
    */
   fastify.get(
     "/api/providers/:id/discover-models",
@@ -498,7 +501,7 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
         };
       }
 
-      // Discover models from the provider
+      // Discover models from the provider API
       const result = await discoverModels(id);
 
       if (result.error) {
@@ -509,15 +512,11 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
         };
       }
 
-      // Get enabled models for this provider
-      const enabledSet = getEnabledModels(id);
-
-      // Map discovered models to response format
-      const models: DiscoveredModelResponse[] = result.models.map((m) => ({
+      // Map discovered models to response format (without enabled status)
+      const models = result.models.map((m) => ({
         id: m.id,
         name: m.name,
         description: undefined,
-        enabled: enabledSet.has(m.id),
         capabilities: m.capabilities
           ? {
               chat: m.capabilities.includes("chat"),
@@ -538,41 +537,67 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
   );
 
   // ========================================================================
-  // Enabled Models Management
+  // Provider Models (combined discover + user config)
   // ========================================================================
 
   /**
-   * List enabled models for a provider
+   * List models for a provider (combines discovery + user configuration)
    * GET /api/providers/:id/models
+   *
+   * Returns models from:
+   * 1. Known models for this provider type (from KNOWN_MODELS)
+   * 2. User's custom models for this provider
+   * Each model includes enabled status from user configuration.
    */
   fastify.get(
     "/api/providers/:id/models",
     async (
       request: FastifyRequest<{ Params: { id: string } }>,
       reply: FastifyReply
-    ): Promise<EnabledModelsResponse> => {
+    ): Promise<ProviderModelsResponse> => {
       const { id } = request.params;
 
       // Check if provider exists
       const provider = await providerManager.getProvider(id);
       if (!provider) {
         reply.code(404);
-        throw new Error(`Provider not found: ${id}`);
+        return {
+          provider_id: id,
+          models: [],
+          total: 0,
+        };
       }
 
-      // Get enabled models for this provider
-      const enabledSet = getEnabledModels(id);
+      // Get models for this provider from modelManager (includes enabled status)
+      const models = await modelManager.getModelsByProvider(provider.type);
+
+      // Transform to response format
+      const responseModels: ProviderModelResponse[] = models.map((m) => ({
+        id: m.id,
+        name: m.name,
+        provider: m.provider,
+        description: m.description,
+        enabled: m.enabled ?? true,
+        is_known: true, // TODO: distinguish known vs custom models
+        context_window: m.contextLength,
+        max_output_tokens: m.maxOutputTokens,
+        input_price: m.inputPrice,
+        output_price: m.outputPrice,
+      }));
 
       return {
         provider_id: id,
-        enabled_models: Array.from(enabledSet),
+        models: responseModels,
+        total: responseModels.length,
       };
     }
   );
 
   /**
-   * Enable a model for a provider
+   * Enable a model
    * POST /api/providers/:provider_id/models/:model_id/enable
+   *
+   * Persists the enabled state to modelManager configuration.
    */
   fastify.post(
     "/api/providers/:provider_id/models/:model_id/enable",
@@ -586,25 +611,41 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
       const provider = await providerManager.getProvider(provider_id);
       if (!provider) {
         reply.code(404);
-        throw new Error(`Provider not found: ${provider_id}`);
+        return {
+          success: false,
+          provider_id,
+          model_id,
+          enabled: false,
+        };
       }
 
-      // Enable the model
-      const enabledSet = getEnabledModels(provider_id);
-      enabledSet.add(model_id);
+      try {
+        // Enable the model via modelManager (persists to config)
+        await modelManager.enableModel(model_id);
 
-      return {
-        success: true,
-        provider_id,
-        model_id,
-        enabled: true,
-      };
+        return {
+          success: true,
+          provider_id,
+          model_id,
+          enabled: true,
+        };
+      } catch (e) {
+        reply.code(400);
+        return {
+          success: false,
+          provider_id,
+          model_id,
+          enabled: false,
+        };
+      }
     }
   );
 
   /**
-   * Disable a model for a provider
+   * Disable a model
    * POST /api/providers/:provider_id/models/:model_id/disable
+   *
+   * Persists the disabled state to modelManager configuration.
    */
   fastify.post(
     "/api/providers/:provider_id/models/:model_id/disable",
@@ -618,19 +659,33 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
       const provider = await providerManager.getProvider(provider_id);
       if (!provider) {
         reply.code(404);
-        throw new Error(`Provider not found: ${provider_id}`);
+        return {
+          success: false,
+          provider_id,
+          model_id,
+          enabled: true,
+        };
       }
 
-      // Disable the model
-      const enabledSet = getEnabledModels(provider_id);
-      enabledSet.delete(model_id);
+      try {
+        // Disable the model via modelManager (persists to config)
+        await modelManager.disableModel(model_id);
 
-      return {
-        success: true,
-        provider_id,
-        model_id,
-        enabled: false,
-      };
+        return {
+          success: true,
+          provider_id,
+          model_id,
+          enabled: false,
+        };
+      } catch (e) {
+        reply.code(400);
+        return {
+          success: false,
+          provider_id,
+          model_id,
+          enabled: true,
+        };
+      }
     }
   );
 }

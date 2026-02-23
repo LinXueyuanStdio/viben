@@ -1,7 +1,5 @@
 /**
- * Hook for managing viben-core Providers via Gateway HTTP API
- *
- * Migrated from Tauri invoke to HTTP calls for Desktop/Gateway decoupling.
+ * Hook for managing Providers via Gateway HTTP API
  */
 import { useState, useEffect, useCallback } from "react";
 import { getGatewayClient } from "@/lib/gateway";
@@ -116,7 +114,7 @@ export const PROVIDER_TYPE_LABELS: Record<ProviderType, string> = {
 // Hook
 // ============================================================================
 
-export interface UseVibenProvidersReturn {
+export interface UseProvidersReturn {
   // Data
   providers: Provider[];
   defaultProviderId: string | null;
@@ -138,7 +136,7 @@ export interface UseVibenProvidersReturn {
   testConnection: (id: string) => Promise<ProviderStatus>;
 }
 
-export function useVibenProviders(): UseVibenProvidersReturn {
+export function useProviders(): UseProvidersReturn {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});

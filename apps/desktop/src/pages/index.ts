@@ -16,6 +16,7 @@ export { SkillDetailPage } from "./skill-detail";
 export { ExecutorDetailPage } from "./executor-detail";
 export { McpServerDetailPage } from "./mcp-server-detail";
 export { SubAgentDetailPage } from "./subagent-detail";
+export { PromptDetailPage } from "./prompt-detail";
 export { CommandDetailPage } from "./command-detail";
 export { WorkspaceAgentsPage } from "./workspace-agents";
 export { HomeRedirect } from "./home-redirect";

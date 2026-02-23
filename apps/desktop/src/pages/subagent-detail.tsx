@@ -1,9 +1,9 @@
 /**
  * SubAgent Detail Page (Agent Config from .claude/agents/*.md)
  *
- * Two-column layout following skill-detail pattern:
+ * Two-column layout with tabs following skill-detail pattern:
  * - Left: File tree showing config file(s)
- * - Right: Overview + Code editor
+ * - Right: Tabs + Code editor / Overview
  *
  * Route: /subagent/:configId?workspace_path=...&executor_type=...
  */
@@ -20,6 +20,7 @@ import {
   File,
   ExternalLink,
   Package,
+  X,
 } from "lucide-react";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
@@ -47,6 +48,17 @@ import { FileTree, CodeEditor } from "@/components/skill-files";
 import type { SkillFileEntry } from "@/types";
 
 // ============================================================================
+// Types
+// ============================================================================
+
+interface FileTab {
+  id: string;
+  path: string;
+  name: string;
+  type: "overview" | "file";
+}
+
+// ============================================================================
 // Info Card Component
 // ============================================================================
 
@@ -71,8 +83,6 @@ function InfoCard({ icon, label, value }: InfoCardProps) {
 // ============================================================================
 // Main Component
 // ============================================================================
-
-type SelectedItem = { type: "overview" } | { type: "file"; entry: SkillFileEntry };
 
 export function SubAgentDetailPage() {
   const { t } = useTranslation();
@@ -103,9 +113,23 @@ export function SubAgentDetailPage() {
   const { content: fileContent, loading: fileLoading, error: fileError, readFile, clearContent } = useConfigFileContent();
   const { saveStatus, writeFile, resetStatus } = useConfigFileWriter();
 
-  // UI state
-  const [selected, setSelected] = useState<SelectedItem>({ type: "overview" });
+  // Tab management
+  const [openTabs, setOpenTabs] = useState<FileTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string>("overview");
   const [copied, setCopied] = useState(false);
+
+  // Initialize with overview tab
+  useEffect(() => {
+    if (config && openTabs.length === 0) {
+      setOpenTabs([{
+        id: "overview",
+        path: "",
+        name: t("workspace.overview"),
+        type: "overview",
+      }]);
+      setActiveTabId("overview");
+    }
+  }, [config, openTabs.length, t]);
 
   // Load files when config path changes
   useEffect(() => {
@@ -121,24 +145,81 @@ export function SubAgentDetailPage() {
   };
 
   const handleSelectOverview = () => {
-    setSelected({ type: "overview" });
+    const overviewTab = openTabs.find(t => t.type === "overview");
+    if (!overviewTab) {
+      const newTab: FileTab = {
+        id: "overview",
+        path: "",
+        name: t("workspace.overview"),
+        type: "overview",
+      };
+      setOpenTabs(prev => [newTab, ...prev]);
+    }
+    setActiveTabId("overview");
     clearContent();
     resetStatus();
   };
 
   const handleSelectFile = (entry: SkillFileEntry) => {
-    setSelected({ type: "file", entry });
+    if (entry.is_directory) return;
+
+    const existingTab = openTabs.find(t => t.path === entry.path);
+    if (!existingTab) {
+      const newTab: FileTab = {
+        id: entry.path,
+        path: entry.path,
+        name: entry.name,
+        type: "file",
+      };
+      setOpenTabs(prev => [...prev, newTab]);
+    }
+    setActiveTabId(entry.path);
     resetStatus();
-    if (!entry.is_directory) {
-      readFile(entry.path);
+    readFile(entry.path);
+  };
+
+  const handleCloseTab = (tabId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newTabs = openTabs.filter(t => t.id !== tabId);
+    setOpenTabs(newTabs);
+
+    if (activeTabId === tabId) {
+      if (newTabs.length > 0) {
+        const lastTab = newTabs[newTabs.length - 1];
+        setActiveTabId(lastTab.id);
+        if (lastTab.type === "file") {
+          readFile(lastTab.path);
+        } else {
+          clearContent();
+        }
+      } else {
+        // Reopen overview tab
+        const overviewTab: FileTab = {
+          id: "overview",
+          path: "",
+          name: t("workspace.overview"),
+          type: "overview",
+        };
+        setOpenTabs([overviewTab]);
+        setActiveTabId("overview");
+        clearContent();
+      }
+    }
+  };
+
+  const handleTabClick = (tab: FileTab) => {
+    setActiveTabId(tab.id);
+    if (tab.type === "file") {
+      readFile(tab.path);
     } else {
       clearContent();
     }
   };
 
   const handleSaveFile = async (content: string) => {
-    if (selected.type === "file" && !selected.entry.is_directory) {
-      await writeFile(selected.entry.path, content);
+    const activeTab = openTabs.find(t => t.id === activeTabId);
+    if (activeTab?.type === "file") {
+      await writeFile(activeTab.path, content);
     }
   };
 
@@ -150,7 +231,7 @@ export function SubAgentDetailPage() {
     navigate(url);
   };
 
-  const selectedFile = selected.type === "file" ? selected.entry : null;
+  const activeTab = openTabs.find(t => t.id === activeTabId);
 
   if (loading) {
     return (
@@ -245,7 +326,7 @@ export function SubAgentDetailPage() {
                 className={cn(
                   "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-left mb-1",
                   "hover:bg-accent transition-colors",
-                  selected.type === "overview" && "bg-accent"
+                  activeTabId === "overview" && "bg-accent"
                 )}
               >
                 <FileText className="h-4 w-4 text-blue-500" />
@@ -266,7 +347,7 @@ export function SubAgentDetailPage() {
                 ) : (
                   <FileTree
                     files={files}
-                    selectedPath={selectedFile?.path || null}
+                    selectedPath={activeTab?.type === "file" ? activeTab.path : null}
                     onSelectFile={handleSelectFile}
                   />
                 )
@@ -277,60 +358,66 @@ export function SubAgentDetailPage() {
 
         {/* Right Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {selected.type === "overview" ? (
-            <SubAgentOverview config={config} onCopy={handleCopy} copied={copied} />
-          ) : selectedFile ? (
-            <>
-              <div className="p-3 border-b flex items-center justify-between">
-                <div className="flex items-center gap-2 min-w-0">
-                  <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm font-mono truncate">{selectedFile.name}</span>
-                </div>
-                {!selectedFile.is_directory && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 flex-shrink-0"
-                    asChild
+          {/* Tabs Bar */}
+          {openTabs.length > 0 && (
+            <div className="border-b bg-muted/20">
+              <div className="flex overflow-x-auto">
+                {openTabs.map((tab) => (
+                  <div
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 border-r cursor-pointer text-sm",
+                      "hover:bg-accent/50 transition-colors",
+                      activeTabId === tab.id
+                        ? "bg-background border-b-2 border-b-primary"
+                        : "bg-muted/30"
+                    )}
                   >
-                    <a
-                      href={`file://${selectedFile.path}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    {tab.type === "overview" ? (
+                      <FileText className="h-3.5 w-3.5 text-blue-500" />
+                    ) : (
+                      <File className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                    <span className="truncate max-w-[120px]">{tab.name}</span>
+                    <button
+                      onClick={(e) => handleCloseTab(tab.id, e)}
+                      className="ml-1 p-0.5 rounded hover:bg-muted"
                     >
-                      <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                      {t("workspace.openInEditor")}
-                    </a>
-                  </Button>
-                )}
-              </div>
-              <div className="flex-1 overflow-hidden">
-                {selectedFile.is_directory ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    <p>{t("workspace.selectFile")}</p>
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
-                ) : fileLoading ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : fileError ? (
-                  <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
-                ) : fileContent !== null ? (
-                  <CodeEditor
-                    value={fileContent}
-                    filename={selectedFile.name}
-                    height="100%"
-                    onSave={handleSaveFile}
-                    saveStatus={saveStatus}
-                  />
-                ) : null}
+                ))}
               </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p>{t("workspace.selectFileToView")}</p>
             </div>
           )}
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-hidden">
+            {activeTab?.type === "overview" ? (
+              <SubAgentOverview config={config} onCopy={handleCopy} copied={copied} />
+            ) : activeTab?.type === "file" ? (
+              fileLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : fileError ? (
+                <div className="p-4 text-sm text-muted-foreground">{fileError}</div>
+              ) : fileContent !== null ? (
+                <CodeEditor
+                  value={fileContent}
+                  filename={activeTab.name}
+                  height="100%"
+                  onSave={handleSaveFile}
+                  saveStatus={saveStatus}
+                />
+              ) : null
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <p>{t("workspace.selectFileToView")}</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </PageWrapper>

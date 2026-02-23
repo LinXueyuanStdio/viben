@@ -64,19 +64,19 @@ export class ProviderManager {
     for (const [id, entry] of Object.entries(config.providers)) {
       providers.push({
         id,
-        type: entry.type as ProviderType,
+        type: entry.provider_type as ProviderType,
         name: entry.name,
-        apiKey: entry.apiKey,
-        baseUrl: entry.baseUrl,
-        apiVersion: entry.apiVersion,
+        apiKey: entry.api_key,
+        baseUrl: entry.base_url,
+        apiVersion: entry.api_version,
         deployment: entry.deployment,
         timeout: entry.timeout,
-        maxRetries: entry.maxRetries,
+        maxRetries: entry.max_retries,
         headers: entry.headers,
         isDefault: config.default === id,
         enabled: entry.enabled,
-        createdAt: entry.createdAt,
-        updatedAt: entry.updatedAt,
+        createdAt: entry.created_at,
+        updatedAt: entry.updated_at,
       });
     }
 
@@ -96,19 +96,19 @@ export class ProviderManager {
 
     return {
       id,
-      type: entry.type as ProviderType,
+      type: entry.provider_type as ProviderType,
       name: entry.name,
-      apiKey: entry.apiKey,
-      baseUrl: entry.baseUrl,
-      apiVersion: entry.apiVersion,
+      apiKey: entry.api_key,
+      baseUrl: entry.base_url,
+      apiVersion: entry.api_version,
       deployment: entry.deployment,
       timeout: entry.timeout,
-      maxRetries: entry.maxRetries,
+      maxRetries: entry.max_retries,
       headers: entry.headers,
       isDefault: config.default === id,
       enabled: entry.enabled,
-      createdAt: entry.createdAt,
-      updatedAt: entry.updatedAt,
+      createdAt: entry.created_at,
+      updatedAt: entry.updated_at,
     };
   }
 
@@ -125,18 +125,18 @@ export class ProviderManager {
 
     const now = new Date().toISOString();
     const entry: ProviderEntry = {
-      type: options.type,
+      provider_type: options.type,
       name: options.name,
-      apiKey: options.apiKey,
-      baseUrl: options.baseUrl || DEFAULT_BASE_URLS[options.type],
-      apiVersion: options.apiVersion,
+      api_key: options.apiKey,
+      base_url: options.baseUrl || DEFAULT_BASE_URLS[options.type],
+      api_version: options.apiVersion,
       deployment: options.deployment,
       timeout: options.timeout,
-      maxRetries: options.maxRetries,
+      max_retries: options.maxRetries,
       headers: options.headers,
       enabled: true,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
     };
 
     config.providers[id] = entry;
@@ -153,11 +153,11 @@ export class ProviderManager {
       type: options.type,
       name: options.name,
       apiKey: options.apiKey,
-      baseUrl: entry.baseUrl,
-      apiVersion: entry.apiVersion,
+      baseUrl: entry.base_url,
+      apiVersion: entry.api_version,
       deployment: entry.deployment,
       timeout: entry.timeout,
-      maxRetries: entry.maxRetries,
+      maxRetries: entry.max_retries,
       headers: entry.headers,
       isDefault: config.default === id,
       enabled: true,
@@ -183,16 +183,16 @@ export class ProviderManager {
     const now = new Date().toISOString();
     const updated: ProviderEntry = {
       ...entry,
-      type: updates.type || entry.type,
+      provider_type: updates.type || entry.provider_type,
       name: updates.name || entry.name,
-      apiKey: updates.apiKey ?? entry.apiKey,
-      baseUrl: updates.baseUrl ?? entry.baseUrl,
-      apiVersion: updates.apiVersion ?? entry.apiVersion,
+      api_key: updates.apiKey ?? entry.api_key,
+      base_url: updates.baseUrl ?? entry.base_url,
+      api_version: updates.apiVersion ?? entry.api_version,
       deployment: updates.deployment ?? entry.deployment,
       timeout: updates.timeout ?? entry.timeout,
-      maxRetries: updates.maxRetries ?? entry.maxRetries,
+      max_retries: updates.maxRetries ?? entry.max_retries,
       headers: updates.headers ?? entry.headers,
-      updatedAt: now,
+      updated_at: now,
     };
 
     config.providers[id] = updated;
@@ -200,18 +200,18 @@ export class ProviderManager {
 
     return {
       id,
-      type: updated.type as ProviderType,
+      type: updated.provider_type as ProviderType,
       name: updated.name,
-      apiKey: updated.apiKey,
-      baseUrl: updated.baseUrl,
-      apiVersion: updated.apiVersion,
+      apiKey: updated.api_key,
+      baseUrl: updated.base_url,
+      apiVersion: updated.api_version,
       deployment: updated.deployment,
       timeout: updated.timeout,
-      maxRetries: updated.maxRetries,
+      maxRetries: updated.max_retries,
       headers: updated.headers,
       isDefault: config.default === id,
       enabled: updated.enabled,
-      createdAt: updated.createdAt,
+      createdAt: updated.created_at,
       updatedAt: now,
     };
   }
@@ -271,7 +271,7 @@ export class ProviderManager {
     }
 
     entry.enabled = enabled;
-    entry.updatedAt = new Date().toISOString();
+    entry.updated_at = new Date().toISOString();
     await this.saveConfig(config);
   }
 

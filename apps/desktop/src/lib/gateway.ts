@@ -2048,24 +2048,34 @@ export class GatewayClient {
    * Update an agent
    *
    * @param agentId - The agent ID
-   * @param options - Update options
+   * @param options - Update options (includes workspace_path for workspace-scoped agents)
    * @returns Updated agent response
    */
   async updateAgent(
     agentId: string,
     options: UpdateAgentOptions
   ): Promise<AgentResponse> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(options),
-      }
-    );
+    // Extract workspace_path for query param, rest goes to body
+    const { workspace_path, ...bodyOptions } = options;
+
+    // Build URL with optional workspace_path query param
+    const params = new URLSearchParams();
+    if (workspace_path) {
+      params.set("workspace_path", workspace_path);
+    }
+    const queryString = params.toString();
+    const url = queryString
+      ? `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
+      : `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(bodyOptions),
+    });
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
@@ -2085,15 +2095,24 @@ export class GatewayClient {
    * Delete an agent
    *
    * @param agentId - The agent ID
+   * @param options - Optional parameters
+   * @param options.workspacePath - Workspace path to check first for workspace-scoped agents
    */
-  async deleteAgent(agentId: string): Promise<void> {
-    const response = await fetch(
-      `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
-      {
-        method: "DELETE",
-        headers: { Accept: "application/json" },
-      }
-    );
+  async deleteAgent(
+    agentId: string,
+    options?: { workspacePath?: string }
+  ): Promise<void> {
+    const params = new URLSearchParams();
+    if (options?.workspacePath) {
+      params.set("workspace_path", options.workspacePath);
+    }
+    const queryString = params.toString();
+    const url = `${this.baseUrl}/api/agents/${encodeURIComponent(agentId)}${queryString ? `?${queryString}` : ""}`;
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
@@ -2542,8 +2561,13 @@ export class GatewayClient {
       );
     }
 
-    const data: ProviderEnabledModelsResponse = await response.json();
-    return data.enabled_models;
+    const data = await response.json() as {
+      provider_id: string;
+      models: Array<{ id: string; enabled: boolean }>;
+      total: number;
+    };
+    // Extract enabled model IDs from the models array
+    return data.models.filter(m => m.enabled).map(m => m.id);
   }
 
   /**
@@ -3045,10 +3069,10 @@ export class GatewayClient {
   }
 
   /**
-   * Add MCP server to an IDE agent
+   * Add MCP server to an executor
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The agent type
+   * @param executorType - The executor type
    * @param server - The MCP server configuration
    */
   async addMcpServer(
@@ -3056,18 +3080,20 @@ export class GatewayClient {
     executorType: string,
     server: WorkspaceMcpServerConfig
   ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-    const response = await fetch(`${this.baseUrl}/api/mcp-servers`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        workspace_path: workspacePath,
-        executor_type: executorType,
-        server,
-      }),
-    });
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers?${params.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ server }),
+      }
+    );
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
@@ -3084,7 +3110,7 @@ export class GatewayClient {
    * Update MCP server
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The agent type
+   * @param executorType - The executor type
    * @param serverName - The server name to update
    * @param updates - The updates to apply
    */
@@ -3096,10 +3122,9 @@ export class GatewayClient {
   ): Promise<{ success: boolean }> {
     const params = new URLSearchParams();
     if (workspacePath) params.set("workspace_path", workspacePath);
-    params.set("executor_type", executorType);
 
     const response = await fetch(
-      `${this.baseUrl}/api/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
       {
         method: "PATCH",
         headers: {
@@ -3125,7 +3150,7 @@ export class GatewayClient {
    * Delete MCP server
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The agent type
+   * @param executorType - The executor type
    * @param serverName - The server name to delete
    */
   async deleteMcpServer(
@@ -3135,10 +3160,9 @@ export class GatewayClient {
   ): Promise<{ success: boolean; deleted: string }> {
     const params = new URLSearchParams();
     if (workspacePath) params.set("workspace_path", workspacePath);
-    params.set("executor_type", executorType);
 
     const response = await fetch(
-      `${this.baseUrl}/api/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -3193,10 +3217,10 @@ export class GatewayClient {
   }
 
   /**
-   * Add skill to an IDE agent
+   * Add skill to an executor
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The agent type
+   * @param executorType - The executor type
    * @param skill - The skill to add
    */
   async addSkill(
@@ -3204,18 +3228,20 @@ export class GatewayClient {
     executorType: string,
     skill: WorkspaceSkillConfig
   ): Promise<{ success: boolean; skill: WorkspaceSkillConfig }> {
-    const response = await fetch(`${this.baseUrl}/api/skills`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        workspace_path: workspacePath,
-        executor_type: executorType,
-        skill,
-      }),
-    });
+    const params = new URLSearchParams();
+    if (workspacePath) params.set("workspace_path", workspacePath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/skills?${params.toString()}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ skill }),
+      }
+    );
 
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
@@ -3229,10 +3255,10 @@ export class GatewayClient {
   }
 
   /**
-   * Delete skill from an IDE agent
+   * Delete skill from an executor
    *
    * @param workspacePath - The workspace path
-   * @param executorType - The agent type
+   * @param executorType - The executor type
    * @param skillId - The skill ID to delete
    */
   async deleteSkill(
@@ -3242,10 +3268,9 @@ export class GatewayClient {
   ): Promise<{ success: boolean; deleted: string }> {
     const params = new URLSearchParams();
     if (workspacePath) params.set("workspace_path", workspacePath);
-    params.set("executor_type", executorType);
 
     const response = await fetch(
-      `${this.baseUrl}/api/skills/${encodeURIComponent(skillId)}?${params.toString()}`,
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/skills/${encodeURIComponent(skillId)}?${params.toString()}`,
       {
         method: "DELETE",
         headers: { Accept: "application/json" },
@@ -3264,11 +3289,11 @@ export class GatewayClient {
   }
 
   // ==========================================================================
-  // Agent Configs (prompts from .claude/agents/*.md or executor-specific paths)
+  // Subagents (.claude/agents/*.md or executor-specific paths)
   // ==========================================================================
 
   /**
-   * Get agent configs for an executor in a workspace
+   * Get subagents for an executor in a workspace
    *
    * @param workspacePath - The workspace path
    * @param executorType - The executor type (e.g., "CLAUDE_CODE", "cursor")
@@ -3281,7 +3306,7 @@ export class GatewayClient {
     if (workspacePath) params.set("workspace_path", workspacePath);
 
     const response = await fetch(
-      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/configs?${params.toString()}`,
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/subagents?${params.toString()}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -3291,7 +3316,7 @@ export class GatewayClient {
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get agent configs: ${errorMessage}`,
+        `Failed to get subagents: ${errorMessage}`,
         response.status
       );
     }
@@ -3300,11 +3325,11 @@ export class GatewayClient {
   }
 
   /**
-   * Get a single agent config file
+   * Get a single subagent file
    *
    * @param workspacePath - The workspace path
    * @param executorType - The executor type
-   * @param configId - The config ID (filename without extension)
+   * @param configId - The subagent ID (filename without extension)
    */
   async getAgentConfig(
     workspacePath: string | undefined,
@@ -3315,7 +3340,7 @@ export class GatewayClient {
     if (workspacePath) params.set("workspace_path", workspacePath);
 
     const response = await fetch(
-      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/configs/${encodeURIComponent(configId)}?${params.toString()}`,
+      `${this.baseUrl}/api/executors/${encodeURIComponent(executorType)}/subagents/${encodeURIComponent(configId)}?${params.toString()}`,
       {
         method: "GET",
         headers: { Accept: "application/json" },
@@ -3325,7 +3350,7 @@ export class GatewayClient {
     if (!response.ok) {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
-        `Failed to get agent config: ${errorMessage}`,
+        `Failed to get subagent: ${errorMessage}`,
         response.status
       );
     }
@@ -3408,7 +3433,7 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * Get all prompts for an executor type
+   * Get all prompts for an executor in a workspace
    *
    * @param workspacePath - The workspace path
    * @param executorType - The executor type
@@ -4090,30 +4115,13 @@ export interface WorkspaceExecutorsResponse {
   executors: WorkspaceExecutor[];
 }
 
-/** Workspace model info */
-export interface WorkspaceModel {
-  /** Model ID */
-  id: string;
-  /** Display name */
-  name: string;
-  /** Provider ID */
-  provider_id: string;
-  /** Provider name */
-  provider_name: string;
-  /** Model capabilities */
-  capabilities?: string[];
-  /** Context window size */
-  context_window?: number;
-  /** Whether model is available (API key configured) */
-  is_available: boolean;
-  /** Workspace-specific override exists */
-  has_workspace_override: boolean;
-}
+/** Workspace model info - alias for ModelResponse for backward compatibility */
+export type WorkspaceModel = ModelResponse;
 
 /** Response for workspace models */
 export interface WorkspaceModelsResponse {
   workspace_path: string;
-  models: WorkspaceModel[];
+  models: ModelResponse[];
   total: number;
 }
 
@@ -4256,11 +4264,16 @@ export interface ModelResponse {
   id: string;
   name: string;
   provider: string;
+  provider_id: string;
+  provider_name: string;
   description?: string;
   context_window?: number;
   max_output_tokens?: number;
+  input_price?: number;
+  output_price?: number;
   is_default: boolean;
   enabled: boolean;
+  is_available: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -4600,6 +4613,8 @@ export interface UpdateAgentOptions {
   skills?: string[];
   plan_mode?: boolean;
   approvals?: boolean;
+  /** Workspace path for workspace-scoped agents */
+  workspace_path?: string;
 }
 
 /** @deprecated Use UpdateAgentOptions instead */

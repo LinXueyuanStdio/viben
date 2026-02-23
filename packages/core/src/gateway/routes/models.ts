@@ -8,7 +8,9 @@
  * - Model configuration
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { homedir } from "node:os";
 import { modelManager } from "../../models";
+import { providerManager } from "../../providers";
 import type { ModelConfig, Model } from "../../types";
 
 // ============================================================================
@@ -17,6 +19,7 @@ import type { ModelConfig, Model } from "../../types";
 
 /**
  * Model response (snake_case to match Rust gateway)
+ * Includes availability info for workspace context
  */
 interface ModelResponse {
   id: string;
@@ -31,6 +34,7 @@ interface ModelResponse {
   output_price?: number;
   is_default: boolean;
   enabled: boolean;
+  is_available: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -45,13 +49,36 @@ interface ModelsQuery {
 }
 
 /**
+ * Check if a provider type has any configured provider with API key
+ *
+ * This checks by provider TYPE (e.g., "anthropic", "openai") rather than
+ * provider ID (e.g., "本地-claude"), because KNOWN_MODELS use type names.
+ */
+async function isProviderAvailable(providerType: string): Promise<boolean> {
+  try {
+    const providers = await providerManager.listProviders();
+    // Find any enabled provider of this type with API key configured
+    return providers.some((p) => {
+      if (p.type !== providerType) return false;
+      if (!p.enabled) return false;
+      // Ollama doesn't need API key
+      if (p.type === "ollama") return true;
+      return !!p.apiKey;
+    });
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Transform model to API response format (snake_case)
  *
  * Now uses model.isDefault and model.enabled from ModelManager
  * instead of in-memory tracking.
  */
-function toSnakeCaseModel(model: Model): ModelResponse {
+async function toSnakeCaseModel(model: Model): Promise<ModelResponse> {
   const now = new Date().toISOString();
+  const isAvailable = await isProviderAvailable(model.provider);
   return {
     id: model.id,
     name: model.name,
@@ -65,6 +92,7 @@ function toSnakeCaseModel(model: Model): ModelResponse {
     output_price: model.outputPrice,
     is_default: model.isDefault ?? false,
     enabled: model.enabled ?? true,
+    is_available: isAvailable,
     created_at: model.createdAt ?? now,
     updated_at: model.updatedAt ?? now,
   };
@@ -339,7 +367,7 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   fastify.get("/api/models", async (
     request: FastifyRequest<{ Querystring: ModelsQuery }>
   ) => {
-    const { include_global, include_provider_predefined } = request.query;
+    const { workspace_path, include_global, include_provider_predefined } = request.query;
 
     // Parse boolean query params (default: true for include_global, false for include_provider_predefined)
     const _includeGlobal = include_global !== "false";
@@ -349,11 +377,15 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
     // In future, this could scope models to a specific workspace
 
     const models = await modelManager.listModels();
-    const defaultModel = await modelManager.getDefault();
+    const defaultModelId = await modelManager.getDefault();
+    // Transform to response format with availability info
+    const modelResponses = await Promise.all(models.map(m => toSnakeCaseModel(m)));
+
     return {
-      models: models.map(m => toSnakeCaseModel(m)),
-      total: models.length,
-      default_model_id: defaultModel,
+      workspace_path: workspace_path || homedir(),
+      models: modelResponses,
+      total: modelResponses.length,
+      default_model_id: defaultModelId,
     };
   });
 
@@ -373,10 +405,13 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
       return { error: `Model not found: ${id}` };
     }
 
-    const modelConfig = await modelManager.getModelConfig(resolvedId);
+    const [modelResponse, modelConfig] = await Promise.all([
+      toSnakeCaseModel(model),
+      modelManager.getModelConfig(resolvedId),
+    ]);
 
     return {
-      ...toSnakeCaseModel(model),
+      ...modelResponse,
       config: modelConfig,
     };
   });

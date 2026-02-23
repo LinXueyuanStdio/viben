@@ -8,7 +8,23 @@
  * - Message handling
  * - Event broadcasting
  */
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+import { join } from "node:path";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { mkdtempSync } from "node:fs";
+
+// Create a unique temp directory for all tests in this file
+const testTempDir = mkdtempSync(join(tmpdir(), "viben-group-chat-test-"));
+
+// Mock os.homedir to use temp directory
+vi.mock("node:os", async () => {
+  const actual = await vi.importActual<typeof import("node:os")>("node:os");
+  return {
+    ...actual,
+    homedir: () => testTempDir,
+  };
+});
 
 // Types for mock Fastify
 interface MockRoute {
@@ -135,6 +151,11 @@ function createMockState() {
 describe("Group Chat Routes", () => {
   let fastify: MockFastify;
   let mockState: ReturnType<typeof createMockState>;
+
+  // Clean up temp directory after all tests complete
+  afterAll(async () => {
+    await rm(testTempDir, { recursive: true, force: true });
+  });
 
   beforeEach(async () => {
     vi.clearAllMocks();

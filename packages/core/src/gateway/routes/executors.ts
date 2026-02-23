@@ -713,10 +713,11 @@ function discoverExecutors(workspacePath?: string): ExecutorInfo[] {
 export function registerExecutorRoutes(fastify: FastifyInstance): void {
   // List executors (workspace-scoped)
   fastify.get<{
-    Querystring: { workspace_path?: string; include_global?: boolean };
+    Querystring: { workspace_path?: string; include_global?: string };
   }>("/api/executors", async (request) => {
     const workspacePath = request.query.workspace_path;
-    const includeGlobal = request.query.include_global !== false;
+    // Parse include_global as string from query params (default: true)
+    const includeGlobal = request.query.include_global !== "false";
 
     // Discover available executors with workspace context
     const executors = discoverExecutors(workspacePath);
@@ -724,6 +725,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     return {
       executors,
       workspace_path: workspacePath || os.homedir(),
+      include_global: includeGlobal,
       total: executors.length,
     };
   });
@@ -1067,14 +1069,14 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   });
 
   // ==========================================================================
-  // Agent Configs (prompts from .claude/agents/*.md)
+  // Subagents (.claude/agents/*.md or executor-specific paths)
   // ==========================================================================
 
   /**
-   * Get agent configs path based on executor type
+   * Get subagents path based on executor type
    * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
    */
-  function getAgentConfigsPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
+  function getSubagentsPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
     const base = workspacePath || os.homedir();
 
     switch (executorType) {
@@ -1088,9 +1090,9 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   }
 
   /**
-   * Parse agent config markdown file with YAML frontmatter
+   * Parse subagent markdown file with YAML frontmatter
    */
-  function parseAgentConfigMd(filePath: string, content: string): {
+  function parseSubagentMd(filePath: string, content: string): {
     id: string;
     name: string;
     description: string;
@@ -1131,9 +1133,9 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   }
 
   /**
-   * Scan agent configs folder
+   * Scan subagents folder
    */
-  function scanAgentConfigsFolder(folderPath: string): Array<{
+  function scanSubagentsFolder(folderPath: string): Array<{
     id: string;
     name: string;
     description: string;
@@ -1142,7 +1144,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     path: string;
     content: string;
   }> {
-    const configs: Array<{
+    const subagents: Array<{
       id: string;
       name: string;
       description: string;
@@ -1153,7 +1155,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     }> = [];
 
     if (!fs.existsSync(folderPath)) {
-      return configs;
+      return subagents;
     }
 
     try {
@@ -1165,7 +1167,7 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
         if (stat.isFile() && entry.endsWith(".md")) {
           try {
             const content = fs.readFileSync(fullPath, "utf-8");
-            configs.push(parseAgentConfigMd(fullPath, content));
+            subagents.push(parseSubagentMd(fullPath, content));
           } catch {
             // Skip unreadable files
           }
@@ -1175,59 +1177,59 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
       // Folder not readable
     }
 
-    return configs;
+    return subagents;
   }
 
   /**
-   * GET /api/executors/:type/configs?workspace_path=...
+   * GET /api/executors/:type/subagents?workspace_path=...
    */
   fastify.get<{
     Params: { type: string };
     Querystring: { workspace_path?: string };
-  }>("/api/executors/:type/configs", async (request) => {
+  }>("/api/executors/:type/subagents", async (request) => {
     const { type } = request.params;
     const { workspace_path } = request.query;
 
     const executorType = type as ExecutorType;
-    const configsPath = getAgentConfigsPath(workspace_path, executorType);
-    if (!configsPath) {
+    const subagentsPath = getSubagentsPath(workspace_path, executorType);
+    if (!subagentsPath) {
       return { configs: [] };
     }
 
-    const configs = scanAgentConfigsFolder(configsPath);
+    const configs = scanSubagentsFolder(subagentsPath);
     return { configs };
   });
 
   /**
-   * GET /api/executors/:type/configs/:config_id?workspace_path=...
+   * GET /api/executors/:type/subagents/:config_id?workspace_path=...
    */
   fastify.get<{
     Params: { type: string; config_id: string };
     Querystring: { workspace_path?: string };
-  }>("/api/executors/:type/configs/:config_id", async (request, reply) => {
+  }>("/api/executors/:type/subagents/:config_id", async (request, reply) => {
     const { type, config_id } = request.params;
     const { workspace_path } = request.query;
 
     const executorType = type as ExecutorType;
-    const configsPath = getAgentConfigsPath(workspace_path, executorType);
-    if (!configsPath) {
+    const subagentsPath = getSubagentsPath(workspace_path, executorType);
+    if (!subagentsPath) {
       reply.code(404);
-      return { error: "Config path not found" };
+      return { error: "Subagents path not found" };
     }
 
-    const filePath = path.join(configsPath, `${config_id}.md`);
+    const filePath = path.join(subagentsPath, `${config_id}.md`);
     if (!fs.existsSync(filePath)) {
       reply.code(404);
-      return { error: "Config file not found" };
+      return { error: "Subagent file not found" };
     }
 
     try {
       const content = fs.readFileSync(filePath, "utf-8");
-      const config = parseAgentConfigMd(filePath, content);
+      const config = parseSubagentMd(filePath, content);
       return { config };
     } catch (e) {
       reply.code(500);
-      return { error: e instanceof Error ? e.message : "Failed to read config" };
+      return { error: e instanceof Error ? e.message : "Failed to read subagent" };
     }
   });
 
@@ -1395,6 +1397,155 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
     } catch (e) {
       reply.code(500);
       return { error: e instanceof Error ? e.message : "Failed to read command" };
+    }
+  });
+
+  // ==========================================================================
+  // Prompts (.claude/prompts/ or executor-specific paths)
+  // ==========================================================================
+
+  /**
+   * Get prompts path based on executor type
+   * Only accepts uppercase underscore format: CLAUDE_CODE, CURSOR_AGENT, etc.
+   */
+  function getPromptsPath(workspacePath: string | undefined, executorType: ExecutorType): string | null {
+    const base = workspacePath || os.homedir();
+
+    switch (executorType) {
+      case "CLAUDE_CODE":
+        return path.join(base, ".claude", "prompts");
+      case "CURSOR_AGENT":
+        return path.join(base, ".cursor", "prompts");
+      default:
+        return path.join(base, ".viben", "prompts");
+    }
+  }
+
+  /**
+   * Parse prompt markdown file with YAML frontmatter
+   */
+  function parsePromptMd(filePath: string, content: string): {
+    id: string;
+    name: string;
+    description: string;
+    path: string;
+    content: string;
+  } {
+    const filename = path.basename(filePath, ".md");
+    let name = filename;
+    let description = "";
+    let bodyContent = content;
+
+    // Parse YAML frontmatter
+    const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    if (frontmatterMatch) {
+      const frontmatter = frontmatterMatch[1];
+      bodyContent = frontmatterMatch[2].trim();
+
+      const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+      if (nameMatch) name = nameMatch[1].trim();
+
+      const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+      if (descMatch) description = descMatch[1].trim();
+    }
+
+    return { id: filename, name, description, path: filePath, content: bodyContent };
+  }
+
+  /**
+   * Scan prompts folder
+   */
+  function scanPromptsFolder(folderPath: string): Array<{
+    id: string;
+    name: string;
+    description: string;
+    path: string;
+    content: string;
+  }> {
+    const prompts: Array<{
+      id: string;
+      name: string;
+      description: string;
+      path: string;
+      content: string;
+    }> = [];
+
+    if (!fs.existsSync(folderPath)) {
+      return prompts;
+    }
+
+    try {
+      const entries = fs.readdirSync(folderPath);
+      for (const entry of entries) {
+        const fullPath = path.join(folderPath, entry);
+        const stat = fs.statSync(fullPath);
+
+        if (stat.isFile() && entry.endsWith(".md")) {
+          try {
+            const content = fs.readFileSync(fullPath, "utf-8");
+            prompts.push(parsePromptMd(fullPath, content));
+          } catch {
+            // Skip unreadable files
+          }
+        }
+      }
+    } catch {
+      // Folder not readable
+    }
+
+    return prompts;
+  }
+
+  /**
+   * GET /api/executors/:type/prompts?workspace_path=...
+   */
+  fastify.get<{
+    Params: { type: string };
+    Querystring: { workspace_path?: string };
+  }>("/api/executors/:type/prompts", async (request) => {
+    const { type } = request.params;
+    const { workspace_path } = request.query;
+
+    const executorType = type as ExecutorType;
+    const promptsPath = getPromptsPath(workspace_path, executorType);
+    if (!promptsPath) {
+      return { prompts: [] };
+    }
+
+    const prompts = scanPromptsFolder(promptsPath);
+    return { prompts };
+  });
+
+  /**
+   * GET /api/executors/:type/prompts/:prompt_id?workspace_path=...
+   */
+  fastify.get<{
+    Params: { type: string; prompt_id: string };
+    Querystring: { workspace_path?: string };
+  }>("/api/executors/:type/prompts/:prompt_id", async (request, reply) => {
+    const { type, prompt_id } = request.params;
+    const { workspace_path } = request.query;
+
+    const executorType = type as ExecutorType;
+    const promptsPath = getPromptsPath(workspace_path, executorType);
+    if (!promptsPath) {
+      reply.code(404);
+      return { error: "Prompts path not found" };
+    }
+
+    const filePath = path.join(promptsPath, `${prompt_id}.md`);
+    if (!fs.existsSync(filePath)) {
+      reply.code(404);
+      return { error: "Prompt file not found" };
+    }
+
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      const prompt = parsePromptMd(filePath, content);
+      return { prompt };
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to read prompt" };
     }
   });
 }

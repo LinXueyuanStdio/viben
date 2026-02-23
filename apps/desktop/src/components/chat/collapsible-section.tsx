@@ -48,28 +48,31 @@ export function CollapsibleSection({
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="border-b last:border-b-0">
-      <CollapsibleTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center justify-between w-full py-3 px-1 hover:bg-muted/50 rounded-lg transition-colors"
-        >
-          <div className="flex items-center gap-2">
+      {/* Header row with trigger and action separated to avoid nested buttons */}
+      <div className="flex items-center justify-between w-full py-3 px-1 hover:bg-muted/50 rounded-lg transition-colors">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-2 flex-1 text-left"
+          >
             {icon && <span className="text-muted-foreground">{icon}</span>}
             <span className="text-sm font-medium">{title}</span>
             {badge}
-          </div>
-          <div className="flex items-center gap-1">
-            {action && (
-              <span onClick={(e) => e.stopPropagation()}>{action}</span>
-            )}
-            {isOpen ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-          </div>
-        </button>
-      </CollapsibleTrigger>
+          </button>
+        </CollapsibleTrigger>
+        <div className="flex items-center gap-1">
+          {action}
+          <CollapsibleTrigger asChild>
+            <button type="button" className="p-1 hover:bg-muted rounded">
+              {isOpen ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              )}
+            </button>
+          </CollapsibleTrigger>
+        </div>
+      </div>
       <CollapsibleContent className="px-1 pb-3">{children}</CollapsibleContent>
     </Collapsible>
   );

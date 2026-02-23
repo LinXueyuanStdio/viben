@@ -95,8 +95,11 @@ describe("GroupChatService", () => {
 
   describe("listGroupChats", () => {
     it("should list all group chats sorted by creation time", async () => {
+      // Add small delays to ensure different timestamps
       await service.createGroupChat("user-1", { name: "Group 1" });
+      await new Promise((r) => setTimeout(r, 10));
       await service.createGroupChat("user-1", { name: "Group 2" });
+      await new Promise((r) => setTimeout(r, 10));
       await service.createGroupChat("user-1", { name: "Group 3" });
 
       const list = await service.listGroupChats();
@@ -117,6 +120,9 @@ describe("GroupChatService", () => {
       const created = await service.createGroupChat("user-1", {
         name: "Original Name",
       });
+
+      // Wait to ensure different timestamp
+      await new Promise((r) => setTimeout(r, 10));
 
       const updated = await service.updateGroupChat(created.id, {
         name: "New Name",

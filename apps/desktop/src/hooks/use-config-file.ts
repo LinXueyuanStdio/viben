@@ -1,11 +1,11 @@
 /**
  * Generic hooks for reading/writing config files
  *
- * Unlike skill-specific hooks, these work with any file path directly.
+ * Uses the same Tauri commands as skill hooks to ensure consistent
+ * path validation and permissions.
  * Used for commands, prompts, MCP servers, and other file-based configs.
  */
 import { useState, useCallback } from "react";
-import { readTextFile, writeTextFile } from "@tauri-apps/plugin-fs";
 import type { SkillFileEntry } from "@/types";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -13,6 +13,7 @@ export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 /**
  * Hook for reading a config file's content
+ * Uses the read_config_file Tauri command for proper path handling
  */
 export function useConfigFileContent() {
   const [content, setContent] = useState<string | null>(null);
@@ -28,7 +29,8 @@ export function useConfigFileContent() {
     setLoading(true);
     setError(null);
     try {
-      const result = await readTextFile(filePath);
+      // Use the read_config_file command which has proper path handling
+      const result = await invoke<string>("read_config_file", { filePath });
       setContent(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -49,6 +51,7 @@ export function useConfigFileContent() {
 
 /**
  * Hook for writing a config file
+ * Uses the write_config_file Tauri command for proper path handling
  */
 export function useConfigFileWriter() {
   const [saving, setSaving] = useState(false);
@@ -60,7 +63,8 @@ export function useConfigFileWriter() {
     setSaveStatus("saving");
     setSaveError(null);
     try {
-      await writeTextFile(filePath, content);
+      // Use the write_config_file command which has proper path handling
+      await invoke("write_config_file", { filePath, content });
       setSaveStatus("saved");
       // Reset to idle after 2 seconds
       setTimeout(() => setSaveStatus("idle"), 2000);
