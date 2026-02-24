@@ -1,39 +1,18 @@
 /**
  * Kanban Routes
  *
- * Provides kanban API endpoints that map to existing Viben services:
- * - Projects = Workspaces
- * - Tasks = Background Tasks
+ * Provides kanban API endpoints for background tasks:
+ * - Tasks = Background Tasks filtered by workspace
  *
- * This allows the frontend to continue using the existing useVibeKanban* hooks
- * while the backend uses the unified Viben data model.
+ * Uses workspace_path as the identifier (not encoded IDs).
  */
 
 import type { FastifyInstance } from "fastify";
 import { backgroundTaskManager } from "../../services/background-tasks";
-import { workspaceManager, type Workspace } from "../../workspace";
-import { getConfigDir } from "../../executors";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-/**
- * Project response (maps from Workspace)
- */
-interface KanbanProject {
-  id: string;
-  name: string;
-  git_repo_path: string;
-  setup_script: string | null;
-  dev_script: string | null;
-  cleanup_script: string | null;
-  copy_files: string | null;
-  parallel_setup_script: boolean;
-  remote_project_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 /**
  * Task status for kanban
@@ -45,11 +24,10 @@ type KanbanTaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled
  */
 interface KanbanTask {
   id: string;
-  project_id: string;
+  workspace_path: string | null;
   title: string;
   description: string | null;
   status: KanbanTaskStatus;
-  parent_workspace_id: string | null;
   created_at: string;
   updated_at: string;
   has_in_progress_attempt: boolean;
@@ -70,20 +48,6 @@ interface ApiResponse<T> {
 // ============================================================================
 // Helpers
 // ============================================================================
-
-/**
- * Generate workspace ID from path (matching workspaces.ts convention)
- */
-function generateWorkspaceId(path: string): string {
-  return Buffer.from(path).toString("base64url");
-}
-
-/**
- * Decode workspace ID to path
- */
-function decodeWorkspaceId(id: string): string {
-  return Buffer.from(id, "base64url").toString();
-}
 
 /**
  * Map BackgroundTask status to KanbanTaskStatus
@@ -129,6 +93,24 @@ function error(message: string, errorData?: unknown): ApiResponse<null> {
   };
 }
 
+/**
+ * Transform BackgroundTask to KanbanTask
+ */
+function toKanbanTask(task: ReturnType<typeof backgroundTaskManager.getTask> & object): KanbanTask {
+  return {
+    id: task.taskId,
+    workspace_path: task.workspacePath ?? null,
+    title: task.prompt.slice(0, 100) + (task.prompt.length > 100 ? "..." : ""),
+    description: task.prompt,
+    status: mapBackgroundStatusToKanban(task.status),
+    created_at: task.startedAt.toISOString(),
+    updated_at: task.completedAt?.toISOString() || task.startedAt.toISOString(),
+    has_in_progress_attempt: task.status === "running",
+    last_attempt_failed: task.status === "error",
+    executor: task.agentName || "Agent",
+  };
+}
+
 // ============================================================================
 // Routes
 // ============================================================================
@@ -146,114 +128,28 @@ export function registerKanbanRoutes(fastify: FastifyInstance): void {
   });
 
   /**
-   * Get all projects (workspaces)
-   * GET /api/kanban/projects
-   */
-  fastify.get("/api/kanban/projects", async (_request, reply) => {
-    try {
-      const workspaces = await workspaceManager.listWorkspaces();
-      const configDir = getConfigDir();
-
-      // Transform workspaces to kanban projects
-      const projects: KanbanProject[] = workspaces.map((ws) => ({
-        id: generateWorkspaceId(ws.path),
-        name: ws.name,
-        git_repo_path: ws.path,
-        setup_script: null,
-        dev_script: null,
-        cleanup_script: null,
-        copy_files: null,
-        parallel_setup_script: false,
-        remote_project_id: null,
-        created_at: ws.createdAt || new Date().toISOString(),
-        updated_at: ws.updatedAt || new Date().toISOString(),
-      }));
-
-      // Add global workspace as a project
-      projects.unshift({
-        id: "global",
-        name: "Global",
-        git_repo_path: configDir,
-        setup_script: null,
-        dev_script: null,
-        cleanup_script: null,
-        copy_files: null,
-        parallel_setup_script: false,
-        remote_project_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-
-      return reply.send(success(projects));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list projects";
-      return reply.status(500).send(error(message));
-    }
-  });
-
-  /**
-   * Get tasks for a project
-   * GET /api/kanban/tasks?project_id=xxx
+   * Get tasks for a workspace
+   * GET /api/kanban/tasks?workspace_path=xxx
+   *
+   * workspace_path: workspace path to filter tasks
+   * - If empty or not provided, returns tasks without workspace (global tasks)
    */
   fastify.get<{
-    Querystring: { project_id?: string };
+    Querystring: { workspace_path?: string };
   }>("/api/kanban/tasks", async (request, reply) => {
-    const { project_id } = request.query;
-
-    if (!project_id) {
-      return reply.status(400).send(error("project_id is required"));
-    }
+    const { workspace_path } = request.query;
 
     try {
-      // Get all background tasks
-      const allTasks = backgroundTaskManager.getAllTasks();
-
-      // Get workspace path from project_id
-      let workspacePath: string | undefined;
-      if (project_id === "global") {
-        workspacePath = undefined; // Global tasks have no workspace path
+      let filteredTasks;
+      if (!workspace_path) {
+        // No workspace_path: return global tasks (tasks without workspace)
+        filteredTasks = backgroundTaskManager.getAllTasks().filter((t) => !t.workspacePath);
       } else {
-        // Decode workspace path from ID
-        try {
-          workspacePath = decodeWorkspaceId(project_id);
-        } catch {
-          // If decoding fails, try to find workspace by path
-          const workspaces = await workspaceManager.listWorkspaces();
-          const workspace = workspaces.find((ws) => generateWorkspaceId(ws.path) === project_id);
-          workspacePath = workspace?.path;
-        }
+        // Filter by workspace path
+        filteredTasks = backgroundTaskManager.getTasksByWorkspace(workspace_path);
       }
 
-      // Filter tasks by workspace
-      const filteredTasks = allTasks.filter((task) => {
-        if (project_id === "global") {
-          // Global project shows tasks without workspacePath
-          return !task.workspacePath;
-        }
-        if (!workspacePath || !task.workspacePath) {
-          return false;
-        }
-        // Normalize paths for comparison
-        const normalizedTaskPath = task.workspacePath.replace(/\/+$/, "");
-        const normalizedWorkspacePath = workspacePath.replace(/\/+$/, "");
-        return normalizedTaskPath === normalizedWorkspacePath;
-      });
-
-      // Transform to kanban tasks
-      const kanbanTasks: KanbanTask[] = filteredTasks.map((task) => ({
-        id: task.taskId,
-        project_id,
-        title: task.prompt.slice(0, 100) + (task.prompt.length > 100 ? "..." : ""),
-        description: task.prompt,
-        status: mapBackgroundStatusToKanban(task.status),
-        parent_workspace_id: null,
-        created_at: task.startedAt.toISOString(),
-        updated_at: task.completedAt?.toISOString() || task.startedAt.toISOString(),
-        has_in_progress_attempt: task.status === "running",
-        last_attempt_failed: task.status === "error",
-        executor: task.agentName || "Agent",
-      }));
-
+      const kanbanTasks: KanbanTask[] = filteredTasks.map(toKanbanTask);
       return reply.send(success(kanbanTasks));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to list tasks";
@@ -275,35 +171,7 @@ export function registerKanbanRoutes(fastify: FastifyInstance): void {
       return reply.status(404).send(error("Task not found"));
     }
 
-    const kanbanTask: KanbanTask = {
-      id: task.taskId,
-      project_id: task.workspacePath || "global",
-      title: task.prompt.slice(0, 100) + (task.prompt.length > 100 ? "..." : ""),
-      description: task.prompt,
-      status: mapBackgroundStatusToKanban(task.status),
-      parent_workspace_id: null,
-      created_at: task.startedAt.toISOString(),
-      updated_at: task.completedAt?.toISOString() || task.startedAt.toISOString(),
-      has_in_progress_attempt: task.status === "running",
-      last_attempt_failed: task.status === "error",
-      executor: task.agentName || "Agent",
-    };
-
-    return reply.send(success(kanbanTask));
-  });
-
-  /**
-   * Create a new task
-   * POST /api/kanban/tasks
-   *
-   * Note: This endpoint exists for API compatibility but creating tasks
-   * through the kanban API is not supported. Tasks are created through
-   * the agent run API.
-   */
-  fastify.post("/api/kanban/tasks", async (_request, reply) => {
-    return reply.status(501).send(
-      error("Task creation through kanban API is not supported. Use /api/agent/run instead.")
-    );
+    return reply.send(success(toKanbanTask(task)));
   });
 
   /**
@@ -335,21 +203,7 @@ export function registerKanbanRoutes(fastify: FastifyInstance): void {
       return reply.status(404).send(error("Task not found after update"));
     }
 
-    const kanbanTask: KanbanTask = {
-      id: updatedTask.taskId,
-      project_id: updatedTask.workspacePath || "global",
-      title: updatedTask.prompt.slice(0, 100) + (updatedTask.prompt.length > 100 ? "..." : ""),
-      description: updatedTask.prompt,
-      status: mapBackgroundStatusToKanban(updatedTask.status),
-      parent_workspace_id: null,
-      created_at: updatedTask.startedAt.toISOString(),
-      updated_at: updatedTask.completedAt?.toISOString() || updatedTask.startedAt.toISOString(),
-      has_in_progress_attempt: updatedTask.status === "running",
-      last_attempt_failed: updatedTask.status === "error",
-      executor: updatedTask.agentName || "Agent",
-    };
-
-    return reply.send(success(kanbanTask));
+    return reply.send(success(toKanbanTask(updatedTask)));
   });
 
   /**

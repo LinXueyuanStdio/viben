@@ -1,37 +1,32 @@
 /**
- * React Query hooks for vibe-kanban API
- * With WebSocket integration for real-time task updates
+ * React Query hooks for kanban API
+ * Uses workspace_path for filtering tasks
  */
 
-import { useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  getProjects,
   getTasks,
   createTask,
   updateTask,
   deleteTask,
   updateTaskStatus,
   checkHealth,
-  useTasksWebSocket,
   type Task,
   type TaskWithAttemptStatus,
   type CreateTaskRequest,
   type UpdateTaskRequest,
   type TaskStatus,
-  type WebSocketState,
 } from "@/lib/vibe-kanban";
 
 // Query keys
 export const vibeKanbanKeys = {
   all: ["vibe-kanban"] as const,
   health: () => [...vibeKanbanKeys.all, "health"] as const,
-  projects: () => [...vibeKanbanKeys.all, "projects"] as const,
-  tasks: (projectId: string) => [...vibeKanbanKeys.all, "tasks", projectId] as const,
+  tasks: (workspacePath: string) => [...vibeKanbanKeys.all, "tasks", workspacePath] as const,
 };
 
 /**
- * Check if vibe-kanban backend is healthy
+ * Check if kanban backend is healthy
  */
 export function useVibeKanbanHealth() {
   return useQuery({
@@ -43,100 +38,25 @@ export function useVibeKanbanHealth() {
 }
 
 /**
- * Fetch all projects from vibe-kanban
+ * Fetch tasks for a workspace
+ * @param workspacePath - workspace path to filter tasks (undefined for global tasks)
  */
-export function useVibeKanbanProjects() {
-  return useQuery({
-    queryKey: vibeKanbanKeys.projects(),
-    queryFn: getProjects,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-}
+export function useVibeKanbanTasks(workspacePath: string | undefined) {
+  const queryKey = vibeKanbanKeys.tasks(workspacePath ?? "");
 
-/**
- * WebSocket connection state result
- */
-export interface TasksWebSocketState {
-  connectionState: WebSocketState;
-  isInitialized: boolean;
-  wsError: Error | null;
-  reconnect: () => void;
-}
-
-/**
- * Fetch tasks for a project with real-time WebSocket updates
- *
- * Uses WebSocket for real-time streaming with JSON Patch.
- * Falls back to REST API for initial data and when WebSocket is unavailable.
- * React Query cache is automatically updated with WebSocket data.
- */
-export function useVibeKanbanTasks(projectId: string | null) {
-  const queryClient = useQueryClient();
-
-  // WebSocket connection for real-time updates
-  const {
-    data: wsData,
-    connectionState,
-    isInitialized,
-    error: wsError,
-    reconnect,
-  } = useTasksWebSocket(projectId);
-
-  // REST API query as fallback and for initial validation
   const query = useQuery({
-    queryKey: vibeKanbanKeys.tasks(projectId || ""),
-    queryFn: () => {
-      // Guard is ensured by `enabled`, but explicit check for type safety
-      if (!projectId) {
-        return Promise.resolve([]);
-      }
-      return getTasks(projectId);
-    },
-    enabled: !!projectId,
-    staleTime: 5 * 60 * 1000, // 5 minutes - rely on WebSocket for freshness
-    // No refetchInterval - WebSocket handles real-time updates
+    queryKey,
+    queryFn: () => getTasks(workspacePath),
+    staleTime: 30 * 1000, // 30 seconds
+    refetchInterval: 10 * 1000, // Poll every 10 seconds for updates
   });
-
-  // Update React Query cache when WebSocket data changes
-  useEffect(() => {
-    if (projectId && wsData && isInitialized) {
-      queryClient.setQueryData(vibeKanbanKeys.tasks(projectId), wsData);
-    }
-  }, [projectId, wsData, isInitialized, queryClient]);
-
-  // Combine data: prefer WebSocket data when initialized, else use REST data
-  const data = useMemo(() => {
-    if (isInitialized && wsData) {
-      return wsData;
-    }
-    return query.data;
-  }, [isInitialized, wsData, query.data]);
-
-  // Determine loading state
-  const isLoading = query.isLoading && !isInitialized;
-  const isFetching =
-    query.isFetching || (connectionState === "connecting" && !isInitialized);
-
-  // Combine errors
-  const error = query.error || wsError;
-
-  // WebSocket state for UI feedback
-  const websocketState: TasksWebSocketState = {
-    connectionState,
-    isInitialized,
-    wsError,
-    reconnect,
-  };
 
   return {
-    // Standard React Query properties
-    data,
-    isLoading,
-    isFetching,
-    error,
+    data: query.data,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    error: query.error,
     refetch: query.refetch,
-    // WebSocket-specific state
-    websocketState,
   };
 }
 
@@ -151,7 +71,7 @@ export function useCreateVibeKanbanTask() {
     onSuccess: (newTask: Task) => {
       // Invalidate tasks query to refetch
       queryClient.invalidateQueries({
-        queryKey: vibeKanbanKeys.tasks(newTask.project_id),
+        queryKey: vibeKanbanKeys.tasks(newTask.workspace_path ?? ""),
       });
     },
   });
@@ -160,7 +80,7 @@ export function useCreateVibeKanbanTask() {
 interface UpdateTaskParams {
   taskId: string;
   data: UpdateTaskRequest;
-  projectId: string;
+  workspacePath?: string;
 }
 
 /**
@@ -171,50 +91,41 @@ export function useUpdateVibeKanbanTask() {
 
   return useMutation({
     mutationFn: ({ taskId, data }: UpdateTaskParams) => updateTask(taskId, data),
-    onMutate: async ({ taskId, data, projectId }: UpdateTaskParams) => {
+    onMutate: async ({ taskId, data, workspacePath }: UpdateTaskParams) => {
+      const queryKey = vibeKanbanKeys.tasks(workspacePath ?? "");
+
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: vibeKanbanKeys.tasks(projectId),
-      });
+      await queryClient.cancelQueries({ queryKey });
 
       // Snapshot previous value
-      const previousTasks = queryClient.getQueryData<TaskWithAttemptStatus[]>(
-        vibeKanbanKeys.tasks(projectId)
-      );
+      const previousTasks = queryClient.getQueryData<TaskWithAttemptStatus[]>(queryKey);
 
       // Optimistically update
       if (previousTasks) {
         queryClient.setQueryData<TaskWithAttemptStatus[]>(
-          vibeKanbanKeys.tasks(projectId),
-          previousTasks.map((task: TaskWithAttemptStatus) =>
+          queryKey,
+          previousTasks.map((task) =>
             task.id === taskId ? { ...task, ...data } : task
           )
         );
       }
 
-      return { previousTasks };
+      return { previousTasks, queryKey };
     },
     onError: (
       _err: unknown,
-      { projectId }: UpdateTaskParams,
-      context: { previousTasks?: TaskWithAttemptStatus[] } | undefined
+      _params: UpdateTaskParams,
+      context: { previousTasks?: TaskWithAttemptStatus[]; queryKey: readonly string[] } | undefined
     ) => {
       // Rollback on error
       if (context?.previousTasks) {
-        queryClient.setQueryData(
-          vibeKanbanKeys.tasks(projectId),
-          context.previousTasks
-        );
+        queryClient.setQueryData(context.queryKey, context.previousTasks);
       }
     },
-    onSettled: (
-      _data: Task | undefined,
-      _error: unknown,
-      { projectId }: UpdateTaskParams
-    ) => {
+    onSettled: (_data, _error, { workspacePath }) => {
       // Refetch to ensure consistency
       queryClient.invalidateQueries({
-        queryKey: vibeKanbanKeys.tasks(projectId),
+        queryKey: vibeKanbanKeys.tasks(workspacePath ?? ""),
       });
     },
   });
@@ -223,7 +134,7 @@ export function useUpdateVibeKanbanTask() {
 interface UpdateTaskStatusParams {
   taskId: string;
   status: TaskStatus;
-  projectId: string;
+  workspacePath?: string;
 }
 
 /**
@@ -235,45 +146,36 @@ export function useUpdateVibeKanbanTaskStatus() {
   return useMutation({
     mutationFn: ({ taskId, status }: UpdateTaskStatusParams) =>
       updateTaskStatus(taskId, status),
-    onMutate: async ({ taskId, status, projectId }: UpdateTaskStatusParams) => {
-      await queryClient.cancelQueries({
-        queryKey: vibeKanbanKeys.tasks(projectId),
-      });
+    onMutate: async ({ taskId, status, workspacePath }: UpdateTaskStatusParams) => {
+      const queryKey = vibeKanbanKeys.tasks(workspacePath ?? "");
 
-      const previousTasks = queryClient.getQueryData<TaskWithAttemptStatus[]>(
-        vibeKanbanKeys.tasks(projectId)
-      );
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousTasks = queryClient.getQueryData<TaskWithAttemptStatus[]>(queryKey);
 
       if (previousTasks) {
         queryClient.setQueryData<TaskWithAttemptStatus[]>(
-          vibeKanbanKeys.tasks(projectId),
-          previousTasks.map((task: TaskWithAttemptStatus) =>
+          queryKey,
+          previousTasks.map((task) =>
             task.id === taskId ? { ...task, status } : task
           )
         );
       }
 
-      return { previousTasks };
+      return { previousTasks, queryKey };
     },
     onError: (
       _err: unknown,
-      { projectId }: UpdateTaskStatusParams,
-      context: { previousTasks?: TaskWithAttemptStatus[] } | undefined
+      _params: UpdateTaskStatusParams,
+      context: { previousTasks?: TaskWithAttemptStatus[]; queryKey: readonly string[] } | undefined
     ) => {
       if (context?.previousTasks) {
-        queryClient.setQueryData(
-          vibeKanbanKeys.tasks(projectId),
-          context.previousTasks
-        );
+        queryClient.setQueryData(context.queryKey, context.previousTasks);
       }
     },
-    onSettled: (
-      _data: Task | undefined,
-      _error: unknown,
-      { projectId }: UpdateTaskStatusParams
-    ) => {
+    onSettled: (_data, _error, { workspacePath }) => {
       queryClient.invalidateQueries({
-        queryKey: vibeKanbanKeys.tasks(projectId),
+        queryKey: vibeKanbanKeys.tasks(workspacePath ?? ""),
       });
     },
   });
@@ -281,7 +183,7 @@ export function useUpdateVibeKanbanTaskStatus() {
 
 interface DeleteTaskParams {
   taskId: string;
-  projectId: string;
+  workspacePath?: string;
 }
 
 /**
@@ -292,27 +194,10 @@ export function useDeleteVibeKanbanTask() {
 
   return useMutation({
     mutationFn: ({ taskId }: DeleteTaskParams) => deleteTask(taskId),
-    onSuccess: (_data: void, { projectId }: DeleteTaskParams) => {
+    onSuccess: (_data: void, { workspacePath }: DeleteTaskParams) => {
       queryClient.invalidateQueries({
-        queryKey: vibeKanbanKeys.tasks(projectId),
+        queryKey: vibeKanbanKeys.tasks(workspacePath ?? ""),
       });
     },
   });
-}
-
-/**
- * Find project by git repo path
- */
-export function useVibeKanbanProjectByPath(gitRepoPath: string | null) {
-  const { data: projects } = useVibeKanbanProjects();
-
-  if (!gitRepoPath || !projects) {
-    return null;
-  }
-
-  // Normalize paths for comparison
-  const normalizedPath = gitRepoPath.replace(/\/+$/, "");
-  return projects.find(
-    (p) => p.git_repo_path.replace(/\/+$/, "") === normalizedPath
-  ) ?? null;
 }

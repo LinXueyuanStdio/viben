@@ -124,6 +124,7 @@ function App() {
             <Route path="executors" element={null} />
             <Route path="model" element={null} />
             <Route path="agents" element={null} />
+            <Route path="sandbox" element={null} />
             <Route path="environment" element={null} />
             <Route path="storage" element={null} />
             <Route path="about" element={null} />

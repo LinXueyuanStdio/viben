@@ -12,6 +12,7 @@ import {
   buildTasksWebSocketUrl,
   isJsonPatchMessage,
   isStreamFinishedMessage,
+  getWebSocketCloseReason,
 } from "./websocket-types";
 
 interface UseTasksWebSocketOptions {
@@ -241,9 +242,8 @@ export function useTasksWebSocket(
         // Check if this was a clean close or an error
         if (event.code !== 1000 && event.code !== 1001) {
           setConnectionState("error");
-          setError(
-            new Error(`WebSocket closed with code ${event.code}: ${event.reason}`)
-          );
+          const reason = getWebSocketCloseReason(event.code, event.reason);
+          setError(new Error(reason));
         } else {
           setConnectionState("disconnected");
         }

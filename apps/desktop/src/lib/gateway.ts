@@ -4383,6 +4383,8 @@ export interface WorkspaceResponse {
   path: string;
   name: string;
   config_path: string;
+  /** Git repo path (path + "/.git") for kanban compatibility */
+  git_repo_path: string;
   type?: "global" | "custom";
   mcp?: {
     enabled: string[];

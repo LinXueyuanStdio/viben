@@ -11,6 +11,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ChatAgentConfig, ChatModelConfig } from "@/types/chat-config";
 import type { ExecutorType } from "@viben/core/shared";
+import type { SandboxConfig, SandboxProviderType } from "@/hooks/use-sandbox";
 
 // ============================================================================
 // Store Interface
@@ -28,6 +29,9 @@ interface ChatConfigState {
   // Executor selection (which coding agent to use: CLAUDE_CODE, CODEX, etc.)
   selectedExecutor: ExecutorType;
 
+  // Sandbox configuration (session-level)
+  sandboxConfig: SandboxConfig;
+
   // Loading state
   isLoading: boolean;
   error: string | null;
@@ -40,6 +44,11 @@ interface ChatConfigState {
   setSelectedAgentId: (id: string | null) => void;
   setSelectedModelId: (id: string | null) => void;
   setSelectedExecutor: (executor: ExecutorType) => void;
+
+  // Actions - Sandbox
+  setSandboxEnabled: (enabled: boolean) => void;
+  setSandboxProvider: (provider: SandboxProviderType | undefined) => void;
+  setSandboxConfig: (config: Partial<SandboxConfig>) => void;
 
   // Actions - Loading state
   setLoading: (loading: boolean) => void;
@@ -63,6 +72,10 @@ export const useChatConfigStore = create<ChatConfigState>()(
       selectedAgentId: null,
       selectedModelId: null,
       selectedExecutor: "CLAUDE_CODE" as ExecutorType,
+      sandboxConfig: {
+        enabled: false,
+        provider: undefined,
+      },
       isLoading: false,
       error: null,
 
@@ -90,6 +103,20 @@ export const useChatConfigStore = create<ChatConfigState>()(
       setSelectedModelId: (id) => set({ selectedModelId: id }),
       setSelectedExecutor: (executor) => set({ selectedExecutor: executor }),
 
+      // Sandbox
+      setSandboxEnabled: (enabled) =>
+        set((state) => ({
+          sandboxConfig: { ...state.sandboxConfig, enabled },
+        })),
+      setSandboxProvider: (provider) =>
+        set((state) => ({
+          sandboxConfig: { ...state.sandboxConfig, provider },
+        })),
+      setSandboxConfig: (config) =>
+        set((state) => ({
+          sandboxConfig: { ...state.sandboxConfig, ...config },
+        })),
+
       // Loading state
       setLoading: (loading) => set({ isLoading: loading }),
       setError: (error) => set({ error }),
@@ -112,6 +139,7 @@ export const useChatConfigStore = create<ChatConfigState>()(
         selectedAgentId: state.selectedAgentId,
         selectedModelId: state.selectedModelId,
         selectedExecutor: state.selectedExecutor,
+        sandboxConfig: state.sandboxConfig,
       }),
     }
   )

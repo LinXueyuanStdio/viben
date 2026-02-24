@@ -34,6 +34,8 @@ interface WorkspaceResponse {
   path: string;
   name: string;
   config_path: string;
+  /** Git repo path (path + "/.git") for kanban compatibility */
+  git_repo_path: string;
   type: WorkspaceType;
   mcp?: {
     enabled: string[];
@@ -63,6 +65,7 @@ function toSnakeCaseWorkspace(workspace: Workspace, type: WorkspaceType = "custo
     path: workspace.path,
     name: workspace.name,
     config_path: workspace.configPath,
+    git_repo_path: join(workspace.path, ".git"),
     type,
     mcp: workspace.mcp,
     skills: workspace.skills,
@@ -82,6 +85,7 @@ function createGlobalWorkspaceResponse(): WorkspaceResponse {
     path: home,
     name: "Global",
     config_path: join(home, ".viben"),
+    git_repo_path: join(home, ".git"),
     type: "global",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

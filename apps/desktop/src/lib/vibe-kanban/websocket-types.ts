@@ -119,3 +119,47 @@ export function buildTasksWebSocketUrl(projectId: string): string {
   const wsUrl = baseUrl.replace(/^http/, "ws");
   return `${wsUrl}/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
 }
+
+/**
+ * WebSocket close codes and their descriptions
+ * https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
+ */
+const WS_CLOSE_CODES: Record<number, { en: string; zh: string }> = {
+  1000: { en: "Normal closure", zh: "正常关闭" },
+  1001: { en: "Going away", zh: "端点离开" },
+  1002: { en: "Protocol error", zh: "协议错误" },
+  1003: { en: "Unsupported data", zh: "不支持的数据类型" },
+  1005: { en: "No status received", zh: "未收到状态码" },
+  1006: { en: "Abnormal closure - server may be unavailable", zh: "连接异常关闭，服务器可能不可用" },
+  1007: { en: "Invalid frame payload data", zh: "无效的数据帧" },
+  1008: { en: "Policy violation", zh: "策略违规" },
+  1009: { en: "Message too big", zh: "消息过大" },
+  1010: { en: "Mandatory extension missing", zh: "缺少必要扩展" },
+  1011: { en: "Internal server error", zh: "服务器内部错误" },
+  1012: { en: "Service restart", zh: "服务重启" },
+  1013: { en: "Try again later", zh: "请稍后重试" },
+  1014: { en: "Bad gateway", zh: "网关错误" },
+  1015: { en: "TLS handshake failure", zh: "TLS 握手失败" },
+  4000: { en: "Heartbeat timeout", zh: "心跳超时" },
+};
+
+/**
+ * Get human-readable reason for WebSocket close code
+ * Returns Chinese description if browser language is Chinese
+ */
+export function getWebSocketCloseReason(code: number, serverReason?: string): string {
+  const isZh = navigator.language.startsWith("zh");
+  const codeInfo = WS_CLOSE_CODES[code];
+
+  if (serverReason) {
+    // If server provided a reason, use it with the code description
+    const codeDesc = codeInfo ? (isZh ? codeInfo.zh : codeInfo.en) : `Code ${code}`;
+    return `${codeDesc}${serverReason ? ` - ${serverReason}` : ""}`;
+  }
+
+  if (codeInfo) {
+    return isZh ? codeInfo.zh : codeInfo.en;
+  }
+
+  return isZh ? `WebSocket 关闭 (错误码: ${code})` : `WebSocket closed (code: ${code})`;
+}

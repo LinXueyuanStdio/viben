@@ -32,6 +32,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { ChatInput, type ChatInputProps, type MessageAttachment } from "@viben/chat";
 import { useChatConfig } from "@/hooks";
+import { SandboxToggle } from "./sandbox-toggle";
 
 // ============================================================================
 // Types
@@ -53,6 +54,7 @@ interface ScreenshotResult {
  * Props for DesktopChatInput
  * Extends ChatInputProps with desktop-specific features:
  * - useGlobalConfig: Automatically loads agents/models from global store
+ * - showSandboxToggle: Shows sandbox toggle in config bar
  * Omits platform-specific callbacks as they are implemented internally
  */
 export interface DesktopChatInputProps extends Omit<
@@ -65,6 +67,11 @@ export interface DesktopChatInputProps extends Omit<
    * via useChatConfig hook. Props can still override the global values.
    */
   useGlobalConfig?: boolean;
+  /**
+   * Show sandbox toggle in the config bar.
+   * When true, displays a toggle for sandbox mode with provider selection.
+   */
+  showSandboxToggle?: boolean;
 }
 
 // ============================================================================
@@ -81,6 +88,7 @@ export interface DesktopChatInputProps extends Omit<
  */
 export function DesktopChatInput({
   useGlobalConfig = false,
+  showSandboxToggle = false,
   // Agent/Model props that can be overridden
   agents: propAgents,
   selectedAgentId: propSelectedAgentId,
@@ -94,6 +102,8 @@ export function DesktopChatInput({
   // Visibility overrides
   hideAgentSelector: propHideAgentSelector,
   hideModelSelector: propHideModelSelector,
+  // Custom content
+  configBarLeftExtra: propConfigBarLeftExtra,
   ...props
 }: DesktopChatInputProps) {
   // Get global config if enabled
@@ -255,6 +265,19 @@ export function DesktopChatInput({
     }
   }, []);
 
+  // Build config bar extra content
+  const configBarLeftExtra = React.useMemo(() => {
+    // If custom content provided, use that
+    if (propConfigBarLeftExtra) {
+      return propConfigBarLeftExtra;
+    }
+    // Otherwise show sandbox toggle if enabled
+    if (showSandboxToggle) {
+      return <SandboxToggle />;
+    }
+    return undefined;
+  }, [propConfigBarLeftExtra, showSandboxToggle]);
+
   return (
     <ChatInput
       {...props}
@@ -271,6 +294,7 @@ export function DesktopChatInput({
       hideModelSelector={hideModelSelector}
       onScreenshot={handleScreenshot}
       onOpenFile={handleOpenFile}
+      configBarLeftExtra={configBarLeftExtra}
     />
   );
 }

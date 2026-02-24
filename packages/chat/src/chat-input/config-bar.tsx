@@ -77,6 +77,9 @@ export interface ChatInputConfigBarProps {
   canSubmit: boolean;
   // Style
   className?: string;
+  // Custom content
+  /** Extra content to render at the left side (after built-in selectors) */
+  leftExtraContent?: React.ReactNode;
 }
 
 export function ChatInputConfigBar({
@@ -110,6 +113,7 @@ export function ChatInputConfigBar({
   disabled,
   canSubmit,
   className,
+  leftExtraContent,
 }: ChatInputConfigBarProps) {
   const { t } = useTranslation();
   const [isToolsOpen, setIsToolsOpen] = React.useState(false);
@@ -436,6 +440,9 @@ export function ChatInputConfigBar({
             )}
           </Button>
         ) : null}
+
+        {/* Extra content slot */}
+        {leftExtraContent}
       </div>
 
       {/* Send/Stop Button */}

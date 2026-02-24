@@ -2673,6 +2673,7 @@ export function WorkspaceChatPage() {
                   useGlobalConfig
                   hideExecutorSelector
                   hideModelSelector
+                  showSandboxToggle
                   onAgentSettings={(agentId) => {
                     // Navigate to agent orchestration page
                     if (workspace?.path) {
