@@ -31,6 +31,7 @@ export {
   type SSEToolResultMessage,
   type SSEResultMessage,
   type SSEErrorMessage,
+  type SSEQuestionMessage,
 } from "./sdk-proxy";
 
 // Factory

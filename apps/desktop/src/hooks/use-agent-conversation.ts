@@ -4,6 +4,11 @@
  * Manages SSE streaming conversation with AI agents via Gateway.
  * Handles message state, tool usage, plans, and interactive questions.
  * Falls back to mock implementation when Gateway is unavailable.
+ *
+ * Features:
+ * - Auto-move running tasks to background when switching tasks
+ * - Restore AbortController when returning to background tasks
+ * - Message polling for background tasks
  */
 
 import { useCallback, useState, useRef, useMemo, useEffect } from "react";
@@ -18,6 +23,12 @@ import type {
 } from "@/types";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
+import {
+  addBackgroundTask,
+  getBackgroundTask,
+  removeBackgroundTask,
+  updateBackgroundTaskStatus,
+} from "@/lib/background-tasks";
 
 /**
  * Generate a unique ID
@@ -145,6 +156,14 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Track current streaming message ID for text accumulation
   const streamingMessageIdRef = useRef<string | null>(null);
 
+  // Track active task ID for background task management
+  const activeTaskIdRef = useRef<string | null>(persistTaskId || null);
+  const isRunningRef = useRef(false);
+  const initialPromptRef = useRef<string>("");
+
+  // Polling interval for background tasks
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Check Gateway connection on mount
   useEffect(() => {
     if (!mockMode) {
@@ -160,6 +179,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       }
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
+      }
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
       }
     };
   }, []);
@@ -372,6 +395,13 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       // Reset streaming state for new message
       streamingMessageIdRef.current = null;
 
+      // Track running state for background task management
+      isRunningRef.current = true;
+      initialPromptRef.current = content;
+
+      // Create new abort controller for this request
+      abortControllerRef.current = new AbortController();
+
       setError(null);
       setPhase("running");
       setIsStreaming(true);
@@ -398,6 +428,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // workspaceId is actually workspace path, use it as cwd
         // Generate taskId for each conversation turn if sessionId is provided
         const currentTaskId = persistSessionId ? (persistTaskId || generateTaskId()) : undefined;
+        // Track the active task ID for background task management
+        if (currentTaskId) {
+          activeTaskIdRef.current = currentTaskId;
+        }
+
         const requestBody: Record<string, unknown> = {
           prompt: content,
           agentPath: agentPath || undefined,
@@ -467,10 +502,17 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         // Stream ended - the handleSSEMessage callback handles all state transitions
         // (error, result, done events) so we only need to ensure streaming is stopped
         console.log("[useAgent] Stream completed successfully");
+        isRunningRef.current = false;
+
+        // Update background task status if exists
+        if (activeTaskIdRef.current) {
+          updateBackgroundTaskStatus(activeTaskIdRef.current, false);
+        }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error";
         console.error("[useAgent] Error:", errorMessage);
         setError(errorMessage);
+        isRunningRef.current = false;
 
         const errMsg: AgentMessage = {
           id: generateId(),
@@ -481,6 +523,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         setMessages((prev) => [...prev, errMsg]);
         setPhase("error");
         setIsStreaming(false);
+
+        // Update background task status if exists
+        if (activeTaskIdRef.current) {
+          updateBackgroundTaskStatus(activeTaskIdRef.current, false);
+        }
       }
     },
     [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId]
@@ -799,27 +846,65 @@ The workspace ID for this session is: \`${workspaceId}\`
   }, [pendingPlan, messages, gatewayConnected]);
 
   /**
-   * Answer pending questions
+   * Answer pending questions (AskUserQuestion elicitation)
    */
   const answerQuestions = useCallback(
     async (answers: Record<string, string[]>) => {
       if (!pendingQuestions) return;
 
+      const questionId = pendingQuestions.id;
       setPendingQuestions(null);
       setPhase("running");
       setIsStreaming(true);
 
       try {
-        await mockDelay(500);
+        // Convert answers from string[] to string format expected by backend
+        const flatAnswers: Record<string, string> = {};
+        for (const [key, values] of Object.entries(answers)) {
+          flatAnswers[key] = values.join(", ");
+        }
 
-        const selectedAnswers = Object.values(answers).flat().join(", ");
-        const textMessage: AgentMessage = {
-          id: generateId(),
-          type: "text",
-          content: `Thank you for your response! You selected: ${selectedAnswers}. I will proceed with this configuration.`,
-        };
-        setMessages((prev) => [...prev, textMessage]);
-        setPhase("completed");
+        if (gatewayConnected && questionId) {
+          // Call real Gateway endpoint
+          const gatewayUrl = getGatewayUrl();
+          const response = await fetch(`${gatewayUrl}/api/agent/answer/${questionId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              answers: flatAnswers,
+              agentPath,
+              workspacePath: workspaceId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to submit answer: ${response.statusText}`);
+          }
+
+          console.log("[useAgent] Question answered:", questionId);
+
+          // The agent will continue and send more SSE messages
+          // For now, just show a confirmation message
+          const selectedAnswers = Object.values(answers).flat().join(", ");
+          const textMessage: AgentMessage = {
+            id: generateId(),
+            type: "text",
+            content: `You selected: ${selectedAnswers}`,
+          };
+          setMessages((prev) => [...prev, textMessage]);
+        } else {
+          // Mock mode - just show confirmation
+          await mockDelay(500);
+
+          const selectedAnswers = Object.values(answers).flat().join(", ");
+          const textMessage: AgentMessage = {
+            id: generateId(),
+            type: "text",
+            content: `Thank you for your response! You selected: ${selectedAnswers}. I will proceed with this configuration.`,
+          };
+          setMessages((prev) => [...prev, textMessage]);
+          setPhase("completed");
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to process answers");
         setPhase("error");
@@ -827,7 +912,7 @@ The workspace ID for this session is: \`${workspaceId}\`
         setIsStreaming(false);
       }
     },
-    [pendingQuestions]
+    [pendingQuestions, gatewayConnected, agentPath, workspaceId]
   );
 
   /**
@@ -894,6 +979,172 @@ The workspace ID for this session is: \`${workspaceId}\`
       }));
     setToolUsages(tools);
     setPhase("idle");
+  }, []);
+
+  /**
+   * Move current running task to background when switching to another task
+   */
+  const moveToBackground = useCallback(() => {
+    const currentTaskId = activeTaskIdRef.current;
+    const currentIsRunning = isRunningRef.current;
+    const currentPrompt = initialPromptRef.current;
+
+    if (
+      abortControllerRef.current &&
+      currentTaskId &&
+      currentIsRunning
+    ) {
+      console.log("[useAgent] Moving task to background:", currentTaskId);
+      addBackgroundTask({
+        taskId: currentTaskId,
+        sessionId: sessionId || "",
+        abortController: abortControllerRef.current,
+        isRunning: true,
+        prompt: currentPrompt,
+        agentPath,
+        workspacePath: workspaceId,
+      });
+      // Clear refs but don't abort - task continues in background
+      abortControllerRef.current = null;
+
+      // Clear UI state for the old task
+      setMessages([]);
+      setPendingPlan(null);
+      setPendingQuestions(null);
+      setPhase("idle");
+      setIsStreaming(false);
+    }
+
+    // Stop any existing polling
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  }, [sessionId, agentPath, workspaceId]);
+
+  /**
+   * Switch to a different task, moving current task to background if running
+   * @param newTaskId - The task ID to switch to
+   * @param savedMessages - Optional messages to restore
+   * @returns Whether the new task is running in background
+   */
+  const switchTask = useCallback((newTaskId: string, savedMessages?: AgentMessage[]): boolean => {
+    const currentTaskId = activeTaskIdRef.current;
+
+    // If switching to a different task, move current to background
+    if (currentTaskId && currentTaskId !== newTaskId && isRunningRef.current) {
+      moveToBackground();
+    }
+
+    // Set new task as active
+    activeTaskIdRef.current = newTaskId;
+
+    // Check if the new task is running in background
+    const backgroundTask = getBackgroundTask(newTaskId);
+    const isRestoringFromBackground = backgroundTask && backgroundTask.isRunning;
+
+    if (isRestoringFromBackground) {
+      console.log("[useAgent] Restoring task from background:", newTaskId);
+      // Restore abort controller
+      abortControllerRef.current = backgroundTask.abortController;
+      setSessionId(backgroundTask.sessionId);
+
+      // Check if the abort controller is still valid
+      if (abortControllerRef.current.signal.aborted) {
+        console.log("[useAgent] Background task was already completed/aborted");
+        setIsStreaming(false);
+        setPhase("idle");
+        isRunningRef.current = false;
+        abortControllerRef.current = null;
+        removeBackgroundTask(newTaskId);
+        return false;
+      } else {
+        setIsStreaming(true);
+        setPhase("running");
+        isRunningRef.current = true;
+
+        // Remove from background tasks after brief delay
+        setTimeout(() => {
+          removeBackgroundTask(newTaskId);
+        }, 50);
+
+        // Start polling for messages if we have a session
+        startMessagePolling(newTaskId);
+        return true;
+      }
+    }
+
+    // Load saved messages if provided
+    if (savedMessages) {
+      loadMessages(savedMessages);
+    }
+
+    return false;
+  }, [moveToBackground, loadMessages]);
+
+  /**
+   * Start polling for new messages (for background task restoration)
+   */
+  const startMessagePolling = useCallback((taskId: string) => {
+    // Clear existing polling
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+
+    let lastMessageCount = 0;
+    let stuckCount = 0;
+    const MAX_STUCK_COUNT = 300; // 5 minutes of no progress
+
+    refreshIntervalRef.current = setInterval(async () => {
+      const isStillActive = activeTaskIdRef.current === taskId;
+
+      // Check abort signal
+      if (
+        !abortControllerRef.current ||
+        abortControllerRef.current.signal.aborted
+      ) {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+        if (isStillActive) {
+          setIsStreaming(false);
+          setPhase("idle");
+          isRunningRef.current = false;
+        }
+        return;
+      }
+
+      if (isStillActive) {
+        // Check for stuck state
+        const currentCount = messages.length;
+        if (currentCount === lastMessageCount) {
+          stuckCount++;
+          if (stuckCount >= MAX_STUCK_COUNT) {
+            console.log("[useAgent] Task appears stuck, stopping poll");
+            if (refreshIntervalRef.current) {
+              clearInterval(refreshIntervalRef.current);
+              refreshIntervalRef.current = null;
+            }
+            setIsStreaming(false);
+            setPhase("idle");
+            isRunningRef.current = false;
+            return;
+          }
+        } else {
+          stuckCount = 0;
+          lastMessageCount = currentCount;
+        }
+      }
+    }, 1000);
+  }, [messages.length]);
+
+  /**
+   * Check if there's a running background task for this workspace
+   */
+  const hasRunningBackgroundTask = useCallback((taskId: string): boolean => {
+    const task = getBackgroundTask(taskId);
+    return task?.isRunning ?? false;
   }, []);
 
   /**
@@ -1168,5 +1419,10 @@ The workspace ID for this session is: \`${workspaceId}\`
     clearMessages,
     loadMessages,
     checkGatewayConnection,
+
+    // Background task management
+    switchTask,
+    moveToBackground,
+    hasRunningBackgroundTask,
   };
 }

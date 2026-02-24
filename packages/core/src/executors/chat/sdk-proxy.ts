@@ -59,6 +59,20 @@ export interface SSEErrorMessage {
 }
 
 /**
+ * SSE question message - Agent asking user a question (AskUserQuestion elicitation)
+ */
+export interface SSEQuestionMessage {
+  type: "question";
+  id: string;
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description?: string }>;
+    multiSelect: boolean;
+  }>;
+}
+
+/**
  * Union type for all SSE messages from streaming execution
  */
 export type SSEMessage =
@@ -66,7 +80,8 @@ export type SSEMessage =
   | SSEToolUseMessage
   | SSEToolResultMessage
   | SSEResultMessage
-  | SSEErrorMessage;
+  | SSEErrorMessage
+  | SSEQuestionMessage;
 
 import { execSync } from "node:child_process";
 
@@ -635,12 +650,27 @@ export class SdkChatProxy implements ChatProxy {
           // Handle tool_use within assistant message - with deduplication
           else if ("name" in block && "id" in block) {
             const toolId = block.id as string;
+            const toolName = block.name as string;
             if (!this.sentToolIds.has(toolId)) {
               this.sentToolIds.add(toolId);
+
+              // Special handling for AskUserQuestion - emit as 'question' type
+              if (toolName === "AskUserQuestion" && block.input) {
+                const input = block.input as { questions?: unknown[] };
+                if (input.questions && Array.isArray(input.questions)) {
+                  yield {
+                    type: "question",
+                    id: toolId,
+                    questions: input.questions as SSEQuestionMessage["questions"],
+                  };
+                }
+              }
+
+              // Always emit the tool_use for tracking
               yield {
                 type: "tool_use",
                 id: toolId,
-                name: block.name as string,
+                name: toolName,
                 input: block.input,
               };
             }
@@ -699,12 +729,26 @@ export class SdkChatProxy implements ChatProxy {
           }
         } else if ("name" in block && "id" in block) {
           const toolId = block.id as string;
+          const toolName = block.name as string;
           if (!this.sentToolIds.has(toolId)) {
             this.sentToolIds.add(toolId);
+
+            // Special handling for AskUserQuestion - emit as 'question' type
+            if (toolName === "AskUserQuestion" && block.input) {
+              const input = block.input as { questions?: unknown[] };
+              if (input.questions && Array.isArray(input.questions)) {
+                yield {
+                  type: "question",
+                  id: toolId,
+                  questions: input.questions as SSEQuestionMessage["questions"],
+                };
+              }
+            }
+
             yield {
               type: "tool_use",
               id: toolId,
-              name: block.name as string,
+              name: toolName,
               input: block.input,
             };
           }
@@ -716,12 +760,26 @@ export class SdkChatProxy implements ChatProxy {
     // Handle top-level tool_use (legacy format)
     if (msg.type === "tool_use") {
       const toolId = msg.id as string;
+      const toolName = msg.name as string;
       if (!this.sentToolIds.has(toolId)) {
         this.sentToolIds.add(toolId);
+
+        // Special handling for AskUserQuestion - emit as 'question' type
+        if (toolName === "AskUserQuestion" && msg.input) {
+          const input = msg.input as { questions?: unknown[] };
+          if (input.questions && Array.isArray(input.questions)) {
+            yield {
+              type: "question",
+              id: toolId,
+              questions: input.questions as SSEQuestionMessage["questions"],
+            };
+          }
+        }
+
         yield {
           type: "tool_use",
           id: toolId,
-          name: msg.name as string,
+          name: toolName,
           input: msg.input,
         };
       }

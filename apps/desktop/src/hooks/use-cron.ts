@@ -426,7 +426,7 @@ export function useCronExecutionLogs() {
       if (limit) params.set("limit", limit.toString());
       if (offset) params.set("offset", offset.toString());
       const queryString = params.toString();
-      const url = `/api/cron/${jobId}/logs${queryString ? `?${queryString}` : ""}`;
+      const url = `/api/cron/${encodeURIComponent(jobId)}/logs${queryString ? `?${queryString}` : ""}`;
 
       const result = await gatewayFetch<{ logs: CronExecutionLog[] }>(url);
       setLogs(result.logs || []);
@@ -445,7 +445,7 @@ export function useCronExecutionLogs() {
     setLoading(true);
     setError(null);
     try {
-      await gatewayFetch(`/api/cron/${jobId}/logs`, {
+      await gatewayFetch(`/api/cron/${encodeURIComponent(jobId)}/logs`, {
         method: "DELETE",
       });
       setLogs([]);

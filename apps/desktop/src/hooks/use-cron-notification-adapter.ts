@@ -23,6 +23,12 @@ import type { JobStatus } from "@/types/cron";
 // Types
 // ============================================================================
 
+interface CronNotificationSettings {
+  in_app?: boolean;
+  system?: boolean;
+  channel_ids?: string[];
+}
+
 interface CronJobCompletedData {
   job_id: string;
   job_name: string;
@@ -33,6 +39,8 @@ interface CronJobCompletedData {
   /** Output message (truncated) */
   output?: string;
   completed_at: number;
+  /** Notification settings from the job */
+  notifications?: CronNotificationSettings;
 }
 
 // ============================================================================
@@ -82,8 +90,12 @@ export function useCronNotificationAdapter() {
           const data = payload.data as unknown as CronJobCompletedData;
           if (!data) return;
 
-          const { job_name, job_type, status, duration_ms, output } = data;
+          const { job_name, job_type, status, duration_ms, output, notifications } = data;
           const isSuccess = status === "success";
+
+          // Check notification settings from the job
+          const shouldNotifyInApp = notifications?.in_app !== false; // default to true
+          const shouldNotifySystem = notifications?.system === true; // default to false
 
           // Format duration for display
           const formatDuration = (ms: number): string => {
@@ -125,7 +137,7 @@ export function useCronNotificationAdapter() {
             ? `${output.slice(0, 100)}...`
             : output;
 
-          // Add to notification center (with full output)
+          // Add to notification center (with full output) - always add for history
           addNotification({
             category: "cron",
             level,
@@ -139,13 +151,20 @@ export function useCronNotificationAdapter() {
             },
           });
 
-          // Show toast notification (with truncated output)
+          // Show toast notification if in_app is enabled
           const toastBody = truncatedOutput ? `${body}\n${truncatedOutput}` : body;
-          if (isSuccess) {
-            toast.success(title, { description: toastBody });
-          } else {
-            toast.error(title, { description: toastBody });
-            // For failures, also send system notification
+          if (shouldNotifyInApp) {
+            if (isSuccess) {
+              toast.success(title, { description: toastBody });
+            } else {
+              toast.error(title, { description: toastBody });
+            }
+          }
+
+          // Send system notification if:
+          // 1. notifications.system is enabled on the job, OR
+          // 2. Job failed (always notify for failures)
+          if (shouldNotifySystem || !isSuccess) {
             await notifyIfBackground({ title, body: toastBody });
           }
           break;
