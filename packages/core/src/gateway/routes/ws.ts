@@ -10,9 +10,21 @@ import type { FastifyInstance } from "fastify";
 import type { AppState } from "../state";
 import type { GatewayEvent } from "../../services/events";
 import { trace, SpanKind, SpanStatusCode } from "@opentelemetry/api";
+import { recordWsConnection, recordWsDisconnect, recordWsMessage } from "../../telemetry";
 
 // WebSocket tracer
 const tracer = trace.getTracer("viben-gateway-ws", "1.0.0");
+
+// Track active WebSocket connections for metrics
+let activeWsConnectionCount = 0;
+
+/**
+ * Get the current number of active WebSocket connections
+ * Used for metrics/telemetry Observable Gauge
+ */
+export function getActiveWsConnectionCount(): number {
+  return activeWsConnectionCount;
+}
 
 /**
  * WebSocket message types (client to server)
@@ -138,6 +150,10 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
         let messagesSent = 0;
         let messagesReceived = 0;
 
+        // Record WebSocket connection and increment counter
+        recordWsConnection();
+        activeWsConnectionCount++;
+
         // Set of subscribed channels
         const subscribedChannels = new Set<string>();
 
@@ -245,6 +261,10 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
           sessionSpan.setAttribute("ws.messages.received", messagesReceived);
           sessionSpan.setStatus({ code: SpanStatusCode.OK });
           sessionSpan.end();
+
+          // Record WebSocket disconnect metrics and decrement counter
+          recordWsDisconnect("normal");
+          activeWsConnectionCount = Math.max(0, activeWsConnectionCount - 1);
         });
 
         // Handle error
@@ -256,6 +276,10 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
           sessionSpan.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
           sessionSpan.recordException(err);
           sessionSpan.end();
+
+          // Record WebSocket disconnect metrics with error and decrement counter
+          recordWsDisconnect("error");
+          activeWsConnectionCount = Math.max(0, activeWsConnectionCount - 1);
         });
       });
     } catch {

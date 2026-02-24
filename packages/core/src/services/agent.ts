@@ -132,6 +132,16 @@ export class AgentService {
     return controller?.signal.aborted ?? false;
   }
 
+  /**
+   * Get the number of active sessions
+   * Used for metrics/telemetry
+   *
+   * @returns The count of active sessions
+   */
+  getActiveSessionCount(): number {
+    return this.abortControllers.size;
+  }
+
   // ==========================================================================
   // Plan Management
   // ==========================================================================

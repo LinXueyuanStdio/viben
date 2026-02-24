@@ -1,5 +1,5 @@
 /**
- * API client for vibe-kanban local backend
+ * API client for kanban - connects to Viben Gateway
  */
 
 import type {
@@ -10,16 +10,15 @@ import type {
   UpdateTaskRequest,
   Project,
 } from "./types";
+import { getGatewayUrl } from "@/lib/gateway";
 
-// Base URL for vibe-kanban API
-// In development, use Vite proxy to avoid CORS issues
-// In production (Tauri), use direct URL
-const isDev = import.meta.env.DEV;
-const API_BASE_URL = import.meta.env.VITE_VIBE_KANBAN_API_URL
-  || (isDev ? "" : "http://127.0.0.1:60964");
+// Get Gateway URL dynamically
+function getApiBaseUrl(): string {
+  return getGatewayUrl();
+}
 
-// API path prefix - in dev mode, use proxy path that gets rewritten to /api
-const API_PREFIX = isDev ? "/vibe-kanban-api" : "/api";
+// API path prefix for kanban endpoints
+const API_PREFIX = "/api/kanban";
 
 /**
  * Custom error class for API errors
@@ -36,13 +35,13 @@ export class VibeKanbanApiError extends Error {
 }
 
 /**
- * Make a request to the vibe-kanban API
+ * Make a request to the kanban API via Gateway
  */
 async function makeRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${path}`;
+  const url = `${getApiBaseUrl()}${path}`;
 
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type") && options.body) {
@@ -91,7 +90,7 @@ async function makeRequest<T>(
     // Network errors
     if (error instanceof TypeError && error.message.includes("fetch")) {
       throw new VibeKanbanApiError(
-        "Cannot connect to vibe-kanban backend. Is it running?"
+        "Cannot connect to Gateway. Is it running?"
       );
     }
 
@@ -179,4 +178,4 @@ export async function updateTaskStatus(
 }
 
 // Export API base URL for debugging
-export { API_BASE_URL };
+export { getApiBaseUrl as getApiBaseUrl };

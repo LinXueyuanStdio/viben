@@ -11,6 +11,7 @@
  * - ServiceManager: Background service management (MCP servers, gateway, viben services)
  * - BackgroundTaskManager: Background task management with observer pattern
  * - AgentService: Agent session lifecycle and plan approval management
+ * - SandboxService: Isolated code execution with multiple providers
  */
 
 // Event service
@@ -104,3 +105,17 @@ export {
   type AgentPlan,
   type AgentQuestion,
 } from "./agent";
+
+// Sandbox service
+export {
+  SandboxService,
+  getSandboxService,
+  type ISandboxProvider,
+  type SandboxProviderType,
+  type SandboxCapabilities,
+  type SandboxExecOptions,
+  type SandboxExecResult,
+  type ScriptOptions,
+  type SandboxConfig,
+} from "./sandbox";
+

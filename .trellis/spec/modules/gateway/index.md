@@ -34,6 +34,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 │  ├── /api/cron            定时任务                               │
 │  ├── /api/group-chats     群聊管理                               │
 │  ├── /api/chat-list       聊天列表聚合                           │
+│  ├── /api/telemetry       可观测性数据                           │
 │  └── /api/events          SSE 事件流                             │
 ├─────────────────────────────────────────────────────────────────┤
 │  WebSocket Routes                                                │
@@ -70,6 +71,7 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 | 定时任务 | `/api/cron` | [cron.md](./cron.md) |
 | 群聊 | `/api/group-chats` | [group-chats.md](./group-chats.md) |
 | 聊天列表 | `/api/chat-list` | [chat-list.md](./chat-list.md) |
+| 可观测性 | `/api/telemetry` | [telemetry.md](./telemetry.md) |
 | 事件流 | `/api/events` | [events.md](./events.md) |
 | WebSocket | `/ws`, `/terminal/ws` | [websocket.md](./websocket.md) |
 
@@ -138,3 +140,4 @@ curl http://127.0.0.1:18790/health
 
 - [CLI Gateway 命令](../cli/gateway.md) - Gateway CLI 管理命令
 - [CLI Agent 命令](../cli/agent.md) - Agent CLI 管理命令
+- [Telemetry Guidelines](../../backend/telemetry-guidelines.md) - OpenTelemetry 集成指南

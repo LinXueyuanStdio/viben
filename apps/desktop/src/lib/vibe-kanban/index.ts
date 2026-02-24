@@ -26,7 +26,6 @@ export {
   deleteTask,
   updateTaskStatus,
   VibeKanbanApiError,
-  API_BASE_URL,
 } from "./api";
 
 // WebSocket types

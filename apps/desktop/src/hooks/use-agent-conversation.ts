@@ -345,6 +345,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           };
           setPendingQuestions(pendingQ);
           setPhase("awaiting_input");
+          // Stop streaming - agent is waiting for user input
+          // The stream will be continued via answerQuestions -> sendMessage
+          setIsStreaming(false);
+          streamingMessageIdRef.current = null;
+          console.log("[useAgent] Question received, pausing for user input");
         }
         break;
       }
@@ -435,11 +440,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
 
         const requestBody: Record<string, unknown> = {
           prompt: content,
-          agentPath: agentPath || undefined,
-          agentConfig: agentPath ? undefined : (agentConfig || undefined),
+          agent_path: agentPath || undefined,
+          agent_config: agentPath ? undefined : (agentConfig || undefined),
           // Session persistence: pass session/task IDs for backend to persist messages
-          sessionId: persistSessionId || undefined,
-          taskId: currentTaskId,
+          session_id: persistSessionId || undefined,
+          task_id: currentTaskId,
         };
         if (workspaceId) {
           requestBody.cwd = workspaceId;
@@ -847,72 +852,46 @@ The workspace ID for this session is: \`${workspaceId}\`
 
   /**
    * Answer pending questions (AskUserQuestion elicitation)
+   *
+   * Following workany pattern:
+   * 1. Format user's answers as text
+   * 2. Clear pending question state
+   * 3. Continue conversation with the answers as new message
+   *
+   * Note: Claude Agent SDK doesn't wait for answers - it terminates.
+   * We continue the conversation by sending a new message with the answers.
    */
   const answerQuestions = useCallback(
     async (answers: Record<string, string[]>) => {
       if (!pendingQuestions) return;
 
-      const questionId = pendingQuestions.id;
-      setPendingQuestions(null);
-      setPhase("running");
-      setIsStreaming(true);
+      // Format answers as readable text
+      // Format: "Question header: selected options"
+      const answerParts: string[] = [];
+      const questions = pendingQuestions.questions;
 
-      try {
-        // Convert answers from string[] to string format expected by backend
-        const flatAnswers: Record<string, string> = {};
-        for (const [key, values] of Object.entries(answers)) {
-          flatAnswers[key] = values.join(", ");
-        }
-
-        if (gatewayConnected && questionId) {
-          // Call real Gateway endpoint
-          const gatewayUrl = getGatewayUrl();
-          const response = await fetch(`${gatewayUrl}/api/agent/answer/${questionId}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              answers: flatAnswers,
-              agentPath,
-              workspacePath: workspaceId,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to submit answer: ${response.statusText}`);
-          }
-
-          console.log("[useAgent] Question answered:", questionId);
-
-          // The agent will continue and send more SSE messages
-          // For now, just show a confirmation message
-          const selectedAnswers = Object.values(answers).flat().join(", ");
-          const textMessage: AgentMessage = {
-            id: generateId(),
-            type: "text",
-            content: `You selected: ${selectedAnswers}`,
-          };
-          setMessages((prev) => [...prev, textMessage]);
+      for (const [questionIndex, selectedValues] of Object.entries(answers)) {
+        const idx = parseInt(questionIndex, 10);
+        const question = questions[idx];
+        if (question) {
+          const header = question.header || `Question ${idx + 1}`;
+          answerParts.push(`${header}: ${selectedValues.join(", ")}`);
         } else {
-          // Mock mode - just show confirmation
-          await mockDelay(500);
-
-          const selectedAnswers = Object.values(answers).flat().join(", ");
-          const textMessage: AgentMessage = {
-            id: generateId(),
-            type: "text",
-            content: `Thank you for your response! You selected: ${selectedAnswers}. I will proceed with this configuration.`,
-          };
-          setMessages((prev) => [...prev, textMessage]);
-          setPhase("completed");
+          answerParts.push(`Answer: ${selectedValues.join(", ")}`);
         }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to process answers");
-        setPhase("error");
-      } finally {
-        setIsStreaming(false);
       }
+
+      const answerText = answerParts.join("\n");
+      console.log("[useAgent] Answering question with:", answerText);
+
+      // Clear pending question
+      setPendingQuestions(null);
+
+      // Continue the conversation with the answers
+      // This sends a new message to the agent, which will continue execution
+      await sendMessageReal(answerText);
     },
-    [pendingQuestions, gatewayConnected, agentPath, workspaceId]
+    [pendingQuestions, sendMessageReal]
   );
 
   /**

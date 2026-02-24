@@ -49,22 +49,26 @@ function toSnakeCaseEntry(entry: HistoryEntry): HistoryEntryResponse {
 }
 
 /**
- * Query parameters for listing history
+ * Query parameters for listing history (supports both camelCase and snake_case)
  */
 interface ListHistoryQuery {
   limit?: number;
   offset?: number;
   agentId?: string;
+  agent_id?: string;
 }
 
 /**
- * Request body for creating a history entry
+ * Request body for creating a history entry (supports both camelCase and snake_case)
  */
 interface CreateHistoryBody {
   agentId?: string;
+  agent_id?: string;
   command: string;
   workspacePath?: string;
+  workspace_path?: string;
   exitCode?: number;
+  exit_code?: number;
   duration?: number;
 }
 
@@ -85,15 +89,16 @@ const historyStore: Map<string, HistoryEntry> = new Map();
 
 /**
  * Generate a new history entry with auto-generated id and timestamp
+ * Supports both camelCase and snake_case input fields
  */
 function createHistoryEntry(data: CreateHistoryBody): HistoryEntry {
   return {
     id: randomUUID(),
-    agentId: data.agentId,
+    agentId: data.agentId || data.agent_id,
     command: data.command,
     timestamp: new Date().toISOString(),
-    workspacePath: data.workspacePath,
-    exitCode: data.exitCode,
+    workspacePath: data.workspacePath || data.workspace_path,
+    exitCode: data.exitCode ?? data.exit_code,
     duration: data.duration,
   };
 }
@@ -117,7 +122,9 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
   fastify.get<{
     Querystring: ListHistoryQuery;
   }>("/api/history", async (request): Promise<ListHistoryResponse> => {
-    const { limit = 100, offset = 0, agentId } = request.query;
+    const { limit = 100, offset = 0 } = request.query;
+    // Support both camelCase and snake_case
+    const agentId = request.query.agentId || request.query.agent_id;
 
     const allEntries = getHistoryEntries(agentId);
     // Sort by timestamp descending (newest first)
@@ -184,9 +191,10 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
 
   // Clear all history (with optional agentId filter)
   fastify.delete<{
-    Querystring: { agentId?: string };
+    Querystring: { agentId?: string; agent_id?: string };
   }>("/api/history", async (request): Promise<{ cleared: number; agentId?: string }> => {
-    const { agentId } = request.query;
+    // Support both camelCase and snake_case
+    const agentId = request.query.agentId || request.query.agent_id;
 
     let clearedCount = 0;
 

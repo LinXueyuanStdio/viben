@@ -38,6 +38,33 @@ export {
 export { createLogger, createDualLogger, createConsoleLogger, createChildLogger } from "./logger";
 export type { Logger } from "./logger";
 
+// Re-export business metrics
+export {
+  // Counters
+  agentRequestsTotal,
+  agentDurationSeconds,
+  agentToolCallsTotal,
+  agentTextCharsTotal,
+  agentMessagesTotal,
+  cronExecutionsTotal,
+  cronDurationSeconds,
+  wsMessagesTotal,
+  wsConnectionsTotal,
+  wsDisconnectsTotal,
+  // Observable Gauges
+  agentActiveSessions,
+  wsActiveConnections,
+  cronJobsTotal,
+  // Helper functions
+  recordAgentRequest,
+  recordAgentToolCall,
+  recordCronExecution,
+  recordWsMessage,
+  recordWsConnection,
+  recordWsDisconnect,
+  registerGaugeCallbacks,
+} from "./metrics";
+
 // Re-export OpenTelemetry API for manual instrumentation
 export { trace, metrics, context, SpanStatusCode } from "@opentelemetry/api";
 export type { Span, Tracer, Meter } from "@opentelemetry/api";

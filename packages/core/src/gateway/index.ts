@@ -15,9 +15,12 @@ import { setGatewayStartupConfig } from "./routes/health";
 import {
   initTelemetry,
   getDefaultTelemetryDir,
+  registerGaugeCallbacks,
   type TelemetryInstance,
   type Logger,
 } from "../telemetry";
+import { agentService } from "../services/agent";
+import { getActiveWsConnectionCount } from "./routes/ws";
 
 export { AppState, createAppState } from "./state";
 export { registerRoutes } from "./routes";
@@ -133,6 +136,17 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   } catch (e) {
     logger?.warn({ error: e }, "Failed to start cron scheduler");
     console.warn("[Gateway] Failed to start cron scheduler:", e);
+  }
+
+  // Register Observable Gauge callbacks for metrics
+  if (enableTelemetry) {
+    registerGaugeCallbacks({
+      getActiveAgentSessions: () => agentService.getActiveSessionCount(),
+      getActiveWsConnections: () => getActiveWsConnectionCount(),
+      getCronJobCounts: () => state.cron.getJobStats(),
+    });
+    logger?.info("Metrics gauge callbacks registered");
+    console.log("[Gateway] Metrics gauge callbacks registered");
   }
 
   // Handle shutdown
