@@ -39,6 +39,12 @@ export interface BackgroundTask {
   cost?: number;
   /** Execution duration in ms */
   duration?: number;
+  /** Workspace path (for filtering by workspace) */
+  workspacePath?: string;
+  /** Agent path (for workspace-level agents) */
+  agentPath?: string;
+  /** Agent name (for display) */
+  agentName?: string;
 }
 
 /**
@@ -61,6 +67,10 @@ export interface UseBackgroundTasksReturn {
   runningCount: number;
   /** Recently completed tasks (completed within last 5 minutes) */
   recentlyCompletedTasks: BackgroundTask[];
+  /** Get tasks filtered by workspace path */
+  getTasksByWorkspace: (workspacePath: string) => BackgroundTask[];
+  /** Get running tasks filtered by workspace path */
+  getRunningTasksByWorkspace: (workspacePath: string) => BackgroundTask[];
   /** Stop a running task */
   stopTask: (taskId: string) => Promise<void>;
   /** Clear completed tasks from view */
@@ -202,6 +212,26 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
     setHiddenTaskIds((prev) => new Set([...prev, ...completedIds]));
   }, [tasks]);
 
+  // Get tasks by workspace path
+  const getTasksByWorkspace = useCallback(
+    (workspacePath: string): BackgroundTask[] => {
+      const normalizedPath = workspacePath.replace(/\/+$/, "");
+      return tasks.filter((t) => {
+        if (!t.workspacePath) return false;
+        return t.workspacePath.replace(/\/+$/, "") === normalizedPath;
+      });
+    },
+    [tasks]
+  );
+
+  // Get running tasks by workspace path
+  const getRunningTasksByWorkspace = useCallback(
+    (workspacePath: string): BackgroundTask[] => {
+      return getTasksByWorkspace(workspacePath).filter((t) => t.status === "running");
+    },
+    [getTasksByWorkspace]
+  );
+
   // Filter visible tasks (excluding hidden)
   const visibleTasks = tasks.filter((t) => !hiddenTaskIds.has(t.taskId));
 
@@ -223,6 +253,8 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
     runningTasks,
     runningCount: runningTasks.length,
     recentlyCompletedTasks,
+    getTasksByWorkspace,
+    getRunningTasksByWorkspace,
     stopTask,
     clearCompleted,
     isConnected,

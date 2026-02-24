@@ -358,7 +358,8 @@
       "agents": "Agents",
       "gateway": "Gateway",
       "channels": "Channels",
-      "executors": "Executors"
+      "executors": "Executors",
+      "sandbox": "Sandbox"
     },
     "notifications": {
       "description": "Configure how and when you receive notifications",
@@ -399,6 +400,7 @@
     "channelsDescription": "Configure AI agent communication channels",
     "resetChannels": "Reset Channel Configuration",
     "executorsDescription": "Check AI coding agent executor installation status",
+    "sandboxDescription": "Manage sandbox providers for isolated code execution",
     "gatewayDescription": "Manage AI agent gateway service",
     "gatewayStatus": "Gateway Status",
     "gatewayConfig": "Gateway Configuration",
@@ -460,6 +462,30 @@
     "clearShortcut": "Clear shortcut",
     "enterKey": "Enter",
     "cmdEnter": "Cmd+Enter"
+  },
+  "sandbox": {
+    "availableProviders": "Available Providers",
+    "providersFound": "{{count}} provider(s) available",
+    "noProviders": "No providers available",
+    "providers": "Providers",
+    "test": "Test",
+    "testSuccess": "Sandbox test successful",
+    "testFailed": "Sandbox test failed",
+    "testError": "Test error",
+    "provider": "Provider",
+    "output": "Output",
+    "duration": "Duration",
+    "isolation": "Isolation",
+    "isolationVm": "VM",
+    "isolationContainer": "Container",
+    "isolationProcess": "Process",
+    "isolationNone": "None",
+    "networkAccess": "Network Access",
+    "runtimes": "Runtimes",
+    "installProviders": "Install Providers",
+    "installDescription": "Install additional sandbox providers for better isolation",
+    "allInstalled": "All providers installed",
+    "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)"
   },
   "about": {
     "title": "Viben",

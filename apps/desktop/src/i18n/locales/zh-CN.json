@@ -358,7 +358,8 @@
       "agents": "智能体",
       "gateway": "网关",
       "channels": "消息渠道",
-      "executors": "执行器"
+      "executors": "执行器",
+      "sandbox": "沙箱"
     },
     "notifications": {
       "description": "配置通知的接收方式和时间",
@@ -399,6 +400,7 @@
     "channelsDescription": "配置 AI 智能体的通信渠道",
     "resetChannels": "重置渠道配置",
     "executorsDescription": "检查 AI 编程智能体执行器的安装状态",
+    "sandboxDescription": "管理用于隔离代码执行的沙箱提供者",
     "gatewayDescription": "管理 AI 智能体网关服务",
     "gatewayStatus": "网关状态",
     "gatewayConfig": "网关配置",
@@ -460,6 +462,30 @@
     "clearShortcut": "清除快捷键",
     "enterKey": "回车键",
     "cmdEnter": "Cmd+回车"
+  },
+  "sandbox": {
+    "availableProviders": "可用提供者",
+    "providersFound": "{{count}} 个提供者可用",
+    "noProviders": "无可用提供者",
+    "providers": "提供者",
+    "test": "测试",
+    "testSuccess": "沙箱测试成功",
+    "testFailed": "沙箱测试失败",
+    "testError": "测试错误",
+    "provider": "提供者",
+    "output": "输出",
+    "duration": "耗时",
+    "isolation": "隔离级别",
+    "isolationVm": "虚拟机",
+    "isolationContainer": "容器",
+    "isolationProcess": "进程",
+    "isolationNone": "无",
+    "networkAccess": "网络访问",
+    "runtimes": "运行时",
+    "installProviders": "安装提供者",
+    "installDescription": "安装额外的沙箱提供者以获得更好的隔离性",
+    "allInstalled": "所有提供者已安装",
+    "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）"
   },
   "about": {
     "title": "Viben",

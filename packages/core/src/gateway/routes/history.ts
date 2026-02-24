@@ -192,7 +192,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
   // Clear all history (with optional agentId filter)
   fastify.delete<{
     Querystring: { agentId?: string; agent_id?: string };
-  }>("/api/history", async (request): Promise<{ cleared: number; agentId?: string }> => {
+  }>("/api/history", async (request): Promise<{ cleared: number; agent_id?: string }> => {
     // Support both camelCase and snake_case
     const agentId = request.query.agentId || request.query.agent_id;
 
@@ -214,7 +214,7 @@ export function registerHistoryRoutes(fastify: FastifyInstance): void {
 
     return {
       cleared: clearedCount,
-      ...(agentId ? { agentId } : {}),
+      ...(agentId ? { agent_id: agentId } : {}),
     };
   });
 }

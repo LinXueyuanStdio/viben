@@ -24,6 +24,7 @@ import { registerAgentRunRoutes } from "./agent-run";
 import { registerFileRoutes } from "./files";
 import { registerTelemetryRoutes } from "./telemetry";
 import { registerSandboxRoutes } from "./sandbox";
+import { registerKanbanRoutes } from "./kanban";
 
 /**
  * Register all routes
@@ -50,6 +51,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerFileRoutes(fastify);
   registerTelemetryRoutes(fastify);
   registerSandboxRoutes(fastify);
+  registerKanbanRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -74,6 +76,7 @@ export { registerAgentRunRoutes } from "./agent-run";
 export { registerFileRoutes } from "./files";
 export { registerTelemetryRoutes } from "./telemetry";
 export { registerSandboxRoutes } from "./sandbox";
+export { registerKanbanRoutes } from "./kanban";
 export type {
   SSEEventType,
   SSEMessage,

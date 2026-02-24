@@ -972,6 +972,16 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       });
 
       sendSSE(reply, { type: "error", message: userMessage });
+
+      // Update background task status to error
+      // Use persistTaskId or sessionId as fallback for taskId
+      const errorTaskId = persistTaskId || sessionId;
+      backgroundTaskManager.updateStatus(errorTaskId, {
+        status: "error",
+        errorMessage: userMessage,
+        duration: log.elapsed(),
+      });
+      log.debug("background_task", "error", { taskId: errorTaskId, errorMessage: userMessage });
     } finally {
       // Cleanup: unregister the session
       agentService.unregisterSession(sessionId);
