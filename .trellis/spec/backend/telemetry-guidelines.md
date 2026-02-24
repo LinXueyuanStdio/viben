@@ -273,6 +273,31 @@ agentRequestsTotal.add(1, { agent_name: "my-agent", status: "success" });
 agentDurationSeconds.record(5.0, { agent_name: "my-agent", status: "success" });
 ```
 
+### Observable Gauge 回调
+
+Observable Gauges 用于报告当前值（如活跃连接数），在 Gateway 初始化时自动注册：
+
+```typescript
+// Gateway 初始化时已自动调用 (gateway/index.ts)
+import { registerGaugeCallbacks } from "@viben/core/telemetry";
+import { agentService } from "../services/agent";
+import { getActiveWsConnectionCount } from "./routes/ws";
+
+registerGaugeCallbacks({
+  getActiveAgentSessions: () => agentService.getActiveSessionCount(),
+  getActiveWsConnections: () => getActiveWsConnectionCount(),
+  getCronJobCounts: () => state.cron.getJobStats(),
+});
+```
+
+**数据提供方法**：
+
+| Gauge | 数据来源 | 方法 |
+|-------|---------|------|
+| `viben_agent_active_sessions` | AgentService | `agentService.getActiveSessionCount()` |
+| `viben_ws_active_connections` | ws.ts | `getActiveWsConnectionCount()` |
+| `viben_cron_jobs_total` | CronService | `state.cron.getJobStats()` |
+
 ---
 
 ## Logging 指南
@@ -498,11 +523,6 @@ fastify.get("/api/data", async () => {
 1. **更多路由 Instrumentation**
    - 审计所有路由，确保都有手动 span
    - 添加数据库操作 span
-
-2. **Observable Gauge 回调注册**
-   - 在 Gateway 初始化时注册 `agentActiveSessions` 回调
-   - 注册 `wsActiveConnections` 回调
-   - 注册 `cronJobsTotal` 回调
 
 ### 中优先级
 

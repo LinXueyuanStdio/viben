@@ -295,7 +295,7 @@ describe("History Routes", () => {
       expect(body.entries).toHaveLength(2);
       expect(body.total).toBe(2);
       body.entries.forEach((entry: HistoryEntry) => {
-        expect(entry.agentId).toBe("agent-1");
+        expect(entry.agent_id).toBe("agent-1");
       });
     });
 
@@ -402,9 +402,9 @@ describe("History Routes", () => {
       const body = JSON.parse(response.body);
       expect(body.id).toBe(createdEntry.id);
       expect(body.command).toBe("echo 'test'");
-      expect(body.agentId).toBe("test-agent");
-      expect(body.workspacePath).toBe("/path/to/workspace");
-      expect(body.exitCode).toBe(0);
+      expect(body.agent_id).toBe("test-agent");
+      expect(body.workspace_path).toBe("/path/to/workspace");
+      expect(body.exit_code).toBe(0);
       expect(body.duration).toBe(100);
     });
 
@@ -478,9 +478,9 @@ describe("History Routes", () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.command).toBe("git status");
-      expect(body.agentId).toBe("main-agent");
-      expect(body.workspacePath).toBe("/home/user/project");
-      expect(body.exitCode).toBe(0);
+      expect(body.agent_id).toBe("main-agent");
+      expect(body.workspace_path).toBe("/home/user/project");
+      expect(body.exit_code).toBe(0);
       expect(body.duration).toBe(50);
     });
 
@@ -494,9 +494,9 @@ describe("History Routes", () => {
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
       expect(body.command).toBe("whoami");
-      expect(body.agentId).toBeUndefined();
-      expect(body.workspacePath).toBeUndefined();
-      expect(body.exitCode).toBeUndefined();
+      expect(body.agent_id).toBeUndefined();
+      expect(body.workspace_path).toBeUndefined();
+      expect(body.exit_code).toBeUndefined();
       expect(body.duration).toBeUndefined();
     });
 
@@ -581,7 +581,7 @@ describe("History Routes", () => {
 
       expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
-      expect(body.exitCode).toBe(-9);
+      expect(body.exit_code).toBe(-9);
     });
 
     it("should accept zero duration", async () => {
@@ -704,7 +704,7 @@ describe("History Routes", () => {
       expect(clearResponse.statusCode).toBe(200);
       const body = JSON.parse(clearResponse.body);
       expect(body.cleared).toBe(3);
-      expect(body.agentId).toBeUndefined();
+      expect(body.agent_id).toBeUndefined();
 
       // Verify all cleared
       const listResponse = await fastify.inject({
@@ -754,7 +754,7 @@ describe("History Routes", () => {
       expect(clearResponse.statusCode).toBe(200);
       const body = JSON.parse(clearResponse.body);
       expect(body.cleared).toBe(2);
-      expect(body.agentId).toBe("agent-1");
+      expect(body.agent_id).toBe("agent-1");
 
       // Verify agent-2 entries still exist
       const listResponse = await fastify.inject({
@@ -763,7 +763,7 @@ describe("History Routes", () => {
       });
       const listBody = JSON.parse(listResponse.body);
       expect(listBody.entries).toHaveLength(1);
-      expect(listBody.entries[0].agentId).toBe("agent-2");
+      expect(listBody.entries[0].agent_id).toBe("agent-2");
     });
 
     it("should return cleared count of 0 when filtering by non-existent agentId", async () => {
@@ -781,7 +781,7 @@ describe("History Routes", () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.cleared).toBe(0);
-      expect(body.agentId).toBe("non-existent");
+      expect(body.agent_id).toBe("non-existent");
     });
 
     it("should include agentId in response when filtering", async () => {
@@ -792,7 +792,7 @@ describe("History Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.agentId).toBe("test-agent");
+      expect(body.agent_id).toBe("test-agent");
     });
 
     it("should not include agentId in response when not filtering", async () => {
@@ -803,7 +803,7 @@ describe("History Routes", () => {
 
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
-      expect(body.agentId).toBeUndefined();
+      expect(body.agent_id).toBeUndefined();
     });
   });
 
@@ -832,19 +832,19 @@ describe("History Routes", () => {
       expect(entry).toHaveProperty("command");
       expect(entry).toHaveProperty("timestamp");
 
-      // Check optional fields
-      expect(entry).toHaveProperty("agentId");
-      expect(entry).toHaveProperty("workspacePath");
-      expect(entry).toHaveProperty("exitCode");
+      // Check optional fields (snake_case in API response)
+      expect(entry).toHaveProperty("agent_id");
+      expect(entry).toHaveProperty("workspace_path");
+      expect(entry).toHaveProperty("exit_code");
       expect(entry).toHaveProperty("duration");
 
       // Check types
       expect(typeof entry.id).toBe("string");
       expect(typeof entry.command).toBe("string");
       expect(typeof entry.timestamp).toBe("string");
-      expect(typeof entry.agentId).toBe("string");
-      expect(typeof entry.workspacePath).toBe("string");
-      expect(typeof entry.exitCode).toBe("number");
+      expect(typeof entry.agent_id).toBe("string");
+      expect(typeof entry.workspace_path).toBe("string");
+      expect(typeof entry.exit_code).toBe("number");
       expect(typeof entry.duration).toBe("number");
     });
 
@@ -885,9 +885,9 @@ describe("History Routes", () => {
       });
 
       const entry = JSON.parse(response.body);
-      expect(entry.agentId).toBeUndefined();
-      expect(entry.workspacePath).toBeUndefined();
-      expect(entry.exitCode).toBeUndefined();
+      expect(entry.agent_id).toBeUndefined();
+      expect(entry.workspace_path).toBeUndefined();
+      expect(entry.exit_code).toBeUndefined();
       expect(entry.duration).toBeUndefined();
     });
 
@@ -914,9 +914,9 @@ describe("History Routes", () => {
       expect(retrieved.id).toBe(created.id);
       expect(retrieved.command).toBe(created.command);
       expect(retrieved.timestamp).toBe(created.timestamp);
-      expect(retrieved.agentId).toBe(created.agentId);
-      expect(retrieved.workspacePath).toBe(created.workspacePath);
-      expect(retrieved.exitCode).toBe(created.exitCode);
+      expect(retrieved.agent_id).toBe(created.agent_id);
+      expect(retrieved.workspace_path).toBe(created.workspace_path);
+      expect(retrieved.exit_code).toBe(created.exit_code);
       expect(retrieved.duration).toBe(created.duration);
     });
 
@@ -940,8 +940,8 @@ describe("History Routes", () => {
       expect(body.entries).toHaveLength(1);
       const entry = body.entries[0];
       expect(entry.command).toBe("list test");
-      expect(entry.agentId).toBe("list-agent");
-      expect(entry.exitCode).toBe(1);
+      expect(entry.agent_id).toBe("list-agent");
+      expect(entry.exit_code).toBe(1);
     });
   });
 

@@ -32,6 +32,7 @@ import {
   Users,
   Clock,
   Zap,
+  Box,
 } from "lucide-react";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
@@ -61,13 +62,14 @@ import { SettingsAgentsPage } from "./settings-agents";
 import { SettingsGatewayPage } from "./settings-gateway";
 import { SettingsChannelsPage } from "./settings-channels";
 import { SettingsExecutorsPage } from "./settings-executors";
+import { SettingsSandboxPage } from "./settings-sandbox";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import type { NotificationCategory, NotificationMethod } from "@/types/notification";
 import { Input } from "@/components/ui/input";
 
 // Settings section type
-type SettingsSection = "general" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "sandbox" | "environment" | "storage" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -85,6 +87,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "executors", labelKey: "settings.sections.executors", icon: Play },
   { id: "model", labelKey: "settings.sections.model", icon: Cpu },
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
+  { id: "sandbox", labelKey: "settings.sections.sandbox", icon: Box },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
@@ -155,7 +158,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "environment", "storage", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "sandbox", "environment", "storage", "about"];
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -264,6 +267,8 @@ export function SettingsPage() {
         return <SettingsModelPage key="model" />;
       case "agents":
         return <SettingsAgentsPage key="agents" />;
+      case "sandbox":
+        return <SettingsSandboxPage key="sandbox" />;
       case "environment":
         return <EnvironmentSection key="environment" />;
       case "storage":
