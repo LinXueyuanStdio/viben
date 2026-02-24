@@ -16,7 +16,7 @@ import { agentService } from "../../services/agent";
 import { backgroundTaskManager } from "../../services/background-tasks";
 import { sessionStoreService } from "../../services/session-store";
 import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
-import { trace, context, SpanStatusCode } from "../../telemetry";
+import { trace, context, SpanStatusCode, recordAgentRequest, recordAgentToolCall } from "../../telemetry";
 import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
 import { readYaml } from "../../config/yaml";
@@ -361,14 +361,22 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       prompt: string;
       cwd?: string;
       attachments?: Array<{ type: string; data: string; name?: string }>;
-      /** Path to agent config.yaml file (preferred) */
+      /** Path to agent config.yaml file (preferred) - camelCase */
       agentPath?: string;
-      /** Inline agent configuration (fallback) */
+      /** Path to agent config.yaml file (preferred) - snake_case */
+      agent_path?: string;
+      /** Inline agent configuration (fallback) - camelCase */
       agentConfig?: AgentConfigPayload;
-      /** File system session ID for persistence (optional) */
+      /** Inline agent configuration (fallback) - snake_case */
+      agent_config?: AgentConfigPayload;
+      /** File system session ID for persistence (optional) - camelCase */
       sessionId?: string;
-      /** File system task ID for persistence (optional) */
+      /** File system session ID for persistence (optional) - snake_case */
+      session_id?: string;
+      /** File system task ID for persistence (optional) - camelCase */
       taskId?: string;
+      /** File system task ID for persistence (optional) - snake_case */
+      task_id?: string;
     };
   }>("/api/agent/run", async (request, reply) => {
     // Generate session ID early for logging
@@ -393,14 +401,15 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       return { error: "Request body is required" };
     }
 
+    // Support both camelCase and snake_case
     const {
       prompt,
       cwd,
-      agentPath,
-      agentConfig: inlineConfig,
-      sessionId: persistSessionId,
-      taskId: persistTaskId,
     } = request.body;
+    const agentPath = request.body.agentPath || request.body.agent_path;
+    const inlineConfig = request.body.agentConfig || request.body.agent_config;
+    const persistSessionId = request.body.sessionId || request.body.session_id;
+    const persistTaskId = request.body.taskId || request.body.task_id;
 
     // Validate required fields
     if (!prompt || typeof prompt !== "string") {
@@ -523,6 +532,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       });
       log.info("session", "created", { sessionId, traceId });
 
+      // Add to background task manager for tracking
+      const taskId = persistTaskId || sessionId;
+      backgroundTaskManager.addTask({
+        taskId,
+        sessionId,
+        prompt: prompt.slice(0, 200) + (prompt.length > 200 ? "..." : ""),
+        workspacePath: cwd,
+        agentPath,
+        agentName: agentConfig?.name,
+      });
+      log.debug("background_task", "added", { taskId, workspacePath: cwd });
+
       // Persist user message to UI messages file BEFORE streaming
       // This ensures user messages appear when loading the session
       if (persistSessionId && persistTaskId && prompt) {
@@ -607,6 +628,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       const toolNames: string[] = [];
       // Map to track pending tool spans (tool_use -> tool_result pairing)
       const pendingToolSpans = new Map<string, Span>();
+      // Map to track tool names for metrics (tool_use_id -> tool_name)
+      const pendingToolNames = new Map<string, string>();
 
       // Stream messages to client
       for await (const message of stream) {
@@ -655,8 +678,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             },
             streamContext
           );
-          // Store the span for later when we receive the result
+          // Store the span and tool name for later when we receive the result
           pendingToolSpans.set(toolMsg.id, toolSpan);
+          pendingToolNames.set(toolMsg.id, toolMsg.name);
         } else if (message.type === "tool_result") {
           toolResultCount++;
           const resultMsg = message as SSEToolResultMessage;
@@ -669,6 +693,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
 
           // Find and end the corresponding tool span
           const toolSpan = pendingToolSpans.get(resultMsg.toolUseId);
+          const toolName = pendingToolNames.get(resultMsg.toolUseId) || "unknown";
           if (toolSpan) {
             // Add result attributes to the tool span
             toolSpan.setAttributes({
@@ -685,6 +710,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             }
             toolSpan.end();
             pendingToolSpans.delete(resultMsg.toolUseId);
+            pendingToolNames.delete(resultMsg.toolUseId);
+
+            // Record tool call metrics
+            recordAgentToolCall({
+              agentName: agentConfig?.name || "default",
+              toolName,
+              status: resultMsg.isError ? "error" : "success",
+            });
           } else {
             // No matching tool span, create a standalone result span
             const resultSpan = tracer.startSpan(
@@ -779,6 +812,18 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             code: SpanStatusCode.ERROR,
             message: "Session cancelled by user",
           });
+
+          // Record cancelled metrics
+          recordAgentRequest({
+            agentName: agentConfig?.name || "default",
+            status: "cancelled",
+            durationMs: log.elapsed(),
+            toolUseCount,
+            toolResultCount,
+            textLength,
+            messageCount,
+          });
+
           sendSSE(reply, { type: "error", message: "Session cancelled by user" });
           break;
         }
@@ -840,6 +885,13 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       });
       agentRunSpan.setStatus({ code: SpanStatusCode.OK });
 
+      // Update background task status to completed
+      backgroundTaskManager.updateStatus(taskId, {
+        status: errorCount > 0 ? "error" : "completed",
+        duration: log.elapsed(),
+      });
+      log.debug("background_task", "completed", { taskId, status: errorCount > 0 ? "error" : "completed" });
+
       log.info("execution", "success", {
         messageCount,
         textLength,
@@ -847,6 +899,17 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         toolResultCount,
         errorCount,
         elapsed: log.elapsed(),
+      });
+
+      // Record success metrics
+      recordAgentRequest({
+        agentName: agentConfig?.name || "default",
+        status: "success",
+        durationMs: log.elapsed(),
+        toolUseCount,
+        toolResultCount,
+        textLength,
+        messageCount,
       });
     } catch (error) {
       const rawMessage = error instanceof Error ? error.message : String(error);
@@ -899,6 +962,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       });
       agentRunSpan.setAttribute("error.category", errorCategory);
       agentRunSpan.recordException(error instanceof Error ? error : new Error(rawMessage));
+
+      // Record error metrics
+      recordAgentRequest({
+        agentName: agentConfig?.name || "default",
+        status: "error",
+        durationMs: log.elapsed(),
+        errorCategory,
+      });
 
       sendSSE(reply, { type: "error", message: userMessage });
     } finally {
@@ -980,16 +1051,23 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     Params: { questionId: string };
     Body: {
       answers: Record<string, string>;
-      /** Agent path for workspace-level agents */
+      /** Agent path for workspace-level agents - camelCase */
       agentPath?: string;
-      /** Workspace path */
+      /** Agent path for workspace-level agents - snake_case */
+      agent_path?: string;
+      /** Workspace path - camelCase */
       workspacePath?: string;
+      /** Workspace path - snake_case */
+      workspace_path?: string;
     };
   }>(
     "/api/agent/answer/:questionId",
     async (request, reply) => {
       const { questionId } = request.params;
-      const { answers, agentPath, workspacePath } = request.body;
+      const { answers } = request.body;
+      // Support both camelCase and snake_case
+      const agentPath = request.body.agentPath || request.body.agent_path;
+      const workspacePath = request.body.workspacePath || request.body.workspace_path;
 
       if (!answers || typeof answers !== "object") {
         reply.code(400);

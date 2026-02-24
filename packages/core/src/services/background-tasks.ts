@@ -27,6 +27,12 @@ export interface BackgroundTask {
   cost?: number;
   /** Execution duration (ms) */
   duration?: number;
+  /** Workspace path (for filtering by workspace) */
+  workspacePath?: string;
+  /** Agent path (for workspace-level agents) */
+  agentPath?: string;
+  /** Agent name (for display) */
+  agentName?: string;
 }
 
 type TaskListener = (tasks: BackgroundTask[]) => void;
@@ -48,6 +54,9 @@ export class BackgroundTaskManager {
     taskId: string;
     sessionId: string;
     prompt: string;
+    workspacePath?: string;
+    agentPath?: string;
+    agentName?: string;
   }): BackgroundTask {
     const abortController = new AbortController();
     this.abortControllers.set(task.taskId, abortController);
@@ -61,8 +70,26 @@ export class BackgroundTaskManager {
     this.tasks.set(task.taskId, fullTask);
     this.notifyListeners();
 
-    console.log(`[BackgroundTasks] Added task: ${task.taskId}`);
+    console.log(`[BackgroundTasks] Added task: ${task.taskId} (workspace: ${task.workspacePath || 'global'})`);
     return fullTask;
+  }
+
+  /**
+   * Get tasks by workspace path
+   */
+  getTasksByWorkspace(workspacePath: string): BackgroundTask[] {
+    const normalizedPath = workspacePath.replace(/\/+$/, "");
+    return Array.from(this.tasks.values()).filter((t) => {
+      if (!t.workspacePath) return false;
+      return t.workspacePath.replace(/\/+$/, "") === normalizedPath;
+    });
+  }
+
+  /**
+   * Get running tasks by workspace path
+   */
+  getRunningTasksByWorkspace(workspacePath: string): BackgroundTask[] {
+    return this.getTasksByWorkspace(workspacePath).filter((t) => t.status === "running");
   }
 
   /**

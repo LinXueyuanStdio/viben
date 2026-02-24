@@ -12,7 +12,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile, appendFile } from "node:fs/promises";
 import { CronError } from "../error";
 import { EventService, type CronJobData } from "./events";
-import { trace, SpanStatusCode } from "../telemetry";
+import { trace, SpanStatusCode, recordCronExecution } from "../telemetry";
 import { getSpanName } from "../telemetry/route-names";
 import { channelManager, sendChannelMessage } from "../channels";
 
@@ -628,6 +628,16 @@ export class CronService {
     }
     span.end();
 
+    // Record cron execution metrics
+    recordCronExecution({
+      jobId: job_id,
+      jobName: job.name,
+      jobType: job.job_type,
+      status: status === "success" ? "success" : "error",
+      trigger: is_manual ? "manual" : "schedule",
+      durationMs: duration_ms,
+    });
+
     // Log execution history
     const executionLog: CronExecutionLog = {
       execution_id,
@@ -811,6 +821,20 @@ export class CronService {
    */
   async listJobs(): Promise<CronJob[]> {
     return Array.from(this.jobs.values());
+  }
+
+  /**
+   * Get job statistics for metrics/telemetry
+   * Synchronous method for use in Observable Gauge callbacks
+   */
+  getJobStats(): { enabled: number; disabled: number; agent: number; script: number } {
+    const jobs = Array.from(this.jobs.values());
+    return {
+      enabled: jobs.filter((j) => j.enabled).length,
+      disabled: jobs.filter((j) => !j.enabled).length,
+      agent: jobs.filter((j) => j.job_type === "agent").length,
+      script: jobs.filter((j) => j.job_type === "script").length,
+    };
   }
 
   /**
