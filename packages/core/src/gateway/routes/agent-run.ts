@@ -721,9 +721,21 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             cost: resultMsg.cost,
             duration: resultMsg.duration,
           });
+        } else if (message.type === "question") {
+          // Store the question in AgentService for the /api/agent/answer endpoint
+          const questionMsg = message as SSEQuestionMessage;
+          agentService.storeQuestion(
+            sessionId,
+            questionMsg.id, // toolUseId
+            questionMsg.questions,
+            { agentPath, workspacePath: cwd }
+          );
+          log.info("stream", "question_received", {
+            questionId: questionMsg.id,
+            questionCount: questionMsg.questions.length,
+          });
         }
-        // Note: plan and question message types are defined but not currently
-        // emitted by SdkChatProxy. When they are supported, add logging here.
+        // Note: plan message type is defined but not currently emitted by SdkChatProxy.
 
         sendSSE(reply, message);
 
@@ -954,6 +966,49 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         return { error: `Plan not found or already processed: ${planId}` };
       }
       return { success: true, planId };
+    }
+  );
+
+  /**
+   * Answer a question (elicitation response)
+   * POST /api/agent/answer/:questionId
+   *
+   * Used to respond to AskUserQuestion tool calls from the agent.
+   * The answers are stored and can be used to continue the conversation.
+   */
+  fastify.post<{
+    Params: { questionId: string };
+    Body: {
+      answers: Record<string, string>;
+      /** Agent path for workspace-level agents */
+      agentPath?: string;
+      /** Workspace path */
+      workspacePath?: string;
+    };
+  }>(
+    "/api/agent/answer/:questionId",
+    async (request, reply) => {
+      const { questionId } = request.params;
+      const { answers, agentPath, workspacePath } = request.body;
+
+      if (!answers || typeof answers !== "object") {
+        reply.code(400);
+        return { error: "Answers object is required" };
+      }
+
+      // Store the answer for the question
+      const success = agentService.answerQuestion(questionId, answers);
+      if (!success) {
+        reply.code(404);
+        return { error: `Question not found or already answered: ${questionId}` };
+      }
+
+      return {
+        success: true,
+        questionId,
+        agentPath,
+        workspacePath,
+      };
     }
   );
 

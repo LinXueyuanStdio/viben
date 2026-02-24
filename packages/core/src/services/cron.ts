@@ -14,6 +14,7 @@ import { CronError } from "../error";
 import { EventService, type CronJobData } from "./events";
 import { trace, SpanStatusCode } from "../telemetry";
 import { getSpanName } from "../telemetry/route-names";
+import { channelManager, sendChannelMessage } from "../channels";
 
 // Get tracer for cron service
 const tracer = trace.getTracer("viben-cron", "1.0.0");
@@ -654,7 +655,7 @@ export class CronService {
     // Truncate output for notification
     const truncated_output = output && output.length > 200 ? output.slice(0, 200) + "..." : output;
 
-    // Broadcast completed event with next_run included
+    // Broadcast completed event with next_run and notifications included
     this.events.broadcast({
       type: "cron_job_completed",
       data: {
@@ -666,8 +667,89 @@ export class CronService {
         output: truncated_output,
         completed_at,
         next_run,
+        notifications: job.notifications,
       },
     });
+
+    // Send channel notifications if configured
+    await this.sendChannelNotifications(job, status, truncated_output, error);
+  }
+
+  /**
+   * Send notifications to configured channels
+   */
+  private async sendChannelNotifications(
+    job: CronJob,
+    status: JobStatus,
+    output?: string,
+    error?: string
+  ): Promise<void> {
+    const notifications = job.notifications;
+    if (!notifications?.channel_ids?.length) {
+      return;
+    }
+
+    // Build notification message
+    const statusEmoji = status === "success" ? "✅" : status === "failure" ? "❌" : "⏳";
+    const statusText = status === "success" ? "成功" : status === "failure" ? "失败" : "运行中";
+
+    let message = `${statusEmoji} **定时任务${statusText}**\n\n`;
+    message += `📋 任务: ${job.name}\n`;
+    message += `⏰ 时间: ${new Date().toLocaleString()}\n`;
+
+    if (error) {
+      message += `\n❗ 错误: ${error}\n`;
+    }
+
+    if (output) {
+      message += `\n📝 输出:\n\`\`\`\n${output}\n\`\`\``;
+    }
+
+    // Send to each configured channel
+    for (const channelId of notifications.channel_ids) {
+      try {
+        // Load channel manager config
+        await channelManager.load();
+        const channel = await channelManager.getChannel(channelId);
+
+        if (!channel || !channel.enabled) {
+          console.warn(`[CronService] Channel ${channelId} not found or disabled, skipping notification`);
+          continue;
+        }
+
+        // Get chat_id from channel config (required for sending messages)
+        const chatId = (channel.config as Record<string, unknown>)?.chat_id as string;
+        if (!chatId) {
+          console.warn(`[CronService] Channel ${channelId} has no chat_id configured, skipping notification`);
+          continue;
+        }
+
+        // Build channel config
+        const config = channelManager.buildChannelConfig(channelId, {
+          type: channel.type,
+          name: channel.name,
+          enabled: channel.enabled,
+          created_at: channel.created_at,
+          allow_from: channel.allow_from,
+          ...channel.config,
+        });
+
+        // Send message
+        const result = await sendChannelMessage(config, {
+          chatId,
+          message,
+          parseMode: "markdown",
+        });
+
+        if (!result.success) {
+          console.error(`[CronService] Failed to send notification to channel ${channelId}: ${result.error}`);
+        } else {
+          console.log(`[CronService] Sent notification to channel ${channelId}`);
+        }
+      } catch (err) {
+        console.error(`[CronService] Error sending notification to channel ${channelId}:`, err);
+      }
+    }
   }
 
   /**

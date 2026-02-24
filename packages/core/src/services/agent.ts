@@ -31,6 +31,28 @@ export interface AgentPlan {
   createdAt: Date;
 }
 
+/**
+ * Pending question from AskUserQuestion tool
+ */
+export interface AgentQuestion {
+  id: string;
+  sessionId: string;
+  toolUseId: string;
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description?: string }>;
+    multiSelect: boolean;
+  }>;
+  status: "pending" | "answered";
+  answers?: Record<string, string>;
+  createdAt: Date;
+  /** Agent path for workspace-level agents */
+  agentPath?: string;
+  /** Workspace path */
+  workspacePath?: string;
+}
+
 // ============================================================================
 // AgentService Class
 // ============================================================================
@@ -46,6 +68,7 @@ export interface AgentPlan {
 export class AgentService {
   private abortControllers = new Map<string, AbortController>();
   private plans = new Map<string, AgentPlan>();
+  private questions = new Map<string, AgentQuestion>();
 
   // ==========================================================================
   // Abort Controller Management
@@ -218,20 +241,116 @@ export class AgentService {
   }
 
   // ==========================================================================
+  // Question Management (AskUserQuestion)
+  // ==========================================================================
+
+  /**
+   * Store a question for user response
+   *
+   * @param sessionId - The session identifier
+   * @param toolUseId - The tool use ID from the SDK
+   * @param questions - Array of questions to ask
+   * @param options - Optional agent path and workspace path
+   * @returns The created question with all fields
+   */
+  storeQuestion(
+    sessionId: string,
+    toolUseId: string,
+    questions: AgentQuestion["questions"],
+    options?: { agentPath?: string; workspacePath?: string }
+  ): AgentQuestion {
+    const fullQuestion: AgentQuestion = {
+      id: toolUseId, // Use toolUseId as the question ID for easy lookup
+      sessionId,
+      toolUseId,
+      questions,
+      status: "pending",
+      createdAt: new Date(),
+      agentPath: options?.agentPath,
+      workspacePath: options?.workspacePath,
+    };
+    this.questions.set(fullQuestion.id, fullQuestion);
+    console.log(`[AgentService] Stored question: ${fullQuestion.id}`);
+    return fullQuestion;
+  }
+
+  /**
+   * Get a question by ID
+   *
+   * @param questionId - The question identifier (same as toolUseId)
+   * @returns The question or undefined if not found
+   */
+  getQuestion(questionId: string): AgentQuestion | undefined {
+    return this.questions.get(questionId);
+  }
+
+  /**
+   * Get pending question for a session
+   *
+   * @param sessionId - The session identifier
+   * @returns The pending question or undefined
+   */
+  getPendingQuestionForSession(sessionId: string): AgentQuestion | undefined {
+    for (const question of this.questions.values()) {
+      if (question.sessionId === sessionId && question.status === "pending") {
+        return question;
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Answer a question
+   *
+   * @param questionId - The question identifier
+   * @param answers - User's answers as key-value pairs
+   * @returns True if question was answered, false if not found or already answered
+   */
+  answerQuestion(questionId: string, answers: Record<string, string>): boolean {
+    const question = this.questions.get(questionId);
+    if (!question || question.status !== "pending") return false;
+
+    question.status = "answered";
+    question.answers = answers;
+    console.log(`[AgentService] Question answered: ${questionId}`);
+    return true;
+  }
+
+  /**
+   * Get answer for a question
+   *
+   * @param questionId - The question identifier
+   * @returns The answers or undefined if not found or not answered
+   */
+  getQuestionAnswers(questionId: string): Record<string, string> | undefined {
+    const question = this.questions.get(questionId);
+    if (!question || question.status !== "answered") return undefined;
+    return question.answers;
+  }
+
+  // ==========================================================================
   // Cleanup
   // ==========================================================================
 
   /**
-   * Cleanup old plans
+   * Cleanup old plans and questions
    *
    * @param maxAgeMs - Maximum age in milliseconds (default: 1 hour)
    */
   cleanup(maxAgeMs: number = 3600000): void {
     const now = Date.now();
+    // Cleanup old plans
     for (const [planId, plan] of this.plans) {
       if (now - plan.createdAt.getTime() > maxAgeMs && plan.status !== "pending") {
         this.plans.delete(planId);
         console.log(`[AgentService] Cleaned up plan: ${planId}`);
+      }
+    }
+    // Cleanup old questions
+    for (const [questionId, question] of this.questions) {
+      if (now - question.createdAt.getTime() > maxAgeMs && question.status !== "pending") {
+        this.questions.delete(questionId);
+        console.log(`[AgentService] Cleaned up question: ${questionId}`);
       }
     }
   }
@@ -246,6 +365,7 @@ export class AgentService {
     }
     this.abortControllers.clear();
     this.plans.clear();
+    this.questions.clear();
     console.log(`[AgentService] Cleared all state`);
   }
 }
