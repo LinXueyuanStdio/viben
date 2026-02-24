@@ -1690,9 +1690,9 @@
       "escape": "Escape"
     },
     "connectionError": "Connection Error",
-    "noProjectFound": "No Project Found",
-    "noProjectFoundDesc": "No vibe-kanban project found for this workspace path:",
-    "createProjectFirst": "Create a project in vibe-kanban first.",
+    "noProjectFound": "No Tasks Yet",
+    "noProjectFoundDesc": "No tasks in this workspace",
+    "createProjectFirst": "Click \"Add Task\" to create a new task.",
     "stats": "Stats",
     "keyboardShortcuts": "Keyboard Shortcuts",
     "shortcut": {
@@ -1726,8 +1726,8 @@
       "noAgentsOrModels": "No agents or models configured. Please configure them in Settings."
     },
     "filesDescription": "Browse and manage files",
-    "connectingToKanban": "Connecting to vibe-kanban...",
-    "kanbanConnectionFailed": "Failed to connect to vibe-kanban backend",
+    "connectingToKanban": "Connecting to task board...",
+    "kanbanConnectionFailed": "Failed to connect to task board service",
     "failedToLoadTasks": "Failed to load tasks",
     "chat": "Chat",
     "chatDescription": "Start a conversation with AI",

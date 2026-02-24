@@ -8,7 +8,6 @@ import type {
   TaskWithAttemptStatus,
   CreateTaskRequest,
   UpdateTaskRequest,
-  Project,
 } from "./types";
 import { getGatewayUrl } from "@/lib/gateway";
 
@@ -113,19 +112,14 @@ export async function checkHealth(): Promise<boolean> {
 }
 
 /**
- * Get all projects
+ * Get tasks for a workspace
+ * @param workspacePath - workspace path to filter tasks (empty for global tasks)
  */
-export async function getProjects(): Promise<Project[]> {
-  return makeRequest<Project[]>(`${API_PREFIX}/projects`);
-}
-
-/**
- * Get tasks for a project
- */
-export async function getTasks(projectId: string): Promise<TaskWithAttemptStatus[]> {
-  return makeRequest<TaskWithAttemptStatus[]>(
-    `${API_PREFIX}/tasks?project_id=${encodeURIComponent(projectId)}`
-  );
+export async function getTasks(workspacePath?: string): Promise<TaskWithAttemptStatus[]> {
+  const params = workspacePath
+    ? `?workspace_path=${encodeURIComponent(workspacePath)}`
+    : "";
+  return makeRequest<TaskWithAttemptStatus[]>(`${API_PREFIX}/tasks${params}`);
 }
 
 /**

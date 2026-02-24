@@ -51,12 +51,18 @@ vi.mock("../../services/agent", () => ({
     })),
     approvePlan: vi.fn(() => true),
     rejectPlan: vi.fn(() => true),
+    storeQuestion: vi.fn(),
+    getQuestion: vi.fn(),
   },
 }));
 
 // Mock background task manager
 vi.mock("../../services/background-tasks", () => ({
   backgroundTaskManager: {
+    addTask: vi.fn(),
+    updateTask: vi.fn(),
+    updateStatus: vi.fn(),
+    removeTask: vi.fn(),
     getAllTasks: vi.fn(() => []),
     subscribe: vi.fn(() => () => {}),
     stopTask: vi.fn(),
@@ -1036,7 +1042,8 @@ describe("Agent Run Routes", () => {
 
       expect(mockExecuteStreaming).toHaveBeenCalledWith(
         expect.objectContaining({
-          sessionId: expect.stringMatching(/^run_\d+_[a-z0-9]+$/),
+          // sessionId is now UUID format
+          sessionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
         })
       );
     });

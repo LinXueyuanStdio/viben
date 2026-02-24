@@ -161,6 +161,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       getWorkspace: (workspaceId) =>
         get().workspaces.find((w) => w.id === workspaceId),
 
+      getWorkspaceByPath: (workspacePath) =>
+        get().workspaces.find((w) => w.path === workspacePath),
+
       getActiveWorkspace: () => {
         const state = get();
         if (!state.activeWorkspaceId) return undefined;

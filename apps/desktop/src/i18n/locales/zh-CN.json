@@ -1690,9 +1690,9 @@
       "escape": "Esc"
     },
     "connectionError": "连接错误",
-    "noProjectFound": "未找到项目",
-    "noProjectFoundDesc": "未找到此工作区路径的 vibe-kanban 项目：",
-    "createProjectFirst": "请先在 vibe-kanban 中创建项目。",
+    "noProjectFound": "暂无任务",
+    "noProjectFoundDesc": "此工作区暂无任务",
+    "createProjectFirst": "点击「添加任务」创建新任务。",
     "stats": "统计",
     "keyboardShortcuts": "键盘快捷键",
     "shortcut": {
@@ -1726,8 +1726,8 @@
       "noAgentsOrModels": "未配置智能体和模型。请在设置中进行配置。"
     },
     "filesDescription": "浏览和管理文件",
-    "connectingToKanban": "正在连接 vibe-kanban...",
-    "kanbanConnectionFailed": "无法连接 vibe-kanban 后端",
+    "connectingToKanban": "正在连接任务看板...",
+    "kanbanConnectionFailed": "无法连接任务看板服务",
     "failedToLoadTasks": "加载任务失败",
     "chat": "对话",
     "chatDescription": "与 AI 开始对话",

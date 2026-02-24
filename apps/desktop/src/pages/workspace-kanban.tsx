@@ -4,7 +4,6 @@ import {
   Loader2,
   FolderOpen,
   Plus,
-  Circle,
   AlertCircle,
   RefreshCw,
   Play,
@@ -81,7 +80,6 @@ import {
 import { useLocalWorkspaces, useAgents, useModels } from "@/hooks";
 import {
   useVibeKanbanTasks,
-  useVibeKanbanProjects,
   useUpdateVibeKanbanTaskStatus,
   useUpdateVibeKanbanTask,
   useCreateVibeKanbanTask,
@@ -246,23 +244,6 @@ function ErrorState({
   );
 }
 
-// No project found state
-function NoProjectState({ workspacePath }: { workspacePath: string }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex flex-col items-center justify-center h-[60vh] text-center px-4">
-      <Circle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h2 className="text-xl font-semibold mb-2">{t("workspace.noProjectFound")}</h2>
-      <p className="text-muted-foreground mb-4 max-w-md">
-        {t("workspace.noProjectFoundDesc")}
-      </p>
-      <code className="text-sm bg-muted px-3 py-1 rounded">{workspacePath}</code>
-      <p className="text-muted-foreground mt-4 text-sm">
-        {t("workspace.createProjectFirst")}
-      </p>
-    </div>
-  );
-}
 
 export function WorkspaceKanbanPage() {
   const { t } = useTranslation();
@@ -292,31 +273,14 @@ export function WorkspaceKanbanPage() {
   const columnStatuses = useColumnStatuses();
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
 
-  // Fetch projects from vibe-kanban
-  const {
-    data: projects,
-    isLoading: isLoadingProjects,
-    error: projectsError,
-    refetch: refetchProjects,
-  } = useVibeKanbanProjects();
-
-  // Find matching project by workspace path
-  const vibeProject = useMemo(() => {
-    if (!workspace?.path || !projects) return null;
-    const normalizedPath = workspace.path.replace(/\/+$/, "");
-    return projects.find(
-      (p) => p.git_repo_path.replace(/\/+$/, "") === normalizedPath
-    ) ?? null;
-  }, [workspace?.path, projects]);
-
-  // Fetch tasks for the project
+  // Fetch tasks for the workspace
   const {
     data: tasks,
     isLoading: isLoadingTasks,
     error: tasksError,
     refetch: refetchTasks,
     isFetching: isFetchingTasks,
-  } = useVibeKanbanTasks(vibeProject?.id ?? null);
+  } = useVibeKanbanTasks(workspace?.path);
 
   // Mutations
   const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
@@ -422,7 +386,7 @@ export function WorkspaceKanbanPage() {
     (event: DragEndEvent) => {
       const { active, over } = event;
 
-      if (!over || !vibeProject) return;
+      if (!over || !workspace) return;
 
       const taskId = active.id as string;
       const newColumnId = over.id as string;
@@ -434,10 +398,10 @@ export function WorkspaceKanbanPage() {
       updateTaskStatus.mutate({
         taskId,
         status: newStatus,
-        projectId: vibeProject.id,
+        workspacePath: workspace.path,
       });
     },
-    [vibeProject, updateTaskStatus]
+    [workspace, updateTaskStatus]
   );
 
   // Open create task dialog
@@ -452,48 +416,48 @@ export function WorkspaceKanbanPage() {
   // Handle create task submission
   const handleCreateTaskSubmit = useCallback(
     async (data: CreateTaskData) => {
-      if (!vibeProject) return;
+      if (!workspace) return;
 
       const status = COLUMN_TO_STATUS[createDialogColumnId] ?? "todo";
 
       await createTask.mutateAsync({
-        project_id: vibeProject.id,
+        workspace_path: workspace.path,
         title: data.title,
         description: data.description ?? null,
         status,
       });
     },
-    [vibeProject, createTask, createDialogColumnId]
+    [workspace, createTask, createDialogColumnId]
   );
 
   // Quick add task (with title from QuickTaskInput)
   // TODO: Use this when QuickTaskInput is implemented
   // const handleQuickAddTask = useCallback(
   //   (columnId: string, title: string) => {
-  //     if (!vibeProject) return;
+  //     if (!workspace) return;
   //     const status = COLUMN_TO_STATUS[columnId] ?? "todo";
   //     createTask.mutate({
-  //       project_id: vibeProject.id,
+  //       workspace_path: workspace.path,
   //       title,
   //       description: null,
   //       status,
   //     });
   //   },
-  //   [vibeProject, createTask]
+  //   [workspace, createTask]
   // );
 
   // Handle inline title edit
   const handleTitleChange = useCallback(
     (taskId: string, newTitle: string) => {
-      if (!vibeProject) return;
+      if (!workspace) return;
 
       updateTask.mutate({
         taskId,
         data: { title: newTitle },
-        projectId: vibeProject.id,
+        workspacePath: workspace.path,
       });
     },
-    [vibeProject, updateTask]
+    [workspace, updateTask]
   );
 
   // Handle card click
@@ -549,7 +513,7 @@ export function WorkspaceKanbanPage() {
   // Bulk status change
   const handleBulkStatusChange = useCallback(
     (status: string) => {
-      if (!vibeProject) return;
+      if (!workspace) return;
       const newStatus = COLUMN_TO_STATUS[status];
       if (!newStatus) return;
 
@@ -558,12 +522,12 @@ export function WorkspaceKanbanPage() {
         updateTaskStatus.mutate({
           taskId,
           status: newStatus,
-          projectId: vibeProject.id,
+          workspacePath: workspace.path,
         });
       }
       clearSelection();
     },
-    [vibeProject, selectedIds, updateTaskStatus, clearSelection]
+    [workspace, selectedIds, updateTaskStatus, clearSelection]
   );
 
   // Bulk delete (placeholder - would need delete mutation)
@@ -580,36 +544,36 @@ export function WorkspaceKanbanPage() {
   // Handle move task to column
   const handleMoveToColumn = useCallback(
     (taskId: string, columnId: string) => {
-      if (!vibeProject) return;
+      if (!workspace) return;
       const newStatus = COLUMN_TO_STATUS[columnId];
       if (!newStatus) return;
 
       updateTaskStatus.mutate({
         taskId,
         status: newStatus,
-        projectId: vibeProject.id,
+        workspacePath: workspace.path,
       });
       closeMoreMenu();
     },
-    [vibeProject, updateTaskStatus, closeMoreMenu]
+    [workspace, updateTaskStatus, closeMoreMenu]
   );
 
   // Handle duplicate task
   const handleDuplicateTask = useCallback(
     (taskId: string) => {
-      if (!vibeProject) return;
+      if (!workspace) return;
       const task = sortedTasks.find((t) => t.id === taskId);
       if (!task) return;
 
       createTask.mutate({
-        project_id: vibeProject.id,
+        workspace_path: workspace.path,
         title: `${task.title} (copy)`,
         description: task.description ?? null,
         status: task.status,
       });
       closeMoreMenu();
     },
-    [vibeProject, sortedTasks, createTask, closeMoreMenu]
+    [workspace, sortedTasks, createTask, closeMoreMenu]
   );
 
   // Handle delete task (placeholder)
@@ -760,61 +724,6 @@ export function WorkspaceKanbanPage() {
     );
   }
 
-  // Loading projects from vibe-kanban
-  if (isLoadingProjects) {
-    return (
-      <PageWrapper className="flex flex-col h-full">
-        <WorkspaceHeader
-          workspace={workspace}
-          segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
-          showRefresh={false}
-          showRemove={false}
-        />
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">{t("workspace.connectingToKanban", "Connecting to vibe-kanban...")}</p>
-        </div>
-      </PageWrapper>
-    );
-  }
-
-  // Error loading projects
-  if (projectsError) {
-    return (
-      <PageWrapper className="flex flex-col h-full">
-        <WorkspaceHeader
-          workspace={workspace}
-          segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
-          showRefresh={false}
-          showRemove={false}
-        />
-        <ErrorState
-          message={
-            projectsError instanceof Error
-              ? projectsError.message
-              : t("workspace.kanbanConnectionFailed", "Failed to connect to vibe-kanban backend")
-          }
-          onRetry={() => refetchProjects()}
-        />
-      </PageWrapper>
-    );
-  }
-
-  // No matching project found
-  if (!vibeProject) {
-    return (
-      <PageWrapper className="flex flex-col h-full">
-        <WorkspaceHeader
-          workspace={workspace}
-          segments={[{ label: t("workspace.kanban", "Task Board"), href: `/workspace/${workspaceId}/kanban` }]}
-          showRefresh={false}
-          showRemove={false}
-        />
-        <NoProjectState workspacePath={workspace.path} />
-      </PageWrapper>
-    );
-  }
-
   // Error loading tasks
   if (tasksError) {
     return (
@@ -848,7 +757,7 @@ export function WorkspaceKanbanPage() {
         rightContent={
           <>
             <Badge variant="outline" className="font-mono text-xs">
-              {vibeProject.name}
+              {workspace.name}
             </Badge>
             <Button
               size="sm"

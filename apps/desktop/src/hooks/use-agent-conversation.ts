@@ -23,6 +23,7 @@ import type {
 } from "@/types";
 import type { ExecutorType } from "@viben/core/shared";
 import { getGatewayClient, getGatewayUrl } from "@/lib/gateway";
+import type { SandboxConfig } from "@/hooks/use-sandbox";
 import {
   addBackgroundTask,
   getBackgroundTask,
@@ -123,6 +124,8 @@ export interface UseAgentConversationOptions {
   sessionId?: string;
   /** File system task ID for persistence */
   taskId?: string;
+  /** Sandbox configuration (session-level) */
+  sandboxConfig?: SandboxConfig;
 }
 
 /**
@@ -136,6 +139,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     mockMode = false,
     sessionId: persistSessionId,
     taskId: persistTaskId,
+    sandboxConfig,
   } = options || {};
 
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -445,6 +449,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           // Session persistence: pass session/task IDs for backend to persist messages
           session_id: persistSessionId || undefined,
           task_id: currentTaskId,
+          // Sandbox configuration (session-level)
+          sandbox_config: sandboxConfig?.enabled ? {
+            enabled: true,
+            provider: sandboxConfig.provider,
+          } : undefined,
         };
         if (workspaceId) {
           requestBody.cwd = workspaceId;
@@ -535,7 +544,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
       }
     },
-    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId]
+    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig]
   );
 
   /**

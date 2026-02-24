@@ -98,6 +98,8 @@ export function ChatInput({
   // Slash Commands
   slashCommands = [],
   onSlashCommand,
+  // Custom Content Slots
+  configBarLeftExtra,
 }: ChatInputProps) {
   const { t } = useTranslation();
 
@@ -540,6 +542,7 @@ export function ChatInput({
           isLoading={isLoading}
           disabled={disabled}
           canSubmit={canSubmit}
+          leftExtraContent={configBarLeftExtra}
         />
       )}
 

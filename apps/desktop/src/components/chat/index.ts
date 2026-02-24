@@ -78,3 +78,6 @@ export type { ExecutorCapabilitiesProps, McpServerInfo, SkillPackageInfo } from 
 
 // Background Task Indicator
 export { BackgroundTaskIndicator } from "./background-task-indicator";
+
+// Sandbox Toggle
+export { SandboxToggle } from "./sandbox-toggle";

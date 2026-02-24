@@ -73,6 +73,10 @@ export interface ChatInputProps {
   // === Basic Props ===
   /** Callback when message is sent */
   onSend: (content: string, attachments?: MessageAttachment[]) => void;
+
+  // === Custom Content Slots ===
+  /** Extra content to render at the left side of the config bar (after built-in selectors) */
+  configBarLeftExtra?: ReactNode;
   /** Callback when cancel/stop button is clicked */
   onCancel?: () => void;
   /** Whether the chat is in loading/streaming state */

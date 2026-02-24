@@ -6,14 +6,13 @@
 // Task status enum - matches TaskStatus in Rust
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-// Task model - matches Task struct in task.rs
+// Task model - matches KanbanTask in gateway
 export interface Task {
   id: string;
-  project_id: string;
+  workspace_path: string | null;
   title: string;
   description: string | null;
   status: TaskStatus;
-  parent_workspace_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,39 +24,22 @@ export interface TaskWithAttemptStatus extends Task {
   executor: string;
 }
 
-// Create task request - matches CreateTask struct
+// Create task request
 export interface CreateTaskRequest {
-  project_id: string;
+  workspace_path?: string;
   title: string;
   description?: string | null;
   status?: TaskStatus;
-  parent_workspace_id?: string | null;
 }
 
-// Update task request - matches UpdateTask struct
+// Update task request
 export interface UpdateTaskRequest {
   title?: string;
   description?: string | null;
   status?: TaskStatus;
-  parent_workspace_id?: string | null;
 }
 
-// Project model - matches Project struct in project.rs
-export interface Project {
-  id: string;
-  name: string;
-  git_repo_path: string;
-  setup_script: string | null;
-  dev_script: string | null;
-  cleanup_script: string | null;
-  copy_files: string | null;
-  parallel_setup_script: boolean;
-  remote_project_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-// API response wrapper - matches ApiResponse in Rust
+// API response wrapper
 export interface ApiResponse<T> {
   success: boolean;
   data: T;

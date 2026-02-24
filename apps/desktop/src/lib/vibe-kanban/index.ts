@@ -5,7 +5,6 @@ export type {
   TaskStatus,
   CreateTaskRequest,
   UpdateTaskRequest,
-  Project,
   ApiResponse,
 } from "./types";
 
@@ -18,7 +17,6 @@ export {
 // API client
 export {
   checkHealth,
-  getProjects,
   getTasks,
   getTask,
   createTask,
@@ -42,6 +40,7 @@ export {
   isJsonPatchMessage,
   isStreamFinishedMessage,
   buildTasksWebSocketUrl,
+  getWebSocketCloseReason,
 } from "./websocket-types";
 
 // WebSocket hook
