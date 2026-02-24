@@ -49,6 +49,7 @@ export function useLocalWorkspaces() {
     failDiscovery,
     getDiscoveryTask,
     hasRunningDiscovery,
+    getWorkspaceByPath,
   } = useWorkspaceStore();
 
   // Load workspaces from backend
@@ -187,6 +188,7 @@ export function useLocalWorkspaces() {
     runDiscovery,
     // Getters
     getWorkspace,
+    getWorkspaceByPath,
     getActiveWorkspace,
     getDiscoveryTask,
     hasRunningDiscovery,
