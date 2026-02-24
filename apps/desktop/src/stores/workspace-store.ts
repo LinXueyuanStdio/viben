@@ -47,6 +47,7 @@ interface WorkspaceState {
 
   // Getters
   getWorkspace: (workspaceId: string) => Workspace | undefined;
+  getWorkspaceByPath: (workspacePath: string) => Workspace | undefined;
   getActiveWorkspace: () => Workspace | undefined;
   getDiscoveryTask: (workspaceId: string) => DiscoveryTask | undefined;
   hasRunningDiscovery: () => boolean;
