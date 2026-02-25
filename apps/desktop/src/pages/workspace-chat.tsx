@@ -87,6 +87,7 @@ import {
 } from "@/hooks";
 import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
+import { useChatConfigStore } from "@/stores/chat-config-store";
 
 // ============================================================================
 // Resize Handle Component
@@ -713,9 +714,12 @@ export function WorkspaceChatPage() {
     approvals: currentAgent.approvals,
   } : undefined;
 
+  // Sandbox configuration from global store (session-level config)
+  const sandboxConfig = useChatConfigStore((state) => state.sandboxConfig);
+
   // Agent hook - use workspace path as workdir for the agent
   // Pass agent config path (preferred) or inline config as fallback
-  // Also pass sessionId for message persistence
+  // Also pass sessionId for message persistence and sandboxConfig for sandbox mode
   const {
     messages,
     phase,
@@ -738,6 +742,7 @@ export function WorkspaceChatPage() {
     agentPath: currentAgent?.config_path,
     agentConfig: currentAgent?.config_path ? undefined : currentAgentConfig,
     sessionId: selectedConversationId || undefined,
+    sandboxConfig,
   });
 
   // Debug: Log messages changes
