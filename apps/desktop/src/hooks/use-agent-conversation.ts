@@ -126,6 +126,8 @@ export interface UseAgentConversationOptions {
   taskId?: string;
   /** Sandbox configuration (session-level) */
   sandboxConfig?: SandboxConfig;
+  /** Use WebSocket mode for bidirectional communication (supports AskUserQuestion) */
+  useWebSocket?: boolean;
 }
 
 /**
@@ -140,6 +142,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     sessionId: persistSessionId,
     taskId: persistTaskId,
     sandboxConfig,
+    useWebSocket = false,
   } = options || {};
 
   const [messages, setMessages] = useState<AgentMessage[]>([]);
@@ -391,6 +394,327 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         break;
     }
   }, []);
+
+  // ============================================================================
+  // WebSocket Mode Implementation
+  // ============================================================================
+
+  // Track WebSocket reconnection attempts
+  const wsReconnectAttemptsRef = useRef(0);
+  const wsReconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY_MS = 2000;
+
+  /**
+   * Connect to the WebSocket agent endpoint
+   */
+  const connectWebSocket = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      return; // Already connected
+    }
+
+    const gatewayUrl = getGatewayUrl();
+    // Convert http(s) to ws(s)
+    const wsUrl = gatewayUrl.replace(/^http/, "ws");
+
+    // Build query params
+    const params = new URLSearchParams();
+    if (workspaceId) params.set("cwd", workspaceId);
+    if (agentPath) params.set("agentPath", agentPath);
+    if (persistSessionId) params.set("sessionId", persistSessionId);
+    if (persistTaskId) params.set("taskId", persistTaskId);
+
+    const url = `${wsUrl}/ws/agent/run?${params.toString()}`;
+    console.log("[useAgent] Connecting WebSocket to:", url);
+
+    try {
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("[useAgent] WebSocket connected");
+        wsReconnectAttemptsRef.current = 0;
+        setGatewayConnected(true);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data) as SSEMessageData;
+          handleSSEMessage(data);
+        } catch (e) {
+          console.warn("[useAgent] Failed to parse WebSocket message:", e);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error("[useAgent] WebSocket error:", error);
+        setError("WebSocket connection error");
+      };
+
+      ws.onclose = (event) => {
+        console.log("[useAgent] WebSocket closed:", event.code, event.reason);
+
+        // Attempt to reconnect if not intentionally closed
+        if (
+          event.code !== 1000 &&
+          wsReconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS
+        ) {
+          wsReconnectAttemptsRef.current++;
+          console.log(
+            `[useAgent] Attempting reconnect (${wsReconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`
+          );
+
+          wsReconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, RECONNECT_DELAY_MS * wsReconnectAttemptsRef.current);
+        } else if (wsReconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+          setError("WebSocket connection failed after multiple attempts");
+          setGatewayConnected(false);
+        }
+      };
+    } catch (e) {
+      console.error("[useAgent] Failed to create WebSocket:", e);
+      setGatewayConnected(false);
+    }
+  }, [workspaceId, agentPath, persistSessionId, persistTaskId, handleSSEMessage]);
+
+  /**
+   * Disconnect WebSocket
+   */
+  const disconnectWebSocket = useCallback(() => {
+    if (wsReconnectTimeoutRef.current) {
+      clearTimeout(wsReconnectTimeoutRef.current);
+      wsReconnectTimeoutRef.current = null;
+    }
+    if (wsRef.current) {
+      wsRef.current.close(1000, "Client disconnect");
+      wsRef.current = null;
+    }
+  }, []);
+
+  /**
+   * Send a message via WebSocket
+   */
+  const sendWebSocketMessage = useCallback(
+    (message: {
+      type: "start" | "answer" | "approve" | "reject" | "cancel";
+      prompt?: string;
+      agentConfig?: AgentConfig;
+      questionId?: string;
+      answers?: Record<string, string>;
+      planId?: string;
+    }) => {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        console.error("[useAgent] WebSocket not connected");
+        setError("WebSocket not connected");
+        return false;
+      }
+
+      try {
+        wsRef.current.send(JSON.stringify(message));
+        return true;
+      } catch (e) {
+        console.error("[useAgent] Failed to send WebSocket message:", e);
+        setError("Failed to send message");
+        return false;
+      }
+    },
+    []
+  );
+
+  /**
+   * Send a message to the agent via WebSocket
+   */
+  const sendMessageWebSocket = useCallback(
+    async (content: string, _attachments?: MessageAttachment[]) => {
+      if (!content.trim()) return;
+
+      console.log("[useAgent] sendMessageWebSocket called with:", content.slice(0, 50));
+
+      // Reset streaming state for new message
+      streamingMessageIdRef.current = null;
+
+      // Track running state
+      isRunningRef.current = true;
+      initialPromptRef.current = content;
+
+      setError(null);
+      setPhase("running");
+      setIsStreaming(true);
+
+      // Add user message
+      const userMessage: AgentMessage = {
+        id: generateId(),
+        type: "user",
+        content,
+      };
+      setMessages((prev) => [...prev, userMessage]);
+
+      // Ensure WebSocket is connected
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        connectWebSocket();
+        // Wait for connection
+        await new Promise<void>((resolve, reject) => {
+          const checkInterval = setInterval(() => {
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 100);
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            clearInterval(checkInterval);
+            reject(new Error("WebSocket connection timeout"));
+          }, 5000);
+        }).catch((err) => {
+          setError(err.message);
+          setPhase("error");
+          setIsStreaming(false);
+          return;
+        });
+      }
+
+      // Send start message
+      const success = sendWebSocketMessage({
+        type: "start",
+        prompt: content,
+        agentConfig: agentPath ? undefined : agentConfig,
+      });
+
+      if (!success) {
+        const errMsg: AgentMessage = {
+          id: generateId(),
+          type: "error",
+          message: "Failed to send message to agent",
+          isError: true,
+        };
+        setMessages((prev) => [...prev, errMsg]);
+        setPhase("error");
+        setIsStreaming(false);
+      }
+    },
+    [agentPath, agentConfig, connectWebSocket, sendWebSocketMessage]
+  );
+
+  /**
+   * Answer questions via WebSocket
+   */
+  const answerQuestionsWebSocket = useCallback(
+    (answers: Record<string, string[]>) => {
+      if (!pendingQuestions) return;
+
+      const questionId = pendingQuestions.id;
+      setPendingQuestions(null);
+      setPhase("running");
+      setIsStreaming(true);
+
+      // Convert answers from string[] to string format
+      const flatAnswers: Record<string, string> = {};
+      for (const [key, values] of Object.entries(answers)) {
+        flatAnswers[key] = values.join(", ");
+      }
+
+      // Send answer via WebSocket
+      sendWebSocketMessage({
+        type: "answer",
+        questionId,
+        answers: flatAnswers,
+      });
+    },
+    [pendingQuestions, sendWebSocketMessage]
+  );
+
+  /**
+   * Approve plan via WebSocket
+   */
+  const approvePlanWebSocket = useCallback(() => {
+    if (!pendingPlan) return;
+
+    // Find the plan ID from messages
+    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
+    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+
+    if (!planId) return;
+
+    setPendingPlan(null);
+    setPhase("running");
+    setIsStreaming(true);
+
+    sendWebSocketMessage({
+      type: "approve",
+      planId,
+    });
+  }, [pendingPlan, messages, sendWebSocketMessage]);
+
+  /**
+   * Reject plan via WebSocket
+   */
+  const rejectPlanWebSocket = useCallback(() => {
+    if (!pendingPlan) return;
+
+    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
+    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+
+    if (!planId) return;
+
+    setPendingPlan(null);
+
+    sendWebSocketMessage({
+      type: "reject",
+      planId,
+    });
+
+    // Update UI
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.type === "plan" && m.plan) {
+          const updatedSteps = m.plan.steps.map((step) => ({
+            ...step,
+            status: "cancelled" as const,
+          }));
+          return { ...m, plan: { ...m.plan, steps: updatedSteps } };
+        }
+        return m;
+      })
+    );
+
+    const textMessage: AgentMessage = {
+      id: generateId(),
+      type: "text",
+      content: "Plan rejected. How would you like me to proceed?",
+    };
+    setMessages((prev) => [...prev, textMessage]);
+    setPhase("idle");
+  }, [pendingPlan, messages, sendWebSocketMessage]);
+
+  /**
+   * Cancel via WebSocket
+   */
+  const cancelWebSocket = useCallback(() => {
+    sendWebSocketMessage({ type: "cancel" });
+
+    setPendingPlan(null);
+    setPendingQuestions(null);
+    setIsStreaming(false);
+    setPhase("idle");
+  }, [sendWebSocketMessage]);
+
+  // Connect WebSocket on mount if useWebSocket is enabled
+  useEffect(() => {
+    if (useWebSocket && !mockMode) {
+      connectWebSocket();
+    }
+
+    return () => {
+      if (useWebSocket) {
+        disconnectWebSocket();
+      }
+    };
+  }, [useWebSocket, mockMode, connectWebSocket, disconnectWebSocket]);
+
+  // ============================================================================
+  // SSE Mode Implementation
+  // ============================================================================
 
   /**
    * Send a message to the agent (real Gateway implementation using SSE)
@@ -717,12 +1041,17 @@ The workspace ID for this session is: \`${workspaceId}\`
   );
 
   /**
-   * Send a message - decides between real and mock implementation
+   * Send a message - decides between WebSocket, SSE, and mock implementation
    */
   const sendMessage = useCallback(
     async (content: string, attachments?: MessageAttachment[]) => {
       if (mockMode) {
         return sendMessageMock(content, attachments);
+      }
+
+      // Use WebSocket if enabled
+      if (useWebSocket) {
+        return sendMessageWebSocket(content, attachments);
       }
 
       // Check Gateway connection
@@ -735,7 +1064,7 @@ The workspace ID for this session is: \`${workspaceId}\`
         return sendMessageMock(content, attachments);
       }
     },
-    [mockMode, gatewayConnected, checkGatewayConnection, sendMessageReal, sendMessageMock]
+    [mockMode, useWebSocket, gatewayConnected, checkGatewayConnection, sendMessageReal, sendMessageMock, sendMessageWebSocket]
   );
 
   /**
@@ -743,6 +1072,11 @@ The workspace ID for this session is: \`${workspaceId}\`
    */
   const approvePlan = useCallback(async () => {
     if (!pendingPlan) return;
+
+    // Use WebSocket if enabled
+    if (useWebSocket) {
+      return approvePlanWebSocket();
+    }
 
     // Find the plan ID from messages
     const planMessage = messages.find((m) => m.type === "plan" && m.plan);
@@ -805,13 +1139,18 @@ The workspace ID for this session is: \`${workspaceId}\`
       setPhase("error");
       setIsStreaming(false);
     }
-  }, [pendingPlan, messages, gatewayConnected]);
+  }, [pendingPlan, messages, gatewayConnected, useWebSocket, approvePlanWebSocket]);
 
   /**
    * Reject a pending plan
    */
   const rejectPlan = useCallback(async () => {
     if (!pendingPlan) return;
+
+    // Use WebSocket if enabled
+    if (useWebSocket) {
+      return rejectPlanWebSocket();
+    }
 
     // Find the plan ID from messages
     const planMessage = messages.find((m) => m.type === "plan" && m.plan);
@@ -857,7 +1196,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
-  }, [pendingPlan, messages, gatewayConnected]);
+  }, [pendingPlan, messages, gatewayConnected, useWebSocket, rejectPlanWebSocket]);
 
   /**
    * Answer pending questions (AskUserQuestion elicitation)
@@ -874,7 +1213,12 @@ The workspace ID for this session is: \`${workspaceId}\`
     async (answers: Record<string, string[]>) => {
       if (!pendingQuestions) return;
 
-      // Format answers as readable text
+      // Use WebSocket if enabled
+      if (useWebSocket) {
+        return answerQuestionsWebSocket(answers);
+      }
+
+      // Format answers as readable text (workany pattern)
       // Format: "Question header: selected options"
       const answerParts: string[] = [];
       const questions = pendingQuestions.questions;
@@ -900,13 +1244,19 @@ The workspace ID for this session is: \`${workspaceId}\`
       // This sends a new message to the agent, which will continue execution
       await sendMessageReal(answerText);
     },
-    [pendingQuestions, sendMessageReal]
+    [pendingQuestions, sendMessageReal, useWebSocket, answerQuestionsWebSocket]
   );
 
   /**
    * Cancel the current operation
    */
   const cancel = useCallback(async () => {
+    // Use WebSocket cancel if enabled
+    if (useWebSocket) {
+      cancelWebSocket();
+      return;
+    }
+
     // Cancel any ongoing fetch
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -930,12 +1280,17 @@ The workspace ID for this session is: \`${workspaceId}\`
     setPendingQuestions(null);
     setIsStreaming(false);
     setPhase("idle");
-  }, [agentConfig, client, gatewayConnected, mockMode, sessionId]);
+  }, [agentConfig, client, gatewayConnected, mockMode, sessionId, useWebSocket, cancelWebSocket]);
 
   /**
    * Clear all messages
    */
   const clearMessages = useCallback(() => {
+    // Cancel WebSocket if enabled
+    if (useWebSocket && wsRef.current) {
+      sendWebSocketMessage({ type: "cancel" });
+    }
+
     // Cancel any ongoing stream
     client.cancelStream();
 
@@ -945,7 +1300,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     setError(null);
     setPhase("idle");
     setSessionId(null);
-  }, [client]);
+  }, [client, useWebSocket, sendWebSocketMessage]);
 
   /**
    * Load messages (for restoring conversation history)
@@ -1412,5 +1767,9 @@ The workspace ID for this session is: \`${workspaceId}\`
     switchTask,
     moveToBackground,
     hasRunningBackgroundTask,
+
+    // WebSocket-specific (optional)
+    connectWebSocket,
+    disconnectWebSocket,
   };
 }
