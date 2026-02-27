@@ -25,6 +25,9 @@ import {
   Pencil,
   Send,
   Loader2,
+  Link,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -317,6 +320,171 @@ async function sendTestMessage(
   }
 }
 
+// ============================================================================
+// Telegram Webhook API Functions
+// ============================================================================
+
+interface TelegramWebhookInfo {
+  url: string;
+  has_custom_certificate: boolean;
+  pending_update_count: number;
+  last_error_date?: number;
+  last_error_message?: string;
+  max_connections?: number;
+  allowed_updates?: string[];
+}
+
+/**
+ * Get Telegram webhook info
+ */
+async function getTelegramWebhookInfo(token: string): Promise<{
+  success: boolean;
+  result?: TelegramWebhookInfo;
+  error?: string;
+}> {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const data = await response.json();
+
+    if (data.ok) {
+      return { success: true, result: data.result };
+    } else {
+      return { success: false, error: data.description || "Failed to get webhook info" };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Set Telegram webhook
+ */
+async function setTelegramWebhook(
+  token: string,
+  webhookUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: ["message", "callback_query"],
+      }),
+    });
+    const data = await response.json();
+
+    if (data.ok) {
+      return { success: true };
+    } else {
+      return { success: false, error: data.description || "Failed to set webhook" };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Delete Telegram webhook
+ */
+async function deleteTelegramWebhook(token: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
+    const data = await response.json();
+
+    if (data.ok) {
+      return { success: true };
+    } else {
+      return { success: false, error: data.description || "Failed to delete webhook" };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// ============================================================================
+// Tunnel API Functions
+// ============================================================================
+
+type TunnelStatus = "stopped" | "starting" | "connected" | "error" | "reconnecting";
+
+interface TunnelState {
+  status: TunnelStatus;
+  url: string | null;
+  port: number;
+  connections: Array<{ id: string; ip: string; location: string }>;
+  error: string | null;
+  startedAt: number | null;
+  lastConnectedAt: number | null;
+  available: boolean;
+}
+
+/**
+ * Get tunnel status
+ */
+async function getTunnelStatus(): Promise<TunnelState | null> {
+  try {
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/tunnel/status`);
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Start tunnel
+ */
+async function startTunnel(port: number = 18790): Promise<{
+  success: boolean;
+  url?: string;
+  error?: string;
+  state?: TunnelState;
+}> {
+  try {
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/tunnel/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ port }),
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+/**
+ * Stop tunnel
+ */
+async function stopTunnel(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const gatewayUrl = getGatewayUrl();
+    const response = await fetch(`${gatewayUrl}/api/tunnel/stop`, {
+      method: "POST",
+    });
+    return await response.json();
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 // Instance card component
 interface InstanceCardProps {
   channel: GatewayChannel;
@@ -325,6 +493,7 @@ interface InstanceCardProps {
   onDelete: () => void;
   onTestConnection: () => void;
   onSendTestMessage: () => void;
+  onConfigureWebhook?: () => void;
   isTestingConnection?: boolean;
   isSendingTestMessage?: boolean;
 }
@@ -336,6 +505,7 @@ function InstanceCard({
   onDelete,
   onTestConnection,
   onSendTestMessage,
+  onConfigureWebhook,
   isTestingConnection,
   isSendingTestMessage,
 }: InstanceCardProps) {
@@ -390,6 +560,18 @@ function InstanceCard({
           <XCircle className="h-4 w-4 text-muted-foreground" />
         )}
         <Switch checked={channel.enabled} onCheckedChange={onToggle} />
+        {/* Webhook config button for Telegram */}
+        {channel.channel_type === "telegram" && onConfigureWebhook && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+            onClick={onConfigureWebhook}
+            title={t("channels.configureWebhook", "配置 Webhook")}
+          >
+            <Link className="h-4 w-4" />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -826,6 +1008,19 @@ export function SettingsChannelsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Webhook configuration state
+  const [webhookDialogOpen, setWebhookDialogOpen] = useState(false);
+  const [webhookChannel, setWebhookChannel] = useState<GatewayChannel | null>(null);
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookInfo, setWebhookInfo] = useState<TelegramWebhookInfo | null>(null);
+  const [isLoadingWebhook, setIsLoadingWebhook] = useState(false);
+  const [isSettingWebhook, setIsSettingWebhook] = useState(false);
+
+  // Tunnel state
+  const [tunnelState, setTunnelState] = useState<TunnelState | null>(null);
+  const [isStartingTunnel, setIsStartingTunnel] = useState(false);
+  const [isStoppingTunnel, setIsStoppingTunnel] = useState(false);
+
   // Reset form state when dialog opens/closes
   const handleOpenCreateDialog = () => {
     setFormState(getDefaultFormState("telegram"));
@@ -970,6 +1165,202 @@ export function SettingsChannelsPage() {
     }
   };
 
+  // Open webhook configuration dialog
+  const handleOpenWebhookDialog = async (channel: GatewayChannel) => {
+    setWebhookChannel(channel);
+    setWebhookDialogOpen(true);
+    setWebhookInfo(null);
+    setTunnelState(null);
+
+    // Get token from channel config
+    const config = channel.config as Record<string, unknown>;
+    const token = config.token as string;
+
+    if (!token) {
+      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      return;
+    }
+
+    // Generate default webhook URL
+    const gatewayUrl = getGatewayUrl();
+    const defaultWebhookUrl = `${gatewayUrl}/api/channels/webhook`;
+    setWebhookUrl(defaultWebhookUrl);
+
+    // Load current webhook info and tunnel status in parallel
+    setIsLoadingWebhook(true);
+    const [webhookResult, tunnelStatus] = await Promise.all([
+      getTelegramWebhookInfo(token),
+      getTunnelStatus(),
+    ]);
+    setIsLoadingWebhook(false);
+
+    if (webhookResult.success && webhookResult.result) {
+      setWebhookInfo(webhookResult.result);
+      if (webhookResult.result.url) {
+        setWebhookUrl(webhookResult.result.url);
+      }
+    }
+
+    if (tunnelStatus) {
+      setTunnelState(tunnelStatus);
+      // If tunnel is connected, use tunnel URL
+      if (tunnelStatus.status === "connected" && tunnelStatus.url) {
+        setWebhookUrl(`${tunnelStatus.url}/api/channels/webhook`);
+      }
+    }
+  };
+
+  // Set webhook
+  const handleSetWebhook = async () => {
+    if (!webhookChannel || !webhookUrl) return;
+
+    const config = webhookChannel.config as Record<string, unknown>;
+    const token = config.token as string;
+
+    if (!token) {
+      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      return;
+    }
+
+    setIsSettingWebhook(true);
+    const result = await setTelegramWebhook(token, webhookUrl);
+    setIsSettingWebhook(false);
+
+    if (result.success) {
+      toast.success(t("channels.webhook.setSuccess", "Webhook 设置成功"));
+      // Refresh webhook info
+      const infoResult = await getTelegramWebhookInfo(token);
+      if (infoResult.success && infoResult.result) {
+        setWebhookInfo(infoResult.result);
+      }
+    } else {
+      toast.error(t("channels.webhook.setFailed", "Webhook 设置失败"), {
+        description: result.error,
+      });
+    }
+  };
+
+  // Delete webhook
+  const handleDeleteWebhook = async () => {
+    if (!webhookChannel) return;
+
+    const config = webhookChannel.config as Record<string, unknown>;
+    const token = config.token as string;
+
+    if (!token) return;
+
+    setIsSettingWebhook(true);
+    const result = await deleteTelegramWebhook(token);
+    setIsSettingWebhook(false);
+
+    if (result.success) {
+      toast.success(t("channels.webhook.deleteSuccess", "Webhook 已删除"));
+      setWebhookInfo(null);
+      setWebhookUrl("");
+    } else {
+      toast.error(t("channels.webhook.deleteFailed", "删除失败"), {
+        description: result.error,
+      });
+    }
+  };
+
+  // Copy webhook URL to clipboard
+  const handleCopyWebhookUrl = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success(t("channels.webhook.copied", "已复制到剪贴板"));
+  };
+
+  // Start tunnel
+  const handleStartTunnel = async () => {
+    setIsStartingTunnel(true);
+    const result = await startTunnel(18790);
+    setIsStartingTunnel(false);
+
+    if (result.success && result.url) {
+      const tunnelWebhookUrl = `${result.url}/api/channels/webhook`;
+      setWebhookUrl(tunnelWebhookUrl);
+      setTunnelState(result.state || null);
+      toast.success(t("channels.tunnel.started", "隧道已启动"), {
+        description: result.url,
+      });
+    } else {
+      toast.error(t("channels.tunnel.startFailed", "隧道启动失败"), {
+        description: result.error,
+      });
+      if (result.state) {
+        setTunnelState(result.state);
+      }
+    }
+  };
+
+  // Stop tunnel
+  const handleStopTunnel = async () => {
+    setIsStoppingTunnel(true);
+    const result = await stopTunnel();
+    setIsStoppingTunnel(false);
+
+    if (result.success) {
+      setTunnelState((prev) => prev ? { ...prev, status: "stopped", url: null } : null);
+      // Reset to local URL
+      const gatewayUrl = getGatewayUrl();
+      setWebhookUrl(`${gatewayUrl}/api/channels/webhook`);
+      toast.success(t("channels.tunnel.stopped", "隧道已停止"));
+    } else {
+      toast.error(t("channels.tunnel.stopFailed", "隧道停止失败"), {
+        description: result.error,
+      });
+    }
+  };
+
+  // One-click setup: start tunnel + set webhook
+  const handleOneClickSetup = async () => {
+    if (!webhookChannel) return;
+
+    const config = webhookChannel.config as Record<string, unknown>;
+    const token = config.token as string;
+
+    if (!token) {
+      toast.error(t("channels.webhook.noToken", "请先配置 Bot Token"));
+      return;
+    }
+
+    // Step 1: Start tunnel
+    setIsStartingTunnel(true);
+    const tunnelResult = await startTunnel(18790);
+    setIsStartingTunnel(false);
+
+    if (!tunnelResult.success || !tunnelResult.url) {
+      toast.error(t("channels.tunnel.startFailed", "隧道启动失败"), {
+        description: tunnelResult.error,
+      });
+      return;
+    }
+
+    const tunnelWebhookUrl = `${tunnelResult.url}/api/channels/webhook`;
+    setWebhookUrl(tunnelWebhookUrl);
+    setTunnelState(tunnelResult.state || null);
+
+    // Step 2: Set webhook
+    setIsSettingWebhook(true);
+    const webhookResult = await setTelegramWebhook(token, tunnelWebhookUrl);
+    setIsSettingWebhook(false);
+
+    if (webhookResult.success) {
+      toast.success(t("channels.webhook.oneClickSuccess", "一键配置成功！"), {
+        description: t("channels.webhook.oneClickSuccessDesc", "隧道已启动，Webhook 已设置"),
+      });
+      // Refresh webhook info
+      const infoResult = await getTelegramWebhookInfo(token);
+      if (infoResult.success && infoResult.result) {
+        setWebhookInfo(infoResult.result);
+      }
+    } else {
+      toast.error(t("channels.webhook.setFailed", "Webhook 设置失败"), {
+        description: webhookResult.error,
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -1029,6 +1420,7 @@ export function SettingsChannelsPage() {
                   onDelete={() => handleDelete(channel)}
                   onTestConnection={() => handleTestConnection(channel)}
                   onSendTestMessage={() => handleOpenTestDialog(channel)}
+                  onConfigureWebhook={channel.channel_type === "telegram" ? () => handleOpenWebhookDialog(channel) : undefined}
                   isTestingConnection={testingConnectionId === channel.id}
                   isSendingTestMessage={sendingTestMessageId === channel.id}
                 />
@@ -1274,6 +1666,284 @@ export function SettingsChannelsPage() {
                 </>
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Webhook Configuration Dialog */}
+      <Dialog open={webhookDialogOpen} onOpenChange={setWebhookDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="h-5 w-5" />
+              {t("channels.webhook.title", "配置 Webhook")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("channels.webhook.description", "配置 Telegram Bot 的 Webhook，让 Bot 能够接收消息并路由到绑定的智能体。")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {webhookChannel && (
+              <>
+                {/* Channel Info */}
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                  <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <TelegramIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{webhookChannel.name}</p>
+                    <p className="text-xs text-muted-foreground">Telegram Bot</p>
+                  </div>
+                </div>
+
+                {/* Current Webhook Status */}
+                {isLoadingWebhook ? (
+                  <div className="flex items-center justify-center p-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {t("channels.webhook.loading", "加载中...")}
+                    </span>
+                  </div>
+                ) : webhookInfo ? (
+                  <div className="space-y-2 p-3 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {t("channels.webhook.currentStatus", "当前状态")}
+                      </span>
+                      {webhookInfo.url ? (
+                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {t("channels.webhook.active", "已配置")}
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {t("channels.webhook.notConfigured", "未配置")}
+                        </span>
+                      )}
+                    </div>
+                    {webhookInfo.url && (
+                      <div className="text-xs text-muted-foreground break-all">
+                        {webhookInfo.url}
+                      </div>
+                    )}
+                    {webhookInfo.last_error_message && (
+                      <div className="text-xs text-destructive flex items-start gap-1">
+                        <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                        {webhookInfo.last_error_message}
+                      </div>
+                    )}
+                    {webhookInfo.pending_update_count > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {t("channels.webhook.pendingUpdates", "待处理消息")}: {webhookInfo.pending_update_count}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* Webhook URL Input */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    {t("channels.webhook.url", "Webhook URL")}
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={webhookUrl}
+                      onChange={(e) => setWebhookUrl(e.target.value)}
+                      placeholder="https://your-domain.com/api/channels/webhook"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCopyWebhookUrl}
+                      title={t("channels.webhook.copy", "复制")}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t("channels.webhook.urlHint", "Webhook URL 必须是公网可访问的 HTTPS 地址。本地开发可使用 ngrok 等工具。")}
+                  </p>
+                </div>
+
+                {/* Tunnel Section */}
+                <div className="space-y-3 p-3 rounded-lg border bg-card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {t("channels.tunnel.title", "Cloudflare 隧道")}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t("channels.tunnel.description", "一键创建公网地址，无需安装额外工具")}
+                      </p>
+                    </div>
+                    {tunnelState?.status === "connected" ? (
+                      <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 px-2 py-0.5 rounded flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {t("channels.tunnel.connected", "已连接")}
+                      </span>
+                    ) : tunnelState?.status === "starting" || tunnelState?.status === "reconnecting" ? (
+                      <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        {tunnelState.status === "starting"
+                          ? t("channels.tunnel.starting", "启动中...")
+                          : t("channels.tunnel.reconnecting", "重连中...")}
+                      </span>
+                    ) : tunnelState?.status === "error" ? (
+                      <span className="text-xs bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded flex items-center gap-1">
+                        <XCircle className="h-3 w-3" />
+                        {t("channels.tunnel.error", "错误")}
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded">
+                        {t("channels.tunnel.stopped", "未启动")}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Tunnel URL */}
+                  {tunnelState?.url && (
+                    <div className="text-xs text-muted-foreground break-all p-2 bg-muted/50 rounded">
+                      {tunnelState.url}
+                    </div>
+                  )}
+
+                  {/* Tunnel Error */}
+                  {tunnelState?.error && (
+                    <div className="text-xs text-destructive flex items-start gap-1">
+                      <XCircle className="h-3 w-3 mt-0.5 shrink-0" />
+                      {tunnelState.error}
+                    </div>
+                  )}
+
+                  {/* Tunnel Connections */}
+                  {tunnelState?.connections && tunnelState.connections.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {t("channels.tunnel.connections", "连接点")}: {tunnelState.connections.map(c => c.location).join(", ")}
+                    </div>
+                  )}
+
+                  {/* Tunnel Actions */}
+                  <div className="flex gap-2">
+                    {tunnelState?.status === "connected" ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleStopTunnel}
+                        disabled={isStoppingTunnel}
+                        className="flex-1"
+                      >
+                        {isStoppingTunnel ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            {t("channels.tunnel.stopping", "停止中...")}
+                          </>
+                        ) : (
+                          t("channels.tunnel.stop", "停止隧道")
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleStartTunnel}
+                        disabled={isStartingTunnel || tunnelState?.status === "starting"}
+                        className="flex-1"
+                      >
+                        {isStartingTunnel || tunnelState?.status === "starting" ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            {t("channels.tunnel.starting", "启动中...")}
+                          </>
+                        ) : (
+                          t("channels.tunnel.start", "启动隧道")
+                        )}
+                      </Button>
+                    )}
+                    {/* One-click setup button */}
+                    {tunnelState?.status !== "connected" && (
+                      <Button
+                        size="sm"
+                        onClick={handleOneClickSetup}
+                        disabled={isStartingTunnel || isSettingWebhook}
+                        className="flex-1"
+                      >
+                        {(isStartingTunnel || isSettingWebhook) ? (
+                          <>
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            {t("channels.tunnel.settingUp", "配置中...")}
+                          </>
+                        ) : (
+                          t("channels.tunnel.oneClick", "一键配置")
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manual Help Section */}
+                <details className="text-xs">
+                  <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+                    {t("channels.webhook.manualSetup", "手动配置方法")}
+                  </summary>
+                  <div className="mt-2 p-3 rounded-lg bg-muted/50 space-y-2">
+                    <ul className="text-muted-foreground space-y-1">
+                      <li className="flex items-center gap-1">
+                        <span>•</span>
+                        <span>ngrok: <code className="bg-muted px-1 rounded">ngrok http 18790</code></span>
+                      </li>
+                      <li className="flex items-center gap-1">
+                        <span>•</span>
+                        <span>cloudflared: <code className="bg-muted px-1 rounded">cloudflared tunnel --url http://localhost:18790</code></span>
+                      </li>
+                    </ul>
+                    <a
+                      href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline inline-flex items-center gap-1"
+                    >
+                      {t("channels.webhook.learnMore", "了解更多")}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </details>
+              </>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {webhookInfo?.url && (
+              <Button
+                variant="outline"
+                onClick={handleDeleteWebhook}
+                disabled={isSettingWebhook}
+                className="text-destructive hover:text-destructive"
+              >
+                {t("channels.webhook.delete", "删除 Webhook")}
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" onClick={() => setWebhookDialogOpen(false)}>
+                {t("common.cancel", "取消")}
+              </Button>
+              <Button
+                onClick={handleSetWebhook}
+                disabled={isSettingWebhook || !webhookUrl.trim()}
+              >
+                {isSettingWebhook ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {t("channels.webhook.setting", "设置中...")}
+                  </>
+                ) : (
+                  <>
+                    <Link className="h-4 w-4 mr-2" />
+                    {t("channels.webhook.set", "设置 Webhook")}
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

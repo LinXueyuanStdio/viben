@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import {
   RefreshCw,
   Download,
@@ -112,7 +112,7 @@ export function LogsPage() {
 
       pidCheckInProgress.current.add(pid);
       try {
-        const isAlive = await invoke<boolean>("is_process_alive", { pid });
+        const isAlive = await getGatewayClient().isProcessAlive(pid);
         setDirectPidStatus(prev => ({ ...prev, [pid]: isAlive }));
       } catch {
         setDirectPidStatus(prev => ({ ...prev, [pid]: false }));

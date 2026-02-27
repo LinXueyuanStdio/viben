@@ -5390,28 +5390,6 @@ export class GatewayClient {
   }
 
   /**
-   * Open a file with default or specific app
-   */
-  async openFile(filePath: string, appId?: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/files/open`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ path: filePath, app_id: appId }),
-    });
-
-    if (!response.ok) {
-      const errorMessage = await this.parseErrorMessage(response);
-      throw new GatewayError(
-        `Failed to open file: ${errorMessage}`,
-        response.status
-      );
-    }
-  }
-
-  /**
    * Read directory contents
    */
   async readDirectory(workspacePath: string, dirPath?: string): Promise<FileEntry[]> {
@@ -5534,6 +5512,318 @@ export class GatewayClient {
     return data.path;
   }
 
+  // ==========================================================================
+  // Kanban Comments & Activities
+  // ==========================================================================
+
+  /**
+   * Get all comments for a kanban task
+   */
+  async getKanbanComments(taskId: string): Promise<KanbanComment[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/comments`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get kanban comments: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add a comment to a kanban task
+   */
+  async addKanbanComment(
+    taskId: string,
+    content: string,
+    authorId: string,
+    authorName: string,
+    authorAvatar?: string
+  ): Promise<KanbanComment> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/comments`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          content,
+          author_id: authorId,
+          author_name: authorName,
+          author_avatar: authorAvatar,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add kanban comment: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update a kanban comment
+   */
+  async updateKanbanComment(
+    taskId: string,
+    commentId: string,
+    content: string
+  ): Promise<KanbanComment> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ content }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update kanban comment: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a kanban comment
+   */
+  async deleteKanbanComment(taskId: string, commentId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete kanban comment: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Toggle a reaction on a kanban comment
+   */
+  async toggleCommentReaction(
+    taskId: string,
+    commentId: string,
+    emoji: string,
+    userId: string,
+    userName: string
+  ): Promise<KanbanComment> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/comments/${encodeURIComponent(commentId)}/reactions`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          emoji,
+          user_id: userId,
+          user_name: userName,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to toggle comment reaction: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all activities for a kanban task
+   */
+  async getKanbanActivities(taskId: string): Promise<KanbanActivity[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/activities`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get kanban activities: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add an activity to a kanban task
+   */
+  async addKanbanActivity(
+    taskId: string,
+    activityType: string,
+    actorId: string,
+    actorName: string,
+    actorAvatar?: string,
+    oldValue?: string,
+    newValue?: string
+  ): Promise<KanbanActivity> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/activities`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          activity_type: activityType,
+          actor_id: actorId,
+          actor_name: actorName,
+          actor_avatar: actorAvatar,
+          old_value: oldValue,
+          new_value: newValue,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add kanban activity: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Clear all comments and activities for a kanban task
+   */
+  async clearKanbanTaskData(taskId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/kanban/tasks/${encodeURIComponent(taskId)}/data`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear kanban task data: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+}
+
+// ============================================================================
+// Kanban Types
+// ============================================================================
+
+/** Comment author information */
+export interface CommentAuthor {
+  id: string;
+  name: string;
+  avatar?: string;
+}
+
+/** Comment reaction user */
+export interface CommentReactionUser {
+  id: string;
+  name: string;
+}
+
+/** Comment reaction */
+export interface CommentReaction {
+  emoji: string;
+  users: CommentReactionUser[];
+  count: number;
+}
+
+/** Kanban comment */
+export interface KanbanComment {
+  id: string;
+  task_id: string;
+  content: string;
+  author: CommentAuthor;
+  createdAt: string;
+  updatedAt?: string;
+  reactions: CommentReaction[];
+}
+
+/** Activity actor information */
+export interface ActivityActor {
+  id: string;
+  name: string;
+  avatar?: string;
+}
+
+/** Activity type */
+export type ActivityType =
+  | "created"
+  | "status_changed"
+  | "priority_changed"
+  | "assignee_changed"
+  | "title_changed"
+  | "description_changed"
+  | "tag_added"
+  | "tag_removed"
+  | "due_date_changed"
+  | "comment_added";
+
+/** Activity data */
+export interface ActivityData {
+  oldValue?: string;
+  newValue?: string;
+  [key: string]: unknown;
+}
+
+/** Kanban activity event */
+export interface KanbanActivity {
+  id: string;
+  task_id: string;
+  type: ActivityType;
+  actor: ActivityActor;
+  timestamp: string;
+  data: ActivityData;
 }
 
 // ============================================================================
@@ -5732,35 +6022,16 @@ export interface InstalledSourcesResponse {
 }
 
 // ============================================================================
-// Official Registry Types
+// Official Registry Types (re-exported from types)
 // ============================================================================
 
-/** Package info from official registry */
-export interface OfficialPackage {
-  registryType: "npm" | "pypi" | "oci" | "nuget" | "mcpb";
-  identifier: string;
-  version?: string;
-}
+export type {
+  OfficialServerDisplay,
+  OfficialPackage,
+  OfficialPackageRegistryType,
+} from "@/types/official-registry";
 
-/** Official server display info */
-export interface OfficialServerDisplay {
-  id: string;
-  name: string;
-  description: string;
-  iconUrl: string | null;
-  author: string;
-  homepage?: string;
-  repository?: string;
-  license?: string;
-  categories: string[];
-  packages: OfficialPackage[];
-  qualifiedName: string;
-  _original?: {
-    server?: {
-      icons?: Array<{ src: string; theme?: "light" | "dark" }>;
-    };
-  };
-}
+import type { OfficialServerDisplay } from "@/types/official-registry";
 
 /** Response for listing official servers */
 export interface OfficialServerListResponse {
@@ -5793,15 +6064,6 @@ export interface CacheSettings {
 // ============================================================================
 // Filesystem Types
 // ============================================================================
-
-/** File entry from directory listing */
-export interface FileEntry {
-  name: string;
-  path: string;
-  is_directory: boolean;
-  size?: number;
-  modified?: string;
-}
 
 /** MCP servers config */
 export interface McpServersConfig {

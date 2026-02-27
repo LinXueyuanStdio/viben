@@ -559,6 +559,9 @@ importers:
       chalk:
         specifier: ^5.3.0
         version: 5.6.2
+      cloudflared:
+        specifier: ^0.7.1
+        version: 0.7.1
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -12887,6 +12890,12 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /cloudflared@0.7.1:
+    resolution: {integrity: sha512-jJn1Gu9Tf4qnIu8tfiHZ25Hs8rNcRYSVf8zAd97wvYdOCzftm1CTs1S/RPhijjGi8gUT1p9yzfDi9zYlU/0RwA==}
+    hasBin: true
+    requiresBuild: true
+    dev: false
 
   /clsx@1.2.1:
     resolution: {integrity: sha512-EcR6r5a8bj6pu3ycsa/E/cKVGuTgZJZdsyUYHOksG/UHIiKfjxzRxYJpyVBwYaQeOvghal9fcc4PidlgzugAQg==}

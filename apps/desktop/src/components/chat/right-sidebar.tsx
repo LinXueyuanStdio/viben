@@ -196,9 +196,9 @@ interface RightSidebarProps {
 }
 
 /**
- * VS Code style tab component
+ * Tab component for sidebar - fills parent height
  */
-function EditorTab({
+function SidebarTab({
   tab,
   isActive,
   onClick,
@@ -217,10 +217,10 @@ function EditorTab({
     <button
       type="button"
       className={cn(
-        "group relative flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all cursor-pointer",
-        "border-b-2 -mb-[2px]",
+        "group relative flex items-center gap-1.5 px-3 h-full text-xs font-medium transition-all cursor-pointer",
+        "border-b-2 -mb-[1px]",
         isActive
-          ? "border-primary text-foreground bg-background"
+          ? "border-primary text-foreground"
           : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
       )}
       onClick={onClick}
@@ -236,7 +236,7 @@ function EditorTab({
             "min-w-[18px] h-[18px] rounded-full px-1.5 text-[10px] font-medium flex items-center justify-center",
             isActive
               ? "bg-primary/20 text-primary"
-              : "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
           )}
         >
           {count}
@@ -252,7 +252,7 @@ function EditorTab({
             onClose();
           }}
           className={cn(
-            "p-0.5 rounded-sm hover:bg-accent transition-colors ml-auto",
+            "p-0.5 rounded-sm hover:bg-accent transition-colors ml-1",
             isActive ? "opacity-70 hover:opacity-100" : "opacity-0 group-hover:opacity-70 hover:!opacity-100"
           )}
         >
@@ -538,11 +538,11 @@ export function RightSidebar({
       {/* Resize handle */}
       {onResize && <ResizeHandle onResize={onResize} />}
 
-      {/* Tab bar */}
-      <div className="flex items-center border-b border-border shrink-0 bg-muted/20 h-[57px]">
-        <div className="flex-1 flex items-center overflow-x-auto scrollbar-none gap-1 px-1">
+      {/* Tab bar - same height as header (57px) */}
+      <div className="flex items-center border-b border-border shrink-0 h-[57px] px-1">
+        <div className="flex-1 flex items-center h-full overflow-x-auto scrollbar-none">
           {openTabs.map((tab) => (
-            <EditorTab
+            <SidebarTab
               key={tab.id}
               tab={tab}
               isActive={activeTabId === tab.id}
@@ -555,112 +555,117 @@ export function RightSidebar({
         {onClose && (
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0 rounded-md m-1"
+            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0 rounded-md"
           >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {/* Tab content */}
-      <ScrollArea className="flex-1">
-        {currentTab?.type === "category" && currentTab.category === "context" && (
-          <div className="p-3">
-            <ContextOverviewTabContent
-              workingDir={workingDir}
-              workingFiles={displayWorkingFiles}
-              externalFolders={externalFolders}
-              isLoadingFiles={isLoadingFiles}
-              onFileSelect={onFileSelect}
-              artifacts={artifacts}
-              highlightedArtifactId={highlightedArtifactId}
-              onArtifactSelect={handleArtifactSelectWithPreview}
-              onArtifactMessageClick={onArtifactMessageClick}
-              tools={allTools}
-              onToolSelect={handleToolSelectWithPreview}
-              skills={usedSkills}
-            />
-          </div>
-        )}
+      {/* Tab content - ScrollArea for category tabs, direct render for previews */}
+      {currentTab?.type === "category" ? (
+        <ScrollArea className="flex-1">
+          {currentTab.category === "context" && (
+            <div className="p-3">
+              <ContextOverviewTabContent
+                workingDir={workingDir}
+                workingFiles={displayWorkingFiles}
+                externalFolders={externalFolders}
+                isLoadingFiles={isLoadingFiles}
+                onFileSelect={onFileSelect}
+                artifacts={artifacts}
+                highlightedArtifactId={highlightedArtifactId}
+                onArtifactSelect={handleArtifactSelectWithPreview}
+                onArtifactMessageClick={onArtifactMessageClick}
+                tools={allTools}
+                onToolSelect={handleToolSelectWithPreview}
+                skills={usedSkills}
+              />
+            </div>
+          )}
 
-        {currentTab?.type === "category" && currentTab.category === "tasks" && (
-          <div className="p-3">
-            <TasksTabContent
-              tasks={tasks}
-              isLoading={isTasksLoading}
-              onTaskClick={onTaskClick}
-            />
-          </div>
-        )}
+          {currentTab.category === "tasks" && (
+            <div className="p-3">
+              <TasksTabContent
+                tasks={tasks}
+                isLoading={isTasksLoading}
+                onTaskClick={onTaskClick}
+              />
+            </div>
+          )}
 
-        {currentTab?.type === "category" && currentTab.category === "groupChat" && groupChat && (
-          <div className="p-3">
-            <GroupChatTabContent
-              groupChat={groupChat}
-              members={groupChatMembers}
-              availableAgents={availableAgents}
-              currentUserId={currentUserId}
-              currentUserRole={currentUserRole}
-              onAddMember={onAddMember || (async () => {})}
-              onRemoveMember={onRemoveMember || (async () => {})}
-              onUpdateGroupChat={onUpdateGroupChat || (async () => {})}
-              onLeaveGroup={onLeaveGroupChat || (async () => {})}
-              onDeleteGroup={onDeleteGroupChat || (async () => {})}
-              isLoading={isGroupChatLoading}
-            />
-          </div>
-        )}
+          {currentTab.category === "groupChat" && groupChat && (
+            <div className="p-3">
+              <GroupChatTabContent
+                groupChat={groupChat}
+                members={groupChatMembers}
+                availableAgents={availableAgents}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+                onAddMember={onAddMember || (async () => {})}
+                onRemoveMember={onRemoveMember || (async () => {})}
+                onUpdateGroupChat={onUpdateGroupChat || (async () => {})}
+                onLeaveGroup={onLeaveGroupChat || (async () => {})}
+                onDeleteGroup={onDeleteGroupChat || (async () => {})}
+                isLoading={isGroupChatLoading}
+              />
+            </div>
+          )}
 
-        {currentTab?.type === "category" && currentTab.category === "agentDetail" && (
-          <div className="p-3">
-            {isAgentDetailLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          {currentTab.category === "agentDetail" && (
+            <div className="p-3">
+              {isAgentDetailLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-sm text-muted-foreground">
+                      {t("common.loading", "Loading...")}
+                    </span>
+                  </div>
+                </div>
+              ) : agentDetail ? (
+                <AgentDetailTabContent
+                  agent={agentDetail}
+                  isDefault={isAgentDefault}
+                  models={agentModels}
+                  onUpdate={onAgentUpdate}
+                  onSetDefault={onAgentSetDefault}
+                  onDelete={onAgentDelete}
+                  onSettings={onAgentSettings}
+                  isWorkspaceScoped={isAgentWorkspaceScoped}
+                />
+              ) : (
+                <div className="flex items-center justify-center py-8">
                   <span className="text-sm text-muted-foreground">
-                    {t("common.loading", "Loading...")}
+                    {t("agent.notFound", "Agent not found")}
                   </span>
                 </div>
-              </div>
-            ) : agentDetail ? (
-              <AgentDetailTabContent
-                agent={agentDetail}
-                isDefault={isAgentDefault}
-                models={agentModels}
-                onUpdate={onAgentUpdate}
-                onSetDefault={onAgentSetDefault}
-                onDelete={onAgentDelete}
-                onSettings={onAgentSettings}
-                isWorkspaceScoped={isAgentWorkspaceScoped}
+              )}
+            </div>
+          )}
+
+          {currentTab.category === "executorDetail" && executorDetail && workspacePath && (
+            <div className="p-3">
+              <ExecutorDetailTabContent
+                executor={executorDetail}
+                workspacePath={workspacePath}
+                onSettings={onExecutorSettings}
               />
-            ) : (
-              <div className="flex items-center justify-center py-8">
-                <span className="text-sm text-muted-foreground">
-                  {t("agent.notFound", "Agent not found")}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </ScrollArea>
+      ) : (
+        /* Preview tabs - need full height for Monaco Editor */
+        <div className="flex-1 min-h-0">
+          {currentTab?.type === "artifact" && currentTab.artifact && (
+            <ArtifactPreview artifact={currentTab.artifact} />
+          )}
 
-        {currentTab?.type === "category" && currentTab.category === "executorDetail" && executorDetail && workspacePath && (
-          <div className="p-3">
-            <ExecutorDetailTabContent
-              executor={executorDetail}
-              workspacePath={workspacePath}
-              onSettings={onExecutorSettings}
-            />
-          </div>
-        )}
-
-        {currentTab?.type === "artifact" && currentTab.artifact && (
-          <ArtifactPreview artifact={currentTab.artifact} />
-        )}
-
-        {currentTab?.type === "tool" && currentTab.tool && (
-          <ToolPreview tool={currentTab.tool} />
-        )}
-      </ScrollArea>
+          {currentTab?.type === "tool" && currentTab.tool && (
+            <ToolPreview tool={currentTab.tool} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

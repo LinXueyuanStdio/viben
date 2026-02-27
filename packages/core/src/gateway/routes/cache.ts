@@ -307,7 +307,7 @@ export function registerCacheRoutes(fastify: FastifyInstance): void {
    * Refresh cache
    * POST /api/cache/refresh
    */
-  fastify.post("/api/cache/refresh", async (reply) => {
+  fastify.post("/api/cache/refresh", async (request, reply) => {
     const isOffline = await checkOfflineStatus();
 
     if (isOffline) {

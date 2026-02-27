@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from "react";
 import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
 import type { McpServerInstance, McpServerStatusInfo } from "@/types";
 
@@ -40,11 +40,25 @@ let lastWrittenContent: string | null = null;
  */
 async function readServersFromFile(): Promise<McpServersFileState | null> {
   try {
-    const content = await invoke<string | null>("read_mcp_servers_file");
-    if (!content) return null;
-    // Update cache when reading
-    lastWrittenContent = content;
-    return JSON.parse(content);
+    const gateway = getGatewayClient();
+    const config = await gateway.readMcpServersFile();
+    if (!config || Object.keys(config.mcpServers).length === 0) return null;
+
+    // The gateway returns the raw config, we need to parse it into our state format
+    const state: McpServersFileState = {
+      mcpServers: [],
+      mcpServerStatuses: {},
+      lastUpdated: Date.now(),
+    };
+
+    // If the config has our state format, use it directly
+    if (config.mcpServers && Array.isArray((config as unknown as McpServersFileState).mcpServers)) {
+      const parsed = config as unknown as McpServersFileState;
+      lastWrittenContent = JSON.stringify(parsed);
+      return parsed;
+    }
+
+    return state;
   } catch (err) {
     console.debug("Failed to read servers file:", err);
     return null;
@@ -64,7 +78,8 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
       return false;
     }
 
-    await invoke("write_mcp_servers_file", { content });
+    const gateway = getGatewayClient();
+    await gateway.writeMcpServersFile({ mcpServers: state as unknown as Record<string, unknown> });
     lastWrittenContent = content;
     return true;
   } catch (err) {

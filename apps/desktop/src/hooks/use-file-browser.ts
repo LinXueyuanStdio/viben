@@ -540,9 +540,9 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
         name: entry.name,
         path: entry.path,
         is_directory: entry.is_directory,
-        size: entry.size,
-        modified: entry.modified_at,
-        created: entry.created_at,
+        size: entry.size ?? 0,
+        modified: entry.modified_at ?? "",
+        created: entry.created_at ?? "",
         extension: entry.extension,
       };
     } catch {

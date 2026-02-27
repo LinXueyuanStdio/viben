@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { WorkingFile } from "@/types";
 import type { WorkspaceTabContentProps } from "./types";
 import { getFileIconByExt } from "./utils";
@@ -139,7 +139,7 @@ export function WorkspaceTabContent({
   // Handle opening folder in system file manager
   const handleOpenFolder = async (folderPath: string) => {
     try {
-      await invoke("open_path_in_file_manager", { path: folderPath });
+      await getGatewayClient().revealInFileManager(folderPath);
     } catch (error) {
       console.error("Failed to open folder:", error);
     }
