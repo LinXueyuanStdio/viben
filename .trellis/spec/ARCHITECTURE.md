@@ -13,10 +13,9 @@
 3. [项目结构](#3-项目结构)
 4. [应用分析](#4-应用分析)
 5. [共享包分析](#5-共享包分析)
-6. [Rust Crates](#6-rust-crates)
-7. [后端服务](#7-后端服务)
-8. [数据流与架构模式](#8-数据流与架构模式)
-9. [构建与部署](#9-构建与部署)
+6. [后端服务](#6-后端服务)
+7. [数据流与架构模式](#7-数据流与架构模式)
+8. [构建与部署](#8-构建与部署)
 
 ---
 
@@ -55,11 +54,6 @@
 │   │  /core   │  /ui     │ /kanban│ /api-cli │                   │
 │   │          │          │        │  ent     │                   │
 │   └──────────┴──────────┴────────┴──────────┘                   │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    Rust Crates                          │   │
-│   │   viben-core (共享库)  │  viben-desktop (Tauri 后端)     │   │
-│   └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 │   ┌─────────────────────────────────────────────────────────┐   │
 │   │                  Python 后端服务                         │   │
@@ -133,7 +127,7 @@
 |------|------|------|
 | **FastMCP** | Python | MCP 服务器实现 |
 | **Poetry** | Python | 依赖管理 |
-| **Rust** | Rust | Tauri 后端, viben-core crate |
+| **Rust** | Rust | Tauri 后端 |
 
 ---
 
@@ -152,13 +146,10 @@ viben/
 ├── packages/                # 共享 TypeScript 包
 │   ├── api-client/          # API 客户端库
 │   ├── cli/                 # 命令行界面
-│   ├── core/                # 核心配置/智能体管理
+│   ├── core/                # 核心配置/智能体管理/Gateway
 │   ├── kanban/              # 看板组件库
 │   ├── ui/                  # 共享 UI 组件库
 │   └── vibe-kanban/         # 外部看板组件符号链接
-│
-├── crates/                  # Rust crates
-│   └── viben-core/          # Rust 核心库
 │
 ├── backend/                 # Python 后端服务
 │   ├── browse-mcp/          # 学术论文搜索 MCP 服务器
@@ -463,39 +454,7 @@ const { packages: skills } = await client.skills.search('git');
 
 ---
 
-## 6. Rust Crates
-
-### 6.1 viben-core (Rust)
-
-**定位**: CLI 和桌面应用共享的 Rust 核心库
-
-**模块**:
-```rust
-pub mod agents;     // 智能体管理
-pub mod config;     // 配置
-pub mod error;      // 错误类型
-pub mod models;     // 模型定义
-pub mod providers;  // Provider 配置
-```
-
-**依赖**: `serde`, `serde_yaml`, `tokio`, `dirs`, `chrono`, `uuid`, `thiserror`
-
----
-
-### 6.2 viben-desktop (Tauri)
-
-**定位**: 桌面应用的 Tauri 后端
-
-**功能**:
-- 托盘图标
-- Deep links
-- SQLite 数据库
-- 文件系统访问
-- Shell 命令
-
----
-
-## 7. 后端服务
+## 6. 后端服务
 
 ### 7.1 browse-mcp
 
@@ -513,7 +472,7 @@ pub mod providers;  // Provider 配置
 
 ---
 
-## 8. 数据流与架构模式
+## 7. 数据流与架构模式
 
 ### 8.1 包依赖关系图
 
@@ -604,14 +563,14 @@ commands::viben_agents::viben_list_agents
 |------|------|
 | **Monorepo + Turborepo** | 共享包、并行构建、缓存 |
 | **混合应用架构** | Web (Next.js) + Desktop (Tauri + Vite) |
-| **共享核心库** | TypeScript (@viben/core) 和 Rust (viben-core) 保持一致性 |
+| **共享核心库** | TypeScript (@viben/core) 提供配置、Gateway、执行器等 |
 | **插件架构** | browse-mcp 使用 stevedore 实现可扩展搜索器 |
 | **离线优先桌面** | SQLite 本地存储 + 云同步 |
 | **组件库模式** | Radix 原语封装为 @viben/ui |
 
 ---
 
-## 9. 构建与部署
+## 8. 构建与部署
 
 ### 9.1 构建命令
 
