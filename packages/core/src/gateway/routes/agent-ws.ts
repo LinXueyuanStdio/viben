@@ -59,7 +59,7 @@ interface AgentConfigPayload {
  * Client to Server message types
  */
 interface ClientMessage {
-  type: "start" | "answer" | "approve" | "reject" | "cancel";
+  type: "start" | "answer" | "approve" | "reject" | "cancel" | "ping";
   // For "start" - begin agent execution
   prompt?: string;
   agentConfig?: AgentConfigPayload;
@@ -75,7 +75,7 @@ interface ClientMessage {
  * Reuses the same format as SSE messages for compatibility
  */
 interface ServerMessage {
-  type: "session" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done";
+  type: "session" | "text" | "tool_use" | "tool_result" | "question" | "plan" | "result" | "error" | "done" | "pong";
   // session
   sessionId?: string;
   traceId?: string;
@@ -205,13 +205,50 @@ function sendMessage(socket: WebSocket, message: ServerMessage): void {
 // ============================================================================
 
 /**
+ * Format user answers as readable text for continuing conversation
+ *
+ * @param questions - Original questions
+ * @param answers - User's answers (key = question index, value = selected option)
+ * @returns Formatted answer text
+ */
+function formatAnswersAsText(
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description?: string }>;
+    multiSelect: boolean;
+  }>,
+  answers: Record<string, string>
+): string {
+  const parts: string[] = [];
+
+  for (const [key, value] of Object.entries(answers)) {
+    const idx = parseInt(key, 10);
+    const question = questions[idx];
+    if (question) {
+      parts.push(`${question.header}: ${value}`);
+    } else {
+      parts.push(`Answer: ${value}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+/**
  * Execute agent with WebSocket streaming
  *
  * This function runs the agent and streams messages back through the WebSocket.
- * When the agent needs user input (AskUserQuestion), it pauses and waits for
- * the client to send an "answer" message.
+ * When the agent needs user input (AskUserQuestion), it:
+ * 1. Sends the question to the client
+ * 2. Waits for user answer
+ * 3. Formats the answer as text and continues with a new agent execution
+ *
+ * This approach follows the workany pattern: since Claude Agent SDK's query()
+ * terminates when AskUserQuestion is called, we continue by sending the user's
+ * answer as a new message to the agent.
  */
-async function executeAgent(session: WsSession, prompt: string): Promise<void> {
+async function executeAgent(session: WsSession, prompt: string, isFollowUp = false): Promise<void> {
   const { socket, cwd, agentPath, persistSessionId, persistTaskId, agentConfig } = session;
 
   // Create trace span
@@ -221,22 +258,27 @@ async function executeAgent(session: WsSession, prompt: string): Promise<void> {
       "agent.path": agentPath || "inline",
       "agent.cwd": cwd,
       "prompt.length": prompt.length,
+      "is_follow_up": isFollowUp,
     },
   });
   const traceId = span.spanContext().traceId;
 
-  // Register session for abort control
-  agentService.registerSession(session.id);
-  session.isRunning = true;
+  // Register session for abort control (only on first execution)
+  if (!isFollowUp) {
+    agentService.registerSession(session.id);
+    session.isRunning = true;
 
-  // Send session message
-  sendMessage(socket, {
-    type: "session",
-    sessionId: session.id,
-    traceId,
-  });
+    // Send session message
+    sendMessage(socket, {
+      type: "session",
+      sessionId: session.id,
+      traceId,
+    });
 
-  console.log(`[agent-ws] Session started: ${session.id}`);
+    console.log(`[agent-ws] Session started: ${session.id}`);
+  } else {
+    console.log(`[agent-ws] Continuing session: ${session.id}`);
+  }
 
   // Persist user message if persistence is enabled
   if (persistSessionId && persistTaskId && prompt) {
@@ -316,11 +358,40 @@ async function executeAgent(session: WsSession, prompt: string): Promise<void> {
         // Mark question as answered
         agentService.answerQuestion(questionMsg.id, answers);
 
-        // Continue execution - the SDK will handle the answer
-        // Note: Current SDK doesn't support continuing after question,
-        // so we need to restart with context. This is a limitation that
-        // will be addressed in future SDK versions.
-        continue;
+        // Format answers as text for continuing conversation
+        const answerText = formatAnswersAsText(questionMsg.questions, answers);
+
+        // Add user's answer as a message to UI
+        const userAnswerMsg: ServerMessage = {
+          type: "text",
+          content: `User response:\n${answerText}`,
+        };
+        sendMessage(socket, userAnswerMsg);
+
+        // Persist user answer
+        if (persistSessionId && persistTaskId) {
+          try {
+            const agentId = resolveAgentId(agentPath, agentConfig);
+            await sessionStoreService.appendUIMessage(agentId, persistSessionId, {
+              id: generateMessageId(),
+              taskId: persistTaskId,
+              timestamp: new Date().toISOString(),
+              type: "user",
+              content: answerText,
+            }, agentPath);
+          } catch (e) {
+            console.warn("[agent-ws] Failed to persist user answer:", e);
+          }
+        }
+
+        // End current span before recursion
+        span.setStatus({ code: SpanStatusCode.OK });
+        span.end();
+
+        // Continue execution by calling executeAgent recursively with the answer
+        // This follows the workany pattern: restart conversation with user's answer
+        await executeAgent(session, answerText, true);
+        return; // Exit current execution, continuation handles the rest
       }
 
       // Send other messages directly
@@ -365,14 +436,17 @@ async function executeAgent(session: WsSession, prompt: string): Promise<void> {
 
     sendMessage(socket, { type: "error", message: errorMessage });
   } finally {
-    session.isRunning = false;
-    agentService.unregisterSession(session.id);
+    // Only cleanup on the outermost call (not follow-ups that returned early)
+    if (!isFollowUp || !session.isRunning) {
+      session.isRunning = false;
+      agentService.unregisterSession(session.id);
+
+      // Send done message
+      sendMessage(socket, { type: "done" });
+
+      console.log(`[agent-ws] Session completed: ${session.id}`);
+    }
     span.end();
-
-    // Send done message
-    sendMessage(socket, { type: "done" });
-
-    console.log(`[agent-ws] Session completed: ${session.id}`);
   }
 }
 
@@ -531,6 +605,12 @@ export function registerAgentWsRoutes(fastify: FastifyInstance): void {
                   session.pendingPlanResolver(false);
                   session.pendingPlanResolver = undefined;
                 }
+                break;
+              }
+
+              case "ping": {
+                // Respond to heartbeat ping with pong
+                sendMessage(socket, { type: "pong" } as ServerMessage);
                 break;
               }
 

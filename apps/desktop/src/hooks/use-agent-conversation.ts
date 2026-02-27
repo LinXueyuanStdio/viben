@@ -402,8 +402,41 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   // Track WebSocket reconnection attempts
   const wsReconnectAttemptsRef = useRef(0);
   const wsReconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsHeartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY_MS = 2000;
+  const HEARTBEAT_INTERVAL_MS = 30000; // 30 seconds
+
+  /**
+   * Start heartbeat to keep connection alive
+   */
+  const startHeartbeat = useCallback(() => {
+    // Clear any existing heartbeat
+    if (wsHeartbeatIntervalRef.current) {
+      clearInterval(wsHeartbeatIntervalRef.current);
+    }
+
+    wsHeartbeatIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        // Send ping message (empty object as heartbeat)
+        try {
+          wsRef.current.send(JSON.stringify({ type: "ping" }));
+        } catch {
+          // Ignore heartbeat errors
+        }
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+  }, []);
+
+  /**
+   * Stop heartbeat
+   */
+  const stopHeartbeat = useCallback(() => {
+    if (wsHeartbeatIntervalRef.current) {
+      clearInterval(wsHeartbeatIntervalRef.current);
+      wsHeartbeatIntervalRef.current = null;
+    }
+  }, []);
 
   /**
    * Connect to the WebSocket agent endpoint
@@ -435,11 +468,14 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         console.log("[useAgent] WebSocket connected");
         wsReconnectAttemptsRef.current = 0;
         setGatewayConnected(true);
+        startHeartbeat();
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as SSEMessageData;
+          // Ignore pong messages (heartbeat response)
+          if (data.type === "pong") return;
           handleSSEMessage(data);
         } catch (e) {
           console.warn("[useAgent] Failed to parse WebSocket message:", e);
@@ -449,10 +485,12 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       ws.onerror = (error) => {
         console.error("[useAgent] WebSocket error:", error);
         setError("WebSocket connection error");
+        stopHeartbeat();
       };
 
       ws.onclose = (event) => {
         console.log("[useAgent] WebSocket closed:", event.code, event.reason);
+        stopHeartbeat();
 
         // Attempt to reconnect if not intentionally closed
         if (
@@ -476,7 +514,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       console.error("[useAgent] Failed to create WebSocket:", e);
       setGatewayConnected(false);
     }
-  }, [workspaceId, agentPath, persistSessionId, persistTaskId, handleSSEMessage]);
+  }, [workspaceId, agentPath, persistSessionId, persistTaskId, handleSSEMessage, startHeartbeat, stopHeartbeat]);
 
   /**
    * Disconnect WebSocket
@@ -553,25 +591,48 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       // Ensure WebSocket is connected
       if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
         connectWebSocket();
-        // Wait for connection
-        await new Promise<void>((resolve, reject) => {
-          const checkInterval = setInterval(() => {
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              clearInterval(checkInterval);
-              resolve();
+        // Wait for connection using event listener (more efficient than polling)
+        try {
+          await new Promise<void>((resolve, reject) => {
+            const ws = wsRef.current;
+            if (!ws) {
+              reject(new Error("WebSocket not initialized"));
+              return;
             }
-          }, 100);
-          // Timeout after 5 seconds
-          setTimeout(() => {
-            clearInterval(checkInterval);
-            reject(new Error("WebSocket connection timeout"));
-          }, 5000);
-        }).catch((err) => {
-          setError(err.message);
+
+            // If already open, resolve immediately
+            if (ws.readyState === WebSocket.OPEN) {
+              resolve();
+              return;
+            }
+
+            const timeout = setTimeout(() => {
+              reject(new Error("WebSocket connection timeout"));
+            }, 5000);
+
+            const handleOpen = () => {
+              clearTimeout(timeout);
+              ws.removeEventListener("open", handleOpen);
+              ws.removeEventListener("error", handleError);
+              resolve();
+            };
+
+            const handleError = () => {
+              clearTimeout(timeout);
+              ws.removeEventListener("open", handleOpen);
+              ws.removeEventListener("error", handleError);
+              reject(new Error("WebSocket connection failed"));
+            };
+
+            ws.addEventListener("open", handleOpen);
+            ws.addEventListener("error", handleError);
+          });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Connection failed");
           setPhase("error");
           setIsStreaming(false);
           return;
-        });
+        }
       }
 
       // Send start message
