@@ -1,7 +1,5 @@
 /**
  * Model management for Viben
- *
- * Synced with crates/viben-core/src/models/mod.rs
  */
 import { getModelsPath } from "../config/paths";
 import { readYaml, writeYaml, fileExists } from "../config/yaml";
@@ -15,8 +13,6 @@ export * from "./discovery";
 
 /**
  * ModelManager handles model configuration and aliases
- *
- * Synced with crates/viben-core/src/models/mod.rs ModelManager
  */
 export class ModelManager {
   private config: ModelsFile | undefined;
@@ -82,8 +78,6 @@ export class ModelManager {
 
   /**
    * List all available models (built-in + custom)
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::list_models
    */
   async listModels(): Promise<Model[]> {
     const config = await this.loadConfig();
@@ -137,8 +131,6 @@ export class ModelManager {
 
   /**
    * Get a model by ID
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::get_model
    */
   async getModel(id: string): Promise<Model | null> {
     const config = await this.loadConfig();
@@ -185,8 +177,6 @@ export class ModelManager {
 
   /**
    * Create a custom model
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::create_model
    */
   async createModel(options: {
     id: string;
@@ -242,8 +232,6 @@ export class ModelManager {
 
   /**
    * Remove a custom model
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::remove_model
    */
   async removeModel(id: string): Promise<void> {
     const config = await this.loadConfig();
@@ -269,8 +257,6 @@ export class ModelManager {
 
   /**
    * Update a custom model
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::update_model
    */
   async updateModel(
     id: string,
@@ -327,8 +313,6 @@ export class ModelManager {
 
   /**
    * Enable a model (built-in or custom)
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::enable_model
    */
   async enableModel(id: string): Promise<void> {
     const config = await this.loadConfig();
@@ -349,8 +333,6 @@ export class ModelManager {
 
   /**
    * Disable a model (built-in or custom)
-   *
-   * Synced with crates/viben-core/src/models/mod.rs ModelManager::disable_model
    */
   async disableModel(id: string): Promise<void> {
     const config = await this.loadConfig();

@@ -1,41 +1,9 @@
 /**
  * Viben CLI
  *
- * Command-line interface for managing AI agent workspaces.
- *
- * @packageDocumentation
+ * This is a thin wrapper around @viben/core CLI.
+ * All actual CLI logic is implemented in @viben/core.
  */
 
-export { createProgram, run } from './cli';
-export { CliError } from './types';
-export type {
-  CliResponse,
-  ConfigScope,
-  VibenConfig,
-  Agent,
-  GlobalOptions,
-  OutputContext,
-} from './types';
-
-// Export channel types and classes for external use
-export type {
-  ChannelType,
-  ChannelConfig,
-  TelegramConfig,
-  DiscordConfig,
-  WhatsAppConfig,
-  FeishuConfig,
-  MediaAttachment,
-  InboundMessage,
-  OutboundMessage,
-  ChannelStatus,
-  Channel,
-  ChannelsConfig,
-} from './lib/channels';
-
-export {
-  ChannelManager,
-  TelegramChannel,
-  DiscordChannel,
-  FeishuChannel,
-} from './lib/channels';
+// Re-export CLI from @viben/core
+export { run, createProgram } from "@viben/core";

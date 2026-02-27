@@ -1,14 +1,10 @@
 /**
  * Model-specific types (re-exports from main types for convenience)
- *
- * Synced with crates/viben-core/src/models/types.rs
  */
 export type { Model, ModelConfig, ModelAlias } from "../types";
 
 /**
  * Models config file structure
- *
- * Synced with crates/viben-core/src/models/types.rs ModelsFile
  */
 export interface ModelsFile {
   default?: string;
@@ -34,8 +30,6 @@ export interface ModelConfigEntry {
 
 /**
  * Model entry in config file (custom models)
- *
- * Synced with crates/viben-core/src/models/types.rs ModelEntry
  */
 export interface ModelEntry {
   name: string;
@@ -50,8 +44,6 @@ export interface ModelEntry {
 
 /**
  * Known model definitions
- *
- * Synced with crates/viben-core/src/models/types.rs KnownModel
  */
 export interface KnownModel {
   id: string;

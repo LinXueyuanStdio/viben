@@ -557,9 +557,9 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     loadTaskMessages();
   }, [task?.id, effectiveSessionId, workspacePath, taskAgentId, agentLoadMessages]);
 
-  // Auto-start: send initial message when switching to agent chat after clicking "Run"
+  // Auto-start: send message via SSE when clicking "Run"
   useEffect(() => {
-    if (!shouldAutoStart || activeTab !== "agent-chat" || !task) {
+    if (!shouldAutoStart || activeTab !== "agent-chat" || !task || !workspacePath) {
       return;
     }
 
@@ -585,13 +585,17 @@ You are helping the user work on this task. Provide relevant suggestions, code e
       ? `请帮我完成以下任务：\n\n**${task.title}**\n\n${task.description}`
       : `请帮我完成以下任务：${task.title}`;
 
-    console.log(`[TaskDetailPanel] Auto-starting task ${task.id} with initial prompt`);
+    console.log(`[TaskDetailPanel] Auto-starting task ${task.id} with prompt`);
+
+    // Use the hook's sendMessage to start the conversation via SSE
+    // This ensures the SSE stream is properly handled and messages appear in real-time
+    const startTask = () => {
+      agentSendMessage(initialPrompt);
+    };
 
     // Small delay to ensure the tab switch animation completes
-    setTimeout(() => {
-      agentSendMessage(initialPrompt);
-    }, 100);
-  }, [shouldAutoStart, activeTab, task, agentIsStreaming, agentMessages.length, agentSendMessage]);
+    setTimeout(startTask, 100);
+  }, [shouldAutoStart, activeTab, task, workspacePath, agentIsStreaming, agentMessages.length, agentSendMessage]);
 
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [

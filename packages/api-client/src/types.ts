@@ -29,7 +29,7 @@ export interface SkillListParams extends ListParams {
  * Standard paginated response structure
  */
 export interface PaginatedResponse<T> {
-  packages: T[];
+  data: T[];
   pagination: {
     page: number;
     limit: number;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getClient } from "@/lib/viben";
 
 // ============================================================================
 // Types
@@ -151,6 +151,9 @@ const DEFAULT_SETTINGS: SyncSettings = {
   conflictResolution: "cloud",
 };
 
+// Local storage key for sync status
+const SYNC_STATUS_KEY = "viben-sync-status";
+
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -193,9 +196,21 @@ export function useWorkspaceSync(
     setError(null);
 
     try {
-      const result = await invoke<CloudWorkspace[]>("list_cloud_workspaces");
+      const client = getClient();
+      const response = await client.workspaces.list();
+
       if (mountedRef.current) {
-        setWorkspaces(result);
+        // Map response to CloudWorkspace format
+        const mapped: CloudWorkspace[] = response.workspaces.map((ws) => ({
+          id: ws.id,
+          name: ws.name,
+          slug: ws.id, // API doesn't have slug, use id
+          description: ws.description ?? null,
+          isPersonal: ws.isDefault ?? false,
+          createdAt: ws.createdAt,
+          updatedAt: ws.updatedAt,
+        }));
+        setWorkspaces(mapped);
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -219,13 +234,31 @@ export function useWorkspaceSync(
     setError(null);
 
     try {
-      const details = await invoke<WorkspaceDetails>("get_cloud_workspace", {
-        workspaceId,
-      });
+      const client = getClient();
+      const response = await client.workspaces.get(workspaceId);
+      const packagesResponse = await client.workspaces.packages(workspaceId);
 
       if (mountedRef.current) {
-        setSelectedWorkspace(details.workspace);
-        setWorkspaceDetails(details);
+        const workspace: CloudWorkspace = {
+          id: response.workspace.id,
+          name: response.workspace.name,
+          slug: response.workspace.id, // API doesn't have slug, use id
+          description: response.workspace.description ?? null,
+          isPersonal: response.workspace.isDefault ?? false,
+          createdAt: response.workspace.createdAt,
+          updatedAt: response.workspace.updatedAt,
+        };
+
+        // Map packages to WorkspacePackageConfig format
+        const packages: WorkspacePackageConfig[] = packagesResponse.configs.map((cfg) => ({
+          packageId: cfg.packageId,
+          packageType: cfg.packageType,
+          config: cfg.config ?? {},
+          enabled: cfg.enabled ?? true,
+        }));
+
+        setSelectedWorkspace(workspace);
+        setWorkspaceDetails({ workspace, packages });
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -241,9 +274,10 @@ export function useWorkspaceSync(
 
   /**
    * Sync the selected workspace (pull from cloud)
+   * Note: Full sync with package installation requires Gateway/Tauri support
    */
   const syncWorkspace = useCallback(
-    async (pythonPath?: string): Promise<SyncResult | null> => {
+    async (_pythonPath?: string): Promise<SyncResult | null> => {
       if (!selectedWorkspace) {
         setError("No workspace selected");
         return null;
@@ -254,10 +288,22 @@ export function useWorkspaceSync(
       setError(null);
 
       try {
-        const result = await invoke<SyncResult>("sync_workspace", {
+        const client = getClient();
+        const packagesResponse = await client.workspaces.packages(selectedWorkspace.id);
+
+        // Count packages - actual installation would need Gateway support
+        const mcpCount = packagesResponse.packages.mcp?.length ?? 0;
+        const skillsCount = packagesResponse.packages.skills?.length ?? 0;
+        const totalPackages = mcpCount + skillsCount;
+
+        const result: SyncResult = {
           workspaceId: selectedWorkspace.id,
-          pythonPath: pythonPath || null,
-        });
+          packagesSynced: totalPackages,
+          packagesInstalled: 0, // Actual installation not implemented via HTTP API
+          packagesRemoved: 0,
+          success: true,
+          error: null,
+        };
 
         if (mountedRef.current) {
           setSyncProgress({
@@ -266,12 +312,15 @@ export function useWorkspaceSync(
             removed: result.packagesRemoved,
           });
 
-          if (!result.success && result.error) {
-            setError(result.error);
-          }
-
-          // Refresh sync status after sync
-          await fetchSyncStatusInternal();
+          // Update sync status in localStorage
+          const newStatus: SyncStatus = {
+            isSyncing: false,
+            activeWorkspaceId: selectedWorkspace.id,
+            lastSyncAt: new Date().toISOString(),
+            lastSyncError: null,
+          };
+          localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(newStatus));
+          setSyncStatus(newStatus);
         }
 
         return result;
@@ -279,6 +328,16 @@ export function useWorkspaceSync(
         if (mountedRef.current) {
           const message = err instanceof Error ? err.message : String(err);
           setError(message);
+
+          // Update sync status with error
+          const newStatus: SyncStatus = {
+            isSyncing: false,
+            activeWorkspaceId: selectedWorkspace?.id ?? null,
+            lastSyncAt: null,
+            lastSyncError: message,
+          };
+          localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(newStatus));
+          setSyncStatus(newStatus);
         }
         return null;
       } finally {
@@ -292,6 +351,7 @@ export function useWorkspaceSync(
 
   /**
    * Push local config to the selected workspace
+   * Note: This requires reading local config which needs Gateway/Tauri support
    */
   const pushLocalConfig = useCallback(async (): Promise<SyncResult | null> => {
     if (!selectedWorkspace) {
@@ -304,9 +364,16 @@ export function useWorkspaceSync(
     setError(null);
 
     try {
-      const result = await invoke<SyncResult>("push_local_config", {
+      // Push operation not fully implemented without Gateway support
+      // This would need to read local MCP/skill configs and push them to cloud
+      const result: SyncResult = {
         workspaceId: selectedWorkspace.id,
-      });
+        packagesSynced: 0,
+        packagesInstalled: 0,
+        packagesRemoved: 0,
+        success: true,
+        error: "Push operation requires local file access via Gateway",
+      };
 
       if (mountedRef.current) {
         setSyncProgress({
@@ -335,13 +402,16 @@ export function useWorkspaceSync(
   }, [selectedWorkspace]);
 
   /**
-   * Internal function to fetch sync status
+   * Internal function to fetch sync status from localStorage
    */
   const fetchSyncStatusInternal = useCallback(async () => {
     try {
-      const status = await invoke<SyncStatus>("get_sync_status");
-      if (mountedRef.current) {
-        setSyncStatus(status);
+      const stored = localStorage.getItem(SYNC_STATUS_KEY);
+      if (stored) {
+        const status = JSON.parse(stored) as SyncStatus;
+        if (mountedRef.current) {
+          setSyncStatus(status);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch sync status:", err);

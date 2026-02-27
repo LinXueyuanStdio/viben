@@ -17,6 +17,7 @@ import { registerCronCommand } from "./cron";
 import { registerMcpCommand } from "./mcp";
 import { registerSkillCommand } from "./skill";
 import { registerTelemetryCommand } from "./telemetry";
+import { registerTeamCommand } from "./team";
 
 /**
  * Register all commands on the program
@@ -36,4 +37,5 @@ export function registerCommands(program: Command): void {
   registerMcpCommand(program);
   registerSkillCommand(program);
   registerTelemetryCommand(program);
+  registerTeamCommand(program);
 }

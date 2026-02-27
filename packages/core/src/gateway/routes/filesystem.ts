@@ -220,51 +220,8 @@ export function registerFilesystemRoutes(fastify: FastifyInstance): void {
     }
   });
 
-  /**
-   * Reveal a file/folder in file manager
-   * POST /api/files/reveal
-   */
-  fastify.post<{
-    Body: { path: string };
-  }>("/api/files/reveal", async (request, reply) => {
-    const { path } = request.body;
-
-    if (!path) {
-      reply.code(400);
-      return { error: "path is required" };
-    }
-
-    try {
-      await revealInFileManager(path);
-      return { revealed: true };
-    } catch (err) {
-      reply.code(500);
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
-  });
-
-  /**
-   * Open a file with default or specific app
-   * POST /api/files/open
-   */
-  fastify.post<{
-    Body: { path: string; app_id?: string };
-  }>("/api/files/open", async (request, reply) => {
-    const { path, app_id } = request.body;
-
-    if (!path) {
-      reply.code(400);
-      return { error: "path is required" };
-    }
-
-    try {
-      await openWithApp(path, app_id);
-      return { opened: true };
-    } catch (err) {
-      reply.code(500);
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
-  });
+  // Note: /api/files/reveal and /api/files/open are defined in files.ts
+  // to avoid duplicate route registration
 
   /**
    * Read directory contents
@@ -297,42 +254,8 @@ export function registerFilesystemRoutes(fastify: FastifyInstance): void {
     }
   });
 
-  /**
-   * Read file content
-   * GET /api/files/content
-   */
-  fastify.get<{
-    Querystring: { workspace_path: string; file_path: string; max_size?: string };
-  }>("/api/files/content", async (request, reply) => {
-    const { workspace_path, file_path, max_size } = request.query;
-
-    if (!workspace_path || !file_path) {
-      reply.code(400);
-      return { error: "workspace_path and file_path are required" };
-    }
-
-    // Security check: ensure file is within workspace
-    if (!file_path.startsWith(workspace_path)) {
-      reply.code(403);
-      return { error: "Access denied: path outside workspace" };
-    }
-
-    try {
-      const stats = await stat(file_path);
-      const maxBytes = max_size ? parseInt(max_size, 10) : 1024 * 1024; // Default 1MB
-
-      if (stats.size > maxBytes) {
-        reply.code(413);
-        return { error: "File too large", size: stats.size, max_size: maxBytes };
-      }
-
-      const content = await readFile(file_path, "utf-8");
-      return { content };
-    } catch (err) {
-      reply.code(500);
-      return { error: err instanceof Error ? err.message : String(err) };
-    }
-  });
+  // Note: GET /api/files/content is defined in files.ts
+  // to avoid duplicate route registration
 
   /**
    * Read MCP servers config file

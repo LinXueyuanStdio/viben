@@ -1,7 +1,5 @@
 /**
  * Agent Types for Desktop-Gateway Integration
- *
- * TypeScript types matching Rust CodingAgent from viben-executors
  */
 
 // Re-export from @viben/core/shared for browser compatibility
@@ -15,7 +13,6 @@ import type { ExecutorType } from "@viben/core/shared";
 
 /**
  * Agent availability information
- * Must match: crates/viben-executors/src/executors/mod.rs AvailabilityInfo enum
  */
 export type AvailabilityInfo =
   | { type: "LOGIN_DETECTED"; last_auth_timestamp: number }
@@ -35,7 +32,6 @@ export function isAvailable(info: AvailabilityInfo): boolean {
 
 /**
  * Agent capabilities
- * Must match: crates/viben-executors/src/executors/mod.rs BaseAgentCapability enum
  */
 export type BaseAgentCapability =
   | "SESSION_FORK"
@@ -48,7 +44,6 @@ export type BaseAgentCapability =
 
 /**
  * ClaudeCode executor configuration
- * Must match: crates/viben-executors/src/executors/claude.rs ClaudeCode struct
  */
 export interface ClaudeCodeConfig {
   /** Text appended to prompts */

@@ -5,36 +5,22 @@
  *
  * This script serves as the main entry point for the Viben CLI.
  * It routes to either:
- * - The TypeScript CLI (Commander.js) for workspace management commands
+ * - The @viben/core CLI for all commands
  * - The Python browse-mcp wrapper for MCP server functionality
  *
  * Usage:
- *   viben init                # Initialize workspace (TypeScript CLI)
- *   viben config list         # List config (TypeScript CLI)
- *   viben agent list          # List agents (TypeScript CLI)
- *   viben channel list        # List channels (TypeScript CLI)
- *   viben cron list           # List cron jobs (TypeScript CLI)
- *   viben serve               # Start MCP server (Python wrapper)
- *   viben mcp                 # Start MCP server (Python wrapper, alias)
+ *   viben init                # Initialize workspace
+ *   viben config list         # List config
+ *   viben agent list          # List agents
+ *   viben mcp serve           # Start MCP server (Python wrapper)
  */
 
-import { createRequire } from 'module';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
 import { spawnSync, execSync } from 'child_process';
 import { platform } from 'os';
-
-const require = createRequire(import.meta.url);
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Configuration for Python wrapper
 const PYTHON_PACKAGE = 'browse-mcp';
 const MIN_PYTHON_VERSION = '3.10';
-const BRAND_NAME = 'Viben';
-
-// Commands that should be handled by the TypeScript CLI
-const TS_CLI_COMMANDS = ['init', 'config', 'executor', 'agent', 'channel', 'cron', 'gateway', 'mcp', 'skill', 'model', 'provider', 'workspace', 'service'];
 
 // Subcommands of 'mcp' that should be handled by the Python wrapper
 const MCP_PYTHON_SUBCOMMANDS = ['serve'];
@@ -46,8 +32,6 @@ const colors = {
   green: '\x1b[32m',
   yellow: '\x1b[33m',
   blue: '\x1b[34m',
-  cyan: '\x1b[36m',
-  bold: '\x1b[1m',
 };
 
 function info(message) {
@@ -206,23 +190,6 @@ function runBrowseMcp(args, pythonCmd) {
   process.exit(1);
 }
 
-async function runTypeScriptCli(args) {
-  try {
-    const { run } = await import('../dist/index.js');
-    await run(['node', 'viben', ...args]);
-  } catch (err) {
-    // If dist doesn't exist, try running from source (development mode)
-    try {
-      const { run } = await import('../src/index.ts');
-      await run(['node', 'viben', ...args]);
-    } catch {
-      error('CLI not built. Run "npm run build" in apps/cli first.');
-      console.error(err);
-      process.exit(1);
-    }
-  }
-}
-
 function handlePythonCommand(args) {
   // Remove 'mcp' and 'serve' from args if present
   const filteredArgs = args.filter((a) => a !== 'serve' && a !== 'mcp');
@@ -264,70 +231,15 @@ function handlePythonCommand(args) {
   runBrowseMcp(filteredArgs, python.cmd);
 }
 
-function printHelp() {
-  const pkg = require('../package.json');
-  console.log(`
-${colors.cyan}${colors.bold}${BRAND_NAME} CLI${colors.reset} v${pkg.version}
-
-Orchestrate AI agent clusters in your local workspace.
-
-${colors.bold}Usage:${colors.reset}
-  viben <command> [options]
-
-${colors.bold}Workspace Commands:${colors.reset}
-  init                  Initialize a Viben workspace
-  config <subcommand>   Manage configuration (get, set, list, edit, unset)
-  workspace             Workspace operations (list, current)
-
-${colors.bold}Executor Commands:${colors.reset}
-  executor <subcommand> Discover executors (list, show)
-
-${colors.bold}Agent Commands:${colors.reset}
-  agent <subcommand>    Manage agents (list, create, show, remove, config, status)
-  provider              Manage API providers (list, create, remove, status)
-  model                 Manage models (list, aliases, fallbacks)
-
-${colors.bold}Service Commands:${colors.reset}
-  channel <subcommand>  Manage chat channels (list, create, remove, status)
-  cron <subcommand>     Manage scheduled tasks (list, add, remove, run)
-  gateway <subcommand>  Manage Viben Gateway server (start, status)
-  service               Manage background services (status, start, stop, logs)
-  skill <subcommand>    Manage skills (list, install, uninstall)
-
-${colors.bold}MCP Commands:${colors.reset}
-  mcp inspector         Start MCP Inspector for testing MCP servers
-  mcp serve             Start the MCP server (browse-mcp)
-
-${colors.bold}Global Options:${colors.reset}
-  --json                Output in JSON format
-  -g, --global          Use global scope
-  -w, --workspace       Use workspace scope
-  --verbose             Enable verbose output
-  -q, --quiet           Suppress non-essential output
-  -v, --version         Show version
-  -h, --help            Show help
-
-${colors.bold}Examples:${colors.reset}
-  viben init                      # Initialize workspace
-  viben config list               # List all config
-  viben executor list             # Discover installed executors
-  viben executor show -n CLAUDE_CODE  # Show executor details
-  viben agent list                # List all agents
-  viben agent create -n my-agent  # Create new agent
-  viben provider list             # List API providers
-  viben model list                # List available models
-  viben skill list                # List installed skills
-  viben mcp inspector             # Start MCP Inspector UI
-  viben mcp serve                 # Start MCP server (browse-mcp)
-
-${colors.bold}Environment Variables:${colors.reset}
-  VIBEN_STATE_DIR       State directory (default: ~/.viben)
-  VIBEN_AGENT           Current agent ID
-  VIBEN_SCOPE           Default scope (global/workspace)
-
-${colors.bold}More information:${colors.reset}
-  https://github.com/LinXueyuanStdio/viben
-`);
+async function runCoreCli(args) {
+  try {
+    const { run } = await import('@viben/core/cli');
+    await run(['node', 'viben', ...args]);
+  } catch (err) {
+    error('Failed to load @viben/core CLI');
+    console.error(err);
+    process.exit(1);
+  }
 }
 
 /**
@@ -360,68 +272,20 @@ function findSubcommand(args) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const firstArg = args[0];
-
-  // Handle --install (Python package installation)
-  if (args.includes('--install')) {
-    const python = findPython();
-    if (!python) {
-      error(`Python ${MIN_PYTHON_VERSION}+ is required`);
-      process.exit(1);
-    }
-    if (installBrowseMcp(python.cmd)) {
-      success('Installation complete');
-      process.exit(0);
-    } else {
-      error('Installation failed');
-      process.exit(1);
-    }
-  }
-
-  // Handle version (only if it's the only argument)
-  if (args.length === 1 && (firstArg === '-v' || firstArg === '--version')) {
-    const pkg = require('../package.json');
-    console.log(`${BRAND_NAME} CLI v${pkg.version}`);
-    process.exit(0);
-  }
-
-  // Handle help (only if no command is present)
-  if (args.length === 0) {
-    printHelp();
-    process.exit(0);
-  }
-
-  // Find the first command argument (skip flags)
   const command = findCommand(args);
 
-  // If only help flag and no command
-  if (!command && (args.includes('-h') || args.includes('--help'))) {
-    printHelp();
-    process.exit(0);
-  }
-
-  // Route to appropriate handler based on command
+  // Handle Python-specific mcp subcommands
   if (command === 'mcp') {
-    // Check if subcommand should go to Python wrapper
     const subcommand = findSubcommand(args);
     if (subcommand && MCP_PYTHON_SUBCOMMANDS.includes(subcommand)) {
       // mcp serve -> Python wrapper
       handlePythonCommand(args);
-    } else {
-      // Other mcp subcommands -> TypeScript CLI
-      await runTypeScriptCli(args);
+      return;
     }
-  } else if (command && TS_CLI_COMMANDS.includes(command)) {
-    // TypeScript CLI commands (pass all args including global flags)
-    await runTypeScriptCli(args);
-  } else if (command) {
-    // Unknown command - try TypeScript CLI (it will show proper error)
-    await runTypeScriptCli(args);
-  } else {
-    // No command found - show help
-    printHelp();
-    process.exit(0);
   }
+
+  // All other commands go to @viben/core CLI
+  await runCoreCli(args);
 }
 
 main().catch((err) => {

@@ -1,7 +1,5 @@
 /**
  * Known model definitions for quick reference
- *
- * Synced with crates/viben-core/src/models/known.rs
  */
 import type { KnownModel } from "./types";
 export type { KnownModel } from "./types";

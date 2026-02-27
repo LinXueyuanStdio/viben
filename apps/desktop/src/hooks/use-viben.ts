@@ -75,7 +75,7 @@ export function useMcpSearch(initialQuery = '') {
 
     try {
       const response = await searchPackages(q, 'mcp');
-      setResults(response.packages as McpPackage[]);
+      setResults(response.data as McpPackage[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
@@ -122,7 +122,7 @@ export function useSkillSearch(initialQuery = '') {
 
     try {
       const response = await searchPackages(q, 'skill');
-      setResults(response.packages as SkillPackage[]);
+      setResults(response.data as SkillPackage[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
@@ -219,7 +219,7 @@ export function usePackageList(
         category,
         sort,
       });
-      setPackages(response.packages);
+      setPackages(response.data);
       setPagination((prev) => ({
         ...prev,
         total: response.pagination.total,
