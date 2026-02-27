@@ -32,6 +32,7 @@ import type {
   AvailableSkill,
   AgentSkillConfig,
 } from "./types";
+import { extractZipToDirectory } from "./extract";
 
 export * from "./types";
 
@@ -68,7 +69,7 @@ export class SkillsManager {
    * - "custom": Install to specified customPath
    */
   async installSkill(options: InstallSkillOptions): Promise<InstallSkillResult> {
-    const { name, target, agentId, customPath, force, sourcePath, version } = options;
+    const { name, target, agentId, customPath, force, sourcePath, zipPath, onProgress, version } = options;
 
     // Parse name@version if present
     const { skillName, skillVersion } = this.parseSkillName(name, version);
@@ -96,8 +97,39 @@ export class SkillsManager {
     // Create skill directory
     await mkdir(skillDir, { recursive: true });
 
-    // If sourcePath provided, copy from local
-    if (sourcePath) {
+    // Install from appropriate source
+    if (zipPath) {
+      // Extract from zip file
+      const extractResult = await extractZipToDirectory({
+        zipPath,
+        targetDir: skillDir,
+        onProgress,
+        overwrite: force,
+        validate: true,
+      });
+
+      // Use skill name from extracted SKILL.md if available
+      const extractedSkillName = extractResult.skillName || skillName;
+
+      // Update installed.yaml tracking
+      await this.addToInstalledList(targetDir, {
+        name: extractedSkillName,
+        version: skillVersion || "1.0.0",
+        path: skillDir,
+        source: "marketplace",
+        installedAt: new Date().toISOString(),
+      });
+
+      return {
+        success: true,
+        name: extractedSkillName,
+        version: skillVersion || "1.0.0",
+        path: skillDir,
+        target,
+        message: `Skill "${extractedSkillName}" installed successfully to ${target}`,
+      };
+    } else if (sourcePath) {
+      // Copy from local directory
       await this.copySkillFromLocal(sourcePath, skillDir);
     } else {
       // Create a basic SKILL.md for now (marketplace download would go here)

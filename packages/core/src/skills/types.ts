@@ -57,6 +57,10 @@ export interface InstallSkillOptions {
   version?: string;
   /** Source path for local skills */
   sourcePath?: string;
+  /** Zip file path for packaged skills */
+  zipPath?: string;
+  /** Progress callback for installation */
+  onProgress?: (progress: number) => void;
   /** Executor name (e.g., "CLAUDE_CODE") - affects installation target */
   executor?: string;
 }
