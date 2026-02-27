@@ -51,6 +51,8 @@ export interface AgentQuestion {
   agentPath?: string;
   /** Workspace path */
   workspacePath?: string;
+  /** Promise resolver for WebSocket mode - called when answer is received */
+  resolver?: (answers: Record<string, string>) => void;
 }
 
 // ============================================================================
@@ -336,6 +338,76 @@ export class AgentService {
     const question = this.questions.get(questionId);
     if (!question || question.status !== "answered") return undefined;
     return question.answers;
+  }
+
+  /**
+   * Wait for a question to be answered (WebSocket mode)
+   *
+   * Creates a Promise that resolves when the question is answered.
+   * Used by WebSocket agent execution to pause and wait for user input.
+   *
+   * @param questionId - The question identifier
+   * @param timeoutMs - Timeout in milliseconds (default: 5 minutes)
+   * @returns Promise that resolves with the answers
+   */
+  waitForQuestionAnswer(
+    questionId: string,
+    timeoutMs: number = 300000
+  ): Promise<Record<string, string>> {
+    const question = this.questions.get(questionId);
+    if (!question) {
+      return Promise.reject(new Error(`Question not found: ${questionId}`));
+    }
+
+    // If already answered, return immediately
+    if (question.status === "answered" && question.answers) {
+      return Promise.resolve(question.answers);
+    }
+
+    // Create a promise that resolves when the answer is received
+    return new Promise((resolve, reject) => {
+      // Store the resolver
+      question.resolver = resolve;
+
+      // Set up timeout
+      const timeoutId = setTimeout(() => {
+        if (question.status === "pending") {
+          question.resolver = undefined;
+          reject(new Error(`Question timeout: ${questionId}`));
+        }
+      }, timeoutMs);
+
+      // Override resolver to clear timeout
+      const originalResolver = resolve;
+      question.resolver = (answers: Record<string, string>) => {
+        clearTimeout(timeoutId);
+        originalResolver(answers);
+      };
+    });
+  }
+
+  /**
+   * Answer a question and resolve any waiting promise (WebSocket mode)
+   *
+   * @param questionId - The question identifier
+   * @param answers - User's answers as key-value pairs
+   * @returns True if question was answered, false if not found or already answered
+   */
+  answerQuestionAndResolve(questionId: string, answers: Record<string, string>): boolean {
+    const question = this.questions.get(questionId);
+    if (!question || question.status !== "pending") return false;
+
+    question.status = "answered";
+    question.answers = answers;
+
+    // Resolve any waiting promise
+    if (question.resolver) {
+      question.resolver(answers);
+      question.resolver = undefined;
+    }
+
+    console.log(`[AgentService] Question answered and resolved: ${questionId}`);
+    return true;
   }
 
   // ==========================================================================
