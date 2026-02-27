@@ -25,6 +25,12 @@ import type {
   CommentsResponse,
   ApiKeysResponse,
   CreateApiKeyResponse,
+  LoginCredentials,
+  AuthResponse,
+  UserSession,
+  TokenValidationResponse,
+  OAuthProvider,
+  OAuthUrlOptions,
 } from './types';
 
 /**
@@ -647,4 +653,142 @@ export class VibenClient {
         method: 'POST',
       }),
   };
+
+  // ============================================
+  // Authentication API
+  // ============================================
+
+  /**
+   * Authentication endpoints
+   *
+   * @example
+   * ```ts
+   * // Login with email/password
+   * const session = await client.auth.login({ email, password });
+   *
+   * // Get GitHub OAuth URL
+   * const url = client.auth.getOAuthUrl('github', { redirectUri: 'viben://oauth' });
+   *
+   * // Handle OAuth callback
+   * const session = await client.auth.handleOAuthCallback('github', code);
+   *
+   * // Refresh token
+   * const newSession = await client.auth.refresh(refreshToken);
+   *
+   * // Validate current token
+   * const { valid, user } = await client.auth.validate();
+   * ```
+   */
+  auth = {
+    /**
+     * Login with email and password
+     */
+    login: async (credentials: LoginCredentials): Promise<UserSession> => {
+      const response = await this.request<AuthResponse>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      return this.authResponseToSession(response);
+    },
+
+    /**
+     * Get OAuth authorization URL for a provider
+     * Opens this URL in browser to start OAuth flow
+     */
+    getOAuthUrl: (provider: OAuthProvider, options: OAuthUrlOptions): string => {
+      const params = new URLSearchParams();
+      params.set('redirect_uri', options.redirectUri);
+      if (options.client) params.set('client', options.client);
+      if (options.state) params.set('state', options.state);
+      return `${this.baseUrl}/api/auth/${provider}?${params.toString()}`;
+    },
+
+    /**
+     * Handle OAuth callback with authorization code
+     */
+    handleOAuthCallback: async (
+      provider: OAuthProvider,
+      code: string
+    ): Promise<UserSession> => {
+      const response = await this.request<AuthResponse>(
+        `/api/auth/callback/${provider}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ code }),
+        }
+      );
+      return this.authResponseToSession(response);
+    },
+
+    /**
+     * Refresh access token using refresh token
+     */
+    refresh: async (refreshToken: string): Promise<UserSession> => {
+      const response = await this.request<AuthResponse>('/api/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+      });
+      return this.authResponseToSession(response);
+    },
+
+    /**
+     * Validate current access token
+     * Returns user info if valid
+     */
+    validate: async (): Promise<TokenValidationResponse> => {
+      try {
+        const { user } = await this.request<UserResponse>('/api/users/me');
+        return { valid: true, user };
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          return { valid: false };
+        }
+        throw error;
+      }
+    },
+
+    /**
+     * Logout (invalidate session on server)
+     */
+    logout: async (): Promise<void> => {
+      try {
+        await this.request<{ success: boolean }>('/api/auth/logout', {
+          method: 'POST',
+        });
+      } catch {
+        // Ignore logout errors - session may already be invalid
+      }
+    },
+  };
+
+  /**
+   * Set access token for authentication
+   * Use this after login/OAuth to authenticate subsequent requests
+   */
+  setAccessToken(token: string | undefined): void {
+    this.apiKey = token;
+  }
+
+  /**
+   * Get the current access token
+   */
+  getAccessToken(): string | undefined {
+    return this.apiKey;
+  }
+
+  /**
+   * Convert auth response to user session
+   */
+  private authResponseToSession(response: AuthResponse): UserSession {
+    return {
+      id: response.user.id,
+      email: response.user.email,
+      username: response.user.username,
+      displayName: response.user.displayName,
+      avatarUrl: response.user.avatarUrl,
+      accessToken: response.accessToken,
+      refreshToken: response.refreshToken,
+      expiresAt: response.expiresAt,
+    };
+  }
 }

@@ -1,19 +1,30 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { invoke } from "@tauri-apps/api/core";
+import { VibenClient, type UserSession } from "@viben/api-client";
+
+// Re-export UserSession type for convenience
+export type { UserSession };
 
 /**
- * User session data from the platform
+ * Platform API base URL
  */
-export interface UserSession {
-  id: string;
-  email: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: number;
+const PLATFORM_API_URL = "https://viben-web.vercel.app";
+
+/**
+ * Singleton API client instance
+ */
+let apiClient: VibenClient | null = null;
+
+/**
+ * Get or create the API client instance
+ */
+export function getApiClient(): VibenClient {
+  if (!apiClient) {
+    apiClient = new VibenClient({
+      baseUrl: PLATFORM_API_URL,
+    });
+  }
+  return apiClient;
 }
 
 /**
@@ -28,6 +39,8 @@ interface AuthState {
   isLoading: boolean;
   /** Error message from last failed operation */
   error: string | null;
+  /** Whether initial auth check is complete */
+  isInitialized: boolean;
 
   /**
    * Login with email and password
@@ -37,9 +50,9 @@ interface AuthState {
 
   /**
    * Initiate GitHub OAuth flow
-   * Opens browser to GitHub OAuth page
+   * Returns the OAuth URL (caller should open in browser)
    */
-  loginWithGitHub: () => Promise<void>;
+  getGitHubOAuthUrl: () => string;
 
   /**
    * Handle OAuth callback with authorization code
@@ -59,15 +72,20 @@ interface AuthState {
   refreshSession: () => Promise<void>;
 
   /**
+   * Validate and restore session on app startup
+   * Returns true if session is valid
+   */
+  initializeAuth: () => Promise<boolean>;
+
+  /**
    * Clear any error state
    */
   clearError: () => void;
 
   /**
-   * Initialize auth state from Rust backend
-   * Call this on app startup to restore session
+   * Set loading state (for external use during OAuth flow)
    */
-  initializeAuth: () => Promise<void>;
+  setLoading: (loading: boolean) => void;
 }
 
 /**
@@ -100,14 +118,17 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      isInitialized: false,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          const session = await invoke<UserSession>("login_with_credentials", {
-            email,
-            password,
-          });
+          const client = getApiClient();
+          const session = await client.auth.login({ email, password });
+
+          // Set token for future requests
+          client.setAccessToken(session.accessToken);
+
           set({
             user: session,
             isAuthenticated: true,
@@ -123,28 +144,23 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      loginWithGitHub: async () => {
-        set({ isLoading: true, error: null });
-        try {
-          await invoke<string>("login_with_github");
-          // OAuth flow continues in browser, callback handled separately
-          // Keep isLoading true until callback is processed or user cancels
-        } catch (err) {
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          set({
-            error: errorMessage,
-            isLoading: false,
-          });
-          throw new Error(errorMessage);
-        }
+      getGitHubOAuthUrl: () => {
+        const client = getApiClient();
+        return client.auth.getOAuthUrl("github", {
+          redirectUri: "viben://oauth",
+          client: "desktop",
+        });
       },
 
       handleOAuthCallback: async (code: string) => {
         set({ isLoading: true, error: null });
         try {
-          const session = await invoke<UserSession>("handle_oauth_callback", {
-            code,
-          });
+          const client = getApiClient();
+          const session = await client.auth.handleOAuthCallback("github", code);
+
+          // Set token for future requests
+          client.setAccessToken(session.accessToken);
+
           set({
             user: session,
             isAuthenticated: true,
@@ -161,12 +177,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        const client = getApiClient();
         try {
-          await invoke("logout");
+          await client.auth.logout();
         } catch (err) {
           console.error("Logout error:", err);
         }
-        // Always clear local state, even if backend call fails
+        // Always clear local state and token, even if backend call fails
+        client.setAccessToken(undefined);
         set({
           user: null,
           isAuthenticated: false,
@@ -176,18 +194,25 @@ export const useAuthStore = create<AuthState>()(
 
       refreshSession: async () => {
         const { user } = get();
-        if (!user) {
-          throw new Error("No active session to refresh");
+        if (!user?.refreshToken) {
+          throw new Error("No refresh token available");
         }
 
         try {
-          const session = await invoke<UserSession>("refresh_session");
+          const client = getApiClient();
+          const session = await client.auth.refresh(user.refreshToken);
+
+          // Update token for future requests
+          client.setAccessToken(session.accessToken);
+
           set({
             user: session,
             isAuthenticated: true,
           });
         } catch (err) {
           // If refresh fails, clear the session
+          const client = getApiClient();
+          client.setAccessToken(undefined);
           set({
             user: null,
             isAuthenticated: false,
@@ -196,22 +221,97 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      clearError: () => set({ error: null }),
-
       initializeAuth: async () => {
-        try {
-          // Try to get current user from Rust backend
-          const session = await invoke<UserSession | null>("get_current_user");
-          if (session) {
+        const { user } = get();
+
+        // No stored session
+        if (!user?.accessToken) {
+          set({ isInitialized: true });
+          return false;
+        }
+
+        // Set token from stored session
+        const client = getApiClient();
+        client.setAccessToken(user.accessToken);
+
+        // Check if token is expired
+        const now = Date.now();
+        const isExpired = user.expiresAt <= now;
+        const isExpiringSoon = user.expiresAt - now < 5 * 60 * 1000; // 5 minutes
+
+        if (isExpired || isExpiringSoon) {
+          // Try to refresh the token
+          if (user.refreshToken) {
+            try {
+              const session = await client.auth.refresh(user.refreshToken);
+              client.setAccessToken(session.accessToken);
+              set({
+                user: session,
+                isAuthenticated: true,
+                isInitialized: true,
+              });
+              return true;
+            } catch (err) {
+              console.error("Session refresh failed:", err);
+              client.setAccessToken(undefined);
+              set({
+                user: null,
+                isAuthenticated: false,
+                isInitialized: true,
+              });
+              return false;
+            }
+          } else {
+            // No refresh token, clear session
+            client.setAccessToken(undefined);
             set({
-              user: session,
-              isAuthenticated: true,
+              user: null,
+              isAuthenticated: false,
+              isInitialized: true,
             });
+            return false;
           }
+        }
+
+        // Token is valid, validate with server in background
+        try {
+          const { valid } = await client.auth.validate();
+          if (!valid) {
+            // Token rejected by server, try refresh
+            if (user.refreshToken) {
+              const session = await client.auth.refresh(user.refreshToken);
+              client.setAccessToken(session.accessToken);
+              set({
+                user: session,
+                isAuthenticated: true,
+                isInitialized: true,
+              });
+              return true;
+            }
+            // No refresh token, clear session
+            client.setAccessToken(undefined);
+            set({
+              user: null,
+              isAuthenticated: false,
+              isInitialized: true,
+            });
+            return false;
+          }
+
+          set({ isAuthenticated: true, isInitialized: true });
+          return true;
         } catch (err) {
-          console.error("Failed to initialize auth:", err);
+          console.error("Token validation failed:", err);
+          // Keep the session if validation fails due to network issues
+          // The token might still be valid
+          set({ isAuthenticated: true, isInitialized: true });
+          return true;
         }
       },
+
+      clearError: () => set({ error: null }),
+
+      setLoading: (loading: boolean) => set({ isLoading: loading }),
     }),
     {
       name: "viben-auth",

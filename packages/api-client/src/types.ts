@@ -331,3 +331,71 @@ export interface CreateApiKeyResponse {
   apiKey: ApiKey;
   key: string; // Full key, only shown once
 }
+
+// ============================================
+// Authentication Types
+// ============================================
+
+/**
+ * User session data from authentication
+ */
+export interface UserSession {
+  id: string;
+  email: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  accessToken: string;
+  refreshToken: string | null;
+  /** Token expiration timestamp in milliseconds */
+  expiresAt: number;
+}
+
+/**
+ * Login credentials
+ */
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+/**
+ * Authentication response from login/OAuth
+ */
+export interface AuthResponse {
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+  accessToken: string;
+  refreshToken: string | null;
+  expiresAt: number;
+}
+
+/**
+ * Token validation response
+ */
+export interface TokenValidationResponse {
+  valid: boolean;
+  user?: User;
+}
+
+/**
+ * OAuth provider type
+ */
+export type OAuthProvider = 'github' | 'google';
+
+/**
+ * OAuth URL options
+ */
+export interface OAuthUrlOptions {
+  /** Redirect URI after OAuth completion */
+  redirectUri: string;
+  /** Client type (desktop, web, cli) */
+  client?: 'desktop' | 'web' | 'cli';
+  /** OAuth state parameter for CSRF protection */
+  state?: string;
+}

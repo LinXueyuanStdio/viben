@@ -45,7 +45,7 @@ interface LoginDialogProps {
  */
 export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const { t } = useTranslation();
-  const { login, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, isAuthenticated } = useAuth();
 
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -58,11 +58,21 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const [showDevOAuth, setShowDevOAuth] = React.useState(false);
   const [oauthCode, setOauthCode] = React.useState("");
 
+  // Close dialog when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && open) {
+      setOpen(false);
+      onSuccess?.();
+    }
+  }, [isAuthenticated, open, onSuccess]);
+
   // Clear errors when dialog opens/closes
   React.useEffect(() => {
     if (!open) {
       setFormError(null);
       clearError();
+      setShowDevOAuth(false);
+      setOauthCode("");
     }
   }, [open, clearError]);
 
@@ -94,10 +104,9 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
 
     try {
       await login(email, password);
-      setOpen(false);
-      onSuccess?.();
+      // Dialog will close via useEffect when isAuthenticated becomes true
     } catch {
-      // Error is handled by the store and displayed via error state
+      // Error is handled by the hook and displayed via error state
     }
   };
 
@@ -111,7 +120,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
         setShowDevOAuth(true);
       }
     } catch {
-      // Error is handled by the store
+      // Error is handled by the hook
     }
   };
 
@@ -124,12 +133,9 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
     }
     try {
       await handleOAuthCallback(oauthCode.trim());
-      setOpen(false);
-      setShowDevOAuth(false);
-      setOauthCode("");
-      onSuccess?.();
+      // Dialog will close via useEffect when isAuthenticated becomes true
     } catch {
-      // Error is handled by the store
+      // Error is handled by the hook
     }
   };
 
