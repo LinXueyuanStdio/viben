@@ -2,7 +2,7 @@
  * Official Registry routes
  *
  * Provides HTTP API for accessing the official MCP server registry.
- * Fetches from the official registry and caches locally.
+ * Proxies requests to registry.modelcontextprotocol.io and caches locally.
  */
 import type { FastifyInstance } from "fastify";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
@@ -11,32 +11,101 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 
 // ============================================================================
-// Types
+// Types - Raw API response from official registry
 // ============================================================================
 
-interface OfficialPackage {
-  registryType: "npm" | "pypi" | "oci" | "nuget" | "mcpb";
+interface RawPackage {
+  registryType: string;
   identifier: string;
   version?: string;
+  transport?: { type: string };
+  environmentVariables?: Array<{
+    name: string;
+    description?: string;
+    isRequired?: boolean;
+    isSecret?: boolean;
+  }>;
 }
 
-interface OfficialServerDisplay {
-  id: string;
+interface RawRemote {
+  type: string;
+  url: string;
+}
+
+interface RawServer {
+  $schema?: string;
   name: string;
   description: string;
-  iconUrl: string | null;
-  author: string;
-  homepage?: string;
-  repository?: string;
-  license?: string;
-  categories: string[];
-  packages: OfficialPackage[];
-  qualifiedName: string;
-  _original?: {
-    server?: {
-      icons?: Array<{ src: string; theme?: "light" | "dark" }>;
+  version: string;
+  repository?: {
+    url: string;
+    source?: string;
+    id?: string;
+    subfolder?: string;
+  };
+  websiteUrl?: string;
+  packages?: RawPackage[];
+  remotes?: RawRemote[];
+  icons?: Array<{ src: string; theme?: "light" | "dark" }>;
+}
+
+interface RawServerEntry {
+  server: RawServer;
+  _meta?: {
+    "io.modelcontextprotocol.registry/official"?: {
+      status: string;
+      publishedAt: string;
+      updatedAt: string;
+      isLatest: boolean;
     };
   };
+}
+
+interface RawRegistryResponse {
+  servers: RawServerEntry[];
+  metadata: {
+    nextCursor: string | null;
+    count: number;
+  };
+}
+
+// ============================================================================
+// Types - Normalized for API consumers (matches frontend OfficialServerDisplay)
+// ============================================================================
+
+type PackageRegistryType = "npm" | "pypi" | "oci" | "nuget" | "mcpb";
+
+interface OfficialServerDisplay {
+  /** Server name (used as ID) */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Server slug (URL-safe name) */
+  slug: string;
+  /** Version string */
+  version: string;
+  /** Description */
+  description: string | null;
+  /** Primary icon URL */
+  iconUrl: string | null;
+  /** Repository URL */
+  repositoryUrl: string | null;
+  /** Website URL */
+  websiteUrl: string | null;
+  /** Publication status */
+  status: "active" | "deprecated" | "deleted";
+  /** Whether this is the latest version */
+  isLatest: boolean;
+  /** Published timestamp */
+  publishedAt: string;
+  /** Updated timestamp */
+  updatedAt: string;
+  /** Available package types */
+  packageTypes: PackageRegistryType[];
+  /** Has remote endpoints */
+  hasRemotes: boolean;
+  /** Original server data for installation */
+  _original: RawServerEntry;
 }
 
 interface OfficialServerListResponse {
@@ -47,7 +116,7 @@ interface OfficialServerListResponse {
 
 interface RegistryIndex {
   version: string;
-  updated_at?: string;
+  updated_at: string;
   servers: OfficialServerDisplay[];
 }
 
@@ -55,7 +124,7 @@ interface RegistryIndex {
 // Configuration
 // ============================================================================
 
-const REGISTRY_INDEX_URL = "https://raw.githubusercontent.com/modelcontextprotocol/servers/main/registry/index.json";
+const REGISTRY_API_BASE = "https://registry.modelcontextprotocol.io/v0.1";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 // ============================================================================
@@ -131,33 +200,55 @@ async function saveToCache(index: RegistryIndex): Promise<void> {
 }
 
 /**
- * Fetch registry from remote
+ * Fetch all servers from registry (paginated), keeping only latest versions
+ */
+async function fetchAllServers(): Promise<OfficialServerDisplay[]> {
+  const serverMap = new Map<string, OfficialServerDisplay>();
+  let cursor: string | null = null;
+  const limit = 100;
+
+  do {
+    const url = new URL(`${REGISTRY_API_BASE}/servers`);
+    url.searchParams.set("limit", String(limit));
+    if (cursor) {
+      url.searchParams.set("cursor", cursor);
+    }
+
+    const response = await fetch(url.toString(), {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch registry: ${response.statusText}`);
+    }
+
+    const data = (await response.json()) as RawRegistryResponse;
+
+    for (const entry of data.servers) {
+      const meta = entry._meta?.["io.modelcontextprotocol.registry/official"];
+      const serverName = entry.server.name;
+
+      // Only process if isLatest is true, or if we haven't seen this server yet
+      if (meta?.isLatest || !serverMap.has(serverName)) {
+        const transformed = transformServerEntry(entry);
+        // If isLatest, always update; otherwise only add if not present
+        if (meta?.isLatest || !serverMap.has(serverName)) {
+          serverMap.set(serverName, transformed);
+        }
+      }
+    }
+
+    cursor = data.metadata.nextCursor;
+  } while (cursor);
+
+  return Array.from(serverMap.values());
+}
+
+/**
+ * Fetch registry index and build local cache
  */
 async function fetchRegistryIndex(): Promise<RegistryIndex> {
-  const response = await fetch(REGISTRY_INDEX_URL, {
-    headers: {
-      Accept: "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch registry: ${response.statusText}`);
-  }
-
-  const data = await response.json() as Record<string, unknown> | unknown[];
-
-  // Transform the raw data into our format
-  const servers: OfficialServerDisplay[] = [];
-
-  if (Array.isArray(data)) {
-    for (const item of data) {
-      servers.push(transformServerEntry(item as Record<string, unknown>));
-    }
-  } else if (data && typeof data === "object" && "servers" in data && Array.isArray(data.servers)) {
-    for (const item of data.servers) {
-      servers.push(transformServerEntry(item as Record<string, unknown>));
-    }
-  }
+  const servers = await fetchAllServers();
 
   return {
     version: "1.0",
@@ -167,52 +258,66 @@ async function fetchRegistryIndex(): Promise<RegistryIndex> {
 }
 
 /**
- * Transform a raw server entry into display format
+ * Create a URL-safe slug from server name
  */
-function transformServerEntry(item: Record<string, unknown>): OfficialServerDisplay {
-  const server = item as Record<string, unknown>;
-  return {
-    id: String(server.name || server.id || ""),
-    name: String(server.displayName || server.name || ""),
-    description: String(server.description || ""),
-    iconUrl: server.iconUrl ? String(server.iconUrl) : null,
-    author: String(server.author || server.vendor || ""),
-    homepage: server.homepage ? String(server.homepage) : undefined,
-    repository: server.repository ? String(server.repository) : undefined,
-    license: server.license ? String(server.license) : undefined,
-    categories: Array.isArray(server.categories) ? server.categories.map(String) : [],
-    packages: transformPackages(server.packages || server.package),
-    qualifiedName: String(server.qualifiedName || server.name || ""),
-    _original: {
-      server: server as { icons?: Array<{ src: string; theme?: "light" | "dark" }> },
-    },
-  };
+function createSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 /**
- * Transform package information
+ * Extract unique package types from packages
  */
-function transformPackages(packages: unknown): OfficialPackage[] {
-  if (!packages) return [];
+function extractPackageTypes(packages?: RawPackage[]): PackageRegistryType[] {
+  if (!packages || packages.length === 0) return [];
 
-  if (Array.isArray(packages)) {
-    return packages.map((pkg) => ({
-      registryType: pkg.registryType || "npm",
-      identifier: pkg.identifier || pkg.name || "",
-      version: pkg.version,
-    }));
+  const validTypes = new Set<PackageRegistryType>(["npm", "pypi", "oci", "nuget", "mcpb"]);
+  const types = new Set<PackageRegistryType>();
+
+  for (const pkg of packages) {
+    if (validTypes.has(pkg.registryType as PackageRegistryType)) {
+      types.add(pkg.registryType as PackageRegistryType);
+    }
   }
 
-  if (typeof packages === "object") {
-    const pkg = packages as Record<string, unknown>;
-    return [{
-      registryType: (pkg.registryType as OfficialPackage["registryType"]) || "npm",
-      identifier: String(pkg.identifier || pkg.name || ""),
-      version: pkg.version ? String(pkg.version) : undefined,
-    }];
+  return Array.from(types);
+}
+
+/**
+ * Transform a raw server entry into display format (matches frontend OfficialServerDisplay)
+ */
+function transformServerEntry(entry: RawServerEntry): OfficialServerDisplay {
+  const server = entry.server;
+  const meta = entry._meta?.["io.modelcontextprotocol.registry/official"];
+
+  // Try to find icon URL - prefer light theme
+  let iconUrl: string | null = null;
+  if (server.icons && server.icons.length > 0) {
+    const lightIcon = server.icons.find((i) => i.theme === "light") || server.icons[0];
+    iconUrl = lightIcon.src;
   }
 
-  return [];
+  const now = new Date().toISOString();
+
+  return {
+    id: server.name,
+    name: server.name,
+    slug: createSlug(server.name),
+    version: server.version,
+    description: server.description || null,
+    iconUrl,
+    repositoryUrl: server.repository?.url || null,
+    websiteUrl: server.websiteUrl || null,
+    status: (meta?.status as "active" | "deprecated" | "deleted") || "active",
+    isLatest: meta?.isLatest ?? true,
+    publishedAt: meta?.publishedAt || now,
+    updatedAt: meta?.updatedAt || now,
+    packageTypes: extractPackageTypes(server.packages),
+    hasRemotes: (server.remotes && server.remotes.length > 0) || false,
+    _original: entry,
+  };
 }
 
 /**
@@ -265,8 +370,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         servers = servers.filter((s) =>
           s.name.toLowerCase().includes(query) ||
           s.description.toLowerCase().includes(query) ||
-          s.id.toLowerCase().includes(query) ||
-          s.author.toLowerCase().includes(query)
+          s.id.toLowerCase().includes(query)
         );
       }
 

@@ -1,7 +1,7 @@
 /**
  * Marketplace routes
  *
- * Provides HTTP API for the plugin marketplace (browse-mcp providers).
+ * Provides HTTP API for the plugin marketplace (Claude plugins official).
  * Fetches from remote index and caches locally.
  */
 import type { FastifyInstance } from "fastify";
@@ -11,7 +11,40 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 
 // ============================================================================
-// Types
+// Types - Raw API response from GitHub
+// ============================================================================
+
+interface RawPluginAuthor {
+  name: string;
+  email?: string;
+  url?: string;
+}
+
+interface RawPlugin {
+  name: string;
+  description: string;
+  version?: string;
+  author?: RawPluginAuthor;
+  source?: string;
+  url?: string;
+  homepage?: string;
+  category?: string;
+  strict?: boolean;
+  mcpServers?: Record<string, unknown>;
+  lspServers?: Record<string, unknown>;
+  skills?: unknown[];
+}
+
+interface RawMarketplaceIndex {
+  $schema?: string;
+  name: string;
+  description: string;
+  owner?: RawPluginAuthor;
+  plugins: RawPlugin[];
+}
+
+// ============================================================================
+// Types - Normalized for API consumers (matches frontend types)
 // ============================================================================
 
 interface MarketplaceCategory {
@@ -41,13 +74,6 @@ interface MarketplacePlugin {
   sources: string[];
 }
 
-interface ProviderIndex {
-  version: string;
-  updated_at?: string;
-  categories: MarketplaceCategory[];
-  plugins: MarketplacePlugin[];
-}
-
 interface FlatSource {
   id: string;
   source_name: string;
@@ -60,11 +86,18 @@ interface FlatSource {
   plugin_name: string;
 }
 
+interface ProviderIndex {
+  version: string;
+  updated_at: string;
+  categories: MarketplaceCategory[];
+  plugins: MarketplacePlugin[];
+}
+
 // ============================================================================
 // Configuration
 // ============================================================================
 
-const PROVIDER_INDEX_URL = "https://raw.githubusercontent.com/anthropics/browse-mcp/main/marketplace/providers.json";
+const MARKETPLACE_INDEX_URL = "https://raw.githubusercontent.com/anthropics/claude-plugins-official/main/.claude-plugin/marketplace.json";
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 // ============================================================================
@@ -140,20 +173,101 @@ async function saveToCache(index: ProviderIndex): Promise<void> {
 }
 
 /**
- * Fetch provider index from remote
+ * Fetch marketplace index from remote and normalize it
  */
-async function fetchProviderIndex(): Promise<ProviderIndex> {
-  const response = await fetch(PROVIDER_INDEX_URL, {
+async function fetchMarketplaceIndex(): Promise<ProviderIndex> {
+  const response = await fetch(MARKETPLACE_INDEX_URL, {
     headers: {
       Accept: "application/json",
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch provider index: ${response.statusText}`);
+    throw new Error(`Failed to fetch marketplace index: ${response.statusText}`);
   }
 
-  return response.json() as Promise<ProviderIndex>;
+  const raw = (await response.json()) as RawMarketplaceIndex;
+  return normalizeIndex(raw);
+}
+
+/**
+ * Normalize raw marketplace data to our API format
+ */
+function normalizeIndex(raw: RawMarketplaceIndex): ProviderIndex {
+  // Build category counts
+  const categoryCounts = new Map<string, number>();
+  for (const plugin of raw.plugins) {
+    const cat = plugin.category || "other";
+    categoryCounts.set(cat, (categoryCounts.get(cat) || 0) + 1);
+  }
+
+  // Build categories array
+  const categoryDescriptions: Record<string, string> = {
+    development: "Development tools and language servers",
+    productivity: "Productivity and workflow tools",
+    database: "Database and data management tools",
+    deployment: "Deployment and CI/CD tools",
+    design: "Design and UI tools",
+    learning: "Learning and documentation tools",
+    monitoring: "Monitoring and observability tools",
+    security: "Security and compliance tools",
+    testing: "Testing and quality assurance tools",
+    other: "Other plugins",
+  };
+
+  const categories: MarketplaceCategory[] = Array.from(categoryCounts.entries()).map(([id, count]) => ({
+    id,
+    name: id.charAt(0).toUpperCase() + id.slice(1),
+    description: categoryDescriptions[id] || `${id} plugins`,
+    plugin_count: count,
+    source_count: count, // Each plugin is treated as one source
+  }));
+
+  // Normalize plugins - match frontend MarketplacePlugin interface
+  const plugins: MarketplacePlugin[] = raw.plugins.map((p) => {
+    const category = p.category || "other";
+    return {
+      id: p.name,
+      name: p.name,
+      description: p.description,
+      version: p.version,
+      author_name: p.author?.name || raw.owner?.name || "Unknown",
+      author_email: p.author?.email || raw.owner?.email,
+      author_url: p.author?.url || raw.owner?.url,
+      homepage: p.homepage || p.url,
+      repository: p.url,
+      license: undefined,
+      categories: [category], // Convert single category to array
+      builtin: false, // Third-party plugins are not builtin
+      package: p.source,
+      source_count: 1, // Each plugin has at least one source
+      sources: [p.name], // Plugin name as source
+    };
+  });
+
+  return {
+    version: "1.0.0",
+    updated_at: new Date().toISOString(),
+    categories,
+    plugins,
+  };
+}
+
+/**
+ * Flatten plugins to sources for UI display
+ */
+function flattenSources(plugins: MarketplacePlugin[]): FlatSource[] {
+  return plugins.map((p) => ({
+    id: p.id,
+    source_name: p.name,
+    plugin_id: p.id,
+    name: p.name,
+    description: p.description,
+    category: p.categories[0],
+    api_key_type: "none" as const,
+    documentation: p.homepage,
+    plugin_name: p.name,
+  }));
 }
 
 /**
@@ -169,40 +283,12 @@ async function getProviderIndex(forceRefresh = false): Promise<ProviderIndex> {
   }
 
   // Fetch from remote
-  const index = await fetchProviderIndex();
+  const index = await fetchMarketplaceIndex();
 
   // Save to cache
   await saveToCache(index);
 
   return index;
-}
-
-/**
- * Flatten sources from plugins for UI display
- */
-function flattenSources(index: ProviderIndex): FlatSource[] {
-  const sources: FlatSource[] = [];
-
-  for (const plugin of index.plugins) {
-    for (const sourceName of plugin.sources) {
-      // Determine category from plugin categories
-      const category = plugin.categories.length > 0 ? plugin.categories[0] : undefined;
-
-      sources.push({
-        id: `${plugin.id}/${sourceName}`,
-        source_name: sourceName,
-        plugin_id: plugin.id,
-        name: sourceName,
-        description: plugin.description,
-        category,
-        api_key_type: "none", // Default, can be enhanced with source-level metadata
-        documentation: plugin.homepage,
-        plugin_name: plugin.name,
-      });
-    }
-  }
-
-  return sources;
 }
 
 // ============================================================================
@@ -233,6 +319,7 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
     }
   });
 
+
   /**
    * Get flat sources list
    * GET /api/marketplace/sources
@@ -240,14 +327,12 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
   fastify.get("/api/marketplace/sources", async () => {
     try {
       const index = await getProviderIndex();
-      return flattenSources(index);
+      return flattenSources(index.plugins);
     } catch (err) {
-      // Try cache
       const cached = await loadFromCache();
       if (cached) {
-        return flattenSources(cached);
+        return flattenSources(cached.plugins);
       }
-
       return [];
     }
   });
@@ -329,7 +414,7 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
   });
 
   /**
-   * Search sources by query
+   * Search plugins by query
    * GET /api/marketplace/search
    */
   fastify.get<{
@@ -338,37 +423,48 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
     const { q } = request.query;
 
     if (!q || q.trim().length === 0) {
-      return { plugins: [], sources: [] };
+      return { plugins: [] };
     }
 
     const query = q.toLowerCase();
 
     try {
       const index = await getProviderIndex();
-      const sources = flattenSources(index);
 
       const matchingPlugins = index.plugins.filter(
         (p) =>
           p.name.toLowerCase().includes(query) ||
           p.description.toLowerCase().includes(query) ||
           p.id.toLowerCase().includes(query) ||
-          p.author_name.toLowerCase().includes(query)
+          p.author_name.toLowerCase().includes(query) ||
+          (p.category && p.category.toLowerCase().includes(query))
       );
 
-      const matchingSources = sources.filter(
-        (s) =>
-          s.name.toLowerCase().includes(query) ||
-          s.description.toLowerCase().includes(query) ||
-          s.source_name.toLowerCase().includes(query) ||
-          s.plugin_name.toLowerCase().includes(query)
-      );
-
-      return {
-        plugins: matchingPlugins,
-        sources: matchingSources,
-      };
+      return { plugins: matchingPlugins };
     } catch (err) {
-      return { plugins: [], sources: [], error: err instanceof Error ? err.message : String(err) };
+      return { plugins: [], error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  /**
+   * Get plugins by category
+   * GET /api/marketplace/categories/:categoryId/plugins
+   */
+  fastify.get<{
+    Params: { categoryId: string };
+  }>("/api/marketplace/categories/:categoryId/plugins", async (request) => {
+    const { categoryId } = request.params;
+
+    try {
+      const index = await getProviderIndex();
+      const plugins = index.plugins.filter((p) => p.category === categoryId);
+      return plugins;
+    } catch (err) {
+      const cached = await loadFromCache();
+      if (cached) {
+        return cached.plugins.filter((p) => p.category === categoryId);
+      }
+      return [];
     }
   });
 }
