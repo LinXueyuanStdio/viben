@@ -28,6 +28,7 @@ import {
 } from "@/hooks/use-cloud-skills";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { downloadAndInstallSkill } from "@/lib/skill-installer";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -85,9 +86,13 @@ export function SkillsMarketPage() {
   );
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Install state (for future implementation)
+  // Install state with detailed progress tracking
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
+  // Progress state - will be used in next subtask for progress bar UI
+  const [_installProgress, setInstallProgress] = useState<
+    Map<string, { stage: string; progress: number; message?: string }>
+  >(new Map());
 
   // Hooks
   const {
@@ -148,19 +153,61 @@ export function SkillsMarketPage() {
     setDetailOpen(true);
   };
 
-  // Handle install (placeholder for future implementation)
+  // Handle install with real download and extraction
   const handleInstall = async (skill: CloudSkillPackage) => {
+    // Mark as installing
     setInstallingIds((prev) => new Set(prev).add(skill.id));
 
-    // Simulate installation delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      // Use the real installation function with progress tracking
+      const result = await downloadAndInstallSkill({
+        package: {
+          id: skill.id,
+          name: skill.name,
+          slug: skill.slug,
+          version: skill.version,
+        } as any, // CloudSkillPackage is compatible with SkillPackage for these fields
+        onProgress: (progress) => {
+          // Update progress state
+          setInstallProgress((prev) => {
+            const next = new Map(prev);
+            next.set(skill.id, {
+              stage: progress.stage,
+              progress: progress.progress,
+              message: progress.message,
+            });
+            return next;
+          });
+        },
+        force: false,
+      });
 
-    setInstallingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(skill.id);
-      return next;
-    });
-    setInstalledIds((prev) => new Set(prev).add(skill.id));
+      if (result.success) {
+        // Mark as installed
+        setInstalledIds((prev) => new Set(prev).add(skill.id));
+      } else {
+        // Show error (could use toast notification here)
+        console.error("Installation failed:", result.error);
+      }
+    } catch (error) {
+      console.error("Installation error:", error);
+    } finally {
+      // Remove from installing set
+      setInstallingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(skill.id);
+        return next;
+      });
+
+      // Clear progress after a delay
+      setTimeout(() => {
+        setInstallProgress((prev) => {
+          const next = new Map(prev);
+          next.delete(skill.id);
+          return next;
+        });
+      }, 2000);
+    }
   };
 
   // Calculate total pages
