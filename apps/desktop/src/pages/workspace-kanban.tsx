@@ -261,6 +261,8 @@ export function WorkspaceKanbanPage() {
   const [filter, setFilter] = useState<KanbanFilter>({});
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showStats, setShowStats] = useState(false);
+  // Flag to trigger auto-start when opening task detail panel from "Run" action
+  const [autoStartTaskOnOpen, setAutoStartTaskOnOpen] = useState(false);
 
   // Create task dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -425,6 +427,10 @@ export function WorkspaceKanbanPage() {
         title: data.title,
         description: data.description ?? null,
         status,
+        agent_id: data.agentId,
+        model_id: data.modelId,
+        branch: data.branch,
+        auto_start: data.autoStart,
       });
     },
     [workspace, createTask, createDialogColumnId]
@@ -583,6 +589,20 @@ export function WorkspaceKanbanPage() {
       closeMoreMenu();
     },
     [closeMoreMenu]
+  );
+
+  // Handle start task - update status to inprogress
+  const handleStartTask = useCallback(
+    (taskId: string) => {
+      if (!workspace) return;
+      updateTaskStatus.mutate({
+        taskId,
+        status: "inprogress",
+        workspacePath: workspace.path,
+      });
+      closeMoreMenu();
+    },
+    [workspace, updateTaskStatus, closeMoreMenu]
   );
 
   // Command palette commands
@@ -756,9 +776,14 @@ export function WorkspaceKanbanPage() {
         showRemove={false}
         rightContent={
           <>
-            <Badge variant="outline" className="font-mono text-xs">
-              {workspace.name}
-            </Badge>
+            <ViewSwitcher
+              value={viewMode}
+              onChange={setViewMode}
+              labels={{
+                kanban: t("workspace.viewMode.kanban", "Kanban"),
+                list: t("workspace.viewMode.list", "List"),
+              }}
+            />
             <Button
               size="sm"
               onClick={() => handleAddTask(columnStatuses[0]?.id || "todo")}
@@ -779,19 +804,6 @@ export function WorkspaceKanbanPage() {
       {/* Filter and Sort Bar */}
       <div className="px-4 py-2 border-b bg-muted/30">
         <div className="flex items-center gap-4 flex-wrap">
-          {/* View Switcher */}
-          <ViewSwitcher
-            value={viewMode}
-            onChange={setViewMode}
-            labels={{
-              kanban: t("workspace.viewMode.kanban", "Kanban"),
-              list: t("workspace.viewMode.list", "List"),
-            }}
-          />
-
-          {/* Separator */}
-          <div className="h-6 w-px bg-border" />
-
           {/* Filter Bar */}
           <KanbanFilterBar
             filter={filter}
@@ -901,7 +913,12 @@ export function WorkspaceKanbanPage() {
                     const task = sortedTasks.find((t) => t.id === activeId);
                     if (!task) return null;
                     return (
-                      <div className="p-3 bg-card rounded-lg border border-primary/40 shadow-2xl scale-[1.02]">
+                      <div
+                        className="w-[264px] p-3 bg-card rounded-lg border border-border"
+                        style={{
+                          boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)",
+                        }}
+                      >
                         <TaskCardContent task={task} />
                       </div>
                     );
@@ -959,6 +976,23 @@ export function WorkspaceKanbanPage() {
                                         </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end" className="w-48">
+                                        {/* Start task - only show for non-running tasks */}
+                                        {!task.has_in_progress_attempt && task.status !== "done" && (
+                                          <>
+                                            <DropdownMenuItem
+                                              onClick={() => {
+                                                handleStartTask(task.id);
+                                                setSelectedTaskId(task.id);
+                                                setAutoStartTaskOnOpen(true);
+                                              }}
+                                              className="gap-2"
+                                            >
+                                              <Play className="h-4 w-4" />
+                                              {t("workspace.runAgent", "Run")}
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                          </>
+                                        )}
                                         <DropdownMenuItem
                                           onClick={() => setSelectedTaskId(task.id)}
                                           className="gap-2"
@@ -1066,8 +1100,12 @@ export function WorkspaceKanbanPage() {
               <TaskDetailPanel
                 task={selectedTask}
                 onClose={handleClosePanel}
+                onStartTask={handleStartTask}
                 availableTasks={availableTasks}
                 onNavigateToTask={handleNavigateToTask}
+                workspacePath={workspace?.path}
+                autoStartOnOpen={autoStartTaskOnOpen}
+                onAutoStartConsumed={() => setAutoStartTaskOnOpen(false)}
               />
             </motion.div>
           }

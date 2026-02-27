@@ -1,23 +1,35 @@
 /**
- * Types for vibe-kanban local backend API
- * Matches the Rust models in crates/db/src/models/
+ * Types for vibe-kanban - unified task API
+ * Matches the TypeScript gateway routes in packages/core/src/gateway/routes/tasks.ts
  */
 
-// Task status enum - matches TaskStatus in Rust
+// Task status enum (unified for both session tasks and kanban)
 export type TaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
 
-// Task model - matches KanbanTask in gateway
+// Task model - unified task with all fields
 export interface Task {
   id: string;
-  workspace_path: string | null;
+  // Task content
   title: string;
   description: string | null;
+  prompt?: string;
+  // Status
   status: TaskStatus;
+  // Organization
+  workspace_path: string | null;
+  session_id?: string | null;
+  agent_id?: string | null;
+  task_index?: number;
+  // Execution info
+  cost?: number;
+  duration?: number;
+  favorite?: boolean;
+  // Timestamps
   created_at: string;
   updated_at: string;
 }
 
-// Task with attempt status - matches TaskWithAttemptStatus
+// Task with attempt status - for kanban display
 export interface TaskWithAttemptStatus extends Task {
   has_in_progress_attempt: boolean;
   last_attempt_failed: boolean;
@@ -26,25 +38,36 @@ export interface TaskWithAttemptStatus extends Task {
 
 // Create task request
 export interface CreateTaskRequest {
-  workspace_path?: string;
   title: string;
   description?: string | null;
+  prompt?: string;
   status?: TaskStatus;
+  workspace_path?: string;
+  session_id?: string;
+  agent_id?: string;
+  task_index?: number;
+  executor?: string;
+  // Legacy kanban fields
+  model_id?: string;
+  branch?: string;
+  auto_start?: boolean;
 }
 
 // Update task request
 export interface UpdateTaskRequest {
   title?: string;
   description?: string | null;
+  prompt?: string;
   status?: TaskStatus;
-}
-
-// API response wrapper
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  error_data: unknown | null;
-  message: string | null;
+  workspace_path?: string;
+  session_id?: string;
+  agent_id?: string;
+  cost?: number;
+  duration?: number;
+  favorite?: boolean;
+  has_in_progress_attempt?: boolean;
+  last_attempt_failed?: boolean;
+  executor?: string;
 }
 
 // Status mapping for kanban columns

@@ -118,8 +118,8 @@ export function useExecutors(options?: UseExecutorsOptions): UseExecutorsReturn 
   const getAvailableExecutors = useCallback(() => {
     return executors.filter(
       (e) =>
-        e.availability.type === "LOGIN_DETECTED" ||
-        e.availability.type === "INSTALLATION_FOUND"
+        e.availability?.type === "LOGIN_DETECTED" ||
+        e.availability?.type === "INSTALLATION_FOUND"
     );
   }, [executors]);
 

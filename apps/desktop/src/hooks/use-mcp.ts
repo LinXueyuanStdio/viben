@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import type { McpStartConfig, McpStatus } from "@/types";
+import {
+  getGatewayClient,
+  type McpStatus,
+  type McpStartConfig,
+  type PortStatus,
+} from "@/lib/gateway";
 
-export interface PortStatus {
-  in_use: boolean;
-  pid: number | null;
-  process_name: string | null;
-}
+export type { McpStatus, McpStartConfig, PortStatus };
 
 export function useMcp() {
   const [status, setStatus] = useState<McpStatus>({
@@ -20,7 +20,8 @@ export function useMcp() {
 
   const getStatus = useCallback(async () => {
     try {
-      const currentStatus = await invoke<McpStatus>("get_mcp_status");
+      const client = getGatewayClient();
+      const currentStatus = await client.getMcpStatus();
       setStatus(currentStatus);
       return currentStatus;
     } catch (err) {
@@ -33,7 +34,8 @@ export function useMcp() {
     setLoading(true);
     setError(null);
     try {
-      const newStatus = await invoke<McpStatus>("start_mcp_server", { config });
+      const client = getGatewayClient();
+      const newStatus = await client.startMcpServer(config);
       setStatus(newStatus);
       return newStatus;
     } catch (err) {
@@ -49,7 +51,8 @@ export function useMcp() {
     setLoading(true);
     setError(null);
     try {
-      await invoke("stop_mcp_server");
+      const client = getGatewayClient();
+      await client.stopMcpServer();
       setStatus({
         running: false,
         pid: null,
@@ -67,32 +70,36 @@ export function useMcp() {
 
   const testConnection = useCallback(async (pythonPath: string) => {
     try {
-      return await invoke<boolean>("test_mcp_connection", { pythonPath });
-    } catch (err) {
+      const client = getGatewayClient();
+      return await client.testMcpConnection(pythonPath);
+    } catch {
       return false;
     }
   }, []);
 
   const checkPortStatus = useCallback(async (port: number): Promise<PortStatus> => {
     try {
-      return await invoke<PortStatus>("check_port_status", { port });
-    } catch (err) {
+      const client = getGatewayClient();
+      return await client.checkPortStatus(port);
+    } catch {
       return { in_use: false, pid: null, process_name: null };
     }
   }, []);
 
   const killProcess = useCallback(async (pid: number): Promise<boolean> => {
     try {
-      return await invoke<boolean>("kill_process", { pid });
-    } catch (err) {
+      const client = getGatewayClient();
+      return await client.killProcess(pid);
+    } catch {
       return false;
     }
   }, []);
 
   const isProcessAlive = useCallback(async (pid: number): Promise<boolean> => {
     try {
-      return await invoke<boolean>("is_process_alive", { pid });
-    } catch (err) {
+      const client = getGatewayClient();
+      return await client.isProcessAlive(pid);
+    } catch {
       return false;
     }
   }, []);

@@ -1,36 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type InstalledSource, type InstalledProviderInfo, type InstalledSourcesResponse } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
 
-/**
- * Source info from the CLI output
- */
-export interface InstalledSource {
-  name: string;
-  provider: string;
-  enabled: boolean;
-}
-
-/**
- * Provider info from the CLI output
- */
-export interface InstalledProviderInfo {
-  name: string;
-  description?: string;
-  package?: string;
-  sources: string[];
-  count: number;
-}
-
-/**
- * Response from browse-mcp-cli list
- */
-export interface InstalledSourcesResponse {
-  providers: Record<string, InstalledProviderInfo>;
-  sources: InstalledSource[];
-  total: number;
-  enabled: number;
-}
+export type { InstalledSource, InstalledProviderInfo, InstalledSourcesResponse };
 
 /**
  * Hook for accessing installed sources via browse-mcp-cli
@@ -59,10 +31,8 @@ export function useInstalledSources() {
     setError(null);
 
     try {
-      const result = await invoke<InstalledSourcesResponse>(
-        "get_installed_sources",
-        { pythonPath }
-      );
+      const client = getGatewayClient();
+      const result = await client.getInstalledSources(pythonPath);
       setData(result);
       return result;
     } catch (err) {
@@ -83,11 +53,8 @@ export function useInstalledSources() {
         throw new Error("Python path not configured");
       }
 
-      const result = await invoke<Record<string, unknown>>(
-        "show_installed_provider",
-        { pythonPath, provider }
-      );
-      return result;
+      const client = getGatewayClient();
+      return await client.showInstalledProvider(pythonPath, provider);
     },
     [pythonPath]
   );
@@ -101,11 +68,8 @@ export function useInstalledSources() {
         throw new Error("Python path not configured");
       }
 
-      const result = await invoke<string>("install_provider", {
-        pythonPath,
-        provider,
-        upgrade,
-      });
+      const client = getGatewayClient();
+      const result = await client.installProvider(pythonPath, provider, upgrade);
 
       // Refresh after installation
       await fetchInstalledSources();

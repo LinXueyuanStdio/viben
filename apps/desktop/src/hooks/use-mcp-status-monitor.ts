@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type McpServerPortStatus } from "@/lib/gateway";
 import PQueue from "p-queue";
 import { useAppStore } from "@/stores";
 import type { McpServerStatus, McpServerStatusInfo } from "@/types";
@@ -10,13 +10,7 @@ const CACHE_TTL_MS = 30 * 1000; // 30 seconds
 const DEBOUNCE_MS = 100; // 100ms debounce for page enter (reduced for faster response)
 const MAX_CONCURRENT_CHECKS = 2; // Max concurrent process checks
 
-// Port check result type from Rust backend
-interface McpServerPortStatus {
-  status: "running" | "stopped" | "conflict";
-  pid: number | null;
-  process_name: string | null;
-  is_mcp_server: boolean;
-}
+export type { McpServerPortStatus };
 
 // Singleton queue instance for concurrency control
 let globalQueue: PQueue | null = null;
@@ -86,13 +80,14 @@ export function useMcpStatusMonitor() {
     // Queue the check with deduplication
     const checkPromise = queue.add(async () => {
       try {
+        const client = getGatewayClient();
         let status: McpServerStatus = "stopped";
         let error: string | undefined;
         let detectedPid: number | undefined = server.pid ?? undefined;
 
         // Fast path: Check if the server has a PID and if the process is alive
         if (server.pid) {
-          const isAlive = await invoke<boolean>("is_process_alive", { pid: server.pid });
+          const isAlive = await client.isProcessAlive(server.pid);
           if (isAlive) {
             status = "running";
           } else {
@@ -105,9 +100,7 @@ export function useMcpStatusMonitor() {
         // This catches servers started externally or after app restart
         if (status !== "running" && server.port && server.transport !== "stdio") {
           try {
-            const portStatus = await invoke<McpServerPortStatus>("check_mcp_server_on_port", {
-              port: server.port,
-            });
+            const portStatus = await client.checkMcpServerOnPort(server.port);
 
             if (portStatus.status === "running" && portStatus.is_mcp_server) {
               // Found a running MCP server on the port

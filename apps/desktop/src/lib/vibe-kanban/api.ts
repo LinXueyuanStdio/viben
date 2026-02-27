@@ -1,9 +1,9 @@
 /**
  * API client for kanban - connects to Viben Gateway
+ * Uses unified /api/tasks endpoint
  */
 
 import type {
-  ApiResponse,
   Task,
   TaskWithAttemptStatus,
   CreateTaskRequest,
@@ -16,8 +16,8 @@ function getApiBaseUrl(): string {
   return getGatewayUrl();
 }
 
-// API path prefix for kanban endpoints
-const API_PREFIX = "/api/kanban";
+// API path prefix for task endpoints (unified API)
+const API_PREFIX = "/api/tasks";
 
 /**
  * Custom error class for API errors
@@ -34,7 +34,14 @@ export class VibeKanbanApiError extends Error {
 }
 
 /**
- * Make a request to the kanban API via Gateway
+ * Response format from unified /api/tasks endpoint
+ */
+interface TasksResponse {
+  tasks: TaskWithAttemptStatus[];
+}
+
+/**
+ * Make a request to the tasks API via Gateway
  */
 async function makeRequest<T>(
   path: string,
@@ -59,7 +66,9 @@ async function makeRequest<T>(
 
       try {
         const errorJson = await response.json();
-        if (errorJson.message) {
+        if (errorJson.error) {
+          errorMessage = errorJson.error;
+        } else if (errorJson.message) {
           errorMessage = errorJson.message;
         }
         errorData = errorJson.error_data;
@@ -70,17 +79,8 @@ async function makeRequest<T>(
       throw new VibeKanbanApiError(errorMessage, response.status, errorData);
     }
 
-    const json: ApiResponse<T> = await response.json();
-
-    if (!json.success) {
-      throw new VibeKanbanApiError(
-        json.message || "API request failed",
-        undefined,
-        json.error_data
-      );
-    }
-
-    return json.data;
+    const json = await response.json();
+    return json as T;
   } catch (error) {
     if (error instanceof VibeKanbanApiError) {
       throw error;
@@ -100,12 +100,13 @@ async function makeRequest<T>(
 }
 
 /**
- * Health check
+ * Health check (uses gateway health endpoint)
  */
 export async function checkHealth(): Promise<boolean> {
   try {
-    await makeRequest<string>(`${API_PREFIX}/health`);
-    return true;
+    const url = `${getApiBaseUrl()}/health`;
+    const response = await fetch(url);
+    return response.ok;
   } catch {
     return false;
   }
@@ -113,27 +114,29 @@ export async function checkHealth(): Promise<boolean> {
 
 /**
  * Get tasks for a workspace
- * @param workspacePath - workspace path to filter tasks (empty for global tasks)
+ * @param workspacePath - workspace path to filter tasks (empty string for global tasks, undefined for all tasks)
  */
 export async function getTasks(workspacePath?: string): Promise<TaskWithAttemptStatus[]> {
-  const params = workspacePath
+  // Build query params - use empty string to get global tasks (tasks without workspace)
+  const params = workspacePath !== undefined
     ? `?workspace_path=${encodeURIComponent(workspacePath)}`
     : "";
-  return makeRequest<TaskWithAttemptStatus[]>(`${API_PREFIX}/tasks${params}`);
+  const response = await makeRequest<TasksResponse>(`${API_PREFIX}${params}`);
+  return response.tasks;
 }
 
 /**
  * Get a single task
  */
 export async function getTask(taskId: string): Promise<Task> {
-  return makeRequest<Task>(`${API_PREFIX}/tasks/${encodeURIComponent(taskId)}`);
+  return makeRequest<Task>(`${API_PREFIX}/${encodeURIComponent(taskId)}`);
 }
 
 /**
  * Create a new task
  */
 export async function createTask(data: CreateTaskRequest): Promise<Task> {
-  return makeRequest<Task>(`${API_PREFIX}/tasks`, {
+  return makeRequest<Task>(`${API_PREFIX}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -146,7 +149,7 @@ export async function updateTask(
   taskId: string,
   data: UpdateTaskRequest
 ): Promise<Task> {
-  return makeRequest<Task>(`${API_PREFIX}/tasks/${encodeURIComponent(taskId)}`, {
+  return makeRequest<Task>(`${API_PREFIX}/${encodeURIComponent(taskId)}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
@@ -156,7 +159,7 @@ export async function updateTask(
  * Delete a task
  */
 export async function deleteTask(taskId: string): Promise<void> {
-  await makeRequest<unknown>(`${API_PREFIX}/tasks/${encodeURIComponent(taskId)}`, {
+  await makeRequest<{ deleted: string }>(`${API_PREFIX}/${encodeURIComponent(taskId)}`, {
     method: "DELETE",
   });
 }

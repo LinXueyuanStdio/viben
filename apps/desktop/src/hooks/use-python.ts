@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import type { PythonInfo, PackageInfo } from "@/types";
+import type { PythonInfo, PythonPackageInfo } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
+
+// Re-export types for backwards compatibility
+export type { PythonInfo };
+export type PackageInfo = PythonPackageInfo;
 
 export function usePython() {
   const [pythons, setPythons] = useState<PythonInfo[]>([]);
   const [selectedPython, setSelectedPython] = useState<PythonInfo | null>(null);
-  const [browseMcpInfo, setBrowseMcpInfo] = useState<PackageInfo | null>(null);
+  const [browseMcpInfo, setBrowseMcpInfo] = useState<PythonPackageInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -13,7 +17,8 @@ export function usePython() {
     setLoading(true);
     setError(null);
     try {
-      const detected = await invoke<PythonInfo[]>("detect_python");
+      const client = getGatewayClient();
+      const detected = await client.detectPython();
       setPythons(detected);
 
       // Auto-select first valid Python
@@ -30,10 +35,8 @@ export function usePython() {
 
   const checkPythonPath = useCallback(async (path: string) => {
     try {
-      const info = await invoke<PythonInfo>("check_python_path", {
-        pythonPath: path,
-      });
-      return info;
+      const client = getGatewayClient();
+      return await client.checkPythonPath(path);
     } catch (err) {
       throw new Error(err instanceof Error ? err.message : String(err));
     }
@@ -41,9 +44,8 @@ export function usePython() {
 
   const checkBrowseMcp = useCallback(async (pythonPath: string) => {
     try {
-      const info = await invoke<PackageInfo>("check_browse_mcp_installed", {
-        pythonPath,
-      });
+      const client = getGatewayClient();
+      const info = await client.checkPythonPackage(pythonPath, "browse-mcp");
       setBrowseMcpInfo(info);
       return info;
     } catch (err) {
@@ -52,11 +54,15 @@ export function usePython() {
   }, []);
 
   const getInstallCommand = useCallback(async (pythonPath: string) => {
-    return await invoke<string>("get_install_command", { pythonPath });
+    const client = getGatewayClient();
+    const result = await client.getPythonInstallCommand(pythonPath, "browse-mcp");
+    return result.command;
   }, []);
 
   const getUvInstallCommand = useCallback(async () => {
-    return await invoke<string>("get_uv_install_command");
+    const client = getGatewayClient();
+    const result = await client.getPythonInstallCommand("python3", "browse-mcp");
+    return result.uv_command;
   }, []);
 
   // Auto-detect on mount

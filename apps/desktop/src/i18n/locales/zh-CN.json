@@ -92,7 +92,8 @@
     "send": "发送",
     "you": "你",
     "unknown": "未知",
-    "openInExplorer": "在文件管理器中打开"
+    "openInExplorer": "在文件管理器中打开",
+    "learnMore": "了解更多"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -1821,7 +1822,11 @@
       "detected": "检测到 {{count}} 个 AI 客户端",
       "readyToConfigure": "设置完成后，您可以为这些客户端配置 browse-mcp。",
       "noClients": "未检测到 AI 客户端",
-      "noClientsHint": "您仍可以继续，稍后安装 AI 客户端。"
+      "noClientsHint": "您仍可以继续，稍后安装 AI 客户端。",
+      "loggedIn": "已登录",
+      "installed": "已安装",
+      "notFound": "未安装",
+      "supportsMcp": "支持 MCP（模型上下文协议）"
     },
     "login": {
       "title": "登录（可选）",

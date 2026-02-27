@@ -12,22 +12,58 @@ This directory contains guidelines for frontend development. These specs ensure 
 
 ## Guidelines Index
 
+### Core Guidelines
+
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Design System](./design-system.md) | Complete design system: colors, typography, motion, components | ✅ Complete |
-| [Component Guidelines](./components.md) | React component patterns and best practices | ✅ Complete |
-| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" and "Publish My Skill" wizard flows | ✅ Complete |
-| [Chat Integration](./chat-integration.md) | Workspace chat page integration from workany (**desktop only**) | ✅ Complete |
-| [Tailwind v4 Workspace Packages](./tailwind-v4-workspace-packages.md) | **Critical** - Configure Tailwind v4 to scan workspace packages | ✅ Complete |
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | To fill |
-| [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | To fill |
+| [Design System](./design-system.md) | 完整设计系统：颜色、字体、动效、组件 | ✅ Complete |
+| [Component Guidelines](./components.md) | React 组件模式与最佳实践 | ✅ Complete |
+| [Chat Input Components](./chat-input-components.md) | ChatInput vs AgentChatInput 组件使用指南 | ✅ Complete |
+| [Tailwind v4 Workspace Packages](./tailwind-v4-workspace-packages.md) | **Critical** - Tailwind v4 工作空间包扫描配置 | ✅ Complete |
+
+### Feature Guidelines
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Provider System](./PROVIDER_SYSTEM.md) | AI Provider 配置与管理系统 | ✅ Complete |
+| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" 和 "Publish My Skill" 向导流程 | ✅ Complete |
+| [Chat Integration](./chat-integration.md) | 工作空间聊天页面集成 (**desktop only**) | ✅ Complete |
+| [Vibe Kanban Layout](./vibe-kanban-layout-architecture.md) | Vibe Kanban 三栏布局架构设计 | ✅ Complete |
+
+### To Fill
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | 📝 To fill |
+| [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | 📝 To fill |
+| [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | 📝 To fill |
+
+---
+
+## Related Module Specs
 
 ### Desktop-CLI Integration
 
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Desktop-CLI Integration](../modules/desktop-cli-integration.md) | Desktop 与 CLI 共享 @viben/core 库，UI 页面规范 | 📝 Specification |
+| [Desktop Creator Section](../modules/desktop-creator-section.md) | Desktop 创作者章节 (Publish, My Packages, Analytics) | 📝 Specification |
+
+### Workspace & Kanban
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Workspace Module](../modules/workspace/) | 工作空间模块索引 | - |
+| [Workspace Management](../modules/workspace/workspace-management.md) | Desktop 多工作空间系统 | ✅ Done |
+| [Kanban Integration](../modules/workspace/kanban-integration.md) | Kanban 整体架构 | 📝 Specification |
+| [Kanban Features](../modules/workspace/kanban-features.md) | Kanban 核心功能 | 📝 Specification |
+
+### Chat & Social
+
+| Guide | Description | Status |
+|-------|-------------|--------|
+| [Chat Module](../modules/chat/) | Chat 模块索引 | - |
+| [Social Chat Module](../modules/social-chat/) | 社交聊天模块索引 | - |
 
 ---
 
@@ -58,7 +94,7 @@ Viben follows a **"Warm Futurism"** aesthetic:
 - **Styling**: Tailwind CSS 4.1 + CSS custom properties
 - **UI Components**: shadcn/ui (Radix UI primitives)
 - **Animation**: Framer Motion + CSS animations
-- **Icons**: Lucide React
+- **Icons**: Lucide React + @lobehub/icons (AI model icons)
 - **Build**: Vite + Tauri (desktop app)
 
 ---
@@ -87,16 +123,19 @@ Viben follows a **"Warm Futurism"** aesthetic:
 
 ---
 
-## How to Fill These Guidelines
+## AI Model Icons
 
-For each guideline file:
+Use `@lobehub/icons` for AI model branding icons:
 
-1. Document your project's **actual conventions** (not ideals)
-2. Include **code examples** from the codebase
-3. List **forbidden patterns** and why
-4. Add **common mistakes** to avoid
+```tsx
+import Claude from "@lobehub/icons/es/Claude";
+import OpenAI from "@lobehub/icons/es/OpenAI";
 
-The goal is to help AI assistants and new team members understand how YOUR project works.
+<Claude.Color size={20} />  // Color variant
+<OpenAI size={20} />        // Mono variant
+```
+
+See [CLAUDE.md](../../../CLAUDE.md) for the full icon list.
 
 ---
 
@@ -125,4 +164,4 @@ We are currently migrating from a generic design to the Viben Design System:
 
 ---
 
-**Language**: All documentation should be written in **English**.
+**Language**: Documentation in English, spec content can be in Chinese.

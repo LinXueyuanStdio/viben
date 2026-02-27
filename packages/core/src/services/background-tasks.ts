@@ -16,7 +16,7 @@ export interface BackgroundTask {
   /** User prompt (for display) */
   prompt: string;
   /** Task status */
-  status: "running" | "completed" | "error" | "cancelled";
+  status: "todo" | "running" | "completed" | "error" | "cancelled";
   /** Start time */
   startedAt: Date;
   /** Completion time */

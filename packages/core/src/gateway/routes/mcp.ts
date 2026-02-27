@@ -4,10 +4,15 @@
  * Provides HTTP API for:
  * - Global MCP server installation management
  * - Agent-specific MCP server configuration
+ * - Browse-MCP process management
  */
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { mcpManager } from "../../mcp";
 import type { McpServer } from "../../types";
+import { exec, spawn, type ChildProcess } from "node:child_process";
+import { promisify } from "node:util";
+
+const execAsync = promisify(exec);
 
 // ============================================================================
 // Types
@@ -27,6 +32,67 @@ interface InstalledMcpResponse {
   path?: string;
   installedAt?: string;
 }
+
+interface McpStatus {
+  running: boolean;
+  pid: number | null;
+  transport: string | null;
+  port: number | null;
+}
+
+interface PortStatus {
+  in_use: boolean;
+  pid: number | null;
+  process_name: string | null;
+}
+
+interface McpStartConfig {
+  python_path: string;
+  transport: string;
+  port: number;
+}
+
+// Browse-MCP process state (singleton for the gateway)
+let browseMcpProcess: ChildProcess | null = null;
+let browseMcpStatus: McpStatus = {
+  running: false,
+  pid: null,
+  transport: null,
+  port: null,
+};
+
+// MCP Proxy types and state
+interface McpProxyConfig {
+  python_path: string;
+  host: string;
+  port: number;
+  auth_token?: string;
+}
+
+interface McpProxyStatus {
+  running: boolean;
+  pid: number | null;
+  host: string | null;
+  port: number | null;
+  auth_token: string | null;
+  url: string | null;
+}
+
+interface PortProcess {
+  pid: number;
+  name: string | null;
+  is_mcp_proxy: boolean;
+}
+
+let mcpProxyProcess: ChildProcess | null = null;
+let mcpProxyStatus: McpProxyStatus = {
+  running: false,
+  pid: null,
+  host: null,
+  port: null,
+  auth_token: null,
+  url: null,
+};
 
 // ============================================================================
 // Route Registration
@@ -290,4 +356,576 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
       }
     }
   );
+
+  // ========================================================================
+  // Browse-MCP Process Management
+  // ========================================================================
+
+  /**
+   * Get browse-mcp server status
+   * GET /api/mcp/browse/status
+   */
+  fastify.get("/api/mcp/browse/status", async () => {
+    // Check if process is still alive
+    if (browseMcpStatus.running && browseMcpStatus.pid) {
+      const alive = isProcessAlive(browseMcpStatus.pid);
+      if (!alive) {
+        browseMcpStatus = {
+          running: false,
+          pid: null,
+          transport: null,
+          port: null,
+        };
+        browseMcpProcess = null;
+      }
+    }
+    return browseMcpStatus;
+  });
+
+  /**
+   * Start browse-mcp server
+   * POST /api/mcp/browse/start
+   */
+  fastify.post<{
+    Body: McpStartConfig;
+  }>("/api/mcp/browse/start", async (request, reply) => {
+    const { python_path, transport, port } = request.body;
+
+    // Check if already running
+    if (browseMcpStatus.running && browseMcpStatus.pid) {
+      const alive = isProcessAlive(browseMcpStatus.pid);
+      if (alive) {
+        return browseMcpStatus;
+      }
+    }
+
+    // Check if port is in use
+    const portStatus = await checkPortStatus(port);
+    if (portStatus.in_use) {
+      reply.code(400);
+      return {
+        error: `Port ${port} is already in use${portStatus.process_name ? ` by ${portStatus.process_name}` : ""}`,
+      };
+    }
+
+    try {
+      // Start browse-mcp process
+      const args = transport === "sse"
+        ? ["-m", "browse_mcp", "--transport", "sse", "--port", String(port)]
+        : ["-m", "browse_mcp"];
+
+      const child = spawn(python_path, args, {
+        detached: true,
+        stdio: "ignore",
+      });
+
+      child.unref();
+
+      if (!child.pid) {
+        throw new Error("Failed to start browse-mcp: no PID");
+      }
+
+      browseMcpProcess = child;
+      browseMcpStatus = {
+        running: true,
+        pid: child.pid,
+        transport,
+        port,
+      };
+
+      return browseMcpStatus;
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to start browse-mcp" };
+    }
+  });
+
+  /**
+   * Stop browse-mcp server
+   * POST /api/mcp/browse/stop
+   */
+  fastify.post("/api/mcp/browse/stop", async (_request, reply) => {
+    if (!browseMcpStatus.running || !browseMcpStatus.pid) {
+      return { success: true, message: "Server not running" };
+    }
+
+    try {
+      const killed = await killProcess(browseMcpStatus.pid);
+      if (killed) {
+        browseMcpStatus = {
+          running: false,
+          pid: null,
+          transport: null,
+          port: null,
+        };
+        browseMcpProcess = null;
+        return { success: true };
+      }
+      reply.code(500);
+      return { error: "Failed to stop browse-mcp" };
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to stop browse-mcp" };
+    }
+  });
+
+  /**
+   * Test browse-mcp connection
+   * POST /api/mcp/browse/test
+   */
+  fastify.post<{
+    Body: { python_path: string };
+  }>("/api/mcp/browse/test", async (request) => {
+    const { python_path } = request.body;
+
+    try {
+      // Check if browse-mcp is installed
+      const { stdout } = await execAsync(`"${python_path}" -c "import browse_mcp; print('ok')"`, {
+        timeout: 5000,
+      });
+      return { connected: stdout.trim() === "ok" };
+    } catch {
+      return { connected: false };
+    }
+  });
+
+  /**
+   * Check port status
+   * POST /api/mcp/port/status
+   */
+  fastify.post<{
+    Body: { port: number };
+  }>("/api/mcp/port/status", async (request) => {
+    const { port } = request.body;
+    return checkPortStatus(port);
+  });
+
+  /**
+   * Kill a process by PID
+   * POST /api/mcp/process/kill
+   */
+  fastify.post<{
+    Body: { pid: number };
+  }>("/api/mcp/process/kill", async (request) => {
+    const { pid } = request.body;
+    const success = await killProcess(pid);
+    return { success };
+  });
+
+  /**
+   * Check if a process is alive
+   * POST /api/mcp/process/alive
+   */
+  fastify.post<{
+    Body: { pid: number };
+  }>("/api/mcp/process/alive", async (request) => {
+    const { pid } = request.body;
+    return { alive: isProcessAlive(pid) };
+  });
+
+  // ========================================================================
+  // MCP Proxy Management
+  // ========================================================================
+
+  /**
+   * Get MCP proxy status
+   * GET /api/mcp/proxy/status
+   */
+  fastify.get("/api/mcp/proxy/status", async () => {
+    // Check if process is still alive
+    if (mcpProxyStatus.running && mcpProxyStatus.pid) {
+      const alive = isProcessAlive(mcpProxyStatus.pid);
+      if (!alive) {
+        mcpProxyStatus = {
+          running: false,
+          pid: null,
+          host: null,
+          port: null,
+          auth_token: null,
+          url: null,
+        };
+        mcpProxyProcess = null;
+      }
+    }
+    return mcpProxyStatus;
+  });
+
+  /**
+   * Check if MCP proxy is installed
+   * POST /api/mcp/proxy/check-installed
+   */
+  fastify.post<{
+    Body: { python_path: string };
+  }>("/api/mcp/proxy/check-installed", async (request) => {
+    const { python_path } = request.body;
+
+    try {
+      const { stdout } = await execAsync(
+        `"${python_path}" -c "import browse_mcp_proxy; print('ok')"`,
+        { timeout: 5000 }
+      );
+      return { installed: stdout.trim() === "ok" };
+    } catch {
+      return { installed: false };
+    }
+  });
+
+  /**
+   * Start MCP proxy
+   * POST /api/mcp/proxy/start
+   */
+  fastify.post<{
+    Body: McpProxyConfig;
+  }>("/api/mcp/proxy/start", async (request, reply) => {
+    const { python_path, host, port } = request.body;
+
+    // Check if already running
+    if (mcpProxyStatus.running && mcpProxyStatus.pid) {
+      const alive = isProcessAlive(mcpProxyStatus.pid);
+      if (alive) {
+        return mcpProxyStatus;
+      }
+    }
+
+    // Check if port is in use
+    const portProcess = await getPortProcess(port);
+    if (portProcess) {
+      if (portProcess.is_mcp_proxy) {
+        reply.code(400);
+        return {
+          error: `PROXY_ALREADY_RUNNING:${portProcess.pid}`,
+        };
+      }
+      reply.code(400);
+      return {
+        error: `PORT_IN_USE:${port}`,
+      };
+    }
+
+    try {
+      // Generate auth token
+      const authToken = generateAuthToken();
+
+      // Start proxy process
+      const child = spawn(
+        python_path,
+        ["-m", "browse_mcp_proxy", "--host", host, "--port", String(port)],
+        {
+          detached: true,
+          stdio: "ignore",
+          env: {
+            ...process.env,
+            MCP_PROXY_AUTH_TOKEN: authToken,
+          },
+        }
+      );
+
+      child.unref();
+
+      if (!child.pid) {
+        throw new Error("Failed to start MCP proxy: no PID");
+      }
+
+      mcpProxyProcess = child;
+      mcpProxyStatus = {
+        running: true,
+        pid: child.pid,
+        host,
+        port,
+        auth_token: authToken,
+        url: `http://${host}:${port}`,
+      };
+
+      return mcpProxyStatus;
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to start MCP proxy" };
+    }
+  });
+
+  /**
+   * Stop MCP proxy
+   * POST /api/mcp/proxy/stop
+   */
+  fastify.post("/api/mcp/proxy/stop", async (_request, reply) => {
+    if (!mcpProxyStatus.running || !mcpProxyStatus.pid) {
+      return { success: true, message: "Proxy not running" };
+    }
+
+    try {
+      const killed = await killProcess(mcpProxyStatus.pid);
+      if (killed) {
+        mcpProxyStatus = {
+          running: false,
+          pid: null,
+          host: null,
+          port: null,
+          auth_token: null,
+          url: null,
+        };
+        mcpProxyProcess = null;
+        return { success: true };
+      }
+      reply.code(500);
+      return { error: "Failed to stop MCP proxy" };
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to stop MCP proxy" };
+    }
+  });
+
+  /**
+   * Install MCP proxy
+   * POST /api/mcp/proxy/install
+   */
+  fastify.post<{
+    Body: { python_path: string };
+  }>("/api/mcp/proxy/install", async (request, reply) => {
+    const { python_path } = request.body;
+
+    try {
+      await execAsync(`"${python_path}" -m pip install browse-mcp-proxy`, {
+        timeout: 60000, // 1 minute timeout for installation
+      });
+      return { success: true };
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to install MCP proxy" };
+    }
+  });
+
+  /**
+   * Get process using a port
+   * POST /api/mcp/proxy/port-process
+   */
+  fastify.post<{
+    Body: { port: number };
+  }>("/api/mcp/proxy/port-process", async (request) => {
+    const { port } = request.body;
+    const portProcess = await getPortProcess(port);
+    return { process: portProcess };
+  });
+
+  /**
+   * Kill process using a port
+   * POST /api/mcp/proxy/kill-port-process
+   */
+  fastify.post<{
+    Body: { port: number };
+  }>("/api/mcp/proxy/kill-port-process", async (request, reply) => {
+    const { port } = request.body;
+
+    const portProcess = await getPortProcess(port);
+    if (!portProcess) {
+      return { success: true, message: "No process found on port" };
+    }
+
+    try {
+      const killed = await killProcess(portProcess.pid);
+      if (killed) {
+        // If it was our proxy, clear the status
+        if (mcpProxyStatus.pid === portProcess.pid) {
+          mcpProxyStatus = {
+            running: false,
+            pid: null,
+            host: null,
+            port: null,
+            auth_token: null,
+            url: null,
+          };
+          mcpProxyProcess = null;
+        }
+        return { success: true };
+      }
+      reply.code(500);
+      return { error: "Failed to kill process" };
+    } catch (e) {
+      reply.code(500);
+      return { error: e instanceof Error ? e.message : "Failed to kill process" };
+    }
+  });
+
+  // ========================================================================
+  // MCP Server Status Checking
+  // ========================================================================
+
+  /**
+   * Check MCP server status on a port
+   * POST /api/mcp/server/check-port
+   */
+  fastify.post<{
+    Body: { port: number };
+  }>("/api/mcp/server/check-port", async (request) => {
+    const { port } = request.body;
+    return checkMcpServerOnPort(port);
+  });
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Check if a process is alive by PID
+ */
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Kill a process by PID
+ */
+async function killProcess(pid: number): Promise<boolean> {
+  try {
+    process.kill(pid, "SIGTERM");
+
+    // Wait for process to terminate
+    await new Promise<void>((resolve) => {
+      let attempts = 0;
+      const check = () => {
+        if (!isProcessAlive(pid) || attempts >= 10) {
+          resolve();
+          return;
+        }
+        attempts++;
+        setTimeout(check, 200);
+      };
+      check();
+    });
+
+    // Force kill if still running
+    if (isProcessAlive(pid)) {
+      process.kill(pid, "SIGKILL");
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a port is in use
+ */
+async function checkPortStatus(port: number): Promise<PortStatus> {
+  try {
+    const platform = process.platform;
+    let command: string;
+
+    if (platform === "darwin" || platform === "linux") {
+      command = `lsof -i :${port} -t`;
+    } else if (platform === "win32") {
+      command = `netstat -ano | findstr :${port} | findstr LISTENING`;
+    } else {
+      return { in_use: false, pid: null, process_name: null };
+    }
+
+    try {
+      const { stdout } = await execAsync(command, { timeout: 5000 });
+      const pidStr = stdout.trim().split("\n")[0];
+      const pid = parseInt(pidStr, 10);
+
+      if (isNaN(pid)) {
+        return { in_use: false, pid: null, process_name: null };
+      }
+
+      // Get process name
+      let processName: string | null = null;
+      try {
+        if (platform === "darwin" || platform === "linux") {
+          const { stdout: psOutput } = await execAsync(`ps -p ${pid} -o comm=`);
+          processName = psOutput.trim();
+        }
+      } catch {
+        // Ignore process name lookup failures
+      }
+
+      return { in_use: true, pid, process_name: processName };
+    } catch {
+      // Command failed = port not in use
+      return { in_use: false, pid: null, process_name: null };
+    }
+  } catch {
+    return { in_use: false, pid: null, process_name: null };
+  }
+}
+
+/**
+ * Get process using a port with proxy detection
+ */
+async function getPortProcess(port: number): Promise<PortProcess | null> {
+  const status = await checkPortStatus(port);
+  if (!status.in_use || !status.pid) {
+    return null;
+  }
+
+  const isMcpProxy = status.process_name?.includes("browse_mcp_proxy") ||
+                     status.process_name?.includes("python") ||
+                     false;
+
+  return {
+    pid: status.pid,
+    name: status.process_name,
+    is_mcp_proxy: isMcpProxy,
+  };
+}
+
+/**
+ * Generate a random auth token
+ */
+function generateAuthToken(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+/**
+ * Check if a process on a port is an MCP server
+ */
+async function checkMcpServerOnPort(port: number): Promise<{
+  status: "running" | "stopped" | "conflict";
+  pid: number | null;
+  process_name: string | null;
+  is_mcp_server: boolean;
+}> {
+  const portStatus = await checkPortStatus(port);
+
+  if (!portStatus.in_use) {
+    return {
+      status: "stopped",
+      pid: null,
+      process_name: null,
+      is_mcp_server: false,
+    };
+  }
+
+  // Check if it looks like an MCP server
+  const isMcpServer = portStatus.process_name?.includes("browse") ||
+                      portStatus.process_name?.includes("mcp") ||
+                      portStatus.process_name?.includes("python") ||
+                      false;
+
+  if (isMcpServer) {
+    return {
+      status: "running",
+      pid: portStatus.pid,
+      process_name: portStatus.process_name,
+      is_mcp_server: true,
+    };
+  }
+
+  return {
+    status: "conflict",
+    pid: portStatus.pid,
+    process_name: portStatus.process_name,
+    is_mcp_server: false,
+  };
 }

@@ -85,9 +85,13 @@ import {
   isExecutorType,
   buildWorkspaceUrl,
 } from "@/hooks";
+import { useVibeKanbanTasks } from "@/hooks/use-vibe-kanban";
 import type { AgentMessage } from "@/types";
 import { cn } from "@/lib/utils";
 import { useChatConfigStore } from "@/stores/chat-config-store";
+import { useSlashCommands, type CommandContext } from "@/features/slash-commands";
+import type { SlashCommand } from "@viben/chat";
+import { useToast } from "@/hooks/use-toast";
 
 // ============================================================================
 // Resize Handle Component
@@ -388,6 +392,16 @@ export function WorkspaceChatPage() {
   const { workspaces, isLoading: isLoadingWorkspace } = useLocalWorkspaces();
   const workspace = workspaces.find((w) => w.id === workspaceId);
 
+  // Load kanban tasks for the current workspace
+  const { data: tasks = [], isLoading: isTasksLoading } = useVibeKanbanTasks(workspace?.path);
+
+  // Toast notifications
+  const toast = useToast();
+
+  // Slash commands - initialize early but agentId is set later
+  // We use a ref to track the latest selectedAgentId for the callback
+  const selectedAgentIdRef = React.useRef<string | null>(null);
+
   // Aggregated chat list from Gateway API (group chats, executors, agents)
   // This is the single source of truth for the left sidebar list
   const {
@@ -685,6 +699,18 @@ export function WorkspaceChatPage() {
   // Get chat config for agent selection
   // selectedAgentId is the single source of truth for both sidebar and input bar
   const { selectedAgentId, setSelectedAgentId } = useChatConfig();
+
+  // Update ref for slash command callback
+  selectedAgentIdRef.current = selectedAgentId;
+
+  // Slash commands
+  const {
+    commands: slashCommands,
+    execute: executeSlashCommand,
+  } = useSlashCommands({
+    workspacePath: workspace?.path,
+    agentId: selectedAgentId || undefined,
+  });
 
   // Chat notifications hook
   const { notifyAIResponse, notifyChatError } = useChatNotifications();
@@ -1170,8 +1196,17 @@ export function WorkspaceChatPage() {
           const agentMessages = uiMessages
             .map(uiMessageToAgentMessage)
             .filter((msg): msg is import("@/types").AgentMessage => msg !== null);
-          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages from ${uiMessages.length} UI messages, calling loadMessages`);
-          loadMessages(agentMessages);
+
+          // Extract SDK session ID from messages (find the last sdk_session message)
+          const sdkSessionMsg = uiMessages
+            .filter((msg): msg is { sdkSessionId: string } & typeof msg =>
+              msg.type === "sdk_session" && typeof msg.sdkSessionId === "string"
+            )
+            .pop();
+          const savedSdkSessionId = sdkSessionMsg?.sdkSessionId;
+
+          console.log(`[WorkspaceChat:Effect:Messages] Loaded ${agentMessages.length} messages from ${uiMessages.length} UI messages, SDK session: ${savedSdkSessionId || "none"}`);
+          loadMessages(agentMessages, savedSdkSessionId);
         } else {
           console.log(`[WorkspaceChat:Effect:Messages] No messages, calling clearMessages`);
           clearMessages();
@@ -1496,6 +1531,107 @@ export function WorkspaceChatPage() {
       setConversations(updated);
     }
   };
+
+  // Handle slash command execution
+  const handleSlashCommand = React.useCallback(
+    async (command: SlashCommand) => {
+      const context: CommandContext = {
+        sessionId: selectedConversationId || undefined,
+        messages: messages.map((m) => ({
+          role: m.type === "user" ? "user" : "assistant",
+          content: typeof m.content === "string" ? m.content : "",
+        })),
+        clearMessages,
+        sendMessage: handleSendMessage,
+        workspacePath: workspace?.path,
+        agentId: selectedAgentIdRef.current || undefined,
+        currentModel: currentAgent?.model,
+        setModel: undefined, // TODO: implement model switching
+        openDialog: (name, _props) => {
+          // Handle different dialog types
+          switch (name) {
+            case "command-help":
+              // Show help message with command count
+              toast.info(
+                t("commands.helpAvailable", "{{count}} commands available. Type / to browse.", { count: slashCommands.length }),
+                { description: t("commands.helpTip", "Use ↑↓ to navigate, Enter to select") }
+              );
+              break;
+            case "model-selector":
+              // TODO: open model selector
+              break;
+            case "agent-memory":
+              // TODO: open memory dialog
+              break;
+            case "usage-stats":
+              // TODO: open usage stats dialog
+              break;
+            case "login":
+              navigate("/login");
+              break;
+            case "logout-confirm":
+              // TODO: implement logout confirmation
+              break;
+            case "writing-mode":
+              // The writing mode is handled by the chat input component
+              break;
+            default:
+              console.warn(`Unknown dialog: ${name}`);
+          }
+        },
+        showToast: (message, type) => {
+          if (type === "error") {
+            toast.error(message);
+          } else if (type === "success") {
+            toast.success(message);
+          } else {
+            toast.info(message);
+          }
+        },
+        navigate,
+        t,
+      };
+
+      const result = await executeSlashCommand(command, context);
+
+      if (result) {
+        // Handle result
+        if (result.type === "message" && result.content) {
+          // Add as system message - for now just show as toast
+          const description = typeof result.content === "string" ? result.content : "Command executed";
+          toast.info(description, { description: `/${command.name}` });
+        } else if (result.type === "prompt" && result.prompt) {
+          // Send prompt to AI
+          handleSendMessage(result.prompt);
+        } else if (result.type === "action" && result.toast) {
+          if (result.toast.type === "error") {
+            toast.error(result.toast.message);
+          } else {
+            toast.success(result.toast.message);
+          }
+        } else if (result.type === "ui") {
+          if (result.dialog) {
+            context.openDialog(result.dialog.name, result.dialog.props);
+          }
+          if (result.navigateTo) {
+            navigate(result.navigateTo);
+          }
+        }
+      }
+    },
+    [
+      selectedConversationId,
+      messages,
+      clearMessages,
+      handleSendMessage,
+      workspace?.path,
+      currentAgent?.model,
+      executeSlashCommand,
+      navigate,
+      t,
+      toast,
+    ]
+  );
 
   // Clear current conversation's messages
   const handleClearMessages = () => {
@@ -2679,6 +2815,8 @@ export function WorkspaceChatPage() {
                   hideExecutorSelector
                   hideModelSelector
                   showSandboxToggle
+                  slashCommands={slashCommands}
+                  onSlashCommand={handleSlashCommand}
                   onAgentSettings={(agentId) => {
                     // Navigate to agent orchestration page
                     if (workspace?.path) {
@@ -2721,6 +2859,15 @@ export function WorkspaceChatPage() {
           onClose={() => setIsSidebarOpen(false)}
           width={rightPanelWidth}
           onResize={handleRightPanelResize}
+          // Tasks props
+          tasks={tasks}
+          isTasksLoading={isTasksLoading}
+          onTaskClick={(task) => {
+            // Navigate to kanban page with the task selected
+            if (workspace?.path) {
+              navigate(`/workspace/${workspaceId}/kanban?task_id=${task.id}`);
+            }
+          }}
           // Artifact-message linking props
           highlightedArtifactId={highlightedArtifactId}
           onArtifactSelect={handleArtifactSelect}

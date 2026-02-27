@@ -49,7 +49,7 @@ import {
   useExecutors,
   useAgentConversation,
 } from "@/hooks";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
 
 // ============================================================================
@@ -358,7 +358,8 @@ export function ExecutorDetailPage() {
   const handleOpenFolder = useCallback(async () => {
     if (!executorFolderPath) return;
     try {
-      await invoke("open_path", { path: executorFolderPath });
+      const client = getGatewayClient();
+      await client.revealFile(executorFolderPath);
     } catch (err) {
       console.error("Failed to open folder:", err);
     }
@@ -650,7 +651,8 @@ export function ExecutorDetailPage() {
                                   onClick={async () => {
                                     try {
                                       const dir = executor.global_config_path!.replace(/\/[^/]+$/, "");
-                                      await invoke("open_path", { path: dir });
+                                      const client = getGatewayClient();
+                                      await client.revealFile(dir);
                                     } catch (err) {
                                       console.error("Failed to open folder:", err);
                                     }

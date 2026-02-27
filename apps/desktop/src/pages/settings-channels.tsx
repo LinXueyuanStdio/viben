@@ -765,13 +765,31 @@ function initFormStateFromChannel(channel: GatewayChannel): ChannelFormState {
     agent_binding: channel.agent_binding || null,
   };
 
-  switch (channel.config.type) {
+  // Use channel_type from the top-level field, not config.type
+  // because the API returns config without the type field
+  const config = channel.config as Record<string, unknown>;
+
+  switch (channel.channel_type) {
     case "telegram":
-      return { ...base, token: channel.config.token, chat_id: channel.config.chat_id, proxy: channel.config.proxy };
+      return {
+        ...base,
+        token: (config.token as string) || "",
+        chat_id: (config.chat_id as string) || "",
+        proxy: (config.proxy as string) || "",
+      };
     case "discord":
-      return { ...base, token: channel.config.token };
+      return {
+        ...base,
+        token: (config.token as string) || "",
+      };
     case "feishu":
-      return { ...base, app_id: channel.config.app_id, app_secret: channel.config.app_secret };
+      return {
+        ...base,
+        app_id: (config.app_id as string) || "",
+        app_secret: (config.app_secret as string) || "",
+      };
+    case "whatsapp":
+      return base;
     default:
       return base;
   }

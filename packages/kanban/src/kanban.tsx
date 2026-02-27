@@ -151,15 +151,20 @@ export const KanbanCard = ({
     }
   };
 
+  // When dragging with DragOverlay, we don't apply transform to the original card
+  // The original card stays in place (as a placeholder) while DragOverlay follows cursor
   return (
     <div
       className={cn(
         "group relative p-3 outline-none flex flex-col gap-2",
-        "bg-card rounded-lg border border-border/60",
-        "transition-all duration-200 ease-out",
+        "rounded-lg border",
+        "transition-all duration-150 ease-out",
         !dragDisabled && "cursor-grab active:cursor-grabbing",
-        isDragging && "opacity-50 scale-[0.98] border-primary/50 bg-accent/30",
-        isOpen && "ring-2 ring-primary/60 border-primary/30 bg-accent/40",
+        // When dragging: show as a subtle dashed placeholder
+        isDragging
+          ? "border-dashed border-muted-foreground/30 bg-muted/30"
+          : "bg-card border-border/60",
+        isOpen && !isDragging && "ring-2 ring-primary/60 border-primary/30 bg-accent/40",
         !isDragging && !isOpen && "hover:border-border hover:shadow-sm hover:bg-accent/20",
         className
       )}
@@ -169,54 +174,48 @@ export const KanbanCard = ({
       tabIndex={tabIndex}
       onClick={onClick}
       onKeyDown={onKeyDown}
-      style={{
-        zIndex: isDragging ? 1000 : 1,
-        transform: transform
-          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
-          : undefined,
-        transition: isDragging
-          ? "opacity 150ms, transform 0ms"
-          : "all 200ms cubic-bezier(0.2, 0, 0, 1)",
-      }}
     >
-      {/* More menu button - top right corner, visible on hover */}
-      {showMoreMenu && (
-        renderMoreMenu ? (
-          <div
-            className={cn(
-              "absolute top-2 right-2",
-              "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
-              "transition-all duration-150"
-            )}
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            {renderMoreMenu()}
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "absolute top-2 right-2 h-6 w-6 rounded-md",
-              "opacity-0 group-hover:opacity-100 focus:opacity-100",
-              "transition-all duration-150",
-              "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-            )}
-            onClick={(e) => {
-              e.stopPropagation();
-              onMoreClick?.(e);
-            }}
-            onPointerDown={(e) => e.stopPropagation()}
-            aria-label="More actions"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        )
-      )}
+      {/* Content wrapper - invisible when dragging to show placeholder */}
+      <div className={cn("contents", isDragging && "[&>*]:invisible")}>
+        {/* More menu button - top right corner, visible on hover */}
+        {showMoreMenu && (
+          renderMoreMenu ? (
+            <div
+              className={cn(
+                "absolute top-2 right-2",
+                "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+                "transition-all duration-150"
+              )}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {renderMoreMenu()}
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "absolute top-2 right-2 h-6 w-6 rounded-md",
+                "opacity-0 group-hover:opacity-100 focus:opacity-100",
+                "transition-all duration-150",
+                "hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoreClick?.(e);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label="More actions"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          )
+        )}
 
-      {/* Card content */}
-      {children ?? <p className="m-0 text-sm leading-snug">{name}</p>}
+        {/* Card content */}
+        {children ?? <p className="m-0 text-sm leading-snug">{name}</p>}
+      </div>
     </div>
   );
 };
@@ -430,11 +429,9 @@ export const KanbanProvider = ({
       </div>
       {renderDragOverlay && (
         <DragOverlay
-          dropAnimation={{
-            duration: 250,
-            easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)", // Spring-like easing
-          }}
+          dropAnimation={null}
           className="cursor-grabbing"
+          style={{ zIndex: 9999 }}
         >
           {activeId ? renderDragOverlay(activeId) : null}
         </DragOverlay>

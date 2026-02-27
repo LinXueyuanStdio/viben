@@ -1,28 +1,13 @@
 import { useState, useCallback, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import {
+  getGatewayClient,
+  type McpProxyConfig,
+  type McpProxyStatus,
+  type PortProcess,
+} from "@/lib/gateway";
 import { usePython } from "./use-python";
 
-export interface McpProxyConfig {
-  python_path: string;
-  host: string;
-  port: number;
-  auth_token?: string;
-}
-
-export interface McpProxyStatus {
-  running: boolean;
-  pid: number | null;
-  host: string | null;
-  port: number | null;
-  auth_token: string | null;
-  url: string | null;
-}
-
-export interface PortProcess {
-  pid: number;
-  name: string | null;
-  is_mcp_proxy: boolean;
-}
+export type { McpProxyConfig, McpProxyStatus, PortProcess };
 
 export type PortConflictType = 'proxy_already_running' | 'other_process';
 
@@ -62,7 +47,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
 
   const refreshStatus = useCallback(async () => {
     try {
-      const result = await invoke<McpProxyStatus>("get_mcp_proxy_status");
+      const client = getGatewayClient();
+      const result = await client.getMcpProxyStatus();
       setStatus(result);
       setError(null);
     } catch (e) {
@@ -73,12 +59,11 @@ export function useMcpProxy(): UseMcpProxyReturn {
   const checkInstalled = useCallback(async (): Promise<boolean> => {
     try {
       const path = pythonPath || DEFAULT_CONFIG.python_path;
-      const result = await invoke<boolean>("check_mcp_proxy_installed", {
-        pythonPath: path,
-      });
+      const client = getGatewayClient();
+      const result = await client.checkMcpProxyInstalled(path);
       setIsInstalled(result);
       return result;
-    } catch (e) {
+    } catch {
       setIsInstalled(false);
       return false;
     }
@@ -96,9 +81,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
         ...config,
       };
 
-      const result = await invoke<McpProxyStatus>("start_mcp_proxy", {
-        config: fullConfig,
-      });
+      const client = getGatewayClient();
+      const result = await client.startMcpProxy(fullConfig);
 
       setStatus(result);
       return result;
@@ -107,35 +91,39 @@ export function useMcpProxy(): UseMcpProxyReturn {
       const port = config?.port || DEFAULT_CONFIG.port;
 
       // Check for proxy already running error
-      if (errorMsg.startsWith("PROXY_ALREADY_RUNNING:")) {
+      if (errorMsg.includes("PROXY_ALREADY_RUNNING:")) {
         const parts = errorMsg.split(":");
-        const pid = parseInt(parts[2], 10);
-        setPortConflict({
-          process: { pid, name: "browse-mcp-proxy", is_mcp_proxy: true },
-          type: 'proxy_already_running'
-        });
-        setError(null); // Don't show error for existing proxy
-        // Set status as if proxy is running (without auth token - user needs to adopt or restart)
-        setStatus({
-          running: false, // Mark as not managed by us
-          pid,
-          host: "127.0.0.1",
-          port,
-          auth_token: null,
-          url: `http://127.0.0.1:${port}`,
-        });
-        throw new Error("PROXY_ALREADY_RUNNING");
+        const pidStr = parts[parts.length - 1];
+        const pid = parseInt(pidStr, 10);
+        if (!isNaN(pid)) {
+          setPortConflict({
+            process: { pid, name: "browse-mcp-proxy", is_mcp_proxy: true },
+            type: 'proxy_already_running'
+          });
+          setError(null); // Don't show error for existing proxy
+          // Set status as if proxy is running (without auth token - user needs to adopt or restart)
+          setStatus({
+            running: false, // Mark as not managed by us
+            pid,
+            host: "127.0.0.1",
+            port,
+            auth_token: null,
+            url: `http://127.0.0.1:${port}`,
+          });
+          throw new Error("PROXY_ALREADY_RUNNING");
+        }
       }
 
       // Check for port in use by other process
-      if (errorMsg.startsWith("PORT_IN_USE:")) {
+      if (errorMsg.includes("PORT_IN_USE:")) {
         try {
-          const process = await invoke<PortProcess | null>("get_port_process", { port });
+          const client = getGatewayClient();
+          const process = await client.getPortProcess(port);
           if (process) {
             setPortConflict({ process, type: 'other_process' });
           }
         } catch {
-          // Ignore errors from get_port_process
+          // Ignore errors from getPortProcess
         }
         setError(`Port ${port} is in use by another process`);
         throw new Error(errorMsg);
@@ -153,7 +141,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
     setError(null);
 
     try {
-      await invoke("stop_mcp_proxy");
+      const client = getGatewayClient();
+      await client.stopMcpProxy();
       setStatus({
         running: false,
         pid: null,
@@ -176,7 +165,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
 
     try {
       const path = pythonPath || DEFAULT_CONFIG.python_path;
-      await invoke("install_mcp_proxy", { pythonPath: path });
+      const client = getGatewayClient();
+      await client.installMcpProxy(path);
       setIsInstalled(true);
     } catch (e) {
       setError(String(e));
@@ -189,8 +179,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
   const getPortProcess = useCallback(async (port?: number): Promise<PortProcess | null> => {
     try {
       const targetPort = port || DEFAULT_CONFIG.port;
-      const result = await invoke<PortProcess | null>("get_port_process", { port: targetPort });
-      return result;
+      const client = getGatewayClient();
+      return await client.getPortProcess(targetPort);
     } catch {
       return null;
     }
@@ -202,7 +192,8 @@ export function useMcpProxy(): UseMcpProxyReturn {
 
     try {
       const targetPort = port || DEFAULT_CONFIG.port;
-      await invoke("kill_port_process", { port: targetPort });
+      const client = getGatewayClient();
+      await client.killPortProcess(targetPort);
       setPortConflict(null);
     } catch (e) {
       setError(String(e));
@@ -218,9 +209,10 @@ export function useMcpProxy(): UseMcpProxyReturn {
 
     try {
       const targetPort = port || DEFAULT_CONFIG.port;
+      const client = getGatewayClient();
 
       // Kill the process using the port
-      await invoke("kill_port_process", { port: targetPort });
+      await client.killPortProcess(targetPort);
       setPortConflict(null);
 
       // Wait a moment for the port to be released
@@ -233,9 +225,7 @@ export function useMcpProxy(): UseMcpProxyReturn {
         port: targetPort,
       };
 
-      const result = await invoke<McpProxyStatus>("start_mcp_proxy", {
-        config: fullConfig,
-      });
+      const result = await client.startMcpProxy(fullConfig);
 
       setStatus(result);
       return result;

@@ -21,8 +21,9 @@ These guides help you **ask the right questions before coding**.
 
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
-| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | 识别模式，减少重复代码 | When you notice repeated patterns |
+| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | 思考跨层数据流 | Features spanning multiple layers |
+| [Design Guide](./design.md) | UI/UX 设计原则与规范 | When designing new UI features |
 
 ---
 
@@ -47,6 +48,15 @@ These guides help you **ask the right questions before coding**.
 
 → Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
 
+### When to Think About Design
+
+- [ ] Creating a new UI component or page
+- [ ] Designing user interaction flows
+- [ ] Choosing layout patterns
+- [ ] Deciding on visual hierarchy
+
+→ Read [Design Guide](./design.md)
+
 ---
 
 ## Pre-Modification Rule (CRITICAL)
@@ -70,9 +80,30 @@ This single habit prevents most "forgot to update X" bugs.
 
 ---
 
+## Related Resources
+
+### Frontend Guidelines
+- [Design System](../frontend/design-system.md) - Colors, typography, motion
+- [Component Guidelines](../frontend/components.md) - React patterns
+
+### Backend Guidelines
+- [Directory Structure](../backend/directory-structure.md) - Module organization
+- [Plugin Architecture](../backend/plugin-architecture.md) - Provider system
+
+### Module Specs
+- [Module Index](../modules/index.md) - All module specifications
+
+---
+
 ## Contributing
 
-Found a new "didn't think of that" moment? Add it to the relevant guide.
+Found a new "didn't think of that" moment? Add it to the relevant guide:
+
+1. Identify which guide it belongs to (or create a new one)
+2. Add it with a clear description of:
+   - What you didn't think about
+   - What went wrong
+   - How to avoid it next time
 
 ---
 

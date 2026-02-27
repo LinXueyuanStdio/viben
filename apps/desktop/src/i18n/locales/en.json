@@ -92,7 +92,8 @@
     "send": "Send",
     "you": "You",
     "unknown": "Unknown",
-    "openInExplorer": "Open in file manager"
+    "openInExplorer": "Open in file manager",
+    "learnMore": "Learn More"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -1821,7 +1822,11 @@
       "detected": "{{count}} AI client(s) detected",
       "readyToConfigure": "You can configure browse-mcp for these clients after setup.",
       "noClients": "No AI clients detected",
-      "noClientsHint": "You can still continue and install an AI client later."
+      "noClientsHint": "You can still continue and install an AI client later.",
+      "loggedIn": "Logged In",
+      "installed": "Installed",
+      "notFound": "Not Installed",
+      "supportsMcp": "Supports MCP (Model Context Protocol)"
     },
     "login": {
       "title": "Sign In (Optional)",

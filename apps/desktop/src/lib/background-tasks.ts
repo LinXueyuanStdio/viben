@@ -16,6 +16,8 @@ export interface LocalBackgroundTask {
   taskId: string;
   /** Backend session ID for API calls */
   sessionId: string;
+  /** SDK session ID for resume (Claude Agent SDK's internal session ID) */
+  sdkSessionId?: string;
   /** Abort controller for cancellation */
   abortController: AbortController;
   /** Whether task is still running */

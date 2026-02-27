@@ -190,10 +190,23 @@ export function useSlashCommands(
       }
 
       if (content.startsWith("/")) {
+        // Extract the command part (before any space)
         const cmdQuery = content.slice(1).split(/\s/)[0];
-        setQuery(cmdQuery);
-        setIsOpen(true);
-        setSelectedIndex(0);
+
+        // Close menu if:
+        // 1. User typed space right after "/" (e.g., "/ ")
+        // 2. User typed space after command (e.g., "/help ")
+        const hasSpaceAfterSlash = content.length > 1 && content[1] === " ";
+        const hasSpaceAfterCommand = content.includes(" ");
+
+        if (hasSpaceAfterSlash || hasSpaceAfterCommand) {
+          setIsOpen(false);
+          setQuery("");
+        } else {
+          setQuery(cmdQuery);
+          setIsOpen(true);
+          setSelectedIndex(0);
+        }
       } else {
         setIsOpen(false);
         setQuery("");

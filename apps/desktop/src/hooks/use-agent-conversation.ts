@@ -57,9 +57,11 @@ const mockDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, m
  * SSE message data from /api/agent/run endpoint
  */
 interface SSEMessageData {
-  type: "session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done";
+  type: "session" | "sdk_session" | "text" | "tool_use" | "tool_result" | "plan" | "question" | "result" | "error" | "done" | "pong";
   // session
   sessionId?: string;
+  // sdk_session - The SDK's internal session ID for resume
+  sdkSessionId?: string;
   // text
   content?: string;
   // tool_use
@@ -154,6 +156,8 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const [toolUsages, setToolUsages] = useState<ToolUsage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // SDK session ID - The SDK's internal session ID for resume (different from gateway sessionId)
+  const [sdkSessionId, setSdkSessionId] = useState<string | null>(null);
   const [gatewayConnected, setGatewayConnected] = useState<boolean | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -222,6 +226,15 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       case "session":
         if (data.sessionId) {
           setSessionId(data.sessionId);
+        }
+        break;
+
+      case "sdk_session":
+        // SDK's internal session ID for resume functionality
+        // This is different from the gateway session ID
+        if (data.sdkSessionId) {
+          console.log("[useAgent] Got SDK session ID:", data.sdkSessionId);
+          setSdkSessionId(data.sdkSessionId);
         }
         break;
 
@@ -832,6 +845,10 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
           // Session persistence: pass session/task IDs for backend to persist messages
           session_id: persistSessionId || undefined,
           task_id: currentTaskId,
+          // Resume from existing SDK session for multi-turn conversations
+          // Use sdkSessionId (from sdk_session message) which is the Claude Agent SDK's internal session ID
+          // This is required for multi-turn conversations to work correctly
+          resume: sdkSessionId || undefined,
           // Sandbox configuration (session-level)
           sandbox_config: sandboxConfig?.enabled ? {
             enabled: true,
@@ -927,7 +944,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
         }
       }
     },
-    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig]
+    [agentPath, agentConfig, workspaceId, handleSSEMessage, phase, persistSessionId, persistTaskId, sandboxConfig, sdkSessionId]
   );
 
   /**
@@ -1357,12 +1374,15 @@ The workspace ID for this session is: \`${workspaceId}\`
     setError(null);
     setPhase("idle");
     setSessionId(null);
+    setSdkSessionId(null);
   }, [client, useWebSocket, sendWebSocketMessage]);
 
   /**
    * Load messages (for restoring conversation history)
+   * @param savedMessages - Array of messages to restore
+   * @param savedSdkSessionId - Optional SDK session ID for resume functionality
    */
-  const loadMessages = useCallback((savedMessages: AgentMessage[]) => {
+  const loadMessages = useCallback((savedMessages: AgentMessage[], savedSdkSessionId?: string) => {
     setMessages(savedMessages);
     // Extract tool usages from messages
     const tools: ToolUsage[] = savedMessages
@@ -1379,6 +1399,11 @@ The workspace ID for this session is: \`${workspaceId}\`
       }));
     setToolUsages(tools);
     setPhase("idle");
+    // Restore SDK session ID if provided
+    if (savedSdkSessionId) {
+      console.log("[useAgent] Restoring SDK session ID:", savedSdkSessionId);
+      setSdkSessionId(savedSdkSessionId);
+    }
   }, []);
 
   /**
@@ -1398,6 +1423,7 @@ The workspace ID for this session is: \`${workspaceId}\`
       addBackgroundTask({
         taskId: currentTaskId,
         sessionId: sessionId || "",
+        sdkSessionId: sdkSessionId || undefined,
         abortController: abortControllerRef.current,
         isRunning: true,
         prompt: currentPrompt,
@@ -1420,7 +1446,7 @@ The workspace ID for this session is: \`${workspaceId}\`
       clearInterval(refreshIntervalRef.current);
       refreshIntervalRef.current = null;
     }
-  }, [sessionId, agentPath, workspaceId]);
+  }, [sessionId, sdkSessionId, agentPath, workspaceId]);
 
   /**
    * Switch to a different task, moving current task to background if running
@@ -1448,6 +1474,10 @@ The workspace ID for this session is: \`${workspaceId}\`
       // Restore abort controller
       abortControllerRef.current = backgroundTask.abortController;
       setSessionId(backgroundTask.sessionId);
+      // Restore SDK session ID for resume functionality
+      if (backgroundTask.sdkSessionId) {
+        setSdkSessionId(backgroundTask.sdkSessionId);
+      }
 
       // Check if the abort controller is still valid
       if (abortControllerRef.current.signal.aborted) {
