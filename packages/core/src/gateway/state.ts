@@ -9,6 +9,7 @@ import { CronService } from "../services/cron";
 import { ContainerService } from "../services/container";
 import { HistoryService } from "../services/history";
 import { MessageBus } from "../services/message-bus";
+import { ChannelRouter, channelManager } from "../channels";
 
 /**
  * Application state for the gateway
@@ -26,6 +27,8 @@ export interface AppState {
   history: HistoryService;
   /** Message bus for channel routing */
   messageBus: MessageBus;
+  /** Channel router for routing messages to bound agents */
+  channelRouter: ChannelRouter;
 }
 
 /**
@@ -39,6 +42,14 @@ export function createAppState(): AppState {
   const history = new HistoryService();
   const messageBus = new MessageBus(events);
 
+  // Create channel router with container service for agent execution
+  const channelRouter = new ChannelRouter({
+    events,
+    channels: channelManager,
+    container,
+    responseTimeout: 120000, // 2 minutes timeout for agent responses
+  });
+
   return {
     events,
     sessionStore,
@@ -46,5 +57,6 @@ export function createAppState(): AppState {
     container,
     history,
     messageBus,
+    channelRouter,
   };
 }

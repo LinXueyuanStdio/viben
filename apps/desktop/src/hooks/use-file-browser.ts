@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { FileEntry, FileInfo } from "@/types";
 
 export type ViewMode = "list" | "icon" | "column" | "gallery";
@@ -181,10 +181,18 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
-      const entries = await invoke<FileEntry[]>("read_directory", {
-        workspacePath,
-        dirPath: path,
-      });
+      const client = getGatewayClient();
+      const result = await client.listFiles(path);
+
+      // Map gateway response to FileEntry format
+      const entries: FileEntry[] = result.entries.map(entry => ({
+        name: entry.name,
+        path: entry.path,
+        is_directory: entry.is_directory,
+        size: entry.size,
+        modified: entry.modified_at,
+        created: entry.created_at,
+      }));
 
       // Sort: directories first, then files, alphabetically
       const sorted = entries.sort((a, b) => {
@@ -203,12 +211,12 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     } catch (err) {
       setState(prev => ({
         ...prev,
-        error: err as string,
+        error: err instanceof Error ? err.message : String(err),
         loading: false,
       }));
       return [];
     }
-  }, [workspacePath]);
+  }, []);
 
   // Navigate to a directory
   const navigateTo = useCallback((path: string, addToHistory = true) => {
@@ -447,49 +455,39 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
   // File operations
   const createFile = useCallback(async (name: string, content = "") => {
     try {
-      await invoke("create_file", {
-        workspacePath,
-        filePath: `${state.currentPath}/${name}`,
-        content,
-      });
+      const client = getGatewayClient();
+      await client.createFile(`${state.currentPath}/${name}`, content);
       await loadDirectory(state.currentPath);
     } catch (err) {
-      setState(prev => ({ ...prev, error: err as string }));
+      setState(prev => ({ ...prev, error: err instanceof Error ? err.message : String(err) }));
     }
-  }, [workspacePath, state.currentPath, loadDirectory]);
+  }, [state.currentPath, loadDirectory]);
 
   const createDirectory = useCallback(async (name: string) => {
     try {
-      await invoke("create_directory", {
-        workspacePath,
-        dirPath: `${state.currentPath}/${name}`,
-      });
+      const client = getGatewayClient();
+      await client.createDirectory(`${state.currentPath}/${name}`);
       await loadDirectory(state.currentPath);
     } catch (err) {
-      setState(prev => ({ ...prev, error: err as string }));
+      setState(prev => ({ ...prev, error: err instanceof Error ? err.message : String(err) }));
     }
-  }, [workspacePath, state.currentPath, loadDirectory]);
+  }, [state.currentPath, loadDirectory]);
 
   const renameItem = useCallback(async (oldPath: string, newName: string) => {
     try {
+      const client = getGatewayClient();
       const parentDir = oldPath.split("/").slice(0, -1).join("/");
-      await invoke("rename_item", {
-        workspacePath,
-        oldPath,
-        newPath: `${parentDir}/${newName}`,
-      });
+      await client.renameFile(oldPath, `${parentDir}/${newName}`);
       await loadDirectory(state.currentPath);
     } catch (err) {
-      setState(prev => ({ ...prev, error: err as string }));
+      setState(prev => ({ ...prev, error: err instanceof Error ? err.message : String(err) }));
     }
-  }, [workspacePath, state.currentPath, loadDirectory]);
+  }, [state.currentPath, loadDirectory]);
 
   const deleteItem = useCallback(async (path: string) => {
     try {
-      await invoke("delete_item", {
-        workspacePath,
-        itemPath: path,
-      });
+      const client = getGatewayClient();
+      await client.deleteFile(path, true);
       await loadDirectory(state.currentPath);
       setState(prev => ({
         ...prev,
@@ -497,9 +495,9 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
         selectedFiles: new Set([...prev.selectedFiles].filter(p => p !== path)),
       }));
     } catch (err) {
-      setState(prev => ({ ...prev, error: err as string }));
+      setState(prev => ({ ...prev, error: err instanceof Error ? err.message : String(err) }));
     }
-  }, [workspacePath, state.currentPath, loadDirectory]);
+  }, [state.currentPath, loadDirectory]);
 
   const copyToClipboard = useCallback((files: FileEntry[]) => {
     setState(prev => ({ ...prev, clipboard: { files, operation: "copy" } }));
@@ -513,20 +511,13 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
     if (!state.clipboard) return;
 
     try {
+      const client = getGatewayClient();
       for (const file of state.clipboard.files) {
         const destPath = `${state.currentPath}/${file.name}`;
         if (state.clipboard.operation === "copy") {
-          await invoke("copy_item", {
-            workspacePath,
-            srcPath: file.path,
-            destPath,
-          });
+          await client.copyFile(file.path, destPath);
         } else {
-          await invoke("move_item", {
-            workspacePath,
-            srcPath: file.path,
-            destPath,
-          });
+          await client.moveFile(file.path, destPath);
         }
       }
       await loadDirectory(state.currentPath);
@@ -534,31 +525,40 @@ export function useFileBrowser({ workspacePath, initialPath }: UseFileBrowserOpt
         setState(prev => ({ ...prev, clipboard: null }));
       }
     } catch (err) {
-      setState(prev => ({ ...prev, error: err as string }));
+      setState(prev => ({ ...prev, error: err instanceof Error ? err.message : String(err) }));
     }
-  }, [workspacePath, state.currentPath, state.clipboard, loadDirectory]);
+  }, [state.currentPath, state.clipboard, loadDirectory]);
 
   const getFileInfo = useCallback(async (path: string): Promise<FileInfo | null> => {
     try {
-      return await invoke<FileInfo>("get_file_info", {
-        workspacePath,
-        filePath: path,
-      });
+      const client = getGatewayClient();
+      const result = await client.listFiles(path.split("/").slice(0, -1).join("/"));
+      const fileName = path.split("/").pop();
+      const entry = result.entries.find(e => e.name === fileName);
+      if (!entry) return null;
+      return {
+        name: entry.name,
+        path: entry.path,
+        is_directory: entry.is_directory,
+        size: entry.size,
+        modified: entry.modified_at,
+        created: entry.created_at,
+        extension: entry.extension,
+      };
     } catch {
       return null;
     }
-  }, [workspacePath]);
+  }, []);
 
   const readFileContent = useCallback(async (path: string): Promise<string | null> => {
     try {
-      return await invoke<string>("read_file_content", {
-        workspacePath,
-        filePath: path,
-      });
+      const client = getGatewayClient();
+      const result = await client.readFile(path);
+      return result.content;
     } catch {
       return null;
     }
-  }, [workspacePath]);
+  }, []);
 
   // Load initial directory
   useEffect(() => {

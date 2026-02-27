@@ -1,6 +1,6 @@
 export { WorkspaceBreadcrumb, type BreadcrumbSegment } from "./workspace-breadcrumb";
 export { WorkspaceHeader } from "./workspace-header";
-export { TaskDetailPanel, type TaskDetailPanelProps, type TaskForPanel } from "./task-detail-panel";
+export { TaskDetailPanel, type TaskDetailPanelProps, type TaskForPanel, type AvailableTask } from "./task-detail-panel";
 
 // Executor components
 export { ExecutorList, type ExecutorListProps } from "./executor-list";

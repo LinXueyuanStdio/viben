@@ -25,7 +25,16 @@ import { registerAgentWsRoutes } from "./agent-ws";
 import { registerFileRoutes } from "./files";
 import { registerTelemetryRoutes } from "./telemetry";
 import { registerSandboxRoutes } from "./sandbox";
-import { registerKanbanRoutes } from "./kanban";
+import { registerCommandsRoutes } from "./commands";
+import { registerPythonRoutes } from "./python";
+import { registerServiceKeysRoutes } from "./service-keys";
+import { registerUsageRoutes } from "./usage";
+import { registerInstalledSourcesRoutes } from "./installed-sources";
+import { registerLogsRoutes } from "./logs";
+import { registerMarketplaceRoutes } from "./marketplace";
+import { registerOfficialRegistryRoutes } from "./official-registry";
+import { registerCacheRoutes } from "./cache";
+import { registerFilesystemRoutes } from "./filesystem";
 
 /**
  * Register all routes
@@ -53,7 +62,16 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerFileRoutes(fastify);
   registerTelemetryRoutes(fastify);
   registerSandboxRoutes(fastify);
-  registerKanbanRoutes(fastify);
+  registerCommandsRoutes(fastify);
+  registerPythonRoutes(fastify);
+  registerServiceKeysRoutes(fastify);
+  registerUsageRoutes(fastify);
+  registerInstalledSourcesRoutes(fastify);
+  registerLogsRoutes(fastify);
+  registerMarketplaceRoutes(fastify);
+  registerOfficialRegistryRoutes(fastify);
+  registerCacheRoutes(fastify);
+  registerFilesystemRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -79,7 +97,17 @@ export { registerAgentWsRoutes, getActiveWsSessionCount, closeAllWsSessions } fr
 export { registerFileRoutes } from "./files";
 export { registerTelemetryRoutes } from "./telemetry";
 export { registerSandboxRoutes } from "./sandbox";
-export { registerKanbanRoutes } from "./kanban";
+export { registerCommandsRoutes } from "./commands";
+export { registerPythonRoutes } from "./python";
+export type { PythonInfo, PackageInfo } from "./python";
+export { registerServiceKeysRoutes } from "./service-keys";
+export { registerUsageRoutes } from "./usage";
+export { registerInstalledSourcesRoutes } from "./installed-sources";
+export { registerLogsRoutes } from "./logs";
+export { registerMarketplaceRoutes } from "./marketplace";
+export { registerOfficialRegistryRoutes } from "./official-registry";
+export { registerCacheRoutes } from "./cache";
+export { registerFilesystemRoutes } from "./filesystem";
 export type {
   SSEEventType,
   SSEMessage,

@@ -1,114 +1,21 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import {
+  getGatewayClient,
+  type MarketplaceCategory,
+  type MarketplacePlugin,
+  type ProviderIndex,
+  type FlatSource,
+} from "@/lib/gateway";
 
-// ============================================================================
-// Types (v2 Schema - Plugin-centric)
-// ============================================================================
+export type {
+  MarketplaceCategory,
+  MarketplacePlugin,
+  ProviderIndex,
+  FlatSource,
+};
 
-/**
- * Category definition in the marketplace index
- */
-export interface MarketplaceCategory {
-  id: string;
-  name: string;
-  description: string;
-  icon?: string;
-  plugin_count: number;
-  source_count: number;
-}
-
-/**
- * Plugin info in the marketplace (v2 schema)
- */
-export interface MarketplacePlugin {
-  id: string;
-  name: string;
-  description: string;
-  version?: string;
-  author_name: string;
-  author_email?: string;
-  author_url?: string;
-  homepage?: string;
-  repository?: string;
-  license?: string;
-  categories: string[];
-  builtin: boolean;
-  package?: string;
-  source_count: number;
-  sources: string[];
-}
-
-/**
- * Full provider index response (v2 schema)
- */
-export interface ProviderIndex {
-  version: string;
-  updated_at?: string;
-  categories: MarketplaceCategory[];
-  plugins: MarketplacePlugin[];
-}
-
-/**
- * Flattened source for UI display
- */
-export interface FlatSource {
-  /** Hierarchical ID: plugin/source */
-  id: string;
-  /** Flat source name */
-  source_name: string;
-  /** Plugin ID */
-  plugin_id: string;
-  /** Display name */
-  name: string;
-  /** Description */
-  description: string;
-  /** Category ID */
-  category?: string;
-  /** API key requirement */
-  api_key_type: "none" | "optional" | "required";
-  /** Documentation URL */
-  documentation?: string;
-  /** Plugin display name */
-  plugin_name: string;
-}
-
-// ============================================================================
-// Installed Sources Types (from browse-mcp-cli)
-// ============================================================================
-
-/**
- * Source info from the CLI output
- */
-export interface InstalledSource {
-  name: string;
-  provider: string;
-  enabled: boolean;
-}
-
-/**
- * Provider info from the CLI output
- */
-export interface InstalledProviderInfo {
-  name: string;
-  description?: string;
-  package?: string;
-  sources: string[];
-  count: number;
-}
-
-/**
- * Response from browse-mcp-cli list
- */
-export interface InstalledSourcesResponse {
-  providers: Record<string, InstalledProviderInfo>;
-  sources: InstalledSource[];
-  total: number;
-  enabled: number;
-}
-
-// ============================================================================
-// Hook
-// ============================================================================
+// Re-export types for backwards compatibility
+export type { InstalledSource, InstalledProviderInfo, InstalledSourcesResponse } from "@/lib/gateway";
 
 /**
  * Hook for accessing the plugin marketplace
@@ -126,9 +33,8 @@ export function useMarketplace() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<ProviderIndex>("get_provider_index", {
-        forceRefresh,
-      });
+      const client = getGatewayClient();
+      const result = await client.getProviderIndex(forceRefresh);
       setIndex(result);
       return result;
     } catch (err) {
@@ -147,7 +53,8 @@ export function useMarketplace() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<FlatSource[]>("get_flat_sources");
+      const client = getGatewayClient();
+      const result = await client.getFlatSources();
       setSources(result);
       return result;
     } catch (err) {
@@ -164,7 +71,8 @@ export function useMarketplace() {
    */
   const clearCache = useCallback(async () => {
     try {
-      await invoke("clear_provider_cache");
+      const client = getGatewayClient();
+      await client.clearProviderCache();
       // Refresh after clearing
       await fetchIndex(true);
     } catch (err) {

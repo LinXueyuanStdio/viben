@@ -17,7 +17,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import {
   Dialog,
   DialogContent,
@@ -73,15 +73,14 @@ export function AgentMemoryDialog({
   const loadMemoryFiles = async () => {
     setLoading(true);
     try {
+      const client = getGatewayClient();
       const memoryDir = getMemoryPath();
 
       // Read MEMORY.md
       try {
-        const content = await invoke<string>("read_file", {
-          path: `${memoryDir}/MEMORY.md`
-        });
-        setMemoryContent(content);
-        setOriginalMemoryContent(content);
+        const result = await client.readFile(`${memoryDir}/MEMORY.md`);
+        setMemoryContent(result.content);
+        setOriginalMemoryContent(result.content);
       } catch {
         setMemoryContent("");
         setOriginalMemoryContent("");
@@ -90,10 +89,8 @@ export function AgentMemoryDialog({
       // Read today's log
       const today = new Date().toISOString().split("T")[0];
       try {
-        const content = await invoke<string>("read_file", {
-          path: `${memoryDir}/logs/${today}.md`
-        });
-        setTodayLogContent(content);
+        const result = await client.readFile(`${memoryDir}/logs/${today}.md`);
+        setTodayLogContent(result.content);
       } catch {
         setTodayLogContent("");
       }
@@ -101,10 +98,8 @@ export function AgentMemoryDialog({
       // Read yesterday's log
       const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
       try {
-        const content = await invoke<string>("read_file", {
-          path: `${memoryDir}/logs/${yesterday}.md`
-        });
-        setYesterdayLogContent(content);
+        const result = await client.readFile(`${memoryDir}/logs/${yesterday}.md`);
+        setYesterdayLogContent(result.content);
       } catch {
         setYesterdayLogContent("");
       }
@@ -118,11 +113,9 @@ export function AgentMemoryDialog({
   const handleSaveMemory = async () => {
     setSaving(true);
     try {
+      const client = getGatewayClient();
       const memoryDir = getMemoryPath();
-      await invoke("write_file", {
-        path: `${memoryDir}/MEMORY.md`,
-        content: memoryContent,
-      });
+      await client.writeFile(`${memoryDir}/MEMORY.md`, memoryContent);
       setOriginalMemoryContent(memoryContent);
     } catch (err) {
       console.error("Failed to save memory:", err);
@@ -133,8 +126,9 @@ export function AgentMemoryDialog({
 
   const handleOpenFolder = async () => {
     try {
+      const client = getGatewayClient();
       const memoryDir = getMemoryPath();
-      await invoke("open_path", { path: memoryDir });
+      await client.revealFile(memoryDir);
     } catch (err) {
       console.error("Failed to open folder:", err);
     }

@@ -40,6 +40,7 @@ import { ChatInputConfigBar } from "./config-bar";
 import { AttachmentPreview } from "./attachment-preview";
 import { SlashCommandMenu } from "./slash-command-menu";
 import { WritingMode } from "./writing-mode";
+import { HighlightedInput } from "./highlighted-input";
 import {
   useAttachments,
   useSlashCommands,
@@ -418,7 +419,7 @@ export function ChatInput({
   return (
     <div
       ref={containerRef}
-      className={cn("w-full bg-background overflow-hidden", className)}
+      className={cn("w-full bg-background", className)}
     >
       {/* Hidden file inputs */}
       <input
@@ -481,9 +482,10 @@ export function ChatInput({
           }}
           isOpen={isSlashMenuOpen}
           query={slashQuery}
+          anchorRef={containerRef as React.RefObject<HTMLElement>}
         />
 
-        <textarea
+        <HighlightedInput
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
@@ -492,6 +494,8 @@ export function ChatInput({
           onCompositionEnd={handleCompositionEnd}
           onPaste={handlePaste}
           placeholder={placeholder || t("chat.inputPlaceholder")}
+          highlightSlashCommand={slashCommands.length > 0}
+          isSlashMenuOpen={isSlashMenuOpen}
           className={cn(
             "w-full resize-none border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none",
             hasToolbar ? "h-full py-3 text-base" : "text-base"
@@ -624,6 +628,7 @@ export { ChatInputConfigBar } from "./config-bar";
 export { AttachmentPreview } from "./attachment-preview";
 export { SlashCommandMenu } from "./slash-command-menu";
 export { WritingMode } from "./writing-mode";
+export { HighlightedInput } from "./highlighted-input";
 export {
   useAttachments,
   useSlashCommands,

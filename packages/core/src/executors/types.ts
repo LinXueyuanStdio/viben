@@ -55,6 +55,11 @@ export interface ChatOptions {
   skills?: string[];
   /** Permission mode */
   permissionMode?: string;
+  /** Sandbox configuration (session-level) */
+  sandboxConfig?: {
+    enabled: boolean;
+    provider?: "native" | "codex" | "claude";
+  };
 }
 
 /**

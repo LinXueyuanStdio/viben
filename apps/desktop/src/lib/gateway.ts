@@ -185,7 +185,7 @@ export interface SessionMessage {
 export interface UIMessage {
   id: string;
   timestamp: string;
-  type: "user" | "text" | "tool_use" | "tool_result" | "thinking" | "error";
+  type: "user" | "text" | "tool_use" | "tool_result" | "thinking" | "error" | "sdk_session";
   content?: string;
   tool_use_id?: string;
   tool_name?: string;
@@ -193,6 +193,8 @@ export interface UIMessage {
   tool_output?: string;
   is_error?: boolean;
   attachments?: Record<string, unknown>[];
+  /** SDK session ID for resume (stored when type is "sdk_session") */
+  sdkSessionId?: string;
 }
 
 /** Create session request */
@@ -2869,6 +2871,92 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // API Key Management
+  // ==========================================================================
+
+  /**
+   * Get API key status for all providers
+   */
+  async getApiKeyProviders(): Promise<ApiKeyProvidersResponse> {
+    const response = await fetch(`${this.baseUrl}/api/providers/api-keys`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API key providers: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Set API key for a provider
+   */
+  async setApiKey(providerId: string, apiKey: string): Promise<void> {
+    await this.updateProvider(providerId, { apiKey });
+  }
+
+  /**
+   * Delete API key for a provider
+   */
+  async deleteApiKey(providerId: string): Promise<void> {
+    await this.updateProvider(providerId, { apiKey: "" });
+  }
+
+  /**
+   * Validate an API key for a provider
+   */
+  async validateApiKey(
+    providerId: string,
+    apiKey: string
+  ): Promise<{ valid: boolean; error?: string }> {
+    const response = await fetch(`${this.baseUrl}/api/providers/validate-key`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ provider_id: providerId, api_key: apiKey }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to validate API key: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get all API keys
+   */
+  async getAllApiKeys(): Promise<Record<string, string>> {
+    const response = await fetch(`${this.baseUrl}/api/providers/api-keys/all`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get all API keys: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.keys;
+  }
+
+  // ==========================================================================
   // Workspace CRUD
   // ==========================================================================
 
@@ -3178,6 +3266,458 @@ export class GatewayClient {
     }
 
     return response.json();
+  }
+
+  // ==========================================================================
+  // Browse-MCP Process Management
+  // ==========================================================================
+
+  /**
+   * Get browse-mcp server status
+   */
+  async getMcpStatus(): Promise<McpStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/browse/status`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP status: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Start browse-mcp server
+   */
+  async startMcpServer(config: McpStartConfig): Promise<McpStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/browse/start`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to start MCP server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Stop browse-mcp server
+   */
+  async stopMcpServer(): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/browse/stop`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to stop MCP server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Test browse-mcp connection
+   */
+  async testMcpConnection(pythonPath: string): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/browse/test`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    return result.connected;
+  }
+
+  /**
+   * Check port status
+   */
+  async checkPortStatus(port: number): Promise<PortStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/port/status`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ port }),
+    });
+
+    if (!response.ok) {
+      return { in_use: false, pid: null, process_name: null };
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Kill a process by PID
+   */
+  async killProcess(pid: number): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/process/kill`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ pid }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    return result.success;
+  }
+
+  /**
+   * Check if a process is alive
+   */
+  async isProcessAlive(pid: number): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/process/alive`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ pid }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    return result.alive;
+  }
+
+  // ==========================================================================
+  // MCP Proxy Management
+  // ==========================================================================
+
+  /**
+   * Get MCP proxy status
+   */
+  async getMcpProxyStatus(): Promise<McpProxyStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/status`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP proxy status: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Check if MCP proxy is installed
+   */
+  async checkMcpProxyInstalled(pythonPath: string): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/check-installed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    return result.installed;
+  }
+
+  /**
+   * Start MCP proxy
+   */
+  async startMcpProxy(config: McpProxyConfig): Promise<McpProxyStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/start`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to start MCP proxy: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Stop MCP proxy
+   */
+  async stopMcpProxy(): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/stop`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to stop MCP proxy: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Install MCP proxy
+   */
+  async installMcpProxy(pythonPath: string): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/install`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to install MCP proxy: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get process using a port
+   */
+  async getPortProcess(port: number): Promise<PortProcess | null> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/port-process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ port }),
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const result = await response.json();
+    return result.process;
+  }
+
+  /**
+   * Kill process using a port
+   */
+  async killPortProcess(port: number): Promise<{ success: boolean }> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/proxy/kill-port-process`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ port }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to kill port process: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Check MCP server on port
+   */
+  async checkMcpServerOnPort(port: number): Promise<McpServerPortStatus> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/server/check-port`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ port }),
+    });
+
+    if (!response.ok) {
+      return {
+        status: "stopped",
+        pid: null,
+        process_name: null,
+        is_mcp_server: false,
+      };
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Service API Keys
+  // ==========================================================================
+
+  /**
+   * Get all service API keys
+   */
+  async getServiceKeys(): Promise<ServiceApiKey[]> {
+    const response = await fetch(`${this.baseUrl}/api/service-keys`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get service keys: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.keys;
+  }
+
+  /**
+   * Create a new service API key
+   */
+  async createServiceKey(name: string): Promise<ServiceApiKey> {
+    const response = await fetch(`${this.baseUrl}/api/service-keys`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to create service key: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a service API key by ID
+   */
+  async getServiceKeyById(keyId: string): Promise<ServiceApiKey | null> {
+    const response = await fetch(
+      `${this.baseUrl}/api/service-keys/${encodeURIComponent(keyId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get service key: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Delete a service API key
+   */
+  async deleteServiceKey(keyId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/service-keys/${encodeURIComponent(keyId)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to delete service key: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Validate a service API key
+   */
+  async validateServiceKey(apiKey: string): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/service-keys/validate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const result = await response.json();
+    return result.valid;
   }
 
   // ==========================================================================
@@ -3722,6 +4262,1579 @@ export class GatewayClient {
     return response.json();
   }
 
+  /**
+   * Open file with system default or specific app
+   */
+  async openFile(path: string, appId?: string): Promise<{ success: boolean; path: string }> {
+    const response = await fetch(`${this.baseUrl}/api/files/open`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path, app_id: appId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to open file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Reveal file in system file manager (Finder/Explorer)
+   */
+  async revealFile(path: string): Promise<{ success: boolean; path: string }> {
+    const response = await fetch(`${this.baseUrl}/api/files/reveal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to reveal file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // System Info APIs
+  // ==========================================================================
+
+  /**
+   * Get system information including home directory
+   */
+  async getSystemInfo(): Promise<SystemInfo> {
+    const response = await fetch(`${this.baseUrl}/api/system/info`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get system info: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Python Detection APIs
+  // ==========================================================================
+
+  /**
+   * Detect available Python interpreters on the system
+   */
+  async detectPython(): Promise<PythonInfo[]> {
+    const response = await fetch(`${this.baseUrl}/api/python/detect`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to detect Python: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.pythons;
+  }
+
+  /**
+   * Check if a specific Python path is valid
+   */
+  async checkPythonPath(pythonPath: string): Promise<PythonInfo> {
+    const response = await fetch(`${this.baseUrl}/api/python/check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to check Python path: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Check if a package is installed in a Python environment
+   */
+  async checkPythonPackage(pythonPath: string, packageName: string): Promise<PythonPackageInfo> {
+    const response = await fetch(`${this.baseUrl}/api/python/package/check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath, package_name: packageName }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to check package: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get the install command for a package
+   */
+  async getPythonInstallCommand(pythonPath: string, packageName: string): Promise<{ command: string; uv_command: string }> {
+    const response = await fetch(`${this.baseUrl}/api/python/package/install-command`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ python_path: pythonPath, package_name: packageName }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get install command: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // Usage Tracking
+  // ==========================================================================
+
+  /**
+   * Initialize usage tracking
+   */
+  async initUsage(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/usage/init`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to initialize usage: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get usage statistics
+   */
+  async getUsageStats(): Promise<UsageStats> {
+    const response = await fetch(`${this.baseUrl}/api/usage/stats`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get usage stats: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Record a usage event
+   */
+  async recordUsage(serverId: string, sourceId: string, apiKeyId?: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/usage/record`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        server_id: serverId,
+        source_id: sourceId,
+        api_key_id: apiKeyId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to record usage: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get usage for a specific API key
+   */
+  async getApiKeyUsage(keyId: string): Promise<ApiKeyUsage> {
+    const response = await fetch(
+      `${this.baseUrl}/api/usage/api-key/${encodeURIComponent(keyId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API key usage: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get usage for a specific server
+   */
+  async getServerUsage(serverId: string): Promise<number> {
+    const response = await fetch(
+      `${this.baseUrl}/api/usage/server/${encodeURIComponent(serverId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get server usage: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.usage_count;
+  }
+
+  /**
+   * Get usage for a specific source
+   */
+  async getSourceUsage(sourceId: string): Promise<number> {
+    const response = await fetch(
+      `${this.baseUrl}/api/usage/source/${encodeURIComponent(sourceId)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get source usage: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.usage_count;
+  }
+
+  // ==========================================================================
+  // Installed Sources (browse-mcp-cli)
+  // ==========================================================================
+
+  /**
+   * Get installed sources from browse-mcp-cli
+   */
+  async getInstalledSources(pythonPath: string): Promise<InstalledSourcesResponse> {
+    const params = new URLSearchParams({ python_path: pythonPath });
+    const response = await fetch(
+      `${this.baseUrl}/api/sources/installed?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get installed sources: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Show details of a specific provider
+   */
+  async showInstalledProvider(pythonPath: string, provider: string): Promise<Record<string, unknown>> {
+    const params = new URLSearchParams({ python_path: pythonPath });
+    const response = await fetch(
+      `${this.baseUrl}/api/sources/provider/${encodeURIComponent(provider)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to show provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Install a provider plugin
+   */
+  async installProvider(pythonPath: string, provider: string, upgrade = false): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/sources/provider/install`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        python_path: pythonPath,
+        provider,
+        upgrade,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to install provider: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.output || "Installation successful";
+  }
+
+  // ==========================================================================
+  // Session Logs
+  // ==========================================================================
+
+  /**
+   * Initialize logs system
+   */
+  async initLogs(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/logs/init`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to initialize logs: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get logs directory path
+   */
+  async getLogsDirPath(): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/logs/dir`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get logs dir: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.path;
+  }
+
+  /**
+   * Get log sessions
+   */
+  async getLogSessions(serverId?: string): Promise<LogSessionSummary> {
+    const params = new URLSearchParams();
+    if (serverId) params.set("server_id", serverId);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/logs/sessions?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get log sessions: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get session logs
+   */
+  async getSessionLogs(sessionId: string, levelFilter?: string, limit?: number): Promise<LogEntry[]> {
+    const params = new URLSearchParams();
+    if (levelFilter) params.set("level_filter", levelFilter);
+    if (limit) params.set("limit", String(limit));
+
+    const response = await fetch(
+      `${this.baseUrl}/api/logs/session/${encodeURIComponent(sessionId)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get session logs: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Add a log entry
+   */
+  async addLog(level: LogLevel, message: string, source?: string, sessionId?: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/logs/add`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        level,
+        message,
+        source,
+        session_id: sessionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to add log: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Clear session logs
+   */
+  async clearSessionLogs(sessionId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/logs/session/${encodeURIComponent(sessionId)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear session logs: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Clear all logs
+   */
+  async clearLogs(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/logs`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear logs: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Cleanup old sessions
+   */
+  async cleanupOldSessions(keepCount = 10): Promise<number> {
+    const response = await fetch(`${this.baseUrl}/api/logs/cleanup`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ keep_count: keepCount }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to cleanup sessions: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.deleted;
+  }
+
+  /**
+   * Export session logs
+   */
+  async exportSessionLogs(sessionId: string, exportPath: string): Promise<string> {
+    const response = await fetch(
+      `${this.baseUrl}/api/logs/session/${encodeURIComponent(sessionId)}/export`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ export_path: exportPath }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to export session logs: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.exported;
+  }
+
+  // ==========================================================================
+  // API Logs
+  // ==========================================================================
+
+  /**
+   * Get API logs directory path
+   */
+  async getApiLogsDirPath(): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/api-logs/dir`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API logs dir: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.path;
+  }
+
+  /**
+   * Get API log sessions
+   */
+  async getApiLogSessions(): Promise<ApiLogSession[]> {
+    const response = await fetch(`${this.baseUrl}/api/api-logs/sessions`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API log sessions: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get API logs for a run
+   */
+  async getApiLogs(
+    runId: string,
+    options?: {
+      limit?: number;
+      offset?: number;
+      providerFilter?: string;
+      sourceFilter?: string;
+      statusFilter?: string;
+      methodFilter?: string;
+    }
+  ): Promise<ApiLogEntry[]> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set("limit", String(options.limit));
+    if (options?.offset) params.set("offset", String(options.offset));
+    if (options?.providerFilter) params.set("provider_filter", options.providerFilter);
+    if (options?.sourceFilter) params.set("source_filter", options.sourceFilter);
+    if (options?.statusFilter) params.set("status_filter", options.statusFilter);
+    if (options?.methodFilter) params.set("method_filter", options.methodFilter);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/api-logs/${encodeURIComponent(runId)}?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API logs: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get API log summary
+   */
+  async getApiLogSummary(runId: string): Promise<ApiLogSummary> {
+    const response = await fetch(
+      `${this.baseUrl}/api/api-logs/${encodeURIComponent(runId)}/summary`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get API log summary: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Clear API logs for a run
+   */
+  async clearApiLogs(runId: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/api-logs/${encodeURIComponent(runId)}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear API logs: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Open API logs directory
+   */
+  async openApiLogsDir(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/api-logs/open`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to open API logs dir: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Marketplace
+  // ==========================================================================
+
+  /**
+   * Get provider index
+   */
+  async getProviderIndex(forceRefresh = false): Promise<ProviderIndex> {
+    const params = new URLSearchParams();
+    if (forceRefresh) params.set("force_refresh", "true");
+
+    const response = await fetch(
+      `${this.baseUrl}/api/marketplace/index?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get provider index: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get flat sources list
+   */
+  async getFlatSources(): Promise<FlatSource[]> {
+    const response = await fetch(`${this.baseUrl}/api/marketplace/sources`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get sources: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Clear provider cache
+   */
+  async clearProviderCache(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/marketplace/cache`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear provider cache: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Official Registry
+  // ==========================================================================
+
+  /**
+   * List official servers
+   */
+  async listOfficialServers(params?: {
+    cursor?: string;
+    search?: string;
+    limit?: number;
+  }): Promise<OfficialServerListResponse> {
+    const searchParams = new URLSearchParams();
+    if (params?.cursor) searchParams.set("cursor", params.cursor);
+    if (params?.search) searchParams.set("search", params.search);
+    if (params?.limit) searchParams.set("limit", String(params.limit));
+
+    const response = await fetch(
+      `${this.baseUrl}/api/official-registry/servers?${searchParams.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to list official servers: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get a specific official server
+   */
+  async getOfficialServer(name: string): Promise<OfficialServerDisplay | null> {
+    const response = await fetch(
+      `${this.baseUrl}/api/official-registry/servers/${encodeURIComponent(name)}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get official server: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get versions for a specific official server
+   */
+  async getOfficialServerVersions(name: string): Promise<string[]> {
+    const response = await fetch(
+      `${this.baseUrl}/api/official-registry/servers/${encodeURIComponent(name)}/versions`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Clear official registry cache
+   */
+  async clearOfficialRegistryCache(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/official-registry/cache`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear official registry cache: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Invalidate cache for a specific official server
+   */
+  async invalidateOfficialServerCache(name: string): Promise<void> {
+    const response = await fetch(
+      `${this.baseUrl}/api/official-registry/servers/${encodeURIComponent(name)}/cache`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to invalidate server cache: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  // ==========================================================================
+  // Cache / Offline
+  // ==========================================================================
+
+  /**
+   * Check if offline
+   */
+  async isOffline(): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/cache/offline`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      return true; // Assume offline if we can't check
+    }
+
+    const data = await response.json();
+    return data.offline;
+  }
+
+  /**
+   * Get cache info
+   */
+  async getCacheInfo(): Promise<CacheInfo> {
+    const response = await fetch(`${this.baseUrl}/api/cache/info`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get cache info: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get cache settings
+   */
+  async getCacheSettings(): Promise<CacheSettings> {
+    const response = await fetch(`${this.baseUrl}/api/cache/settings`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get cache settings: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update cache settings
+   */
+  async setCacheSettings(settings: Partial<CacheSettings>): Promise<CacheSettings> {
+    const response = await fetch(`${this.baseUrl}/api/cache/settings`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(settings),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set cache settings: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Refresh cache
+   */
+  async refreshCache(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/cache/refresh`, {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to refresh cache: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Clear cache
+   */
+  async clearCache(): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/cache`, {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to clear cache: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Check if cache should be refreshed
+   */
+  async shouldRefreshCache(): Promise<boolean> {
+    const response = await fetch(`${this.baseUrl}/api/cache/should-refresh`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data = await response.json();
+    return data.should_refresh;
+  }
+
+  // ==========================================================================
+  // Filesystem
+  // ==========================================================================
+
+  /**
+   * Open a folder in file manager
+   */
+  async openFolder(folderPath: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/files/open-folder`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path: folderPath }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to open folder: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Reveal a file/folder in file manager
+   */
+  async revealInFileManager(targetPath: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/files/reveal`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path: targetPath }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to reveal in file manager: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Open a file with default or specific app
+   */
+  async openFile(filePath: string, appId?: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/files/open`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ path: filePath, app_id: appId }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to open file: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Read directory contents
+   */
+  async readDirectory(workspacePath: string, dirPath?: string): Promise<FileEntry[]> {
+    const params = new URLSearchParams();
+    params.set("workspace_path", workspacePath);
+    if (dirPath) params.set("dir_path", dirPath);
+
+    const response = await fetch(
+      `${this.baseUrl}/api/files/directory?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to read directory: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Read file content
+   */
+  async readFileContent(
+    workspacePath: string,
+    filePath: string,
+    maxSize?: number
+  ): Promise<string> {
+    const params = new URLSearchParams();
+    params.set("workspace_path", workspacePath);
+    params.set("file_path", filePath);
+    if (maxSize) params.set("max_size", String(maxSize));
+
+    const response = await fetch(
+      `${this.baseUrl}/api/files/content?${params.toString()}`,
+      {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to read file content: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.content;
+  }
+
+  /**
+   * Read MCP servers config file
+   */
+  async readMcpServersFile(): Promise<McpServersConfig> {
+    const response = await fetch(`${this.baseUrl}/api/files/mcp-servers`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to read MCP servers file: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Write MCP servers config file
+   */
+  async writeMcpServersFile(config: McpServersConfig): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/files/mcp-servers`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to write MCP servers file: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get config directory path
+   */
+  async getConfigDir(): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/files/config-dir`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get config dir: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.path;
+  }
+
+}
+
+// ============================================================================
+// Log Types
+// ============================================================================
+
+/** Log entry */
+export interface LogEntry {
+  id: string;
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  source?: string;
+}
+
+/** Log level */
+export type LogLevel = "info" | "warning" | "error" | "debug";
+
+/** Log session */
+export interface LogSession {
+  run_id: string;
+  id: string;
+  server_id: string;
+  server_name: string;
+  pid: number | null;
+  created_at: string;
+  updated_at: string;
+  ended_at: string | null;
+  log_file: string;
+  log_count: number;
+  error_count: number;
+  started_at?: string;
+}
+
+/** Log session summary */
+export interface LogSessionSummary {
+  sessions: LogSession[];
+  total_sessions: number;
+}
+
+/** API log entry */
+export interface ApiLogEntry {
+  timestamp: string;
+  run_id: string;
+  api_key_hash: string | null;
+  provider: string;
+  source: string;
+  method: "search" | "download" | "read";
+  request: Record<string, unknown>;
+  response: Record<string, unknown>;
+  latency_ms: number;
+  status: "success" | "error";
+  error: string | null;
+}
+
+/** API log summary */
+export interface ApiLogSummary {
+  run_id: string;
+  total_requests: number;
+  successful_requests: number;
+  failed_requests: number;
+  by_source: Record<string, number>;
+  by_method: Record<string, number>;
+  avg_latency_ms: number;
+}
+
+/** API log session */
+export interface ApiLogSession {
+  run_id: string;
+  log_file: string;
+  entry_count: number;
+  created_at: string | null;
+  last_entry_at: string | null;
+}
+
+// ============================================================================
+// Marketplace Types
+// ============================================================================
+
+/** Marketplace category */
+export interface MarketplaceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  plugin_count: number;
+  source_count: number;
+}
+
+/** Marketplace plugin */
+export interface MarketplacePlugin {
+  id: string;
+  name: string;
+  description: string;
+  version?: string;
+  author_name: string;
+  author_email?: string;
+  author_url?: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  builtin: boolean;
+  package?: string;
+  source_count: number;
+  sources: string[];
+}
+
+/** Provider index */
+export interface ProviderIndex {
+  version: string;
+  updated_at?: string;
+  categories: MarketplaceCategory[];
+  plugins: MarketplacePlugin[];
+}
+
+/** Flat source for UI display */
+export interface FlatSource {
+  id: string;
+  source_name: string;
+  plugin_id: string;
+  name: string;
+  description: string;
+  category?: string;
+  api_key_type: "none" | "optional" | "required";
+  documentation?: string;
+  plugin_name: string;
+}
+
+// ============================================================================
+// Usage Types
+// ============================================================================
+
+/** Daily usage data */
+export interface DailyUsage {
+  date: string;
+  total_requests: number;
+  by_source: Record<string, number>;
+  by_api_key: Record<string, number>;
+  by_server: Record<string, number>;
+}
+
+/** Activity day for heatmap */
+export interface ActivityDay {
+  date: string;
+  count: number;
+  level: number; // 0-4
+}
+
+/** Usage statistics */
+export interface UsageStats {
+  total_requests: number;
+  today_requests: number;
+  this_week_requests: number;
+  this_month_requests: number;
+  by_source: Record<string, number>;
+  by_api_key: Record<string, number>;
+  by_server: Record<string, number>;
+  daily_usage: DailyUsage[];
+  activity_heatmap: ActivityDay[];
+}
+
+/** API key usage info */
+export interface ApiKeyUsage {
+  key_id: string;
+  usage_count: number;
+  last_used: string | null;
+}
+
+// ============================================================================
+// Installed Sources Types
+// ============================================================================
+
+/** Source info from browse-mcp-cli */
+export interface InstalledSource {
+  name: string;
+  provider: string;
+  enabled: boolean;
+}
+
+/** Provider info from browse-mcp-cli */
+export interface InstalledProviderInfo {
+  name: string;
+  description?: string;
+  package?: string;
+  sources: string[];
+  count: number;
+}
+
+/** Response from browse-mcp-cli list */
+export interface InstalledSourcesResponse {
+  providers: Record<string, InstalledProviderInfo>;
+  sources: InstalledSource[];
+  total: number;
+  enabled: number;
+}
+
+// ============================================================================
+// Official Registry Types
+// ============================================================================
+
+/** Package info from official registry */
+export interface OfficialPackage {
+  registryType: "npm" | "pypi" | "oci" | "nuget" | "mcpb";
+  identifier: string;
+  version?: string;
+}
+
+/** Official server display info */
+export interface OfficialServerDisplay {
+  id: string;
+  name: string;
+  description: string;
+  iconUrl: string | null;
+  author: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  packages: OfficialPackage[];
+  qualifiedName: string;
+  _original?: {
+    server?: {
+      icons?: Array<{ src: string; theme?: "light" | "dark" }>;
+    };
+  };
+}
+
+/** Response for listing official servers */
+export interface OfficialServerListResponse {
+  servers: OfficialServerDisplay[];
+  nextCursor: string | null;
+  count: number;
+}
+
+// ============================================================================
+// Cache / Offline Types
+// ============================================================================
+
+/** Cache info */
+export interface CacheInfo {
+  cache_dir: string;
+  total_size_bytes: number;
+  mcp_packages_cached: number;
+  skills_packages_cached: number;
+  last_updated: string | null;
+}
+
+/** Cache settings */
+export interface CacheSettings {
+  enabled: boolean;
+  auto_refresh: boolean;
+  refresh_interval_hours: number;
+  max_size_mb: number;
+}
+
+// ============================================================================
+// Filesystem Types
+// ============================================================================
+
+/** File entry from directory listing */
+export interface FileEntry {
+  name: string;
+  path: string;
+  is_directory: boolean;
+  size?: number;
+  modified?: string;
+}
+
+/** MCP servers config */
+export interface McpServersConfig {
+  mcpServers: Record<string, unknown>;
+}
+
+// ============================================================================
+// Python Detection Types
+// ============================================================================
+
+/** Python interpreter information */
+export interface PythonInfo {
+  path: string;
+  version: string | null;
+  is_valid: boolean;
+}
+
+/** Python package information */
+export interface PythonPackageInfo {
+  name: string;
+  version: string | null;
+  installed: boolean;
+}
+
+/** System information */
+export interface SystemInfo {
+  home_dir: string;
+  platform: string;
+  arch: string;
+  hostname: string;
+  release: string;
+  type: string;
+  viben_dir: string;
 }
 
 // ============================================================================
@@ -4373,6 +6486,21 @@ export interface ProvidersListResponse {
   default_provider_id: string | null;
 }
 
+/** API key info for a provider */
+export interface ApiKeyInfo {
+  provider_id: string;
+  provider_name: string;
+  provider_type: string;
+  has_key: boolean;
+  key_prefix: string | null;
+  doc_url: string | null;
+}
+
+/** Response for API key providers */
+export interface ApiKeyProvidersResponse {
+  providers: ApiKeyInfo[];
+}
+
 // ============================================================================
 // Workspace CRUD Types
 // ============================================================================
@@ -4440,6 +6568,76 @@ export interface WorkspaceMcpServerConfig {
 export interface WorkspaceMcpServersResponse {
   servers: WorkspaceMcpServerConfig[];
   total: number;
+}
+
+/** Browse-MCP server status */
+export interface McpStatus {
+  running: boolean;
+  pid: number | null;
+  transport: string | null;
+  port: number | null;
+}
+
+/** Configuration for starting browse-mcp server */
+export interface McpStartConfig {
+  python_path: string;
+  transport: "stdio" | "sse" | "http" | string;
+  port?: number;
+  download_path?: string;
+  enabled_sources?: string[];
+  api_keys?: Record<string, string>;
+  server_id?: string;
+  server_name?: string;
+}
+
+/** Port status */
+export interface PortStatus {
+  in_use: boolean;
+  pid: number | null;
+  process_name: string | null;
+}
+
+/** MCP Proxy status */
+export interface McpProxyStatus {
+  running: boolean;
+  pid: number | null;
+  host: string | null;
+  port: number | null;
+  auth_token: string | null;
+  url: string | null;
+}
+
+/** MCP Proxy config */
+export interface McpProxyConfig {
+  python_path: string;
+  host: string;
+  port: number;
+  auth_token?: string;
+}
+
+/** Port process info */
+export interface PortProcess {
+  pid: number;
+  name: string | null;
+  is_mcp_proxy: boolean;
+}
+
+/** MCP Server port status */
+export interface McpServerPortStatus {
+  status: "running" | "stopped" | "conflict";
+  pid: number | null;
+  process_name: string | null;
+  is_mcp_server: boolean;
+}
+
+/** Service API Key */
+export interface ServiceApiKey {
+  id: string;
+  name: string;
+  key: string;
+  key_prefix: string;
+  created_at: string;
+  last_used: string | null;
 }
 
 /** Workspace Skill configuration */

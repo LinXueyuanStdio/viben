@@ -1,46 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type ApiLogEntry, type ApiLogSummary, type ApiLogSession } from "@/lib/gateway";
 
-/**
- * API log entry (matches Rust/Python structure)
- */
-export interface ApiLogEntry {
-  timestamp: string;
-  run_id: string;
-  api_key_hash: string | null;
-  provider: string;
-  source: string;
-  method: "search" | "download" | "read";
-  request: Record<string, unknown>;
-  response: Record<string, unknown>;
-  latency_ms: number;
-  status: "success" | "error";
-  error: string | null;
-}
-
-/**
- * API log summary statistics
- */
-export interface ApiLogSummary {
-  run_id: string;
-  total_requests: number;
-  successful_requests: number;
-  failed_requests: number;
-  by_source: Record<string, number>;
-  by_method: Record<string, number>;
-  avg_latency_ms: number;
-}
-
-/**
- * API log session info
- */
-export interface ApiLogSession {
-  run_id: string;
-  log_file: string;
-  entry_count: number;
-  created_at: string | null;
-  last_entry_at: string | null;
-}
+export type { ApiLogEntry, ApiLogSummary, ApiLogSession };
 
 /**
  * Filter options for API logs
@@ -71,7 +32,8 @@ export function useApiLogs() {
    */
   const fetchSessions = useCallback(async () => {
     try {
-      const result = await invoke<ApiLogSession[]>("get_api_log_sessions");
+      const client = getGatewayClient();
+      const result = await client.getApiLogSessions();
       setSessions(result);
 
       // Auto-select first session if none selected
@@ -97,14 +59,14 @@ export function useApiLogs() {
       setError(null);
       try {
         const f = currentFilter || filter;
-        const result = await invoke<ApiLogEntry[]>("get_api_logs", {
-          runId,
+        const client = getGatewayClient();
+        const result = await client.getApiLogs(runId, {
           limit,
           offset,
-          providerFilter: f.provider || null,
-          sourceFilter: f.source || null,
-          statusFilter: f.status || null,
-          methodFilter: f.method || null,
+          providerFilter: f.provider,
+          sourceFilter: f.source,
+          statusFilter: f.status,
+          methodFilter: f.method,
         });
         setLogs(result);
         return result;
@@ -123,9 +85,8 @@ export function useApiLogs() {
    */
   const fetchSummary = useCallback(async (runId: string) => {
     try {
-      const result = await invoke<ApiLogSummary>("get_api_log_summary", {
-        runId,
-      });
+      const client = getGatewayClient();
+      const result = await client.getApiLogSummary(runId);
       setSummary(result);
       return result;
     } catch (err) {
@@ -140,7 +101,8 @@ export function useApiLogs() {
   const clearLogs = useCallback(
     async (runId: string) => {
       try {
-        await invoke("clear_api_logs", { runId });
+        const client = getGatewayClient();
+        await client.clearApiLogs(runId);
         await fetchSessions();
         if (selectedRunId === runId) {
           setLogs([]);
@@ -159,7 +121,8 @@ export function useApiLogs() {
    */
   const fetchLogsDirPath = useCallback(async () => {
     try {
-      const path = await invoke<string>("get_api_logs_dir_path");
+      const client = getGatewayClient();
+      const path = await client.getApiLogsDirPath();
       setLogsDirPath(path);
     } catch (err) {
       console.error("Failed to get logs dir path:", err);
@@ -171,7 +134,8 @@ export function useApiLogs() {
    */
   const openLogsFolder = useCallback(async () => {
     try {
-      await invoke("open_api_logs_dir");
+      const client = getGatewayClient();
+      await client.openApiLogsDir();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

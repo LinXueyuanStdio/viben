@@ -462,6 +462,14 @@ function convertCodexMessageToUI(msg: Record<string, unknown>): ExecutorUIMessag
 }
 
 /**
+ * Availability info for executor (matches frontend AvailabilityInfo type)
+ */
+type AvailabilityInfo =
+  | { type: "LOGIN_DETECTED"; last_auth_timestamp?: number }
+  | { type: "INSTALLATION_FOUND" }
+  | { type: "NOT_FOUND" };
+
+/**
  * Executor info for discovery response
  */
 interface ExecutorInfo {
@@ -470,7 +478,8 @@ interface ExecutorInfo {
   name: string;
   description: string;
   docs_url?: string;
-  available: boolean;
+  /** Availability info (structured type for frontend) */
+  availability: AvailabilityInfo;
   version?: string;
   /** @deprecated Use workspace_config_path or global_config_path instead */
   config_path?: string;
@@ -647,8 +656,34 @@ function checkExecutorAvailability(type: ExecutorType, workspacePath?: string): 
   const meta = EXECUTOR_METADATA[type] || { name: type, description: `${type} executor` };
   const configPaths = getExecutorConfigPaths(type, workspacePath);
 
-  const available = !!(configPaths.globalConfigPath || configPaths.workspaceConfigPath);
+  const hasConfig = !!(configPaths.globalConfigPath || configPaths.workspaceConfigPath);
   const hasWorkspaceConfig = !!configPaths.workspaceConfigPath;
+
+  // Determine availability based on config presence
+  let availability: AvailabilityInfo;
+  if (hasConfig) {
+    // Check for auth timestamp (Claude Code specific)
+    if (type === "CLAUDE_CODE" && configPaths.globalConfigPath) {
+      const credentialsPath = path.join(configPaths.globalConfigPath, ".credentials.json");
+      if (fs.existsSync(credentialsPath)) {
+        try {
+          const stats = fs.statSync(credentialsPath);
+          availability = {
+            type: "LOGIN_DETECTED",
+            last_auth_timestamp: stats.mtimeMs,
+          };
+        } catch {
+          availability = { type: "INSTALLATION_FOUND" };
+        }
+      } else {
+        availability = { type: "INSTALLATION_FOUND" };
+      }
+    } else {
+      availability = { type: "INSTALLATION_FOUND" };
+    }
+  } else {
+    availability = { type: "NOT_FOUND" };
+  }
 
   // Determine capabilities based on type
   const capabilities: string[] = [];
@@ -665,6 +700,7 @@ function checkExecutorAvailability(type: ExecutorType, workspacePath?: string): 
       break;
     case "CODEX":
       capabilities.push("chat", "code-edit");
+      supportsMcp = true;
       break;
     case "GEMINI":
       capabilities.push("chat", "code-edit");
@@ -681,7 +717,7 @@ function checkExecutorAvailability(type: ExecutorType, workspacePath?: string): 
     name: meta.name,
     description: meta.description,
     docs_url: meta.docsUrl,
-    available,
+    availability,
     // Legacy field - prefer workspace or global config path
     config_path: configPaths.workspaceConfigPath || configPaths.globalConfigPath,
     workspace_config_path: configPaths.workspaceConfigPath,

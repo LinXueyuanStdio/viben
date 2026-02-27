@@ -5,15 +5,13 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Folder,
-  Package,
-  Wrench,
+  Layers,
   X,
-  Sparkles,
   GripVertical,
   Users,
   Bot,
   Terminal,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,7 +25,6 @@ import type {
 
 // Import tab components and utilities from tabs folder
 import {
-  type SidebarTab,
   type AgentDetailData,
   type ExecutorDetailData,
   type ModelOption,
@@ -37,16 +34,15 @@ import {
   extractExternalFolders,
   getArtifactIcon,
   getToolIcon,
-  WorkspaceTabContent,
-  ArtifactsTabContent,
-  ToolsTabContent,
-  SkillsTabContent,
+  ContextOverviewTabContent,
+  TasksTabContent,
   AgentDetailTabContent,
   ExecutorDetailTabContent,
   GroupChatTabContent,
   ArtifactPreview,
   ToolPreview,
 } from "./tabs";
+import type { TaskWithAttemptStatus } from "@/lib/vibe-kanban";
 
 /**
  * Resize handle component for sidebar
@@ -141,6 +137,13 @@ interface RightSidebarProps {
   width?: number;
   /** Callback when resize handle is dragged */
   onResize?: (delta: number) => void;
+  // Tasks props
+  /** Tasks to display in the tasks tab */
+  tasks?: TaskWithAttemptStatus[];
+  /** Whether tasks are loading */
+  isTasksLoading?: boolean;
+  /** Called when a task is clicked */
+  onTaskClick?: (task: TaskWithAttemptStatus) => void;
   // Group Chat props
   /** Group chat data - when provided, shows the group chat tab */
   groupChat?: GroupChat | null;
@@ -277,6 +280,10 @@ export function RightSidebar({
   className,
   width,
   onResize,
+  // Tasks props
+  tasks = [],
+  isTasksLoading,
+  onTaskClick,
   // Group chat props
   groupChat,
   groupChatMembers = [],
@@ -307,7 +314,6 @@ export function RightSidebar({
   const { t } = useTranslation();
   const [loadedWorkingFiles, setLoadedWorkingFiles] = React.useState<WorkingFile[]>([]);
   const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState<SidebarTab>("workspace");
 
   // Load working directory files via Tauri command
   React.useEffect(() => {
@@ -368,24 +374,13 @@ export function RightSidebar({
     : [];
 
   // Count items for badges
-  const workspaceCount = displayWorkingFiles.length + externalFolders.length;
-  const artifactsCount = artifacts.length;
-  const toolsCount = allTools.length;
-  const skillsCount = usedSkills.length;
+  const contextCount = displayWorkingFiles.length + externalFolders.length + artifacts.length + allTools.length + usedSkills.length;
+  const tasksCount = tasks.length;
   const groupChatMembersCount = groupChatMembers.length;
-
-  // Auto-expand sidebar if there's content and switch to relevant tab
-  React.useEffect(() => {
-    if (artifactsCount > 0 && activeTab === "workspace" && workspaceCount === 0) {
-      setActiveTab("artifacts");
-    } else if (toolsCount > 0 && activeTab === "workspace" && workspaceCount === 0 && artifactsCount === 0) {
-      setActiveTab("tools");
-    }
-  }, [artifactsCount, toolsCount, workspaceCount, activeTab]);
 
   // Open tabs state - includes category tabs and opened preview tabs
   const [openTabs, setOpenTabs] = React.useState<OpenTab[]>([]);
-  const [activeTabId, setActiveTabId] = React.useState<string>("workspace");
+  const [activeTabId, setActiveTabId] = React.useState<string>("context");
 
   // Track previous groupChat, agentDetail, executorDetail to detect when they change
   const prevGroupChatRef = React.useRef<GroupChat | null | undefined>(undefined);
@@ -395,15 +390,13 @@ export function RightSidebar({
   // Initialize category tabs - dynamically include group chat, agent, executor tabs when available
   React.useEffect(() => {
     const baseTabs: OpenTab[] = [
-      { id: "workspace", type: "category", category: "workspace", label: t("chat.sidebar.workspace", "Workspace"), icon: Folder },
-      { id: "artifacts", type: "category", category: "artifacts", label: t("chat.artifacts.title"), icon: Package },
-      { id: "tools", type: "category", category: "tools", label: t("chat.tools"), icon: Wrench },
-      { id: "skills", type: "category", category: "skills", label: t("chat.sidebar.skills", "Skills"), icon: Sparkles },
+      { id: "context", type: "category", category: "context", label: t("chat.sidebar.context", "Context"), icon: Layers },
+      { id: "tasks", type: "category", category: "tasks", label: t("chat.sidebar.tasks", "Tasks"), icon: CheckSquare },
     ];
 
-    // Add group chat tab at the beginning if group chat is available
+    // Add group chat tab if group chat is available
     if (groupChat) {
-      baseTabs.unshift({
+      baseTabs.push({
         id: "groupChat",
         type: "category",
         category: "groupChat",
@@ -412,7 +405,7 @@ export function RightSidebar({
       });
     }
 
-    // Add agent detail tab if agent is selected
+    // Add agent detail tab if agent is selected (at the beginning for prominence)
     if (agentDetail) {
       baseTabs.unshift({
         id: "agentDetail",
@@ -423,7 +416,7 @@ export function RightSidebar({
       });
     }
 
-    // Add executor detail tab if executor is selected
+    // Add executor detail tab if executor is selected (at the beginning for prominence)
     if (executorDetail) {
       baseTabs.unshift({
         id: "executorDetail",
@@ -442,7 +435,7 @@ export function RightSidebar({
     } else if (!groupChat && prevGroupChatRef.current) {
       // Switch away from groupChat tab when groupChat is removed
       if (activeTabId === "groupChat") {
-        setActiveTabId("workspace");
+        setActiveTabId("context");
       }
     }
 
@@ -451,7 +444,7 @@ export function RightSidebar({
       setActiveTabId("agentDetail");
     } else if (!agentDetail && prevAgentDetailRef.current) {
       if (activeTabId === "agentDetail") {
-        setActiveTabId("workspace");
+        setActiveTabId("context");
       }
     }
 
@@ -460,7 +453,7 @@ export function RightSidebar({
       setActiveTabId("executorDetail");
     } else if (!executorDetail && prevExecutorDetailRef.current) {
       if (activeTabId === "executorDetail") {
-        setActiveTabId("workspace");
+        setActiveTabId("context");
       }
     }
 
@@ -511,23 +504,19 @@ export function RightSidebar({
   const closeTab = (tabId: string) => {
     setOpenTabs(openTabs.filter((tab) => tab.id !== tabId));
     if (activeTabId === tabId) {
-      setActiveTabId("workspace");
+      setActiveTabId("context");
     }
   };
 
   // Get count for tab badge
   const getTabCount = (tabId: string): number | undefined => {
     switch (tabId) {
-      case "workspace":
-        return workspaceCount;
-      case "artifacts":
-        return artifactsCount;
-      case "tools":
-        return toolsCount;
-      case "skills":
-        return skillsCount;
+      case "context":
+        return contextCount > 0 ? contextCount : undefined;
+      case "tasks":
+        return tasksCount > 0 ? tasksCount : undefined;
       case "groupChat":
-        return groupChatMembersCount;
+        return groupChatMembersCount > 0 ? groupChatMembersCount : undefined;
       default:
         return undefined;
     }
@@ -575,42 +564,32 @@ export function RightSidebar({
 
       {/* Tab content */}
       <ScrollArea className="flex-1">
-        {currentTab?.type === "category" && currentTab.category === "workspace" && (
-          <div className="p-3 h-full">
-            <WorkspaceTabContent
+        {currentTab?.type === "category" && currentTab.category === "context" && (
+          <div className="p-3">
+            <ContextOverviewTabContent
               workingDir={workingDir}
               workingFiles={displayWorkingFiles}
               externalFolders={externalFolders}
               isLoadingFiles={isLoadingFiles}
               onFileSelect={onFileSelect}
-            />
-          </div>
-        )}
-
-        {currentTab?.type === "category" && currentTab.category === "artifacts" && (
-          <div className="p-3">
-            <ArtifactsTabContent
               artifacts={artifacts}
-              selectedArtifact={null}
               highlightedArtifactId={highlightedArtifactId}
               onArtifactSelect={handleArtifactSelectWithPreview}
               onArtifactMessageClick={onArtifactMessageClick}
-            />
-          </div>
-        )}
-
-        {currentTab?.type === "category" && currentTab.category === "tools" && (
-          <div className="p-3">
-            <ToolsTabContent
               tools={allTools}
               onToolSelect={handleToolSelectWithPreview}
+              skills={usedSkills}
             />
           </div>
         )}
 
-        {currentTab?.type === "category" && currentTab.category === "skills" && (
+        {currentTab?.type === "category" && currentTab.category === "tasks" && (
           <div className="p-3">
-            <SkillsTabContent skills={usedSkills} />
+            <TasksTabContent
+              tasks={tasks}
+              isLoading={isTasksLoading}
+              onTaskClick={onTaskClick}
+            />
           </div>
         )}
 

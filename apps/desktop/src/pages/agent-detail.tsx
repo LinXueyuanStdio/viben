@@ -78,8 +78,6 @@ import {
   useExecutors,
   useWorkspaceParam,
 } from "@/hooks";
-import { homeDir } from "@tauri-apps/api/path";
-import { invoke } from "@tauri-apps/api/core";
 import { MessageList, ChatInput, type SlashCommand, ExecutorCapabilities } from "@/components/chat";
 import { AgentMcpDialog, AgentSkillsDialog, AgentMemoryDialog } from "@/components/agent";
 import type { ExecutorType } from "@viben/core/shared";
@@ -280,8 +278,11 @@ export function AgentDetailPage() {
   const [globalVibenDir, setGlobalVibenDir] = useState<string>("");
   useEffect(() => {
     if (!isWorkspaceScoped) {
-      homeDir().then((home) => {
-        setGlobalVibenDir(`${home}.viben`);
+      getGatewayClient().getSystemInfo().then((info) => {
+        setGlobalVibenDir(info.viben_dir);
+      }).catch(() => {
+        // Fallback to default path
+        setGlobalVibenDir("~/.viben");
       });
     }
   }, [isWorkspaceScoped]);
@@ -398,7 +399,8 @@ export function AgentDetailPage() {
   const handleOpenFolder = useCallback(async () => {
     if (!agentFolderPath) return;
     try {
-      await invoke("open_path", { path: agentFolderPath });
+      const client = getGatewayClient();
+      await client.revealFile(agentFolderPath);
     } catch (err) {
       console.error("Failed to open folder:", err);
     }

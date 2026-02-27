@@ -1,47 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type LogEntry, type LogSession, type LogSessionSummary } from "@/lib/gateway";
 
-export interface LogEntry {
-  id: string;
-  timestamp: string;
-  level: "info" | "warning" | "error" | "debug";
-  message: string;
-  source?: string;
-}
+export type { LogEntry, LogSession, LogSessionSummary };
 
-export interface LogSession {
-  /** Unique run identifier (used for log filename) */
-  run_id: string;
-  /** Session ID (same as run_id) */
-  id: string;
-  /** Server instance ID */
-  server_id: string;
-  /** Human-readable server name */
-  server_name: string;
-  /** Process ID of the MCP server */
-  pid: number | null;
-  /** Session creation time */
-  created_at: string;
-  /** Last update time */
-  updated_at: string;
-  /** Session end time (null if still running) */
-  ended_at: string | null;
-  /** Path to the log file */
-  log_file: string;
-  /** Number of log entries */
-  log_count: number;
-  /** Number of error entries */
-  error_count: number;
-  /** Legacy field for compatibility */
-  started_at?: string;
-}
-
-export interface LogSessionSummary {
-  sessions: LogSession[];
-  total_sessions: number;
-}
-
-export type LogLevel = "all" | "info" | "warning" | "error" | "debug";
+export type LogLevelFilter = "all" | "info" | "warning" | "error" | "debug";
 
 export function useLogs() {
   const [sessions, setSessions] = useState<LogSession[]>([]);
@@ -49,16 +11,15 @@ export function useLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [levelFilter, setLevelFilter] = useState<LogLevel>("all");
+  const [levelFilter, setLevelFilter] = useState<LogLevelFilter>("all");
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [logsDirPath, setLogsDirPath] = useState<string | null>(null);
 
   // Fetch all sessions
   const fetchSessions = useCallback(async (serverId?: string) => {
     try {
-      const result = await invoke<LogSessionSummary>("get_log_sessions", {
-        serverId: serverId || null,
-      });
+      const client = getGatewayClient();
+      const result = await client.getLogSessions(serverId);
       setSessions(result.sessions);
 
       // Auto-select the first session if none selected
@@ -71,15 +32,16 @@ export function useLogs() {
   }, [selectedSessionId]);
 
   // Fetch logs for selected session
-  const fetchSessionLogs = useCallback(async (sessionId: string, filter?: LogLevel) => {
+  const fetchSessionLogs = useCallback(async (sessionId: string, filter?: LogLevelFilter) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<LogEntry[]>("get_session_logs", {
+      const client = getGatewayClient();
+      const result = await client.getSessionLogs(
         sessionId,
-        levelFilter: filter === "all" ? null : filter,
-        limit: 1000,
-      });
+        filter === "all" ? undefined : filter,
+        1000
+      );
       setLogs(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -91,8 +53,9 @@ export function useLogs() {
   // Initialize
   const initLogs = useCallback(async () => {
     try {
-      await invoke("init_logs");
-      const path = await invoke<string>("get_logs_dir_path");
+      const client = getGatewayClient();
+      await client.initLogs();
+      const path = await client.getLogsDirPath();
       setLogsDirPath(path);
     } catch (err) {
       console.error("Failed to initialize logs:", err);
@@ -103,7 +66,8 @@ export function useLogs() {
   const clearSession = useCallback(async (sessionId: string) => {
     setLoading(true);
     try {
-      await invoke("clear_session_logs", { sessionId });
+      const client = getGatewayClient();
+      await client.clearSessionLogs(sessionId);
       await fetchSessions();
       if (selectedSessionId === sessionId) {
         setLogs([]);
@@ -119,7 +83,8 @@ export function useLogs() {
   // Cleanup old sessions
   const cleanupSessions = useCallback(async (keepCount: number = 10) => {
     try {
-      const deleted = await invoke<number>("cleanup_old_sessions", { keepCount });
+      const client = getGatewayClient();
+      const deleted = await client.cleanupOldSessions(keepCount);
       await fetchSessions();
       return deleted;
     } catch (err) {
@@ -131,10 +96,8 @@ export function useLogs() {
   // Export session logs
   const exportSession = useCallback(async (sessionId: string, exportPath: string) => {
     try {
-      const result = await invoke<string>("export_session_logs", {
-        sessionId,
-        exportPath,
-      });
+      const client = getGatewayClient();
+      const result = await client.exportSessionLogs(sessionId, exportPath);
       return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -145,7 +108,8 @@ export function useLogs() {
   // Check if a process is alive by PID
   const checkProcessAlive = useCallback(async (pid: number): Promise<boolean> => {
     try {
-      return await invoke<boolean>("is_process_alive", { pid });
+      const client = getGatewayClient();
+      return await client.isProcessAlive(pid);
     } catch {
       return false;
     }
@@ -158,7 +122,8 @@ export function useLogs() {
     source?: string
   ) => {
     try {
-      await invoke("add_log", { level, message, source, sessionId: null });
+      const client = getGatewayClient();
+      await client.addLog(level, message, source);
     } catch (err) {
       console.error("Failed to add log:", err);
     }
@@ -167,7 +132,8 @@ export function useLogs() {
   const clearLogs = useCallback(async () => {
     setLoading(true);
     try {
-      await invoke("clear_logs");
+      const client = getGatewayClient();
+      await client.clearLogs();
       setLogs([]);
       setSessions([]);
       setSelectedSessionId(null);

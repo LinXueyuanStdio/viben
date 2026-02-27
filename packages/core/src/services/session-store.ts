@@ -68,7 +68,7 @@ export interface UIMessage {
   taskId?: string;
   /** Timestamp */
   timestamp: string;
-  /** Message type: "user", "text", "tool_use", "tool_result", "thinking", "error" */
+  /** Message type: "user", "text", "tool_use", "tool_result", "thinking", "error", "sdk_session" */
   type: string;
   /** Message content (text content for user/text/error, tool name for tool_use) */
   content?: string;
@@ -84,6 +84,8 @@ export interface UIMessage {
   isError?: boolean;
   /** Attachments (for user messages) */
   attachments?: unknown[];
+  /** SDK session ID (for sdk_session type, used for resume functionality) */
+  sdkSessionId?: string;
 }
 
 /**
@@ -111,19 +113,25 @@ export interface SessionStats {
 }
 
 /**
- * Task status type
+ * Task status type (unified for both session tasks and kanban)
+ * - todo: task created but not started
+ * - running/inprogress: task is executing
+ * - completed/done: task finished successfully
+ * - error/inreview: task failed or needs review
+ * - stopped/cancelled: task was stopped/cancelled
  */
-export type TaskStatus = "running" | "completed" | "error" | "stopped";
+export type TaskStatus = "todo" | "running" | "inprogress" | "completed" | "done" | "error" | "inreview" | "stopped" | "cancelled";
 
 /**
  * Task configuration stored in ~/.viben/tasks/<task-id>.yaml
+ * Unified model supporting both session-based tasks and kanban tasks
  */
 export interface TaskConfig {
   /** Task ID */
   id: string;
-  /** Session ID this task belongs to */
+  /** Session ID this task belongs to (optional for standalone kanban tasks) */
   sessionId: string;
-  /** Agent ID */
+  /** Agent ID (optional for standalone kanban tasks) */
   agentId: string;
   /** Task index within the session */
   taskIndex: number;
@@ -145,6 +153,14 @@ export interface TaskConfig {
   title?: string;
   /** Task description (optional, detailed description) */
   description?: string;
+  /** Workspace path (for kanban filtering) */
+  workspacePath?: string;
+  /** Whether task has an in-progress attempt (kanban display) */
+  hasInProgressAttempt?: boolean;
+  /** Whether last attempt failed (kanban display) */
+  lastAttemptFailed?: boolean;
+  /** Executor name (for kanban display) */
+  executor?: string;
 }
 
 /**
@@ -1062,6 +1078,11 @@ export class SessionStoreService {
     lines.push(`updatedAt: ${JSON.stringify(config.updatedAt)}`);
     if (config.title !== undefined) lines.push(`title: ${JSON.stringify(config.title)}`);
     if (config.description !== undefined) lines.push(`description: ${JSON.stringify(config.description)}`);
+    // Kanban fields
+    if (config.workspacePath !== undefined) lines.push(`workspacePath: ${JSON.stringify(config.workspacePath)}`);
+    if (config.hasInProgressAttempt !== undefined) lines.push(`hasInProgressAttempt: ${JSON.stringify(config.hasInProgressAttempt)}`);
+    if (config.lastAttemptFailed !== undefined) lines.push(`lastAttemptFailed: ${JSON.stringify(config.lastAttemptFailed)}`);
+    if (config.executor !== undefined) lines.push(`executor: ${JSON.stringify(config.executor)}`);
     return lines.join("\n") + "\n";
   }
 
@@ -1122,6 +1143,19 @@ export class SessionStoreService {
             break;
           case "description":
             config.description = parsed;
+            break;
+          // Kanban fields
+          case "workspacePath":
+            config.workspacePath = parsed;
+            break;
+          case "hasInProgressAttempt":
+            config.hasInProgressAttempt = parsed;
+            break;
+          case "lastAttemptFailed":
+            config.lastAttemptFailed = parsed;
+            break;
+          case "executor":
+            config.executor = parsed;
             break;
         }
       } catch {

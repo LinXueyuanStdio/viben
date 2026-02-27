@@ -688,4 +688,116 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
       }
     }
   );
+
+  // ========================================================================
+  // API Key Management
+  // ========================================================================
+
+  /**
+   * Get API key status for all providers (for onboarding)
+   * GET /api/providers/api-keys
+   *
+   * Returns a summary of which providers have API keys configured.
+   */
+  fastify.get("/api/providers/api-keys", async () => {
+    const providers = await providerManager.listProviders();
+
+    const apiKeyInfo = providers.map((provider) => ({
+      provider_id: provider.id,
+      provider_name: provider.name,
+      provider_type: provider.type,
+      has_key: Boolean(provider.apiKey && provider.apiKey.length > 0),
+      key_prefix: provider.apiKey ? provider.apiKey.substring(0, 8) + "..." : null,
+      doc_url: getProviderDocUrl(provider.type),
+    }));
+
+    return { providers: apiKeyInfo };
+  });
+
+  /**
+   * Validate an API key for a provider type
+   * POST /api/providers/validate-key
+   */
+  fastify.post<{
+    Body: { provider_id: string; api_key: string };
+  }>("/api/providers/validate-key", async (request, reply) => {
+    const { provider_id, api_key } = request.body;
+
+    if (!provider_id || !api_key) {
+      reply.code(400);
+      return { valid: false, error: "Provider ID and API key are required" };
+    }
+
+    try {
+      // Get the provider to know its type
+      const provider = await providerManager.getProvider(provider_id);
+      if (!provider) {
+        reply.code(404);
+        return { valid: false, error: "Provider not found" };
+      }
+
+      // Test the API key by temporarily updating the provider and checking status
+      const originalKey = provider.apiKey;
+      try {
+        // Update with new key temporarily
+        await providerManager.updateProvider(provider_id, { apiKey: api_key });
+
+        // Check status
+        const status = await providerManager.checkStatus(provider_id);
+
+        // Restore original key if validation fails
+        if (!status.connected) {
+          await providerManager.updateProvider(provider_id, { apiKey: originalKey });
+        }
+
+        return {
+          valid: status.connected,
+          error: status.error,
+        };
+      } catch {
+        // Restore original key on error
+        await providerManager.updateProvider(provider_id, { apiKey: originalKey });
+        return { valid: false, error: "Validation failed" };
+      }
+    } catch (e) {
+      return { valid: false, error: e instanceof Error ? e.message : "Unknown error" };
+    }
+  });
+
+  /**
+   * Get all API keys (for export/backup)
+   * GET /api/providers/api-keys/all
+   *
+   * Returns all API keys as a map of provider_id -> key
+   */
+  fastify.get("/api/providers/api-keys/all", async () => {
+    const providers = await providerManager.listProviders();
+    const keys: Record<string, string> = {};
+
+    for (const provider of providers) {
+      if (provider.apiKey) {
+        keys[provider.id] = provider.apiKey;
+      }
+    }
+
+    return { keys };
+  });
+}
+
+/**
+ * Get documentation URL for a provider type
+ */
+function getProviderDocUrl(type: string): string | null {
+  const docUrls: Record<string, string> = {
+    openai: "https://platform.openai.com/api-keys",
+    anthropic: "https://console.anthropic.com/account/keys",
+    google: "https://aistudio.google.com/apikey",
+    azure: "https://portal.azure.com/#view/Microsoft_Azure_ProjectOxford/CognitiveServicesHub/~/OpenAI",
+    ollama: "https://ollama.ai/",
+    groq: "https://console.groq.com/keys",
+    mistral: "https://console.mistral.ai/api-keys",
+    deepseek: "https://platform.deepseek.com/api_keys",
+    openrouter: "https://openrouter.ai/keys",
+  };
+  return docUrls[type] || null;
 }

@@ -138,6 +138,16 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to start cron scheduler:", e);
   }
 
+  // Start channel router for message routing to bound agents
+  try {
+    await state.channelRouter.start();
+    logger?.info("Channel router started");
+    console.log("[Gateway] Channel router started");
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start channel router");
+    console.warn("[Gateway] Failed to start channel router:", e);
+  }
+
   // Register Observable Gauge callbacks for metrics
   if (enableTelemetry) {
     registerGaugeCallbacks({
@@ -153,6 +163,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   app.addHook("onClose", async () => {
     logger?.info("Shutting down gateway...");
     console.log("[Gateway] Shutting down...");
+    state.channelRouter.stop();
     await state.cron.shutdown();
     state.container.killAllRunningProcesses();
     if (telemetry) {

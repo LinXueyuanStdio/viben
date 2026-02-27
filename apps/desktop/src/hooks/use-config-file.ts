@@ -1,19 +1,18 @@
 /**
  * Generic hooks for reading/writing config files
  *
- * Uses the same Tauri commands as skill hooks to ensure consistent
- * path validation and permissions.
+ * Uses Gateway API for file operations to ensure web compatibility.
  * Used for commands, prompts, MCP servers, and other file-based configs.
  */
 import { useState, useCallback } from "react";
 import type { SkillFileEntry } from "@/types";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 /**
  * Hook for reading a config file's content
- * Uses the read_config_file Tauri command for proper path handling
+ * Uses Gateway API for proper path handling
  */
 export function useConfigFileContent() {
   const [content, setContent] = useState<string | null>(null);
@@ -29,9 +28,9 @@ export function useConfigFileContent() {
     setLoading(true);
     setError(null);
     try {
-      // Use the read_config_file command which has proper path handling
-      const result = await invoke<string>("read_config_file", { filePath });
-      setContent(result);
+      const client = getGatewayClient();
+      const result = await client.readFile(filePath);
+      setContent(result.content);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -51,7 +50,7 @@ export function useConfigFileContent() {
 
 /**
  * Hook for writing a config file
- * Uses the write_config_file Tauri command for proper path handling
+ * Uses Gateway API for proper path handling
  */
 export function useConfigFileWriter() {
   const [saving, setSaving] = useState(false);
@@ -63,8 +62,8 @@ export function useConfigFileWriter() {
     setSaveStatus("saving");
     setSaveError(null);
     try {
-      // Use the write_config_file command which has proper path handling
-      await invoke("write_config_file", { filePath, content });
+      const client = getGatewayClient();
+      await client.writeFile(filePath, content);
       setSaveStatus("saved");
       // Reset to idle after 2 seconds
       setTimeout(() => setSaveStatus("idle"), 2000);
@@ -86,8 +85,52 @@ export function useConfigFileWriter() {
 }
 
 /**
+ * Convert gateway file entry to SkillFileEntry format
+ */
+function convertToSkillFileEntry(
+  entry: { name: string; path: string; is_directory: boolean },
+  children?: SkillFileEntry[]
+): SkillFileEntry {
+  return {
+    name: entry.name,
+    path: entry.path,
+    is_directory: entry.is_directory,
+    children,
+  };
+}
+
+/**
+ * Recursively load directory structure
+ */
+async function loadDirectoryRecursive(
+  client: ReturnType<typeof getGatewayClient>,
+  dirPath: string,
+  currentDepth: number,
+  maxDepth: number
+): Promise<SkillFileEntry[]> {
+  const result = await client.listFiles(dirPath, true);
+  const entries: SkillFileEntry[] = [];
+
+  for (const entry of result.entries) {
+    if (entry.is_directory && currentDepth < maxDepth) {
+      const children = await loadDirectoryRecursive(
+        client,
+        entry.path,
+        currentDepth + 1,
+        maxDepth
+      );
+      entries.push(convertToSkillFileEntry(entry, children));
+    } else {
+      entries.push(convertToSkillFileEntry(entry));
+    }
+  }
+
+  return entries;
+}
+
+/**
  * Hook for listing files in a directory
- * Reuses the list_skill_files Tauri command which works for any directory
+ * Uses Gateway API for directory listing
  */
 export function useConfigFiles(dirPath: string | null) {
   const [files, setFiles] = useState<SkillFileEntry[]>([]);
@@ -103,11 +146,9 @@ export function useConfigFiles(dirPath: string | null) {
     setLoading(true);
     setError(null);
     try {
-      // Use the same Tauri command as skills - it works for any directory
-      const result = await invoke<SkillFileEntry[]>("list_skill_files", {
-        skillPath: dirPath,
-        maxDepth: maxDepth ?? 3,
-      });
+      const client = getGatewayClient();
+      const depth = maxDepth ?? 3;
+      const result = await loadDirectoryRecursive(client, dirPath, 0, depth);
       setFiles(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

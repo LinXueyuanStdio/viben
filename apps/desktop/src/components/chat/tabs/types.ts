@@ -18,7 +18,8 @@ export type {
 export type { ExecutorDetailData } from "@/components/chat/executor-detail-panel";
 
 // Tab types for the sidebar
-export type SidebarTab = "workspace" | "artifacts" | "tools" | "skills" | "groupChat" | "agentDetail" | "executorDetail";
+// "context" is the unified view combining workspace, artifacts, tools, and skills
+export type SidebarTab = "context" | "tasks" | "groupChat" | "agentDetail" | "executorDetail";
 
 // Skill info extracted from messages
 export interface SkillInfo {
@@ -64,6 +65,15 @@ export interface ToolsTabContentProps {
 
 export interface SkillsTabContentProps {
   skills: SkillInfo[];
+}
+
+export interface TasksTabContentProps {
+  /** Tasks to display */
+  tasks: import("@/lib/vibe-kanban").TaskWithAttemptStatus[];
+  /** Whether tasks are loading */
+  isLoading?: boolean;
+  /** Called when a task is clicked */
+  onTaskClick?: (task: import("@/lib/vibe-kanban").TaskWithAttemptStatus) => void;
 }
 
 export interface AgentDetailTabContentProps {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   X,
   Circle,
@@ -64,9 +64,11 @@ import {
   useDeleteKanbanComment,
   useToggleCommentReaction,
   useKanbanActivities,
+  useAgentConversation,
 } from "@/hooks";
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
-import { useTaskAgent } from "@/hooks";
+import { getGatewayClient, type UIMessage } from "@/lib/gateway";
+import type { AgentMessage } from "@/types";
 
 // Editable Title Component
 function EditableTitle({
@@ -224,6 +226,58 @@ function formatDateTime(dateString: string): string {
   });
 }
 
+// Convert UI message to Agent message for display
+function uiMessageToAgentMessage(msg: UIMessage): AgentMessage | null {
+  switch (msg.type) {
+    case "user":
+      return {
+        id: msg.id,
+        type: "user",
+        content: msg.content || "",
+      };
+    case "text":
+      return {
+        id: msg.id,
+        type: "text",
+        content: msg.content || "",
+      };
+    case "tool_use":
+      return {
+        id: msg.id,
+        type: "tool_use",
+        toolUseId: msg.tool_use_id,
+        name: msg.tool_name || "unknown",
+        input: msg.tool_input,
+      };
+    case "tool_result":
+      return {
+        id: msg.id,
+        type: "tool_result",
+        toolUseId: msg.tool_use_id,
+        output: msg.tool_output,
+        isError: msg.is_error,
+      };
+    case "thinking":
+      return {
+        id: msg.id,
+        type: "thinking",
+        content: msg.content || "",
+      };
+    case "error":
+      return {
+        id: msg.id,
+        type: "error",
+        message: msg.content || "Unknown error",
+        isError: true,
+      };
+    case "sdk_session":
+      // Skip sdk_session messages in display, but extract SDK session ID
+      return null;
+    default:
+      return null;
+  }
+}
+
 // Task interface for the panel
 export interface TaskForPanel {
   id: string;
@@ -238,6 +292,9 @@ export interface TaskForPanel {
   dueDate?: string;
   created_at: string;
   updated_at: string;
+  // Session for agent conversation (UUID format)
+  session_id?: string | null;
+  agent_id?: string | null;
   // Execution status (from vibe-kanban)
   has_in_progress_attempt?: boolean;
   last_attempt_failed?: boolean;
@@ -258,6 +315,7 @@ export interface TaskDetailPanelProps {
   task: TaskForPanel | null;
   onClose: () => void;
   onUpdate?: (updates: Record<string, unknown>) => void;
+  onStartTask?: (taskId: string) => void;
   availableTags?: Tag[];
   availableUsers?: Assignee[];
   availableTasks?: AvailableTask[];
@@ -265,21 +323,42 @@ export interface TaskDetailPanelProps {
   // Current user for comments (defaults to "current-user")
   currentUserId?: string;
   currentUserName?: string;
+  // Workspace path for agent conversation
+  workspacePath?: string;
+  // Auto-start task when opening panel (from external "Run" action)
+  autoStartOnOpen?: boolean;
+  // Callback to reset autoStartOnOpen after consumed
+  onAutoStartConsumed?: () => void;
 }
 
 export function TaskDetailPanel({
   task,
   onClose,
   onUpdate,
+  onStartTask,
   availableTags = [],
   availableUsers = [],
   availableTasks = [],
   onNavigateToTask,
   currentUserId = "current-user",
   currentUserName = "You",
+  workspacePath = "",
+  autoStartOnOpen = false,
+  onAutoStartConsumed,
 }: TaskDetailPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("details");
+  // Track if we should auto-start when switching to agent chat
+  const [shouldAutoStart, setShouldAutoStart] = useState(false);
+
+  // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
+  useEffect(() => {
+    if (autoStartOnOpen && task) {
+      setShouldAutoStart(true);
+      setActiveTab("agent-chat");
+      onAutoStartConsumed?.();
+    }
+  }, [autoStartOnOpen, task, onAutoStartConsumed]);
 
   // Persistent comments from Tauri backend
   const {
@@ -349,33 +428,134 @@ export function TaskDetailPanel({
     );
   }, [task, persistedActivities]);
 
-  // Task context for agent chat
-  const taskContext = useMemo(() => {
-    if (!task) return null;
+  // Build agent config with task context as system prompt
+  const agentConfig = useMemo(() => {
+    if (!task) return undefined;
+    const taskContextPrompt = `## Current Task Context
+- **Task ID**: ${task.id}
+- **Title**: ${task.title}
+- **Status**: ${task.status}
+- **Description**: ${task.description || "No description provided"}
+${task.tags && task.tags.length > 0 ? `- **Tags**: ${task.tags.map((t) => t.name).join(", ")}` : ""}
+
+You are helping the user work on this task. Provide relevant suggestions, code examples, and guidance based on the task context.`;
+
     return {
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: task.status,
-      tags: task.tags,
+      systemPrompt: taskContextPrompt,
     };
   }, [task]);
 
-  // Agent chat hook - must be called unconditionally
+  // Use session_id from task metadata (UUID format)
+  // If no session exists, one will be created when sending first message
+  const taskSessionId = task?.session_id || undefined;
+  const taskAgentId = task?.agent_id || "default";
+
+  // Agent conversation hook - reuses the main chat implementation
   const {
     messages: agentMessages,
     phase: agentPhase,
     isStreaming: agentIsStreaming,
     pendingPlan: agentPendingPlan,
     pendingQuestions: agentPendingQuestions,
+    artifacts: agentArtifacts,
+    // toolUsages available but not displayed in panel (could add later)
     error: agentError,
+    sessionId: currentSessionId,
     sendMessage: agentSendMessage,
     approvePlan: agentApprovePlan,
     rejectPlan: agentRejectPlan,
     answerQuestions: agentAnswerQuestions,
     cancel: agentCancel,
     clearMessages: agentClearMessages,
-  } = useTaskAgent(task?.id || "", taskContext);
+    loadMessages: agentLoadMessages,
+  } = useAgentConversation(workspacePath, {
+    sessionId: taskSessionId,
+    taskId: task?.id,
+    agentConfig,
+  });
+
+  // Track previous session ID to detect session changes
+  const prevSessionIdRef = useRef<string | null>(null);
+  const isLoadingMessagesRef = useRef(false);
+
+  // Update task's session_id when a new session is created
+  useEffect(() => {
+    if (currentSessionId && task?.id && !task.session_id && onUpdate) {
+      // A new session was created, save it to task metadata
+      console.log(`[TaskDetailPanel] Saving new session ${currentSessionId} to task ${task.id}`);
+      onUpdate({ session_id: currentSessionId });
+    }
+  }, [currentSessionId, task?.id, task?.session_id, onUpdate]);
+
+  // Load conversation history when task's session changes or when switching to agent chat tab
+  useEffect(() => {
+    if (!task?.session_id || !workspacePath) {
+      // No session yet, clear messages
+      if (prevSessionIdRef.current !== null) {
+        agentClearMessages();
+        prevSessionIdRef.current = null;
+      }
+      return;
+    }
+    if (task.session_id === prevSessionIdRef.current) return;
+    if (isLoadingMessagesRef.current) return;
+
+    prevSessionIdRef.current = task.session_id;
+    isLoadingMessagesRef.current = true;
+
+    const loadTaskMessages = async () => {
+      try {
+        const client = getGatewayClient();
+        // Load messages using task's session_id
+        const uiMessages = await client.listSessionUIMessages(taskAgentId, task.session_id!, workspacePath);
+
+        if (uiMessages.length > 0) {
+          // Convert UI messages to agent messages
+          const messages = uiMessages
+            .map(uiMessageToAgentMessage)
+            .filter((msg): msg is AgentMessage => msg !== null);
+
+          // Extract SDK session ID for resume functionality
+          const sdkSessionMsg = uiMessages
+            .filter((msg): msg is UIMessage & { sdkSessionId: string } =>
+              msg.type === "sdk_session" && typeof msg.sdkSessionId === "string"
+            )
+            .pop();
+
+          console.log(`[TaskDetailPanel] Loaded ${messages.length} messages for session ${task.session_id}`);
+          agentLoadMessages(messages, sdkSessionMsg?.sdkSessionId);
+        } else {
+          console.log(`[TaskDetailPanel] No messages found for session ${task.session_id}`);
+          agentClearMessages();
+        }
+      } catch (error) {
+        console.error(`[TaskDetailPanel] Failed to load messages for session ${task.session_id}:`, error);
+        agentClearMessages();
+      } finally {
+        isLoadingMessagesRef.current = false;
+      }
+    };
+
+    loadTaskMessages();
+  }, [task?.session_id, workspacePath, taskAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-start: send initial message when switching to agent chat after clicking "Run"
+  useEffect(() => {
+    if (!shouldAutoStart || activeTab !== "agent-chat" || !task || agentIsStreaming) {
+      return;
+    }
+
+    // Reset the flag
+    setShouldAutoStart(false);
+
+    // Build initial prompt from task context
+    const initialPrompt = task.description
+      ? `请帮我完成以下任务：\n\n**${task.title}**\n\n${task.description}`
+      : `请帮我完成以下任务：${task.title}`;
+
+    console.log(`[TaskDetailPanel] Auto-starting task ${task.id} with initial prompt`);
+    agentSendMessage(initialPrompt);
+  }, [shouldAutoStart, activeTab, task, agentIsStreaming, agentSendMessage]);
 
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [
@@ -595,7 +775,7 @@ export function TaskDetailPanel({
 
                 {/* Priority */}
                 <PropertyRow
-                  label={t("workspace.priority", "Priority")}
+                  label={t("workspace.priority.label", "Priority")}
                   icon={Signal}
                 >
                   {onUpdate ? (
@@ -704,7 +884,11 @@ export function TaskDetailPanel({
                         size="sm"
                         variant="outline"
                         className="h-7 gap-1.5"
-                        onClick={() => setActiveTab("agent-chat")}
+                        onClick={() => {
+                          onStartTask?.(task.id);
+                          setShouldAutoStart(true);
+                          setActiveTab("agent-chat");
+                        }}
                       >
                         <Play className="h-3 w-3" />
                         {t("workspace.runAgent", "Run")}
@@ -929,7 +1113,9 @@ export function TaskDetailPanel({
             onApprovePlan={agentApprovePlan}
             onRejectPlan={agentRejectPlan}
             onAnswerQuestions={agentAnswerQuestions}
-            className="flex-1"
+            className="flex-1 min-w-0 overflow-hidden"
+            maxMessageWidth="100%"
+            artifacts={agentArtifacts}
           />
 
           {/* Error display */}

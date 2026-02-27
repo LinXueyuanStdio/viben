@@ -73,6 +73,15 @@ export interface SSEQuestionMessage {
 }
 
 /**
+ * SSE SDK session message - Contains the SDK's internal session ID for resume
+ */
+export interface SSESdkSessionMessage {
+  type: "sdk_session";
+  /** The SDK's internal session ID (UUID) for use with resume parameter */
+  sdkSessionId: string;
+}
+
+/**
  * Union type for all SSE messages from streaming execution
  */
 export type SSEMessage =
@@ -81,7 +90,8 @@ export type SSEMessage =
   | SSEToolResultMessage
   | SSEResultMessage
   | SSEErrorMessage
-  | SSEQuestionMessage;
+  | SSEQuestionMessage
+  | SSESdkSessionMessage;
 
 import { execSync } from "node:child_process";
 
@@ -445,7 +455,16 @@ export class SdkChatProxy implements ChatProxy {
       allowedTools,
       disallowedTools,
       permissionMode,
+      sandboxConfig,
     } = options;
+
+    // Log sandbox configuration status
+    if (sandboxConfig?.enabled) {
+      console.log('[SdkChatProxy] Sandbox mode enabled:', {
+        provider: sandboxConfig.provider || 'auto',
+        note: 'Sandbox wrapping applied at tool execution level',
+      });
+    }
 
     if (!prompt) {
       yield { type: "error", message: "Prompt is required" };
@@ -505,14 +524,28 @@ export class SdkChatProxy implements ChatProxy {
 
       // Optional parameters
       if (model) queryOptions.model = model;
-      // Only pass sessionId to SDK if it's a valid UUID format
-      // Our internal session IDs (run_xxx) are not valid UUIDs
+
+      // Session ID handling:
+      // - resume: Continue an existing session (use SDK's session_id from previous run)
+      // - sessionId: Start a new session with a specific ID
+      // IMPORTANT: Cannot use both sessionId and resume together (Claude Code CLI limitation)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (sessionId && uuidRegex.test(sessionId)) {
-        queryOptions.sessionId = sessionId;
-      }
-      if (resume && uuidRegex.test(resume)) {
+      const hasValidResume = resume && uuidRegex.test(resume);
+
+      console.log("[SdkChatProxy] Session params:", {
+        sessionId,
+        resume,
+        hasValidResume,
+      });
+
+      if (hasValidResume) {
+        // Resume takes priority - don't pass sessionId when resuming
         queryOptions.resume = resume;
+        console.log("[SdkChatProxy] Resuming session:", resume);
+      } else if (sessionId && uuidRegex.test(sessionId)) {
+        // Only pass sessionId for new sessions (not resuming)
+        queryOptions.sessionId = sessionId;
+        console.log("[SdkChatProxy] Starting new session:", sessionId);
       }
 
       // Permission mode - use bypassPermissions by default for gateway usage
@@ -528,6 +561,7 @@ export class SdkChatProxy implements ChatProxy {
       // Reset deduplication state for new streaming session
       this.sentTextHashes.clear();
       this.sentToolIds.clear();
+      this.emittedSdkSessionId = null;
 
       // Log query options for debugging
       console.log('[SdkChatProxy] Executing query with options:', JSON.stringify({
@@ -612,6 +646,8 @@ export class SdkChatProxy implements ChatProxy {
   // Track seen text hashes and tool IDs to prevent duplicates (like WorkAny)
   private sentTextHashes = new Set<string>();
   private sentToolIds = new Set<string>();
+  // Track if SDK session ID has been emitted
+  private emittedSdkSessionId: string | null = null;
 
   /**
    * Convert SDK message to SSE messages
@@ -629,6 +665,27 @@ export class SdkChatProxy implements ChatProxy {
     if (!message || typeof message !== "object") return;
 
     const msg = message as Record<string, unknown>;
+
+    // Debug: Log message structure to find session_id location
+    console.log("[SdkChatProxy] Message structure:", {
+      type: msg.type,
+      hasSessionId: !!msg.session_id,
+      sessionId: msg.session_id,
+      keys: Object.keys(msg).slice(0, 10),
+    });
+
+    // Extract SDK session_id from message and emit once
+    // SDK messages have session_id field that we need for resume functionality
+    if (msg.session_id && typeof msg.session_id === "string") {
+      if (this.emittedSdkSessionId !== msg.session_id) {
+        console.log("[SdkChatProxy] Emitting SDK session ID:", msg.session_id);
+        this.emittedSdkSessionId = msg.session_id;
+        yield {
+          type: "sdk_session",
+          sdkSessionId: msg.session_id,
+        };
+      }
+    }
 
     // Handle assistant messages with nested message object structure:
     // { type: "assistant", message: { content: [...] } }

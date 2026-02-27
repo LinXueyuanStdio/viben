@@ -193,6 +193,7 @@ async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigP
  */
 export type SSEEventType =
   | "session"
+  | "sdk_session"
   | "text"
   | "tool_use"
   | "tool_result"
@@ -210,6 +211,16 @@ export interface SSESessionMessage {
   sessionId: string;
   /** Trace ID for observability correlation */
   traceId?: string;
+}
+
+/**
+ * SDK session ID message - Contains the SDK's internal session ID for resume
+ * This is the ID needed to resume/continue a Claude Agent SDK session
+ */
+export interface SSESdkSessionMessage {
+  type: "sdk_session";
+  /** The SDK's internal session ID (UUID) for use with resume parameter */
+  sdkSessionId: string;
 }
 
 /**
@@ -301,6 +312,7 @@ export interface SSEDoneMessage {
  */
 export type SSEMessage =
   | SSESessionMessage
+  | SSESdkSessionMessage
   | SSETextMessage
   | SSEToolUseMessage
   | SSEToolResultMessage
@@ -377,6 +389,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       taskId?: string;
       /** File system task ID for persistence (optional) - snake_case */
       task_id?: string;
+      /** Resume from existing SDK session (for multi-turn) - camelCase */
+      resume?: string;
+      /** Resume from existing SDK session (for multi-turn) - snake_case */
+      resume_session?: string;
+      /** Sandbox configuration (session-level) - camelCase */
+      sandboxConfig?: { enabled: boolean; provider?: string };
+      /** Sandbox configuration (session-level) - snake_case */
+      sandbox_config?: { enabled: boolean; provider?: string };
     };
   }>("/api/agent/run", async (request, reply) => {
     // Generate session ID early for logging
@@ -410,6 +430,8 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
     const inlineConfig = request.body.agentConfig || request.body.agent_config;
     const persistSessionId = request.body.sessionId || request.body.session_id;
     const persistTaskId = request.body.taskId || request.body.task_id;
+    const resumeSession = request.body.resume || request.body.resume_session;
+    const sandboxConfig = request.body.sandboxConfig || request.body.sandbox_config;
 
     // Validate required fields
     if (!prompt || typeof prompt !== "string") {
@@ -430,6 +452,10 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       hasAgentPath: !!agentPath,
       hasInlineConfig: !!inlineConfig,
       hasPersistSession: !!persistSessionId,
+      hasResumeSession: !!resumeSession,
+      hasSandboxConfig: !!sandboxConfig,
+      sandboxEnabled: sandboxConfig?.enabled || false,
+      sandboxProvider: sandboxConfig?.provider,
     });
 
     // Load agent config: prefer agentPath, fallback to inline config
@@ -525,12 +551,19 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       sessionSpan.end();
 
       // Send session message with trace ID for frontend correlation
+      // When resuming, send the resume session ID so frontend can track the continued session
+      const clientSessionId = resumeSession || sessionId;
       sendSSE(reply, {
         type: "session",
-        sessionId,
+        sessionId: clientSessionId,
         traceId,
       });
-      log.info("session", "created", { sessionId, traceId });
+      log.info("session", resumeSession ? "resumed" : "created", {
+        sessionId,
+        clientSessionId,
+        isResume: !!resumeSession,
+        traceId,
+      });
 
       // Add to background task manager for tracking
       const taskId = persistTaskId || sessionId;
@@ -577,6 +610,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         cwd: cwd || process.cwd(),
         hasMcpServers: !!(agentConfig?.mcpServers?.length),
         hasSkills: !!(agentConfig?.skills?.length),
+        resumeSession: resumeSession || null,
       });
 
       const sdkInitSpan = tracer.startSpan(
@@ -591,12 +625,19 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
         prompt,
         cwd: cwd || process.cwd(),
         sessionId,
+        // Resume from existing session for multi-turn conversations
+        resume: resumeSession,
         model: agentConfig?.model,
         systemPrompt: agentConfig?.systemPrompt,
         appendPrompt: agentConfig?.appendPrompt,
         mcpServers: agentConfig?.mcpServers,
         skills: agentConfig?.skills,
         dangerouslySkipPermissions: true,
+        // Sandbox configuration (session-level)
+        sandboxConfig: sandboxConfig?.enabled ? {
+          enabled: true,
+          provider: sandboxConfig.provider as "native" | "codex" | "claude" | undefined,
+        } : undefined,
       });
 
       sdkInitSpan.setStatus({ code: SpanStatusCode.OK });
@@ -767,6 +808,14 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
             questionId: questionMsg.id,
             questionCount: questionMsg.questions.length,
           });
+        } else if (message.type === "sdk_session") {
+          // Log SDK session ID for debugging resume functionality
+          const sdkSessionId = (message as SSESdkSessionMessage).sdkSessionId;
+          log.info("stream", "sdk_session_received", {
+            sdkSessionId,
+            willPersist: !!(persistSessionId && persistTaskId),
+          });
+          console.log("[agent-run] SDK session ID received:", sdkSessionId, "will persist:", !!(persistSessionId && persistTaskId));
         }
         // Note: plan message type is defined but not currently emitted by SdkChatProxy.
 
@@ -795,6 +844,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
                 message.type === "tool_result" ? (message as SSEToolResultMessage).output : undefined,
               isError:
                 message.type === "tool_result" ? (message as SSEToolResultMessage).isError : undefined,
+              // Persist SDK session ID for resume functionality
+              sdkSessionId:
+                message.type === "sdk_session" ? (message as SSESdkSessionMessage).sdkSessionId : undefined,
             }, agentPath);
           } catch (persistError) {
             log.warn("persistence", "message_save_failed", {

@@ -1,0 +1,374 @@
+/**
+ * Marketplace routes
+ *
+ * Provides HTTP API for the plugin marketplace (browse-mcp providers).
+ * Fetches from remote index and caches locally.
+ */
+import type { FastifyInstance } from "fastify";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { existsSync, statSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface MarketplaceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  plugin_count: number;
+  source_count: number;
+}
+
+interface MarketplacePlugin {
+  id: string;
+  name: string;
+  description: string;
+  version?: string;
+  author_name: string;
+  author_email?: string;
+  author_url?: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  categories: string[];
+  builtin: boolean;
+  package?: string;
+  source_count: number;
+  sources: string[];
+}
+
+interface ProviderIndex {
+  version: string;
+  updated_at?: string;
+  categories: MarketplaceCategory[];
+  plugins: MarketplacePlugin[];
+}
+
+interface FlatSource {
+  id: string;
+  source_name: string;
+  plugin_id: string;
+  name: string;
+  description: string;
+  category?: string;
+  api_key_type: "none" | "optional" | "required";
+  documentation?: string;
+  plugin_name: string;
+}
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const PROVIDER_INDEX_URL = "https://raw.githubusercontent.com/anthropics/browse-mcp/main/marketplace/providers.json";
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Get the cache directory path
+ */
+function getCacheDir(): string {
+  const configDir = process.platform === "darwin"
+    ? join(homedir(), "Library", "Application Support", "viben")
+    : process.platform === "win32"
+      ? join(process.env.APPDATA || join(homedir(), "AppData", "Roaming"), "viben")
+      : join(homedir(), ".config", "viben");
+
+  return join(configDir, "cache");
+}
+
+/**
+ * Get the provider index cache file path
+ */
+function getProviderCachePath(): string {
+  return join(getCacheDir(), "providers.json");
+}
+
+/**
+ * Check if cache is valid
+ */
+function isCacheValid(): boolean {
+  const cachePath = getProviderCachePath();
+  if (!existsSync(cachePath)) {
+    return false;
+  }
+
+  try {
+    const stat = statSync(cachePath);
+    const age = Date.now() - stat.mtimeMs;
+    return age < CACHE_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Load provider index from cache
+ */
+async function loadFromCache(): Promise<ProviderIndex | null> {
+  const cachePath = getProviderCachePath();
+  if (!existsSync(cachePath)) {
+    return null;
+  }
+
+  try {
+    const content = await readFile(cachePath, "utf-8");
+    return JSON.parse(content) as ProviderIndex;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save provider index to cache
+ */
+async function saveToCache(index: ProviderIndex): Promise<void> {
+  const cacheDir = getCacheDir();
+  if (!existsSync(cacheDir)) {
+    await mkdir(cacheDir, { recursive: true });
+  }
+
+  const cachePath = getProviderCachePath();
+  await writeFile(cachePath, JSON.stringify(index, null, 2), "utf-8");
+}
+
+/**
+ * Fetch provider index from remote
+ */
+async function fetchProviderIndex(): Promise<ProviderIndex> {
+  const response = await fetch(PROVIDER_INDEX_URL, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch provider index: ${response.statusText}`);
+  }
+
+  return response.json() as Promise<ProviderIndex>;
+}
+
+/**
+ * Get provider index (from cache or remote)
+ */
+async function getProviderIndex(forceRefresh = false): Promise<ProviderIndex> {
+  // Check cache first
+  if (!forceRefresh && isCacheValid()) {
+    const cached = await loadFromCache();
+    if (cached) {
+      return cached;
+    }
+  }
+
+  // Fetch from remote
+  const index = await fetchProviderIndex();
+
+  // Save to cache
+  await saveToCache(index);
+
+  return index;
+}
+
+/**
+ * Flatten sources from plugins for UI display
+ */
+function flattenSources(index: ProviderIndex): FlatSource[] {
+  const sources: FlatSource[] = [];
+
+  for (const plugin of index.plugins) {
+    for (const sourceName of plugin.sources) {
+      // Determine category from plugin categories
+      const category = plugin.categories.length > 0 ? plugin.categories[0] : undefined;
+
+      sources.push({
+        id: `${plugin.id}/${sourceName}`,
+        source_name: sourceName,
+        plugin_id: plugin.id,
+        name: sourceName,
+        description: plugin.description,
+        category,
+        api_key_type: "none", // Default, can be enhanced with source-level metadata
+        documentation: plugin.homepage,
+        plugin_name: plugin.name,
+      });
+    }
+  }
+
+  return sources;
+}
+
+// ============================================================================
+// Routes
+// ============================================================================
+
+export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
+  /**
+   * Get provider index
+   * GET /api/marketplace/index
+   */
+  fastify.get<{
+    Querystring: { force_refresh?: string };
+  }>("/api/marketplace/index", async (request) => {
+    const forceRefresh = request.query.force_refresh === "true";
+
+    try {
+      const index = await getProviderIndex(forceRefresh);
+      return index;
+    } catch (err) {
+      // Try cache even if expired
+      const cached = await loadFromCache();
+      if (cached) {
+        return cached;
+      }
+
+      throw err;
+    }
+  });
+
+  /**
+   * Get flat sources list
+   * GET /api/marketplace/sources
+   */
+  fastify.get("/api/marketplace/sources", async () => {
+    try {
+      const index = await getProviderIndex();
+      return flattenSources(index);
+    } catch (err) {
+      // Try cache
+      const cached = await loadFromCache();
+      if (cached) {
+        return flattenSources(cached);
+      }
+
+      return [];
+    }
+  });
+
+  /**
+   * Get all plugins
+   * GET /api/marketplace/plugins
+   */
+  fastify.get("/api/marketplace/plugins", async () => {
+    try {
+      const index = await getProviderIndex();
+      return index.plugins;
+    } catch (err) {
+      const cached = await loadFromCache();
+      if (cached) {
+        return cached.plugins;
+      }
+
+      return [];
+    }
+  });
+
+  /**
+   * Get all categories
+   * GET /api/marketplace/categories
+   */
+  fastify.get("/api/marketplace/categories", async () => {
+    try {
+      const index = await getProviderIndex();
+      return index.categories;
+    } catch (err) {
+      const cached = await loadFromCache();
+      if (cached) {
+        return cached.categories;
+      }
+
+      return [];
+    }
+  });
+
+  /**
+   * Get a specific plugin
+   * GET /api/marketplace/plugins/:pluginId
+   */
+  fastify.get<{
+    Params: { pluginId: string };
+  }>("/api/marketplace/plugins/:pluginId", async (request, reply) => {
+    const { pluginId } = request.params;
+
+    try {
+      const index = await getProviderIndex();
+      const plugin = index.plugins.find((p) => p.id === pluginId);
+
+      if (!plugin) {
+        reply.code(404);
+        return { error: "Plugin not found" };
+      }
+
+      return plugin;
+    } catch (err) {
+      reply.code(500);
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  /**
+   * Clear provider cache
+   * DELETE /api/marketplace/cache
+   */
+  fastify.delete("/api/marketplace/cache", async () => {
+    const cachePath = getProviderCachePath();
+
+    if (existsSync(cachePath)) {
+      const { unlink } = await import("node:fs/promises");
+      await unlink(cachePath);
+    }
+
+    return { cleared: true };
+  });
+
+  /**
+   * Search sources by query
+   * GET /api/marketplace/search
+   */
+  fastify.get<{
+    Querystring: { q: string };
+  }>("/api/marketplace/search", async (request) => {
+    const { q } = request.query;
+
+    if (!q || q.trim().length === 0) {
+      return { plugins: [], sources: [] };
+    }
+
+    const query = q.toLowerCase();
+
+    try {
+      const index = await getProviderIndex();
+      const sources = flattenSources(index);
+
+      const matchingPlugins = index.plugins.filter(
+        (p) =>
+          p.name.toLowerCase().includes(query) ||
+          p.description.toLowerCase().includes(query) ||
+          p.id.toLowerCase().includes(query) ||
+          p.author_name.toLowerCase().includes(query)
+      );
+
+      const matchingSources = sources.filter(
+        (s) =>
+          s.name.toLowerCase().includes(query) ||
+          s.description.toLowerCase().includes(query) ||
+          s.source_name.toLowerCase().includes(query) ||
+          s.plugin_name.toLowerCase().includes(query)
+      );
+
+      return {
+        plugins: matchingPlugins,
+        sources: matchingSources,
+      };
+    } catch (err) {
+      return { plugins: [], sources: [], error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+}

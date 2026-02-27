@@ -1,14 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type ServiceApiKey } from "@/lib/gateway";
 
-export interface ServiceApiKey {
-  id: string;
-  name: string;
-  key: string;
-  key_prefix: string;
-  created_at: string;
-  last_used: string | null;
-}
+export type { ServiceApiKey };
 
 export function useServiceKeys() {
   const [keys, setKeys] = useState<ServiceApiKey[]>([]);
@@ -19,7 +12,8 @@ export function useServiceKeys() {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<ServiceApiKey[]>("get_service_keys");
+      const client = getGatewayClient();
+      const result = await client.getServiceKeys();
       setKeys(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -30,7 +24,8 @@ export function useServiceKeys() {
 
   const createKey = useCallback(async (name: string) => {
     try {
-      const newKey = await invoke<ServiceApiKey>("create_service_key", { name });
+      const client = getGatewayClient();
+      const newKey = await client.createServiceKey(name);
       await fetchKeys();
       return newKey;
     } catch (err) {
@@ -41,7 +36,8 @@ export function useServiceKeys() {
 
   const deleteKey = useCallback(async (keyId: string) => {
     try {
-      await invoke("delete_service_key", { keyId });
+      const client = getGatewayClient();
+      await client.deleteServiceKey(keyId);
       await fetchKeys();
       return true;
     } catch (err) {
@@ -52,8 +48,8 @@ export function useServiceKeys() {
 
   const getKeyById = useCallback(async (keyId: string): Promise<ServiceApiKey | null> => {
     try {
-      const result = await invoke<ServiceApiKey | null>("get_service_key_by_id", { keyId });
-      return result;
+      const client = getGatewayClient();
+      return await client.getServiceKeyById(keyId);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       return null;

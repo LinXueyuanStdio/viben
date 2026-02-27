@@ -17,18 +17,51 @@ import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
 
 /**
+ * Kanban-compatible task status
+ */
+type KanbanTaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
+
+/**
  * Convert session-store TaskStatus to db TaskStatus for events
  */
 function toDbStatus(status: TaskStatus): DbTaskStatus {
   switch (status) {
     case "running":
+    case "inprogress":
       return "inprogress";
     case "completed":
+    case "done":
       return "done";
     case "error":
-      return "cancelled";
+    case "inreview":
+      return "inreview";
     case "stopped":
+    case "cancelled":
       return "cancelled";
+    case "todo":
+    default:
+      return "todo";
+  }
+}
+
+/**
+ * Convert TaskStatus to Kanban-compatible status
+ */
+function toKanbanStatus(status: TaskStatus): KanbanTaskStatus {
+  switch (status) {
+    case "running":
+    case "inprogress":
+      return "inprogress";
+    case "completed":
+    case "done":
+      return "done";
+    case "error":
+    case "inreview":
+      return "inreview";
+    case "stopped":
+    case "cancelled":
+      return "cancelled";
+    case "todo":
     default:
       return "todo";
   }
@@ -50,21 +83,30 @@ function toDbTask(config: TaskConfig): Task {
 }
 
 /**
- * Transform task to snake_case response format (to match Rust gateway)
+ * Transform task to snake_case response format (unified for kanban and session tasks)
  */
 function toSnakeCaseTask(task: TaskConfig) {
+  const kanbanStatus = toKanbanStatus(task.status);
   return {
     id: task.id,
-    title: task.title || task.prompt?.slice(0, 50) || "Untitled",
-    description: task.description || task.prompt || "",
-    status: task.status,
-    agent_id: task.agentId,
-    session_id: task.sessionId,
+    title: task.title || task.prompt?.slice(0, 100) || "Untitled",
+    description: task.description || task.prompt || null,
+    status: kanbanStatus,
+    // Organization fields
+    workspace_path: task.workspacePath ?? null,
+    agent_id: task.agentId || null,
+    session_id: task.sessionId || null,
     task_index: task.taskIndex,
     prompt: task.prompt,
+    // Execution info
     cost: task.cost,
     duration: task.duration,
     favorite: task.favorite,
+    // Kanban attempt status
+    has_in_progress_attempt: task.hasInProgressAttempt ?? kanbanStatus === "inprogress",
+    last_attempt_failed: task.lastAttemptFailed ?? kanbanStatus === "inreview",
+    executor: task.executor || "Agent",
+    // Timestamps
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   };
@@ -84,6 +126,13 @@ interface CreateTaskInput {
   agent_id?: string;
   taskIndex?: number;
   task_index?: number;
+  // Kanban fields
+  workspacePath?: string;
+  workspace_path?: string;
+  executor?: string;
+  auto_start?: boolean;
+  model_id?: string;
+  branch?: string;
 }
 
 /**
@@ -97,15 +146,43 @@ interface UpdateTaskInput {
   cost?: number;
   duration?: number;
   favorite?: boolean;
+  // Session/Agent fields
+  sessionId?: string;
+  session_id?: string;
+  agentId?: string;
+  agent_id?: string;
+  // Kanban fields
+  workspacePath?: string;
+  workspace_path?: string;
+  hasInProgressAttempt?: boolean;
+  has_in_progress_attempt?: boolean;
+  lastAttemptFailed?: boolean;
+  last_attempt_failed?: boolean;
+  executor?: string;
 }
 
 /**
  * Register task routes
  */
 export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): void {
-  // List all tasks
-  fastify.get("/api/tasks", async () => {
-    const tasks = await sessionStoreService.listAllTasks();
+  // List all tasks with optional workspace_path filter
+  fastify.get<{
+    Querystring: { workspace_path?: string };
+  }>("/api/tasks", async (request) => {
+    const { workspace_path } = request.query;
+    let tasks = await sessionStoreService.listAllTasks();
+
+    // Filter by workspace_path if provided
+    if (workspace_path !== undefined) {
+      if (workspace_path === "" || workspace_path === null) {
+        // Empty/null workspace_path: return global tasks (tasks without workspace)
+        tasks = tasks.filter((t) => !t.workspacePath);
+      } else {
+        // Filter by specific workspace path
+        tasks = tasks.filter((t) => t.workspacePath === workspace_path);
+      }
+    }
+
     return { tasks: tasks.map(toSnakeCaseTask) };
   });
 
@@ -126,15 +203,23 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     const now = new Date().toISOString();
     const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+    // Determine initial status (default to "todo" for kanban-style tasks)
+    const status = (input.status as TaskStatus) || "todo";
+
     const config: TaskConfig = {
       id: taskId,
       sessionId: input.sessionId || input.session_id || "",
       agentId: input.agentId || input.agent_id || "",
       taskIndex: input.taskIndex || input.task_index || 0,
       prompt: input.prompt || input.description || "",
-      status: (input.status as TaskStatus) || "running",
+      status,
       title: input.title,
       description: input.description,
+      // Kanban fields
+      workspacePath: input.workspacePath || input.workspace_path,
+      executor: input.executor || "Agent",
+      hasInProgressAttempt: status === "running" || status === "inprogress",
+      lastAttemptFailed: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -150,45 +235,72 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     }
   });
 
-  // Update a task
+  // Update a task (supports both PATCH and PUT for kanban compatibility)
+  const updateTaskHandler = async (request: { params: { id: string }; body: UpdateTaskInput }, reply: { code: (code: number) => void }) => {
+    const { id } = request.params;
+    const updates = request.body;
+    try {
+      const existingTask = await sessionStoreService.getTask(id);
+      if (!existingTask) {
+        reply.code(404);
+        return { error: `Task not found: ${id}` };
+      }
+
+      // Build update object with proper typing
+      const taskUpdates: Partial<TaskConfig> = {};
+      if (updates.title !== undefined) taskUpdates.title = updates.title;
+      if (updates.description !== undefined) taskUpdates.description = updates.description;
+      if (updates.prompt !== undefined) taskUpdates.prompt = updates.prompt;
+      if (updates.status !== undefined) {
+        taskUpdates.status = updates.status as TaskStatus;
+        // Update attempt status based on new status
+        const newStatus = updates.status as TaskStatus;
+        taskUpdates.hasInProgressAttempt = newStatus === "running" || newStatus === "inprogress";
+        taskUpdates.lastAttemptFailed = newStatus === "error" || newStatus === "inreview";
+      }
+      if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
+      if (updates.duration !== undefined) taskUpdates.duration = updates.duration;
+      if (updates.favorite !== undefined) taskUpdates.favorite = updates.favorite;
+      // Session/Agent fields
+      const sessionId = updates.sessionId ?? updates.session_id;
+      if (sessionId !== undefined) taskUpdates.sessionId = sessionId;
+      const agentId = updates.agentId ?? updates.agent_id;
+      if (agentId !== undefined) taskUpdates.agentId = agentId;
+      // Kanban fields
+      const workspacePath = updates.workspacePath ?? updates.workspace_path;
+      if (workspacePath !== undefined) taskUpdates.workspacePath = workspacePath;
+      const hasInProgressAttempt = updates.hasInProgressAttempt ?? updates.has_in_progress_attempt;
+      if (hasInProgressAttempt !== undefined) taskUpdates.hasInProgressAttempt = hasInProgressAttempt;
+      const lastAttemptFailed = updates.lastAttemptFailed ?? updates.last_attempt_failed;
+      if (lastAttemptFailed !== undefined) taskUpdates.lastAttemptFailed = lastAttemptFailed;
+      if (updates.executor !== undefined) taskUpdates.executor = updates.executor;
+
+      await sessionStoreService.updateTask(id, taskUpdates);
+      const task = await sessionStoreService.getTask(id);
+
+      if (task) {
+        state.events.taskUpdated(toDbTask(task));
+        if (updates.status && existingTask.status !== updates.status) {
+          state.events.taskStatusChanged(id, toDbStatus(existingTask.status), toDbStatus(updates.status as TaskStatus));
+        }
+      }
+
+      return toSnakeCaseTask(task!);
+    } catch (e) {
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to update task" };
+    }
+  };
+
   fastify.patch<{ Params: { id: string }; Body: UpdateTaskInput }>(
     "/api/tasks/:id",
-    async (request, reply) => {
-      const { id } = request.params;
-      const updates = request.body;
-      try {
-        const existingTask = await sessionStoreService.getTask(id);
-        if (!existingTask) {
-          reply.code(404);
-          return { error: `Task not found: ${id}` };
-        }
+    updateTaskHandler
+  );
 
-        // Build update object with proper typing
-        const taskUpdates: Partial<TaskConfig> = {};
-        if (updates.title !== undefined) taskUpdates.title = updates.title;
-        if (updates.description !== undefined) taskUpdates.description = updates.description;
-        if (updates.prompt !== undefined) taskUpdates.prompt = updates.prompt;
-        if (updates.status !== undefined) taskUpdates.status = updates.status as TaskStatus;
-        if (updates.cost !== undefined) taskUpdates.cost = updates.cost;
-        if (updates.duration !== undefined) taskUpdates.duration = updates.duration;
-        if (updates.favorite !== undefined) taskUpdates.favorite = updates.favorite;
-
-        await sessionStoreService.updateTask(id, taskUpdates);
-        const task = await sessionStoreService.getTask(id);
-
-        if (task) {
-          state.events.taskUpdated(toDbTask(task));
-          if (updates.status && existingTask.status !== updates.status) {
-            state.events.taskStatusChanged(id, toDbStatus(existingTask.status), toDbStatus(updates.status as TaskStatus));
-          }
-        }
-
-        return toSnakeCaseTask(task!);
-      } catch (e) {
-        reply.code(400);
-        return { error: e instanceof Error ? e.message : "Failed to update task" };
-      }
-    }
+  // Also support PUT for kanban compatibility
+  fastify.put<{ Params: { id: string }; Body: UpdateTaskInput }>(
+    "/api/tasks/:id",
+    updateTaskHandler
   );
 
   // Delete a task

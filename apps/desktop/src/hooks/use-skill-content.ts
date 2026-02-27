@@ -1,6 +1,50 @@
 import { useState, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { SkillFileEntry } from "@/types";
+
+/**
+ * Convert gateway file entry to SkillFileEntry format
+ */
+function convertToSkillFileEntry(
+  entry: { name: string; path: string; is_directory: boolean },
+  children?: SkillFileEntry[]
+): SkillFileEntry {
+  return {
+    name: entry.name,
+    path: entry.path,
+    is_directory: entry.is_directory,
+    children,
+  };
+}
+
+/**
+ * Recursively load directory structure
+ */
+async function loadDirectoryRecursive(
+  client: ReturnType<typeof getGatewayClient>,
+  dirPath: string,
+  currentDepth: number,
+  maxDepth: number
+): Promise<SkillFileEntry[]> {
+  const result = await client.listFiles(dirPath, true);
+  const entries: SkillFileEntry[] = [];
+
+  for (const entry of result.entries) {
+    if (entry.is_directory && currentDepth < maxDepth) {
+      const children = await loadDirectoryRecursive(
+        client,
+        entry.path,
+        currentDepth + 1,
+        maxDepth
+      );
+      entries.push(convertToSkillFileEntry(entry, children));
+    } else {
+      entries.push(convertToSkillFileEntry(entry));
+    }
+  }
+
+  return entries;
+}
 
 /**
  * Hook for fetching skill SKILL.md content
@@ -19,8 +63,19 @@ export function useSkillReadme(skillPath: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<string>("get_skill_readme", { skillPath });
-      setContent(result);
+      const client = getGatewayClient();
+      // Try SKILL.md first, then README.md
+      try {
+        const result = await client.readFile(`${skillPath}/SKILL.md`);
+        setContent(result.content);
+      } catch {
+        try {
+          const result = await client.readFile(`${skillPath}/README.md`);
+          setContent(result.content);
+        } catch {
+          setContent(null);
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -50,10 +105,9 @@ export function useSkillFiles(skillPath: string | null) {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<SkillFileEntry[]>("list_skill_files", {
-        skillPath,
-        maxDepth
-      });
+      const client = getGatewayClient();
+      const depth = maxDepth ?? 3;
+      const result = await loadDirectoryRecursive(client, skillPath, 0, depth);
       setFiles(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -75,12 +129,13 @@ export function useSkillFileContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const readFile = useCallback(async (filePath: string, skillPath: string) => {
+  const readFile = useCallback(async (filePath: string, _skillPath: string) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await invoke<string>("read_skill_file", { filePath, skillPath });
-      setContent(result);
+      const client = getGatewayClient();
+      const result = await client.readFile(filePath);
+      setContent(result.content);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -108,12 +163,13 @@ export function useSkillFileWriter() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const writeFile = useCallback(async (filePath: string, skillPath: string, content: string) => {
+  const writeFile = useCallback(async (filePath: string, _skillPath: string, content: string) => {
     setSaving(true);
     setSaveStatus("saving");
     setSaveError(null);
     try {
-      await invoke("write_skill_file", { filePath, skillPath, content });
+      const client = getGatewayClient();
+      await client.writeFile(filePath, content);
       setSaveStatus("saved");
       // Reset to idle after 2 seconds
       setTimeout(() => setSaveStatus("idle"), 2000);
