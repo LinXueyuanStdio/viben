@@ -34,6 +34,7 @@ export interface TaskPlanStep {
 
 /** Task plan */
 export interface TaskPlan {
+  id?: string;
   goal: string;
   steps: TaskPlanStep[];
   notes?: string;
@@ -145,4 +146,87 @@ export interface ToolUsage {
   isError?: boolean;
   timestamp: number;
   completedAt?: number;
+}
+
+// ============================================================================
+// WebSocket Message Types
+// ============================================================================
+
+/**
+ * WebSocket client to server message types
+ */
+export type WsClientMessageType = "start" | "answer" | "approve" | "reject" | "cancel";
+
+/**
+ * WebSocket client to server message
+ */
+export interface WsClientMessage {
+  type: WsClientMessageType;
+  // For "start" - begin agent execution
+  prompt?: string;
+  agentConfig?: {
+    name?: string;
+    model?: string;
+    provider?: string;
+    systemPrompt?: string;
+    appendPrompt?: string;
+    temperature?: number;
+    maxTokens?: number;
+    executorType?: string;
+    mcpServers?: string[];
+    skills?: string[];
+    planMode?: boolean;
+    approvals?: boolean;
+  };
+  // For "answer" - respond to AskUserQuestion
+  questionId?: string;
+  answers?: Record<string, string>;
+  // For "approve" / "reject" - plan approval
+  planId?: string;
+}
+
+/**
+ * WebSocket server to client message types
+ * Same as SSE message types for compatibility
+ */
+export type WsServerMessageType =
+  | "session"
+  | "text"
+  | "tool_use"
+  | "tool_result"
+  | "question"
+  | "plan"
+  | "result"
+  | "error"
+  | "done";
+
+/**
+ * WebSocket server to client message
+ * Same structure as SSE messages for compatibility
+ */
+export interface WsServerMessage {
+  type: WsServerMessageType;
+  // session
+  sessionId?: string;
+  traceId?: string;
+  // text
+  content?: string;
+  // tool_use
+  id?: string;
+  name?: string;
+  input?: unknown;
+  // tool_result
+  toolUseId?: string;
+  output?: string;
+  isError?: boolean;
+  // question
+  questions?: AgentQuestion[];
+  // plan
+  plan?: TaskPlan & { id: string };
+  // result
+  cost?: number;
+  duration?: number;
+  subtype?: "success" | "error" | "error_max_turns";
+  // error
+  message?: string;
 }

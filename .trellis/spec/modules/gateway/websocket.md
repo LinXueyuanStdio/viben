@@ -6,6 +6,7 @@
 
 Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 - 通用 WebSocket (`/ws`)
+- 智能体执行 WebSocket (`/ws/agent/run`)
 - 群聊 WebSocket (`/api/group-chats/:id/sessions/:sid/ws`)
 - 终端 WebSocket (`/terminal/ws`)
 
@@ -16,8 +17,199 @@ Viben Gateway 提供多个 WebSocket 端点用于实时通信：
 | 路径 | 说明 |
 |------|------|
 | `/ws` | 通用 WebSocket，事件订阅 |
+| `/ws/agent/run` | 智能体执行，支持交互式问答 |
 | `/api/group-chats/:id/sessions/:sid/ws` | 群聊会话实时通信 |
 | `/terminal/ws` | 终端 PTY 会话 |
+
+---
+
+## 智能体执行 WebSocket
+
+### GET /ws/agent/run
+
+智能体执行 WebSocket 连接，支持双向通信和交互式功能（如 AskUserQuestion、EnterPlanMode）。
+
+**查询参数**:
+
+| 参数 | 类型 | 必需 | 说明 |
+|------|------|------|------|
+| cwd | string | 否 | 工作目录 |
+| agentPath | string | 否 | 智能体配置文件路径 |
+| sessionId | string | 否 | 会话 ID（用于持久化） |
+| taskId | string | 否 | 任务 ID（用于持久化） |
+
+**客户端消息**:
+
+```typescript
+// 开始执行
+{
+  "type": "start",
+  "prompt": "请帮我创建一个 React 组件",
+  "agentConfig": {  // 可选，如果未提供 agentPath
+    "name": "my-agent",
+    "model": "claude-sonnet-4-20250514",
+    "systemPrompt": "You are a helpful assistant."
+  }
+}
+
+// 回答问题（AskUserQuestion）
+{
+  "type": "answer",
+  "questionId": "tool_use_123",
+  "answers": {
+    "question_0": "Option A"
+  }
+}
+
+// 批准计划
+{
+  "type": "approve",
+  "planId": "plan_123"
+}
+
+// 拒绝计划
+{
+  "type": "reject",
+  "planId": "plan_123"
+}
+
+// 取消执行
+{
+  "type": "cancel"
+}
+```
+
+**服务器消息**:
+
+消息格式与 SSE 端点 `/api/agent/run` 兼容：
+
+```typescript
+// 会话创建
+{
+  "type": "session",
+  "sessionId": "abc-123-def",
+  "traceId": "trace-456"
+}
+
+// 文本内容（流式）
+{
+  "type": "text",
+  "content": "我来帮你创建..."
+}
+
+// 工具调用
+{
+  "type": "tool_use",
+  "id": "tool_use_123",
+  "name": "Write",
+  "input": {
+    "file_path": "/path/to/file.tsx",
+    "content": "..."
+  }
+}
+
+// 工具结果
+{
+  "type": "tool_result",
+  "toolUseId": "tool_use_123",
+  "output": "File created successfully",
+  "isError": false
+}
+
+// 交互式问题（AskUserQuestion）
+{
+  "type": "question",
+  "id": "tool_use_456",
+  "questions": [
+    {
+      "header": "选择配置",
+      "question": "请选择你想要的配置方式：",
+      "options": [
+        { "label": "默认配置", "description": "使用推荐设置" },
+        { "label": "自定义配置", "description": "手动设置所有选项" }
+      ],
+      "multiSelect": false
+    }
+  ]
+}
+
+// 计划（EnterPlanMode）
+{
+  "type": "plan",
+  "plan": {
+    "id": "plan_789",
+    "goal": "创建 React 组件",
+    "steps": [
+      { "id": "1", "description": "创建组件文件", "status": "pending" },
+      { "id": "2", "description": "添加样式", "status": "pending" }
+    ],
+    "notes": "这是一个简单的组件创建计划"
+  }
+}
+
+// 执行结果
+{
+  "type": "result",
+  "subtype": "success",
+  "cost": 0.05,
+  "duration": 5000
+}
+
+// 错误
+{
+  "type": "error",
+  "message": "执行失败：..."
+}
+
+// 完成
+{
+  "type": "done"
+}
+```
+
+**特点**:
+
+- 支持交互式问答：Agent 可以通过 `question` 消息询问用户，用户通过 `answer` 消息回复
+- 支持计划审批：Agent 可以发送计划，用户可以批准或拒绝
+- 自动重连：客户端断线后可重新连接并恢复会话
+- 消息格式与 SSE 兼容：便于在 WebSocket 和 SSE 之间切换
+
+**示例 (JavaScript)**:
+
+```javascript
+const ws = new WebSocket('ws://localhost:18790/ws/agent/run?cwd=/my/project');
+
+ws.onopen = () => {
+  // 发送开始消息
+  ws.send(JSON.stringify({
+    type: 'start',
+    prompt: '请帮我创建一个 React 组件'
+  }));
+};
+
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+
+  switch (msg.type) {
+    case 'text':
+      console.log('Agent:', msg.content);
+      break;
+    case 'question':
+      // 显示问题给用户
+      console.log('Question:', msg.questions[0].question);
+      // 用户选择后发送回答
+      ws.send(JSON.stringify({
+        type: 'answer',
+        questionId: msg.id,
+        answers: { 'question_0': 'Option A' }
+      }));
+      break;
+    case 'done':
+      console.log('Completed');
+      break;
+  }
+};
+```
 
 ---
 
