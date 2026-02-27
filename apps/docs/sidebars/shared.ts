@@ -9,7 +9,6 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'architecture/overview',
-        'architecture/viben-core',
         'architecture/desktop-integration',
       ],
     },

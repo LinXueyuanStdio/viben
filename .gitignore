@@ -106,6 +106,7 @@ eggs/
 lib/
 !apps/**/lib/
 !packages/**/src/lib/
+!packages/**/src/**/lib/
 lib64/
 parts/
 sdist/

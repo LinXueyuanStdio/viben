@@ -402,11 +402,13 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: "viben-storage",
+      // Note: mcpServers and mcpServerStatuses are NOT persisted to localStorage
+      // They are synced with Gateway's ~/.viben/mcp-servers.json via use-store-sync.ts
       partialize: (state) => ({
         selectedPython: state.selectedPython,
         providers: state.providers,
         apiKeys: state.apiKeys,
-        mcpServers: state.mcpServers,
+        // mcpServers: removed - synced with Gateway file
         agentAssignments: state.agentAssignments,
         mcpTransport: state.mcpTransport,
         mcpPort: state.mcpPort,
