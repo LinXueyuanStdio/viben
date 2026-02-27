@@ -77,217 +77,126 @@ viben executor chat -n CLAUDE_CODE -p "继续上面的工作" --resume abc123
 
 ## 代码实现
 
-### 1. ExecutorAction 枚举扩展
+### 1. ChatOptions 接口
 
-文件: `crates/viben-core/src/cli/commands/executor.rs`
+文件: `packages/core/src/cli/commands/executor.ts`
 
-```rust
-#[derive(Subcommand)]
-pub enum ExecutorAction {
-    List,
-    Show { name: String },
-    Types,
-    /// Run chat with an executor (non-interactive)
-    Chat {
-        /// Executor name (e.g., CLAUDE_CODE)
-        #[arg(short, long)]
-        name: String,
-
-        /// Prompt (reads from stdin if not provided)
-        #[arg(short, long)]
-        prompt: Option<String>,
-
-        /// Working directory
-        #[arg(short = 'C', long)]
-        cwd: Option<PathBuf>,
-
-        /// Input format
-        #[arg(long, default_value = "text")]
-        input_format: String,
-
-        /// Output format
-        #[arg(long, default_value = "text")]
-        output_format: String,
-
-        /// Verbose output
-        #[arg(long)]
-        verbose: bool,
-
-        /// Session ID
-        #[arg(long)]
-        session_id: Option<String>,
-
-        /// Resume existing session
-        #[arg(long)]
-        resume: Option<String>,
-
-        /// Model to use
-        #[arg(long)]
-        model: Option<String>,
-
-        /// Skip permission checks
-        #[arg(long)]
-        dangerously_skip_permissions: bool,
-    },
+```typescript
+// ExecutorAction chat 子命令
+export interface ChatOptions {
+  name: string;           // Executor 名称 (如 CLAUDE_CODE, GEMINI)
+  prompt?: string;        // 提示词（可选，无则从 stdin 读取）
+  cwd?: string;           // 工作目录（默认当前目录）
+  inputFormat?: string;   // 输入格式: text (默认), stream-json
+  outputFormat?: string;  // 输出格式: text (默认), stream-json
+  verbose?: boolean;      // 详细输出
+  sessionId?: string;     // 指定 session ID
+  resume?: string;        // 恢复已有 session
+  model?: string;         // 指定模型（executor 支持时）
+  dangerouslySkipPermissions?: boolean;  // 跳过权限检查
 }
 ```
 
-### 2. execute_chat 方法
+### 2. executeChat 函数
 
-```rust
-impl ExecutorCommand {
-    async fn execute_chat(
-        name: String,
-        prompt: Option<String>,
-        cwd: Option<PathBuf>,
-        input_format: String,
-        output_format: String,
-        verbose: bool,
-        session_id: Option<String>,
-        resume: Option<String>,
-        model: Option<String>,
-        dangerously_skip_permissions: bool,
-    ) -> CliResult<()> {
-        // 1. 确定工作目录
-        let work_dir = cwd.unwrap_or_else(|| std::env::current_dir().unwrap());
+```typescript
+// packages/core/src/cli/commands/executor.ts
+export async function executeChat(options: ChatOptions): Promise<void> {
+  // 1. 确定工作目录
+  const workDir = options.cwd || process.cwd();
 
-        // 2. 读取 prompt（-p 优先，否则从 stdin）
-        let prompt = match prompt {
-            Some(p) => p,
-            None => {
-                let mut buffer = String::new();
-                std::io::stdin().read_to_string(&mut buffer)?;
-                buffer
-            }
-        };
+  // 2. 读取 prompt（-p 优先，否则从 stdin）
+  let prompt = options.prompt;
+  if (!prompt) {
+    prompt = await readStdin();
+  }
 
-        // 3. 根据 name 创建 executor（目前仅支持 CLAUDE_CODE）
-        let executor = match name.to_uppercase().as_str() {
-            "CLAUDE_CODE" => CodingAgent::ClaudeCode(ClaudeCode::default()),
-            _ => return Err(CliError::NotSupported(
-                format!("Chat not supported for executor: {}", name)
-            )),
-        };
+  // 3. 根据 name 创建 executor（使用 spawnChat）
+  const result = await spawnChat(options.name, {
+    prompt,
+    cwd: workDir,
+    inputFormat: options.inputFormat || 'text',
+    outputFormat: options.outputFormat || 'text',
+    verbose: options.verbose,
+    sessionId: options.sessionId,
+    resume: options.resume,
+    model: options.model,
+    dangerouslySkipPermissions: options.dangerouslySkipPermissions,
+  });
 
-        // 4. 构建并执行命令
-        let mut child = spawn_chat_process(
-            &executor,
-            &work_dir,
-            &prompt,
-            &input_format,
-            &output_format,
-            verbose,
-            session_id,
-            resume,
-            model,
-            dangerously_skip_permissions,
-        ).await?;
-
-        // 5. 等待退出并返回状态码
-        let status = child.wait().await?;
-        std::process::exit(status.code().unwrap_or(1));
-    }
+  // 4. 等待退出并返回状态码
+  process.exit(result.exitCode);
 }
 ```
 
-### 3. spawn_chat_process 函数
+### 3. spawnChat 函数
 
-```rust
-async fn spawn_chat_process(
-    executor: &CodingAgent,
-    work_dir: &Path,
-    prompt: &str,
-    input_format: &str,
-    output_format: &str,
-    verbose: bool,
-    session_id: Option<String>,
-    resume: Option<String>,
-    model: Option<String>,
-    dangerously_skip_permissions: bool,
-) -> CliResult<tokio::process::Child> {
-    // 目前仅支持 CLAUDE_CODE
-    let mut cmd = tokio::process::Command::new("claude");
-    cmd.current_dir(work_dir);
+参考 `packages/core/src/executors/chat.ts` 中的 `spawnChat` 函数实现：
 
-    // 核心参数
-    cmd.arg("-p");
+```typescript
+// packages/core/src/executors/chat.ts
+export async function spawnChat(
+  executorType: string,
+  options: ChatOptions
+): Promise<ChatSpawnResult> {
+  // 检查 executor 是否支持 chat
+  if (!executorSupportsChat(executorType)) {
+    throw new ExecutorError(`Chat not supported for executor: ${executorType}`);
+  }
 
-    // input-format 为 text 时，prompt 作为参数传入
-    // input-format 为 stream-json 时，prompt 通过 stdin 传入
-    if input_format == "text" {
-        cmd.arg(prompt);
-    }
+  // 创建 executor 实例
+  const executor = createExecutor(executorType);
 
-    // 格式参数
-    if input_format != "text" {
-        cmd.args(["--input-format", input_format]);
-    }
-    if output_format != "text" {
-        cmd.args(["--output-format", output_format]);
-    }
+  // 构建命令参数
+  const args = buildChatArgs(options);
 
-    // 可选参数
-    if verbose {
-        cmd.arg("--verbose");
-    }
-    if let Some(id) = &session_id {
-        cmd.args(["--session-id", id]);
-    }
-    if let Some(id) = &resume {
-        cmd.args(["--resume", id]);
-    }
-    if let Some(m) = &model {
-        cmd.args(["--model", m]);
-    }
-    if dangerously_skip_permissions {
-        cmd.arg("--dangerously-skip-permissions");
-    }
+  // spawn 子进程，继承 IO
+  const child = spawn(executor.command, args, {
+    cwd: options.cwd,
+    stdio: 'inherit',
+  });
 
-    // IO 设置 - 直接继承父进程的 IO
-    cmd.stdin(Stdio::inherit());
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
+  // 等待退出
+  const exitCode = await new Promise<number>((resolve) => {
+    child.on('exit', (code) => resolve(code ?? 1));
+  });
 
-    let child = cmd.spawn()?;
-    Ok(child)
+  return { exitCode };
 }
 ```
 
 ### 4. 错误类型扩展
 
-文件: `crates/viben-core/src/cli/error.rs`
+文件: `packages/core/src/error.ts`
 
-```rust
-pub enum CliError {
-    // ... 现有错误 ...
-    #[error("Chat not supported for executor: {0}")]
-    ChatNotSupported(String),
-    #[error("No prompt provided and stdin is empty")]
-    NoPromptProvided,
+```typescript
+export class ExecutorError extends VibenError {
+  constructor(message: string) {
+    super(message, 'EXECUTOR_ERROR');
+  }
+
+  static chatNotSupported(executor: string): ExecutorError {
+    return new ExecutorError(`Chat not supported for executor: ${executor}`);
+  }
+
+  static noPromptProvided(): ExecutorError {
+    return new ExecutorError('No prompt provided and stdin is empty');
+  }
 }
 ```
 
-### 5. CodingAgent 扩展方法
+### 5. Chat 支持检查
 
-文件: `crates/viben-core/src/executors/executors/mod.rs`
+文件: `packages/core/src/executors/chat.ts`
 
-```rust
-impl CodingAgent {
-    /// Check if this executor supports chat command
-    pub fn supports_chat(&self) -> bool {
-        matches!(self, CodingAgent::ClaudeCode(_))
-        // 未来扩展: | CodingAgent::Gemini(_) | ...
-    }
+```typescript
+// 支持 chat 的 executor 类型
+export const CHAT_SUPPORTED_EXECUTORS = ['CLAUDE_CODE', 'GEMINI', 'CODEX'] as const;
 
-    /// Get the CLI command for chat
-    pub fn chat_command(&self) -> Option<&str> {
-        match self {
-            CodingAgent::ClaudeCode(_) => Some("claude"),
-            // CodingAgent::Gemini(_) => Some("gemini"),
-            // CodingAgent::Codex(_) => Some("codex"),
-            _ => None,
-        }
-    }
+export function executorSupportsChat(executorType: string): boolean {
+  return CHAT_SUPPORTED_EXECUTORS.includes(
+    executorType.toUpperCase() as typeof CHAT_SUPPORTED_EXECUTORS[number]
+  );
 }
 ```
 
@@ -295,9 +204,9 @@ impl CodingAgent {
 
 | 文件 | 变更 |
 |------|------|
-| `cli/commands/executor.rs` | 新增 `Chat` action 和 `execute_chat` 方法 |
-| `cli/error.rs` | 新增 `ChatNotSupported`, `NoPromptProvided` 错误 |
-| `executors/executors/mod.rs` | 新增 `supports_chat()`, `chat_command()` 方法 |
+| `packages/core/src/cli/commands/executor.ts` | 新增 `chat` 子命令和 `executeChat` 函数 |
+| `packages/core/src/error.ts` | 新增 `ExecutorError.chatNotSupported`, `noPromptProvided` 方法 |
+| `packages/core/src/executors/chat.ts` | 新增 `executorSupportsChat()`, `spawnChat()` 函数 |
 
 ## 设计决策
 
