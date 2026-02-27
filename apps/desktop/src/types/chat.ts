@@ -34,6 +34,7 @@ export interface TaskPlanStep {
 
 /** Task plan */
 export interface TaskPlan {
+  id?: string;
   goal: string;
   steps: TaskPlanStep[];
   notes?: string;

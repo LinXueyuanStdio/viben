@@ -328,6 +328,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
             id: generateId(),
             type: "plan",
             plan: {
+              id: data.plan.id, // Preserve plan ID for approval/rejection
               goal: data.plan.goal,
               steps: data.plan.steps.map((s) => ({
                 id: s.id,
@@ -691,11 +692,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const approvePlanWebSocket = useCallback(() => {
     if (!pendingPlan) return;
 
-    // Find the plan ID from messages
-    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
-    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
-
-    if (!planId) return;
+    const planId = pendingPlan.id;
+    if (!planId) {
+      console.error("[useAgent] Cannot approve plan: missing plan ID");
+      return;
+    }
 
     setPendingPlan(null);
     setPhase("running");
@@ -705,7 +706,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
       type: "approve",
       planId,
     });
-  }, [pendingPlan, messages, sendWebSocketMessage]);
+  }, [pendingPlan, sendWebSocketMessage]);
 
   /**
    * Reject plan via WebSocket
@@ -713,10 +714,11 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
   const rejectPlanWebSocket = useCallback(() => {
     if (!pendingPlan) return;
 
-    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
-    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
-
-    if (!planId) return;
+    const planId = pendingPlan.id;
+    if (!planId) {
+      console.error("[useAgent] Cannot reject plan: missing plan ID");
+      return;
+    }
 
     setPendingPlan(null);
 
@@ -746,7 +748,7 @@ export function useAgentConversation(workspaceId: string, options?: UseAgentConv
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
-  }, [pendingPlan, messages, sendWebSocketMessage]);
+  }, [pendingPlan, sendWebSocketMessage]);
 
   /**
    * Cancel via WebSocket
@@ -1139,9 +1141,8 @@ The workspace ID for this session is: \`${workspaceId}\`
       return approvePlanWebSocket();
     }
 
-    // Find the plan ID from messages
-    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
-    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+    // Get plan ID directly from pendingPlan
+    const planId = pendingPlan.id;
 
     setPendingPlan(null);
     setPhase("running");
@@ -1200,7 +1201,7 @@ The workspace ID for this session is: \`${workspaceId}\`
       setPhase("error");
       setIsStreaming(false);
     }
-  }, [pendingPlan, messages, gatewayConnected, useWebSocket, approvePlanWebSocket]);
+  }, [pendingPlan, gatewayConnected, useWebSocket, approvePlanWebSocket]);
 
   /**
    * Reject a pending plan
@@ -1213,9 +1214,8 @@ The workspace ID for this session is: \`${workspaceId}\`
       return rejectPlanWebSocket();
     }
 
-    // Find the plan ID from messages
-    const planMessage = messages.find((m) => m.type === "plan" && m.plan);
-    const planId = (planMessage?.plan as { id?: string } | undefined)?.id;
+    // Get plan ID directly from pendingPlan
+    const planId = pendingPlan.id;
 
     try {
       if (planId && gatewayConnected) {
@@ -1257,7 +1257,7 @@ The workspace ID for this session is: \`${workspaceId}\`
     };
     setMessages((prev) => [...prev, textMessage]);
     setPhase("idle");
-  }, [pendingPlan, messages, gatewayConnected, useWebSocket, rejectPlanWebSocket]);
+  }, [pendingPlan, gatewayConnected, useWebSocket, rejectPlanWebSocket]);
 
   /**
    * Answer pending questions (AskUserQuestion elicitation)
