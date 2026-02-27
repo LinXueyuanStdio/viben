@@ -672,7 +672,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // NOTE: These hooks must be declared before any early returns to follow React's rules of hooks
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
+  const [_containerWidth, setContainerWidth] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     const updateWidth = () => {

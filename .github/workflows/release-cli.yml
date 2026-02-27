@@ -147,8 +147,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build CLI package
-        run: pnpm --filter viben build
+      - name: Build CLI package and dependencies
+        run: pnpm --filter viben... build
 
       - name: Update version in package.json
         run: |
