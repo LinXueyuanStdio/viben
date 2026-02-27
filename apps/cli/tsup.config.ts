@@ -11,7 +11,7 @@ export default defineConfig({
   target: 'node18',
   outDir: 'dist',
   // Don't bundle dependencies - let Node.js resolve them at runtime
-  external: ['commander', 'chalk', 'yaml'],
+  external: ['@viben/core', 'commander', 'chalk'],
   // Mark Node.js built-in modules as external
   platform: 'node',
 });

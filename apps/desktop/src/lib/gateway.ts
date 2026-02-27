@@ -343,6 +343,28 @@ export type SSEMessageEvent =
   | SSEDoneEvent;
 
 // ============================================================================
+// Background Task Types
+// ============================================================================
+
+/** Background task status */
+export type BackgroundTaskStatus = "running" | "completed" | "error" | "stopped";
+
+/** Background task info */
+export interface BackgroundTask {
+  taskId: string;
+  sessionId: string;
+  prompt: string;
+  workspacePath?: string;
+  agentPath?: string;
+  agentName?: string;
+  status: BackgroundTaskStatus;
+  startedAt: string;
+  completedAt?: string;
+  duration?: number;
+  errorMessage?: string;
+}
+
+// ============================================================================
 // API Client
 // ============================================================================
 
@@ -508,6 +530,48 @@ export class GatewayClient {
     }
 
     return result;
+  }
+
+  // ============================================================================
+  // Generic HTTP Methods
+  // ============================================================================
+
+  /**
+   * Make a GET request to the Gateway
+   */
+  async get<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.text().catch(() => "Unknown error");
+      throw new Error(`Gateway GET ${path} failed: ${response.status} - ${error}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Make a POST request to the Gateway
+   */
+  async post<T>(path: string, body?: unknown): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.text().catch(() => "Unknown error");
+      throw new Error(`Gateway POST ${path} failed: ${response.status} - ${error}`);
+    }
+
+    return response.json();
   }
 
   /**
@@ -1044,6 +1108,133 @@ export class GatewayClient {
         response.status
       );
     }
+  }
+
+  /**
+   * Start a background task
+   * This runs the agent in the background (server-side) and returns immediately.
+   * Use subscribeToBackgroundTasks to monitor task progress.
+   */
+  async startBackgroundTask(request: {
+    prompt: string;
+    cwd?: string;
+    taskId?: string;
+    sessionId?: string;
+    agentPath?: string;
+    agentConfig?: {
+      name?: string;
+      model?: string;
+      provider?: string;
+      systemPrompt?: string;
+    };
+    resume?: string;
+  }): Promise<{ sessionId: string; taskId: string }> {
+    // Create a new AbortController for this request
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout for initial response
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/agent/run`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          prompt: request.prompt,
+          cwd: request.cwd,
+          task_id: request.taskId,
+          session_id: request.sessionId,
+          agent_path: request.agentPath,
+          agent_config: request.agentConfig,
+          resume: request.resume,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new GatewayError(
+          `Failed to start background task: ${error || response.statusText}`,
+          response.status
+        );
+      }
+
+      // Read only the first SSE message to get session ID
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new GatewayError("No response body", 500);
+      }
+
+      const decoder = new TextDecoder();
+      let sessionId = "";
+      let buffer = "";
+
+      // Read until we get the session message
+      while (!sessionId) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.type === "session") {
+                sessionId = data.sessionId;
+                break;
+              }
+            } catch {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+
+      // Don't cancel the reader - let the stream continue in background
+      // The server will continue processing
+
+      return {
+        sessionId: sessionId || request.sessionId || "",
+        taskId: request.taskId || sessionId || "",
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
+   * Subscribe to background task updates (SSE)
+   * Returns an EventSource-like interface
+   */
+  subscribeToBackgroundTasks(
+    onTasks: (tasks: BackgroundTask[]) => void,
+    onError?: (error: Error) => void
+  ): { close: () => void } {
+    const eventSource = new EventSource(`${this.baseUrl}/api/agent/tasks/subscribe`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "tasks") {
+          onTasks(data.tasks);
+        }
+      } catch (e) {
+        onError?.(e instanceof Error ? e : new Error(String(e)));
+      }
+    };
+
+    eventSource.onerror = () => {
+      onError?.(new Error("SSE connection error"));
+    };
+
+    return {
+      close: () => eventSource.close(),
+    };
   }
 
   /**

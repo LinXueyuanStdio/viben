@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getClient } from "@/lib/viben";
+import { getGatewayClient } from "@/lib/gateway";
 
 // ============================================================================
 // Types
@@ -10,21 +11,21 @@ import { invoke } from "@tauri-apps/api/core";
  */
 export interface PackageUpdate {
   /** Package ID */
-  packageId: string;
+  package_id: string;
   /** Type of package: 'mcp' or 'skill' */
-  packageType: "mcp" | "skill";
+  package_type: "mcp" | "skill";
   /** Package display name */
   name: string;
   /** Currently installed version */
-  currentVersion: string;
+  current_version: string;
   /** Latest available version */
-  latestVersion: string;
+  latest_version: string;
   /** Release notes for the latest version */
-  releaseNotes?: string;
+  release_notes?: string;
 }
 
 /**
- * Information about an installed package (from TD9)
+ * Information about an installed package
  */
 interface InstalledPackage {
   id: string;
@@ -37,45 +38,11 @@ interface InstalledPackage {
 }
 
 /**
- * Installed packages info (from TD9)
+ * Installed packages info
  */
 interface InstalledPackagesInfo {
   mcp: InstalledPackage[];
   skills: InstalledPackage[];
-}
-
-/**
- * Cloud MCP package info (from TD3)
- */
-interface CloudMcpPackage {
-  id: string;
-  name: string;
-  slug: string;
-  version: string;
-  description: string | null;
-}
-
-/**
- * Cloud skill package info (from TD4)
- */
-interface CloudSkillPackage {
-  id: string;
-  name: string;
-  slug: string;
-  version: string;
-  description: string | null;
-}
-
-/**
- * Install result from package_install commands
- */
-interface InstallResult {
-  package_id: string;
-  package_type: string;
-  install_path: string;
-  version: string;
-  success: boolean;
-  error: string | null;
 }
 
 /**
@@ -150,7 +117,7 @@ function compareVersions(v1: string, v2: string): number {
 /**
  * Hook for checking and managing package updates
  *
- * This hook compares installed packages (from TD9) with cloud packages (from TD3/TD4)
+ * This hook compares installed packages with cloud packages
  * to detect available updates and provides methods to update packages.
  */
 export function usePackageUpdates(
@@ -178,26 +145,27 @@ export function usePackageUpdates(
     setError(null);
 
     try {
-      // Get installed packages
-      const installed = await invoke<InstalledPackagesInfo>("get_installed_packages");
+      // Get installed packages from Gateway
+      const gateway = getGatewayClient();
+      const installed = await gateway.get<InstalledPackagesInfo>("/api/packages/installed");
 
+      const client = getClient();
       const newUpdates: PackageUpdate[] = [];
 
       // Check MCP packages
       for (const pkg of installed.mcp) {
         try {
-          const cloudPkg = await invoke<CloudMcpPackage>("get_cloud_mcp_package", {
-            id: pkg.id,
-          });
+          const response = await client.mcp.get(pkg.id);
+          const cloudPkg = response.package;
 
           if (compareVersions(pkg.version, cloudPkg.version) < 0) {
             newUpdates.push({
-              packageId: pkg.id,
-              packageType: "mcp",
+              package_id: pkg.id,
+              package_type: "mcp",
               name: pkg.name,
-              currentVersion: pkg.version,
-              latestVersion: cloudPkg.version,
-              releaseNotes: cloudPkg.description || undefined,
+              current_version: pkg.version,
+              latest_version: cloudPkg.version,
+              release_notes: cloudPkg.description || undefined,
             });
           }
         } catch {
@@ -209,18 +177,17 @@ export function usePackageUpdates(
       // Check skill packages
       for (const pkg of installed.skills) {
         try {
-          const cloudPkg = await invoke<CloudSkillPackage>("get_cloud_skill_package", {
-            id: pkg.id,
-          });
+          const response = await client.skills.get(pkg.id);
+          const cloudPkg = response.package;
 
           if (compareVersions(pkg.version, cloudPkg.version) < 0) {
             newUpdates.push({
-              packageId: pkg.id,
-              packageType: "skill",
+              package_id: pkg.id,
+              package_type: "skill",
               name: pkg.name,
-              currentVersion: pkg.version,
-              latestVersion: cloudPkg.version,
-              releaseNotes: cloudPkg.description || undefined,
+              current_version: pkg.version,
+              latest_version: cloudPkg.version,
+              release_notes: cloudPkg.description || undefined,
             });
           }
         } catch {
@@ -247,6 +214,7 @@ export function usePackageUpdates(
 
   /**
    * Update a specific package
+   * Note: Actual package installation requires Gateway support
    */
   const updatePackage = useCallback(
     async (id: string, type: "mcp" | "skill"): Promise<boolean> => {
@@ -255,10 +223,14 @@ export function usePackageUpdates(
       setError(null);
 
       try {
-        const result = await invoke<InstallResult>("update_package", {
-          packageId: id,
-          packageType: type,
-          pythonPath: null, // Use default from registry
+        // Use Gateway to trigger package update
+        const gateway = getGatewayClient();
+        const result = await gateway.post<{
+          success: boolean;
+          error?: string;
+        }>("/api/packages/update", {
+          package_id: id,
+          package_type: type,
         });
 
         if (!result.success) {
@@ -266,7 +238,7 @@ export function usePackageUpdates(
         }
 
         // Remove the updated package from the updates list
-        setUpdates((prev) => prev.filter((u) => u.packageId !== id));
+        setUpdates((prev) => prev.filter((u) => u.package_id !== id));
 
         return true;
       } catch (err) {
@@ -294,13 +266,16 @@ export function usePackageUpdates(
     const remainingUpdates: PackageUpdate[] = [];
 
     for (const update of updates) {
-      setUpdatingPackageId(update.packageId);
+      setUpdatingPackageId(update.package_id);
 
       try {
-        const result = await invoke<InstallResult>("update_package", {
-          packageId: update.packageId,
-          packageType: update.packageType,
-          pythonPath: null,
+        const gateway = getGatewayClient();
+        const result = await gateway.post<{
+          success: boolean;
+          error?: string;
+        }>("/api/packages/update", {
+          package_id: update.package_id,
+          package_type: update.package_type,
         });
 
         if (!result.success) {

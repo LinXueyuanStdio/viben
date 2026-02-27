@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { getClient } from "@/lib/viben";
 
 /**
  * Options for making an API request
@@ -27,6 +27,22 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// Default platform URL
+const PLATFORM_URL = "https://viben-web.vercel.app";
+
+// Store API base URL in memory (localStorage fallback for persistence)
+let apiBaseUrl = PLATFORM_URL;
+
+// Try to restore from localStorage
+try {
+  const stored = localStorage.getItem("viben-api-base-url");
+  if (stored) {
+    apiBaseUrl = stored;
+  }
+} catch {
+  // localStorage may not be available
+}
+
 /**
  * Make an API request to the platform
  *
@@ -52,12 +68,33 @@ export interface PaginatedResponse<T> {
  * ```
  */
 export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
-  return invoke<T>("api_request", {
+  const url = `${apiBaseUrl}${options.endpoint}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (options.authToken) {
+    headers["Authorization"] = `Bearer ${options.authToken}`;
+  }
+
+  const response = await fetch(url, {
     method: options.method,
-    endpoint: options.endpoint,
-    body: options.body ?? null,
-    authToken: options.authToken ?? null,
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
   });
+
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    try {
+      const errorBody = await response.json();
+      errorMessage = errorBody.error || errorMessage;
+    } catch {
+      // Unable to parse error body
+    }
+    throw new Error(errorMessage);
+  }
+
+  return response.json();
 }
 
 /**
@@ -66,7 +103,7 @@ export async function apiRequest<T>(options: ApiRequestOptions): Promise<T> {
  * @returns Promise resolving to the base URL string
  */
 export async function getApiBaseUrl(): Promise<string> {
-  return invoke<string>("get_api_base_url");
+  return apiBaseUrl;
 }
 
 /**
@@ -76,5 +113,34 @@ export async function getApiBaseUrl(): Promise<string> {
  * @throws Error if URL format is invalid
  */
 export async function setApiBaseUrl(url: string): Promise<void> {
-  return invoke<void>("set_api_base_url", { url });
+  // Validate URL format
+  try {
+    new URL(url);
+  } catch {
+    throw new Error("Invalid URL format");
+  }
+
+  apiBaseUrl = url.replace(/\/$/, ""); // Remove trailing slash
+
+  // Persist to localStorage
+  try {
+    localStorage.setItem("viben-api-base-url", apiBaseUrl);
+  } catch {
+    // localStorage may not be available
+  }
 }
+
+/**
+ * Reset API base URL to default
+ */
+export function resetApiBaseUrl(): void {
+  apiBaseUrl = PLATFORM_URL;
+  try {
+    localStorage.removeItem("viben-api-base-url");
+  } catch {
+    // localStorage may not be available
+  }
+}
+
+// Re-export getClient for convenience
+export { getClient };

@@ -2,7 +2,6 @@
  * History service for .agent_history management
  *
  * Similar to .bash_history, records user inputs for each agent session.
- * This implementation follows the Rust pattern from crates/viben-core/src/services/history.rs
  */
 import { join } from "node:path";
 import { existsSync } from "node:fs";

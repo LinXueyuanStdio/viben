@@ -183,7 +183,7 @@ export function PackageDetail({
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>
-                      {t("marketplace.updated")}: {formatDate(pkg.updatedAt)}
+                      {t("marketplace.updated")}: {formatDate(pkg.updatedAt ?? pkg.createdAt)}
                     </span>
                   </div>
                 </div>

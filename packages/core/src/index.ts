@@ -430,6 +430,9 @@ export {
   type ProjectType as TeamProjectType,
 } from "./team";
 
+// CLI
+export { run, createProgram } from "./cli";
+
 // Gateway (optional - requires fastify)
 // Note: Gateway is excluded from the main build because it requires optional dependencies.
 // To use the gateway, install fastify and @fastify/cors, then:

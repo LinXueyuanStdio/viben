@@ -337,8 +337,6 @@ export interface ProviderUpdate {
 
 /**
  * Model definition
- *
- * Synced with crates/viben-core/src/models/types.rs Model
  */
 export interface Model {
   id: string;

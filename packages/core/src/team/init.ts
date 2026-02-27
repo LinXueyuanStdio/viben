@@ -4,7 +4,7 @@
  * This module implements the `viben team init` command that generates
  * a complete AI-assisted development workflow structure.
  *
- * Templates are read from crates/viben-agent-organization/src/templates/
+ * Templates are read from packages/core/templates/
  *
  * Generated structure:
  * - .viben/ - Workflow files, scripts, specs, and workspace
@@ -19,32 +19,23 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 
 /**
- * Get the templates directory path from the Rust crate.
- * This allows templates to be shared between TypeScript and Rust implementations.
+ * Get the templates directory path.
+ * Templates are located in packages/core/templates/.
  */
 function getTemplatesDir(): string {
-  // Navigate from packages/core to crates/viben-agent-organization/src/templates
-  // This path is relative to the project root
-  const projectRoot = findProjectRoot();
-  return join(projectRoot, "crates/viben-agent-organization/src/templates");
-}
+  // In development: __dirname is packages/core/src/team
+  // In production (dist): __dirname is packages/core/dist/team
+  // Templates are at packages/core/templates/
+  const currentDir = dirname(fileURLToPath(import.meta.url));
 
-/**
- * Find the project root by looking for Cargo.toml or package.json
- */
-function findProjectRoot(): string {
-  let dir = process.cwd();
-  while (dir !== "/") {
-    if (
-      existsSync(join(dir, "Cargo.toml")) &&
-      existsSync(join(dir, "pnpm-workspace.yaml"))
-    ) {
-      return dir;
-    }
-    dir = dirname(dir);
+  // Check if we're in dist (production) or src (development)
+  if (currentDir.includes("/dist/")) {
+    // Production: packages/core/dist/team -> packages/core/templates
+    return resolve(currentDir, "../../templates");
+  } else {
+    // Development: packages/core/src/team -> packages/core/templates
+    return resolve(currentDir, "../../templates");
   }
-  // Fallback: assume we're in the project root
-  return process.cwd();
 }
 
 /**

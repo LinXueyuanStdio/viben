@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getClient } from "@/lib/viben";
 
 // ============================================================================
 // Types
@@ -103,19 +103,42 @@ export function useCloudSkillPackages(options: UseCloudSkillPackagesOptions = {}
     setError(null);
 
     try {
-      const result = await invoke<CloudSkillListResponse>(
-        "list_cloud_skill_packages",
-        {
-          page,
-          limit,
-          category: category ?? null,
-          sort: sort ?? null,
-        }
-      );
+      const client = getClient();
+      const response = await client.skills.list({
+        page,
+        limit,
+        sort: sort ?? undefined,
+        // Note: category filter may not be supported yet in the API
+      });
 
-      setPackages(result.data);
-      setPagination(result.pagination);
-      return result;
+      // Map response to CloudSkillPackage format
+      const mappedPackages: CloudSkillPackage[] = response.data.map((pkg) => ({
+        id: pkg.id,
+        name: pkg.name,
+        slug: pkg.slug,
+        version: pkg.version,
+        description: pkg.description,
+        category: pkg.category ?? null,
+        skillType: pkg.skillType ?? "command",
+        triggerPatterns: pkg.triggerPatterns ?? null,
+        tags: pkg.tags ?? null,
+        repositoryUrl: pkg.repositoryUrl ?? null,
+        favoritesCount: pkg.favoritesCount ?? 0,
+        downloadsCount: pkg.downloadsCount ?? 0,
+        ratingAvg: pkg.ratingAvg ?? 0,
+        author: pkg.author ? {
+          id: pkg.author.id,
+          username: pkg.author.username,
+          displayName: pkg.author.displayName ?? pkg.author.username,
+          avatarUrl: pkg.author.avatarUrl ?? null,
+        } : null,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt ?? pkg.createdAt,
+      }));
+
+      setPackages(mappedPackages);
+      setPagination(response.pagination);
+      return { data: mappedPackages, pagination: response.pagination };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
@@ -181,22 +204,44 @@ export function useCloudSkillSearch(query: string, debounceMs = 300) {
       setError(null);
 
       try {
-        const result = await invoke<CloudSkillListResponse>(
-          "search_cloud_skill_packages",
-          {
-            query: searchQuery,
-            page,
-            limit,
-          }
-        );
+        const client = getClient();
+        const response = await client.skills.search(searchQuery, {
+          page,
+          limit,
+        });
+
+        // Map response to CloudSkillPackage format
+        const mappedResults: CloudSkillPackage[] = response.data.map((pkg) => ({
+          id: pkg.id,
+          name: pkg.name,
+          slug: pkg.slug,
+          version: pkg.version,
+          description: pkg.description,
+          category: pkg.category ?? null,
+          skillType: pkg.skillType ?? "command",
+          triggerPatterns: pkg.triggerPatterns ?? null,
+          tags: pkg.tags ?? null,
+          repositoryUrl: pkg.repositoryUrl ?? null,
+          favoritesCount: pkg.favoritesCount ?? 0,
+          downloadsCount: pkg.downloadsCount ?? 0,
+          ratingAvg: pkg.ratingAvg ?? 0,
+          author: pkg.author ? {
+            id: pkg.author.id,
+            username: pkg.author.username,
+            displayName: pkg.author.displayName ?? pkg.author.username,
+            avatarUrl: pkg.author.avatarUrl ?? null,
+          } : null,
+          createdAt: pkg.createdAt,
+          updatedAt: pkg.updatedAt ?? pkg.createdAt,
+        }));
 
         // Only update state if this is still the latest query
         if (latestQuery.current === searchQuery) {
-          setResults(result.data);
-          setPagination(result.pagination);
+          setResults(mappedResults);
+          setPagination(response.pagination);
         }
 
-        return result;
+        return { data: mappedResults, pagination: response.pagination };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         // Only update error if this is still the latest query
@@ -292,9 +337,34 @@ export function useCloudSkillPackage(id: string | null) {
     setError(null);
 
     try {
-      const result = await invoke<CloudSkillPackage>("get_cloud_skill_package", {
-        id: packageId,
-      });
+      const client = getClient();
+      const response = await client.skills.get(packageId);
+      const pkg = response.package;
+
+      // Map to CloudSkillPackage format
+      const result: CloudSkillPackage = {
+        id: pkg.id,
+        name: pkg.name,
+        slug: pkg.slug,
+        version: pkg.version,
+        description: pkg.description,
+        category: pkg.category ?? null,
+        skillType: pkg.skillType ?? "command",
+        triggerPatterns: pkg.triggerPatterns ?? null,
+        tags: pkg.tags ?? null,
+        repositoryUrl: pkg.repositoryUrl ?? null,
+        favoritesCount: pkg.favoritesCount ?? 0,
+        downloadsCount: pkg.downloadsCount ?? 0,
+        ratingAvg: pkg.ratingAvg ?? 0,
+        author: pkg.author ? {
+          id: pkg.author.id,
+          username: pkg.author.username,
+          displayName: pkg.author.displayName ?? pkg.author.username,
+          avatarUrl: pkg.author.avatarUrl ?? null,
+        } : null,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt ?? pkg.createdAt,
+      };
 
       // Update cache
       packageCache.set(packageId, {
@@ -376,16 +446,23 @@ export function useCloudSkillCategories() {
     setError(null);
 
     try {
-      const result = await invoke<SkillCategory[]>("get_cloud_skill_categories");
+      // Categories API not available in VibenClient yet
+      // For now, return some default categories
+      const defaultCategories: SkillCategory[] = [
+        { id: "command", name: "Commands", description: "Slash commands for agents", count: 0 },
+        { id: "workflow", name: "Workflows", description: "Multi-step workflow skills", count: 0 },
+        { id: "integration", name: "Integrations", description: "Third-party integrations", count: 0 },
+        { id: "utility", name: "Utility", description: "General utility skills", count: 0 },
+      ];
 
       // Update cache
       categoriesCache = {
-        data: result,
+        data: defaultCategories,
         timestamp: Date.now(),
       };
 
-      setCategories(result);
-      return result;
+      setCategories(defaultCategories);
+      return defaultCategories;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);

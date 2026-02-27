@@ -77,6 +77,8 @@ export class TunnelService extends EventEmitter {
   private tunnel: CloudflaredTunnel | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectAttempts = 0;
+  private static readonly MAX_RECONNECT_ATTEMPTS = 3;
 
   constructor() {
     super();
@@ -119,8 +121,8 @@ export class TunnelService extends EventEmitter {
       // Return a promise that resolves when we get the URL
       return new Promise<string>((resolve, reject) => {
         const timeout = setTimeout(() => {
-          reject(new Error("Tunnel connection timeout (30s)"));
-        }, 30000);
+          reject(new Error("Tunnel connection timeout (60s)"));
+        }, 60000);
 
         // Handle URL event (tunnel is ready)
         tunnel.on("url", (url: string) => {
@@ -236,7 +238,21 @@ export class TunnelService extends EventEmitter {
   private handleDisconnect(): void {
     if (this.state.status === "stopped") return;
 
-    console.log("[TunnelService] Tunnel disconnected, will attempt to reconnect...");
+    this.reconnectAttempts++;
+
+    if (this.reconnectAttempts > TunnelService.MAX_RECONNECT_ATTEMPTS) {
+      console.error(`[TunnelService] Max reconnection attempts (${TunnelService.MAX_RECONNECT_ATTEMPTS}) exceeded, giving up`);
+      this.updateState({
+        status: "error",
+        url: null,
+        connections: [],
+        error: `Failed to connect after ${TunnelService.MAX_RECONNECT_ATTEMPTS} attempts. Please try again later or check your network connection.`,
+      });
+      this.emit("error", this.state.error);
+      return;
+    }
+
+    console.log(`[TunnelService] Tunnel disconnected, will attempt to reconnect (${this.reconnectAttempts}/${TunnelService.MAX_RECONNECT_ATTEMPTS})...`);
 
     this.updateState({
       status: "reconnecting",
@@ -246,17 +262,20 @@ export class TunnelService extends EventEmitter {
 
     this.emit("disconnected");
 
-    // Attempt to reconnect after a delay
+    // Attempt to reconnect after a delay (with exponential backoff)
+    const delay = 5000 * Math.pow(2, this.reconnectAttempts - 1);
     this.reconnectTimer = setTimeout(async () => {
       if (this.state.status === "reconnecting") {
         try {
           await this.start(this.state.port);
+          // Reset attempts on successful connection
+          this.reconnectAttempts = 0;
         } catch (e) {
           console.error("[TunnelService] Reconnection failed:", e);
-          // Will retry on next health check
+          // Will be called again by handleDisconnect
         }
       }
-    }, 5000);
+    }, delay);
   }
 
   /**

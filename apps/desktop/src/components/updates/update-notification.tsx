@@ -102,8 +102,8 @@ const UpdateNotification = React.forwardRef<
     };
 
     // Determine notification message
-    const mcpCount = updates.filter((u) => u.packageType === "mcp").length;
-    const skillCount = updates.filter((u) => u.packageType === "skill").length;
+    const mcpCount = updates.filter((u) => u.package_type === "mcp").length;
+    const skillCount = updates.filter((u) => u.package_type === "skill").length;
 
     let message: string;
     if (mcpCount > 0 && skillCount > 0) {
