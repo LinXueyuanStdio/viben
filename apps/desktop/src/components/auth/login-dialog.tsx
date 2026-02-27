@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Github, Loader2, Mail, AlertCircle, Eye, EyeOff, Terminal } from "lucide-react";
+import { Github, Loader2, Mail, AlertCircle, Eye, EyeOff, Terminal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -45,7 +45,7 @@ interface LoginDialogProps {
  */
 export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const { t } = useTranslation();
-  const { login, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, isAuthenticated } = useAuth();
+  const { login, loginWithGitHub, handleOAuthCallback, isLoading, error, clearError, setLoading, isAuthenticated } = useAuth();
 
   const [open, setOpen] = React.useState(false);
   const [email, setEmail] = React.useState("");
@@ -53,6 +53,9 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [rememberMe, setRememberMe] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  // OAuth waiting state
+  const [isWaitingOAuth, setIsWaitingOAuth] = React.useState(false);
 
   // Dev mode: manual OAuth code input
   const [showDevOAuth, setShowDevOAuth] = React.useState(false);
@@ -73,8 +76,16 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
       clearError();
       setShowDevOAuth(false);
       setOauthCode("");
+      setIsWaitingOAuth(false);
     }
   }, [open, clearError]);
+
+  // Reset OAuth waiting state when auth completes
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      setIsWaitingOAuth(false);
+    }
+  }, [isAuthenticated]);
 
   const validateForm = (): boolean => {
     if (!email.trim()) {
@@ -112,6 +123,7 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
 
   const handleGitHubLogin = async () => {
     try {
+      setIsWaitingOAuth(true);
       await loginWithGitHub();
       // OAuth flow continues in browser
       // Dialog stays open until callback completes
@@ -120,8 +132,16 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
         setShowDevOAuth(true);
       }
     } catch {
+      setIsWaitingOAuth(false);
       // Error is handled by the hook
     }
+  };
+
+  const cancelOAuth = () => {
+    setIsWaitingOAuth(false);
+    setShowDevOAuth(false);
+    setLoading(false);
+    clearError();
   };
 
   // Dev mode: handle manual OAuth code submission
@@ -171,20 +191,41 @@ export function LoginDialog({ trigger, onSuccess }: LoginDialogProps) {
           )}
 
           {/* GitHub OAuth button */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleGitHubLogin}
-            disabled={isLoading}
-            className="w-full"
-          >
-            {isLoading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Github className="mr-2 h-4 w-4" />
-            )}
-            {t("auth.continueWithGitHub")}
-          </Button>
+          {isWaitingOAuth ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <div className="text-sm">
+                  <p className="font-medium">{t("auth.waitingForOAuth", "等待浏览器授权...")}</p>
+                  <p className="text-muted-foreground">{t("auth.completeInBrowser", "请在浏览器中完成授权")}</p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={cancelOAuth}
+                className="w-full"
+              >
+                <X className="mr-2 h-4 w-4" />
+                {t("common.cancel", "取消")}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGitHubLogin}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Github className="mr-2 h-4 w-4" />
+              )}
+              {t("auth.continueWithGitHub")}
+            </Button>
+          )}
 
           {/* Dev mode: Manual OAuth code input */}
           {isDev && showDevOAuth && (
