@@ -69,7 +69,7 @@ export class SkillsManager {
    * - "custom": Install to specified customPath
    */
   async installSkill(options: InstallSkillOptions): Promise<InstallSkillResult> {
-    const { name, target, agentId, customPath, force, sourcePath, zipPath, onProgress, version } = options;
+    const { name, target, agentId, customPath, force, sourcePath, zipPath, onProgress, version, conflictResolution } = options;
 
     // Parse name@version if present
     const { skillName, skillVersion } = this.parseSkillName(name, version);
@@ -106,10 +106,33 @@ export class SkillsManager {
         onProgress,
         overwrite: force,
         validate: true,
+        conflictResolution,
       });
 
       // Use skill name from extracted SKILL.md if available
       const extractedSkillName = extractResult.skillName || skillName;
+
+      // Log conflicts if any occurred
+      if (extractResult.conflicts && extractResult.conflicts.length > 0) {
+        const overwrittenCount = extractResult.conflicts.filter((c) => c.overwritten).length;
+        const skippedCount = extractResult.skippedCount || 0;
+
+        if (overwrittenCount > 0) {
+          // Add warning about overwritten files
+          if (!extractResult.warnings) {
+            extractResult.warnings = [];
+          }
+          extractResult.warnings.push(`${overwrittenCount} file(s) were overwritten during extraction`);
+        }
+
+        if (skippedCount > 0) {
+          // Add warning about skipped files
+          if (!extractResult.warnings) {
+            extractResult.warnings = [];
+          }
+          extractResult.warnings.push(`${skippedCount} file(s) were skipped due to conflicts`);
+        }
+      }
 
       // Update installed.yaml tracking
       await this.addToInstalledList(targetDir, {
@@ -120,13 +143,19 @@ export class SkillsManager {
         installedAt: new Date().toISOString(),
       });
 
+      // Build success message with warnings if any
+      let message = `Skill "${extractedSkillName}" installed successfully to ${target}`;
+      if (extractResult.warnings && extractResult.warnings.length > 0) {
+        message += ` (with ${extractResult.warnings.length} warning(s))`;
+      }
+
       return {
         success: true,
         name: extractedSkillName,
         version: skillVersion || "1.0.0",
         path: skillDir,
         target,
-        message: `Skill "${extractedSkillName}" installed successfully to ${target}`,
+        message,
       };
     } else if (sourcePath) {
       // Copy from local directory

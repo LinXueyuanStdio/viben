@@ -11,7 +11,7 @@ import AdmZip from "adm-zip";
 import { mkdir, access, readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, basename } from "node:path";
-import { ValidationError } from "../error";
+import { ValidationError, FileConflictError } from "../error";
 import { ensureDir } from "../config/yaml";
 
 /**
@@ -19,6 +19,23 @@ import { ensureDir } from "../config/yaml";
  * Called during extraction with progress percentage (0-100)
  */
 export type ProgressCallback = (progress: number) => void;
+
+/**
+ * Conflict resolution strategy
+ */
+export type ConflictResolution = "skip" | "overwrite" | "fail";
+
+/**
+ * Information about a file conflict
+ */
+export interface FileConflict {
+  /** Path to the conflicting file */
+  path: string;
+  /** Entry name in the zip */
+  entryName: string;
+  /** Whether the file was overwritten */
+  overwritten: boolean;
+}
 
 /**
  * Options for extracting a zip file
@@ -34,6 +51,8 @@ export interface ExtractZipOptions {
   overwrite?: boolean;
   /** Whether to validate the extracted skill (default: true) */
   validate?: boolean;
+  /** Conflict resolution strategy (default: "fail") */
+  conflictResolution?: ConflictResolution;
 }
 
 /**
@@ -50,6 +69,10 @@ export interface ExtractZipResult {
   warnings?: string[];
   /** Extracted skill name (if SKILL.md found) */
   skillName?: string;
+  /** Files that conflicted with existing files */
+  conflicts?: FileConflict[];
+  /** Number of files skipped due to conflicts */
+  skippedCount?: number;
 }
 
 /**
@@ -68,6 +91,7 @@ export async function extractZipToDirectory(
     onProgress,
     overwrite = false,
     validate = true,
+    conflictResolution = "fail",
   } = options;
 
   // Validate zip file exists
@@ -77,11 +101,6 @@ export async function extractZipToDirectory(
 
   // Ensure target directory exists
   await ensureDir(targetDir);
-
-  // Check if target directory is empty (if not overwriting)
-  if (!overwrite && existsSync(targetDir)) {
-    // Directory exists - will be handled by caller (force flag)
-  }
 
   let zip: AdmZip;
   try {
@@ -99,9 +118,23 @@ export async function extractZipToDirectory(
     throw new ValidationError("Zip file is empty");
   }
 
+  // Determine the actual conflict resolution strategy
+  // overwrite flag takes precedence for backward compatibility
+  const actualResolution: ConflictResolution = overwrite ? "overwrite" : conflictResolution;
+
+  // Detect conflicts before extraction
+  const conflicts = await detectFileConflicts(entries, targetDir);
+
+  // Handle conflicts based on resolution strategy
+  if (conflicts.length > 0 && actualResolution === "fail") {
+    throw FileConflictError.filesExist(conflicts.map((c) => c.path));
+  }
+
   const extractedFiles: string[] = [];
   const warnings: string[] = [];
+  const fileConflicts: FileConflict[] = [];
   let skillName: string | undefined;
+  let skippedCount = 0;
 
   // Report initial progress
   onProgress?.(0);
@@ -130,13 +163,37 @@ export async function extractZipToDirectory(
         ? join(targetDir, ...parts.slice(1))
         : join(targetDir, entryName);
 
+      // Check if file exists and handle conflict
+      const fileExists = existsSync(extractPath);
+      const conflictInfo = conflicts.find((c) => c.path === extractPath);
+
+      if (fileExists && conflictInfo) {
+        if (actualResolution === "skip") {
+          // Skip this file
+          fileConflicts.push({
+            path: extractPath,
+            entryName,
+            overwritten: false,
+          });
+          skippedCount++;
+          continue;
+        } else if (actualResolution === "overwrite") {
+          // Record that we're overwriting
+          fileConflicts.push({
+            path: extractPath,
+            entryName,
+            overwritten: true,
+          });
+        }
+      }
+
       // Ensure parent directory exists
       const parentDir = join(extractPath, "..");
       await ensureDir(parentDir);
 
       // Extract file
       try {
-        zip.extractEntryTo(entry, parentDir, false, overwrite);
+        zip.extractEntryTo(entry, parentDir, false, actualResolution === "overwrite");
         extractedFiles.push(extractPath);
 
         // Check if this is SKILL.md
@@ -180,7 +237,57 @@ export async function extractZipToDirectory(
     files: extractedFiles,
     warnings: warnings.length > 0 ? warnings : undefined,
     skillName,
+    conflicts: fileConflicts.length > 0 ? fileConflicts : undefined,
+    skippedCount: skippedCount > 0 ? skippedCount : undefined,
   };
+}
+
+/**
+ * Detect file conflicts before extraction
+ *
+ * Scans the zip entries and checks which files already exist in the target directory
+ *
+ * @param entries - Zip entries to check
+ * @param targetDir - Target directory path
+ * @returns Array of file conflicts
+ */
+async function detectFileConflicts(
+  entries: AdmZip.IZipEntry[],
+  targetDir: string
+): Promise<FileConflict[]> {
+  const conflicts: FileConflict[] = [];
+  const hasCommonRoot = isAllEntriesInSameRoot(entries);
+
+  for (const entry of entries) {
+    // Skip directories
+    if (entry.isDirectory) {
+      continue;
+    }
+
+    const entryName = entry.entryName;
+    const parts = entryName.split("/");
+
+    // Skip __MACOSX and other metadata directories
+    if (parts.some((part: string) => part.startsWith("__MACOSX") || part.startsWith("."))) {
+      continue;
+    }
+
+    // Calculate the extraction path (same logic as in main extraction)
+    const extractPath = parts.length > 1 && hasCommonRoot
+      ? join(targetDir, ...parts.slice(1))
+      : join(targetDir, entryName);
+
+    // Check if file exists
+    if (existsSync(extractPath)) {
+      conflicts.push({
+        path: extractPath,
+        entryName,
+        overwritten: false,
+      });
+    }
+  }
+
+  return conflicts;
 }
 
 /**

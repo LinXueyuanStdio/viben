@@ -63,6 +63,8 @@ export interface InstallSkillOptions {
   onProgress?: (progress: number) => void;
   /** Executor name (e.g., "CLAUDE_CODE") - affects installation target */
   executor?: string;
+  /** Conflict resolution strategy for file conflicts (default: "fail") */
+  conflictResolution?: "skip" | "overwrite" | "fail";
 }
 
 /**
