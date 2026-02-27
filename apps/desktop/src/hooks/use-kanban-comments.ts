@@ -3,13 +3,11 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
-import type { Comment, CommentReaction } from "@viben/kanban";
+import { getGatewayClient, type KanbanComment } from "@/lib/gateway";
+import type { CommentReaction } from "@viben/kanban";
 
-// Types matching Rust backend
-export interface KanbanComment extends Comment {
-  task_id: string;
-}
+// Re-export KanbanComment from gateway
+export type { KanbanComment } from "@/lib/gateway";
 
 // Query keys
 export const kanbanCommentsKeys = {
@@ -25,7 +23,8 @@ export function useKanbanComments(taskId: string | null) {
     queryKey: kanbanCommentsKeys.comments(taskId || ""),
     queryFn: async () => {
       if (!taskId) return [];
-      const comments = await invoke<KanbanComment[]>("get_kanban_comments", { taskId });
+      const gateway = getGatewayClient();
+      const comments = await gateway.getKanbanComments(taskId);
       return comments;
     },
     enabled: !!taskId,
@@ -49,13 +48,14 @@ export function useAddKanbanComment() {
 
   return useMutation({
     mutationFn: async ({ taskId, content, authorId, authorName, authorAvatar }: AddCommentParams) => {
-      const comment = await invoke<KanbanComment>("add_kanban_comment", {
+      const gateway = getGatewayClient();
+      const comment = await gateway.addKanbanComment(
         taskId,
         content,
         authorId,
         authorName,
-        authorAvatar,
-      });
+        authorAvatar
+      );
       return comment;
     },
     onSuccess: (newComment) => {
@@ -81,11 +81,8 @@ export function useUpdateKanbanComment() {
 
   return useMutation({
     mutationFn: async ({ taskId, commentId, content }: UpdateCommentParams) => {
-      const comment = await invoke<KanbanComment>("update_kanban_comment", {
-        taskId,
-        commentId,
-        content,
-      });
+      const gateway = getGatewayClient();
+      const comment = await gateway.updateKanbanComment(taskId, commentId, content);
       return comment;
     },
     onMutate: async ({ taskId, commentId, content }) => {
@@ -152,7 +149,8 @@ export function useDeleteKanbanComment() {
 
   return useMutation({
     mutationFn: async ({ taskId, commentId }: DeleteCommentParams) => {
-      await invoke("delete_kanban_comment", { taskId, commentId });
+      const gateway = getGatewayClient();
+      await gateway.deleteKanbanComment(taskId, commentId);
       return { taskId, commentId };
     },
     onMutate: async ({ taskId, commentId }) => {
@@ -213,13 +211,8 @@ export function useToggleCommentReaction() {
 
   return useMutation({
     mutationFn: async ({ taskId, commentId, emoji, userId, userName }: ToggleReactionParams) => {
-      const comment = await invoke<KanbanComment>("toggle_comment_reaction", {
-        taskId,
-        commentId,
-        emoji,
-        userId,
-        userName,
-      });
+      const gateway = getGatewayClient();
+      const comment = await gateway.toggleCommentReaction(taskId, commentId, emoji, userId, userName);
       return comment;
     },
     onMutate: async ({ taskId, commentId, emoji, userId, userName }) => {

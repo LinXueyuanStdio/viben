@@ -474,9 +474,23 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     agentConfig,
   });
 
-  // Track previous session ID to detect session changes
-  const prevSessionIdRef = useRef<string | null>(null);
-  const isLoadingMessagesRef = useRef(false);
+  // Track previous task ID to detect task changes
+  const prevTaskIdRef = useRef<string | null>(null);
+  const loadedSessionIdRef = useRef<string | null>(null);
+
+  // Reset state when task changes
+  useEffect(() => {
+    if (task?.id !== prevTaskIdRef.current) {
+      console.log(`[TaskDetailPanel] Task changed from ${prevTaskIdRef.current} to ${task?.id}`);
+      prevTaskIdRef.current = task?.id ?? null;
+      loadedSessionIdRef.current = null;
+
+      // Clear messages when switching tasks
+      if (task?.id) {
+        agentClearMessages();
+      }
+    }
+  }, [task?.id, agentClearMessages]);
 
   // Update task's session_id when a new session is created
   useEffect(() => {
@@ -487,27 +501,35 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     }
   }, [currentSessionId, task?.id, task?.session_id, onUpdate]);
 
-  // Load conversation history when task's session changes or when switching to agent chat tab
+  // Load conversation history when task has a session
+  // Use either task.session_id (from saved metadata) or currentSessionId (from hook)
+  const effectiveSessionId = task?.session_id || currentSessionId;
+
   useEffect(() => {
-    if (!task?.session_id || !workspacePath) {
-      // No session yet, clear messages
-      if (prevSessionIdRef.current !== null) {
-        agentClearMessages();
-        prevSessionIdRef.current = null;
-      }
+    if (!task?.id || !workspacePath) {
       return;
     }
-    if (task.session_id === prevSessionIdRef.current) return;
-    if (isLoadingMessagesRef.current) return;
 
-    prevSessionIdRef.current = task.session_id;
-    isLoadingMessagesRef.current = true;
+    // No session yet, nothing to load
+    if (!effectiveSessionId) {
+      console.log(`[TaskDetailPanel] Task ${task.id} has no session yet`);
+      return;
+    }
+
+    // Already loaded this session
+    if (loadedSessionIdRef.current === effectiveSessionId) {
+      return;
+    }
+
+    loadedSessionIdRef.current = effectiveSessionId;
 
     const loadTaskMessages = async () => {
       try {
         const client = getGatewayClient();
-        // Load messages using task's session_id
-        const uiMessages = await client.listSessionUIMessages(taskAgentId, task.session_id!, workspacePath);
+        console.log(`[TaskDetailPanel] Loading messages for task ${task.id}, session ${effectiveSessionId}`);
+
+        // Load messages using session_id
+        const uiMessages = await client.listSessionUIMessages(taskAgentId, effectiveSessionId, workspacePath);
 
         if (uiMessages.length > 0) {
           // Convert UI messages to agent messages
@@ -522,26 +544,36 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             )
             .pop();
 
-          console.log(`[TaskDetailPanel] Loaded ${messages.length} messages for session ${task.session_id}`);
+          console.log(`[TaskDetailPanel] Loaded ${messages.length} messages for session ${effectiveSessionId}`);
           agentLoadMessages(messages, sdkSessionMsg?.sdkSessionId);
         } else {
-          console.log(`[TaskDetailPanel] No messages found for session ${task.session_id}`);
-          agentClearMessages();
+          console.log(`[TaskDetailPanel] No messages found for session ${effectiveSessionId}`);
         }
       } catch (error) {
-        console.error(`[TaskDetailPanel] Failed to load messages for session ${task.session_id}:`, error);
-        agentClearMessages();
-      } finally {
-        isLoadingMessagesRef.current = false;
+        console.error(`[TaskDetailPanel] Failed to load messages for session ${effectiveSessionId}:`, error);
       }
     };
 
     loadTaskMessages();
-  }, [task?.session_id, workspacePath, taskAgentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [task?.id, effectiveSessionId, workspacePath, taskAgentId, agentLoadMessages]);
 
   // Auto-start: send initial message when switching to agent chat after clicking "Run"
   useEffect(() => {
-    if (!shouldAutoStart || activeTab !== "agent-chat" || !task || agentIsStreaming) {
+    if (!shouldAutoStart || activeTab !== "agent-chat" || !task) {
+      return;
+    }
+
+    // Don't auto-start if already streaming
+    if (agentIsStreaming) {
+      console.log(`[TaskDetailPanel] Skipping auto-start - already streaming`);
+      setShouldAutoStart(false);
+      return;
+    }
+
+    // Don't auto-start if there are already messages (conversation exists)
+    if (agentMessages.length > 0) {
+      console.log(`[TaskDetailPanel] Skipping auto-start - conversation already exists with ${agentMessages.length} messages`);
+      setShouldAutoStart(false);
       return;
     }
 
@@ -554,8 +586,12 @@ You are helping the user work on this task. Provide relevant suggestions, code e
       : `请帮我完成以下任务：${task.title}`;
 
     console.log(`[TaskDetailPanel] Auto-starting task ${task.id} with initial prompt`);
-    agentSendMessage(initialPrompt);
-  }, [shouldAutoStart, activeTab, task, agentIsStreaming, agentSendMessage]);
+
+    // Small delay to ensure the tab switch animation completes
+    setTimeout(() => {
+      agentSendMessage(initialPrompt);
+    }, 100);
+  }, [shouldAutoStart, activeTab, task, agentIsStreaming, agentMessages.length, agentSendMessage]);
 
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [

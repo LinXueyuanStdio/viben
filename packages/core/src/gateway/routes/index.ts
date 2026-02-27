@@ -35,6 +35,8 @@ import { registerMarketplaceRoutes } from "./marketplace";
 import { registerOfficialRegistryRoutes } from "./official-registry";
 import { registerCacheRoutes } from "./cache";
 import { registerFilesystemRoutes } from "./filesystem";
+import { registerTunnelRoutes } from "./tunnel";
+import { registerKanbanDataRoutes } from "./kanban-data";
 
 /**
  * Register all routes
@@ -72,6 +74,8 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerOfficialRegistryRoutes(fastify);
   registerCacheRoutes(fastify);
   registerFilesystemRoutes(fastify);
+  registerTunnelRoutes(fastify);
+  registerKanbanDataRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -108,6 +112,7 @@ export { registerMarketplaceRoutes } from "./marketplace";
 export { registerOfficialRegistryRoutes } from "./official-registry";
 export { registerCacheRoutes } from "./cache";
 export { registerFilesystemRoutes } from "./filesystem";
+export { registerTunnelRoutes } from "./tunnel";
 export type {
   SSEEventType,
   SSEMessage,

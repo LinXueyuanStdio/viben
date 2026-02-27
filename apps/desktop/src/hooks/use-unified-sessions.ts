@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { LogSession, LogEntry } from "./use-logs";
 import type { ApiLogSession, ApiLogEntry, ApiLogSummary, ApiLogFilter } from "./use-api-logs";
 
@@ -25,10 +25,7 @@ export interface UnifiedSession {
   serverId: string | null;
 }
 
-interface LogSessionSummary {
-  sessions: LogSession[];
-  total_sessions: number;
-}
+// LogSessionSummary now comes from Gateway client (getLogSessions return type)
 
 /**
  * Hook for managing unified sessions (server logs + API logs)
@@ -67,10 +64,11 @@ export function useUnifiedSessions() {
     setError(null);
 
     try {
+      const gateway = getGatewayClient();
       // Fetch server log sessions and API log sessions in parallel
       const [serverResult, apiSessions] = await Promise.all([
-        invoke<LogSessionSummary>("get_log_sessions", { serverId: null }),
-        invoke<ApiLogSession[]>("get_api_log_sessions"),
+        gateway.getLogSessions(),
+        gateway.getApiLogSessions(),
       ]);
 
       const serverSessions = serverResult.sessions;
@@ -137,11 +135,12 @@ export function useUnifiedSessions() {
   const fetchServerLogs = useCallback(
     async (sessionId: string, levelFilter?: "all" | "info" | "warning" | "error" | "debug") => {
       try {
-        const result = await invoke<LogEntry[]>("get_session_logs", {
+        const gateway = getGatewayClient();
+        const result = await gateway.getSessionLogs(
           sessionId,
-          levelFilter: levelFilter === "all" ? null : levelFilter,
-          limit: 1000,
-        });
+          levelFilter === "all" ? undefined : levelFilter,
+          1000
+        );
         setServerLogs(result);
       } catch (err) {
         console.error("Failed to fetch server logs:", err);
@@ -156,18 +155,18 @@ export function useUnifiedSessions() {
   const fetchApiLogs = useCallback(
     async (runId: string, filter?: ApiLogFilter) => {
       try {
+        const gateway = getGatewayClient();
         const f = filter || apiLogFilter;
         const [logs, summary] = await Promise.all([
-          invoke<ApiLogEntry[]>("get_api_logs", {
-            runId,
+          gateway.getApiLogs(runId, {
             limit: 1000,
             offset: 0,
-            providerFilter: f.provider || null,
-            sourceFilter: f.source || null,
-            statusFilter: f.status || null,
-            methodFilter: f.method || null,
+            providerFilter: f.provider || undefined,
+            sourceFilter: f.source || undefined,
+            statusFilter: f.status || undefined,
+            methodFilter: f.method || undefined,
           }),
-          invoke<ApiLogSummary>("get_api_log_summary", { runId }),
+          gateway.getApiLogSummary(runId),
         ]);
         setApiLogs(logs);
         setApiLogSummary(summary);
@@ -201,16 +200,17 @@ export function useUnifiedSessions() {
     async (runId: string) => {
       setLoading(true);
       try {
+        const gateway = getGatewayClient();
         const session = sessions.find((s) => s.run_id === runId);
 
         // Delete server log session if exists
         if (session?.serverLog) {
-          await invoke("clear_session_logs", { sessionId: session.serverLog.id });
+          await gateway.clearSessionLogs(session.serverLog.id);
         }
 
         // Delete API log session if exists
         if (session?.apiLog) {
-          await invoke("clear_api_logs", { runId });
+          await gateway.clearApiLogs(runId);
         }
 
         // Refresh sessions list
@@ -238,7 +238,8 @@ export function useUnifiedSessions() {
   const cleanupSessions = useCallback(
     async (keepCount: number = 10) => {
       try {
-        const deleted = await invoke<number>("cleanup_old_sessions", { keepCount });
+        const gateway = getGatewayClient();
+        const deleted = await gateway.cleanupOldSessions(keepCount);
         await fetchSessions();
         return deleted;
       } catch (err) {
@@ -257,10 +258,8 @@ export function useUnifiedSessions() {
       if (!selectedSession?.serverLog) {
         throw new Error("No server log session selected");
       }
-      return invoke<string>("export_session_logs", {
-        sessionId: selectedSession.serverLog.id,
-        exportPath,
-      });
+      const gateway = getGatewayClient();
+      return gateway.exportSessionLogs(selectedSession.serverLog.id, exportPath);
     },
     [selectedSession]
   );
@@ -270,7 +269,8 @@ export function useUnifiedSessions() {
    */
   const openLogsFolder = useCallback(async () => {
     try {
-      await invoke("open_api_logs_dir");
+      const gateway = getGatewayClient();
+      await gateway.openApiLogsDir();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -303,8 +303,9 @@ export function useUnifiedSessions() {
   useEffect(() => {
     const init = async () => {
       try {
-        await invoke("init_logs");
-        const path = await invoke<string>("get_logs_dir_path");
+        const gateway = getGatewayClient();
+        await gateway.initLogs();
+        const path = await gateway.getLogsDirPath();
         setLogsDirPath(path);
       } catch (err) {
         console.error("Failed to initialize logs:", err);

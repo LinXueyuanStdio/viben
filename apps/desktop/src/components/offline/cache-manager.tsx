@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useOfflineStatus, CacheSettings } from "@/hooks/use-offline-status";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 
 interface CacheManagerProps {
   className?: string;
@@ -75,7 +75,7 @@ export function CacheManager({ className }: CacheManagerProps) {
   const handleOpenCacheFolder = async () => {
     if (cacheInfo?.cache_dir) {
       try {
-        await invoke("open_folder", { path: cacheInfo.cache_dir });
+        await getGatewayClient().openFolder(cacheInfo.cache_dir);
       } catch (err) {
         console.error("Failed to open cache folder:", err);
       }

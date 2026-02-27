@@ -9,7 +9,7 @@ import { FileBrowser, FileBrowserToolbar, type FileBrowserRef } from "@/componen
 import { useLocalWorkspaces } from "@/hooks";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { BreadcrumbSegment } from "@/components/workspace/workspace-breadcrumb";
 import type { ViewMode, SortField, SortDirection, GroupField } from "@/hooks/use-file-browser";
 import type { FileEntry } from "@/types";
@@ -554,10 +554,7 @@ export function WorkspaceFilesPage() {
     }
 
     try {
-      const content = await invoke<string | null>("read_file_content", {
-        workspacePath: ws.path,
-        filePath: file.path,
-      });
+      const content = await getGatewayClient().readFileContent(ws.path, file.path);
       setPreviewTabs((prev) =>
         prev.map((tab) =>
           tab.file.path === file.path

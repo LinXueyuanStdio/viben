@@ -144,18 +144,18 @@ async function fetchRegistryIndex(): Promise<RegistryIndex> {
     throw new Error(`Failed to fetch registry: ${response.statusText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as Record<string, unknown> | unknown[];
 
   // Transform the raw data into our format
   const servers: OfficialServerDisplay[] = [];
 
   if (Array.isArray(data)) {
     for (const item of data) {
-      servers.push(transformServerEntry(item));
+      servers.push(transformServerEntry(item as Record<string, unknown>));
     }
-  } else if (data.servers && Array.isArray(data.servers)) {
+  } else if (data && typeof data === "object" && "servers" in data && Array.isArray(data.servers)) {
     for (const item of data.servers) {
-      servers.push(transformServerEntry(item));
+      servers.push(transformServerEntry(item as Record<string, unknown>));
     }
   }
 
@@ -183,7 +183,9 @@ function transformServerEntry(item: Record<string, unknown>): OfficialServerDisp
     categories: Array.isArray(server.categories) ? server.categories.map(String) : [],
     packages: transformPackages(server.packages || server.package),
     qualifiedName: String(server.qualifiedName || server.name || ""),
-    _original: { server: server as OfficialServerDisplay["_original"] extends { server: infer S } ? S : undefined },
+    _original: {
+      server: server as { icons?: Array<{ src: string; theme?: "light" | "dark" }> },
+    },
   };
 }
 

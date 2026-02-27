@@ -396,14 +396,24 @@ export function WorkspaceKanbanPage() {
 
       if (!newStatus) return;
 
+      // Get current task to check if status is changing to in-progress
+      const task = sortedTasks.find((t) => t.id === taskId);
+      const isMovingToInProgress = newStatus === "inprogress" && task?.status !== "inprogress";
+
       // Update task status via API
       updateTaskStatus.mutate({
         taskId,
         status: newStatus,
         workspacePath: workspace.path,
       });
+
+      // If moving to in-progress, open detail panel and trigger auto-start
+      if (isMovingToInProgress) {
+        setSelectedTaskId(taskId);
+        setAutoStartTaskOnOpen(true);
+      }
     },
-    [workspace, updateTaskStatus]
+    [workspace, updateTaskStatus, sortedTasks]
   );
 
   // Open create task dialog
@@ -464,6 +474,20 @@ export function WorkspaceKanbanPage() {
       });
     },
     [workspace, updateTask]
+  );
+
+  // Handle task update from detail panel (including session_id binding)
+  const handleTaskUpdate = useCallback(
+    (updates: Record<string, unknown>) => {
+      if (!workspace || !selectedTaskId) return;
+
+      updateTask.mutate({
+        taskId: selectedTaskId,
+        data: updates,
+        workspacePath: workspace.path,
+      });
+    },
+    [workspace, selectedTaskId, updateTask]
   );
 
   // Handle card click
@@ -1100,6 +1124,7 @@ export function WorkspaceKanbanPage() {
               <TaskDetailPanel
                 task={selectedTask}
                 onClose={handleClosePanel}
+                onUpdate={handleTaskUpdate}
                 onStartTask={handleStartTask}
                 availableTasks={availableTasks}
                 onNavigateToTask={handleNavigateToTask}

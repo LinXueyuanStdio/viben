@@ -50,9 +50,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-shell";
-import { getGatewayUrl } from "@/lib/gateway";
+import { getGatewayUrl, getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useFileBrowser, type ViewMode, type SortField, type SortDirection, type GroupField, type FileGroup } from "@/hooks/use-file-browser";
@@ -837,10 +836,8 @@ const ColumnView = forwardRef<ColumnViewRef, ColumnViewProps>(function ColumnVie
 
   // Load a directory and return sorted files
   const loadDirectoryFiles = useCallback(async (dirPath: string): Promise<FileEntry[]> => {
-    const entries = await invoke<FileEntry[]>("read_directory", {
-      workspacePath,
-      dirPath,
-    });
+    const client = getGatewayClient();
+    const entries = await client.readDirectory(workspacePath, dirPath);
     // Sort: directories first, then files, alphabetically
     return entries.sort((a, b) => {
       if (a.is_directory && !b.is_directory) return -1;

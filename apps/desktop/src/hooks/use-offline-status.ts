@@ -1,35 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient, type CacheInfo, type CacheSettings } from "@/lib/gateway";
 
-/**
- * Cache statistics and information
- */
-export interface CacheInfo {
-  /** Path to cache directory */
-  cache_dir: string;
-  /** Total size of cached data in bytes */
-  total_size_bytes: number;
-  /** Number of MCP packages cached */
-  mcp_packages_cached: number;
-  /** Number of Skills packages cached */
-  skills_packages_cached: number;
-  /** Last time cache was updated (ISO 8601 format) */
-  last_updated: string | null;
-}
-
-/**
- * Cache configuration settings
- */
-export interface CacheSettings {
-  /** Whether caching is enabled */
-  enabled: boolean;
-  /** Maximum cache size in megabytes */
-  max_size_mb: number;
-  /** Whether to auto-refresh cache periodically */
-  auto_refresh: boolean;
-  /** Auto-refresh interval in hours */
-  refresh_interval_hours: number;
-}
+// Re-export types from gateway for consumers of this hook
+export type { CacheInfo, CacheSettings };
 
 /**
  * Hook for managing offline status and cache operations
@@ -42,14 +15,14 @@ export function useOfflineStatus() {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  const gateway = getGatewayClient();
+
   /**
    * Check if currently offline
    */
-  const checkOffline = useCallback(async (performNetworkCheck = false) => {
+  const checkOffline = useCallback(async (_performNetworkCheck = false) => {
     try {
-      const offline = await invoke<boolean>("is_offline", {
-        checkNetwork: performNetworkCheck,
-      });
+      const offline = await gateway.isOffline();
       setIsOffline(offline);
       return offline;
     } catch (err) {
@@ -57,7 +30,7 @@ export function useOfflineStatus() {
       console.error("Failed to check offline status:", err);
       return false;
     }
-  }, []);
+  }, [gateway]);
 
   /**
    * Fetch cache information
@@ -66,7 +39,7 @@ export function useOfflineStatus() {
     setLoading(true);
     setError(null);
     try {
-      const info = await invoke<CacheInfo>("get_cache_info");
+      const info = await gateway.getCacheInfo();
       setCacheInfo(info);
       return info;
     } catch (err) {
@@ -76,28 +49,28 @@ export function useOfflineStatus() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [gateway]);
 
   /**
    * Fetch cache settings
    */
   const fetchCacheSettings = useCallback(async () => {
     try {
-      const settings = await invoke<CacheSettings>("get_cache_settings");
+      const settings = await gateway.getCacheSettings();
       setCacheSettings(settings);
       return settings;
     } catch (err) {
       console.error("Failed to fetch cache settings:", err);
       return null;
     }
-  }, []);
+  }, [gateway]);
 
   /**
    * Update cache settings
    */
   const updateCacheSettings = useCallback(async (settings: CacheSettings) => {
     try {
-      await invoke("set_cache_settings", { settings });
+      await gateway.setCacheSettings(settings);
       setCacheSettings(settings);
       return true;
     } catch (err) {
@@ -105,7 +78,7 @@ export function useOfflineStatus() {
       setError(message);
       return false;
     }
-  }, []);
+  }, [gateway]);
 
   /**
    * Refresh the cache with latest data from the platform
@@ -114,7 +87,8 @@ export function useOfflineStatus() {
     setRefreshing(true);
     setError(null);
     try {
-      const info = await invoke<CacheInfo>("refresh_cache");
+      await gateway.refreshCache();
+      const info = await gateway.getCacheInfo();
       setCacheInfo(info);
       setIsOffline(false);
       return info;
@@ -127,7 +101,7 @@ export function useOfflineStatus() {
     } finally {
       setRefreshing(false);
     }
-  }, [checkOffline]);
+  }, [gateway, checkOffline]);
 
   /**
    * Clear all cached data
@@ -135,7 +109,7 @@ export function useOfflineStatus() {
   const clearCache = useCallback(async () => {
     setError(null);
     try {
-      await invoke<string>("clear_cache");
+      await gateway.clearCache();
       // Refresh cache info after clearing
       await fetchCacheInfo();
       return true;
@@ -144,18 +118,18 @@ export function useOfflineStatus() {
       setError(message);
       return false;
     }
-  }, [fetchCacheInfo]);
+  }, [gateway, fetchCacheInfo]);
 
   /**
    * Check if cache needs refresh based on settings
    */
   const shouldRefreshCache = useCallback(async () => {
     try {
-      return await invoke<boolean>("should_refresh_cache");
+      return await gateway.shouldRefreshCache();
     } catch {
       return false;
     }
-  }, []);
+  }, [gateway]);
 
   /**
    * Format cache size for display

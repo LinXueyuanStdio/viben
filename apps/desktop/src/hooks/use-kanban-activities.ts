@@ -3,13 +3,10 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
-import type { ActivityEvent, ActivityType } from "@viben/kanban";
+import { getGatewayClient, type ActivityType } from "@/lib/gateway";
 
-// Types matching Rust backend
-export interface KanbanActivity extends ActivityEvent {
-  task_id: string;
-}
+// Re-export types from gateway for consumers
+export type { KanbanActivity, ActivityType } from "@/lib/gateway";
 
 // Query keys
 export const kanbanActivitiesKeys = {
@@ -25,7 +22,8 @@ export function useKanbanActivities(taskId: string | null) {
     queryKey: kanbanActivitiesKeys.activities(taskId || ""),
     queryFn: async () => {
       if (!taskId) return [];
-      const activities = await invoke<KanbanActivity[]>("get_kanban_activities", { taskId });
+      const gateway = getGatewayClient();
+      const activities = await gateway.getKanbanActivities(taskId);
       return activities;
     },
     enabled: !!taskId,
@@ -59,15 +57,16 @@ export function useAddKanbanActivity() {
       oldValue,
       newValue,
     }: AddActivityParams) => {
-      const activity = await invoke<KanbanActivity>("add_kanban_activity", {
+      const gateway = getGatewayClient();
+      const activity = await gateway.addKanbanActivity(
         taskId,
         activityType,
         actorId,
         actorName,
         actorAvatar,
         oldValue,
-        newValue,
-      });
+        newValue
+      );
       return activity;
     },
     onSuccess: (newActivity) => {
@@ -123,7 +122,8 @@ export function useClearKanbanTaskData() {
 
   return useMutation({
     mutationFn: async (taskId: string) => {
-      await invoke("clear_kanban_task_data", { taskId });
+      const gateway = getGatewayClient();
+      await gateway.clearKanbanTaskData(taskId);
       return taskId;
     },
     onSuccess: (taskId) => {

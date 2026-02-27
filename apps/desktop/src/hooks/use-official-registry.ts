@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type {
   OfficialServerDisplay,
   OfficialPackage,
@@ -182,6 +182,7 @@ export function useOfficialRegistryServers(
   const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   const isInitialFetch = useRef(true);
+  const gateway = getGatewayClient();
 
   const fetchServers = useCallback(
     async (currentCursor: string | null, isRefresh = false) => {
@@ -191,14 +192,11 @@ export function useOfficialRegistryServers(
       setError(null);
 
       try {
-        const response = await invoke<OfficialServerListDisplay>(
-          "list_official_servers",
-          {
-            cursor: currentCursor,
-            search: searchQuery || null,
-            limit,
-          }
-        );
+        const response = await gateway.listOfficialServers({
+          cursor: currentCursor || undefined,
+          search: searchQuery || undefined,
+          limit,
+        });
 
         if (isRefresh || currentCursor === null) {
           setServers(response.servers);
@@ -216,7 +214,7 @@ export function useOfficialRegistryServers(
         setLoading(false);
       }
     },
-    [enabled, searchQuery, limit]
+    [enabled, searchQuery, limit, gateway]
   );
 
   // Initial fetch
@@ -241,11 +239,11 @@ export function useOfficialRegistryServers(
 
   const refresh = useCallback(async () => {
     // Clear cache first
-    await invoke("clear_official_registry_cache");
+    await gateway.clearOfficialRegistryCache();
     setCursor(null);
     setHasMore(true);
     await fetchServers(null, true);
-  }, [fetchServers]);
+  }, [fetchServers, gateway]);
 
   const search = useCallback((query: string) => {
     setSearchQuery(query);
@@ -289,6 +287,7 @@ export function useOfficialRegistrySearch(
   const [hasMore, setHasMore] = useState(false);
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gateway = getGatewayClient();
 
   const executeSearch = useCallback(
     async (query: string, cursorValue: string | null = null) => {
@@ -303,14 +302,11 @@ export function useOfficialRegistrySearch(
       setError(null);
 
       try {
-        const response = await invoke<OfficialServerListDisplay>(
-          "list_official_servers",
-          {
-            cursor: cursorValue,
-            search: query,
-            limit,
-          }
-        );
+        const response = await gateway.listOfficialServers({
+          cursor: cursorValue || undefined,
+          search: query,
+          limit,
+        });
 
         if (cursorValue === null) {
           setResults(response.servers);
@@ -329,7 +325,7 @@ export function useOfficialRegistrySearch(
         setLoading(false);
       }
     },
-    [limit]
+    [limit, gateway]
   );
 
   const search = useCallback(
@@ -399,6 +395,8 @@ export function useOfficialRegistryServer(
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
 
+  const gateway = getGatewayClient();
+
   const fetchServer = useCallback(async () => {
     if (!serverName) {
       setServer(null);
@@ -409,10 +407,7 @@ export function useOfficialRegistryServer(
     setError(null);
 
     try {
-      const result = await invoke<OfficialServerDisplay>("get_official_server", {
-        name: serverName,
-        version: selectedVersion,
-      });
+      const result = await gateway.getOfficialServer(serverName);
       setServer(result);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -421,7 +416,7 @@ export function useOfficialRegistryServer(
     } finally {
       setLoading(false);
     }
-  }, [serverName, selectedVersion]);
+  }, [serverName, gateway]);
 
   const fetchVersions = useCallback(async () => {
     if (!serverName) {
@@ -432,9 +427,7 @@ export function useOfficialRegistryServer(
     setVersionsLoading(true);
 
     try {
-      const result = await invoke<string[]>("get_official_server_versions", {
-        name: serverName,
-      });
+      const result = await gateway.getOfficialServerVersions(serverName);
       setVersions(result);
     } catch {
       // Versions fetch failure is not critical
@@ -442,7 +435,7 @@ export function useOfficialRegistryServer(
     } finally {
       setVersionsLoading(false);
     }
-  }, [serverName]);
+  }, [serverName, gateway]);
 
   // Fetch server when name or version changes
   useEffect(() => {
@@ -457,10 +450,10 @@ export function useOfficialRegistryServer(
 
   const refetch = useCallback(async () => {
     if (serverName) {
-      await invoke("invalidate_official_server_cache", { name: serverName });
+      await gateway.invalidateOfficialServerCache(serverName);
     }
     await fetchServer();
-  }, [serverName, fetchServer]);
+  }, [serverName, fetchServer, gateway]);
 
   const selectVersion = useCallback((version: string) => {
     setSelectedVersion(version);

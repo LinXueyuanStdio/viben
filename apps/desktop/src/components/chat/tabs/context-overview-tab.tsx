@@ -17,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { invoke } from "@tauri-apps/api/core";
+import { getGatewayClient } from "@/lib/gateway";
 import type { Artifact, WorkingFile, ToolUsage } from "@/types";
 import type { SkillInfo } from "./types";
 import { getFileIconByExt, getArtifactIcon, getToolIcon } from "./utils";
@@ -198,7 +198,7 @@ function WorkspaceSection({
 
   const handleOpenFolder = async (folderPath: string) => {
     try {
-      await invoke("open_path_in_file_manager", { path: folderPath });
+      await getGatewayClient().revealInFileManager(folderPath);
     } catch (error) {
       console.error("Failed to open folder:", error);
     }
@@ -387,7 +387,7 @@ export function ContextOverviewTabContent({
   const handleOpenWorkingDir = async () => {
     if (workingDir) {
       try {
-        await invoke("open_path_in_file_manager", { path: workingDir });
+        await getGatewayClient().revealInFileManager(workingDir);
       } catch (error) {
         console.error("Failed to open folder:", error);
       }
