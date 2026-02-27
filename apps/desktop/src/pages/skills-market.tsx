@@ -29,6 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { downloadAndInstallSkill } from "@/lib/skill-installer";
+import { toast } from "@/hooks/use-toast";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -185,12 +186,40 @@ export function SkillsMarketPage() {
       if (result.success) {
         // Mark as installed
         setInstalledIds((prev) => new Set(prev).add(skill.id));
+
+        // Show success notification
+        toast.success(t("skillsMarket.installSuccess"), {
+          description: t("skillsMarket.installSuccessDescription", {
+            name: skill.name,
+            version: skill.version,
+          }),
+        });
       } else {
-        // Show error (could use toast notification here)
-        console.error("Installation failed:", result.error);
+        // Show error notification with specific error message
+        toast.error(t("skillsMarket.installError"), {
+          description: result.error || t("skillsMarket.installErrorUnknown"),
+        });
       }
     } catch (error) {
-      console.error("Installation error:", error);
+      // Handle unexpected errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Provide user-friendly error messages for common issues
+      let description = errorMessage;
+
+      if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
+        description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
+      } else if (errorMessage.includes("corrupt") || errorMessage.includes("invalid") || errorMessage.includes("zip")) {
+        description = t("skillsMarket.installErrorCorrupt");
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("download")) {
+        description = t("skillsMarket.installErrorNetwork");
+      } else if (errorMessage.includes("permission") || errorMessage.includes("access")) {
+        description = t("skillsMarket.installErrorPermission");
+      }
+
+      toast.error(t("skillsMarket.installError"), {
+        description,
+      });
     } finally {
       // Remove from installing set
       setInstallingIds((prev) => {

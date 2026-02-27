@@ -1431,7 +1431,15 @@
     "pageOf": "Page {{page}} of {{total}}",
     "showingPackages": "Showing {{count}} packages",
     "packagesCount": "{{count}} packages",
-    "searchResults": "{{count}} results for \"{{query}}\""
+    "searchResults": "{{count}} results for \"{{query}}\"",
+    "installSuccess": "Skill installed successfully",
+    "installSuccessDescription": "{{name}} v{{version}} is now available",
+    "installError": "Failed to install skill",
+    "installErrorUnknown": "An unknown error occurred",
+    "installErrorDuplicate": "{{name}} is already installed",
+    "installErrorCorrupt": "The skill package is corrupted or invalid",
+    "installErrorNetwork": "Network error - check your connection and try again",
+    "installErrorPermission": "Permission denied - check file system permissions"
   },
   "marketplace": {
     "title": "MCP Marketplace",
