@@ -210,7 +210,10 @@ function ServerCard({
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(server.name);
   const [copied, setCopied] = useState(false);
-  const [selectedKeyForConfig, setSelectedKeyForConfig] = useState<string>("");
+  // Auto-select first API key if available
+  const [selectedKeyForConfig, setSelectedKeyForConfig] = useState<string>(() => {
+    return server.apiKeys.length > 0 ? server.apiKeys[0].id : "";
+  });
   const [fullApiKey, setFullApiKey] = useState<string | null>(null);
   const [portConflict, setPortConflict] = useState<{
     show: boolean;
@@ -219,6 +222,20 @@ function ServerCard({
     processName: string | null;
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Auto-select first API key when apiKeys change and none is selected
+  useEffect(() => {
+    if (!selectedKeyForConfig && server.apiKeys.length > 0) {
+      setSelectedKeyForConfig(server.apiKeys[0].id);
+    }
+    // If selected key no longer exists, select first available
+    if (selectedKeyForConfig && server.apiKeys.length > 0) {
+      const keyExists = server.apiKeys.some(k => k.id === selectedKeyForConfig);
+      if (!keyExists) {
+        setSelectedKeyForConfig(server.apiKeys[0].id);
+      }
+    }
+  }, [server.apiKeys, selectedKeyForConfig]);
 
   // Fetch full API key when selection changes
   useEffect(() => {
@@ -239,13 +256,22 @@ function ServerCard({
     }
   }, [notification]);
 
+  // State for showing startup details dialog
+  const [startupDetails, setStartupDetails] = useState<{
+    show: boolean;
+    success: boolean;
+    status?: McpStatus;
+    error?: string;
+    command?: string;
+  } | null>(null);
+
   const doStartServer = async (port: number) => {
     if (!pythonPath) return;
 
     const latestApiKeys = await getAllApiKeys();
 
     try {
-      await startServer({
+      const status = await startServer({
         python_path: pythonPath,
         transport: server.transport,
         port,
@@ -256,8 +282,45 @@ function ServerCard({
         server_name: server.name,
       });
       onStatusChange("running");
+
+      // Show success toast with details action
+      const commandLine = status.command && status.args
+        ? `${status.command} ${status.args.join(" ")}`
+        : `python -m browse_mcp --transport ${server.transport} --port ${port}`;
+
+      toast.success(t("searchService.serverStarted"), {
+        description: status.endpointUrl || `http://localhost:${port}`,
+        duration: 5000,
+        action: {
+          label: t("common.details"),
+          onClick: () => setStartupDetails({
+            show: true,
+            success: true,
+            status,
+            command: commandLine,
+          }),
+        },
+      });
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("Failed to start server:", err);
+
+      // Show error toast with details action
+      const commandLine = `${pythonPath} -m browse_mcp --transport ${server.transport} --port ${port}`;
+
+      toast.error(t("searchService.serverStartFailed"), {
+        description: errorMessage.slice(0, 100),
+        duration: 8000,
+        action: {
+          label: t("common.details"),
+          onClick: () => setStartupDetails({
+            show: true,
+            success: false,
+            error: errorMessage,
+            command: commandLine,
+          }),
+        },
+      });
     }
   };
 
@@ -314,19 +377,23 @@ function ServerCard({
     try {
       // If status monitor detected error (process died), just update state
       if (isError) {
-        setNotification(t("searchService.processTerminated"));
+        toast.info(t("searchService.processTerminated"));
         onStatusChange("stopped");
         return;
       }
       await stopServer();
       onStatusChange("stopped");
+      toast.success(t("searchService.serverStopped"));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("No such process") || message.includes("not found")) {
-        setNotification(t("searchService.processTerminated"));
+        toast.info(t("searchService.processTerminated"));
         onStatusChange("stopped");
       } else {
         console.error("Failed to stop server:", err);
+        toast.error(t("searchService.serverStopFailed"), {
+          description: message,
+        });
       }
     }
   };
@@ -438,6 +505,84 @@ function ServerCard({
       {notification && (
         <div className="fixed bottom-4 right-4 bg-card border rounded-lg shadow-lg p-4 z-50 animate-in slide-in-from-bottom-2">
           <p className="text-sm">{notification}</p>
+        </div>
+      )}
+
+      {/* Startup Details Dialog */}
+      {startupDetails?.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-card rounded-lg border shadow-lg p-6 max-w-lg mx-4 w-full">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              {startupDetails.success ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  {t("searchService.serverStartedTitle")}
+                </>
+              ) : (
+                <>
+                  <XCircle className="h-5 w-5 text-red-500" />
+                  {t("searchService.serverStartFailedTitle")}
+                </>
+              )}
+            </h3>
+
+            <div className="space-y-4">
+              {/* Command */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1">
+                  <Terminal className="h-3 w-3" />
+                  {t("searchService.commandExecuted")}
+                </label>
+                <pre className="bg-muted rounded-md p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                  {startupDetails.command}
+                </pre>
+              </div>
+
+              {/* Status Info (success) */}
+              {startupDetails.success && startupDetails.status && (
+                <>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">{t("common.pid")}:</span>
+                      <span className="ml-2 font-mono">{startupDetails.status.pid}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t("common.port")}:</span>
+                      <span className="ml-2 font-mono">{startupDetails.status.port}</span>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">{t("searchService.endpoint")}:</span>
+                      <code className="ml-2 text-xs bg-muted px-2 py-0.5 rounded">
+                        {startupDetails.status.endpointUrl}
+                      </code>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Error Info (failure) */}
+              {!startupDetails.success && startupDetails.error && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    {t("searchService.errorDetails")}
+                  </label>
+                  <pre className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 rounded-md p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all">
+                    {startupDetails.error}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end mt-6">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStartupDetails(null)}
+              >
+                {t("common.close")}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -10,6 +10,26 @@ import { toast } from "@/hooks/use-toast";
 let oauthListenerInitialized = false;
 
 /**
+ * Decode base64url string to UTF-8 text
+ * Handles UTF-8 characters properly (unlike atob which assumes Latin-1)
+ */
+function decodeBase64Url(base64url: string): string {
+  // Convert base64url to standard base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Pad with '=' if needed
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+  // Decode base64 to binary string
+  const binary = atob(padded);
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  // Decode UTF-8 bytes to string
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/**
  * Initialize OAuth listeners globally (called once on first useAuth mount)
  * This ensures only one listener handles OAuth callbacks across all components
  */
@@ -22,8 +42,8 @@ function initializeOAuthListeners() {
     const sessionBase64 = event.payload;
     if (sessionBase64) {
       try {
-        // Decode base64url to JSON
-        const sessionJson = atob(sessionBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        // Decode base64url to JSON (properly handles UTF-8)
+        const sessionJson = decodeBase64Url(sessionBase64);
         const sessionData = JSON.parse(sessionJson);
 
         // Set session directly from decoded data

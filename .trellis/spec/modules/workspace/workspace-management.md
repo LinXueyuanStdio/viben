@@ -101,16 +101,27 @@ Workspace (Folder)
 - Custom workspaces are listed with their folder names
 - Current active workspace is visually highlighted
 
-### US-2: Add Workspace
+### US-2: Add Workspace (Wizard Flow)
 **As a** user
-**I want to** add a new workspace by selecting a folder
-**So that** I can manage project-specific MCP/Skills configurations
+**I want to** add a new workspace through a guided wizard
+**So that** I can easily configure project-specific settings during creation
 
 **Acceptance Criteria**:
-- "Add Workspace" button in the sidebar
-- File picker opens to select folder
-- System automatically detects agents in the folder
-- New workspace appears in the list immediately
+- "Add Workspace" button opens a wizard modal (居中模态框)
+- **Step 1 - Choose Method**:
+  - "Open Existing Folder" - Select an existing project directory
+  - "Create New Folder" - Create a new project directory
+- **Step 2 - Configure**:
+  - Workspace name (auto-filled from folder name for existing, user input for new)
+  - Location (read-only for existing, folder picker for new)
+  - Smart detection: Hide "Init Git" if `.git` exists, show warning + "Reinitialize" option if `.viben` exists
+  - "Initialize .viben" option triggers `viben team init` with advanced options (developer name, project type, include Cursor)
+- **Step 3 - Complete**:
+  - Success message with summary of actions taken
+  - "Go to Workspace" or "Continue Adding" options
+- System automatically detects agents in the folder after creation
+
+**Design Reference**: See `docs/plans/2026-02-28-add-workspace-wizard-design.md`
 
 ### US-3: View Agents in Workspace
 **As a** user
@@ -499,7 +510,7 @@ interface WorkspaceStore {
 App
 ├── Sidebar (refactored)
 │   ├── WorkspaceSection
-│   │   ├── AddWorkspaceButton
+│   │   ├── AddWorkspaceButton → opens AddWorkspaceModal
 │   │   └── WorkspaceList
 │   │       └── WorkspaceItem (clickable)
 │   ├── HomeSection
@@ -520,10 +531,21 @@ App
 │   └── [Other existing pages]
 ```
 
+**Add Workspace Wizard Components** (NEW):
+```
+apps/desktop/src/components/workspace/
+├── add-workspace-modal.tsx      # Main wizard modal (Dialog, ~480px)
+├── steps/
+│   ├── step-choose-method.tsx   # Step 1: Open existing / Create new
+│   ├── step-configure.tsx       # Step 2: Name, location, Git/Viben options
+│   └── step-complete.tsx        # Step 3: Success + next actions
+└── index.ts                     # Exports
+```
+
 **New Pages**:
 1. `workspace-detail.tsx` - Shows agents in a workspace
 2. `agent-detail.tsx` - Shows MCP servers + Skills for an agent
-3. `add-workspace-dialog.tsx` - Folder picker dialog
+3. ~~`add-workspace-dialog.tsx`~~ → Replaced by `add-workspace-modal.tsx` (wizard)
 4. `add-mcp-server-dialog.tsx` - MCP server configuration form
 5. `add-skill-dialog.tsx` - Skill selector from marketplace/local
 
