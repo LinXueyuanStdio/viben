@@ -171,16 +171,6 @@ function hasDetailData(span: TraceSpan): boolean {
   );
 }
 
-// Route filter options - labels are provided via useRouteFilterOptions hook
-const ROUTE_FILTER_VALUES = [
-  "all",
-  "/api/agent/run",
-  "/api/agents",
-  "/api/workspaces",
-  "/api/chat",
-  "/api/group-chats",
-] as const;
-
 export function ChatMonitorPage() {
   const { t } = useTranslation();
   const [dates, setDates] = useState<DateSummary[]>([]);

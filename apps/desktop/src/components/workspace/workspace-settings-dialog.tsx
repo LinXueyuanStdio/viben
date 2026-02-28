@@ -15,6 +15,7 @@ import {
   Clock,
   Copy,
   Check,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +27,10 @@ import { useExecutors, useAgents } from "@/hooks/use-workspace-resources";
 import { open as openPath } from "@tauri-apps/plugin-shell";
 import { toast } from "@/hooks/use-toast";
 import type { Workspace } from "@/types";
+import { GitHubSection } from "./github/github-section";
 
 // Settings section type
-type WorkspaceSettingsSection = "general" | "executors" | "agents" | "mcp" | "skills" | "about";
+type WorkspaceSettingsSection = "general" | "executors" | "agents" | "mcp" | "skills" | "github" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -43,6 +45,7 @@ const SECTIONS: SectionConfig[] = [
   { id: "agents", labelKey: "workspaceSettings.sections.agents", icon: Bot },
   { id: "mcp", labelKey: "workspaceSettings.sections.mcp", icon: Server },
   { id: "skills", labelKey: "workspaceSettings.sections.skills", icon: Sparkles },
+  { id: "github", labelKey: "workspaceSettings.sections.github", icon: Github },
   { id: "about", labelKey: "workspaceSettings.sections.about", icon: Info },
 ];
 
@@ -171,6 +174,8 @@ export function WorkspaceSettingsDialog({
         return <McpSection key="mcp" workspace={workspace} />;
       case "skills":
         return <SkillsSection key="skills" workspace={workspace} />;
+      case "github":
+        return <GitHubSection key="github" workspace={workspace} />;
       case "about":
         return <AboutSection key="about" workspace={workspace} />;
       default:

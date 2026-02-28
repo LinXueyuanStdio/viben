@@ -1694,6 +1694,7 @@
       "agents": "智能体",
       "mcp": "MCP 服务",
       "skills": "技能",
+      "github": "GitHub",
       "about": "关于"
     },
     "generalDescription": "工作区基本设置和信息",
@@ -1719,7 +1720,91 @@
     "lastAccessed": "最后访问",
     "technical": "技术信息",
     "workspaceId": "工作区 ID",
-    "workspaceIdDescription": "此工作区的唯一标识符"
+    "workspaceIdDescription": "此工作区的唯一标识符",
+    "github": {
+      "title": "GitHub 集成",
+      "description": "连接到 GitHub 以管理 Issue、Pull Request 和 Release",
+      "authRequired": "请先登录 GitHub 以访问仓库功能",
+      "repoRequired": "请连接到一个仓库以管理 Issue 和 PR",
+      "tabs": {
+        "issues": "Issues",
+        "pullRequests": "Pull Requests",
+        "releases": "Releases"
+      },
+      "auth": {
+        "title": "认证",
+        "connected": "已连接",
+        "notConnected": "未连接",
+        "signOut": "退出登录",
+        "ghCli": "GitHub CLI",
+        "ghCliLoggedIn": "gh CLI 已登录",
+        "ghCliNotLoggedIn": "gh CLI 未登录",
+        "ghCliNotInstalled": "gh CLI 未安装",
+        "useGhCli": "使用 gh CLI",
+        "pat": "个人访问令牌",
+        "patDescription": "使用 GitHub PAT 进行认证",
+        "usePAT": "使用 PAT",
+        "patDialogTitle": "输入个人访问令牌",
+        "patDialogDescription": "创建一个具有 repo、read:user 和 read:org 权限的令牌",
+        "patLabel": "个人访问令牌",
+        "patRequired": "令牌不能为空",
+        "patFailed": "PAT 认证失败",
+        "createPAT": "在 GitHub 上创建新令牌",
+        "authenticate": "认证"
+      },
+      "repo": {
+        "title": "仓库",
+        "connected": "已连接",
+        "disconnect": "断开连接",
+        "connect": "连接",
+        "detected": "从工作区检测到",
+        "manual": "连接到其他仓库",
+        "manualDescription": "输入所有者和仓库名称",
+        "connectDialogTitle": "连接仓库",
+        "connectDialogDescription": "输入仓库的所有者和名称",
+        "owner": "所有者",
+        "name": "仓库名称",
+        "ownerNameRequired": "所有者和名称不能为空",
+        "defaultBranch": "默认分支"
+      },
+      "issues": {
+        "open": "开放",
+        "closed": "已关闭",
+        "all": "全部",
+        "noIssues": "没有找到 Issue",
+        "import": "导入",
+        "analyze": "分析",
+        "openedBy": "由 {{user}} 于 {{date}} 创建",
+        "comments": "条评论",
+        "investigationTitle": "Issue 分析",
+        "investigationDescription": "AI 分析 Issue 并提供实现建议",
+        "analyzing": "正在分析 Issue...",
+        "complexity": "复杂度",
+        "estimatedFiles": "预估文件数",
+        "affectedAreas": "影响范围",
+        "implementationHints": "实现建议",
+        "specSaved": "Spec 文件已保存到工作区"
+      },
+      "prs": {
+        "open": "开放",
+        "closed": "已关闭",
+        "all": "全部",
+        "noPRs": "没有找到 Pull Request",
+        "draft": "草稿",
+        "openedBy": "由 {{user}} 于 {{date}} 创建",
+        "files": "个文件"
+      },
+      "releases": {
+        "title": "发布版本",
+        "noReleases": "没有找到发布版本",
+        "latest": "最新",
+        "prerelease": "预发布",
+        "draft": "草稿",
+        "assets": "资源文件",
+        "moreAssets": "更多资源",
+        "publishedBy": "由 {{user}} 于 {{date}} 发布"
+      }
+    }
   },
   "workspace": {
     "workspaces": "工作区",
