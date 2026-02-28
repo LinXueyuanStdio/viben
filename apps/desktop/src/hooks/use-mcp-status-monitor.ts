@@ -5,8 +5,8 @@ import { useAppStore } from "@/stores";
 import type { McpServerStatus, McpServerStatusInfo } from "@/types";
 
 // Configuration constants
-const POLL_INTERVAL_MS = 60 * 1000; // 1 minute
-const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes (reduced frequency)
+const CACHE_TTL_MS = 60 * 1000; // 1 minute cache TTL
 const DEBOUNCE_MS = 100; // 100ms debounce for page enter (reduced for faster response)
 const MAX_CONCURRENT_CHECKS = 2; // Max concurrent process checks
 

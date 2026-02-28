@@ -54,6 +54,7 @@ import { CacheManager } from "@/components/offline/cache-manager";
 import { usePython } from "@/hooks/use-python";
 import { syncChannels } from "@/hooks";
 import { useAppStore } from "@/stores";
+import { getGatewayClient } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
 import { LANGUAGES } from "@/i18n/languages";
 import { changeLanguage, getCurrentLanguage } from "@/i18n";
@@ -1554,11 +1555,92 @@ function EnvironmentSection() {
     getInstallCommand,
   } = usePython();
 
-  const { setSetupStatus } = useAppStore();
+  const {
+    setSetupStatus,
+    gitPath,
+    setGitPath,
+    ghPath,
+    setGhPath,
+    claudePath,
+    setClaudePath,
+  } = useAppStore();
 
   const [customPath, setCustomPath] = useState("");
   const [checkingCustom, setCheckingCustom] = useState(false);
   const [installCommand, setInstallCommand] = useState<string | null>(null);
+
+  // CLI Tools detection state
+  const [cliToolsInfo, setCliToolsInfo] = useState<{
+    git: { found: boolean; path?: string; version?: string; source: string; message?: string } | null;
+    gh: { found: boolean; path?: string; version?: string; source: string; message?: string } | null;
+    claude: { found: boolean; path?: string; version?: string; source: string; message?: string } | null;
+  }>({ git: null, gh: null, claude: null });
+  const [cliToolsLoading, setCliToolsLoading] = useState(false);
+  const [checkingGit, setCheckingGit] = useState(false);
+  const [checkingGh, setCheckingGh] = useState(false);
+  const [checkingClaude, setCheckingClaude] = useState(false);
+
+  // Detect CLI tools on mount and when custom paths change
+  const detectCliTools = useCallback(async () => {
+    setCliToolsLoading(true);
+    try {
+      const client = getGatewayClient();
+      const result = await client.detectCliTools({
+        gitPath: gitPath || undefined,
+        ghPath: ghPath || undefined,
+        claudePath: claudePath || undefined,
+      });
+      setCliToolsInfo(result);
+    } catch (err) {
+      console.error("[EnvironmentSection] CLI tools detection error:", err);
+    } finally {
+      setCliToolsLoading(false);
+    }
+  }, [gitPath, ghPath, claudePath]);
+
+  // Auto-detect on mount
+  useEffect(() => {
+    detectCliTools();
+  }, []);
+
+  // Check a single CLI tool with custom path
+  const checkCliToolPath = async (
+    tool: "git" | "gh" | "claude",
+    path: string,
+    setLoading: (v: boolean) => void,
+    setPath: (v: string) => void
+  ) => {
+    if (!path) {
+      setPath("");
+      detectCliTools();
+      return;
+    }
+    setLoading(true);
+    try {
+      const client = getGatewayClient();
+      const result = await client.checkCliToolPath(tool, path);
+      if (result.found) {
+        setPath(path);
+        setCliToolsInfo((prev) => ({ ...prev, [tool]: result }));
+      }
+    } catch (err) {
+      console.error(`[EnvironmentSection] ${tool} path check error:`, err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helper to translate source names
+  const getSourceLabel = (source: string): string => {
+    const sourceLabels: Record<string, string> = {
+      "user-config": t("settings.cliTools.sourceUserConfig", { defaultValue: "User Configuration" }),
+      homebrew: t("settings.cliTools.sourceHomebrew", { defaultValue: "Homebrew" }),
+      nvm: t("settings.cliTools.sourceNvm", { defaultValue: "NVM" }),
+      "system-path": t("settings.cliTools.sourceSystemPath", { defaultValue: "System PATH" }),
+      fallback: t("settings.cliTools.sourceFallback", { defaultValue: "Fallback" }),
+    };
+    return sourceLabels[source] || source;
+  };
 
   // Update global setup status when Python or browse-mcp status changes
   const updateSetupStatus = useCallback(() => {
@@ -1776,6 +1858,196 @@ function EnvironmentSection() {
             )}
           </div>
         )}
+      </div>
+
+      {/* CLI Tools - Paths */}
+      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold">{t("settings.cliTools.title", { defaultValue: "CLI Tools" })}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("settings.cliTools.description", { defaultValue: "Configure executable paths for command-line tools" })}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={detectCliTools} disabled={cliToolsLoading}>
+            {cliToolsLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            {t("settings.detect")}
+          </Button>
+        </div>
+
+        {/* Git Path */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">
+              {t("settings.cliTools.gitPath", { defaultValue: "Git Path" })}
+            </label>
+            {cliToolsInfo.git && (
+              <span className="text-xs text-muted-foreground">
+                {cliToolsInfo.git.found ? (
+                  <>
+                    <span className="text-green-600 mr-1">●</span>
+                    {t("settings.cliTools.version", { defaultValue: "v{{version}}", version: cliToolsInfo.git.version || "?" })}
+                    {" • "}
+                    {getSourceLabel(cliToolsInfo.git.source)}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-yellow-600 mr-1">●</span>
+                    {t("settings.cliTools.notDetected", { defaultValue: "Not detected" })}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.cliTools.gitPathDescription", { defaultValue: "Path to Git executable (leave empty for auto-detection)" })}
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={gitPath}
+              onChange={(e) => setGitPath(e.target.value)}
+              className="flex-1 rounded-xl"
+              placeholder={cliToolsInfo.git?.path || t("settings.cliTools.gitPathPlaceholder", { defaultValue: "git (default)" })}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => checkCliToolPath("git", gitPath, setCheckingGit, setGitPath)}
+              disabled={checkingGit}
+              className="rounded-xl"
+            >
+              {checkingGit ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {cliToolsInfo.git?.found && cliToolsInfo.git.path && (
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {t("settings.cliTools.detectedPath", { defaultValue: "Auto-detected" })}: {cliToolsInfo.git.path}
+            </p>
+          )}
+        </div>
+
+        {/* GitHub CLI (gh) Path */}
+        <div className="space-y-2 pt-3 border-t">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Github className="h-4 w-4" />
+              {t("settings.cliTools.ghPath", { defaultValue: "GitHub CLI Path" })}
+            </label>
+            {cliToolsInfo.gh && (
+              <span className="text-xs text-muted-foreground">
+                {cliToolsInfo.gh.found ? (
+                  <>
+                    <span className="text-green-600 mr-1">●</span>
+                    {t("settings.cliTools.version", { defaultValue: "v{{version}}", version: cliToolsInfo.gh.version || "?" })}
+                    {" • "}
+                    {getSourceLabel(cliToolsInfo.gh.source)}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-yellow-600 mr-1">●</span>
+                    {t("settings.cliTools.notDetected", { defaultValue: "Not detected" })}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.cliTools.ghPathDescription", { defaultValue: "Path to GitHub CLI (gh) executable (leave empty for auto-detection)" })}
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={ghPath}
+              onChange={(e) => setGhPath(e.target.value)}
+              className="flex-1 rounded-xl"
+              placeholder={cliToolsInfo.gh?.path || t("settings.cliTools.ghPathPlaceholder", { defaultValue: "gh (default)" })}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => checkCliToolPath("gh", ghPath, setCheckingGh, setGhPath)}
+              disabled={checkingGh}
+              className="rounded-xl"
+            >
+              {checkingGh ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {cliToolsInfo.gh?.found && cliToolsInfo.gh.path && (
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {t("settings.cliTools.detectedPath", { defaultValue: "Auto-detected" })}: {cliToolsInfo.gh.path}
+            </p>
+          )}
+        </div>
+
+        {/* Claude CLI Path */}
+        <div className="space-y-2 pt-3 border-t">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              {t("settings.cliTools.claudePath", { defaultValue: "Claude CLI Path" })}
+            </label>
+            {cliToolsInfo.claude && (
+              <span className="text-xs text-muted-foreground">
+                {cliToolsInfo.claude.found ? (
+                  <>
+                    <span className="text-green-600 mr-1">●</span>
+                    {t("settings.cliTools.version", { defaultValue: "v{{version}}", version: cliToolsInfo.claude.version || "?" })}
+                    {" • "}
+                    {getSourceLabel(cliToolsInfo.claude.source)}
+                  </>
+                ) : (
+                  <>
+                    <span className="text-yellow-600 mr-1">●</span>
+                    {t("settings.cliTools.notDetected", { defaultValue: "Not detected" })}
+                  </>
+                )}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t("settings.cliTools.claudePathDescription", { defaultValue: "Path to Claude CLI executable (leave empty for auto-detection)" })}
+          </p>
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              value={claudePath}
+              onChange={(e) => setClaudePath(e.target.value)}
+              className="flex-1 rounded-xl"
+              placeholder={cliToolsInfo.claude?.path || t("settings.cliTools.claudePathPlaceholder", { defaultValue: "claude (default)" })}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => checkCliToolPath("claude", claudePath, setCheckingClaude, setClaudePath)}
+              disabled={checkingClaude}
+              className="rounded-xl"
+            >
+              {checkingClaude ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
+          {cliToolsInfo.claude?.found && cliToolsInfo.claude.path && (
+            <p className="text-xs text-muted-foreground font-mono truncate">
+              {t("settings.cliTools.detectedPath", { defaultValue: "Auto-detected" })}: {cliToolsInfo.claude.path}
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

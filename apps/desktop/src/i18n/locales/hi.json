@@ -911,5 +911,23 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
+  },
+  "snakeGame": {
+    "title": "सांप का खेल",
+    "score": "स्कोर",
+    "length": "लंबाई",
+    "speed": "गति",
+    "gameOver": "खेल समाप्त",
+    "finalScore": "अंतिम स्कोर: {{score}}",
+    "restart": "पुनः आरंभ करें",
+    "pause": "रोकें",
+    "start": "शुरू करें",
+    "reset": "रीसेट करें",
+    "instructions": "निर्देश",
+    "instruction1": "चलने के लिए तीर कुंजियों या WASD का उपयोग करें",
+    "instruction2": "बढ़ने के लिए भोजन खाएं",
+    "instruction3": "दीवारों और खुद से बचें",
+    "instruction4": "रोकने के लिए स्पेस दबाएं",
+    "instruction5": "जैसे-जैसे आप बढ़ते हैं गति बढ़ती है"
   }
 }

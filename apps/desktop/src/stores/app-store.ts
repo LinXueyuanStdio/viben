@@ -147,6 +147,14 @@ interface AppState {
   setPreferredTerminal: (terminal: string) => void;
   dangerouslySkipPermissions: boolean;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
+
+  // CLI Tool Paths (custom user-configured paths)
+  gitPath: string;
+  setGitPath: (path: string) => void;
+  ghPath: string;
+  setGhPath: (path: string) => void;
+  claudePath: string;
+  setClaudePath: (path: string) => void;
 }
 
 // Generate unique ID
@@ -415,6 +423,14 @@ export const useAppStore = create<AppState>()(
       setPreferredTerminal: (terminal) => set({ preferredTerminal: terminal }),
       dangerouslySkipPermissions: false,
       setDangerouslySkipPermissions: (enabled) => set({ dangerouslySkipPermissions: enabled }),
+
+      // CLI Tool Paths
+      gitPath: "",
+      setGitPath: (path) => set({ gitPath: path }),
+      ghPath: "",
+      setGhPath: (path) => set({ ghPath: path }),
+      claudePath: "",
+      setClaudePath: (path) => set({ claudePath: path }),
     }),
     {
       name: "viben-storage",
@@ -445,6 +461,9 @@ export const useAppStore = create<AppState>()(
         preferredIDE: state.preferredIDE,
         preferredTerminal: state.preferredTerminal,
         dangerouslySkipPermissions: state.dangerouslySkipPermissions,
+        gitPath: state.gitPath,
+        ghPath: state.ghPath,
+        claudePath: state.claudePath,
       }),
     }
   )
