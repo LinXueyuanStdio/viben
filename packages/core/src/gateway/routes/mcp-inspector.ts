@@ -110,7 +110,9 @@ function mcpProxy({
   let reportedServerSession = false;
 
   transportToClient.onmessage = (message) => {
+    console.log("[MCP Inspector] Client -> Server message:", JSON.stringify(message).slice(0, 200));
     transportToServer.send(message).catch((error) => {
+      console.error("[MCP Inspector] Error sending to server:", error);
       // Send error response back to client if it was a request (has id) and connection is still open
       if (isJSONRPCRequest(message) && !transportToClientClosed) {
         const errorCause = (error as any)?.cause;
@@ -131,6 +133,7 @@ function mcpProxy({
   };
 
   transportToServer.onmessage = (message) => {
+    console.log("[MCP Inspector] Server -> Client message:", JSON.stringify(message).slice(0, 200));
     if (!reportedServerSession) {
       if (transportToServer.sessionId) {
         // Can only report for StreamableHttp
@@ -505,16 +508,18 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     );
   }
 
-  // Add custom content type parser to preserve raw body for MCP Inspector routes
-  // This allows the MCP SDK's handleRequest to receive the raw JSON body
-  // We need to parse the buffer ourselves and store both raw and parsed versions
+  // Custom content type parser for MCP Inspector routes
+  // Parse JSON and pass the parsed object to handleRequest (like Express does)
   fastify.addContentTypeParser(
     "application/json",
     { parseAs: "buffer" },
     (_request, payload, done) => {
-      // Store the raw body as a string for MCP SDK's handleRequest
-      const rawBody = payload.toString("utf-8");
-      done(null, rawBody);
+      try {
+        const parsed = JSON.parse(payload.toString("utf-8"));
+        done(null, parsed);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
     }
   );
 
