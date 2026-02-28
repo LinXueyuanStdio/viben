@@ -137,10 +137,12 @@ export function buildGatewayInspectorUrl(
   targetUrl: string,
   transportType: "stdio" | "sse" | "streamable-http" = "streamable-http"
 ): string {
-  const endpoint = transportType === "stdio" ? "/stdio" :
-                   transportType === "sse" ? "/sse" : "/mcp";
+  const endpoint = transportType === "stdio" ? "stdio" :
+                   transportType === "sse" ? "sse" : "mcp";
 
-  const url = new URL(endpoint, proxyBaseUrl);
+  // Ensure base URL ends with / for proper path joining
+  const base = proxyBaseUrl.endsWith("/") ? proxyBaseUrl : proxyBaseUrl + "/";
+  const url = new URL(endpoint, base);
   url.searchParams.set("url", targetUrl);
   url.searchParams.set("transportType", transportType);
 

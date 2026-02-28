@@ -105,7 +105,7 @@ agent_execution:
 
 ## 迁移来源
 
-详细的 vibe-kanban 端点分析见: [docs/kanban/README.md](/docs/kanban/README.md)
+vibe-kanban 端点分析参考已移至内部文档。
 
 ### 迁移优先级
 
@@ -189,6 +189,5 @@ packages/core
 
 ## Related Documents
 
-- [docs/kanban/README.md](/docs/kanban/README.md) - vibe-kanban 端点分析
 - [cli/agent.md](../cli/agent.md) - Agent 模块规范 (存储设计参考)
 - [workspace/kanban-integration.md](../workspace/kanban-integration.md) - Desktop 集成规划

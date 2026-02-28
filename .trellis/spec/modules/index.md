@@ -168,7 +168,6 @@ This directory contains detailed specifications for implementing each module of 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
 | [cli-app.md](./cli-app.md) | Bootstrap CLI: config, service, agent/mcp/skill management | 8 | Specification |
-| [desktop-cli-integration.md](./desktop-cli-integration.md) | Desktop-CLI 集成: @viben/core 共享库, UI 页面 | 5 | Specification |
 | [desktop-creator-section.md](./desktop-creator-section.md) | Desktop 创作者章节 (Publish, My Packages, Analytics) | 3 | Specification |
 
 ---

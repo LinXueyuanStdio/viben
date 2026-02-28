@@ -99,7 +99,18 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     await app.register(corsPlugin.default, {
       origin: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        // MCP Inspector proxy headers
+        "X-MCP-Proxy-Auth",
+        "MCP-Session-Id",
+        "X-Custom-Auth-Header",
+        "X-Custom-Auth-Headers",
+        "Last-Event-Id",
+      ],
+      exposedHeaders: ["MCP-Session-Id"],
       credentials: true,
     });
   }

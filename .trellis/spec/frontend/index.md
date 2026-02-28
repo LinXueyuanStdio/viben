@@ -42,11 +42,10 @@ This directory contains guidelines for frontend development. These specs ensure 
 
 ## Related Module Specs
 
-### Desktop-CLI Integration
+### Desktop Integration
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Desktop-CLI Integration](../modules/desktop-cli-integration.md) | Desktop 与 CLI 共享 @viben/core 库，UI 页面规范 | 📝 Specification |
 | [Desktop Creator Section](../modules/desktop-creator-section.md) | Desktop 创作者章节 (Publish, My Packages, Analytics) | 📝 Specification |
 
 ### Workspace & Kanban

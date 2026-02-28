@@ -592,5 +592,4 @@ packages/core/src/
 
 - [storage.md](./storage.md) - 存储系统设计
 - [workspace.md](./workspace.md) - 工作区管理模块
-- [api-sessions.md](./api-sessions.md) - 会话 API 详细规范
-- [/docs/kanban/06-sessions.md](/docs/kanban/06-sessions.md) - vibe-kanban 会话 API 参考
+- [api-sessions.md](./api-sessions.md) - 会话 API 详细规范 (计划中)

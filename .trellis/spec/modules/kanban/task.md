@@ -608,5 +608,4 @@ packages/core/src/
 - [storage.md](./storage.md) - 存储系统设计
 - [project.md](./project.md) - 项目管理模块
 - [workspace.md](./workspace.md) - 工作区管理模块
-- [api-tasks.md](./api-tasks.md) - 任务 API 详细规范
-- [/docs/kanban/05-tasks.md](/docs/kanban/05-tasks.md) - vibe-kanban 任务 API 参考
+- [api-tasks.md](./api-tasks.md) - 任务 API 详细规范 (计划中)

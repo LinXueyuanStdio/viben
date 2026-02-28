@@ -135,10 +135,10 @@
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T14 | Workspace API | T13 | [workspace-api.md](./modules/workspace-api.md) | Workspace CRUD |
+| T14 | Workspace API | T13 | [workspace-api.md](./modules/workspace/workspace-api.md) | Workspace CRUD |
 | T15 | Collections API | T11 | [collections-api.md](./modules/collections-api.md) | Collection CRUD |
 | T16 | Publish UI | T13, T8, T9 | [publish-ui.md](./modules/publish-ui.md) | Package publish wizard |
-| T17 | Workspace UI | T14 | [workspace-ui.md](./modules/workspace-ui.md) | Workspace management |
+| T17 | Workspace UI | T14 | [workspace-ui.md](./modules/workspace/workspace-ui.md) | Workspace management |
 | T18 | Collections UI | T15 | [collections-ui.md](./modules/collections-ui.md) | Collection pages |
 | T19 | Analytics UI | T13 | [analytics-ui.md](./modules/analytics-ui.md) | Download stats |
 
