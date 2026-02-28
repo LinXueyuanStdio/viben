@@ -86,15 +86,12 @@ export async function GET(request: NextRequest) {
 
     // Return more specific error messages for debugging
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const isDbError = errorMessage.includes('POSTGRES_URL') ||
-                      errorMessage.includes('relation') ||
-                      errorMessage.includes('does not exist');
 
     return NextResponse.json(
       {
-        error: isDbError ? 'Database configuration error' : 'Internal server error',
-        // Only include details in development
-        ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+        error: 'Internal server error',
+        // Include error details for debugging (remove in production if sensitive)
+        debug: errorMessage,
       },
       { status: 500 }
     );

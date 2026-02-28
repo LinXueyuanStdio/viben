@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "@/hooks/use-toast";
 
@@ -32,6 +34,7 @@ import { toast } from "@/hooks/use-toast";
  * ```
  */
 export function useAuth() {
+  const { t } = useTranslation();
   const store = useAuthStore();
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -112,13 +115,13 @@ export function useAuth() {
 
           // Show success toast
           const { user } = useAuthStore.getState();
-          toast.success("登录成功", {
-            description: `欢迎回来，${user?.displayName || user?.username}！`,
+          toast.success(i18n.t("toast.auth.loginSuccess"), {
+            description: i18n.t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
           });
         } catch (err) {
           console.error("OAuth callback failed:", err);
-          toast.error("登录失败", {
-            description: err instanceof Error ? err.message : "OAuth 回调处理失败",
+          toast.error(i18n.t("toast.auth.loginFailed"), {
+            description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
           });
         }
       }
@@ -128,8 +131,8 @@ export function useAuth() {
       const error = event.payload;
       console.error("OAuth error:", error);
       store.setLoading(false);
-      toast.error("登录失败", {
-        description: `OAuth 认证失败: ${error}`,
+      toast.error(i18n.t("toast.auth.loginFailed"), {
+        description: `OAuth: ${error}`,
       });
     });
 
@@ -148,19 +151,19 @@ export function useAuth() {
     try {
       const url = store.getGitHubOAuthUrl();
       await openUrl(url);
-      toast.info("正在浏览器中打开", {
-        description: "请在浏览器中完成 GitHub 授权",
+      toast.info(t("toast.auth.openingBrowser"), {
+        description: t("toast.auth.completeGitHubAuth"),
       });
       // Keep loading true - will be set to false by OAuth callback
     } catch (err) {
       store.setLoading(false);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      toast.error("无法打开浏览器", {
+      toast.error(t("toast.auth.cannotOpenBrowser"), {
         description: errorMessage,
       });
       throw err;
     }
-  }, [store]);
+  }, [store, t]);
 
   // Wrapped login with toast
   const login = useCallback(
@@ -168,24 +171,24 @@ export function useAuth() {
       try {
         await store.login(email, password);
         const { user } = useAuthStore.getState();
-        toast.success("登录成功", {
-          description: `欢迎回来，${user?.displayName || user?.username}！`,
+        toast.success(t("toast.auth.loginSuccess"), {
+          description: t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
         });
       } catch (err) {
-        toast.error("登录失败", {
-          description: err instanceof Error ? err.message : "邮箱或密码错误",
+        toast.error(t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : t("toast.auth.emailOrPasswordError"),
         });
         throw err;
       }
     },
-    [store]
+    [store, t]
   );
 
   // Wrapped logout with toast
   const logout = useCallback(async () => {
     await store.logout();
-    toast.info("已退出登录");
-  }, [store]);
+    toast.info(t("toast.auth.loggedOut"));
+  }, [store, t]);
 
   return {
     /** Current user session */

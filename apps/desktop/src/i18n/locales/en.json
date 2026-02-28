@@ -2366,7 +2366,18 @@
     "tryAgain": "Please try again",
     "dismiss": "Dismiss",
     "viewDetails": "View Details",
-    "undo": "Undo"
+    "undo": "Undo",
+    "auth": {
+      "loginSuccess": "Login Successful",
+      "welcomeBack": "Welcome back, {{name}}!",
+      "loginFailed": "Login Failed",
+      "emailOrPasswordError": "Invalid email or password",
+      "oauthFailed": "OAuth callback failed",
+      "openingBrowser": "Opening browser...",
+      "completeGitHubAuth": "Please complete GitHub authorization in the browser",
+      "cannotOpenBrowser": "Cannot open browser",
+      "loggedOut": "Logged out"
+    }
   },
   "fileBrowser": {
     "openWithApps": {
