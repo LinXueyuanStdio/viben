@@ -653,4 +653,3 @@ packages/core/src/
 - [task.md](./task.md) - 任务管理模块
 - [session.md](./session.md) - 会话管理模块
 - [git-operations.md](./git-operations.md) - Git 操作详细规范
-- [/docs/kanban/10-task-attempts.md](/docs/kanban/10-task-attempts.md) - vibe-kanban 工作区 API 参考

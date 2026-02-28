@@ -133,4 +133,3 @@
 
 - [Desktop Integration](../desktop-integration.md) - Desktop 整体架构
 - [Workspace Chat](../workspace/) - Workspace 相关规范
-- [viben-core](../viben-core-integration.md) - 核心库集成

@@ -434,6 +434,6 @@ pnpm test:watch
 ## Related Documents
 
 - [cli/index.md](./cli/index.md) - CLI 命令详细文档索引
-- [Workspace Management](./workspace-management.md) - 工作区管理规范
+- [Workspace Management](./workspace/workspace-management.md) - 工作区管理规范
 - [MCP API](./mcp-api.md) - MCP 市场 API
 - [Skills API](./skills-api.md) - Skills 市场 API
