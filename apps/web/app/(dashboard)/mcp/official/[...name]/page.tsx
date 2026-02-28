@@ -5,7 +5,7 @@ import { OfficialServerHeader } from '@/components/mcp/official-server-header';
 import { OfficialServerSidebar } from '@/components/mcp/official-server-sidebar';
 
 interface OfficialServerDetailPageProps {
-  params: Promise<{ name: string }>;
+  params: Promise<{ name: string[] }>;
   searchParams: Promise<{ version?: string }>;
 }
 
@@ -13,7 +13,7 @@ export async function generateMetadata({
   params,
 }: OfficialServerDetailPageProps): Promise<Metadata> {
   const { name } = await params;
-  const decodedName = decodeURIComponent(name);
+  const decodedName = name.map(decodeURIComponent).join('/');
   const server = await fetchOfficialServer(decodedName);
 
   if (!server) {
@@ -34,7 +34,7 @@ export default async function OfficialServerDetailPage({
 }: OfficialServerDetailPageProps) {
   const { name } = await params;
   const { version } = await searchParams;
-  const decodedName = decodeURIComponent(name);
+  const decodedName = name.map(decodeURIComponent).join('/');
 
   const server = await fetchOfficialServer(decodedName, version);
 
