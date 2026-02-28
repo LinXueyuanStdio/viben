@@ -153,6 +153,16 @@ This directory contains detailed specifications for implementing each module of 
 
 ---
 
+## Desktop MCP Services
+
+> **新增**: 桌面应用 MCP 服务集成
+
+| Module | Description | Status |
+|--------|-------------|--------|
+| [desktop-page-debug-mcp.md](./desktop-page-debug-mcp.md) | 页面调试 MCP - Tauri WebView 自动调试 | 📝 规划中 |
+
+---
+
 ## Cross-Cutting Concerns
 
 | Module | Description | Effort | Status |
