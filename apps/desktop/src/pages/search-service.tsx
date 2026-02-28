@@ -232,51 +232,60 @@ function ServerCard({
     command?: string;
   } | null>(null);
 
-  // Track previous status and error to detect transitions
+  // Track previous status to detect unexpected termination
   const prevStatusRef = useRef<string | undefined>(undefined);
-  const prevErrorRef = useRef<string | undefined>(undefined);
-  const hasShownErrorToastRef = useRef<string | undefined>(undefined);
+  const hasShownCrashToastRef = useRef(false);
 
-  // Show toast when status changes to error (e.g., process crashed after starting)
+  // Show toast when server unexpectedly stops (running -> stopped/error)
   useEffect(() => {
     const prevStatus = prevStatusRef.current;
-    const prevError = prevErrorRef.current;
     prevStatusRef.current = monitoredStatus;
-    prevErrorRef.current = statusInfo?.error;
 
-    // Detect new error state
-    // - Transition from non-error to error, OR
-    // - New error message (different from previously shown)
-    const isNewError = monitoredStatus === "error" &&
-      statusInfo?.error &&
-      (prevStatus !== "error" || statusInfo.error !== prevError) &&
-      hasShownErrorToastRef.current !== statusInfo.error;
+    // DEBUG: Log status changes
+    console.log(`[ServerCard ${server.name}] Status change: ${prevStatus} -> ${monitoredStatus}`, {
+      statusInfo,
+      hasShownCrashToast: hasShownCrashToastRef.current,
+    });
 
-    if (isNewError && statusInfo.error) {
-      hasShownErrorToastRef.current = statusInfo.error;
+    // Detect unexpected termination:
+    // - Was running, now stopped or error
+    // - Haven't shown toast yet for this crash
+    const wasRunning = prevStatus === "running";
+    const isNowStopped = monitoredStatus === "stopped" || monitoredStatus === "error";
+    const isUnexpectedCrash = wasRunning && isNowStopped && !hasShownCrashToastRef.current;
+
+    console.log(`[ServerCard ${server.name}] Crash detection:`, {
+      wasRunning,
+      isNowStopped,
+      isUnexpectedCrash,
+    });
+
+    if (isUnexpectedCrash) {
+      hasShownCrashToastRef.current = true;
       const commandLine = `${pythonPath} -m browse_mcp --transport ${server.transport} --port ${server.port}`;
+      const errorMessage = statusInfo?.error || t("searchService.processTerminatedUnexpectedly");
 
       toast.error(t("searchService.serverCrashed"), {
-        description: statusInfo.error.slice(0, 100),
+        description: errorMessage.slice(0, 100),
         duration: 8000,
         action: {
           label: t("common.details"),
           onClick: () => setStartupDetails({
             show: true,
             success: false,
-            error: statusInfo.error,
+            error: errorMessage,
             command: commandLine,
           }),
         },
       });
 
       // Update server status in store
-      onStatusChange("error");
+      onStatusChange(monitoredStatus === "error" ? "error" : "stopped");
     }
 
-    // Reset error toast tracking when server is stopped or running
-    if (monitoredStatus !== "error") {
-      hasShownErrorToastRef.current = undefined;
+    // Reset crash toast tracking when server starts running again
+    if (monitoredStatus === "running") {
+      hasShownCrashToastRef.current = false;
     }
   }, [monitoredStatus, statusInfo?.error, pythonPath, server.transport, server.port, t, onStatusChange]);
 

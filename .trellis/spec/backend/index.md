@@ -31,11 +31,11 @@ For Python MCP server development, see [Plugin Architecture](./plugin-architectu
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | 模块组织与文件布局 | ✅ Complete |
+| [Directory Structure](./core/directory-structure.md) | 模块组织与文件布局 | ✅ Complete |
 | [Plugin Architecture](./plugin-architecture.md) | Python MCP 可插拔 Provider 系统 (stevedore) | ✅ Complete |
 | [Telemetry Guidelines](./telemetry-guidelines.md) | OpenTelemetry tracing, metrics, logging | ✅ Complete |
-| [API Module](./api-module.md) | API 模块设计与路由规范 | ✅ Complete |
-| [Quality](./quality.md) | 代码质量标准与审查指南 | ✅ Complete |
+| [API Module](./core/api-module.md) | API 模块设计与路由规范 | ✅ Complete |
+| [Quality](./core/quality.md) | 代码质量标准与审查指南 | ✅ Complete |
 
 ### To Fill
 
@@ -43,7 +43,7 @@ For Python MCP server development, see [Plugin Architecture](./plugin-architectu
 |-------|-------------|--------|
 | [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | 📝 To fill |
 | [Error Handling](./error-handling.md) | Error types, handling strategies | 📝 To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | 📝 To fill |
+| [Quality Guidelines](./core/quality-guidelines.md) | Code standards, forbidden patterns | 📝 To fill |
 | [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | 📝 To fill |
 
 ---

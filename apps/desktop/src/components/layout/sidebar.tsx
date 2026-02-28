@@ -21,8 +21,9 @@ import {
   ChevronDown,
   Plus,
   Check,
-  Loader2,
   ListTodo,
+  Trash2,
+  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,7 +40,20 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
@@ -49,6 +63,7 @@ import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import { AddWorkspaceModal } from "@/components/workspace";
 import { CreateTaskDialog } from "@/components/workspace/kanban/create-task-dialog";
 import type { CreateTaskData } from "@/components/workspace/kanban/create-task-dialog";
 import { createTask } from "@/lib/vibe-kanban/api";
@@ -112,11 +127,12 @@ export function Sidebar() {
   const {
     workspaces,
     activeWorkspaceId,
-    addWorkspace,
     selectWorkspace,
+    removeWorkspace,
   } = useLocalWorkspaces();
 
-  const [isAdding, setIsAdding] = useState(false);
+  // Add Workspace Modal state
+  const [isAddWorkspaceModalOpen, setIsAddWorkspaceModalOpen] = useState(false);
 
   // Get active workspace
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
@@ -142,19 +158,8 @@ export function Sidebar() {
   const { agents, loading: isLoadingAgents } = useAgents({ workspacePath: activeWorkspace?.path });
   const { models, loading: isLoadingModels } = useModels();
 
-  const handleAddWorkspace = async () => {
-    setIsAdding(true);
-    try {
-      const workspace = await addWorkspace();
-      if (workspace) {
-        selectWorkspace(workspace.id);
-        navigate(`/workspace/${workspace.id}/chat`);
-      }
-    } catch {
-      // Error handled in hook
-    } finally {
-      setIsAdding(false);
-    }
+  const handleAddWorkspace = () => {
+    setIsAddWorkspaceModalOpen(true);
   };
 
   const handleSelectWorkspace = (workspaceId: string) => {
@@ -255,14 +260,9 @@ export function Sidebar() {
                   {workspaces.length > 0 && <DropdownMenuSeparator />}
                   <DropdownMenuItem
                     onClick={handleAddWorkspace}
-                    disabled={isAdding}
                     className="text-primary"
                   >
-                    {isAdding ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
+                    <Plus className="h-4 w-4 mr-2" />
                     {t("workspace.addWorkspace")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -530,6 +530,12 @@ export function Sidebar() {
             provider: m.provider,
           }))}
           isLoadingOptions={isLoadingAgents || isLoadingModels}
+        />
+
+        {/* Add Workspace Modal */}
+        <AddWorkspaceModal
+          open={isAddWorkspaceModalOpen}
+          onOpenChange={setIsAddWorkspaceModalOpen}
         />
       </aside>
     </TooltipProvider>

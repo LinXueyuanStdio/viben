@@ -1146,6 +1146,22 @@ export function WorkspaceKanbanPage() {
         defaultModelId={defaultModelId ?? undefined}
         isLoadingOptions={isLoadingAgents || isLoadingModels}
       />
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        open={isPanelOpen}
+        onOpenChange={(open) => {
+          if (!open) handleClosePanel();
+        }}
+        task={selectedTask}
+        onUpdate={handleTaskUpdate}
+        onStartTask={handleStartTask}
+        availableTasks={availableTasks}
+        onNavigateToTask={handleNavigateToTask}
+        workspacePath={workspace?.path}
+        autoStartOnOpen={autoStartTaskOnOpen}
+        onAutoStartConsumed={() => setAutoStartTaskOnOpen(false)}
+      />
     </PageWrapper>
   );
 }

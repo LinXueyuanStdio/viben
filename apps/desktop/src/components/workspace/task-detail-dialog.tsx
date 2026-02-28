@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Dialog,
-  DialogContent,
   DialogOverlay,
 } from "@/components/ui/dialog";
 import { cn } from "@viben/ui";
@@ -14,11 +13,13 @@ import {
   type TaskForPanel,
 } from "./task-detail-panel";
 
-export interface TaskDetailDialogProps extends Omit<TaskDetailPanelProps, "onClose"> {
+export interface TaskDetailDialogProps extends Omit<TaskDetailPanelProps, "onClose" | "task"> {
   /** Whether the dialog is open */
   open: boolean;
   /** Callback when open state changes */
   onOpenChange: (open: boolean) => void;
+  /** The task to display - dialog only renders when task is not null */
+  task: TaskForPanel | null;
   /** Optional className for the dialog content */
   className?: string;
 }
@@ -53,6 +54,13 @@ export function TaskDetailDialog({
     onOpenChange(false);
   }, [onOpenChange]);
 
+  // Only render when both open AND task exists to avoid hooks order issues
+  const shouldRender = open && task !== null;
+
+  if (!shouldRender) {
+    return null;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Custom overlay without close button */}
@@ -60,18 +68,16 @@ export function TaskDetailDialog({
       {/* Custom content with larger size for task details */}
       <div
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
-          "w-[90vw] max-w-3xl h-[85vh] max-h-[900px]",
+          "fixed inset-4 z-50",
           "bg-card border border-border rounded-2xl shadow-xl",
           "animate-in fade-in-0 zoom-in-95",
           "flex flex-col overflow-hidden",
-          !open && "hidden",
           className
         )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label={task?.title || t("workspace.taskDetails", "Task Details")}
+        aria-label={task.title || t("workspace.taskDetails", "Task Details")}
       >
         <TaskDetailPanel
           task={task}

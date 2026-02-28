@@ -172,27 +172,72 @@ async function checkPackageInstalled(
   pythonPath: string,
   packageName: string,
 ): Promise<PackageInfo> {
+  // Method 1: Try pip show
+  const pipCommand = `"${pythonPath}" -m pip show ${packageName}`;
+  console.log(`[Python] Checking package with pip: ${pipCommand}`);
+
   try {
-    const { stdout } = await execAsync(
-      `"${pythonPath}" -m pip show ${packageName}`,
-      { timeout: 10000 },
-    );
+    const { stdout, stderr } = await execAsync(pipCommand, { timeout: 10000 });
+    console.log(`[Python] pip show stdout: ${stdout.slice(0, 200)}`);
+    if (stderr) {
+      console.log(`[Python] pip show stderr: ${stderr.slice(0, 200)}`);
+    }
 
     // Parse version from pip show output
     const versionMatch = stdout.match(/^Version:\s*(.+)$/m);
     const version = versionMatch ? versionMatch[1].trim() : null;
 
+    console.log(`[Python] Package ${packageName} found via pip, version: ${version}`);
     return {
       name: packageName,
       version,
       installed: true,
     };
-  } catch {
-    return {
-      name: packageName,
-      version: null,
-      installed: false,
-    };
+  } catch (pipErr) {
+    const pipError = pipErr as { message?: string; stderr?: string };
+    console.log(`[Python] pip show failed: ${pipError.message || String(pipErr)}`);
+
+    // Method 2: Try importing the module directly (works for uv tool installs)
+    const moduleName = packageName.replace(/-/g, "_"); // browse-mcp -> browse_mcp
+    const importCommand = `"${pythonPath}" -c "import ${moduleName}; print(getattr(${moduleName}, '__version__', 'unknown'))"`;
+    console.log(`[Python] Trying import: ${importCommand}`);
+
+    try {
+      const { stdout: importStdout } = await execAsync(importCommand, { timeout: 10000 });
+      const version = importStdout.trim() || "unknown";
+      console.log(`[Python] Package ${packageName} found via import, version: ${version}`);
+      return {
+        name: packageName,
+        version: version === "unknown" ? null : version,
+        installed: true,
+      };
+    } catch (importErr) {
+      const importError = importErr as { message?: string; stderr?: string };
+      console.log(`[Python] import failed: ${importError.message || String(importErr)}`);
+
+      // Method 3: Try running the module directly (e.g., python -m browse_mcp --version)
+      const moduleCommand = `"${pythonPath}" -m ${moduleName} --version`;
+      console.log(`[Python] Trying module version: ${moduleCommand}`);
+
+      try {
+        const { stdout: modStdout } = await execAsync(moduleCommand, { timeout: 10000 });
+        const versionMatch = modStdout.match(/(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : "installed";
+        console.log(`[Python] Package ${packageName} found via module, version: ${version}`);
+        return {
+          name: packageName,
+          version,
+          installed: true,
+        };
+      } catch (modErr) {
+        console.log(`[Python] All methods failed, package not installed`);
+        return {
+          name: packageName,
+          version: null,
+          installed: false,
+        };
+      }
+    }
   }
 }
 

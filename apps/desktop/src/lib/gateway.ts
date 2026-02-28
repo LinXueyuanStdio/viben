@@ -7157,6 +7157,16 @@ export interface McpStatus {
   startedAt?: string;
   /** Endpoint URL for connecting */
   endpointUrl?: string;
+  /** Exit code if process terminated */
+  exitCode?: number | null;
+  /** Exit signal if process was killed */
+  exitSignal?: string | null;
+  /** Stderr output from the process */
+  stderr?: string;
+  /** Stdout output from the process */
+  stdout?: string;
+  /** Error message if startup failed */
+  error?: string;
 }
 
 /** Configuration for starting browse-mcp server */

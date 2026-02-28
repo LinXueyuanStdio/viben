@@ -60,6 +60,13 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
 
   // Determine the current status phase
   const phase: StatusPhase = React.useMemo(() => {
+    // DEBUG
+    console.log("[McpStatusIndicator] Phase check:", {
+      pythonLoading,
+      selectedPython: selectedPython ? { path: selectedPython.path, is_valid: selectedPython.is_valid } : null,
+      browseMcpInfo,
+    });
+
     // Phase 1 & 2: Python check
     if (pythonLoading) {
       return "python_checking";

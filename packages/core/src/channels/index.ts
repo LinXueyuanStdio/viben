@@ -76,7 +76,16 @@ export {
 } from "./telegram";
 
 // Re-export polling module
-export { TelegramPoller, type TelegramPollerConfig } from "./polling";
+export {
+  TelegramPoller,
+  DiscordPoller,
+  FeishuPoller,
+  WhatsAppPoller,
+  type TelegramPollerConfig,
+  type DiscordPollerConfig,
+  type FeishuPollerConfig,
+  type WhatsAppPollerConfig,
+} from "./polling";
 
 /**
  * Send a message through any channel type

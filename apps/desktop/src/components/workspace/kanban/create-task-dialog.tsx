@@ -171,17 +171,17 @@ export function CreateTaskDialog({
         {/* Header with gradient accent */}
         <div className="relative">
           <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent" />
-          <div className="relative px-5 pt-5 pb-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+          <div className="relative px-5 pt-5 pb-4">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="font-medium">{t("workspace.createTaskDialog.title", "Create Task")}</span>
             </div>
-            {/* Title Input */}
+            {/* Title Input - larger and more prominent */}
             <Input
               placeholder={t("workspace.createTaskDialog.taskTitlePlaceholder", "Enter task title...")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="text-base font-medium border-0 bg-transparent h-10 px-0 focus-visible:ring-0 placeholder:text-muted-foreground/50"
+              className="text-xl font-semibold h-12 px-4 rounded-lg bg-muted/40 border-border/40 focus-visible:ring-2 focus-visible:ring-primary/30 focus-visible:border-primary/50 placeholder:text-muted-foreground/40"
               autoFocus
             />
           </div>
