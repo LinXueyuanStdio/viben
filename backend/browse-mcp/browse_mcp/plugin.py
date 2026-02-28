@@ -198,11 +198,13 @@ class SearcherPluginManager:
         """
         logger.info(f"Loading searcher plugins from namespace: {SEARCHER_NAMESPACE}")
 
-        def on_load_failure(manager: ExtensionManager, ep: str, err: Exception) -> None:
+        def on_load_failure(manager: ExtensionManager, ep: "EntryPoint | str", err: Exception) -> None:
             """Callback for handling plugin load failures."""
+            # Extract name from EntryPoint if needed (stevedore passes EntryPoint object, not string)
+            ep_name = ep.name if hasattr(ep, 'name') else str(ep)
             error_msg = f"Failed to load searcher '{ep}': {err}"
             logger.warning(error_msg)
-            self._load_errors[ep] = str(err)
+            self._load_errors[ep_name] = str(err)
 
         try:
             mgr = ExtensionManager(

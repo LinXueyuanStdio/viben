@@ -16,29 +16,24 @@ This directory contains guidelines for frontend development. These specs ensure 
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Design System](./design-system.md) | 完整设计系统：颜色、字体、动效、组件 | ✅ Complete |
-| [Component Guidelines](./components.md) | React 组件模式与最佳实践 | ✅ Complete |
-| [Chat Input Components](./chat-input-components.md) | ChatInput vs AgentChatInput 组件使用指南 | ✅ Complete |
-| [Tailwind v4 Workspace Packages](./tailwind-v4-workspace-packages.md) | **Critical** - Tailwind v4 工作空间包扫描配置 | ✅ Complete |
+| [Design System](./core/design-system.md) | 完整设计系统：颜色、字体、动效、组件 | ✅ Complete |
+| [Component Guidelines](./core/components.md) | React 组件模式与最佳实践 | ✅ Complete |
+| [Hook Guidelines](./core/hook-guidelines.md) | Custom hooks and state management | 📝 To fill |
+| [Type Safety](./core/type-safety.md) | TypeScript patterns and type definitions | 📝 To fill |
+| [Quality Guidelines](./core/quality-guidelines.md) | Code standards and forbidden patterns | 📝 To fill |
+| [Tailwind v4 Workspace Packages](./core/tailwind-v4-workspace-packages.md) | **Critical** - Tailwind v4 工作空间包扫描配置 | ✅ Complete |
 
 ### Feature Guidelines
 
 | Guide | Description | Spec | Impl |
 |-------|-------------|------|------|
-| [Provider System](./PROVIDER_SYSTEM.md) | AI Provider 配置与管理系统 | ✅ | ✅ |
-| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" 和 "Publish My Skill" 向导流程 | ✅ | ❌ |
-| [Chat Integration](./chat-integration.md) | 工作空间聊天页面集成 (**desktop only**) | ✅ | ✅ |
-| [Vibe Kanban Layout](./vibe-kanban-layout-architecture.md) | Vibe Kanban 三栏布局架构设计 | ✅ | ✅ |
+| [Provider System](./features/PROVIDER_SYSTEM.md) | AI Provider 配置与管理系统 | ✅ | ✅ |
+| [Marketplace Publish Flow](./features/marketplace-publish-flow.md) | "Publish My MCP" 和 "Publish My Skill" 向导流程 | ✅ | ❌ |
+| [Chat Integration](./features/chat-integration.md) | 工作空间聊天页面集成 (**desktop only**) | ✅ | ✅ |
+| [Chat Input Components](./features/chat-input-components.md) | ChatInput vs AgentChatInput 组件使用指南 | ✅ Complete |
+| [Vibe Kanban Layout](./features/vibe-kanban-layout-architecture.md) | Vibe Kanban 三栏布局架构设计 | ✅ | ✅ |
 
 > **Legend:** Spec = 规格文档完成, Impl = 代码实现完成
-
-### To Fill
-
-| Guide | Description | Status |
-|-------|-------------|--------|
-| [Hook Guidelines](./hook-guidelines.md) | Custom hooks and state management | 📝 To fill |
-| [Type Safety](./type-safety.md) | TypeScript patterns and type definitions | 📝 To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards and forbidden patterns | 📝 To fill |
 
 ---
 
@@ -72,7 +67,7 @@ This directory contains guidelines for frontend development. These specs ensure 
 
 ### 1. Read Design System First
 
-Before writing any frontend code, read the [Design System](./design-system.md) to understand:
+Before writing any frontend code, read the [Design System](./core/design-system.md) to understand:
 
 - Brand colors (warm amber/orange palette)
 - Typography (Crimson Pro serif + Inter sans-serif)

@@ -83,15 +83,18 @@ This single habit prevents most "forgot to update X" bugs.
 ## Related Resources
 
 ### Frontend Guidelines
-- [Design System](../frontend/design-system.md) - Colors, typography, motion
-- [Component Guidelines](../frontend/components.md) - React patterns
+- [Design System](../frontend/core/design-system.md) - Colors, typography, motion
+- [Component Guidelines](../frontend/core/components.md) - React patterns
 
 ### Backend Guidelines
-- [Directory Structure](../backend/directory-structure.md) - Module organization
-- [Plugin Architecture](../backend/plugin-architecture.md) - Provider system
+- [Directory Structure](../backend/core/directory-structure.md) - Module organization
+- [Plugin Architecture](../backend/architecture/plugin-architecture.md) - Provider system
 
 ### Module Specs
-- [Module Index](../modules/index.md) - All module specifications
+- [Infrastructure](../modules/infrastructure/index.md) - Core infrastructure specs
+- [Auth](../modules/auth/index.md) - Authentication specs
+- [Workspace](../modules/workspace/index.md) - Workspace specs
+- [Marketplace](../modules/marketplace/index.md) - Marketplace specs
 
 ---
 

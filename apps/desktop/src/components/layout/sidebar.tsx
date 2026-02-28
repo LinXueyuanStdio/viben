@@ -23,7 +23,6 @@ import {
   Check,
   ListTodo,
   Trash2,
-  MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -64,6 +63,7 @@ import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { AddWorkspaceModal } from "@/components/workspace";
+import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
 import { CreateTaskDialog } from "@/components/workspace/kanban/create-task-dialog";
 import type { CreateTaskData } from "@/components/workspace/kanban/create-task-dialog";
 import { createTask } from "@/lib/vibe-kanban/api";
@@ -134,6 +134,13 @@ export function Sidebar() {
   // Add Workspace Modal state
   const [isAddWorkspaceModalOpen, setIsAddWorkspaceModalOpen] = useState(false);
 
+  // Delete workspace confirmation state
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Workspace settings dialog state
+  const [workspaceToConfig, setWorkspaceToConfig] = useState<string | null>(null);
+
   // Get active workspace
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
 
@@ -165,6 +172,30 @@ export function Sidebar() {
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
     navigate(`/workspace/${workspaceId}/chat`);
+  };
+
+  const handleConfigureWorkspace = (workspaceId: string) => {
+    setWorkspaceToConfig(workspaceId);
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await removeWorkspace(workspaceToDelete.id);
+      toast.success(t("workspace.deleteSuccess"));
+      // If deleting active workspace, navigate to home
+      if (workspaceToDelete.id === activeWorkspaceId) {
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Failed to delete workspace:", error);
+      toast.error(t("workspace.deleteFailed"));
+    } finally {
+      setIsDeleting(false);
+      setWorkspaceToDelete(null);
+    }
   };
 
   // Handle create task submission
@@ -223,7 +254,9 @@ export function Sidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {activeWorkspace?.name || t("sidebar.expand")}
+                {activeWorkspace?.type === "global"
+                  ? t("workspace.global")
+                  : (activeWorkspace?.name || t("sidebar.expand"))}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -238,24 +271,53 @@ export function Sidebar() {
                     <span className="flex items-center gap-2 truncate">
                       <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
                       <span className="truncate text-sm font-medium">
-                        {activeWorkspace?.name || t("workspace.noWorkspaces")}
+                        {activeWorkspace?.type === "global"
+                          ? t("workspace.global")
+                          : (activeWorkspace?.name || t("workspace.noWorkspaces"))}
                       </span>
                     </span>
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuContent align="start" className="w-56">
                   {workspaces.map((ws) => (
-                    <DropdownMenuItem
-                      key={ws.id}
-                      onClick={() => handleSelectWorkspace(ws.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="truncate">{ws.name}</span>
-                      {ws.id === activeWorkspaceId && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
+                    <DropdownMenuSub key={ws.id}>
+                      <DropdownMenuSubTrigger
+                        className="flex items-center justify-between"
+                        onClick={(e) => {
+                          // Only switch workspace on direct click, not on hover
+                          if (e.detail > 0) {
+                            handleSelectWorkspace(ws.id);
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-2 truncate flex-1">
+                          <span className="truncate">
+                            {ws.type === "global" ? t("workspace.global") : ws.name}
+                          </span>
+                          {ws.id === activeWorkspaceId && (
+                            <Check className="h-3 w-3 text-primary shrink-0" />
+                          )}
+                        </span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-40">
+                        <DropdownMenuItem
+                          onClick={() => handleConfigureWorkspace(ws.id)}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          {t("workspace.configure")}
+                        </DropdownMenuItem>
+                        {ws.type !== "global" && (
+                          <DropdownMenuItem
+                            onClick={() => setWorkspaceToDelete({ id: ws.id, name: ws.name })}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t("workspace.delete")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                   ))}
                   {workspaces.length > 0 && <DropdownMenuSeparator />}
                   <DropdownMenuItem
@@ -536,6 +598,40 @@ export function Sidebar() {
         <AddWorkspaceModal
           open={isAddWorkspaceModalOpen}
           onOpenChange={setIsAddWorkspaceModalOpen}
+        />
+
+        {/* Delete Workspace Confirmation Dialog */}
+        <AlertDialog
+          open={!!workspaceToDelete}
+          onOpenChange={(open) => !open && setWorkspaceToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("workspace.deleteConfirmTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("workspace.deleteConfirmDescription", { name: workspaceToDelete?.name })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteWorkspace}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? t("common.deleting") : t("common.delete")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Workspace Settings Dialog */}
+        <WorkspaceSettingsDialog
+          open={!!workspaceToConfig}
+          onOpenChange={(open) => !open && setWorkspaceToConfig(null)}
+          workspaceId={workspaceToConfig}
         />
       </aside>
     </TooltipProvider>

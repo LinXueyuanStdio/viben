@@ -1,7 +1,9 @@
 /**
  * Gateway Management Hook
+ * 网关管理 Hook
  *
- * Provides functions for managing the viben-gateway process via Tauri commands.
+ * Provides functions for managing the viben gateway process via Tauri commands.
+ * 通过 Tauri 命令管理 viben 网关进程。
  */
 
 import { useState, useCallback, useEffect } from "react";

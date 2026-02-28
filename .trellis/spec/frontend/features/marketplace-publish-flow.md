@@ -242,7 +242,7 @@ Basic  Config  Preview Publish
 
 ## Design Notes
 
-Follow the [Design System](./design-system.md):
+Follow the [Design System](../core/design-system.md):
 
 - Use warm amber palette for primary actions
 - Serif typography for headings

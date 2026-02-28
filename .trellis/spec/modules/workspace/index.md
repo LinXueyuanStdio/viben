@@ -102,6 +102,6 @@ Web App
 
 ## Related Specs
 
-- [../desktop-integration.md](../desktop-integration.md) - Desktop app 整体架构
-- [../package-kanban.md](../package-kanban.md) - @viben/kanban 包规格
-- [../../frontend/vibe-kanban-layout-architecture.md](../../frontend/vibe-kanban-layout-architecture.md) - Kanban 布局架构
+- [../desktop/desktop-integration.md](../desktop/desktop-integration.md) - Desktop app 整体架构
+- [../packages/package-kanban.md](../packages/package-kanban.md) - @viben/kanban 包规格
+- [../../frontend/features/vibe-kanban-layout-architecture.md](../../frontend/features/vibe-kanban-layout-architecture.md) - Kanban 布局架构

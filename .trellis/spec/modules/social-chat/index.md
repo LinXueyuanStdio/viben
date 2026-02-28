@@ -131,5 +131,5 @@
 
 ## 相关文档
 
-- [Desktop Integration](../desktop-integration.md) - Desktop 整体架构
+- [Desktop Integration](../desktop/desktop-integration.md) - Desktop 整体架构
 - [Workspace Chat](../workspace/) - Workspace 相关规范

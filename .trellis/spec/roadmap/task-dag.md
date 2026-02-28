@@ -96,58 +96,58 @@
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T0 | Project Setup | - | [project-setup.md](./modules/project-setup.md) | Next.js app scaffold, pnpm workspace |
+| T0 | Project Setup | - | [project-setup.md](../modules/infrastructure/project-setup.md) | Next.js app scaffold, pnpm workspace |
 
 ### Phase 1: Core Infrastructure
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T1 | Database Schema | T0 | [database.md](./modules/database.md) | Drizzle schema, migrations |
-| T2 | Auth Core | T0 | [auth.md](./modules/auth.md) | JWE session, middleware |
-| T3 | UI Shell | T0 | [ui-shell.md](./modules/ui-shell.md) | Layout, navigation, theme |
+| T1 | Database Schema | T0 | [database.md](../modules/infrastructure/database.md) | Drizzle schema, migrations |
+| T2 | Auth Core | T0 | [auth.md](../modules/auth/auth.md) | JWE session, middleware |
+| T3 | UI Shell | T0 | [ui-shell.md](../modules/web-ui/ui-shell.md) | Layout, navigation, theme |
 
 ### Phase 2: User System
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T4 | User API | T1, T2 | [user-api.md](./modules/user-api.md) | User CRUD, OAuth, API keys |
-| T7 | Auth UI | T3, T4 | [auth-ui.md](./modules/auth-ui.md) | Login, register, OAuth buttons |
-| T10 | Profile UI | T7 | [profile-ui.md](./modules/profile-ui.md) | Profile page, API key management |
+| T4 | User API | T1, T2 | [user-api.md](../modules/auth/user-api.md) | User CRUD, OAuth, API keys |
+| T7 | Auth UI | T3, T4 | [auth-ui.md](../modules/auth/auth-ui.md) | Login, register, OAuth buttons |
+| T10 | Profile UI | T7 | [profile-ui.md](../modules/auth/profile-ui.md) | Profile page, API key management |
 
 ### Phase 3: Marketplace Core
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T5 | MCP API | T4 | [mcp-api.md](./modules/mcp-api.md) | MCP CRUD, search |
-| T6 | Skills API | T4 | [skills-api.md](./modules/skills-api.md) | Skills CRUD, search |
-| T8 | MCP UI | T5, T3 | [mcp-ui.md](./modules/mcp-ui.md) | MCP marketplace pages |
-| T9 | Skills UI | T6, T3 | [skills-ui.md](./modules/skills-ui.md) | Skills marketplace pages |
+| T5 | MCP API | T4 | [mcp-api.md](../modules/marketplace/mcp-api.md) | MCP CRUD, search |
+| T6 | Skills API | T4 | [skills-api.md](../modules/marketplace/skills-api.md) | Skills CRUD, search |
+| T8 | MCP UI | T5, T3 | [mcp-ui.md](../modules/marketplace/mcp-ui.md) | MCP marketplace pages |
+| T9 | Skills UI | T6, T3 | [skills-ui.md](../modules/marketplace/skills-ui.md) | Skills marketplace pages |
 
 ### Phase 4: Social & Storage
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T11 | Social API | T5, T6 | [social-api.md](./modules/social-api.md) | Favorites, comments, ratings |
-| T12 | Storage Backend | T4 | [storage.md](./modules/storage.md) | HuggingFace integration |
-| T13 | Package Upload/Download | T11, T12 | [packages.md](./modules/packages.md) | Upload/download API |
+| T11 | Social API | T5, T6 | [social-api.md](../modules/marketplace/social-api.md) | Favorites, comments, ratings |
+| T12 | Storage Backend | T4 | [storage.md](../modules/infrastructure/storage.md) | HuggingFace integration |
+| T13 | Package Upload/Download | T11, T12 | [packages.md](../modules/marketplace/packages.md) | Upload/download API |
 
 ### Phase 5: Advanced Features
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
-| T14 | Workspace API | T13 | [workspace-api.md](./modules/workspace/workspace-api.md) | Workspace CRUD |
-| T15 | Collections API | T11 | [collections-api.md](./modules/collections-api.md) | Collection CRUD |
-| T16 | Publish UI | T13, T8, T9 | [publish-ui.md](./modules/publish-ui.md) | Package publish wizard |
-| T17 | Workspace UI | T14 | [workspace-ui.md](./modules/workspace/workspace-ui.md) | Workspace management |
-| T18 | Collections UI | T15 | [collections-ui.md](./modules/collections-ui.md) | Collection pages |
-| T19 | Analytics UI | T13 | [analytics-ui.md](./modules/analytics-ui.md) | Download stats |
+| T14 | Workspace API | T13 | [workspace-api.md](../modules/workspace/workspace-api.md) | Workspace CRUD |
+| T15 | Collections API | T11 | [collections-api.md](../modules/marketplace/collections-api.md) | Collection CRUD |
+| T16 | Publish UI | T13, T8, T9 | [publish-ui.md](../modules/marketplace/publish-ui.md) | Package publish wizard |
+| T17 | Workspace UI | T14 | [workspace-ui.md](../modules/workspace/workspace-ui.md) | Workspace management |
+| T18 | Collections UI | T15 | [collections-ui.md](../modules/marketplace/collections-ui.md) | Collection pages |
+| T19 | Analytics UI | T13 | [analytics-ui.md](../modules/marketplace/analytics-ui.md) | Download stats |
 
 ### Phase 6: Integration & Polish
 
 | Task | Name | Dependencies | Spec | Deliverables |
 |------|------|--------------|------|--------------|
 | T20 | Desktop Integration | T13 | [desktop-task-dag.md](./desktop-task-dag.md) | 16 sub-tasks (TD0-TD15): Auth, Marketplace, Install, Sync, Offline |
-| T21 | Deploy & Polish | All | [deployment.md](./modules/deployment.md) | Vercel deploy, testing |
+| T21 | Deploy & Polish | All | [deployment.md](../modules/infrastructure/deployment.md) | Vercel deploy, testing |
 
 > **Note**: T20 is expanded into a separate task DAG with 16 sub-tasks. See [desktop-task-dag.md](./desktop-task-dag.md) for details.
 

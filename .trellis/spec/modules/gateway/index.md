@@ -140,4 +140,4 @@ curl http://127.0.0.1:18790/health
 
 - [CLI Gateway 命令](../cli/gateway.md) - Gateway CLI 管理命令
 - [CLI Agent 命令](../cli/agent.md) - Agent CLI 管理命令
-- [Telemetry Guidelines](../../backend/telemetry-guidelines.md) - OpenTelemetry 集成指南
+- [Telemetry Guidelines](../../backend/patterns/telemetry-guidelines.md) - OpenTelemetry 集成指南

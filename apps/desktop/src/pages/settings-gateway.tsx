@@ -1,10 +1,12 @@
 /**
  * Gateway Settings Section
+ * 网关设置
  *
- * Allows users to manage the viben-gateway service:
- * - Start/Stop/Restart gateway
- * - Configure port
- * - Toggle auto-start
+ * Allows users to manage the viben gateway service:
+ * 允许用户管理 viben 网关服务：
+ * - Start/Stop/Restart gateway 启动/停止/重启网关
+ * - Configure port 配置端口
+ * - Test connectivity 测试连通性
  */
 
 import { useTranslation } from "react-i18next";
@@ -21,7 +23,6 @@ import {
   Wifi,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGateway } from "@/hooks";
@@ -57,7 +58,7 @@ interface ConnectivityResult {
   timestamp: string | null;
   url: string;
   endpoints: { path: string; available: boolean }[];
-  websocket: boolean;
+  websockets: { path: string; available: boolean }[];
 }
 
 export function SettingsGatewayPage() {
@@ -68,7 +69,6 @@ export function SettingsGatewayPage() {
     isLoading,
     isActioning,
     error,
-    binaryPath,
     discoveredUrl,
     startGateway,
     stopGateway,
@@ -96,6 +96,8 @@ export function SettingsGatewayPage() {
       if (result.reachable && result.healthCheck) {
         const availableEndpoints = result.endpoints.filter((e) => e.available).length;
         const totalEndpoints = result.endpoints.length;
+        const availableWs = result.websockets.filter((w) => w.available).length;
+        const totalWs = result.websockets.length;
 
         toast.success(t("gateway.connectionSuccess", "网关连接成功"), {
           description: [
@@ -104,7 +106,7 @@ export function SettingsGatewayPage() {
               : null,
             `${t("gateway.address", "地址")}: ${result.url}`,
             `${t("gateway.availableEndpoints", "可用端点")}: ${availableEndpoints}/${totalEndpoints}`,
-            `WebSocket: ${result.websocket ? "OK" : "N/A"}`,
+            `WebSocket: ${availableWs}/${totalWs}`,
           ]
             .filter(Boolean)
             .join("\n"),
@@ -263,7 +265,7 @@ export function SettingsGatewayPage() {
               <Button
                 size="sm"
                 onClick={startGateway}
-                disabled={isActioning || !binaryPath}
+                disabled={isActioning}
                 className="gap-1.5"
               >
                 {isActioning ? (
@@ -434,22 +436,31 @@ export function SettingsGatewayPage() {
               </div>
             )}
 
-            {/* WebSocket Status */}
-            <div className="flex items-center gap-2">
-              {testResult.websocket ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-              ) : (
-                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-              <span className="text-sm text-muted-foreground">
-                WebSocket
-              </span>
-              {testResult.websocket && (
-                <span className="text-xs text-green-600">
-                  {t("gateway.connected", "已连接")}
-                </span>
-              )}
-            </div>
+            {/* WebSocket Endpoints Status */}
+            {testResult.websockets.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  WebSocket ({testResult.websockets.filter(w => w.available).length}/{testResult.websockets.length})
+                </Label>
+                <div className="grid grid-cols-2 gap-1">
+                  {testResult.websockets.map((ws) => (
+                    <div
+                      key={ws.path}
+                      className="flex items-center gap-1.5 text-xs"
+                    >
+                      {ws.available ? (
+                        <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />
+                      ) : (
+                        <XCircle className="h-3 w-3 text-muted-foreground shrink-0" />
+                      )}
+                      <code className="text-muted-foreground truncate">
+                        {ws.path}
+                      </code>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -506,63 +517,6 @@ export function SettingsGatewayPage() {
         </SettingsItem>
       </div>
 
-      {/* Keep-Alive Card - Auto Start & Command */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <h3 className="text-sm font-semibold">
-          {t("settings.gatewayKeepAlive", "网关保活")}
-        </h3>
-
-        {/* Auto Start Toggle */}
-        <SettingsItem
-          title={t("gateway.autoStart", "自动启动")}
-          description={t(
-            "gateway.autoStartDescription",
-            "应用启动时自动启动网关服务"
-          )}
-        >
-          <Switch
-            checked={config?.auto_start ?? true}
-            onCheckedChange={(checked) => updateConfig({ auto_start: checked })}
-          />
-        </SettingsItem>
-
-        {/* Auto Start Command */}
-        <SettingsItem
-          title={t("gateway.autoStartCommand", "自启动命令")}
-          description={t(
-            "gateway.autoStartCommandDescription",
-            "用于启动网关的命令路径"
-          )}
-        >
-          <div className="flex items-center gap-2">
-            {binaryPath ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
-                <code className="bg-muted px-2 py-1 rounded text-xs max-w-[200px] truncate" title={binaryPath}>
-                  {binaryPath}
-                </code>
-              </>
-            ) : (
-              <>
-                <XCircle className="h-4 w-4 text-destructive shrink-0" />
-                <span className="text-sm text-destructive">
-                  {t("gateway.commandNotFound", "未配置")}
-                </span>
-              </>
-            )}
-          </div>
-        </SettingsItem>
-
-        {/* Install hint when binary not found */}
-        {!binaryPath && (
-          <p className="text-xs text-muted-foreground px-1">
-            {t(
-              "gateway.installHint",
-              "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
-            )}
-          </p>
-        )}
-      </div>
     </div>
   );
 }

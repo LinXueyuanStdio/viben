@@ -35,3 +35,4 @@ This document needs to be populated with:
 **Related:**
 - [Component Guidelines](./components.md)
 - [Type Safety](./type-safety.md)
+- [Design System](./design-system.md)

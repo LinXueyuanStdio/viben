@@ -35,3 +35,4 @@ This document needs to be populated with:
 **Related:**
 - [Component Guidelines](./components.md)
 - [Hook Guidelines](./hook-guidelines.md)
+- [Quality Guidelines](./quality-guidelines.md)
