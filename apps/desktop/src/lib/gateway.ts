@@ -6505,6 +6505,13 @@ export interface SystemInfo {
   viben_dir: string;
 }
 
+/** A single detected CLI tool path */
+export interface CliToolPath {
+  path: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+}
+
 /** CLI tool detection result */
 export interface CliToolInfo {
   found: boolean;
@@ -6512,6 +6519,8 @@ export interface CliToolInfo {
   version?: string;
   source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
   message?: string;
+  /** All discovered paths for this tool */
+  alternatives?: CliToolPath[];
 }
 
 /** Supported CLI tool names */

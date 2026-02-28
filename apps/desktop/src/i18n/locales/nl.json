@@ -804,8 +804,43 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Hostadres waaraan de gateway-service is gebonden",
+    "portDescription": "Poortnummer waarop de gateway-service luistert (herstart vereist)",
+    "connectivityTestDescription": "Controleer de verbindingsstatus en beschikbare eindpunten van de gateway-service"
+  },
+  "observability": {
+    "allRoutes": "Alle routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agent-uitvoering)",
+      "agents": "/api/agents (Agentbeheer)",
+      "workspaces": "/api/workspaces (Werkruimtes)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Groepschats)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sessie",
+        "config": "Configuratie",
+        "info": "Informatie",
+        "workspace": "Werkruimte",
+        "auth": "Authenticatie"
+      },
+      "sources": {
+        "builtin": "Ingebouwd",
+        "workspace": "Werkruimte",
+        "skill": "Vaardigheid"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
+    "addDescription": "Beschrijving toevoegen...",
+    "taskPromptWithDescription": "Help me alstublieft met deze taak:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Help me alstublieft met deze taak: {{title}}",
     "addWorkspace": "Add Workspace",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",

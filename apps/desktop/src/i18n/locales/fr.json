@@ -72,6 +72,38 @@
     "hasErrors": "{{count}} serveur(s) avec des erreurs",
     "ariaLabel": "Serveurs MCP: {{running}} sur {{total}} en cours. Cliquez pour gérer."
   },
+  "gateway": {
+    "host": "Hôte",
+    "hostDescription": "Adresse hôte à laquelle le service passerelle est lié",
+    "portDescription": "Numéro de port sur lequel le service passerelle écoute (redémarrage requis)",
+    "connectivityTestDescription": "Vérifier l'état de connexion et les points d'accès disponibles du service passerelle"
+  },
+  "observability": {
+    "allRoutes": "Toutes les routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Exécution d'agent)",
+      "agents": "/api/agents (Gestion des agents)",
+      "workspaces": "/api/workspaces (Espaces de travail)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Chats de groupe)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Session",
+        "config": "Configuration",
+        "info": "Information",
+        "workspace": "Espace de travail",
+        "auth": "Authentification"
+      },
+      "sources": {
+        "builtin": "Intégré",
+        "workspace": "Espace de travail",
+        "skill": "Compétence"
+      }
+    }
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "setupRequired": "Configuration requise",
@@ -909,6 +941,8 @@
     "noCommands": "Pas de commandes",
     "noCommandsDesc": "Aucun fichier de commande trouvé dans le dossier .claude/commands/.",
     "selectCommand": "Sélectionnez une commande à afficher",
-    "rootNamespace": "Racine"
+    "rootNamespace": "Racine",
+    "taskPromptWithDescription": "Aidez-moi à accomplir cette tâche :\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Aidez-moi à accomplir cette tâche : {{title}}"
   }
 }
