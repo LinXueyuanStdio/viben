@@ -37,17 +37,39 @@ export interface CliToolInfo {
   found: boolean;
   path?: string;
   version?: string;
-  source: "user-config" | "homebrew" | "nvm" | "system-path" | "fallback";
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
   message?: string;
 }
+
+/**
+ * Supported CLI tools
+ */
+export type CliToolName =
+  | "python"  // Python interpreter
+  | "git"     // Version control
+  | "gh"      // GitHub CLI
+  | "claude"  // Claude Code CLI
+  | "codex"   // OpenAI Codex CLI
+  | "aider"   // Aider coding assistant
+  | "goose"   // Goose coding assistant
+  | "cline"   // Cline CLI
+  | "continue" // Continue dev CLI
+  | "cursor"; // Cursor CLI (if available)
 
 /**
  * All CLI tools detection result
  */
 export interface CliToolsInfo {
+  python: CliToolInfo;
   git: CliToolInfo;
   gh: CliToolInfo;
   claude: CliToolInfo;
+  codex: CliToolInfo;
+  aider: CliToolInfo;
+  goose: CliToolInfo;
+  cline: CliToolInfo;
+  continue: CliToolInfo;
+  cursor: CliToolInfo;
 }
 
 // ============================================================================
