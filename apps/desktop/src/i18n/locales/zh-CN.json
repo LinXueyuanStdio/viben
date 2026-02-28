@@ -189,6 +189,9 @@
     "commandNotFound": "未配置",
     "port": "端口",
     "host": "主机",
+    "hostDescription": "网关服务绑定的主机地址",
+    "portDescription": "网关服务监听的端口号（需要重启生效）",
+    "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
     "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
   },
@@ -509,21 +512,41 @@
     "cliTools": {
       "title": "命令行工具",
       "description": "配置命令行工具的可执行文件路径",
+      "coreTitle": "核心工具",
+      "coreDescription": "Python、Git 和 GitHub CLI",
+      "aiTitle": "AI 编程助手",
+      "aiDescription": "Claude、Codex、Aider 等 AI 工具",
+      "pythonPath": "Python 路径",
+      "pythonPathPlaceholder": "python3（默认）",
       "gitPath": "Git 路径",
-      "gitPathDescription": "Git 可执行文件路径（留空自动检测）",
       "gitPathPlaceholder": "git（默认）",
       "ghPath": "GitHub CLI 路径",
-      "ghPathDescription": "GitHub CLI (gh) 可执行文件路径（留空自动检测）",
       "ghPathPlaceholder": "gh（默认）",
       "claudePath": "Claude CLI 路径",
-      "claudePathDescription": "Claude CLI 可执行文件路径（留空自动检测）",
       "claudePathPlaceholder": "claude（默认）",
+      "codexPath": "Codex CLI 路径",
+      "codexPathPlaceholder": "codex（默认）",
+      "aiderPath": "Aider 路径",
+      "aiderPathPlaceholder": "aider（默认）",
+      "goosePath": "Goose 路径",
+      "goosePathPlaceholder": "goose（默认）",
+      "clinePath": "Cline 路径",
+      "clinePathPlaceholder": "cline（默认）",
+      "continuePath": "Continue 路径",
+      "continuePathPlaceholder": "continue（默认）",
+      "cursorPath": "Cursor 路径",
+      "cursorPathPlaceholder": "cursor（默认）",
       "version": "v{{version}}",
       "notDetected": "未检测到",
       "detectedPath": "自动检测",
+      "installHint": "安装命令：",
       "sourceUserConfig": "用户配置",
       "sourceHomebrew": "Homebrew",
       "sourceNvm": "NVM",
+      "sourcePyenv": "pyenv",
+      "sourcePip": "pip",
+      "sourceNpm": "npm",
+      "sourceCargo": "cargo",
       "sourceSystemPath": "系统路径",
       "sourceFallback": "回退"
     },
@@ -1900,6 +1923,8 @@
     "timestamps": "时间戳",
     "activity": "动态",
     "addDescription": "添加描述...",
+    "taskPromptWithDescription": "请帮我完成以下任务：\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "请帮我完成以下任务：{{title}}",
     "viewMode": {
       "kanban": "看板",
       "list": "列表"
@@ -2229,7 +2254,19 @@
       "help": "帮助",
       "helpDesc": "显示可用命令",
       "stop": "停止",
-      "stopDesc": "停止当前执行"
+      "stopDesc": "停止当前执行",
+      "categories": {
+        "session": "会话",
+        "config": "配置",
+        "info": "信息",
+        "workspace": "工作区",
+        "auth": "认证"
+      },
+      "sources": {
+        "builtin": "内置",
+        "workspace": "工作区",
+        "skill": "技能"
+      }
     },
     "emojiPicker": {
       "smileys": "表情",
@@ -2825,6 +2862,13 @@
     "route": "路由",
     "filterByRoute": "按路由过滤",
     "allRoutes": "全部路由",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (智能体执行)",
+      "agents": "/api/agents (智能体管理)",
+      "workspaces": "/api/workspaces (工作区)",
+      "chat": "/api/chat (对话)",
+      "groupChats": "/api/group-chats (群聊)"
+    },
     "viewDetails": "查看详情",
     "toolInput": "工具输入",
     "toolOutput": "工具输出",

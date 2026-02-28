@@ -188,6 +188,9 @@
     "commandNotFound": "Not configured",
     "port": "Port",
     "host": "Host",
+    "hostDescription": "Host address that the gateway service binds to",
+    "portDescription": "Port number that the gateway service listens on (restart required to take effect)",
+    "connectivityTestDescription": "Check gateway service connection status and available endpoints",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart"
   },
@@ -508,21 +511,41 @@
     "cliTools": {
       "title": "CLI Tools",
       "description": "Configure executable paths for command-line tools",
+      "coreTitle": "Core Tools",
+      "coreDescription": "Python, Git, and GitHub CLI",
+      "aiTitle": "AI Coding Assistants",
+      "aiDescription": "Claude, Codex, Aider, and other AI tools",
+      "pythonPath": "Python Path",
+      "pythonPathPlaceholder": "python3 (default)",
       "gitPath": "Git Path",
-      "gitPathDescription": "Path to Git executable (leave empty for auto-detection)",
       "gitPathPlaceholder": "git (default)",
       "ghPath": "GitHub CLI Path",
-      "ghPathDescription": "Path to GitHub CLI (gh) executable (leave empty for auto-detection)",
       "ghPathPlaceholder": "gh (default)",
       "claudePath": "Claude CLI Path",
-      "claudePathDescription": "Path to Claude CLI executable (leave empty for auto-detection)",
       "claudePathPlaceholder": "claude (default)",
+      "codexPath": "Codex CLI Path",
+      "codexPathPlaceholder": "codex (default)",
+      "aiderPath": "Aider Path",
+      "aiderPathPlaceholder": "aider (default)",
+      "goosePath": "Goose Path",
+      "goosePathPlaceholder": "goose (default)",
+      "clinePath": "Cline Path",
+      "clinePathPlaceholder": "cline (default)",
+      "continuePath": "Continue Path",
+      "continuePathPlaceholder": "continue (default)",
+      "cursorPath": "Cursor Path",
+      "cursorPathPlaceholder": "cursor (default)",
       "version": "v{{version}}",
       "notDetected": "Not detected",
       "detectedPath": "Auto-detected",
+      "installHint": "Install:",
       "sourceUserConfig": "User Configuration",
       "sourceHomebrew": "Homebrew",
       "sourceNvm": "NVM",
+      "sourcePyenv": "pyenv",
+      "sourcePip": "pip",
+      "sourceNpm": "npm",
+      "sourceCargo": "cargo",
       "sourceSystemPath": "System PATH",
       "sourceFallback": "Fallback"
     },
@@ -1898,6 +1921,8 @@
     "timestamps": "Timestamps",
     "activity": "Activity",
     "addDescription": "Add description...",
+    "taskPromptWithDescription": "Please help me complete the following task:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Please help me complete the following task: {{title}}",
     "viewMode": {
       "kanban": "Kanban",
       "list": "List"
@@ -2214,7 +2239,19 @@
       "help": "Help",
       "helpDesc": "Show available commands",
       "stop": "Stop",
-      "stopDesc": "Stop current execution"
+      "stopDesc": "Stop current execution",
+      "categories": {
+        "session": "Session",
+        "config": "Configuration",
+        "info": "Information",
+        "workspace": "Workspace",
+        "auth": "Authentication"
+      },
+      "sources": {
+        "builtin": "Built-in",
+        "workspace": "Workspace",
+        "skill": "Skill"
+      }
     },
     "emojiPicker": {
       "smileys": "Smileys",
@@ -2810,6 +2847,13 @@
     "route": "Route",
     "filterByRoute": "Filter by Route",
     "allRoutes": "All Routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agent Execution)",
+      "agents": "/api/agents (Agent Management)",
+      "workspaces": "/api/workspaces (Workspaces)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Group Chats)"
+    },
     "viewDetails": "View Details",
     "toolInput": "Tool Input",
     "toolOutput": "Tool Output",
