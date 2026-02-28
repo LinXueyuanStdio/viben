@@ -25,6 +25,7 @@
 | Spec | Description | Status |
 |------|-------------|--------|
 | [workspace-management.md](./workspace-management.md) | Desktop 工作空间核心架构 | Done |
+| [Add Workspace Wizard](../../../../docs/plans/2026-02-28-add-workspace-wizard-design.md) | 工作空间创建向导 UI 设计 | Approved |
 | [desktop-chat-workany.md](./desktop-chat-workany.md) | Chat 功能集成 (参考 workany) | Planning |
 | [session-persistence.md](./session-persistence.md) | Session/Task/Message 持久化设计 | Specification |
 
@@ -91,6 +92,7 @@ Web App
 ## Quick Links
 
 - **Adding new workspace features**: Start with [workspace-management.md](./workspace-management.md)
+- **Workspace creation wizard**: See [Add Workspace Wizard Design](../../../../docs/plans/2026-02-28-add-workspace-wizard-design.md)
 - **Kanban development**: Start with [kanban-integration.md](./kanban-integration.md)
 - **Chat integration**: See [desktop-chat-workany.md](./desktop-chat-workany.md)
 - **Session persistence**: See [session-persistence.md](./session-persistence.md)

@@ -664,6 +664,53 @@ Unified header for all workspace pages with breadcrumb + actions.
 3. **根页面无icon** - Root breadcrumb only shows workspace icon+name
 4. **悬停预览** - Hover on workspace name shows full path + copy
 
+### AddWorkspaceModal (Wizard)
+
+**File**: `components/workspace/add-workspace-modal.tsx`
+
+Multi-step wizard for creating workspaces. Uses centered Dialog (~480px).
+
+**Wizard Steps**:
+| Step | Component | Purpose |
+|------|-----------|---------|
+| 1 | `step-choose-method.tsx` | Choose: Open existing folder / Create new folder |
+| 2 | `step-configure.tsx` | Name, location, Git/Viben initialization options |
+| 3 | `step-complete.tsx` | Success summary + "Go to Workspace" / "Continue Adding" |
+
+**State Management**:
+```typescript
+type CreationMethod = 'open-existing' | 'create-new';
+type WizardStep = 'choose' | 'configure' | 'complete';
+
+interface WizardState {
+  step: WizardStep;
+  method: CreationMethod | null;
+  selectedPath: string | null;
+  folderStatus: FolderStatus | null;  // Smart detection result
+}
+
+interface FolderStatus {
+  hasGit: boolean;
+  hasViben: boolean;
+  folderName: string;
+}
+```
+
+**Smart Detection Logic**:
+- If `.git` exists → Hide "Initialize Git" option
+- If `.viben` exists → Show warning + "Reinitialize (overwrite)" checkbox
+
+**Advanced Options** (collapsible):
+- Developer name (for `viben team init`)
+- Project type: fullstack / frontend / backend
+- Include Cursor configuration
+
+**API Integration**:
+- `GET /api/workspaces/detect?path=xxx` - Detect folder status
+- `POST /api/workspaces/create` - Create workspace with options
+
+**Design Reference**: See `docs/plans/2026-02-28-add-workspace-wizard-design.md`
+
 ---
 
 ## Missing Components (To Add)
