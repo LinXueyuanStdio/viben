@@ -1049,16 +1049,16 @@
     "testCommand": "测试命令",
     "testCommandHint": "在终端运行此命令以测试 MCP 服务器连接",
     "tools": {
-      "takeScreenshot": "截图",
-      "queryPage": "查询页面",
+      "take_screenshot": "截图",
+      "query_page": "查询页面",
       "click": "点击",
-      "typeText": "输入文本",
-      "getPageContent": "获取页面内容",
-      "executeJs": "执行 JavaScript",
-      "getTauriState": "获取 Tauri 状态",
-      "getWindows": "获取窗口列表",
-      "launchApp": "启动应用",
-      "stopApp": "停止应用"
+      "type_text": "输入文本",
+      "get_page_content": "获取页面内容",
+      "execute_js": "执行 JavaScript",
+      "get_tauri_state": "获取 Tauri 状态",
+      "get_windows": "获取窗口列表",
+      "launch_app": "启动应用",
+      "stop_app": "停止应用"
     }
   },
   "auth": {

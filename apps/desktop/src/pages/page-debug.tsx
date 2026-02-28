@@ -23,17 +23,17 @@ const isDev = import.meta.env.DEV;
 
 // List of 10 tools provided by tauri-plugin-mcp
 const MCP_TOOLS = [
-  { icon: Camera, toolKey: "take_screenshot", descKey: "pageDebug.tools.takeScreenshot" },
-  { icon: Search, toolKey: "query_page", descKey: "pageDebug.tools.queryPage" },
-  { icon: MousePointer, toolKey: "click", descKey: "pageDebug.tools.click" },
-  { icon: Keyboard, toolKey: "type_text", descKey: "pageDebug.tools.typeText" },
-  { icon: Layers, toolKey: "get_page_content", descKey: "pageDebug.tools.getPageContent" },
-  { icon: Terminal, toolKey: "execute_js", descKey: "pageDebug.tools.executeJs" },
-  { icon: FileSearch, toolKey: "get_tauri_state", descKey: "pageDebug.tools.getTauriState" },
-  { icon: LayoutList, toolKey: "get_windows", descKey: "pageDebug.tools.getWindows" },
-  { icon: Play, toolKey: "launch_app", descKey: "pageDebug.tools.launchApp" },
-  { icon: MonitorStop, toolKey: "stop_app", descKey: "pageDebug.tools.stopApp" },
-];
+  { icon: Camera, toolKey: "take_screenshot" },
+  { icon: Search, toolKey: "query_page" },
+  { icon: MousePointer, toolKey: "click" },
+  { icon: Keyboard, toolKey: "type_text" },
+  { icon: Layers, toolKey: "get_page_content" },
+  { icon: Terminal, toolKey: "execute_js" },
+  { icon: FileSearch, toolKey: "get_tauri_state" },
+  { icon: LayoutList, toolKey: "get_windows" },
+  { icon: Play, toolKey: "launch_app" },
+  { icon: MonitorStop, toolKey: "stop_app" },
+].map((tool) => ({ ...tool, descKey: `pageDebug.tools.${tool.toolKey}` }));
 
 export function PageDebugPage() {
   const { t } = useTranslation();
@@ -56,17 +56,18 @@ export function PageDebugPage() {
   // Test command to verify MCP server connection
   const testCommand = `npx @anthropic-ai/mcp-inspector --cli npx tauri-plugin-mcp-server`;
 
-  const copyConfig = () => {
-    navigator.clipboard.writeText(JSON.stringify(mcpConfig, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = (
+    textToCopy: string,
+    setCopiedState: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedState(true);
+    setTimeout(() => setCopiedState(false), 2000);
   };
 
-  const copyTestCommand = () => {
-    navigator.clipboard.writeText(testCommand);
-    setCopiedTest(true);
-    setTimeout(() => setCopiedTest(false), 2000);
-  };
+  const copyConfig = () => handleCopy(JSON.stringify(mcpConfig, null, 2), setCopied);
+
+  const copyTestCommand = () => handleCopy(testCommand, setCopiedTest);
 
   // Show disabled message in production
   if (!isDev) {

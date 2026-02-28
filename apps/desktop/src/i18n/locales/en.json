@@ -1049,16 +1049,16 @@
     "testCommand": "Test Command",
     "testCommandHint": "Run this command in terminal to test MCP server connection",
     "tools": {
-      "takeScreenshot": "Screenshot",
-      "queryPage": "Query Page",
+      "take_screenshot": "Screenshot",
+      "query_page": "Query Page",
       "click": "Click",
-      "typeText": "Type Text",
-      "getPageContent": "Get Page Content",
-      "executeJs": "Execute JavaScript",
-      "getTauriState": "Get Tauri State",
-      "getWindows": "Get Windows",
-      "launchApp": "Launch App",
-      "stopApp": "Stop App"
+      "type_text": "Type Text",
+      "get_page_content": "Get Page Content",
+      "execute_js": "Execute JavaScript",
+      "get_tauri_state": "Get Tauri State",
+      "get_windows": "Get Windows",
+      "launch_app": "Launch App",
+      "stop_app": "Stop App"
     }
   },
   "auth": {
