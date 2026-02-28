@@ -911,23 +911,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Gra w węża",
-    "score": "Wynik",
-    "length": "Długość",
-    "speed": "Prędkość",
-    "gameOver": "Koniec gry",
-    "finalScore": "Wynik końcowy: {{score}}",
-    "restart": "Uruchom ponownie",
-    "pause": "Pauza",
-    "start": "Start",
-    "reset": "Reset",
-    "instructions": "Instrukcje",
-    "instruction1": "Użyj klawiszy strzałek lub WASD do ruchu",
-    "instruction2": "Jedz jedzenie, aby rosnąć",
-    "instruction3": "Unikaj ścian i siebie",
-    "instruction4": "Naciśnij spację, aby zatrzymać",
-    "instruction5": "Prędkość wzrasta wraz ze wzrostem"
   }
 }

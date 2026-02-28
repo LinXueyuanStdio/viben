@@ -920,23 +920,5 @@
     "noCommandsDesc": ".claude/commands/ 폴더에서 명령 파일을 찾을 수 없습니다.",
     "selectCommand": "보려면 명령 선택",
     "rootNamespace": "루트"
-  },
-  "snakeGame": {
-    "title": "스네이크 게임",
-    "score": "점수:",
-    "length": "길이:",
-    "speed": "속도:",
-    "gameOver": "게임 오버!",
-    "finalScore": "최종 점수: {{score}}",
-    "restart": "다시 시작",
-    "pause": "일시 정지",
-    "start": "시작",
-    "reset": "리셋",
-    "instructions": "게임 방법",
-    "instruction1": "방향키 또는 버튼으로 뱀의 방향을 조종합니다",
-    "instruction2": "청록색 점을 먹으면 길어지고 점수를 얻습니다",
-    "instruction3": "5개마다 속도가 빨라집니다",
-    "instruction4": "벽이나 자신에게 부딪히면 게임 오버",
-    "instruction5": "스페이스바로 일시정지/재개, R로 리셋"
   }
 }

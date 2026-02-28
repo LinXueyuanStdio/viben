@@ -911,23 +911,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Гра в змійку",
-    "score": "Рахунок",
-    "length": "Довжина",
-    "speed": "Швидкість",
-    "gameOver": "Гра закінчена",
-    "finalScore": "Фінальний рахунок: {{score}}",
-    "restart": "Перезапустити",
-    "pause": "Пауза",
-    "start": "Старт",
-    "reset": "Скинути",
-    "instructions": "Інструкції",
-    "instruction1": "Використовуйте клавіші зі стрілками або WASD для руху",
-    "instruction2": "Їжте їжу, щоб рости",
-    "instruction3": "Уникайте стін та себе",
-    "instruction4": "Натисніть пробіл для паузи",
-    "instruction5": "Швидкість збільшується з ростом"
   }
 }

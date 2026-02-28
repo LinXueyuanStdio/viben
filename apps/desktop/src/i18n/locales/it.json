@@ -892,23 +892,5 @@
     "noCommandsDesc": "Nessun file comando trovato nella cartella .claude/commands/.",
     "selectCommand": "Seleziona un comando da visualizzare",
     "rootNamespace": "Radice"
-  },
-  "snakeGame": {
-    "title": "Gioco del Serpente",
-    "score": "Punteggio:",
-    "length": "Lunghezza:",
-    "speed": "Velocità:",
-    "gameOver": "Fine del gioco!",
-    "finalScore": "Punteggio finale: {{score}}",
-    "restart": "Riavvia",
-    "pause": "Pausa",
-    "start": "Avvia",
-    "reset": "Reimposta",
-    "instructions": "Come giocare",
-    "instruction1": "Usa le frecce o i pulsanti per controllare il serpente",
-    "instruction2": "Mangia i punti turchesi per crescere e guadagnare punti",
-    "instruction3": "La velocità aumenta ogni 5 punti",
-    "instruction4": "Il gioco finisce se colpisci il muro o te stesso",
-    "instruction5": "Spazio per pausa/riprendi, R per reimpostare"
   }
 }

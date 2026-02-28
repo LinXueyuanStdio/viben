@@ -910,23 +910,5 @@
     "noCommandsDesc": "Nenhum arquivo de comando encontrado na pasta .claude/commands/.",
     "selectCommand": "Selecione um comando para visualizar",
     "rootNamespace": "Raiz"
-  },
-  "snakeGame": {
-    "title": "Jogo da Cobra",
-    "score": "Pontuação:",
-    "length": "Comprimento:",
-    "speed": "Velocidade:",
-    "gameOver": "Fim de jogo!",
-    "finalScore": "Pontuação final: {{score}}",
-    "restart": "Reiniciar",
-    "pause": "Pausar",
-    "start": "Iniciar",
-    "reset": "Redefinir",
-    "instructions": "Como jogar",
-    "instruction1": "Use as setas ou botões para controlar a cobra",
-    "instruction2": "Coma os pontos turquesa para crescer e ganhar pontos",
-    "instruction3": "A velocidade aumenta a cada 5 pontos",
-    "instruction4": "O jogo termina se você bater na parede ou em si mesmo",
-    "instruction5": "Espaço para pausar/continuar, R para redefinir"
   }
 }

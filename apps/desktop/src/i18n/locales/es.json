@@ -911,23 +911,5 @@
     "noCommandsDesc": "No se encontraron archivos de comando en la carpeta .claude/commands/.",
     "selectCommand": "Seleccione un comando para ver",
     "rootNamespace": "Raíz"
-  },
-  "snakeGame": {
-    "title": "Juego de la Serpiente",
-    "score": "Puntuación:",
-    "length": "Longitud:",
-    "speed": "Velocidad:",
-    "gameOver": "¡Fin del juego!",
-    "finalScore": "Puntuación final: {{score}}",
-    "restart": "Reiniciar",
-    "pause": "Pausa",
-    "start": "Iniciar",
-    "reset": "Restablecer",
-    "instructions": "Cómo jugar",
-    "instruction1": "Usa las flechas o botones para controlar la serpiente",
-    "instruction2": "Come los puntos turquesa para crecer y sumar puntos",
-    "instruction3": "La velocidad aumenta cada 5 puntos",
-    "instruction4": "El juego termina si chocas con la pared o contigo mismo",
-    "instruction5": "Espacio para pausar/reanudar, R para restablecer"
   }
 }

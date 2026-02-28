@@ -911,23 +911,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Permainan Ular",
-    "score": "Skor:",
-    "length": "Panjang:",
-    "speed": "Kecepatan:",
-    "gameOver": "Permainan Berakhir!",
-    "finalScore": "Skor Akhir: {{score}}",
-    "restart": "Mulai Ulang",
-    "pause": "Jeda",
-    "start": "Mulai",
-    "reset": "Reset",
-    "instructions": "Cara Bermain",
-    "instruction1": "Gunakan tombol panah atau tombol untuk mengendalikan ular",
-    "instruction2": "Makan titik biru untuk tumbuh dan mendapat poin",
-    "instruction3": "Kecepatan meningkat setiap 5 poin",
-    "instruction4": "Permainan berakhir jika menabrak dinding atau diri sendiri",
-    "instruction5": "Spasi untuk jeda/lanjut, R untuk reset"
   }
 }

@@ -2769,24 +2769,6 @@
     "previewNotAvailable": "预览不可用",
     "switchToCodeView": "切换到代码视图查看内容"
   },
-  "snakeGame": {
-    "title": "贪吃蛇游戏",
-    "score": "得分:",
-    "length": "长度:",
-    "speed": "速度:",
-    "gameOver": "游戏结束!",
-    "finalScore": "最终得分: {{score}}",
-    "restart": "重新开始",
-    "pause": "暂停",
-    "start": "开始",
-    "reset": "重置",
-    "instructions": "游戏说明",
-    "instruction1": "使用方向键或按钮控制蛇的移动方向",
-    "instruction2": "吃到青色圆点可以增加长度和得分",
-    "instruction3": "每吃 5 个食物速度会增加",
-    "instruction4": "撞到墙壁或自己身体游戏结束",
-    "instruction5": "按空格键暂停/继续,按 R 键重置游戏"
-  },
   "observability": {
     "title": "可观测性",
     "chatMonitor": "对话监控",

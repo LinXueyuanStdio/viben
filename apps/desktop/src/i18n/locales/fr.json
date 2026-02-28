@@ -910,23 +910,5 @@
     "noCommandsDesc": "Aucun fichier de commande trouvé dans le dossier .claude/commands/.",
     "selectCommand": "Sélectionnez une commande à afficher",
     "rootNamespace": "Racine"
-  },
-  "snakeGame": {
-    "title": "Jeu du Serpent",
-    "score": "Score :",
-    "length": "Longueur :",
-    "speed": "Vitesse :",
-    "gameOver": "Partie terminée !",
-    "finalScore": "Score final : {{score}}",
-    "restart": "Recommencer",
-    "pause": "Pause",
-    "start": "Démarrer",
-    "reset": "Réinitialiser",
-    "instructions": "Comment jouer",
-    "instruction1": "Utilisez les flèches ou les boutons pour diriger le serpent",
-    "instruction2": "Mangez les points turquoise pour grandir et marquer des points",
-    "instruction3": "La vitesse augmente tous les 5 points",
-    "instruction4": "Le jeu se termine si vous touchez un mur ou vous-même",
-    "instruction5": "Espace pour pause/reprendre, R pour réinitialiser"
   }
 }
