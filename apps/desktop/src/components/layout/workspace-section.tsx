@@ -14,6 +14,7 @@ import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
 import { useTranslation } from "react-i18next";
 import type { Workspace } from "@/types";
+import { AddWorkspaceModal } from "@/components/workspace";
 
 interface WorkspaceSectionProps {
   collapsed?: boolean;
@@ -29,24 +30,13 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
     workspaces,
     activeWorkspaceId,
     isLoading,
-    addWorkspace,
     selectWorkspace,
   } = useLocalWorkspaces();
 
-  const [isAdding, setIsAdding] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
 
-  const handleAddWorkspace = async () => {
-    setIsAdding(true);
-    try {
-      const workspace = await addWorkspace();
-      if (workspace) {
-        selectWorkspace(workspace.id);
-      }
-    } catch {
-      // Error handled in hook
-    } finally {
-      setIsAdding(false);
-    }
+  const handleAddWorkspace = () => {
+    setIsModalOpen(true);
   };
 
   // Add workspace button
@@ -62,13 +52,8 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
               e.stopPropagation();
               handleAddWorkspace();
             }}
-            disabled={isAdding}
           >
-            {isAdding ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Plus className="h-3 w-3" />
-            )}
+            <Plus className="h-3 w-3" />
           </Button>
         </TooltipTrigger>
         <TooltipContent side="right">
@@ -98,59 +83,57 @@ export function WorkspaceSection({ collapsed = false }: WorkspaceSectionProps) {
           <div className="grid place-items-center w-full">
             <SidebarIconButton
               onClick={handleAddWorkspace}
-              disabled={isAdding}
-              icon={isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+              icon={<FolderOpen className="h-4 w-4" />}
               tooltip={t("workspace.addWorkspace")}
             />
           </div>
         )}
+        <AddWorkspaceModal open={isModalOpen} onOpenChange={setIsModalOpen} />
       </>
     );
   }
 
   return (
-    <SidebarSection
-      title={t("workspace.workspaces")}
-      collapsible
-      defaultOpen
-      headerAction={addButton}
-    >
-      {isLoading && workspaces.length === 0 ? (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-        </div>
-      ) : workspaces.length === 0 ? (
-        <div className="px-3 py-4 text-center">
-          <p className="text-xs text-muted-foreground mb-2">
-            {t("workspace.noWorkspaces")}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddWorkspace}
-            disabled={isAdding}
-          >
-            {isAdding ? (
-              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-            ) : (
+    <>
+      <SidebarSection
+        title={t("workspace.workspaces")}
+        collapsible
+        defaultOpen
+        headerAction={addButton}
+      >
+        {isLoading && workspaces.length === 0 ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : workspaces.length === 0 ? (
+          <div className="px-3 py-4 text-center">
+            <p className="text-xs text-muted-foreground mb-2">
+              {t("workspace.noWorkspaces")}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddWorkspace}
+            >
               <Plus className="h-3 w-3 mr-1" />
-            )}
-            {t("workspace.addWorkspace")}
-          </Button>
-        </div>
-      ) : (
-        <nav className="flex flex-col gap-1">
-          {workspaces.map((workspace) => (
-            <WorkspaceItem
-              key={workspace.id}
-              workspace={workspace}
-              isActive={workspace.id === activeWorkspaceId}
-              onSelect={() => selectWorkspace(workspace.id)}
-            />
-          ))}
-        </nav>
-      )}
-    </SidebarSection>
+              {t("workspace.addWorkspace")}
+            </Button>
+          </div>
+        ) : (
+          <nav className="flex flex-col gap-1">
+            {workspaces.map((workspace) => (
+              <WorkspaceItem
+                key={workspace.id}
+                workspace={workspace}
+                isActive={workspace.id === activeWorkspaceId}
+                onSelect={() => selectWorkspace(workspace.id)}
+              />
+            ))}
+          </nav>
+        )}
+      </SidebarSection>
+      <AddWorkspaceModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+    </>
   );
 }
 

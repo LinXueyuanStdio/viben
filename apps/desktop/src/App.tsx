@@ -117,6 +117,7 @@ function App() {
           <Route path="settings" element={<SettingsPage />}>
             <Route index element={null} />
             <Route path="general" element={null} />
+            <Route path="account" element={null} />
             <Route path="shortcuts" element={null} />
             <Route path="notifications" element={null} />
             <Route path="gateway" element={null} />

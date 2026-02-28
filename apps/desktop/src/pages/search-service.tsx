@@ -223,6 +223,63 @@ function ServerCard({
   } | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
+  // State for showing startup details dialog
+  const [startupDetails, setStartupDetails] = useState<{
+    show: boolean;
+    success: boolean;
+    status?: McpStatus;
+    error?: string;
+    command?: string;
+  } | null>(null);
+
+  // Track previous status and error to detect transitions
+  const prevStatusRef = useRef<string | undefined>(undefined);
+  const prevErrorRef = useRef<string | undefined>(undefined);
+  const hasShownErrorToastRef = useRef<string | undefined>(undefined);
+
+  // Show toast when status changes to error (e.g., process crashed after starting)
+  useEffect(() => {
+    const prevStatus = prevStatusRef.current;
+    const prevError = prevErrorRef.current;
+    prevStatusRef.current = monitoredStatus;
+    prevErrorRef.current = statusInfo?.error;
+
+    // Detect new error state
+    // - Transition from non-error to error, OR
+    // - New error message (different from previously shown)
+    const isNewError = monitoredStatus === "error" &&
+      statusInfo?.error &&
+      (prevStatus !== "error" || statusInfo.error !== prevError) &&
+      hasShownErrorToastRef.current !== statusInfo.error;
+
+    if (isNewError && statusInfo.error) {
+      hasShownErrorToastRef.current = statusInfo.error;
+      const commandLine = `${pythonPath} -m browse_mcp --transport ${server.transport} --port ${server.port}`;
+
+      toast.error(t("searchService.serverCrashed"), {
+        description: statusInfo.error.slice(0, 100),
+        duration: 8000,
+        action: {
+          label: t("common.details"),
+          onClick: () => setStartupDetails({
+            show: true,
+            success: false,
+            error: statusInfo.error,
+            command: commandLine,
+          }),
+        },
+      });
+
+      // Update server status in store
+      onStatusChange("error");
+    }
+
+    // Reset error toast tracking when server is stopped or running
+    if (monitoredStatus !== "error") {
+      hasShownErrorToastRef.current = undefined;
+    }
+  }, [monitoredStatus, statusInfo?.error, pythonPath, server.transport, server.port, t, onStatusChange]);
+
   // Auto-select first API key when apiKeys change and none is selected
   useEffect(() => {
     if (!selectedKeyForConfig && server.apiKeys.length > 0) {
@@ -255,15 +312,6 @@ function ServerCard({
       return () => clearTimeout(timer);
     }
   }, [notification]);
-
-  // State for showing startup details dialog
-  const [startupDetails, setStartupDetails] = useState<{
-    show: boolean;
-    success: boolean;
-    status?: McpStatus;
-    error?: string;
-    command?: string;
-  } | null>(null);
 
   const doStartServer = async (port: number) => {
     if (!pythonPath) return;
