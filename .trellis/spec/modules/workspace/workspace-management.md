@@ -695,6 +695,7 @@ apps/desktop/src/components/workspace/
 - [Sidebar Navigation](./sidebar-navigation.md) - To be created
 - [Component Guidelines](./../frontend/components.md) - Component patterns
 - [Design System](./../frontend/design-system.md) - UI styling
+- [Add Workspace Wizard Design](../../../../docs/plans/2026-02-28-add-workspace-wizard-design.md) - Wizard UI/UX design
 
 ---
 
