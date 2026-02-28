@@ -892,23 +892,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Trò Chơi Rắn",
-    "score": "Điểm:",
-    "length": "Độ dài:",
-    "speed": "Tốc độ:",
-    "gameOver": "Trò chơi kết thúc!",
-    "finalScore": "Điểm cuối: {{score}}",
-    "restart": "Chơi lại",
-    "pause": "Tạm dừng",
-    "start": "Bắt đầu",
-    "reset": "Đặt lại",
-    "instructions": "Cách chơi",
-    "instruction1": "Sử dụng phím mũi tên hoặc nút để điều khiển rắn",
-    "instruction2": "Ăn các chấm xanh lam để phát triển và ghi điểm",
-    "instruction3": "Tốc độ tăng sau mỗi 5 điểm",
-    "instruction4": "Trò chơi kết thúc khi đâm vào tường hoặc chính mình",
-    "instruction5": "Phím cách để tạm dừng/tiếp tục, R để đặt lại"
   }
 }

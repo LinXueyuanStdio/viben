@@ -911,23 +911,5 @@
     "noCommandsDesc": ".claude/commands/フォルダにコマンドファイルが見つかりません。",
     "selectCommand": "コマンドを選択して表示",
     "rootNamespace": "ルート"
-  },
-  "snakeGame": {
-    "title": "スネークゲーム",
-    "score": "スコア:",
-    "length": "長さ:",
-    "speed": "速度:",
-    "gameOver": "ゲームオーバー!",
-    "finalScore": "最終スコア: {{score}}",
-    "restart": "リスタート",
-    "pause": "一時停止",
-    "start": "スタート",
-    "reset": "リセット",
-    "instructions": "遊び方",
-    "instruction1": "矢印キーまたはボタンでヘビの方向を操作",
-    "instruction2": "青いドットを食べて成長し、ポイントを獲得",
-    "instruction3": "5個食べるごとに速度が上がります",
-    "instruction4": "壁や自分にぶつかるとゲームオーバー",
-    "instruction5": "スペースで一時停止/再開、Rでリセット"
   }
 }

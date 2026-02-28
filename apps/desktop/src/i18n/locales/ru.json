@@ -892,23 +892,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Змейка",
-    "score": "Счёт:",
-    "length": "Длина:",
-    "speed": "Скорость:",
-    "gameOver": "Игра окончена!",
-    "finalScore": "Итоговый счёт: {{score}}",
-    "restart": "Начать заново",
-    "pause": "Пауза",
-    "start": "Старт",
-    "reset": "Сброс",
-    "instructions": "Как играть",
-    "instruction1": "Используйте стрелки или кнопки для управления змейкой",
-    "instruction2": "Ешьте бирюзовые точки чтобы расти и набирать очки",
-    "instruction3": "Скорость увеличивается каждые 5 очков",
-    "instruction4": "Игра заканчивается при столкновении со стеной или собой",
-    "instruction5": "Пробел для паузы/продолжения, R для сброса"
   }
 }

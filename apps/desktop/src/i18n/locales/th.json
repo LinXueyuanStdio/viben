@@ -892,23 +892,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "เกมงู",
-    "score": "คะแนน:",
-    "length": "ความยาว:",
-    "speed": "ความเร็ว:",
-    "gameOver": "จบเกม!",
-    "finalScore": "คะแนนสุดท้าย: {{score}}",
-    "restart": "เริ่มใหม่",
-    "pause": "หยุดชั่วคราว",
-    "start": "เริ่ม",
-    "reset": "รีเซ็ต",
-    "instructions": "วิธีเล่น",
-    "instruction1": "ใช้ปุ่มลูกศรหรือปุ่มเพื่อควบคุมงู",
-    "instruction2": "กินจุดสีฟ้าเพื่อเติบโตและได้คะแนน",
-    "instruction3": "ความเร็วเพิ่มขึ้นทุก 5 คะแนน",
-    "instruction4": "เกมจบเมื่อชนกำแพงหรือตัวเอง",
-    "instruction5": "กด Space เพื่อหยุด/เล่นต่อ, R เพื่อรีเซ็ต"
   }
 }

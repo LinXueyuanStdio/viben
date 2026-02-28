@@ -911,23 +911,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Slangenspel",
-    "score": "Score",
-    "length": "Lengte",
-    "speed": "Snelheid",
-    "gameOver": "Game Over",
-    "finalScore": "Eindscore: {{score}}",
-    "restart": "Opnieuw starten",
-    "pause": "Pauze",
-    "start": "Start",
-    "reset": "Reset",
-    "instructions": "Instructies",
-    "instruction1": "Gebruik pijltjestoetsen of WASD om te bewegen",
-    "instruction2": "Eet voedsel om te groeien",
-    "instruction3": "Vermijd de muren en jezelf",
-    "instruction4": "Druk op spatie om te pauzeren",
-    "instruction5": "Snelheid neemt toe naarmate je groeit"
   }
 }

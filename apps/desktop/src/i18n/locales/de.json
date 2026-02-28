@@ -911,23 +911,5 @@
     "noCommandsDesc": "Keine Befehlsdateien im Ordner .claude/commands/ gefunden.",
     "selectCommand": "Befehl zum Anzeigen auswählen",
     "rootNamespace": "Wurzel"
-  },
-  "snakeGame": {
-    "title": "Snake-Spiel",
-    "score": "Punkte:",
-    "length": "Länge:",
-    "speed": "Geschwindigkeit:",
-    "gameOver": "Spiel vorbei!",
-    "finalScore": "Endpunktzahl: {{score}}",
-    "restart": "Neustart",
-    "pause": "Pause",
-    "start": "Start",
-    "reset": "Zurücksetzen",
-    "instructions": "Spielanleitung",
-    "instruction1": "Verwende Pfeiltasten oder Buttons um die Schlange zu steuern",
-    "instruction2": "Friss die türkisen Punkte um zu wachsen und Punkte zu sammeln",
-    "instruction3": "Nach 5 Punkten erhöht sich die Geschwindigkeit",
-    "instruction4": "Bei Kollision mit Wand oder sich selbst ist das Spiel vorbei",
-    "instruction5": "Leertaste zum Pausieren/Fortsetzen, R zum Zurücksetzen"
   }
 }

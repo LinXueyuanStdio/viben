@@ -911,23 +911,5 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
-  },
-  "snakeGame": {
-    "title": "Yılan Oyunu",
-    "score": "Skor",
-    "length": "Uzunluk",
-    "speed": "Hız",
-    "gameOver": "Oyun Bitti",
-    "finalScore": "Son Skor: {{score}}",
-    "restart": "Yeniden Başlat",
-    "pause": "Duraklat",
-    "start": "Başlat",
-    "reset": "Sıfırla",
-    "instructions": "Talimatlar",
-    "instruction1": "Hareket etmek için ok tuşlarını veya WASD kullanın",
-    "instruction2": "Büyümek için yiyecek yiyin",
-    "instruction3": "Duvarlardan ve kendinizden kaçının",
-    "instruction4": "Duraklatmak için boşluk tuşuna basın",
-    "instruction5": "Büyüdükçe hız artar"
   }
 }

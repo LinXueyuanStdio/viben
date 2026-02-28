@@ -31,7 +31,6 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
-  SnakeGamePage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -108,9 +107,6 @@ function App() {
 
           {/* Observability routes */}
           <Route path="chat-monitor" element={<ChatMonitorPage />} />
-
-          {/* Games */}
-          <Route path="snake-game" element={<SnakeGamePage />} />
 
           {/* Documents, Settings and About */}
           <Route path="documents" element={<DocumentsPage />} />
