@@ -287,7 +287,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initializeAuth: async () => {
-        const { user } = get();
+        const { user, isInitialized } = get();
+
+        // Already initialized (e.g., just logged in), skip validation
+        if (isInitialized) {
+          return !!user?.accessToken;
+        }
 
         // No stored session
         if (!user?.accessToken) {
