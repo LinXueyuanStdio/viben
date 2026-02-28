@@ -139,7 +139,15 @@
     "system": "Hệ thống",
     "language": "Ngôn ngữ",
     "storage": "Lưu trữ",
-    "downloadPath": "Đường dẫn tải xuống"
+    "downloadPath": "Đường dẫn tải xuống",
+    "developer": {
+      "os": "HĐH",
+      "osVersion": "Phiên bản",
+      "appVersion": "Phiên bản ứng dụng",
+      "arch": "Kiến trúc",
+      "logs": "Nhật ký",
+      "config": "Cấu hình"
+    }
   },
   "about": {
     "title": "Viben",

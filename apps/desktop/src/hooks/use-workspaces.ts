@@ -146,27 +146,12 @@ export function useLocalWorkspaces() {
   );
 
   // Set active workspace
-  // Uses optimistic update: immediately update store, then sync with backend
+  // Local state is the source of truth - no backend sync needed
   const selectWorkspace = useCallback(
-    async (workspaceId: string | null) => {
-      // Optimistic update: immediately update local state for responsive UI
+    (workspaceId: string | null) => {
       setActiveWorkspace(workspaceId);
-
-      // Then sync with backend (non-blocking)
-      if (workspaceId) {
-        try {
-          const client = getGatewayClient();
-          await client.setActiveWorkspace({ workspaceId });
-        } catch (err) {
-          // Log error but don't revert - local state is the source of truth
-          const message = err instanceof Error ? err.message : String(err);
-          console.error("[selectWorkspace] Failed to sync with backend:", message);
-          // Optionally set error for user feedback
-          setError(message);
-        }
-      }
     },
-    [setActiveWorkspace, setError]
+    [setActiveWorkspace]
   );
 
   // No auto-loading - workspaces are persisted and loaded via gateway events

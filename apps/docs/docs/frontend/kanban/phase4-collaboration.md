@@ -1,3 +1,9 @@
+---
+sidebar_position: 5
+title: Phase 4 - 协作功能
+description: Kanban 高级定制与协作功能
+---
+
 # Kanban Phase 4 - 高级定制与协作
 
 > 基于 vibe-kanban 的高级功能，适配 Viben Design System

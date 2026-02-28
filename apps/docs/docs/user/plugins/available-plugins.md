@@ -1,150 +1,150 @@
 ---
 sidebar_position: 3
-title: "Available Plugins"
-description: "List of official and community plugins for Viben"
+title: "可用插件"
+description: "Viben 官方和社区插件列表"
 ---
 
-# Available Plugins
+# 可用插件
 
-This page lists official and community plugins for Viben.
+本页列出 Viben 的官方和社区插件。
 
-## Official Plugins
+## 官方插件
 
-These plugins are maintained by the Viben team.
+这些插件由 Viben 团队维护。
 
-### Social Media Plugin
+### 社交媒体插件
 
-Search and retrieve content from social media platforms.
+搜索和获取社交媒体平台的内容。
 
 ```bash
 pip install browse-mcp-plugin-social-media
 ```
 
-| Source | Description | API Key Required |
-|--------|-------------|------------------|
-| `github` | GitHub repositories and code | Optional (for higher rate limits) |
-| `twitter` | Twitter/X posts | Yes (`TWITTER_BEARER_TOKEN`) |
-| `zhihu` | Zhihu Q&A articles (Chinese) | Optional |
-| `xiaohongshu` | Xiaohongshu posts (Chinese) | Optional |
+| 数据源 | 说明 | 需要 API 密钥 |
+|--------|------|---------------|
+| `github` | GitHub 仓库和代码 | 可选（获得更高速率限制）|
+| `twitter` | Twitter/X 帖子 | 是（`TWITTER_BEARER_TOKEN`）|
+| `zhihu` | 知乎问答文章 | 可选 |
+| `xiaohongshu` | 小红书帖子 | 可选 |
 
-[Learn more about the Social Media Plugin](./social-media-plugin)
+[了解更多关于社交媒体插件](./social-media-plugin)
 
-## Built-in Sources
+## 内置数据源
 
-These sources are included with browse-mcp core and do not require additional installation.
+这些数据源包含在 browse-mcp 核心中，无需额外安装。
 
-### Academic Sources (Free)
+### 学术数据源（免费）
 
-| Source | Description |
-|--------|-------------|
-| `arxiv` | Pre-print repository for physics, mathematics, CS |
-| `pubmed` | Biomedical literature from MEDLINE |
-| `pmc` | PubMed Central full-text archive |
-| `biorxiv` | Pre-print server for biology |
-| `medrxiv` | Pre-print server for health sciences |
-| `semantic` | Semantic Scholar AI-powered search |
-| `crossref` | CrossRef DOI metadata |
-| `google_scholar` | Google Scholar search |
-| `core` | CORE open access aggregator |
-| `iacr` | IACR cryptology pre-prints |
+| 数据源 | 说明 |
+|--------|------|
+| `arxiv` | 物理、数学、计算机科学预印本 |
+| `pubmed` | MEDLINE 生物医学文献 |
+| `pmc` | PubMed Central 全文库 |
+| `biorxiv` | 生物学预印本服务器 |
+| `medrxiv` | 健康科学预印本服务器 |
+| `semantic` | Semantic Scholar AI 驱动搜索 |
+| `crossref` | CrossRef DOI 元数据 |
+| `google_scholar` | Google 学术搜索 |
+| `core` | CORE 开放获取聚合器 |
+| `iacr` | IACR 密码学预印本 |
 
-### Academic Sources (Premium)
+### 学术数据源（付费）
 
-These require API keys:
+这些需要 API 密钥：
 
-| Source | API Key Variable |
-|--------|-----------------|
+| 数据源 | API 密钥变量 |
+|--------|--------------|
 | `ieee` | `IEEE_API_KEY` |
 | `scopus` | `SCOPUS_API_KEY` |
 | `springer` | `SPRINGER_API_KEY` |
 | `sciencedirect` | `SCIENCEDIRECT_API_KEY` |
 
-## Community Plugins
+## 社区插件
 
-:::info Coming Soon
-Community plugins will be listed here as they become available. If you have created a plugin for Viben, please submit a pull request to add it to this list.
+:::info 即将推出
+社区插件将在可用时列出。如果你创建了 Viben 插件，请提交 Pull Request 将其添加到此列表。
 :::
 
-### Creating Your Own Plugin
+### 创建你自己的插件
 
-Interested in creating a plugin? The social media plugin serves as a reference implementation:
+有兴趣创建插件？社交媒体插件可作为参考实现：
 
 ```
 backend/plugins/browse-mcp-plugin-social-media/
-|-- pyproject.toml              # Package configuration with entry points
+|-- pyproject.toml              # 带入口点的包配置
 |-- social_media_searchers/
-    |-- __init__.py             # Package initialization
-    |-- types.py                # SocialPost dataclass
-    |-- github.py               # GitHub searcher
-    |-- twitter.py              # Twitter searcher
-    |-- zhihu.py                # Zhihu searcher
-    |-- xiaohongshu.py          # Xiaohongshu searcher
+    |-- __init__.py             # 包初始化
+    |-- types.py                # SocialPost 数据类
+    |-- github.py               # GitHub 搜索器
+    |-- twitter.py              # Twitter 搜索器
+    |-- zhihu.py                # 知乎搜索器
+    |-- xiaohongshu.py          # 小红书搜索器
 ```
 
-Key steps to create a plugin:
+创建插件的关键步骤：
 
-1. **Define your content type** with a `to_text()` method
-2. **Implement `ContentSource[T]`** with `search()`, `download()`, and `read()` methods
-3. **Register entry points** in `pyproject.toml`
-4. **Publish to PyPI** for easy installation
+1. **定义内容类型**，带 `to_text()` 方法
+2. **实现 `ContentSource[T]`**，包含 `search()`、`download()` 和 `read()` 方法
+3. **在 `pyproject.toml` 中注册入口点**
+4. **发布到 PyPI** 以便轻松安装
 
-See the [Plugin Overview](./overview) for API details.
+参阅 [插件概述](./overview) 了解 API 详情。
 
-## Plugin Ideas
+## 插件创意
 
-Here are some plugin ideas for the community:
+以下是一些社区可以实现的插件创意：
 
-### Documentation Sites
+### 文档站点
 
-| Potential Source | Description |
-|------------------|-------------|
-| MDN Web Docs | Mozilla Developer Network |
-| DevDocs | API documentation browser |
-| Read the Docs | Documentation hosting |
+| 潜在数据源 | 说明 |
+|------------|------|
+| MDN Web Docs | Mozilla 开发者网络 |
+| DevDocs | API 文档浏览器 |
+| Read the Docs | 文档托管平台 |
 
-### News and Blogs
+### 新闻和博客
 
-| Potential Source | Description |
-|------------------|-------------|
-| Hacker News | Tech news aggregator |
-| RSS Feeds | Generic RSS feed reader |
-| Medium | Blog platform |
-| Dev.to | Developer community |
+| 潜在数据源 | 说明 |
+|------------|------|
+| Hacker News | 技术新闻聚合 |
+| RSS Feeds | 通用 RSS 阅读器 |
+| Medium | 博客平台 |
+| Dev.to | 开发者社区 |
 
-### Code and Technical
+### 代码和技术
 
-| Potential Source | Description |
-|------------------|-------------|
-| Stack Overflow | Q&A for developers |
-| GitLab | Code hosting platform |
-| npm | JavaScript package registry |
-| PyPI | Python package index |
+| 潜在数据源 | 说明 |
+|------------|------|
+| Stack Overflow | 开发者问答 |
+| GitLab | 代码托管平台 |
+| npm | JavaScript 包仓库 |
+| PyPI | Python 包索引 |
 
-### Other Academic
+### 其他学术
 
-| Potential Source | Description |
-|------------------|-------------|
-| DBLP | Computer science bibliography |
-| NASA ADS | Astrophysics Data System |
-| SSRN | Social science research |
-| PhilPapers | Philosophy research |
+| 潜在数据源 | 说明 |
+|------------|------|
+| DBLP | 计算机科学书目 |
+| NASA ADS | 天体物理数据系统 |
+| SSRN | 社会科学研究 |
+| PhilPapers | 哲学研究 |
 
-## Submit Your Plugin
+## 提交你的插件
 
-To add your plugin to this list:
+要将你的插件添加到此列表：
 
-1. Create a GitHub issue with your plugin details
-2. Or submit a pull request editing this page
+1. 创建 GitHub Issue 并提供插件详情
+2. 或提交 Pull Request 编辑此页面
 
-Requirements for listing:
+列出要求：
 
-- Plugin must be published on PyPI
-- Must have documentation or README
-- Must follow Viben plugin conventions
-- Should include tests
+- 插件必须发布到 PyPI
+- 必须有文档或 README
+- 必须遵循 Viben 插件约定
+- 应包含测试
 
-## Next Steps
+## 下一步
 
-- [Installing Plugins](./installing-plugins) - How to install plugins
-- [Social Media Plugin](./social-media-plugin) - Detailed social media guide
-- [Plugin Configuration](./configuration) - Configure plugin settings
+- [安装插件](./installing-plugins) - 如何安装插件
+- [社交媒体插件](./social-media-plugin) - 详细的社交媒体指南
+- [插件配置](./configuration) - 配置插件设置

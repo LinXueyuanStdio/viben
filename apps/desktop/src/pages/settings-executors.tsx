@@ -266,10 +266,7 @@ export function SettingsExecutorsPage() {
             {t("settings.sections.executors", "执行器")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {t(
-              "settings.executorsDescription",
-              "检查 AI 编程智能体执行器的安装状态"
-            )}
+            {t("settings.executorsDescription")}
           </p>
         </div>
         <Button
@@ -290,10 +287,7 @@ export function SettingsExecutorsPage() {
         <div className="p-4 rounded-xl bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 text-sm flex items-start gap-2">
           <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            {t(
-              "settingsExecutors.gatewayRequired",
-              "需要网关连接才能检测执行器状态。请先启动网关服务。"
-            )}
+            {t("settingsExecutors.gatewayRequired")}
           </span>
         </div>
       )}

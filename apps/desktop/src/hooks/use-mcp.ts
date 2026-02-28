@@ -104,18 +104,10 @@ export function useMcp() {
     }
   }, []);
 
-  // Poll status periodically when running
+  // Get status once on mount (polling is handled by useMcpStatusMonitor)
   useEffect(() => {
     getStatus();
-
-    const interval = setInterval(() => {
-      if (status.running) {
-        getStatus();
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [getStatus, status.running]);
+  }, [getStatus]);
 
   return {
     status,

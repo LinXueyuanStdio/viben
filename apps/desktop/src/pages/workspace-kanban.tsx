@@ -71,8 +71,7 @@ import {
 import { PageWrapper } from "@/components/layout";
 import {
   WorkspaceHeader,
-  TaskDetailPanel,
-  TasksLayout,
+  TaskDetailDialog,
   useKanbanNavigation,
   CreateTaskDialog,
   type CreateTaskData,
@@ -915,226 +914,197 @@ export function WorkspaceKanbanPage() {
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      ) : (
-        /* Main Content with TasksLayout for proper three-column responsive layout */
-        <TasksLayout
-          isPanelOpen={isPanelOpen}
-          kanban={
-            viewMode === "kanban" ? (
-              /* Kanban View - horizontal scroll when columns exceed width */
-              <div
-                ref={keyboardContainerRef}
-                className="h-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                tabIndex={0}
-                onKeyDown={handleKanbanKeyDown}
-                role="application"
-                aria-label={t("workspace.kanban", "Kanban board")}
-              >
-                <KanbanProvider
-                  onDragEnd={handleDragEnd}
-                  renderDragOverlay={(activeId) => {
-                    if (!activeId) return null;
-                    const task = sortedTasks.find((t) => t.id === activeId);
-                    if (!task) return null;
-                    return (
-                      <div
-                        className="w-[264px] p-3 bg-card rounded-lg border border-border"
-                        style={{
-                          boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)",
-                        }}
-                      >
-                        <TaskCardContent task={task} />
-                      </div>
-                    );
+      ) : viewMode === "kanban" ? (
+        /* Kanban View - horizontal scroll when columns exceed width */
+        <div
+          ref={keyboardContainerRef}
+          className="flex-1 h-full overflow-x-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          tabIndex={0}
+          onKeyDown={handleKanbanKeyDown}
+          role="application"
+          aria-label={t("workspace.kanban", "Kanban board")}
+        >
+          <KanbanProvider
+            onDragEnd={handleDragEnd}
+            renderDragOverlay={(activeId) => {
+              if (!activeId) return null;
+              const task = sortedTasks.find((t) => t.id === activeId);
+              if (!task) return null;
+              return (
+                <div
+                  className="w-[264px] p-3 bg-card rounded-lg border border-border"
+                  style={{
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.08)",
                   }}
                 >
-                  {columnStatuses.map((column) => {
-                    const columnTasks = tasksByColumn[column.id] ?? [];
-                    const colorVar = COLUMN_COLOR_VARS[column.id as ColumnId];
+                  <TaskCardContent task={task} />
+                </div>
+              );
+            }}
+          >
+            {columnStatuses.map((column) => {
+              const columnTasks = tasksByColumn[column.id] ?? [];
+              const colorVar = COLUMN_COLOR_VARS[column.id as ColumnId];
 
-                    return (
-                      <KanbanBoard key={column.id} id={column.id} backgroundColor={colorVar}>
-                        <KanbanHeader
-                          name={column.name}
-                          color={colorVar}
-                          onAddTask={() => handleAddTask(column.id)}
-                          addTaskLabel={t("workspace.addTask", "Add Task")}
-                          taskCount={columnTasks.length}
-                        />
-                        <KanbanCards
-                          className="flex-1 overflow-y-auto"
-                          emptyMessage={t("workspace.noTasks", "No tasks")}
-                          emptyHint={t("workspace.emptyColumnHint", "Drag tasks here or click + to create")}
+              return (
+                <KanbanBoard key={column.id} id={column.id} backgroundColor={colorVar}>
+                  <KanbanHeader
+                    name={column.name}
+                    color={colorVar}
+                    onAddTask={() => handleAddTask(column.id)}
+                    addTaskLabel={t("workspace.addTask", "Add Task")}
+                    taskCount={columnTasks.length}
+                  />
+                  <KanbanCards
+                    className="flex-1 overflow-y-auto"
+                    emptyMessage={t("workspace.noTasks", "No tasks")}
+                    emptyHint={t("workspace.emptyColumnHint", "Drag tasks here or click + to create")}
+                  >
+                    <AnimatePresence initial={false}>
+                      {columnTasks.map((task, index) => (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          transition={{
+                            duration: 0.2,
+                            ease: [0.2, 0, 0, 1],
+                            delay: index * 0.02,
+                          }}
                         >
-                          <AnimatePresence initial={false}>
-                            {columnTasks.map((task, index) => (
-                              <motion.div
-                                key={task.id}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                                transition={{
-                                  duration: 0.2,
-                                  ease: [0.2, 0, 0, 1],
-                                  delay: index * 0.02,
-                                }}
-                              >
-                                <KanbanCard
-                                  id={task.id}
-                                  name={task.title}
-                                  index={index}
-                                  parent={column.id}
-                                  onClick={() => handleCardClick(task.id)}
-                                  isOpen={selectedTaskId === task.id}
-                                  tabIndex={selectedTaskId === task.id ? 0 : -1}
-                                  showMoreMenu
-                                  renderMoreMenu={() => (
-                                    <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                                        >
-                                          <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end" className="w-48">
-                                        {/* Start task - only show for non-running tasks */}
-                                        {!task.has_in_progress_attempt && task.status !== "done" && (
-                                          <>
-                                            <DropdownMenuItem
-                                              onClick={() => {
-                                                handleStartTask(task.id);
-                                                setSelectedTaskId(task.id);
-                                                setAutoStartTaskOnOpen(true);
-                                              }}
-                                              className="gap-2"
-                                            >
-                                              <Play className="h-4 w-4" />
-                                              {t("workspace.runAgent", "Run")}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                          </>
-                                        )}
-                                        <DropdownMenuItem
-                                          onClick={() => setSelectedTaskId(task.id)}
-                                          className="gap-2"
-                                        >
-                                          <Pencil className="h-4 w-4" />
-                                          {t("workspace.editTask", "Edit")}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleDuplicateTask(task.id)}
-                                          className="gap-2"
-                                        >
-                                          <Copy className="h-4 w-4" />
-                                          {t("workspace.duplicateTask", "Duplicate")}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                          {t("workspace.moveToColumn", "Move to")}
-                                        </DropdownMenuLabel>
-                                        {columnStatuses.map((col) => {
-                                          const isCurrentColumn = STATUS_TO_COLUMN[task.status] === col.id;
-                                          return (
-                                            <DropdownMenuItem
-                                              key={col.id}
-                                              onClick={() => handleMoveToColumn(task.id, col.id)}
-                                              disabled={isCurrentColumn}
-                                              className="gap-2"
-                                            >
-                                              <span
-                                                className="w-2 h-2 rounded-full"
-                                                style={{ backgroundColor: COLUMN_COLORS[col.id as ColumnId] }}
-                                              />
-                                              {col.name}
-                                            </DropdownMenuItem>
-                                          );
-                                        })}
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          onClick={() => handleDeleteTask(task.id)}
-                                          className="gap-2 text-destructive focus:text-destructive"
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                          {t("workspace.deleteTask", "Delete")}
-                                        </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                    </DropdownMenu>
+                          <KanbanCard
+                            id={task.id}
+                            name={task.title}
+                            index={index}
+                            parent={column.id}
+                            onClick={() => handleCardClick(task.id)}
+                            isOpen={selectedTaskId === task.id}
+                            tabIndex={selectedTaskId === task.id ? 0 : -1}
+                            showMoreMenu
+                            renderMoreMenu={() => (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 rounded-md hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  {/* Start task - only show for non-running tasks */}
+                                  {!task.has_in_progress_attempt && task.status !== "done" && (
+                                    <>
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          handleStartTask(task.id);
+                                          setSelectedTaskId(task.id);
+                                          setAutoStartTaskOnOpen(true);
+                                        }}
+                                        className="gap-2"
+                                      >
+                                        <Play className="h-4 w-4" />
+                                        {t("workspace.runAgent", "Run")}
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                    </>
                                   )}
-                                >
-                                  <TaskCardContent
-                                    task={task}
-                                    onTitleChange={(title) =>
-                                      handleTitleChange(task.id, title)
-                                    }
-                                  />
-                                </KanbanCard>
-                              </motion.div>
-                            ))}
-                          </AnimatePresence>
-                        </KanbanCards>
-                      </KanbanBoard>
-                    );
-                  })}
-                </KanbanProvider>
-              </div>
-            ) : (
-              /* List View */
-              <div className="h-full overflow-y-auto p-4">
-                <ListView
-                  items={sortedTasks}
-                  selectedId={selectedTaskId ?? undefined}
-                  onItemClick={(item) => handleCardClick(item.id)}
-                  emptyMessage={t("workspace.noTasks", "No tasks found")}
-                  renderItem={(item, itemIsSelected) => (
-                    <ListViewItem
-                      item={item}
-                      onClick={() => handleCardClick(item.id)}
-                      isSelected={itemIsSelected}
-                      renderStatus={(task: TaskWithAttemptStatus) => {
-                        const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
-                        const column = columnStatuses.find((c) => c.id === mappedColumn);
-                        return (
-                          <Badge variant="outline" className="text-xs">
-                            {column?.name || task.status}
-                          </Badge>
-                        );
-                      }}
-                    >
-                      <TaskCardContent
-                        task={item}
-                        onTitleChange={(title) => handleTitleChange(item.id, title)}
-                      />
-                    </ListViewItem>
-                  )}
+                                  <DropdownMenuItem
+                                    onClick={() => setSelectedTaskId(task.id)}
+                                    className="gap-2"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                    {t("workspace.editTask", "Edit")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDuplicateTask(task.id)}
+                                    className="gap-2"
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                    {t("workspace.duplicateTask", "Duplicate")}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                    {t("workspace.moveToColumn", "Move to")}
+                                  </DropdownMenuLabel>
+                                  {columnStatuses.map((col) => {
+                                    const isCurrentColumn = STATUS_TO_COLUMN[task.status] === col.id;
+                                    return (
+                                      <DropdownMenuItem
+                                        key={col.id}
+                                        onClick={() => handleMoveToColumn(task.id, col.id)}
+                                        disabled={isCurrentColumn}
+                                        className="gap-2"
+                                      >
+                                        <span
+                                          className="w-2 h-2 rounded-full"
+                                          style={{ backgroundColor: COLUMN_COLORS[col.id as ColumnId] }}
+                                        />
+                                        {col.name}
+                                      </DropdownMenuItem>
+                                    );
+                                  })}
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    className="gap-2 text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    {t("workspace.deleteTask", "Delete")}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          >
+                            <TaskCardContent
+                              task={task}
+                              onTitleChange={(title) =>
+                                handleTitleChange(task.id, title)
+                              }
+                            />
+                          </KanbanCard>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </KanbanCards>
+                </KanbanBoard>
+              );
+            })}
+          </KanbanProvider>
+        </div>
+      ) : (
+        /* List View */
+        <div className="flex-1 h-full overflow-y-auto p-4">
+          <ListView
+            items={sortedTasks}
+            selectedId={selectedTaskId ?? undefined}
+            onItemClick={(item) => handleCardClick(item.id)}
+            emptyMessage={t("workspace.noTasks", "No tasks found")}
+            renderItem={(item, itemIsSelected) => (
+              <ListViewItem
+                item={item}
+                onClick={() => handleCardClick(item.id)}
+                isSelected={itemIsSelected}
+                renderStatus={(task: TaskWithAttemptStatus) => {
+                  const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
+                  const column = columnStatuses.find((c) => c.id === mappedColumn);
+                  return (
+                    <Badge variant="outline" className="text-xs">
+                      {column?.name || task.status}
+                    </Badge>
+                  );
+                }}
+              >
+                <TaskCardContent
+                  task={item}
+                  onTitleChange={(title) => handleTitleChange(item.id, title)}
                 />
-              </div>
-            )
-          }
-          taskPanel={
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
-              className="h-full border-l bg-background overflow-y-auto"
-            >
-              <TaskDetailPanel
-                task={selectedTask}
-                onClose={handleClosePanel}
-                onUpdate={handleTaskUpdate}
-                onStartTask={handleStartTask}
-                availableTasks={availableTasks}
-                onNavigateToTask={handleNavigateToTask}
-                workspacePath={workspace?.path}
-                autoStartOnOpen={autoStartTaskOnOpen}
-                onAutoStartConsumed={() => setAutoStartTaskOnOpen(false)}
-              />
-            </motion.div>
-          }
-        />
+              </ListViewItem>
+            )}
+          />
+        </div>
       )}
 
       {/* Bulk Actions Bar */}
@@ -1175,6 +1145,22 @@ export function WorkspaceKanbanPage() {
         defaultAgentId={defaultAgentId ?? undefined}
         defaultModelId={defaultModelId ?? undefined}
         isLoadingOptions={isLoadingAgents || isLoadingModels}
+      />
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        open={isPanelOpen}
+        onOpenChange={(open) => {
+          if (!open) handleClosePanel();
+        }}
+        task={selectedTask}
+        onUpdate={handleTaskUpdate}
+        onStartTask={handleStartTask}
+        availableTasks={availableTasks}
+        onNavigateToTask={handleNavigateToTask}
+        workspacePath={workspace?.path}
+        autoStartOnOpen={autoStartTaskOnOpen}
+        onAutoStartConsumed={() => setAutoStartTaskOnOpen(false)}
       />
     </PageWrapper>
   );

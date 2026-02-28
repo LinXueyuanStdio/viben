@@ -14,22 +14,27 @@ export function usePython() {
   const [error, setError] = useState<string | null>(null);
 
   const detectPython = useCallback(async () => {
+    console.log("[usePython] Starting detection...");
     setLoading(true);
     setError(null);
     try {
       const client = getGatewayClient();
       const detected = await client.detectPython();
+      console.log("[usePython] Detected pythons:", detected);
       setPythons(detected);
 
       // Auto-select first valid Python
       const validPython = detected.find((p) => p.is_valid);
+      console.log("[usePython] Valid python:", validPython);
       if (validPython) {
         setSelectedPython(validPython);
       }
     } catch (err) {
+      console.error("[usePython] Detection error:", err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+      console.log("[usePython] Detection complete, loading=false");
     }
   }, []);
 

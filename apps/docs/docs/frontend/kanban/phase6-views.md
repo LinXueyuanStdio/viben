@@ -1,3 +1,9 @@
+---
+sidebar_position: 7
+title: Phase 6 - UI 修复
+description: Kanban UI 修复与布局调整
+---
+
 # Kanban Phase 6: UI Polish & Layout Fixes
 
 ## Overview

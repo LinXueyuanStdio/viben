@@ -504,5 +504,3 @@ vibe-kanban 有更完整的 Git 功能（如 merge request, cherry-pick），但
 ## Related Documents
 
 - [workspace.md](./workspace.md) - 工作区管理模块
-- [/docs/kanban/09-repo.md](/docs/kanban/09-repo.md) - vibe-kanban 仓库 API 参考
-- [/docs/kanban/10-task-attempts.md](/docs/kanban/10-task-attempts.md) - vibe-kanban Git 操作参考

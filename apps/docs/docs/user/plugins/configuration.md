@@ -1,78 +1,78 @@
 ---
 sidebar_position: 5
-title: "Plugin Configuration"
-description: "Configure Viben plugins with environment variables and settings"
+title: "插件配置"
+description: "使用环境变量和设置配置 Viben 插件"
 ---
 
-# Plugin Configuration
+# 插件配置
 
-This page covers configuration options for Viben plugins, including environment variables, source control, and API keys.
+本页介绍 Viben 插件的配置选项，包括环境变量、数据源控制和 API 密钥。
 
-## Environment Variables
+## 环境变量
 
-### Core Variables
+### 核心变量
 
-These variables apply to all sources (built-in and plugins):
+这些变量适用于所有数据源（内置和插件）：
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BROWSE_MCP_DOWNLOAD_PATH` | Directory for downloaded content | `./downloads` |
-| `BROWSE_MCP_ENABLED_SOURCES` | Comma-separated list of enabled sources | All sources |
-| `BROWSE_MCP_DISABLED_SOURCES` | Comma-separated list of disabled sources | None |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `BROWSE_MCP_DOWNLOAD_PATH` | 下载内容的目录 | `./downloads` |
+| `BROWSE_MCP_ENABLED_SOURCES` | 启用的数据源（逗号分隔）| 全部 |
+| `BROWSE_MCP_DISABLED_SOURCES` | 禁用的数据源（逗号分隔）| 无 |
 
-### Source Control
+### 数据源控制
 
-#### Enable Specific Sources Only
+#### 仅启用特定数据源
 
-Use `BROWSE_MCP_ENABLED_SOURCES` to create a whitelist:
+使用 `BROWSE_MCP_ENABLED_SOURCES` 创建白名单：
 
 ```bash
 export BROWSE_MCP_ENABLED_SOURCES="arxiv,pubmed,github,twitter"
 ```
 
-Only the listed sources will be available. All others (including from plugins) will be disabled.
+只有列出的数据源可用。其他所有数据源（包括插件的）将被禁用。
 
-#### Disable Specific Sources
+#### 禁用特定数据源
 
-Use `BROWSE_MCP_DISABLED_SOURCES` to create a blacklist:
+使用 `BROWSE_MCP_DISABLED_SOURCES` 创建黑名单：
 
 ```bash
 export BROWSE_MCP_DISABLED_SOURCES="ieee,scopus,zhihu,xiaohongshu"
 ```
 
-All sources except the listed ones will be available.
+除了列出的数据源外，其他所有数据源都可用。
 
-#### Priority Rules
+#### 优先级规则
 
-1. If `BROWSE_MCP_ENABLED_SOURCES` is set, it takes precedence (whitelist mode)
-2. If only `BROWSE_MCP_DISABLED_SOURCES` is set, it acts as a blacklist
-3. If neither is set, all installed sources are enabled
+1. 如果设置了 `BROWSE_MCP_ENABLED_SOURCES`，它优先生效（白名单模式）
+2. 如果只设置了 `BROWSE_MCP_DISABLED_SOURCES`，它作为黑名单
+3. 如果都未设置，所有已安装的数据源都启用
 
-### Plugin-Specific API Keys
+### 插件特定 API 密钥
 
-#### Social Media Plugin
+#### 社交媒体插件
 
-| Variable | Service | How to Get |
-|----------|---------|------------|
-| `GITHUB_TOKEN` | GitHub | [Personal Access Tokens](https://github.com/settings/tokens) |
-| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter Developer Portal](https://developer.twitter.com/) |
-| `ZHIHU_API_KEY` | Zhihu | Contact platform |
-| `XIAOHONGSHU_API_KEY` | Xiaohongshu | Contact platform |
+| 变量 | 服务 | 获取方式 |
+|------|------|----------|
+| `GITHUB_TOKEN` | GitHub | [个人访问令牌](https://github.com/settings/tokens) |
+| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter 开发者平台](https://developer.twitter.com/) |
+| `ZHIHU_API_KEY` | 知乎 | 联系平台 |
+| `XIAOHONGSHU_API_KEY` | 小红书 | 联系平台 |
 
-#### Academic Sources
+#### 学术数据源
 
-| Variable | Service | How to Get |
-|----------|---------|------------|
+| 变量 | 服务 | 获取方式 |
+|------|------|----------|
 | `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar | [Semantic Scholar API](https://www.semanticscholar.org/product/api) |
 | `CORE_API_KEY` | CORE | [CORE API](https://core.ac.uk/services/api) |
 | `IEEE_API_KEY` | IEEE Xplore | [IEEE Developer](https://developer.ieee.org/) |
 | `SCOPUS_API_KEY` | Scopus | [Elsevier Developer](https://dev.elsevier.com/) |
 | `SPRINGER_API_KEY` | Springer Link | [Springer Developer](https://dev.springernature.com/) |
-| `SCIENCEDIRECT_API_KEY` | Science Direct | [Elsevier Developer](https://dev.elsevier.com/) |
+| `SCIENCEDIRECT_API_KEY` | ScienceDirect | [Elsevier Developer](https://dev.elsevier.com/) |
 
-## Configuration Examples
+## 配置示例
 
-### MCP Client Configuration
+### MCP 客户端配置
 
 #### Claude Desktop
 
@@ -95,7 +95,7 @@ All sources except the listed ones will be available.
 
 #### Claude Code
 
-In `~/.claude/mcp_settings.json`:
+在 `~/.claude/mcp.json` 中：
 
 ```json
 {
@@ -114,7 +114,7 @@ In `~/.claude/mcp_settings.json`:
 
 #### Cline (VS Code)
 
-In VS Code settings:
+在 VS Code 设置中：
 
 ```json
 {
@@ -130,11 +130,11 @@ In VS Code settings:
 }
 ```
 
-### Use Case Configurations
+### 使用场景配置
 
-#### Academic Research Only
+#### 仅学术研究
 
-Disable all social media sources:
+禁用所有社交媒体数据源：
 
 ```json
 {
@@ -152,9 +152,9 @@ Disable all social media sources:
 }
 ```
 
-#### Social Media Focus
+#### 社交媒体聚焦
 
-Enable only social media sources:
+只启用社交媒体数据源：
 
 ```json
 {
@@ -167,9 +167,9 @@ Enable only social media sources:
 }
 ```
 
-#### Full Stack (Academic + Social)
+#### 全栈（学术 + 社交）
 
-Enable everything with appropriate keys:
+启用所有带适当密钥的数据源：
 
 ```json
 {
@@ -182,9 +182,9 @@ Enable everything with appropriate keys:
 }
 ```
 
-#### Computer Science Research
+#### 计算机科学研究
 
-Focus on CS-relevant sources:
+聚焦 CS 相关数据源：
 
 ```json
 {
@@ -198,39 +198,39 @@ Focus on CS-relevant sources:
 }
 ```
 
-## Hierarchical Source Names
+## 层级数据源名称
 
-Sources can be referenced by flat or hierarchical names:
+数据源可以用扁平或层级名称引用：
 
-| Flat Name | Hierarchical Name | Provider |
-|-----------|-------------------|----------|
+| 扁平名称 | 层级名称 | Provider |
+|----------|----------|----------|
 | `arxiv` | `academic/arxiv` | academic |
 | `pubmed` | `academic/pubmed` | academic |
 | `github` | `social/github` | social |
 | `twitter` | `social/twitter` | social |
 | `ieee` | `publisher/ieee` | publisher |
 
-In environment variables, use flat names:
+在环境变量中，使用扁平名称：
 
 ```bash
-# Correct
+# 正确
 export BROWSE_MCP_ENABLED_SOURCES="arxiv,github,twitter"
 
-# Also works but not recommended
+# 也可以但不推荐
 export BROWSE_MCP_ENABLED_SOURCES="academic/arxiv,social/github,social/twitter"
 ```
 
-## Debugging Configuration
+## 调试配置
 
-### Check Loaded Sources
+### 检查已加载的数据源
 
-Run with debug logging to see loaded sources:
+运行调试日志查看已加载的数据源：
 
 ```bash
 browse-mcp --debug
 ```
 
-Output shows:
+输出显示：
 
 ```
 INFO     Loading searcher plugins from namespace: browse_mcp.searchers
@@ -240,9 +240,9 @@ INFO     Successfully loaded 15 searcher plugins: arxiv, github, pubmed...
 INFO     Enabled sources: arxiv, github, pubmed...
 ```
 
-### Check Environment Variables
+### 检查环境变量
 
-Verify environment variables are set:
+验证环境变量已设置：
 
 ```bash
 # Unix/macOS
@@ -254,12 +254,12 @@ echo $env:BROWSE_MCP_ENABLED_SOURCES
 echo $env:GITHUB_TOKEN
 ```
 
-### Test API Keys
+### 测试 API 密钥
 
-Test individual API keys:
+测试单个 API 密钥：
 
 ```python
-# Test GitHub token
+# 测试 GitHub 令牌
 import os
 import httpx
 
@@ -271,49 +271,49 @@ response = httpx.get(
 print(response.json())
 ```
 
-## Troubleshooting
+## 故障排除
 
-### Source Not Available
+### 数据源不可用
 
-1. **Check if plugin is installed**:
+1. **检查插件是否安装**：
    ```bash
    pip show browse-mcp-plugin-social-media
    ```
 
-2. **Check if source is enabled**:
-   - Not in `BROWSE_MCP_DISABLED_SOURCES`
-   - In `BROWSE_MCP_ENABLED_SOURCES` (if set)
+2. **检查数据源是否启用**：
+   - 不在 `BROWSE_MCP_DISABLED_SOURCES` 中
+   - 在 `BROWSE_MCP_ENABLED_SOURCES` 中（如果设置了）
 
-3. **Check for load errors**:
+3. **检查加载错误**：
    ```bash
    browse-mcp --debug
    ```
 
-### API Key Not Working
+### API 密钥不工作
 
-1. **Verify environment variable is set**:
+1. **验证环境变量已设置**：
    ```bash
    echo $GITHUB_TOKEN
    ```
 
-2. **Check key permissions**:
-   - GitHub: Ensure token has required scopes
-   - Twitter: Verify app has correct access level
+2. **检查密钥权限**：
+   - GitHub：确保令牌有所需的 scope
+   - Twitter：验证应用有正确的访问级别
 
-3. **Test key directly** with a simple API call
+3. **直接测试密钥** 用一个简单的 API 调用
 
-### Rate Limiting
+### 速率限制
 
-If you hit rate limits:
+如果遇到速率限制：
 
-1. Add or upgrade API keys
-2. Reduce `max_results` in queries
-3. Add delays between searches
-4. Disable unnecessary sources
+1. 添加或升级 API 密钥
+2. 在查询中减少 `max_results`
+3. 在搜索之间添加延迟
+4. 禁用不必要的数据源
 
-## Next Steps
+## 下一步
 
-- [Plugin Overview](./overview) - Understanding the plugin system
-- [Installing Plugins](./installing-plugins) - Installation guide
-- [Available Plugins](./available-plugins) - Browse available plugins
-- [Configuration](../mcp/configuration) - Core configuration options
+- [插件概述](./overview) - 了解插件系统
+- [安装插件](./installing-plugins) - 安装指南
+- [可用插件](./available-plugins) - 浏览可用插件
+- [MCP 配置](../mcp/configuration) - 核心配置选项

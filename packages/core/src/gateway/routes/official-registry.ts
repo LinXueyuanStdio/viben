@@ -455,11 +455,21 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         return { error: "Server not found" };
       }
 
-      // Extract versions from packages in the original server data
-      const packages = server._original.server.packages || [];
-      const versions = packages
-        .filter((p: RawPackage) => p.version)
-        .map((p: RawPackage) => p.version as string);
+      // Return the version of this server (version is stored at server level)
+      // The original data contains packages with versions if we need them
+      const versions: string[] = [];
+      if (server.version) {
+        versions.push(server.version);
+      }
+      // Also check original data for package versions
+      const original = server._original?.server;
+      if (original?.packages) {
+        for (const pkg of original.packages) {
+          if (pkg.version && !versions.includes(pkg.version)) {
+            versions.push(pkg.version);
+          }
+        }
+      }
 
       return [...new Set(versions)];
     } catch (err) {

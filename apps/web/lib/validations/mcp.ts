@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const listMcpQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  category: z.string().optional(),
+  category: z.string().nullish().transform(v => v ?? undefined),
   sort: z.enum(['latest', 'popular', 'downloads']).default('latest'),
 });
 

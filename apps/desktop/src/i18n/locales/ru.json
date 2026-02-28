@@ -139,7 +139,15 @@
     "system": "Системная",
     "language": "Язык",
     "storage": "Хранилище",
-    "downloadPath": "Путь загрузки"
+    "downloadPath": "Путь загрузки",
+    "developer": {
+      "os": "ОС",
+      "osVersion": "Версия",
+      "appVersion": "Версия приложения",
+      "arch": "Архитектура",
+      "logs": "Логи",
+      "config": "Конфигурация"
+    }
   },
   "about": {
     "title": "Viben",

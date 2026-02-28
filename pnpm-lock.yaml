@@ -505,6 +505,9 @@ importers:
       '@fastify/websocket':
         specifier: ^11.2.0
         version: 11.2.0
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.25.2
+        version: 1.25.3(hono@4.11.8)(zod@4.3.6)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -544,6 +547,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      shell-quote:
+        specifier: ^1.8.3
+        version: 1.8.3
       undici:
         specifier: ^7.22.0
         version: 7.22.0
@@ -557,6 +563,9 @@ importers:
       '@types/node':
         specifier: ^20.14.0
         version: 20.19.32
+      '@types/shell-quote':
+        specifier: ^1.7.5
+        version: 1.7.5
       '@types/uuid':
         specifier: ^11.0.0
         version: 11.0.0
@@ -10470,6 +10479,10 @@ packages:
       '@types/node': 22.19.8
       '@types/send': 0.17.6
     dev: false
+
+  /@types/shell-quote@1.7.5:
+    resolution: {integrity: sha512-+UE8GAGRPbJVQDdxi16dgadcBfQ+KG2vgZhV1+3A1XmHbmwcdwhCUwIdy+d3pAGrbvgRoVSjeI9vOWyq376Yzw==}
+    dev: true
 
   /@types/sinonjs__fake-timers@8.1.5:
     resolution: {integrity: sha512-mQkU2jY8jJEF7YHjHvsQO8+3ughTL1mcnn96igfhONmR+fUPSKIkefQYpSe8bsly2Ep7oQbn/6VG5/9/0qcArQ==}

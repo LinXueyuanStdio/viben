@@ -1,7 +1,9 @@
 /**
  * Gateway HTTP/SSE Client
+ * 网关 HTTP/SSE 客户端
  *
- * Connects Desktop frontend to viben-gateway for real AI agent execution.
+ * Connects Desktop frontend to viben gateway for real AI agent execution.
+ * 连接桌面前端到 viben 网关，用于实际的 AI 智能体执行。
  */
 
 import type { AgentMessage } from "@/types";
@@ -456,7 +458,7 @@ export class GatewayClient {
     timestamp: string | null;
     url: string;
     endpoints: { path: string; available: boolean }[];
-    websocket: boolean;
+    websockets: { path: string; available: boolean }[];
   }> {
     const result = {
       reachable: false,
@@ -466,7 +468,7 @@ export class GatewayClient {
       timestamp: null as string | null,
       url: this.baseUrl,
       endpoints: [] as { path: string; available: boolean }[],
-      websocket: false,
+      websockets: [] as { path: string; available: boolean }[],
     };
 
     // Test health endpoint and extract detailed info
@@ -501,12 +503,19 @@ export class GatewayClient {
 
     // Only test other endpoints if health check passed
     if (result.healthCheck) {
-      // Test specific HTTP endpoints
+      // Test specific HTTP endpoints - comprehensive list
       const testEndpoints = [
         "/api/agents",
         "/api/sessions",
         "/api/cron",
         "/api/group-chats",
+        "/api/models",
+        "/api/providers",
+        "/api/channels",
+        "/api/executors",
+        "/api/workspaces",
+        "/api/mcp/servers",
+        "/api/packages",
       ];
 
       for (const path of testEndpoints) {
@@ -525,8 +534,17 @@ export class GatewayClient {
         }
       }
 
-      // Test WebSocket connectivity
-      result.websocket = await this.testWebSocket();
+      // Test WebSocket endpoints
+      const wsEndpoints = [
+        "/ws",           // Main event WebSocket
+        "/api/agent/ws", // Agent interaction WebSocket
+        "/api/terminal", // Terminal PTY WebSocket
+      ];
+
+      for (const path of wsEndpoints) {
+        const available = await this.testWebSocketEndpoint(path);
+        result.websockets.push({ path, available });
+      }
     }
 
     return result;
@@ -575,13 +593,12 @@ export class GatewayClient {
   }
 
   /**
-   * Test WebSocket connectivity to the Gateway
+   * Test WebSocket connectivity to a specific endpoint
    */
-  private async testWebSocket(): Promise<boolean> {
+  private async testWebSocketEndpoint(path: string): Promise<boolean> {
     return new Promise((resolve) => {
       const wsUrl = this.baseUrl.replace(/^http/, "ws");
-      // The Gateway WebSocket endpoint is at /ws (not /api/events)
-      const ws = new WebSocket(`${wsUrl}/ws`);
+      const ws = new WebSocket(`${wsUrl}${path}`);
       const timeout = setTimeout(() => {
         ws.close();
         resolve(false);
@@ -3794,6 +3811,123 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // MCP Inspector (Gateway-integrated Proxy)
+  // ==========================================================================
+
+  /**
+   * Get MCP Inspector health and session count
+   */
+  async getMcpInspectorHealth(): Promise<McpInspectorHealth> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/health`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector health: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get MCP Inspector session token
+   */
+  async getMcpInspectorToken(): Promise<McpInspectorToken> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/token`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector token: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get MCP Inspector configuration
+   */
+  async getMcpInspectorConfig(authToken: string): Promise<McpInspectorConfig> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/config`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector config: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * List active MCP Inspector sessions
+   */
+  async getMcpInspectorSessions(authToken: string): Promise<McpInspectorSession[]> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/sessions`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector sessions: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.sessions;
+  }
+
+  /**
+   * Close an MCP Inspector session
+   */
+  async closeMcpInspectorSession(authToken: string, sessionId: string): Promise<{ deleted: string }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/inspector/sessions/${encodeURIComponent(sessionId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to close MCP Inspector session: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
   // Service API Keys
   // ==========================================================================
 
@@ -4615,6 +4749,84 @@ export class GatewayClient {
       const errorMessage = await this.parseErrorMessage(response);
       throw new GatewayError(
         `Failed to get install command: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
+  // CLI Tools Detection
+  // ==========================================================================
+
+  /**
+   * Detect all CLI tools (python, git, gh, claude, codex, aider, goose, etc.)
+   */
+  async detectCliTools(config?: {
+    pythonPath?: string;
+    gitPath?: string;
+    ghPath?: string;
+    claudePath?: string;
+    codexPath?: string;
+    aiderPath?: string;
+    goosePath?: string;
+    clinePath?: string;
+    continuePath?: string;
+    cursorPath?: string;
+  }): Promise<CliToolsInfo> {
+    const params = new URLSearchParams();
+    if (config?.pythonPath) params.append("python_path", config.pythonPath);
+    if (config?.gitPath) params.append("git_path", config.gitPath);
+    if (config?.ghPath) params.append("gh_path", config.ghPath);
+    if (config?.claudePath) params.append("claude_path", config.claudePath);
+    if (config?.codexPath) params.append("codex_path", config.codexPath);
+    if (config?.aiderPath) params.append("aider_path", config.aiderPath);
+    if (config?.goosePath) params.append("goose_path", config.goosePath);
+    if (config?.clinePath) params.append("cline_path", config.clinePath);
+    if (config?.continuePath) params.append("continue_path", config.continuePath);
+    if (config?.cursorPath) params.append("cursor_path", config.cursorPath);
+
+    const url = params.toString()
+      ? `${this.baseUrl}/api/cli-tools/detect?${params}`
+      : `${this.baseUrl}/api/cli-tools/detect`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to detect CLI tools: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Check a specific CLI tool path
+   */
+  async checkCliToolPath(
+    tool: CliToolName,
+    path: string
+  ): Promise<CliToolInfo> {
+    const response = await fetch(`${this.baseUrl}/api/cli-tools/check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ tool, path }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to check CLI tool path: ${errorMessage}`,
         response.status
       );
     }
@@ -6256,9 +6468,12 @@ export interface CacheSettings {
 // Filesystem Types
 // ============================================================================
 
-/** MCP servers config */
+/** MCP servers config - file format for ~/.viben/mcp-servers.json */
 export interface McpServersConfig {
-  mcpServers: Record<string, unknown>;
+  mcpServers?: unknown[];
+  mcpServerStatuses?: Record<string, unknown>;
+  lastUpdated?: number;
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -6288,6 +6503,42 @@ export interface SystemInfo {
   release: string;
   type: string;
   viben_dir: string;
+}
+
+/** CLI tool detection result */
+export interface CliToolInfo {
+  found: boolean;
+  path?: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+  message?: string;
+}
+
+/** Supported CLI tool names */
+export type CliToolName =
+  | "python"
+  | "git"
+  | "gh"
+  | "claude"
+  | "codex"
+  | "aider"
+  | "goose"
+  | "cline"
+  | "continue"
+  | "cursor";
+
+/** All CLI tools detection result */
+export interface CliToolsInfo {
+  python: CliToolInfo;
+  git: CliToolInfo;
+  gh: CliToolInfo;
+  claude: CliToolInfo;
+  codex: CliToolInfo;
+  aider: CliToolInfo;
+  goose: CliToolInfo;
+  cline: CliToolInfo;
+  continue: CliToolInfo;
+  cursor: CliToolInfo;
 }
 
 // ============================================================================
@@ -7029,6 +7280,24 @@ export interface McpStatus {
   pid: number | null;
   transport: string | null;
   port: number | null;
+  /** Command that was executed */
+  command?: string;
+  /** Full command line arguments */
+  args?: string[];
+  /** Startup timestamp */
+  startedAt?: string;
+  /** Endpoint URL for connecting */
+  endpointUrl?: string;
+  /** Exit code if process terminated */
+  exitCode?: number | null;
+  /** Exit signal if process was killed */
+  exitSignal?: string | null;
+  /** Stderr output from the process */
+  stderr?: string;
+  /** Stdout output from the process */
+  stdout?: string;
+  /** Error message if startup failed */
+  error?: string;
 }
 
 /** Configuration for starting browse-mcp server */
@@ -7081,6 +7350,36 @@ export interface McpServerPortStatus {
   pid: number | null;
   process_name: string | null;
   is_mcp_server: boolean;
+}
+
+/** MCP Inspector health response */
+export interface McpInspectorHealth {
+  status: string;
+  sessions: number;
+}
+
+/** MCP Inspector token response */
+export interface McpInspectorToken {
+  token: string | null;
+  authDisabled: boolean;
+}
+
+/** MCP Inspector config response */
+export interface McpInspectorConfig {
+  defaultEnvironment: Record<string, string>;
+  defaultCommand: string;
+  defaultArgs: string;
+  defaultTransport: string;
+  defaultServerUrl: string;
+  authRequired: boolean;
+}
+
+/** MCP Inspector session info */
+export interface McpInspectorSession {
+  sessionId: string;
+  transportType: string;
+  createdAt: string;
+  serverConnected: boolean;
 }
 
 /** Service API Key */

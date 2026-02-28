@@ -5,6 +5,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
+    "deleting": "Deleting...",
     "edit": "Edit",
     "create": "Create",
     "update": "Update",
@@ -18,6 +19,9 @@
     "configure": "Configure",
     "apply": "Apply",
     "close": "Close",
+    "details": "Details",
+    "pid": "PID",
+    "port": "Port",
     "clearSearch": "Clear search",
     "builtIn": "Built-in",
     "calls": "{{count}} calls",
@@ -48,7 +52,6 @@
     "available": "available",
     "required": "required",
     "optional": "Optional",
-    "port": "Port",
     "auto": "Auto",
     "export": "Export",
     "cleanup": "Cleanup",
@@ -93,7 +96,9 @@
     "you": "You",
     "unknown": "Unknown",
     "openInExplorer": "Open in file manager",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "noData": "No data",
+    "id": "ID"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -118,7 +123,11 @@
     "setupRequired": "Setup Required",
     "collapse": "Collapse sidebar",
     "expand": "Expand sidebar",
-    "workspacePages": "Workspace"
+    "workspacePages": "Workspace",
+    "newTask": "New Task",
+    "taskCreated": "Task created successfully",
+    "taskCreateFailed": "Failed to create task",
+    "noWorkspaceSelected": "Please select a workspace first"
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -181,10 +190,14 @@
     "commandNotFound": "Not configured",
     "port": "Port",
     "host": "Host",
+    "hostDescription": "Host address that the gateway service binds to",
+    "portDescription": "Port number that the gateway service listens on (restart required to take effect)",
+    "connectivityTestDescription": "Check gateway service connection status and available endpoints",
     "binaryNotFound": "Gateway binary not found",
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart"
   },
   "channels": {
+    "telegramBot": "Telegram Bot",
     "addChannel": "Add Channel",
     "addChannelDesc": "Select channel type and set a name",
     "addChannelDescFull": "Select channel type and fill in required information",
@@ -347,9 +360,11 @@
     "title": "Settings",
     "sections": {
       "general": "General",
+      "account": "Account",
       "appearance": "Appearance",
       "environment": "Environment",
       "storage": "Storage",
+      "developer": "Developer",
       "about": "About",
       "preferences": "Preferences",
       "languageAndTime": "Language & Time",
@@ -362,7 +377,75 @@
       "gateway": "Gateway",
       "channels": "Channels",
       "executors": "Executors",
-      "sandbox": "Sandbox"
+      "sandbox": "Sandbox",
+      "setup": "Setup",
+      "terminalFonts": "Terminal Fonts"
+    },
+    "terminalFonts": {
+      "description": "Customize terminal font appearance, cursor behavior, and display settings",
+      "fontConfig": {
+        "title": "Font Configuration",
+        "fontFamily": "Font Family",
+        "fontFamilyDescription": "Primary monospace font for terminal text",
+        "selectFont": "Select a font...",
+        "fontSize": "Font Size",
+        "fontSizeDescription": "Base font size in pixels (10-24px)",
+        "fontWeight": "Font Weight",
+        "fontWeightDescription": "Font weight from 100 (thin) to 900 (black), in steps of 100",
+        "lineHeight": "Line Height",
+        "lineHeightDescription": "Line height as a multiple of font size (1.0-2.0)",
+        "letterSpacing": "Letter Spacing",
+        "letterSpacingDescription": "Horizontal spacing between characters (-2 to 5px)"
+      },
+      "cursorConfig": {
+        "title": "Cursor Configuration",
+        "cursorStyle": "Cursor Style",
+        "cursorStyleDescription": "Visual style of the terminal cursor",
+        "cursorBlink": "Cursor Blink",
+        "cursorBlinkDescription": "Whether the cursor should blink",
+        "styles": {
+          "block": "Block",
+          "underline": "Underline",
+          "bar": "Bar"
+        }
+      },
+      "preview": {
+        "title": "Live Preview",
+        "description": "Preview your terminal settings in real-time"
+      },
+      "presets": {
+        "title": "Quick Presets",
+        "description": "Apply pre-configured presets from popular IDEs and terminals",
+        "vscode": "VS Code",
+        "intellij": "IntelliJ",
+        "macos": "macOS Terminal",
+        "ubuntu": "Ubuntu Terminal",
+        "reset": "Reset to Default"
+      },
+      "export": "Copy Config"
+    },
+    "account": {
+      "description": "Manage your account and login status",
+      "actions": "Account Actions",
+      "editProfile": "Edit Profile",
+      "notLoggedIn": "Not Logged In",
+      "loginBenefits": "Sign in to sync your settings and access cloud features",
+      "oauth": {
+        "openBrowser": "Open Browser",
+        "waitingAuth": "Authorize",
+        "completing": "Complete",
+        "statusOpening": "Opening browser...",
+        "statusWaiting": "Please complete authorization in browser",
+        "statusCompleting": "Authorization successful, signing in...",
+        "autoReturn": "You will be redirected back automatically",
+        "waitingResponse": "Waiting for response",
+        "timeout": "Authorization timed out",
+        "timeoutHint": "Please try again or check your network connection",
+        "error": "Authorization failed",
+        "errorHint": "Please try again or contact support",
+        "success": "Sign in successful!",
+        "retry": "Try Again"
+      }
     },
     "notifications": {
       "description": "Configure how and when you receive notifications",
@@ -396,6 +479,9 @@
       "dndHint": "Notifications will be silenced but still recorded"
     },
     "generalDescription": "General application settings",
+    "onboarding": "Setup Wizard",
+    "onboardingDescription": "Re-run the initial setup wizard to configure Python, AI clients, and login",
+    "openOnboarding": "Open Setup Wizard",
     "appearanceDescription": "Customize Viben's appearance on your device.",
     "environmentDescription": "Python and package configuration",
     "storageDescription": "Manage downloads and cache",
@@ -424,6 +510,47 @@
     "runToInstall": "Run this command to install:",
     "orUsingUv": "Or using uv: ",
     "uvCommand": "uv tool install browse-mcp",
+    "cliTools": {
+      "title": "CLI Tools",
+      "description": "Configure executable paths for command-line tools",
+      "coreTitle": "Core Tools",
+      "coreDescription": "Python, Git, and GitHub CLI",
+      "aiTitle": "AI Coding Assistants",
+      "aiDescription": "Claude, Codex, Aider, and other AI tools",
+      "pythonPath": "Python Path",
+      "pythonPathPlaceholder": "python3 (default)",
+      "gitPath": "Git Path",
+      "gitPathPlaceholder": "git (default)",
+      "ghPath": "GitHub CLI Path",
+      "ghPathPlaceholder": "gh (default)",
+      "claudePath": "Claude CLI Path",
+      "claudePathPlaceholder": "claude (default)",
+      "codexPath": "Codex CLI Path",
+      "codexPathPlaceholder": "codex (default)",
+      "aiderPath": "Aider Path",
+      "aiderPathPlaceholder": "aider (default)",
+      "goosePath": "Goose Path",
+      "goosePathPlaceholder": "goose (default)",
+      "clinePath": "Cline Path",
+      "clinePathPlaceholder": "cline (default)",
+      "continuePath": "Continue Path",
+      "continuePathPlaceholder": "continue (default)",
+      "cursorPath": "Cursor Path",
+      "cursorPathPlaceholder": "cursor (default)",
+      "version": "v{{version}}",
+      "notDetected": "Not detected",
+      "detectedPath": "Auto-detected",
+      "installHint": "Install:",
+      "sourceUserConfig": "User Configuration",
+      "sourceHomebrew": "Homebrew",
+      "sourceNvm": "NVM",
+      "sourcePyenv": "pyenv",
+      "sourcePip": "pip",
+      "sourceNpm": "npm",
+      "sourceCargo": "cargo",
+      "sourceSystemPath": "System PATH",
+      "sourceFallback": "Fallback"
+    },
     "appearance": "Appearance",
     "theme": "Theme",
     "useSystemSettings": "Use system settings",
@@ -464,7 +591,34 @@
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",
     "enterKey": "Enter",
-    "cmdEnter": "Cmd+Enter"
+    "cmdEnter": "Cmd+Enter",
+    "developerDescription": "Developer tools, debug settings, and troubleshooting",
+    "developer": {
+      "devtools": "Developer Tools",
+      "preferredIDE": "Preferred IDE",
+      "preferredIDEDescription": "Viben will open projects in this editor",
+      "preferredTerminal": "Preferred Terminal",
+      "preferredTerminalDescription": "Viben will open terminal sessions here",
+      "yoloMode": "YOLO Mode",
+      "yoloModeDescription": "Start executors with --dangerously-skip-permissions flag, bypassing all safety prompts. Use with extreme caution.",
+      "yoloModeWarning": "This mode bypasses permission system. Only enable if you fully trust the code being executed.",
+      "debugLogs": "Debug & Logs",
+      "openLogsFolder": "Open Logs Folder",
+      "openConfigFolder": "Open Config Folder",
+      "copyDebugInfo": "Copy Debug Info",
+      "loadDebugInfo": "Load Debug Info",
+      "systemInfo": "System Information",
+      "paths": "Paths",
+      "noRecentErrors": "No recent errors",
+      "reportingIssues": "Reporting Issues",
+      "reportingIssuesDescription": "When reporting bugs, click \"Copy Debug Info\" to get system information that helps us diagnose the issue.",
+      "os": "OS",
+      "osVersion": "Version",
+      "appVersion": "App Version",
+      "arch": "Arch",
+      "logs": "Logs",
+      "config": "Config"
+    }
   },
   "sandbox": {
     "availableProviders": "Available Providers",
@@ -488,7 +642,9 @@
     "installProviders": "Install Providers",
     "installDescription": "Install additional sandbox providers for better isolation",
     "allInstalled": "All providers installed",
-    "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)"
+    "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)",
+    "codexCli": "Codex CLI",
+    "claudeSandboxRuntime": "Claude Sandbox Runtime"
   },
   "about": {
     "title": "Viben",
@@ -599,7 +755,18 @@
     "addFirst": "Add Your First Agent",
     "noAgents": "No agents configured",
     "fromTemplate": "From Template",
-    "templates": "Templates",
+    "templates": {
+      "blank": "Blank",
+      "blankDesc": "Create agent from scratch",
+      "general": "General",
+      "generalDesc": "Versatile prompt structure for various scenarios",
+      "task": "Task Execution",
+      "taskDesc": "For tasks with clear work steps",
+      "roleplay": "Roleplay",
+      "roleplayDesc": "For chat scenarios",
+      "coding": "Coding Assistant",
+      "codingDesc": "Optimized for code development"
+    },
     "created": "Created",
     "setDefault": "Set as Default",
     "saveAsTemplate": "Save as Template",
@@ -733,18 +900,6 @@
     "globalLocation": "Global Workspace",
     "workspaceAgents": "Workspace Agents",
     "globalAgents": "Global Agents",
-    "templates": {
-      "blank": "Blank",
-      "blankDesc": "Create agent from scratch",
-      "general": "General",
-      "generalDesc": "Versatile prompt structure for various scenarios",
-      "task": "Task Execution",
-      "taskDesc": "For tasks with clear work steps",
-      "roleplay": "Roleplay",
-      "roleplayDesc": "For chat scenarios",
-      "coding": "Coding Assistant",
-      "codingDesc": "Optimized for code development"
-    },
     "copyName": "{{name}} (Copy)",
     "noGlobalWorkspace": "Global workspace not found",
     "noGlobalWorkspaceDesc": "Please create or initialize a global workspace first",
@@ -1031,8 +1186,18 @@
     "selectKeyToCopy": "Select an API key to copy the configuration with the real key.",
     "clickToCopy": "Click \"Copy\" to copy the configuration with the real API key.",
     "serverRunning": "Server is running",
-    "serverStopped": "Server is stopped",
-    "serverError": "Server error"
+    "serverStopped": "Server stopped",
+    "serverError": "Server error",
+    "serverStarted": "Server started successfully",
+    "serverStartFailed": "Failed to start server",
+    "serverStartedTitle": "Server Started",
+    "serverStartFailedTitle": "Server Start Failed",
+    "serverStopFailed": "Failed to stop server",
+    "serverCrashed": "Server process terminated",
+    "processTerminatedUnexpectedly": "Process terminated unexpectedly",
+    "commandExecuted": "Command executed",
+    "endpoint": "Endpoint",
+    "errorDetails": "Error details"
   },
   "pageDebug": {
     "title": "Page Debug",
@@ -1351,7 +1516,14 @@
     "chars": "chars",
     "filterInfo": "Info",
     "filterProgress": "Progress",
-    "filterStderr": "Stderr"
+    "filterStderr": "Stderr",
+    "taskStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
   },
   "updates": {
     "title": "Package Updates",
@@ -1528,10 +1700,78 @@
     "clearFilters": "Clear Filters",
     "filteredResults": "{{filtered}} of {{total}} servers"
   },
+  "workspaceSettings": {
+    "sections": {
+      "general": "General",
+      "executors": "Executors",
+      "agents": "Agents",
+      "mcp": "MCP Servers",
+      "skills": "Skills",
+      "about": "About"
+    },
+    "generalDescription": "Basic workspace settings and information",
+    "basicInfo": "Basic Information",
+    "name": "Name",
+    "nameDescription": "The display name of this workspace",
+    "type": "Type",
+    "typeDescription": "Whether this is a global or custom workspace",
+    "location": "Location",
+    "pathDescription": "The file system path to this workspace",
+    "openFolderFailed": "Failed to open folder",
+    "executorsDescription": "Code executors detected in this workspace",
+    "noExecutors": "No executors found in this workspace",
+    "agentsDescription": "AI agents configured in this workspace",
+    "noAgents": "No agents found in this workspace",
+    "mcpDescription": "Model Context Protocol servers configuration",
+    "mcpComingSoon": "MCP server configuration coming soon",
+    "skillsDescription": "Skills installed in this workspace",
+    "skillsComingSoon": "Skills configuration coming soon",
+    "aboutDescription": "Workspace information and metadata",
+    "timestamps": "Timestamps",
+    "created": "Created",
+    "lastAccessed": "Last Accessed",
+    "technical": "Technical",
+    "workspaceId": "Workspace ID",
+    "workspaceIdDescription": "Unique identifier for this workspace"
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
     "noWorkspaces": "No workspaces yet",
+    "addModal": {
+      "title": "Add Workspace",
+      "titleConfigure": "Configure Workspace",
+      "titleCreate": "Create Workspace",
+      "methodOpenExisting": "Open Existing Folder",
+      "methodOpenExistingDesc": "Select an existing project directory as workspace",
+      "methodCreateNew": "Create New Folder",
+      "methodCreateNewDesc": "Create a new project directory at specified location",
+      "fieldName": "Workspace Name",
+      "fieldNameHint": "Used as folder name, lowercase letters and hyphens recommended",
+      "fieldLocation": "Location",
+      "fieldLocationSelected": "Selected",
+      "fieldWillCreate": "Will create: {{path}}",
+      "optionInitGit": "Initialize Git repository",
+      "optionInitViben": "Initialize .viben configuration",
+      "vibenExists": "Existing .viben configuration detected",
+      "optionReinitialize": "Reinitialize (will overwrite existing config)",
+      "advancedOptions": "Advanced Options",
+      "fieldDeveloperName": "Developer Name",
+      "fieldProjectType": "Project Type",
+      "projectFullstack": "Fullstack",
+      "projectFrontend": "Frontend",
+      "projectBackend": "Backend",
+      "optionIncludeCursor": "Include Cursor configuration",
+      "successTitle": "Workspace Created Successfully!",
+      "successDesc": "{{name}} has been added to workspaces list",
+      "successGitInit": "Git repository initialized",
+      "successVibenInit": ".viben configuration created",
+      "btnCancel": "Cancel",
+      "btnBack": "Back",
+      "btnCreate": "Create",
+      "btnContinueAdd": "Continue Adding",
+      "btnGoToWorkspace": "Go to Workspace"
+    },
     "global": "Global",
     "custom": "Custom",
     "type": "Type",
@@ -1543,6 +1783,12 @@
     "backToDashboard": "Back to Dashboard",
     "removeWorkspace": "Remove Workspace",
     "removeWorkspaceConfirm": "Are you sure you want to remove \"{{name}}\"? This will not delete any files.",
+    "configure": "Configure",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete Workspace",
+    "deleteConfirmDescription": "Are you sure you want to remove \"{{name}}\" from your workspace list? This will not delete any files on disk.",
+    "deleteSuccess": "Workspace removed successfully",
+    "deleteFailed": "Failed to remove workspace",
     "detectedAgents": "Detected Agents",
     "noAgentsFound": "No Agents Found",
     "noAgentsFoundDesc": "No agent configuration folders (like .claude/, .codex/) were found in this workspace.",
@@ -1646,7 +1892,7 @@
       "review": "Review",
       "done": "Done"
     },
-    "taskDetail": "Task Detail",
+    "taskDetail": "Details",
     "taskName": "Task Name",
     "description": "Description",
     "priority": {
@@ -1704,6 +1950,8 @@
     "timestamps": "Timestamps",
     "activity": "Activity",
     "addDescription": "Add description...",
+    "taskPromptWithDescription": "Please help me complete the following task:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Please help me complete the following task: {{title}}",
     "viewMode": {
       "kanban": "Kanban",
       "list": "List"
@@ -1762,27 +2010,15 @@
     "chat": "Chat",
     "chatDescription": "Start a conversation with AI",
     "recentActivity": "Recent activity",
-    "kanban": "Task Board",
     "kanbanDescription": "Manage tasks with kanban board",
     "taskManagement": "Task management",
-    "scheduledTasks": "Scheduled Tasks",
-    "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "automation": "Automation",
     "agentsDetected": "agents",
     "browseFiles": "Browse files",
-    "kanbanStatus": {
-      "todo": "To Do",
-      "inProgress": "In Progress",
-      "review": "Review",
-      "done": "Done"
-    },
-    "addTask": "Add Task",
     "hideStats": "Hide Stats",
     "showStats": "Show Stats",
     "viewKanban": "Kanban View",
-    "viewList": "List View",
-    "taskDetail": "Details",
-    "description": "Description"
+    "viewList": "List View"
   },
   "sync": {
     "workspaceSync": "Workspace Sync",
@@ -1985,7 +2221,7 @@
     "archiveConversation": "Archive conversation",
     "searchInConversationDesc": "Search through messages in this conversation",
     "searchPlaceholder": "Type to search...",
-    "noSearchResults": "No results found",
+    "noSearchResults": "No matching sessions found",
     "you": "You",
     "viewHistoryDesc": "View full message history",
     "exportConversationDesc": "Export this conversation as a JSON file",
@@ -2017,7 +2253,6 @@
     "olderSessions": "Older",
     "totalSessions": "sessions",
     "searchSessions": "Search sessions...",
-    "noSearchResults": "No matching sessions found",
     "agentSessions": "{{agent}}'s Sessions",
     "showPanel": "Show Panel",
     "hidePanel": "Hide Panel",
@@ -2033,7 +2268,19 @@
       "help": "Help",
       "helpDesc": "Show available commands",
       "stop": "Stop",
-      "stopDesc": "Stop current execution"
+      "stopDesc": "Stop current execution",
+      "categories": {
+        "session": "Session",
+        "config": "Configuration",
+        "info": "Information",
+        "workspace": "Workspace",
+        "auth": "Authentication"
+      },
+      "sources": {
+        "builtin": "Built-in",
+        "workspace": "Workspace",
+        "skill": "Skill"
+      }
     },
     "emojiPicker": {
       "smileys": "Smileys",
@@ -2383,7 +2630,18 @@
     "tryAgain": "Please try again",
     "dismiss": "Dismiss",
     "viewDetails": "View Details",
-    "undo": "Undo"
+    "undo": "Undo",
+    "auth": {
+      "loginSuccess": "Login Successful",
+      "welcomeBack": "Welcome back, {{name}}!",
+      "loginFailed": "Login Failed",
+      "emailOrPasswordError": "Invalid email or password",
+      "oauthFailed": "OAuth callback failed",
+      "openingBrowser": "Opening browser...",
+      "completeGitHubAuth": "Please complete GitHub authorization in the browser",
+      "cannotOpenBrowser": "Cannot open browser",
+      "loggedOut": "Logged out"
+    }
   },
   "fileBrowser": {
     "openWithApps": {
@@ -2562,29 +2820,6 @@
     "previewNotAvailable": "Preview not available",
     "switchToCodeView": "Switch to Code view to see the content"
   },
-  "inspector": {
-    "taskStatus": {
-      "pending": "Pending",
-      "running": "Running",
-      "done": "Done",
-      "failed": "Failed",
-      "cancelled": "Cancelled"
-    },
-    "progress": "Progress",
-    "messageRole": {
-      "user": "User",
-      "system": "System"
-    },
-    "tokenTypes": {
-      "bearer": "Bearer Token",
-      "apiKey": "API Key"
-    },
-    "metadata": {
-      "protocol": "Protocol",
-      "vendor": "Vendor",
-      "homepage": "Homepage"
-    }
-  },
   "observability": {
     "title": "Observability",
     "chatMonitor": "Chat Monitor",
@@ -2641,6 +2876,13 @@
     "route": "Route",
     "filterByRoute": "Filter by Route",
     "allRoutes": "All Routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agent Execution)",
+      "agents": "/api/agents (Agent Management)",
+      "workspaces": "/api/workspaces (Workspaces)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Group Chats)"
+    },
     "viewDetails": "View Details",
     "toolInput": "Tool Input",
     "toolOutput": "Tool Output",

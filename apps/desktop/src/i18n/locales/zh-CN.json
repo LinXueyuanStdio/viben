@@ -5,6 +5,7 @@
     "save": "保存",
     "cancel": "取消",
     "delete": "删除",
+    "deleting": "删除中...",
     "edit": "编辑",
     "create": "创建",
     "update": "更新",
@@ -18,6 +19,9 @@
     "configure": "配置",
     "apply": "应用",
     "close": "关闭",
+    "details": "详情",
+    "pid": "进程ID",
+    "port": "端口",
     "clearSearch": "清除搜索",
     "builtIn": "内置",
     "calls": "{{count}} 次调用",
@@ -93,7 +97,9 @@
     "you": "你",
     "unknown": "未知",
     "openInExplorer": "在文件管理器中打开",
-    "learnMore": "了解更多"
+    "learnMore": "了解更多",
+    "noData": "无数据",
+    "id": "ID"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -118,7 +124,11 @@
     "setupRequired": "需要设置",
     "collapse": "收起侧边栏",
     "expand": "展开侧边栏",
-    "workspacePages": "工作空间"
+    "workspacePages": "工作空间",
+    "newTask": "新建任务",
+    "taskCreated": "任务创建成功",
+    "taskCreateFailed": "任务创建失败",
+    "noWorkspaceSelected": "请先选择一个工作空间"
   },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
@@ -181,10 +191,14 @@
     "commandNotFound": "未配置",
     "port": "端口",
     "host": "主机",
+    "hostDescription": "网关服务绑定的主机地址",
+    "portDescription": "网关服务监听的端口号（需要重启生效）",
+    "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
     "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
   },
   "channels": {
+    "telegramBot": "Telegram 机器人",
     "addChannel": "添加渠道",
     "addChannelDesc": "选择渠道类型并设置名称",
     "addChannelDescFull": "选择渠道类型并填写必要信息",
@@ -347,9 +361,11 @@
     "title": "设置",
     "sections": {
       "general": "通用",
+      "account": "账户",
       "appearance": "外观",
       "environment": "环境",
       "storage": "存储",
+      "developer": "开发者",
       "about": "关于",
       "preferences": "偏好",
       "languageAndTime": "语言与时间",
@@ -362,7 +378,75 @@
       "gateway": "网关",
       "channels": "消息渠道",
       "executors": "执行器",
-      "sandbox": "沙箱"
+      "sandbox": "沙箱",
+      "setup": "设置向导",
+      "terminalFonts": "终端字体"
+    },
+    "terminalFonts": {
+      "description": "自定义终端字体外观、光标行为和显示设置",
+      "fontConfig": {
+        "title": "字体配置",
+        "fontFamily": "字体系列",
+        "fontFamilyDescription": "终端文本的主要等宽字体",
+        "selectFont": "选择字体...",
+        "fontSize": "字体大小",
+        "fontSizeDescription": "基础字体大小（10-24 像素）",
+        "fontWeight": "字体粗细",
+        "fontWeightDescription": "字体粗细从 100（细）到 900（粗），步进 100",
+        "lineHeight": "行高",
+        "lineHeightDescription": "行高为字体大小的倍数（1.0-2.0）",
+        "letterSpacing": "字间距",
+        "letterSpacingDescription": "字符间的水平间距（-2 到 5 像素）"
+      },
+      "cursorConfig": {
+        "title": "光标配置",
+        "cursorStyle": "光标样式",
+        "cursorStyleDescription": "终端光标的视觉样式",
+        "cursorBlink": "光标闪烁",
+        "cursorBlinkDescription": "光标是否闪烁",
+        "styles": {
+          "block": "方块",
+          "underline": "下划线",
+          "bar": "竖线"
+        }
+      },
+      "preview": {
+        "title": "实时预览",
+        "description": "实时预览终端设置效果"
+      },
+      "presets": {
+        "title": "快速预设",
+        "description": "应用来自流行 IDE 和终端的预配置设置",
+        "vscode": "VS Code",
+        "intellij": "IntelliJ",
+        "macos": "macOS 终端",
+        "ubuntu": "Ubuntu 终端",
+        "reset": "恢复默认"
+      },
+      "export": "复制配置"
+    },
+    "account": {
+      "description": "管理你的账户和登录状态",
+      "actions": "账户操作",
+      "editProfile": "编辑个人资料",
+      "notLoggedIn": "尚未登录",
+      "loginBenefits": "登录后可同步设置并使用云端功能",
+      "oauth": {
+        "openBrowser": "打开浏览器",
+        "waitingAuth": "等待授权",
+        "completing": "完成登录",
+        "statusOpening": "正在打开浏览器...",
+        "statusWaiting": "请在浏览器中完成授权",
+        "statusCompleting": "授权成功，正在登录...",
+        "autoReturn": "完成后会自动返回应用",
+        "waitingResponse": "等待响应中",
+        "timeout": "授权超时",
+        "timeoutHint": "请重试或检查网络连接",
+        "error": "授权失败",
+        "errorHint": "请重试或联系客服",
+        "success": "登录成功！",
+        "retry": "重试"
+      }
     },
     "notifications": {
       "description": "配置通知的接收方式和时间",
@@ -396,6 +480,9 @@
       "dndHint": "通知将被静音但仍会记录"
     },
     "generalDescription": "通用应用设置",
+    "onboarding": "设置向导",
+    "onboardingDescription": "重新运行初始设置向导，配置 Python、AI 客户端和登录",
+    "openOnboarding": "打开设置向导",
     "appearanceDescription": "自定义 Viben 在设备上的外观。",
     "environmentDescription": "Python 和包配置",
     "storageDescription": "管理下载和缓存",
@@ -424,6 +511,47 @@
     "runToInstall": "运行此命令安装：",
     "orUsingUv": "或使用 uv：",
     "uvCommand": "uv tool install browse-mcp",
+    "cliTools": {
+      "title": "命令行工具",
+      "description": "配置命令行工具的可执行文件路径",
+      "coreTitle": "核心工具",
+      "coreDescription": "Python、Git 和 GitHub CLI",
+      "aiTitle": "AI 编程助手",
+      "aiDescription": "Claude、Codex、Aider 等 AI 工具",
+      "pythonPath": "Python 路径",
+      "pythonPathPlaceholder": "python3（默认）",
+      "gitPath": "Git 路径",
+      "gitPathPlaceholder": "git（默认）",
+      "ghPath": "GitHub CLI 路径",
+      "ghPathPlaceholder": "gh（默认）",
+      "claudePath": "Claude CLI 路径",
+      "claudePathPlaceholder": "claude（默认）",
+      "codexPath": "Codex CLI 路径",
+      "codexPathPlaceholder": "codex（默认）",
+      "aiderPath": "Aider 路径",
+      "aiderPathPlaceholder": "aider（默认）",
+      "goosePath": "Goose 路径",
+      "goosePathPlaceholder": "goose（默认）",
+      "clinePath": "Cline 路径",
+      "clinePathPlaceholder": "cline（默认）",
+      "continuePath": "Continue 路径",
+      "continuePathPlaceholder": "continue（默认）",
+      "cursorPath": "Cursor 路径",
+      "cursorPathPlaceholder": "cursor（默认）",
+      "version": "v{{version}}",
+      "notDetected": "未检测到",
+      "detectedPath": "自动检测",
+      "installHint": "安装命令：",
+      "sourceUserConfig": "用户配置",
+      "sourceHomebrew": "Homebrew",
+      "sourceNvm": "NVM",
+      "sourcePyenv": "pyenv",
+      "sourcePip": "pip",
+      "sourceNpm": "npm",
+      "sourceCargo": "cargo",
+      "sourceSystemPath": "系统路径",
+      "sourceFallback": "回退"
+    },
     "appearance": "外观",
     "theme": "主题",
     "useSystemSettings": "使用系统设置",
@@ -464,7 +592,34 @@
     "pressKeys": "按下快捷键...",
     "clearShortcut": "清除快捷键",
     "enterKey": "回车键",
-    "cmdEnter": "Cmd+回车"
+    "cmdEnter": "Cmd+回车",
+    "developerDescription": "开发者工具、调试设置和故障排除",
+    "developer": {
+      "devtools": "开发者工具",
+      "preferredIDE": "首选 IDE",
+      "preferredIDEDescription": "Viben 将在此编辑器中打开项目",
+      "preferredTerminal": "首选终端",
+      "preferredTerminalDescription": "Viben 将在此终端中打开会话",
+      "yoloMode": "YOLO 模式",
+      "yoloModeDescription": "使用 --dangerously-skip-permissions 标志启动执行器，绕过所有安全提示。请谨慎使用。",
+      "yoloModeWarning": "此模式会绕过权限系统。仅在完全信任正在执行的代码时启用。",
+      "debugLogs": "调试与日志",
+      "openLogsFolder": "打开日志文件夹",
+      "openConfigFolder": "打开配置文件夹",
+      "copyDebugInfo": "复制调试信息",
+      "loadDebugInfo": "加载调试信息",
+      "systemInfo": "系统信息",
+      "paths": "路径",
+      "noRecentErrors": "暂无错误",
+      "reportingIssues": "报告问题",
+      "reportingIssuesDescription": "报告 Bug 时，点击\"复制调试信息\"获取系统信息，帮助我们诊断问题。",
+      "os": "操作系统",
+      "osVersion": "系统版本",
+      "appVersion": "应用版本",
+      "arch": "架构",
+      "logs": "日志",
+      "config": "配置"
+    }
   },
   "sandbox": {
     "availableProviders": "可用提供者",
@@ -488,7 +643,9 @@
     "installProviders": "安装提供者",
     "installDescription": "安装额外的沙箱提供者以获得更好的隔离性",
     "allInstalled": "所有提供者已安装",
-    "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）"
+    "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）",
+    "codexCli": "Codex CLI",
+    "claudeSandboxRuntime": "Claude 沙箱运行时"
   },
   "about": {
     "title": "Viben",
@@ -1032,7 +1189,17 @@
     "clickToCopy": "点击\"复制\"以复制包含真实 API 密钥的配置。",
     "serverRunning": "服务器正在运行",
     "serverStopped": "服务器已停止",
-    "serverError": "服务器错误"
+    "serverError": "服务器错误",
+    "serverStarted": "服务器启动成功",
+    "serverStartFailed": "服务器启动失败",
+    "serverStartedTitle": "服务器已启动",
+    "serverStartFailedTitle": "服务器启动失败",
+    "serverStopFailed": "停止服务器失败",
+    "serverCrashed": "服务器进程已终止",
+    "processTerminatedUnexpectedly": "进程意外终止",
+    "commandExecuted": "执行的命令",
+    "endpoint": "端点地址",
+    "errorDetails": "错误详情"
   },
   "pageDebug": {
     "title": "页面调试",
@@ -1351,7 +1518,14 @@
     "chars": "字符",
     "filterInfo": "信息",
     "filterProgress": "进度",
-    "filterStderr": "错误输出"
+    "filterStderr": "错误输出",
+    "taskStatus": {
+      "pending": "待处理",
+      "running": "运行中",
+      "done": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    }
   },
   "updates": {
     "title": "包更新",
@@ -1528,10 +1702,78 @@
     "clearFilters": "清除筛选",
     "filteredResults": "{{total}} 个中的 {{filtered}} 个服务器"
   },
+  "workspaceSettings": {
+    "sections": {
+      "general": "通用",
+      "executors": "执行器",
+      "agents": "智能体",
+      "mcp": "MCP 服务",
+      "skills": "技能",
+      "about": "关于"
+    },
+    "generalDescription": "工作区基本设置和信息",
+    "basicInfo": "基本信息",
+    "name": "名称",
+    "nameDescription": "此工作区的显示名称",
+    "type": "类型",
+    "typeDescription": "全局工作区或自定义工作区",
+    "location": "位置",
+    "pathDescription": "此工作区在文件系统中的路径",
+    "openFolderFailed": "打开文件夹失败",
+    "executorsDescription": "此工作区中检测到的代码执行器",
+    "noExecutors": "此工作区中未找到执行器",
+    "agentsDescription": "此工作区中配置的 AI 智能体",
+    "noAgents": "此工作区中未找到智能体",
+    "mcpDescription": "模型上下文协议服务器配置",
+    "mcpComingSoon": "MCP 服务器配置即将推出",
+    "skillsDescription": "此工作区中安装的技能",
+    "skillsComingSoon": "技能配置即将推出",
+    "aboutDescription": "工作区信息和元数据",
+    "timestamps": "时间戳",
+    "created": "创建时间",
+    "lastAccessed": "最后访问",
+    "technical": "技术信息",
+    "workspaceId": "工作区 ID",
+    "workspaceIdDescription": "此工作区的唯一标识符"
+  },
   "workspace": {
     "workspaces": "工作区",
     "addWorkspace": "添加工作区",
     "noWorkspaces": "暂无工作区",
+    "addModal": {
+      "title": "添加工作区",
+      "titleConfigure": "配置工作区",
+      "titleCreate": "创建工作区",
+      "methodOpenExisting": "打开现有文件夹",
+      "methodOpenExistingDesc": "选择已有的项目目录作为工作空间",
+      "methodCreateNew": "创建新文件夹",
+      "methodCreateNewDesc": "在指定位置创建新的项目目录",
+      "fieldName": "工作区名称",
+      "fieldNameHint": "用于文件夹名称，建议小写字母和连字符",
+      "fieldLocation": "存储位置",
+      "fieldLocationSelected": "已选择",
+      "fieldWillCreate": "将创建: {{path}}",
+      "optionInitGit": "初始化 Git 仓库",
+      "optionInitViben": "初始化 .viben 配置",
+      "vibenExists": "检测到已有 .viben 配置",
+      "optionReinitialize": "重新初始化（将覆盖现有配置）",
+      "advancedOptions": "高级选项",
+      "fieldDeveloperName": "开发者名称",
+      "fieldProjectType": "项目类型",
+      "projectFullstack": "全栈",
+      "projectFrontend": "前端",
+      "projectBackend": "后端",
+      "optionIncludeCursor": "包含 Cursor 配置",
+      "successTitle": "工作区创建成功！",
+      "successDesc": "{{name}} 已添加到工作空间列表",
+      "successGitInit": "Git 仓库已初始化",
+      "successVibenInit": ".viben 配置已创建",
+      "btnCancel": "取消",
+      "btnBack": "上一步",
+      "btnCreate": "创建",
+      "btnContinueAdd": "继续添加",
+      "btnGoToWorkspace": "前往工作区"
+    },
     "global": "全局工作空间",
     "custom": "自定义",
     "type": "类型",
@@ -1543,6 +1785,12 @@
     "backToDashboard": "返回仪表盘",
     "removeWorkspace": "移除工作区",
     "removeWorkspaceConfirm": "确定要移除 \"{{name}}\" 吗？这不会删除任何文件。",
+    "configure": "配置",
+    "delete": "删除",
+    "deleteConfirmTitle": "删除工作区",
+    "deleteConfirmDescription": "确定要从工作区列表中移除 \"{{name}}\" 吗？这不会删除磁盘上的任何文件。",
+    "deleteSuccess": "工作区移除成功",
+    "deleteFailed": "移除工作区失败",
     "detectedAgents": "检测到的智能体",
     "noAgentsFound": "未找到智能体",
     "noAgentsFoundDesc": "此工作区中未找到智能体配置文件夹（如 .claude/、.codex/）。",
@@ -1704,6 +1952,8 @@
     "timestamps": "时间戳",
     "activity": "动态",
     "addDescription": "添加描述...",
+    "taskPromptWithDescription": "请帮我完成以下任务：\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "请帮我完成以下任务：{{title}}",
     "viewMode": {
       "kanban": "看板",
       "list": "列表"
@@ -2033,7 +2283,19 @@
       "help": "帮助",
       "helpDesc": "显示可用命令",
       "stop": "停止",
-      "stopDesc": "停止当前执行"
+      "stopDesc": "停止当前执行",
+      "categories": {
+        "session": "会话",
+        "config": "配置",
+        "info": "信息",
+        "workspace": "工作区",
+        "auth": "认证"
+      },
+      "sources": {
+        "builtin": "内置",
+        "workspace": "工作区",
+        "skill": "技能"
+      }
     },
     "emojiPicker": {
       "smileys": "表情",
@@ -2383,7 +2645,18 @@
     "tryAgain": "请重试",
     "dismiss": "关闭",
     "viewDetails": "查看详情",
-    "undo": "撤销"
+    "undo": "撤销",
+    "auth": {
+      "loginSuccess": "登录成功",
+      "welcomeBack": "欢迎回来，{{name}}！",
+      "loginFailed": "登录失败",
+      "emailOrPasswordError": "邮箱或密码错误",
+      "oauthFailed": "OAuth 回调处理失败",
+      "openingBrowser": "正在浏览器中打开",
+      "completeGitHubAuth": "请在浏览器中完成 GitHub 授权",
+      "cannotOpenBrowser": "无法打开浏览器",
+      "loggedOut": "已退出登录"
+    }
   },
   "fileBrowser": {
     "openWithApps": {
@@ -2562,29 +2835,6 @@
     "previewNotAvailable": "预览不可用",
     "switchToCodeView": "切换到代码视图查看内容"
   },
-  "inspector": {
-    "taskStatus": {
-      "pending": "待处理",
-      "running": "运行中",
-      "done": "已完成",
-      "failed": "失败",
-      "cancelled": "已取消"
-    },
-    "progress": "进度",
-    "messageRole": {
-      "user": "用户",
-      "system": "系统"
-    },
-    "tokenTypes": {
-      "bearer": "Bearer 令牌",
-      "apiKey": "API 密钥"
-    },
-    "metadata": {
-      "protocol": "协议",
-      "vendor": "供应商",
-      "homepage": "主页"
-    }
-  },
   "observability": {
     "title": "可观测性",
     "chatMonitor": "对话监控",
@@ -2641,6 +2891,13 @@
     "route": "路由",
     "filterByRoute": "按路由过滤",
     "allRoutes": "全部路由",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (智能体执行)",
+      "agents": "/api/agents (智能体管理)",
+      "workspaces": "/api/workspaces (工作区)",
+      "chat": "/api/chat (对话)",
+      "groupChats": "/api/group-chats (群聊)"
+    },
     "viewDetails": "查看详情",
     "toolInput": "工具输入",
     "toolOutput": "工具输出",

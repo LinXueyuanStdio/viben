@@ -1,6 +1,8 @@
 //! Gateway management commands
+//! 网关管理命令
 //!
-//! Commands for starting, stopping, and managing the viben-gateway process.
+//! Commands for starting, stopping, and managing the viben gateway process.
+//! 用于启动、停止和管理 viben 网关进程的命令。
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

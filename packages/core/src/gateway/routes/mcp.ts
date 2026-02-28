@@ -38,6 +38,24 @@ interface McpStatus {
   pid: number | null;
   transport: string | null;
   port: number | null;
+  /** Command that was executed */
+  command?: string;
+  /** Full command line arguments */
+  args?: string[];
+  /** Startup timestamp */
+  startedAt?: string;
+  /** Endpoint URL for connecting */
+  endpointUrl?: string;
+  /** Exit code if process terminated */
+  exitCode?: number | null;
+  /** Exit signal if process was killed */
+  exitSignal?: string | null;
+  /** Stderr output from the process */
+  stderr?: string;
+  /** Stdout output from the process */
+  stdout?: string;
+  /** Error message if startup failed */
+  error?: string;
 }
 
 interface PortStatus {
@@ -60,6 +78,9 @@ let browseMcpStatus: McpStatus = {
   transport: null,
   port: null,
 };
+// Buffer for collecting process output
+let browseMcpStdout = "";
+let browseMcpStderr = "";
 
 // MCP Proxy types and state
 interface McpProxyConfig {
@@ -410,13 +431,72 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
 
     try {
       // Start browse-mcp process
-      const args = transport === "sse"
-        ? ["-m", "browse_mcp", "--transport", "sse", "--port", String(port)]
-        : ["-m", "browse_mcp"];
+      // Both SSE and HTTP transports need port argument
+      // SSE uses /sse endpoint, HTTP uses /mcp endpoint
+      // Normalize transport: "http" -> "streamable-http" for MCP SDK compatibility
+      const normalizedTransport = transport === "http" ? "streamable-http" : transport;
+      const args = ["-m", "browse_mcp", "--transport", normalizedTransport, "--port", String(port)];
+
+      // Reset output buffers
+      browseMcpStdout = "";
+      browseMcpStderr = "";
 
       const child = spawn(python_path, args, {
         detached: true,
-        stdio: "ignore",
+        stdio: ["ignore", "pipe", "pipe"], // Capture stdout and stderr
+      });
+
+      // Collect stdout
+      if (child.stdout) {
+        child.stdout.on("data", (data: Buffer) => {
+          const text = data.toString();
+          browseMcpStdout += text;
+          // Keep only last 10KB
+          if (browseMcpStdout.length > 10240) {
+            browseMcpStdout = browseMcpStdout.slice(-10240);
+          }
+          console.log(`[browse-mcp stdout] ${text.trim()}`);
+        });
+      }
+
+      // Collect stderr
+      if (child.stderr) {
+        child.stderr.on("data", (data: Buffer) => {
+          const text = data.toString();
+          browseMcpStderr += text;
+          // Keep only last 10KB
+          if (browseMcpStderr.length > 10240) {
+            browseMcpStderr = browseMcpStderr.slice(-10240);
+          }
+          console.error(`[browse-mcp stderr] ${text.trim()}`);
+        });
+      }
+
+      // Handle process exit
+      child.on("exit", (code, signal) => {
+        console.log(`[browse-mcp] Process exited with code=${code}, signal=${signal}`);
+        browseMcpStatus = {
+          ...browseMcpStatus,
+          running: false,
+          exitCode: code,
+          exitSignal: signal ?? undefined,
+          stdout: browseMcpStdout,
+          stderr: browseMcpStderr,
+          error: code !== 0
+            ? `Process exited with code ${code}${browseMcpStderr ? `: ${browseMcpStderr.trim().slice(-500)}` : ""}`
+            : undefined,
+        };
+      });
+
+      // Handle process error
+      child.on("error", (err) => {
+        console.error(`[browse-mcp] Process error:`, err);
+        browseMcpStatus = {
+          ...browseMcpStatus,
+          running: false,
+          error: err.message,
+          stderr: browseMcpStderr,
+        };
       });
 
       child.unref();
@@ -425,12 +505,21 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
         throw new Error("Failed to start browse-mcp: no PID");
       }
 
+      // Build endpoint URL based on transport
+      const endpointUrl = transport === "sse"
+        ? `http://localhost:${port}/sse`
+        : `http://localhost:${port}/mcp`;
+
       browseMcpProcess = child;
       browseMcpStatus = {
         running: true,
         pid: child.pid,
         transport,
         port,
+        command: python_path,
+        args,
+        startedAt: new Date().toISOString(),
+        endpointUrl,
       };
 
       return browseMcpStatus;

@@ -1,44 +1,44 @@
 ---
 sidebar_position: 1
-title: "Plugin Overview"
-description: "Understanding the Viben plugin system and ContentSource API"
+title: "插件概述"
+description: "了解 Viben 插件系统和 ContentSource API"
 ---
 
-# Plugin Overview
+# 插件概述
 
-Viben uses a powerful plugin system that allows you to extend its capabilities beyond academic papers. This page explains how plugins work and what you can do with them.
+Viben 使用强大的插件系统，让你可以将其能力扩展到学术论文之外。本页解释插件的工作原理以及你可以用它们做什么。
 
-## What are Plugins?
+## 什么是插件？
 
-Plugins are Python packages that add new content sources to Viben. When you install a plugin, its sources are automatically discovered and become available through the same `browse_search`, `browse_download`, and `browse_read` tools.
+插件是为 Viben 添加新内容源的 Python 包。安装插件后，其数据源会被自动发现，并可通过相同的 `browse_search`、`browse_download` 和 `browse_read` 工具使用。
 
 ```
-browse-mcp (core)
+browse-mcp (核心)
     |
-    +-- Built-in sources (arxiv, pubmed, semantic...)
+    +-- 内置数据源 (arxiv, pubmed, semantic...)
     |
     +-- browse-mcp-plugin-social-media (github, twitter, zhihu...)
     |
     +-- browse-mcp-plugin-news (rss, hackernews...)
     |
-    +-- your-custom-plugin (your sources...)
+    +-- 你的自定义插件 (你的数据源...)
 ```
 
-## How Plugins Work
+## 插件工作原理
 
-### Stevedore Plugin Discovery
+### Stevedore 插件发现
 
-Viben uses [stevedore](https://docs.openstack.org/stevedore/) for plugin discovery. When the server starts:
+Viben 使用 [stevedore](https://docs.openstack.org/stevedore/) 进行插件发现。服务器启动时：
 
-1. Stevedore scans all installed packages for `browse_mcp.searchers` entry points
-2. Each registered entry point is loaded and instantiated
-3. The sources become available for searching, downloading, and reading
+1. Stevedore 扫描所有已安装包中的 `browse_mcp.searchers` 入口点
+2. 每个注册的入口点被加载和实例化
+3. 数据源变得可用于搜索、下载和阅读
 
-This means you do not need to modify any configuration files - just install the plugin and restart the server.
+这意味着你不需要修改任何配置文件 - 只需安装插件并重启服务器。
 
-### Entry Point Registration
+### 入口点注册
 
-Plugins register their sources in `pyproject.toml`:
+插件在 `pyproject.toml` 中注册其数据源：
 
 ```toml
 [tool.poetry.plugins."browse_mcp.searchers"]
@@ -46,7 +46,7 @@ github = "my_plugin.github:GithubSearcher"
 twitter = "my_plugin.twitter:TwitterSearcher"
 ```
 
-Or in `setup.py`:
+或在 `setup.py` 中：
 
 ```python
 entry_points={
@@ -57,13 +57,13 @@ entry_points={
 }
 ```
 
-## The ContentSource API
+## ContentSource API
 
-All plugins implement the `ContentSource[T]` interface, where `T` is the content type they return.
+所有插件都实现 `ContentSource[T]` 接口，其中 `T` 是它们返回的内容类型。
 
-### Generic Content Sources
+### 通用内容源
 
-For non-paper content, implement `ContentSource[T]`:
+对于非论文内容，实现 `ContentSource[T]`：
 
 ```python
 from dataclasses import dataclass
@@ -84,11 +84,11 @@ class SocialPost:
 
 class TwitterSearcher(ContentSource[SocialPost]):
     def search(self, query: str, **kwargs) -> List[SocialPost]:
-        # Search implementation
+        # 搜索实现
         pass
 
     def download(self, content_id: str, save_path: str) -> str:
-        # Download implementation
+        # 下载实现
         pass
 
     def read(
@@ -99,24 +99,24 @@ class TwitterSearcher(ContentSource[SocialPost]):
         start_page: Optional[int] = None,
         end_page: Optional[int] = None,
     ) -> str:
-        # Read implementation
+        # 阅读实现
         pass
 ```
 
-### Paper Sources
+### 论文数据源
 
-For academic paper sources, extend `PaperSource`:
+对于学术论文数据源，扩展 `PaperSource`：
 
 ```python
 from browse_mcp.types import PaperSource, Paper
 
 class MyPaperSource(PaperSource):
     def search(self, query: str, **kwargs) -> List[Paper]:
-        # Return list of Paper objects
+        # 返回 Paper 对象列表
         pass
 
     def download_pdf(self, paper_id: str, save_path: str) -> str:
-        # Download and return file path
+        # 下载并返回文件路径
         pass
 
     def read_paper(
@@ -127,66 +127,66 @@ class MyPaperSource(PaperSource):
         start_page: Optional[int] = None,
         end_page: Optional[int] = None,
     ) -> str:
-        # Extract and return text
+        # 提取并返回文本
         pass
 ```
 
-## Key Concepts
+## 关键概念
 
-### Content Types
+### 内容类型
 
-Each plugin defines its own content type with a `to_text()` method:
+每个插件定义自己的内容类型，带有 `to_text()` 方法：
 
-| Plugin | Content Type | Fields |
-|--------|--------------|--------|
-| Core | `Paper` | title, authors, abstract, doi, pdf_url... |
-| Social Media | `SocialPost` | title, content, author, platform, likes... |
-| Custom | Your type | Your fields... |
+| 插件 | 内容类型 | 字段 |
+|------|----------|------|
+| 核心 | `Paper` | title, authors, abstract, doi, pdf_url... |
+| 社交媒体 | `SocialPost` | title, content, author, platform, likes... |
+| 自定义 | 你的类型 | 你的字段... |
 
-### Unified Tools
+### 统一工具
 
-Regardless of content type, users interact through the same tools:
+无论内容类型如何，用户都通过相同的工具进行交互：
 
 ```python
-# Search any source
+# 搜索任何数据源
 browse_search([{"searcher": "github", "query": "machine learning"}])
 
-# Download any content
+# 下载任何内容
 browse_download(searcher="github", paper_id="owner/repo")
 
-# Read any content
+# 阅读任何内容
 browse_read(searcher="github", paper_id="owner/repo")
 ```
 
-### Source Naming
+### 数据源命名
 
-Sources use flat names like `arxiv`, `github`, `twitter`. The plugin system also supports hierarchical naming:
+数据源使用扁平名称如 `arxiv`、`github`、`twitter`。插件系统也支持层级命名：
 
-| Flat Name | Hierarchical Name |
-|-----------|-------------------|
+| 扁平名称 | 层级名称 |
+|----------|----------|
 | `arxiv` | `academic/arxiv` |
 | `github` | `social/github` |
 | `twitter` | `social/twitter` |
 
-Both formats work, but flat names are recommended for simplicity.
+两种格式都可用，但推荐使用扁平名称以简化使用。
 
-## Plugin Benefits
+## 插件优势
 
-### For Users
+### 对用户
 
-- **Easy installation** - Just `pip install` and restart
-- **Consistent interface** - Same tools for all content types
-- **Selective sources** - Enable/disable individual sources via environment variables
+- **轻松安装** - 只需 `pip install` 然后重启
+- **一致接口** - 所有内容类型使用相同的工具
+- **选择性数据源** - 通过环境变量启用/禁用单个数据源
 
-### For Developers
+### 对开发者
 
-- **Type-safe API** - Generic `ContentSource[T]` with type hints
-- **Auto-discovery** - No configuration files to edit
-- **Independent development** - Plugins can be developed and released separately
+- **类型安全 API** - 带类型提示的泛型 `ContentSource[T]`
+- **自动发现** - 无需编辑配置文件
+- **独立开发** - 插件可以独立开发和发布
 
-## Next Steps
+## 下一步
 
-- [Installing Plugins](./installing-plugins) - How to install and manage plugins
-- [Available Plugins](./available-plugins) - List of official and community plugins
-- [Social Media Plugin](./social-media-plugin) - Detailed guide for the social media plugin
-- [Plugin Configuration](./configuration) - Configure plugin-specific settings
+- [安装插件](./installing-plugins) - 如何安装和管理插件
+- [可用插件](./available-plugins) - 官方和社区插件列表
+- [社交媒体插件](./social-media-plugin) - 社交媒体插件详细指南
+- [插件配置](./configuration) - 配置插件特定设置

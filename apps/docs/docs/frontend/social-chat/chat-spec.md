@@ -1,3 +1,9 @@
+---
+sidebar_position: 3
+title: 聊天功能开发规范
+description: Desktop 聊天页面实现指南
+---
+
 # 聊天功能开发规范
 
 > 开发规范：Desktop 聊天页面实现指南

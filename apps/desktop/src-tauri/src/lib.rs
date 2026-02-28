@@ -210,16 +210,30 @@ pub fn run() {
             }
 
             // Register deep link handler for OAuth callback
-            // URL format: viben://oauth?code=xxx
+            // URL format: viben://oauth?session=<base64url-encoded-json>
             let app_handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 let urls = event.urls();
                 for url in urls {
                     if url.scheme() == "viben" && url.host_str() == Some("oauth") {
-                        // Extract code from query parameters
-                        if let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v.to_string()) {
-                            // Emit event to frontend with the OAuth code
-                            let _ = app_handle.emit("oauth-callback", code);
+                        // Check for error first
+                        if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
+                            // Emit error event to frontend
+                            let _ = app_handle.emit("oauth-error", error);
+
+                            // Focus main window
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            continue;
+                        }
+
+                        // Extract session from query parameters (base64url encoded JSON)
+                        if let Some(session_b64) = url.query_pairs().find(|(k, _)| k == "session").map(|(_, v)| v.to_string()) {
+                            // Emit event to frontend with the session data
+                            let _ = app_handle.emit("oauth-callback", session_b64);
 
                             // Focus main window
                             if let Some(window) = app_handle.get_webview_window("main") {

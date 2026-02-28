@@ -1086,8 +1086,8 @@ viben/
 - [vibe-kanban 源码](file:///Users/lxy/Documents/GitHub/others/vibe-kanban)
 - [vibe-kanban 架构文档](file:///Users/lxy/Documents/GitHub/others/vibe-kanban/ARCHITECTURE.md)
 - [dnd-kit 文档](https://docs.dndkit.com/)
-- [Viben Design System](../frontend/design-system.md)
-- [Component Guidelines](../frontend/components.md)
+- [Viben Design System](../../frontend/core/design-system.md)
+- [Component Guidelines](../../frontend/core/components.md)
 - [Workspace UI Spec](./workspace-ui.md)
 
 ---

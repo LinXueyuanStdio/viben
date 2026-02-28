@@ -139,7 +139,15 @@
     "system": "ระบบ",
     "language": "ภาษา",
     "storage": "พื้นที่เก็บข้อมูล",
-    "downloadPath": "พาธดาวน์โหลด"
+    "downloadPath": "พาธดาวน์โหลด",
+    "developer": {
+      "os": "ระบบปฏิบัติการ",
+      "osVersion": "เวอร์ชัน",
+      "appVersion": "เวอร์ชันแอป",
+      "arch": "สถาปัตยกรรม",
+      "logs": "บันทึก",
+      "config": "การตั้งค่า"
+    }
   },
   "about": {
     "title": "Viben",

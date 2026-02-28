@@ -1,3 +1,9 @@
+---
+sidebar_position: 4
+title: 联系人功能开发规范
+description: Desktop 联系人页面实现指南
+---
+
 # 联系人功能开发规范
 
 > 开发规范：Desktop 联系人页面实现指南

@@ -10,9 +10,9 @@ import type { McpServerInstance, McpServerStatusInfo } from "@/types";
 const STORE_SYNC_EVENT = "store-sync-update";
 
 /** Debounce time for mcpServers changes (more important, shorter delay) */
-const DEBOUNCE_SERVERS = 300;
+const DEBOUNCE_SERVERS = 500;
 /** Debounce time for mcpServerStatuses changes (less critical, longer delay) */
-const DEBOUNCE_STATUSES = 1000;
+const DEBOUNCE_STATUSES = 5000;
 
 interface StoreSyncPayload {
   /** Timestamp when the update was made */
@@ -84,7 +84,8 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
     }
 
     const gateway = getGatewayClient();
-    await gateway.writeMcpServersFile({ mcpServers: state as unknown as Record<string, unknown> });
+    // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
+    await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
     lastWrittenContent = content;
     return true;
   } catch (err) {

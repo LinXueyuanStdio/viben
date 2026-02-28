@@ -1,40 +1,40 @@
 ---
 sidebar_position: 2
-title: "Installing Plugins"
-description: "How to install, update, and manage Viben plugins"
+title: "安装插件"
+description: "如何安装、更新和管理 Viben 插件"
 ---
 
-# Installing Plugins
+# 安装插件
 
-This guide covers how to install, update, and manage Viben plugins.
+本指南介绍如何安装、更新和管理 Viben 插件。
 
-## Installation Methods
+## 安装方法
 
-### Using pip
+### 使用 pip
 
-The simplest way to install a plugin:
+安装插件最简单的方法：
 
 ```bash
 pip install browse-mcp-plugin-social-media
 ```
 
-### Using uv
+### 使用 uv
 
-If you use [uv](https://github.com/astral-sh/uv) for package management:
+如果你使用 [uv](https://github.com/astral-sh/uv) 进行包管理：
 
 ```bash
 uv pip install browse-mcp-plugin-social-media
 ```
 
-Or add it to your project:
+或添加到你的项目：
 
 ```bash
 uv add browse-mcp-plugin-social-media
 ```
 
-### From Source
+### 从源码安装
 
-For development or unreleased plugins:
+对于开发或未发布的插件：
 
 ```bash
 git clone https://github.com/LinXueyuanStdio/viben.git
@@ -42,15 +42,15 @@ cd viben/backend/plugins/browse-mcp-plugin-social-media
 pip install -e .
 ```
 
-## Verifying Installation
+## 验证安装
 
-After installing a plugin, verify it is loaded by checking the server logs:
+安装插件后，通过检查服务器日志验证是否已加载：
 
 ```bash
 browse-mcp --debug
 ```
 
-You should see output like:
+你应该看到类似输出：
 
 ```
 INFO     Loading searcher plugins from namespace: browse_mcp.searchers
@@ -60,25 +60,25 @@ DEBUG    Loaded searcher plugin: twitter (social/twitter)
 INFO     Successfully loaded 15 searcher plugins: arxiv, github, twitter...
 ```
 
-## Managing Multiple Plugins
+## 管理多个插件
 
-### Install Multiple Plugins
+### 安装多个插件
 
-You can install multiple plugins at once:
+你可以一次安装多个插件：
 
 ```bash
 pip install browse-mcp-plugin-social-media browse-mcp-plugin-news
 ```
 
-### List Installed Plugins
+### 列出已安装的插件
 
-To see all installed browse-mcp packages:
+查看所有已安装的 browse-mcp 包：
 
 ```bash
 pip list | grep browse-mcp
 ```
 
-Output:
+输出：
 
 ```
 browse-mcp                    0.3.0
@@ -86,50 +86,50 @@ browse-mcp-plugin-social-media 0.1.0
 browse-mcp-plugin-news        0.1.0
 ```
 
-### Update Plugins
+### 更新插件
 
-Update a specific plugin:
+更新特定插件：
 
 ```bash
 pip install --upgrade browse-mcp-plugin-social-media
 ```
 
-Update all browse-mcp packages:
+更新所有 browse-mcp 包：
 
 ```bash
 pip install --upgrade browse-mcp browse-mcp-plugin-social-media
 ```
 
-### Uninstall Plugins
+### 卸载插件
 
-Remove a plugin:
+移除插件：
 
 ```bash
 pip uninstall browse-mcp-plugin-social-media
 ```
 
-## Plugin Dependencies
+## 插件依赖
 
-### Automatic Dependencies
+### 自动依赖
 
-Plugins declare their dependencies in `pyproject.toml`. When you install a plugin, its dependencies are installed automatically.
+插件在 `pyproject.toml` 中声明它们的依赖。安装插件时，依赖会自动安装。
 
-### Core Dependency
+### 核心依赖
 
-All plugins depend on `browse-mcp` core:
+所有插件依赖 `browse-mcp` 核心：
 
 ```toml
 [tool.poetry.dependencies]
 browse-mcp = "*"
 ```
 
-If browse-mcp is not installed, installing a plugin will install it automatically.
+如果未安装 browse-mcp，安装插件时会自动安装。
 
-## Environment-Specific Installation
+## 特定环境安装
 
-### Claude Desktop Configuration
+### Claude Desktop 配置
 
-When using Claude Desktop, you can install plugins in the same Python environment:
+使用 Claude Desktop 时，你可以在同一 Python 环境中安装插件：
 
 ```json
 {
@@ -143,26 +143,26 @@ When using Claude Desktop, you can install plugins in the same Python environmen
 }
 ```
 
-Make sure plugins are installed in the Python environment that Claude Desktop uses.
+确保插件安装在 Claude Desktop 使用的 Python 环境中。
 
-### Virtual Environment
+### 虚拟环境
 
-If you use a virtual environment:
+如果你使用虚拟环境：
 
 ```bash
-# Create and activate venv
+# 创建并激活虚拟环境
 python -m venv browse-mcp-env
 source browse-mcp-env/bin/activate  # Windows: browse-mcp-env\Scripts\activate
 
-# Install core and plugins
+# 安装核心和插件
 pip install browse-mcp browse-mcp-plugin-social-media
 
-# Use the venv Python in your MCP client config
+# 在 MCP 客户端配置中使用虚拟环境的 Python
 ```
 
-### uv with Inline Dependencies
+### uv 内联依赖
 
-With uv, you can specify dependencies inline:
+使用 uv，你可以内联指定依赖：
 
 ```json
 {
@@ -178,64 +178,64 @@ With uv, you can specify dependencies inline:
 }
 ```
 
-## Troubleshooting
+## 故障排除
 
-### Plugin Not Loading
+### 插件未加载
 
-If a plugin is not loading:
+如果插件未加载：
 
-1. **Check installation**:
+1. **检查安装**：
    ```bash
    pip show browse-mcp-plugin-social-media
    ```
 
-2. **Check entry points**:
+2. **检查入口点**：
    ```bash
    python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"
    ```
 
-3. **Check for import errors**:
+3. **检查导入错误**：
    ```bash
    python -c "from social_media_searchers import GithubSearcher"
    ```
 
-4. **Enable debug logging**:
+4. **启用调试日志**：
    ```bash
    browse-mcp --debug
    ```
 
-### Version Conflicts
+### 版本冲突
 
-If you see version conflicts:
+如果看到版本冲突：
 
-1. **Check compatibility**:
+1. **检查兼容性**：
    ```bash
    pip check
    ```
 
-2. **Upgrade all packages**:
+2. **升级所有包**：
    ```bash
    pip install --upgrade browse-mcp browse-mcp-plugin-social-media
    ```
 
-3. **Create fresh environment**:
+3. **创建全新环境**：
    ```bash
    python -m venv fresh-env
    source fresh-env/bin/activate
    pip install browse-mcp browse-mcp-plugin-social-media
    ```
 
-### Missing Dependencies
+### 缺少依赖
 
-If a plugin has missing dependencies:
+如果插件有缺失的依赖：
 
 ```bash
-# Reinstall with dependencies
+# 强制重新安装及其依赖
 pip install --force-reinstall browse-mcp-plugin-social-media
 ```
 
-## Next Steps
+## 下一步
 
-- [Available Plugins](./available-plugins) - Browse official and community plugins
-- [Social Media Plugin](./social-media-plugin) - Detailed social media plugin guide
-- [Plugin Configuration](./configuration) - Configure plugin-specific settings
+- [可用插件](./available-plugins) - 浏览官方和社区插件
+- [社交媒体插件](./social-media-plugin) - 详细的社交媒体插件指南
+- [插件配置](./configuration) - 配置插件特定设置

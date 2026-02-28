@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const listDraftsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
-  packageType: z.enum(['mcp', 'skill']).optional(),
+  packageType: z.enum(['mcp', 'skill']).nullish().transform(v => v ?? undefined),
   includeExpired: z.coerce.boolean().default(false),
 });
 

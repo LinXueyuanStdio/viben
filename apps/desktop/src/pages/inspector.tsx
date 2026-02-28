@@ -15,7 +15,6 @@ import {
   AlertCircle,
   Loader2,
   Shield,
-  Download,
   ChevronDown,
   ChevronRight,
   ListTodo,
@@ -35,7 +34,11 @@ import {
   isBrowserCompatible,
   type McpServerConfig,
 } from "@/hooks/use-mcp-connection";
-import { useMcpProxy, buildProxyUrl, buildProxyHeaders } from "@/hooks/use-mcp-proxy";
+import {
+  useGatewayInspector,
+  buildGatewayInspectorUrl,
+  buildGatewayInspectorHeaders,
+} from "@/hooks/use-gateway-inspector";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
 import type { InspectorConnectionStatus } from "@/types";
@@ -54,18 +57,13 @@ export function InspectorPage() {
     clearInspectorNotifications,
   } = useAppStore();
 
-  // MCP Proxy hook
+  // Gateway Inspector hook (built-in proxy)
   const {
-    status: proxyStatus,
-    isLoading: proxyLoading,
-    error: proxyError,
-    isInstalled: proxyInstalled,
-    portConflict,
-    startProxy,
-    stopProxy,
-    installProxy,
-    killAndRestart,
-  } = useMcpProxy();
+    status: inspectorStatus,
+    isLoading: inspectorLoading,
+    error: inspectorError,
+    refreshStatus: refreshInspectorStatus,
+  } = useGatewayInspector();
 
   // Use proxy mode state
   const [useProxy, setUseProxy] = useState(true);
@@ -102,26 +100,39 @@ export function InspectorPage() {
     }
   }, [configJson]);
 
-  // Build effective config for connection (with proxy if enabled)
+  // Build effective config for connection (with Gateway Inspector proxy if enabled)
   const effectiveConfig = useMemo<McpServerConfig | null>(() => {
     if (!parsedConfig) return null;
 
     // If not using proxy, use original config
-    if (!useProxy || !proxyStatus?.running || !proxyStatus?.auth_token) {
+    if (!useProxy || !inspectorStatus?.available) {
       return parsedConfig;
     }
 
     // If using proxy, wrap the URL
     if ("url" in parsedConfig && parsedConfig.url) {
-      const proxyUrl = proxyStatus.url || "http://127.0.0.1:6277";
+      const proxyUrl = inspectorStatus.proxyUrl;
       const targetUrl = parsedConfig.url;
       const originalTransport = parsedConfig.transport || "streamable-http";
 
-      const effectiveUrl = buildProxyUrl(proxyUrl, targetUrl, originalTransport as "stdio" | "sse" | "streamable-http");
+      const effectiveUrl = buildGatewayInspectorUrl(
+        proxyUrl,
+        targetUrl,
+        originalTransport as "stdio" | "sse" | "streamable-http"
+      );
       const effectiveHeaders = {
         ...parsedConfig.headers,
-        ...buildProxyHeaders(proxyStatus.auth_token, parsedConfig.headers),
+        ...buildGatewayInspectorHeaders(inspectorStatus.authToken, parsedConfig.headers),
       };
+
+      console.log("[Inspector] effectiveConfig:", {
+        proxyUrl,
+        targetUrl,
+        originalTransport,
+        effectiveUrl,
+        effectiveHeaders,
+        authToken: inspectorStatus.authToken ? "present" : "missing",
+      });
 
       return {
         ...parsedConfig,
@@ -133,15 +144,15 @@ export function InspectorPage() {
     }
 
     return parsedConfig;
-  }, [parsedConfig, useProxy, proxyStatus]);
+  }, [parsedConfig, useProxy, inspectorStatus]);
 
   // Check if config can connect
   const canConnect = useMemo(() => {
     if (!parsedConfig || parseError) return false;
-    // With proxy, we can connect even without browser compatibility
-    if (useProxy && proxyStatus?.running) return true;
+    // With Gateway Inspector proxy, we can connect even without browser compatibility
+    if (useProxy && inspectorStatus?.available) return true;
     return isBrowserCompatible(parsedConfig);
-  }, [parsedConfig, parseError, useProxy, proxyStatus]);
+  }, [parsedConfig, parseError, useProxy, inspectorStatus]);
 
   // Copy state
   const [copied, setCopied] = useState(false);
@@ -168,26 +179,12 @@ export function InspectorPage() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [activeTab, setActiveTab] = useState("tools");
 
-  // Track if we've attempted to start proxy (to prevent infinite retries)
-  const proxyStartAttempted = useRef(false);
-
-  // Auto-start proxy when entering page if installed
+  // Auto-refresh Inspector status when proxy mode changes
   useEffect(() => {
-    // Only attempt once per page load, and skip if there's a port conflict
-    if (proxyInstalled && !proxyStatus?.running && useProxy && !proxyLoading && !proxyStartAttempted.current && !portConflict) {
-      proxyStartAttempted.current = true;
-      startProxy().catch(() => {
-        // Error is handled in the hook, just ignore here
-      });
+    if (useProxy) {
+      refreshInspectorStatus();
     }
-  }, [proxyInstalled, proxyStatus?.running, useProxy, proxyLoading, portConflict, startProxy]);
-
-  // Reset the start attempt flag when proxy is stopped manually
-  useEffect(() => {
-    if (!useProxy) {
-      proxyStartAttempted.current = false;
-    }
-  }, [useProxy]);
+  }, [useProxy, refreshInspectorStatus]);
 
   // Persist config to localStorage
   useEffect(() => {
@@ -403,102 +400,45 @@ export function InspectorPage() {
 
               {useProxy && (
                 <div className="space-y-2">
-                  {proxyInstalled === false && (
-                    <div className="flex items-center justify-between p-2 rounded bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400 text-xs">
-                      <span>{t("inspector.proxyNotInstalled", "Proxy not installed")}</span>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => installProxy()}
-                        disabled={proxyLoading}
-                        className="h-6 text-xs"
-                      >
-                        {proxyLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3 mr-1" />}
-                        {t("inspector.install", "Install")}
-                      </Button>
+                  {inspectorLoading && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>{t("inspector.checkingProxy", "Checking...")}</span>
                     </div>
                   )}
 
-                  {proxyInstalled && (
+                  {!inspectorLoading && inspectorStatus && (
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${proxyStatus?.running ? "bg-green-500" : "bg-gray-400"}`} />
+                        <div className={`w-2 h-2 rounded-full ${inspectorStatus.available ? "bg-green-500" : "bg-gray-400"}`} />
                         <span className="text-xs text-muted-foreground">
-                          {proxyStatus?.running
-                            ? `${t("inspector.proxyRunning", "Running")} (${proxyStatus.url})`
-                            : t("inspector.proxyStopped", "Stopped")}
+                          {inspectorStatus.available
+                            ? `${t("inspector.proxyBuiltIn", "Built-in")} (${inspectorStatus.sessions} ${t("inspector.sessions", "sessions")})`
+                            : t("inspector.proxyUnavailable", "Unavailable")}
                         </span>
                       </div>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => proxyStatus?.running ? stopProxy() : startProxy()}
-                        disabled={proxyLoading}
+                        onClick={() => refreshInspectorStatus()}
+                        disabled={inspectorLoading}
                         className="h-6 text-xs"
                       >
-                        {proxyLoading && <Loader2 className="h-3 w-3 animate-spin mr-1" />}
-                        {proxyStatus?.running ? t("inspector.stop", "Stop") : t("inspector.start", "Start")}
+                        <RotateCcw className="h-3 w-3" />
                       </Button>
                     </div>
                   )}
 
-                  {proxyError && !portConflict && (
-                    <div className="text-xs text-red-500 dark:text-red-400">{proxyError}</div>
-                  )}
-
-                  {/* Port conflict UI - Proxy already running */}
-                  {portConflict?.type === 'proxy_already_running' && (
-                    <div className="p-2 rounded bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                      <div className="text-xs text-blue-700 dark:text-blue-400 mb-2">
-                        {t("inspector.proxyAlreadyRunning", "browse-mcp-proxy is already running (PID: {{pid}}). Restart to manage it from this app.")
-                          .replace("{{pid}}", String(portConflict.process.pid))}
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => killAndRestart()}
-                        disabled={proxyLoading}
-                        className="h-6 text-xs w-full"
-                      >
-                        {proxyLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <RotateCcw className="h-3 w-3 mr-1" />
-                        )}
-                        {t("inspector.restartProxy", "Restart Proxy")}
-                      </Button>
+                  {!inspectorLoading && inspectorStatus?.available && (
+                    <div className="text-xs text-muted-foreground">
+                      {inspectorStatus.authDisabled
+                        ? t("inspector.authDisabled", "Auth: disabled")
+                        : t("inspector.authEnabled", "Auth: enabled")}
                     </div>
                   )}
 
-                  {/* Port conflict UI - Other process */}
-                  {portConflict?.type === 'other_process' && (
-                    <div className="p-2 rounded bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
-                      <div className="text-xs text-orange-700 dark:text-orange-400 mb-2">
-                        {portConflict.process.name
-                          ? t("inspector.portInUseByProcess", "Port {{port}} is in use by {{name}} (PID: {{pid}})")
-                              .replace("{{port}}", "6277")
-                              .replace("{{name}}", portConflict.process.name)
-                              .replace("{{pid}}", String(portConflict.process.pid))
-                          : t("inspector.portInUseByPid", "Port {{port}} is in use (PID: {{pid}})")
-                              .replace("{{port}}", "6277")
-                              .replace("{{pid}}", String(portConflict.process.pid))
-                        }
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => killAndRestart()}
-                        disabled={proxyLoading}
-                        className="h-6 text-xs w-full"
-                      >
-                        {proxyLoading ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                        )}
-                        {t("inspector.killAndRestart", "Kill Process & Restart")}
-                      </Button>
-                    </div>
+                  {inspectorError && (
+                    <div className="text-xs text-red-500 dark:text-red-400">{inspectorError}</div>
                   )}
                 </div>
               )}

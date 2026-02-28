@@ -57,8 +57,26 @@ interface AuthState {
   /**
    * Handle OAuth callback with authorization code
    * @param code - Authorization code from OAuth provider
+   * @deprecated Use setSessionFromOAuth instead - OAuth code is single-use
    */
   handleOAuthCallback: (code: string) => Promise<void>;
+
+  /**
+   * Set session directly from OAuth callback data
+   * @param data - Session data from OAuth callback
+   */
+  setSessionFromOAuth: (data: {
+    user: {
+      id: string;
+      email: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+    };
+    accessToken: string;
+    refreshToken: string | null;
+    expiresAt: number;
+  }) => Promise<void>;
 
   /**
    * Log out and clear session
@@ -133,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
             user: session,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -165,6 +184,52 @@ export const useAuthStore = create<AuthState>()(
             user: session,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
+          });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+          throw new Error(errorMessage);
+        }
+      },
+
+      setSessionFromOAuth: async (data) => {
+        set({ isLoading: true, error: null });
+        try {
+          const client = getApiClient();
+
+          // Normalize expiresAt to milliseconds
+          // If expiresAt is less than a reasonable timestamp in ms (year 2000 = 946684800000),
+          // it's likely in seconds and needs to be converted
+          let expiresAt = data.expiresAt;
+          if (expiresAt < 946684800000) {
+            // Convert seconds to milliseconds
+            expiresAt = expiresAt * 1000;
+          }
+
+          // Build session object
+          const session: UserSession = {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.username,
+            displayName: data.user.displayName,
+            avatarUrl: data.user.avatarUrl,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            expiresAt,
+          };
+
+          // Set token for future requests
+          client.setAccessToken(session.accessToken);
+
+          set({
+            user: session,
+            isAuthenticated: true,
+            isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -222,7 +287,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initializeAuth: async () => {
-        const { user } = get();
+        const { user, isInitialized } = get();
+
+        // Already initialized (e.g., just logged in), skip validation
+        if (isInitialized) {
+          return !!user?.accessToken;
+        }
 
         // No stored session
         if (!user?.accessToken) {

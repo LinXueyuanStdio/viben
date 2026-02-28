@@ -280,13 +280,13 @@ def discover_searchers():
 4. Update `provider.index.json`
 5. Install plugin: `cd backend/plugins/browse-mcp-plugin-{name} && poetry install`
 
-**See:** [Plugin Architecture Guide](./plugin-architecture.md) for detailed instructions.
+**See:** [Plugin Architecture Guide](../architecture/plugin-architecture.md) for detailed instructions.
 
 ---
 
 ## References
 
-- **Plugin Architecture:** [plugin-architecture.md](./plugin-architecture.md)
+- **Plugin Architecture:** [plugin-architecture.md](../architecture/plugin-architecture.md)
 - **Provider Registry:** `provider.index.json` (root directory)
 - **Base Searcher:** `backend/browse-mcp/browse_mcp/base.py`
 - **Plugin System:** `backend/browse-mcp/browse_mcp/plugin.py`

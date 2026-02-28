@@ -139,6 +139,36 @@ interface AppState {
   setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
   setShowHideWindowScope: (scope: "all" | "chatRelated") => void;
   resetShortcuts: () => void;
+
+  // Developer Tools
+  preferredIDE: string;
+  setPreferredIDE: (ide: string) => void;
+  preferredTerminal: string;
+  setPreferredTerminal: (terminal: string) => void;
+  dangerouslySkipPermissions: boolean;
+  setDangerouslySkipPermissions: (enabled: boolean) => void;
+
+  // CLI Tool Paths (custom user-configured paths)
+  pythonPath: string;
+  setPythonPath: (path: string) => void;
+  gitPath: string;
+  setGitPath: (path: string) => void;
+  ghPath: string;
+  setGhPath: (path: string) => void;
+  claudePath: string;
+  setClaudePath: (path: string) => void;
+  codexPath: string;
+  setCodexPath: (path: string) => void;
+  aiderPath: string;
+  setAiderPath: (path: string) => void;
+  goosePath: string;
+  setGoosePath: (path: string) => void;
+  clinePath: string;
+  setClinePath: (path: string) => void;
+  continuePath: string;
+  setContinuePath: (path: string) => void;
+  cursorPath: string;
+  setCursorPath: (path: string) => void;
 }
 
 // Generate unique ID
@@ -399,6 +429,36 @@ export const useAppStore = create<AppState>()(
           shortcuts: { ...DEFAULT_SHORTCUTS },
           showHideWindowScope: "all",
         }),
+
+      // Developer Tools
+      preferredIDE: "vscode",
+      setPreferredIDE: (ide) => set({ preferredIDE: ide }),
+      preferredTerminal: "system",
+      setPreferredTerminal: (terminal) => set({ preferredTerminal: terminal }),
+      dangerouslySkipPermissions: false,
+      setDangerouslySkipPermissions: (enabled) => set({ dangerouslySkipPermissions: enabled }),
+
+      // CLI Tool Paths
+      pythonPath: "",
+      setPythonPath: (path) => set({ pythonPath: path }),
+      gitPath: "",
+      setGitPath: (path) => set({ gitPath: path }),
+      ghPath: "",
+      setGhPath: (path) => set({ ghPath: path }),
+      claudePath: "",
+      setClaudePath: (path) => set({ claudePath: path }),
+      codexPath: "",
+      setCodexPath: (path) => set({ codexPath: path }),
+      aiderPath: "",
+      setAiderPath: (path) => set({ aiderPath: path }),
+      goosePath: "",
+      setGoosePath: (path) => set({ goosePath: path }),
+      clinePath: "",
+      setClinePath: (path) => set({ clinePath: path }),
+      continuePath: "",
+      setContinuePath: (path) => set({ continuePath: path }),
+      cursorPath: "",
+      setCursorPath: (path) => set({ cursorPath: path }),
     }),
     {
       name: "viben-storage",
@@ -426,6 +486,19 @@ export const useAppStore = create<AppState>()(
         onboardingCompleted: state.onboardingCompleted,
         shortcuts: state.shortcuts,
         showHideWindowScope: state.showHideWindowScope,
+        preferredIDE: state.preferredIDE,
+        preferredTerminal: state.preferredTerminal,
+        dangerouslySkipPermissions: state.dangerouslySkipPermissions,
+        pythonPath: state.pythonPath,
+        gitPath: state.gitPath,
+        ghPath: state.ghPath,
+        claudePath: state.claudePath,
+        codexPath: state.codexPath,
+        aiderPath: state.aiderPath,
+        goosePath: state.goosePath,
+        clinePath: state.clinePath,
+        continuePath: state.continuePath,
+        cursorPath: state.cursorPath,
       }),
     }
   )

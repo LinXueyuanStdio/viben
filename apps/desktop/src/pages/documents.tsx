@@ -6,7 +6,7 @@
 
 import { useTranslation } from "react-i18next";
 
-const DOCS_URL = "https://linxueyuan.online/viben/docs";
+const DOCS_URL = "https://linxueyuan.online/viben";
 
 export function DocumentsPage() {
   const { t } = useTranslation();

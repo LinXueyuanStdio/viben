@@ -1,8 +1,78 @@
 import { useCallback, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "@/hooks/use-toast";
+
+// Global OAuth listener state - prevents multiple listeners from being registered
+let oauthListenerInitialized = false;
+
+/**
+ * Decode base64url string to UTF-8 text
+ * Handles UTF-8 characters properly (unlike atob which assumes Latin-1)
+ */
+function decodeBase64Url(base64url: string): string {
+  // Convert base64url to standard base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Pad with '=' if needed
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+  // Decode base64 to binary string
+  const binary = atob(padded);
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  // Decode UTF-8 bytes to string
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/**
+ * Initialize OAuth listeners globally (called once on first useAuth mount)
+ * This ensures only one listener handles OAuth callbacks across all components
+ */
+function initializeOAuthListeners() {
+  if (oauthListenerInitialized) return;
+  oauthListenerInitialized = true;
+
+  // Register OAuth callback listener (lives for app lifetime)
+  listen<string>("oauth-callback", async (event) => {
+    const sessionBase64 = event.payload;
+    if (sessionBase64) {
+      try {
+        // Decode base64url to JSON (properly handles UTF-8)
+        const sessionJson = decodeBase64Url(sessionBase64);
+        const sessionData = JSON.parse(sessionJson);
+
+        // Set session directly from decoded data
+        await useAuthStore.getState().setSessionFromOAuth(sessionData);
+
+        // Show success toast
+        const { user } = useAuthStore.getState();
+        toast.success(i18n.t("toast.auth.loginSuccess"), {
+          description: i18n.t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
+        });
+      } catch (err) {
+        console.error("OAuth callback failed:", err);
+        toast.error(i18n.t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
+        });
+      }
+    }
+  });
+
+  // Register OAuth error listener (lives for app lifetime)
+  listen<string>("oauth-error", async (event) => {
+    const error = event.payload;
+    console.error("OAuth error:", error);
+    useAuthStore.getState().setLoading(false);
+    toast.error(i18n.t("toast.auth.loginFailed"), {
+      description: `OAuth: ${error}`,
+    });
+  });
+}
 
 /**
  * Hook for authentication with auto-refresh support
@@ -32,6 +102,7 @@ import { toast } from "@/hooks/use-toast";
  * ```
  */
 export function useAuth() {
+  const { t } = useTranslation();
   const store = useAuthStore();
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -91,36 +162,12 @@ export function useAuth() {
     };
   }, [store.user?.expiresAt, scheduleRefresh, clearRefreshTimeout]);
 
-  // Initialize auth state on mount
+  // Initialize auth state and OAuth listeners on mount
   useEffect(() => {
+    // Initialize OAuth listeners globally (only once across all components)
+    initializeOAuthListeners();
+    // Initialize auth state
     store.initializeAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Listen for OAuth callback from deep link (viben://oauth?code=xxx)
-  useEffect(() => {
-    const unlisten = listen<string>("oauth-callback", async (event) => {
-      const code = event.payload;
-      if (code) {
-        try {
-          await store.handleOAuthCallback(code);
-          // Show success toast
-          const { user } = useAuthStore.getState();
-          toast.success("登录成功", {
-            description: `欢迎回来，${user?.displayName || user?.username}！`,
-          });
-        } catch (err) {
-          console.error("OAuth callback failed:", err);
-          toast.error("登录失败", {
-            description: err instanceof Error ? err.message : "OAuth 回调处理失败",
-          });
-        }
-      }
-    });
-
-    return () => {
-      unlisten.then((fn) => fn());
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -132,19 +179,19 @@ export function useAuth() {
     try {
       const url = store.getGitHubOAuthUrl();
       await openUrl(url);
-      toast.info("正在浏览器中打开", {
-        description: "请在浏览器中完成 GitHub 授权",
+      toast.info(t("toast.auth.openingBrowser"), {
+        description: t("toast.auth.completeGitHubAuth"),
       });
       // Keep loading true - will be set to false by OAuth callback
     } catch (err) {
       store.setLoading(false);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      toast.error("无法打开浏览器", {
+      toast.error(t("toast.auth.cannotOpenBrowser"), {
         description: errorMessage,
       });
       throw err;
     }
-  }, [store]);
+  }, [store, t]);
 
   // Wrapped login with toast
   const login = useCallback(
@@ -152,23 +199,23 @@ export function useAuth() {
       try {
         await store.login(email, password);
         const { user } = useAuthStore.getState();
-        toast.success("登录成功", {
-          description: `欢迎回来，${user?.displayName || user?.username}！`,
+        toast.success(t("toast.auth.loginSuccess"), {
+          description: t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
         });
       } catch (err) {
-        toast.error("登录失败", {
-          description: err instanceof Error ? err.message : "邮箱或密码错误",
+        toast.error(t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : t("toast.auth.emailOrPasswordError"),
         });
         throw err;
       }
     },
-    [store]
+    [store, t]
   );
 
   // Wrapped logout with toast
   const logout = useCallback(async () => {
     await store.logout();
-    toast.info("已退出登录");
+    toast.info(i18n.t("toast.auth.loggedOut"));
   }, [store]);
 
   return {
