@@ -84,7 +84,8 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
     }
 
     const gateway = getGatewayClient();
-    await gateway.writeMcpServersFile({ mcpServers: state as unknown as Record<string, unknown> });
+    // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
+    await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
     lastWrittenContent = content;
     return true;
   } catch (err) {

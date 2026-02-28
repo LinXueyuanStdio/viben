@@ -83,16 +83,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('List MCP error:', error);
-
-    // Return more specific error messages for debugging
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
     return NextResponse.json(
-      {
-        error: 'Internal server error',
-        // Include error details for debugging (remove in production if sensitive)
-        debug: errorMessage,
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

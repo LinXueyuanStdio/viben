@@ -6373,9 +6373,12 @@ export interface CacheSettings {
 // Filesystem Types
 // ============================================================================
 
-/** MCP servers config */
+/** MCP servers config - file format for ~/.viben/mcp-servers.json */
 export interface McpServersConfig {
-  mcpServers: Record<string, unknown>;
+  mcpServers?: unknown[];
+  mcpServerStatuses?: Record<string, unknown>;
+  lastUpdated?: number;
+  [key: string]: unknown;
 }
 
 // ============================================================================
@@ -7146,6 +7149,14 @@ export interface McpStatus {
   pid: number | null;
   transport: string | null;
   port: number | null;
+  /** Command that was executed */
+  command?: string;
+  /** Full command line arguments */
+  args?: string[];
+  /** Startup timestamp */
+  startedAt?: string;
+  /** Endpoint URL for connecting */
+  endpointUrl?: string;
 }
 
 /** Configuration for starting browse-mcp server */
