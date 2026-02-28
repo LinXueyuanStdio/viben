@@ -109,8 +109,10 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
         "X-Custom-Auth-Header",
         "X-Custom-Auth-Headers",
         "Last-Event-Id",
+        // MCP SDK headers
+        "mcp-protocol-version",
       ],
-      exposedHeaders: ["MCP-Session-Id"],
+      exposedHeaders: ["MCP-Session-Id", "mcp-protocol-version"],
       credentials: true,
     });
   }

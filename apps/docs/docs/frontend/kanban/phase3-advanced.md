@@ -1,3 +1,9 @@
+---
+sidebar_position: 4
+title: Phase 3 - 高级功能
+description: Kanban 高级功能规格
+---
+
 # Kanban Phase 3 - 高级功能规格
 
 > 基于 vibe-kanban 的高级功能，适配 Viben Design System

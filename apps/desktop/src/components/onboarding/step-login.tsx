@@ -18,12 +18,8 @@ type OAuthStatus = "idle" | "waiting" | "timeout" | "success" | "error";
 
 const OAUTH_TIMEOUT_MS = 150000; // 2.5 minutes
 
-// OAuth flow steps for visual feedback
-const OAUTH_STEPS = [
-  { key: "browser", label: "打开浏览器" },
-  { key: "authorize", label: "等待授权" },
-  { key: "callback", label: "完成登录" },
-] as const;
+// OAuth flow steps for visual feedback - labels are i18n keys
+const OAUTH_STEP_KEYS = ["browser", "authorize", "callback"] as const;
 
 export function StepLogin({ onComplete, onBack }: StepLoginProps) {
   const { t } = useTranslation();
@@ -199,8 +195,8 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
                 {/* Progress steps */}
                 <div className="w-full max-w-xs">
                   <div className="flex items-center justify-between">
-                    {OAUTH_STEPS.map((step, index) => (
-                      <React.Fragment key={step.key}>
+                    {OAUTH_STEP_KEYS.map((stepKey, index) => (
+                      <React.Fragment key={stepKey}>
                         <div className="flex flex-col items-center">
                           <div
                             className={cn(
@@ -224,11 +220,11 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
                               index <= currentStep ? "text-foreground" : "text-muted-foreground"
                             )}
                           >
-                            {step.label}
+                            {t(`settings.account.oauth.${stepKey === "browser" ? "openBrowser" : stepKey === "authorize" ? "waitingAuth" : "completing"}`)}
                           </span>
                         </div>
 
-                        {index < OAUTH_STEPS.length - 1 && (
+                        {index < OAUTH_STEP_KEYS.length - 1 && (
                           <div
                             className={cn(
                               "h-0.5 flex-1 mx-2 transition-colors duration-300",
@@ -244,12 +240,12 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
                 {/* Status text */}
                 <div className="text-center">
                   <p className="font-medium">
-                    {currentStep === 0 && "正在打开浏览器..."}
-                    {currentStep === 1 && "请在浏览器中完成授权"}
-                    {currentStep === 2 && "授权成功，正在登录..."}
+                    {currentStep === 0 && t("settings.account.oauth.statusOpening")}
+                    {currentStep === 1 && t("settings.account.oauth.statusWaiting")}
+                    {currentStep === 2 && t("settings.account.oauth.statusCompleting")}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {currentStep === 1 && "完成后会自动返回应用"}
+                    {currentStep === 1 && t("settings.account.oauth.autoReturn")}
                   </p>
                 </div>
 
@@ -259,7 +255,7 @@ export function StepLogin({ onComplete, onBack }: StepLoginProps) {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
                   </span>
-                  <span className="text-xs text-muted-foreground">等待响应中</span>
+                  <span className="text-xs text-muted-foreground">{t("settings.account.oauth.waitingResponse")}</span>
                 </div>
 
                 {/* Dev mode: Manual OAuth code input */}

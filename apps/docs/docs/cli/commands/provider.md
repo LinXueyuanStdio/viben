@@ -1,66 +1,66 @@
 ---
 sidebar_position: 9
 title: "viben provider"
-description: "Manage API providers - OpenAI, Anthropic, Google, Azure, and more"
+description: "管理 API 提供商 - OpenAI、Anthropic、Google、Azure 等"
 ---
 
 # viben provider
 
-Manage API providers for AI models.
+管理 AI 模型的 API 提供商。
 
-## Usage
+## 用法
 
 ```bash
 viben provider <subcommand> [options]
 ```
 
-## Subcommands
+## 子命令
 
-| Subcommand | Description |
-|------------|-------------|
-| `list` | List all configured providers |
-| `create` | Create a new provider |
-| `remove` | Remove a provider |
-| `set-default` | Set the default provider |
-| `status` | Check provider connectivity |
+| 子命令 | 说明 |
+|--------|------|
+| `list` | 列出所有已配置的 providers |
+| `create` | 创建新 provider |
+| `remove` | 删除 provider |
+| `set-default` | 设置默认 provider |
+| `status` | 检查 provider 连通性 |
 
-## Provider Types
+## Provider 类型
 
-| Type | Description | Auth Methods |
-|------|-------------|--------------|
+| 类型 | 说明 | 认证方式 |
+|------|------|----------|
 | `openai` | OpenAI API | API Key |
 | `anthropic` | Anthropic API | API Key |
 | `google` | Google AI (Gemini) | API Key, OAuth |
 | `azure` | Azure OpenAI | API Key, Azure AD |
 | `openrouter` | OpenRouter | API Key |
-| `ollama` | Ollama (local) | None |
-| `custom` | Custom OpenAI-compatible | API Key |
+| `ollama` | Ollama（本地） | 无 |
+| `custom` | 自定义 OpenAI 兼容 | API Key |
 
-## Commands
+## 命令
 
-### List Providers
+### 列出 Providers
 
-List all configured providers:
+列出所有已配置的 providers：
 
 ```bash
 viben provider list
 viben provider list --json
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Providers:
-  anthropic-main*   anthropic   connected
-  openai-main       openai      connected
-  azure-gpt4        azure       connected
-  local-ollama      ollama      not running
-  custom-api        custom      connected
+  anthropic-main*   anthropic   ✓ connected
+  openai-main       openai      ✓ connected
+  azure-gpt4        azure       ✓ connected
+  local-ollama      ollama      ○ not running
+  custom-api        custom      ✓ connected
 
 * = default provider
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 
 ```json
 {
@@ -79,11 +79,6 @@ Providers:
         "status": "connected"
       },
       {
-        "name": "azure-gpt4",
-        "type": "azure",
-        "status": "connected"
-      },
-      {
         "name": "local-ollama",
         "type": "ollama",
         "status": "not_running"
@@ -93,129 +88,71 @@ Providers:
 }
 ```
 
-### Create Provider
+### 创建 Provider
 
-Create a new provider:
+创建新 provider：
 
 ```bash
-# Create with explicit name and type
+# 创建带显式名称和类型
 viben provider create -n my-anthropic -t anthropic --api-key sk-ant-xxx
 
-# Create with auto-generated name
+# 创建自动生成名称
 viben provider create -t openai --api-key sk-xxx
 
-# Create custom provider with base URL
+# 创建带 base URL 的自定义 provider
 viben provider create -t custom --api-key sk-xxx --base-url https://api.example.com/v1
 
-# Create from config file
+# 从配置文件创建
 viben provider create -n my-provider -t anthropic -c /path/to/config.yaml
 ```
 
-**Output:**
+**输出：**
 
 ```
 Created provider 'anthropic-main'
 ```
 
-**JSON output:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "name": "anthropic-main",
-    "type": "anthropic"
-  }
-}
-```
-
-### Remove Provider
-
-Remove a provider:
+### 删除 Provider
 
 ```bash
 viben provider remove -n anthropic-main
 ```
 
-**Output:**
-
-```
-Removed provider 'anthropic-main'
-```
-
-### Set Default Provider
-
-Set the default provider:
+### 设置默认 Provider
 
 ```bash
 viben provider set-default -n openai-main
 ```
 
-**Output:**
+### Provider 状态
 
-```
-Set 'openai-main' as default provider
-```
-
-### Provider Status
-
-Check provider connectivity:
+检查 provider 连通性：
 
 ```bash
-# Check all providers
+# 检查所有 providers
 viben provider status
 
-# Check specific provider
+# 检查特定 provider
 viben provider status -n anthropic-main
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Provider Status:
-  anthropic-main   anthropic   connected   latency: 120ms
-  openai-main      openai      connected   latency: 85ms
-  azure-gpt4       azure       connected   latency: 150ms
-  local-ollama     ollama      error       connection refused
-  custom-api       custom      connected   latency: 200ms
+  anthropic-main   anthropic   ✓ connected   latency: 120ms
+  openai-main      openai      ✓ connected   latency: 85ms
+  azure-gpt4       azure       ✓ connected   latency: 150ms
+  local-ollama     ollama      ✗ error       connection refused
+  custom-api       custom      ✓ connected   latency: 200ms
 ```
 
-**Output (JSON):**
+## 环境变量
 
-```json
-{
-  "success": true,
-  "data": {
-    "providers": [
-      {
-        "name": "anthropic-main",
-        "type": "anthropic",
-        "status": "connected",
-        "latency_ms": 120
-      },
-      {
-        "name": "openai-main",
-        "type": "openai",
-        "status": "connected",
-        "latency_ms": 85
-      },
-      {
-        "name": "local-ollama",
-        "type": "ollama",
-        "status": "error",
-        "error": "connection refused"
-      }
-    ]
-  }
-}
-```
+Providers 可以使用环境变量配置：
 
-## Environment Variables
-
-Providers can be configured using environment variables:
-
-| Provider | API Key | Base URL | Other |
-|----------|---------|----------|-------|
+| Provider | API Key | Base URL | 其他 |
+|----------|---------|----------|------|
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_BASE_URL` | - |
 | `openai` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | `OPENAI_ORG_ID` |
 | `azure` | `AZURE_OPENAI_API_KEY` | `AZURE_OPENAI_ENDPOINT` | `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT` |
@@ -224,28 +161,28 @@ Providers can be configured using environment variables:
 | `ollama` | - | `OLLAMA_HOST` | - |
 | `custom` | `OPENAI_API_KEY` | `OPENAI_BASE_URL` | - |
 
-### Priority
+### 优先级
 
-Provider configuration is resolved in this order:
+Provider 配置按以下顺序解析：
 
-1. Command line arguments (`--api-key`)
-2. Configuration file values
-3. Provider-specific environment variables (e.g., `ANTHROPIC_API_KEY`)
-4. Generic environment variables (e.g., `OPENAI_API_KEY` for custom type)
+1. 命令行参数 (`--api-key`)
+2. 配置文件中的值
+3. Provider 特定环境变量（如 `ANTHROPIC_API_KEY`）
+4. 通用环境变量（如 custom 类型使用 `OPENAI_API_KEY`）
 
-### Quick Setup
+### 快速配置
 
 ```bash
-# Set environment variables (recommended)
+# 设置环境变量（推荐）
 export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
 
-# Create providers (auto-use environment variables)
+# 创建 providers（自动使用环境变量）
 viben provider create -t anthropic
 viben provider create -t openai
 ```
 
-## Provider Configuration File
+## Provider 配置文件
 
 ```yaml
 # ~/.viben/providers.yaml
@@ -256,11 +193,11 @@ default: anthropic-main
 providers:
   anthropic-main:
     type: anthropic
-    # API key from ANTHROPIC_API_KEY environment variable
+    # API key 从 ANTHROPIC_API_KEY 环境变量获取
 
   openai-main:
     type: openai
-    # API key from OPENAI_API_KEY environment variable
+    # API key 从 OPENAI_API_KEY 环境变量获取
 
   azure-gpt4:
     type: azure
@@ -277,9 +214,9 @@ providers:
     OPENAI_BASE_URL: "https://api.example.com/v1"
 ```
 
-## Error Handling
+## 错误处理
 
-### Provider Not Found
+### Provider 未找到
 
 ```json
 {
@@ -291,7 +228,7 @@ providers:
 }
 ```
 
-### Invalid API Key
+### 无效的 API Key
 
 ```json
 {
@@ -303,7 +240,7 @@ providers:
 }
 ```
 
-### Connection Error
+### 连接错误
 
 ```json
 {
@@ -315,8 +252,8 @@ providers:
 }
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben model](./model) - Model management
-- [viben agent](./agent) - Agent management
-- [viben config](./config) - Configuration management
+- [viben model](./model) - 模型管理
+- [viben agent](./agent) - 智能体管理
+- [viben config](./config) - 配置管理

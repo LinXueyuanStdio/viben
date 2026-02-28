@@ -1,3 +1,9 @@
+---
+sidebar_position: 8
+title: Phase 7 - 布局修复
+description: Kanban 关键布局修复
+---
+
 # Kanban Phase 7: Critical Layout Fixes
 
 ## Issues from Screenshot

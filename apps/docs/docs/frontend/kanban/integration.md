@@ -1,3 +1,9 @@
+---
+sidebar_position: 2
+title: Kanban 集成规格
+description: 在工作空间中集成 vibe-kanban 任务看板功能
+---
+
 # Kanban Integration - Vibe-Kanban 集成规格
 
 > 在工作空间中集成 vibe-kanban 任务看板功能，提供项目级任务管理能力。
@@ -1083,12 +1089,10 @@ viben/
 
 ## 参考资源
 
-- [vibe-kanban 源码](file:///Users/lxy/Documents/GitHub/others/vibe-kanban)
-- [vibe-kanban 架构文档](file:///Users/lxy/Documents/GitHub/others/vibe-kanban/ARCHITECTURE.md)
 - [dnd-kit 文档](https://docs.dndkit.com/)
-- [Viben Design System](../frontend/design-system.md)
-- [Component Guidelines](../frontend/components.md)
-- [Workspace UI Spec](./workspace-ui.md)
+- [Viben Design System](../design-system.md)
+- [Component Guidelines](../components.md)
+- [聊天集成](../chat-integration.md)
 
 ---
 

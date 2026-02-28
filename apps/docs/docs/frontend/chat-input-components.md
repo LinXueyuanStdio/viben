@@ -1,3 +1,9 @@
+---
+sidebar_position: 6
+title: 聊天输入组件
+description: ChatInput 和 MessageList 统一组件规范
+---
+
 # 聊天输入组件规格
 
 本文档定义了 viben 应用中统一的聊天输入组件 `ChatInput` 和消息列表组件 `MessageList`。

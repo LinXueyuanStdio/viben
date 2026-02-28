@@ -139,7 +139,33 @@
     "system": "Sistema",
     "language": "Idioma",
     "storage": "Armazenamento",
-    "downloadPath": "Caminho de download"
+    "downloadPath": "Caminho de download",
+    "developer": {
+      "devtools": "Ferramentas de desenvolvedor",
+      "preferredIDE": "IDE preferido",
+      "preferredIDEDescription": "Viben abrirá projetos neste editor",
+      "preferredTerminal": "Terminal preferido",
+      "preferredTerminalDescription": "Viben abrirá sessões de terminal aqui",
+      "yoloMode": "Modo YOLO",
+      "yoloModeDescription": "Iniciar executores com --dangerously-skip-permissions, ignorando todos os prompts de segurança. Use com extrema cautela.",
+      "yoloModeWarning": "Este modo ignora o sistema de permissões. Habilite apenas se você confia totalmente no código sendo executado.",
+      "debugLogs": "Debug e logs",
+      "openLogsFolder": "Abrir pasta de logs",
+      "openConfigFolder": "Abrir pasta de configuração",
+      "copyDebugInfo": "Copiar info de debug",
+      "loadDebugInfo": "Carregar info de debug",
+      "systemInfo": "Informações do sistema",
+      "paths": "Caminhos",
+      "noRecentErrors": "Sem erros recentes",
+      "reportingIssues": "Reportar problemas",
+      "reportingIssuesDescription": "Ao reportar bugs, clique em \"Copiar info de debug\" para obter informações do sistema que nos ajudam a diagnosticar o problema.",
+      "os": "SO",
+      "osVersion": "Versão",
+      "appVersion": "Versão do app",
+      "arch": "Arquitetura",
+      "logs": "Logs",
+      "config": "Configuração"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +910,23 @@
     "noCommandsDesc": "Nenhum arquivo de comando encontrado na pasta .claude/commands/.",
     "selectCommand": "Selecione um comando para visualizar",
     "rootNamespace": "Raiz"
+  },
+  "snakeGame": {
+    "title": "Jogo da Cobra",
+    "score": "Pontuação:",
+    "length": "Comprimento:",
+    "speed": "Velocidade:",
+    "gameOver": "Fim de jogo!",
+    "finalScore": "Pontuação final: {{score}}",
+    "restart": "Reiniciar",
+    "pause": "Pausar",
+    "start": "Iniciar",
+    "reset": "Redefinir",
+    "instructions": "Como jogar",
+    "instruction1": "Use as setas ou botões para controlar a cobra",
+    "instruction2": "Coma os pontos turquesa para crescer e ganhar pontos",
+    "instruction3": "A velocidade aumenta a cada 5 pontos",
+    "instruction4": "O jogo termina se você bater na parede ou em si mesmo",
+    "instruction5": "Espaço para pausar/continuar, R para redefinir"
   }
 }

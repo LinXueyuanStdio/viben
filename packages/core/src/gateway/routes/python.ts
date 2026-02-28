@@ -1,15 +1,16 @@
 /**
- * Python detection routes and system info
+ * Python detection routes, CLI tools detection, and system info
  *
- * Provides Python interpreter detection, package checking capabilities,
- * and system information for onboarding and environment setup.
+ * Provides Python interpreter detection, CLI tools detection (git, gh, claude),
+ * package checking capabilities, and system information for onboarding and
+ * environment setup.
  */
 import type { FastifyInstance } from "fastify";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir, platform, arch, hostname, release, type } from "node:os";
 import { join } from "node:path";
-import { access, constants } from "node:fs/promises";
+import { access, constants, readdir } from "node:fs/promises";
 
 const execAsync = promisify(exec);
 
@@ -27,6 +28,26 @@ export interface PackageInfo {
   name: string;
   version: string | null;
   installed: boolean;
+}
+
+/**
+ * CLI tool detection result
+ */
+export interface CliToolInfo {
+  found: boolean;
+  path?: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "system-path" | "fallback";
+  message?: string;
+}
+
+/**
+ * All CLI tools detection result
+ */
+export interface CliToolsInfo {
+  git: CliToolInfo;
+  gh: CliToolInfo;
+  claude: CliToolInfo;
 }
 
 // ============================================================================
@@ -165,6 +186,274 @@ async function detectPythonInterpreters(): Promise<PythonInfo[]> {
   return pythons;
 }
 
+// ============================================================================
+// CLI Tools Detection
+// ============================================================================
+
+/**
+ * Get CLI tool candidates based on platform
+ */
+function getCliToolCandidates(tool: "git" | "gh" | "claude"): string[] {
+  const candidates: string[] = [];
+  const home = homedir();
+
+  if (process.platform === "darwin") {
+    // macOS: Homebrew paths (Apple Silicon and Intel)
+    const homebrewPaths = [
+      `/opt/homebrew/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+    ];
+    candidates.push(...homebrewPaths);
+
+    // Claude specific: NVM paths
+    if (tool === "claude") {
+      const nvmDir = join(home, ".nvm/versions/node");
+      candidates.push(nvmDir); // Will be handled specially
+    }
+
+    // Standard paths
+    candidates.push(
+      `/usr/bin/${tool}`,
+      join(home, ".local/bin", tool),
+      join(home, "bin", tool),
+    );
+  } else if (process.platform === "win32") {
+    // Windows paths
+    const localAppData = process.env.LOCALAPPDATA || join(home, "AppData/Local");
+    const programFiles = process.env.ProgramFiles || "C:\\Program Files";
+    const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+
+    if (tool === "git") {
+      candidates.push(
+        join(programFiles, "Git/cmd/git.exe"),
+        join(programFilesX86, "Git/cmd/git.exe"),
+        join(programFiles, "Git/bin/git.exe"),
+      );
+    } else if (tool === "gh") {
+      candidates.push(
+        join(programFiles, "GitHub CLI/gh.exe"),
+        join(programFilesX86, "GitHub CLI/gh.exe"),
+      );
+    } else if (tool === "claude") {
+      candidates.push(
+        join(localAppData, "Programs/claude/claude.exe"),
+        join(home, "AppData/Roaming/npm/claude.cmd"),
+        join(home, ".local/bin/claude.exe"),
+      );
+    }
+  } else {
+    // Linux paths
+    candidates.push(
+      `/usr/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+      join(home, ".local/bin", tool),
+      join(home, "bin", tool),
+    );
+  }
+
+  return candidates;
+}
+
+/**
+ * Detect a CLI tool's version by running --version
+ */
+async function detectCliToolVersion(
+  toolPath: string,
+  tool: "git" | "gh" | "claude",
+): Promise<{ version: string | null; valid: boolean }> {
+  try {
+    const { stdout, stderr } = await execAsync(`"${toolPath}" --version`, {
+      timeout: 5000,
+    });
+
+    const output = stdout.trim() || stderr.trim();
+    let version: string | null = null;
+
+    if (tool === "git") {
+      // git version 2.39.0
+      const match = output.match(/git version (\d+\.\d+\.\d+)/);
+      version = match ? match[1] : null;
+    } else if (tool === "gh") {
+      // gh version 2.40.0 (2023-12-05)
+      const match = output.match(/gh version (\d+\.\d+\.\d+)/);
+      version = match ? match[1] : null;
+    } else if (tool === "claude") {
+      // claude-code version 1.0.0 or similar
+      const match = output.match(/(\d+\.\d+\.\d+)/);
+      version = match ? match[1] : null;
+    }
+
+    return { version, valid: true };
+  } catch {
+    return { version: null, valid: false };
+  }
+}
+
+/**
+ * Determine the source of a detected tool path
+ */
+function getToolSource(toolPath: string): CliToolInfo["source"] {
+  if (toolPath.includes("/opt/homebrew/") || toolPath.includes("/usr/local/Cellar/")) {
+    return "homebrew";
+  }
+  if (toolPath.includes(".nvm/versions/node")) {
+    return "nvm";
+  }
+  if (toolPath.includes("/usr/bin/") || toolPath.includes("/usr/local/bin/")) {
+    return "system-path";
+  }
+  return "system-path";
+}
+
+/**
+ * Detect a single CLI tool
+ */
+async function detectCliTool(
+  tool: "git" | "gh" | "claude",
+  userConfigPath?: string,
+): Promise<CliToolInfo> {
+  const home = homedir();
+
+  // 1. Check user-configured path first
+  if (userConfigPath) {
+    const { version, valid } = await detectCliToolVersion(userConfigPath, tool);
+    if (valid) {
+      return {
+        found: true,
+        path: userConfigPath,
+        version: version || undefined,
+        source: "user-config",
+        message: `Using user-configured ${tool}`,
+      };
+    }
+  }
+
+  // 2. Check Homebrew paths (macOS)
+  if (process.platform === "darwin") {
+    const homebrewPaths = [
+      `/opt/homebrew/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+    ];
+
+    for (const toolPath of homebrewPaths) {
+      if (await isExecutable(toolPath)) {
+        const { version, valid } = await detectCliToolVersion(toolPath, tool);
+        if (valid) {
+          return {
+            found: true,
+            path: toolPath,
+            version: version || undefined,
+            source: "homebrew",
+            message: `Using Homebrew ${tool}`,
+          };
+        }
+      }
+    }
+  }
+
+  // 3. Try system PATH using 'which' (Unix) or 'where' (Windows)
+  try {
+    const whichCmd = process.platform === "win32" ? "where" : "which";
+    const { stdout } = await execAsync(`${whichCmd} ${tool}`, { timeout: 5000 });
+    const toolPath = stdout.trim().split("\n")[0]; // Take first result
+
+    if (toolPath) {
+      const { version, valid } = await detectCliToolVersion(toolPath, tool);
+      if (valid) {
+        return {
+          found: true,
+          path: toolPath,
+          version: version || undefined,
+          source: getToolSource(toolPath),
+          message: `Using system ${tool}`,
+        };
+      }
+    }
+  } catch {
+    // which/where failed, continue to other methods
+  }
+
+  // 4. Check NVM paths for Claude (Unix only)
+  if (tool === "claude" && process.platform !== "win32") {
+    const nvmVersionsDir = join(home, ".nvm/versions/node");
+    try {
+      const entries = await readdir(nvmVersionsDir, { withFileTypes: true });
+      // Sort by version (newest first)
+      const versionDirs = entries
+        .filter((e) => e.isDirectory() && /^v\d+\.\d+\.\d+$/.test(e.name))
+        .sort((a, b) => {
+          const vA = a.name.slice(1).split(".").map(Number);
+          const vB = b.name.slice(1).split(".").map(Number);
+          for (let i = 0; i < 3; i++) {
+            const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+            if (diff !== 0) return diff;
+          }
+          return 0;
+        });
+
+      for (const dir of versionDirs) {
+        const claudePath = join(nvmVersionsDir, dir.name, "bin/claude");
+        if (await isExecutable(claudePath)) {
+          const { version, valid } = await detectCliToolVersion(claudePath, tool);
+          if (valid) {
+            return {
+              found: true,
+              path: claudePath,
+              version: version || undefined,
+              source: "nvm",
+              message: `Using NVM Claude CLI`,
+            };
+          }
+        }
+      }
+    } catch {
+      // NVM directory not found or not readable
+    }
+  }
+
+  // 5. Check platform-specific standard locations
+  const candidates = getCliToolCandidates(tool);
+  for (const toolPath of candidates) {
+    if (toolPath.includes(".nvm")) continue; // Already handled above
+    if (await isExecutable(toolPath)) {
+      const { version, valid } = await detectCliToolVersion(toolPath, tool);
+      if (valid) {
+        return {
+          found: true,
+          path: toolPath,
+          version: version || undefined,
+          source: getToolSource(toolPath),
+          message: `Using ${tool}`,
+        };
+      }
+    }
+  }
+
+  // 6. Not found
+  return {
+    found: false,
+    source: "fallback",
+    message: `${tool} not found`,
+  };
+}
+
+/**
+ * Detect all CLI tools (git, gh, claude)
+ */
+async function detectAllCliTools(config?: {
+  gitPath?: string;
+  ghPath?: string;
+  claudePath?: string;
+}): Promise<CliToolsInfo> {
+  const [git, gh, claude] = await Promise.all([
+    detectCliTool("git", config?.gitPath),
+    detectCliTool("gh", config?.ghPath),
+    detectCliTool("claude", config?.claudePath),
+  ]);
+
+  return { git, gh, claude };
+}
+
 /**
  * Check if a package is installed in a Python environment
  */
@@ -300,6 +589,45 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       command: `${python_path} -m pip install ${package_name}`,
       uv_command: `uv tool install ${package_name}`,
     };
+  });
+
+  // ==========================================================================
+  // CLI Tools Detection Routes
+  // ==========================================================================
+
+  /**
+   * GET /api/cli-tools/detect
+   * Detect all CLI tools (git, gh, claude)
+   */
+  fastify.get<{
+    Querystring: {
+      git_path?: string;
+      gh_path?: string;
+      claude_path?: string;
+    };
+  }>("/api/cli-tools/detect", async (request) => {
+    const { git_path, gh_path, claude_path } = request.query;
+    const tools = await detectAllCliTools({
+      gitPath: git_path,
+      ghPath: gh_path,
+      claudePath: claude_path,
+    });
+    return tools;
+  });
+
+  /**
+   * POST /api/cli-tools/check
+   * Check a specific CLI tool path
+   */
+  fastify.post<{
+    Body: {
+      tool: "git" | "gh" | "claude";
+      path: string;
+    };
+  }>("/api/cli-tools/check", async (request) => {
+    const { tool, path } = request.body;
+    const result = await detectCliTool(tool, path);
+    return result;
   });
 
   // ==========================================================================

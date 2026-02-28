@@ -16,7 +16,6 @@ import {
   XCircle,
   Home,
   Book,
-  Bug,
   User,
   Keyboard,
   X,
@@ -34,6 +33,11 @@ import {
   Zap,
   Box,
   Sparkles,
+  Bug,
+  Code,
+  FileText,
+  AlertTriangle,
+  Type,
 } from "lucide-react";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
@@ -64,6 +68,7 @@ import { SettingsGatewayPage } from "./settings-gateway";
 import { SettingsChannelsPage } from "./settings-channels";
 import { SettingsExecutorsPage } from "./settings-executors";
 import { SettingsSandboxPage } from "./settings-sandbox";
+import { TerminalFontsSection } from "@/components/settings/terminal-fonts-section";
 import { useNotificationStore } from "@/stores/notification-store";
 import { useSystemNotification } from "@/hooks/use-system-notification";
 import type { NotificationCategory, NotificationMethod } from "@/types/notification";
@@ -74,7 +79,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut } from "lucide-react";
 
 // Settings section type
-type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "sandbox" | "environment" | "storage" | "about";
+type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "sandbox" | "environment" | "terminalFonts" | "storage" | "developer" | "about";
 
 // Section configuration
 interface SectionConfig {
@@ -95,7 +100,9 @@ const SECTIONS: SectionConfig[] = [
   { id: "agents", labelKey: "settings.sections.agents", icon: Bot },
   { id: "sandbox", labelKey: "settings.sections.sandbox", icon: Box },
   { id: "environment", labelKey: "settings.sections.environment", icon: Terminal },
+  { id: "terminalFonts", labelKey: "settings.sections.terminalFonts", icon: Type },
   { id: "storage", labelKey: "settings.sections.storage", icon: HardDrive },
+  { id: "developer", labelKey: "settings.sections.developer", icon: Bug },
   { id: "about", labelKey: "settings.sections.about", icon: Info },
 ];
 
@@ -164,7 +171,7 @@ function SectionHeader({ title }: SectionHeaderProps) {
 }
 
 // Valid sections for nested routes
-const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "sandbox", "environment", "storage", "about"];
+const VALID_SECTIONS: SettingsSection[] = ["general", "account", "shortcuts", "notifications", "gateway", "channels", "executors", "model", "agents", "sandbox", "environment", "terminalFonts", "storage", "developer", "about"];
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -279,8 +286,12 @@ export function SettingsPage() {
         return <SettingsSandboxPage key="sandbox" />;
       case "environment":
         return <EnvironmentSection key="environment" />;
+      case "terminalFonts":
+        return <TerminalFontsSection key="terminalFonts" />;
       case "storage":
         return <StorageSection key="storage" />;
+      case "developer":
+        return <DeveloperSection key="developer" />;
       case "about":
         return <AboutSection key="about" />;
       default:
@@ -1807,6 +1818,360 @@ function StorageSection() {
       <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
         <h3 className="text-sm font-semibold mb-4">{t("settings.offlineCache")}</h3>
         <CacheManager />
+      </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * Developer Section
+ * -------------------------------------------------------------------------- */
+
+// IDE display names
+const IDE_NAMES: Record<string, string> = {
+  vscode: "Visual Studio Code",
+  cursor: "Cursor",
+  zed: "Zed",
+  windsurf: "Windsurf",
+  sublime: "Sublime Text",
+  vim: "Vim",
+  neovim: "Neovim",
+  emacs: "Emacs",
+  intellij: "IntelliJ IDEA",
+  webstorm: "WebStorm",
+  pycharm: "PyCharm",
+  xcode: "Xcode",
+  custom: "Custom...",
+};
+
+// Terminal display names
+const TERMINAL_NAMES: Record<string, string> = {
+  system: "System Terminal",
+  iterm2: "iTerm2",
+  warp: "Warp",
+  alacritty: "Alacritty",
+  kitty: "Kitty",
+  hyper: "Hyper",
+  ghostty: "Ghostty",
+  wezterm: "WezTerm",
+  terminal: "Terminal.app",
+  custom: "Custom...",
+};
+
+interface DebugInfo {
+  os: string;
+  osVersion: string;
+  arch: string;
+  appVersion: string;
+  gatewayVersion?: string;
+  pythonVersion?: string;
+  logsPath: string;
+  configPath: string;
+}
+
+function DeveloperSection() {
+  const { t } = useTranslation();
+  const {
+    preferredIDE,
+    setPreferredIDE,
+    preferredTerminal,
+    setPreferredTerminal,
+    dangerouslySkipPermissions,
+    setDangerouslySkipPermissions,
+  } = useAppStore();
+
+  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+  const [isLoadingDebug, setIsLoadingDebug] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Load debug info
+  const loadDebugInfo = async () => {
+    setIsLoadingDebug(true);
+    try {
+      const osType = platform();
+      const info: DebugInfo = {
+        os: osType,
+        osVersion: "Unknown",
+        arch: "Unknown",
+        appVersion: "0.1.0",
+        logsPath: "~/.viben/logs",
+        configPath: "~/.viben",
+      };
+      setDebugInfo(info);
+    } catch (err) {
+      console.error("Failed to load debug info:", err);
+    } finally {
+      setIsLoadingDebug(false);
+    }
+  };
+
+  // Copy debug info to clipboard
+  const handleCopyDebugInfo = async () => {
+    if (!debugInfo) {
+      await loadDebugInfo();
+    }
+    const info = debugInfo || {
+      os: platform(),
+      osVersion: "Unknown",
+      arch: "Unknown",
+      appVersion: "0.1.0",
+      logsPath: "~/.viben/logs",
+      configPath: "~/.viben",
+    };
+
+    const debugText = `
+Viben Debug Info
+================
+OS: ${info.os}
+OS Version: ${info.osVersion}
+Architecture: ${info.arch}
+App Version: ${info.appVersion}
+Logs Path: ${info.logsPath}
+Config Path: ${info.configPath}
+    `.trim();
+
+    try {
+      await navigator.clipboard.writeText(debugText);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch {
+      console.error("Failed to copy debug info");
+    }
+  };
+
+  // Open logs folder
+  const handleOpenLogsFolder = async () => {
+    try {
+      const homeDir = await import("@tauri-apps/api/path").then((m) => m.homeDir());
+      const logsPath = `${homeDir}.viben/logs`;
+      await openUrl(logsPath);
+    } catch (error) {
+      console.error("Failed to open logs folder:", error);
+    }
+  };
+
+  // Open config folder
+  const handleOpenConfigFolder = async () => {
+    try {
+      const homeDir = await import("@tauri-apps/api/path").then((m) => m.homeDir());
+      const configPath = `${homeDir}.viben`;
+      await openUrl(configPath);
+    } catch (error) {
+      console.error("Failed to open config folder:", error);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold font-serif mb-1">
+          {t("settings.sections.developer")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("settings.developerDescription")}
+        </p>
+      </div>
+
+      {/* IDE Selection */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.developer.devtools")} />
+
+        <SettingsItem
+          title={t("settings.developer.preferredIDE")}
+          description={t("settings.developer.preferredIDEDescription")}
+        >
+          <Select value={preferredIDE || "vscode"} onValueChange={setPreferredIDE}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue>
+                {IDE_NAMES[preferredIDE || "vscode"] || preferredIDE}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(IDE_NAMES).map(([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  <div className="flex items-center gap-2">
+                    <Code className="h-3 w-3" />
+                    <span>{name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsItem>
+
+        <SettingsItem
+          title={t("settings.developer.preferredTerminal")}
+          description={t("settings.developer.preferredTerminalDescription")}
+        >
+          <Select value={preferredTerminal || "system"} onValueChange={setPreferredTerminal}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue>
+                {TERMINAL_NAMES[preferredTerminal || "system"] || preferredTerminal}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(TERMINAL_NAMES).map(([id, name]) => (
+                <SelectItem key={id} value={id}>
+                  <div className="flex items-center gap-2">
+                    <Terminal className="h-3 w-3" />
+                    <span>{name}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingsItem>
+      </div>
+
+      {/* YOLO Mode */}
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/20">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-amber-200">
+                {t("settings.developer.yoloMode")}
+              </h3>
+              <p className="text-xs text-amber-400/80">
+                {t("settings.developer.yoloModeDescription")}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={dangerouslySkipPermissions ?? false}
+            onCheckedChange={setDangerouslySkipPermissions}
+          />
+        </div>
+        {dangerouslySkipPermissions && (
+          <p className="text-xs text-amber-500 font-medium flex items-center gap-1 mt-3">
+            <AlertTriangle className="h-3 w-3" />
+            {t("settings.developer.yoloModeWarning")}
+          </p>
+        )}
+      </div>
+
+      {/* Debug & Logs */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.developer.debugLogs")} />
+
+        {/* Quick Actions */}
+        <div className="flex flex-wrap gap-3 py-4">
+          <Button
+            variant="outline"
+            onClick={handleOpenLogsFolder}
+            className="flex items-center gap-2"
+          >
+            <FolderOpen className="h-4 w-4" />
+            {t("settings.developer.openLogsFolder")}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleOpenConfigFolder}
+            className="flex items-center gap-2"
+          >
+            <FolderOpen className="h-4 w-4" />
+            {t("settings.developer.openConfigFolder")}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleCopyDebugInfo}
+            className="flex items-center gap-2"
+            disabled={copySuccess}
+          >
+            {copySuccess ? (
+              <>
+                <Check className="h-4 w-4 text-green-500" />
+                {t("common.copied")}
+              </>
+            ) : (
+              <>
+                <Copy className="h-4 w-4" />
+                {t("settings.developer.copyDebugInfo")}
+              </>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={loadDebugInfo}
+            disabled={isLoadingDebug}
+            className="flex items-center gap-2"
+          >
+            {isLoadingDebug ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {t("settings.developer.loadDebugInfo")}
+          </Button>
+        </div>
+
+        {/* Debug Info Display */}
+        {debugInfo && (
+          <div className="space-y-4 pt-4 border-t">
+            {/* System Information */}
+            <div className="rounded-lg border border-border p-4">
+              <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
+                <Bug className="h-4 w-4" />
+                {t("settings.developer.systemInfo")}
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("settings.developer.os")}:</span>
+                  <span className="font-mono">{debugInfo.os}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("settings.developer.osVersion")}:</span>
+                  <span className="font-mono">{debugInfo.osVersion}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("settings.developer.appVersion")}:</span>
+                  <span className="font-mono">{debugInfo.appVersion}</span>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">{t("settings.developer.arch")}:</span>
+                  <span className="font-mono">{debugInfo.arch}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Paths */}
+            <div className="rounded-lg border border-border p-4">
+              <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {t("settings.developer.paths")}
+              </h4>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">{t("settings.developer.logs")}:</span>
+                  <code className="bg-muted/50 px-2 py-0.5 rounded">{debugInfo.logsPath}</code>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">{t("settings.developer.config")}:</span>
+                  <code className="bg-muted/50 px-2 py-0.5 rounded">{debugInfo.configPath}</code>
+                </div>
+              </div>
+            </div>
+
+            {/* No Recent Errors */}
+            <div className="rounded-lg border border-border p-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                {t("settings.developer.noRecentErrors")}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Help Text */}
+        <div className="text-xs text-muted-foreground bg-muted/30 p-3 rounded-md mt-4">
+          <p className="font-medium mb-1">{t("settings.developer.reportingIssues")}</p>
+          <p>{t("settings.developer.reportingIssuesDescription")}</p>
+        </div>
       </div>
     </div>
   );

@@ -57,7 +57,6 @@ import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
-import { UserMenu } from "@/components/auth/user-menu";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
@@ -512,12 +511,6 @@ export function Sidebar() {
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
             />
-            {/* User Menu (when authenticated) */}
-            {isAuthenticated && (
-              <div className="grid place-items-center w-full">
-                <UserMenu collapsed={collapsed} />
-              </div>
-            )}
             {/* New Task Button */}
             <div className="grid place-items-center w-full">
               <Tooltip>
@@ -554,14 +547,8 @@ export function Sidebar() {
                 collapsed={collapsed}
               />
             </div>
-            {/* User Menu (when authenticated) */}
-            {isAuthenticated && (
-              <div className="mt-2">
-                <UserMenu collapsed={collapsed} />
-              </div>
-            )}
             {/* New Task Button */}
-            <div className="mt-2">
+            <div className="mt-4">
               <Button
                 variant="outline"
                 className="w-full"

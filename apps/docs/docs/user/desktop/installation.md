@@ -1,229 +1,231 @@
 ---
 sidebar_position: 2
-title: "Installation"
-description: "How to install Viben Desktop on macOS, Windows, and Linux"
+title: "桌面应用安装"
+description: "在 macOS、Windows 和 Linux 上安装 Viben 桌面应用"
 ---
 
-# Desktop App Installation
+# 桌面应用安装
 
-Detailed installation instructions for Viben Desktop on all supported platforms.
+详细的 Viben Desktop 安装指南，适用于所有支持的平台。
 
-## Download
+## 下载
 
-[![Latest Release](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
 
-Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop).
+从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本。
+
+---
 
 ## macOS
 
-### Requirements
+### 系统要求
 
-- macOS 10.15 (Catalina) or later
-- Apple Silicon (M1/M2/M3) or Intel processor
+- macOS 10.15 (Catalina) 或更高
+- Apple Silicon (M1/M2/M3/M4) 或 Intel 处理器
 
-### Installation Steps
+### 安装步骤
 
-1. Download the `Viben_x.x.x_universal.dmg` file
-2. Double-click to open the disk image
-3. Drag **Viben** to the **Applications** folder
-4. Eject the disk image
+1. 下载 `Viben_x.x.x_universal.dmg` 文件
+2. 双击打开磁盘映像
+3. 拖动 **Viben** 到 **Applications** 文件夹
+4. 推出磁盘映像
 
-### First Launch
+### 首次启动
 
-Since Viben is not notarized by Apple, you may see a security warning on first launch:
+由于 Viben 未经 Apple 公证，首次启动时可能会看到安全警告：
 
-**Option 1: Right-click to Open**
-1. Open **Finder** and go to **Applications**
-2. Right-click (or Control-click) on **Viben**
-3. Select **Open** from the context menu
-4. Click **Open** in the dialog
+**方法一：右键打开**
+1. 打开 **Finder** 并进入 **Applications**
+2. 右键点击（或 Control + 点击）**Viben**
+3. 从菜单中选择 **打开**
+4. 在对话框中点击 **打开**
 
-**Option 2: System Preferences**
-1. Go to **System Preferences** > **Security & Privacy** > **General**
-2. Click **Open Anyway** next to the Viben warning
+**方法二：系统偏好设置**
+1. 前往 **系统偏好设置** > **安全性与隐私** > **通用**
+2. 点击 Viben 警告旁边的 **仍要打开**
 
-### Troubleshooting
+### 故障排除
 
-**"Viben is damaged and can't be opened"**
+**"Viben 已损坏，无法打开"**
 
-This happens when macOS quarantines the app. Remove the quarantine flag:
+这是 macOS 隔离应用导致的。移除隔离标志：
 
 ```bash
 xattr -cr /Applications/Viben.app
 ```
 
-**"Viben cannot be opened because the developer cannot be verified"**
+**"无法打开 Viben，因为无法验证开发者"**
 
-This is expected for unsigned apps. Use one of the methods above to bypass Gatekeeper.
+这是未签名应用的正常提示。使用上述方法绕过 Gatekeeper。
 
 ---
 
 ## Windows
 
-### Requirements
+### 系统要求
 
-- Windows 10 or Windows 11 (64-bit)
-- WebView2 Runtime (usually pre-installed on Windows 10/11)
+- Windows 10 或 Windows 11 (64 位)
+- WebView2 Runtime（通常已预装在 Windows 10/11 上）
 
-### Installation Steps
+### 安装步骤
 
-**Using the MSI Installer (Recommended):**
+**使用 MSI 安装程序（推荐）：**
 
-1. Download `Viben_x.x.x_x64_en-US.msi`
-2. Double-click to run the installer
-3. Follow the installation wizard
-4. Click **Finish** when complete
+1. 下载 `Viben_x.x.x_x64_en-US.msi`
+2. 双击运行安装程序
+3. 按照安装向导操作
+4. 完成后点击 **完成**
 
-**Using the EXE Installer:**
+**使用 EXE 安装程序：**
 
-1. Download `Viben_x.x.x_x64-setup.exe`
-2. Double-click to run
-3. Follow the prompts
+1. 下载 `Viben_x.x.x_x64-setup.exe`
+2. 双击运行
+3. 按照提示操作
 
-### First Launch
+### 首次启动
 
-Launch Viben from:
-- Start Menu > Viben
-- Desktop shortcut (if created during installation)
+从以下位置启动 Viben：
+- 开始菜单 > Viben
+- 桌面快捷方式（如果安装时创建）
 
-### Troubleshooting
+### 故障排除
 
-**SmartScreen Warning**
+**SmartScreen 警告**
 
-Windows may show a SmartScreen warning for unsigned apps:
+Windows 可能会对未签名应用显示 SmartScreen 警告：
 
-1. Click **More info**
-2. Click **Run anyway**
+1. 点击 **更多信息**
+2. 点击 **仍要运行**
 
-**Missing WebView2**
+**缺少 WebView2**
 
-If you see a WebView2 error, download and install it from:
+如果看到 WebView2 错误，请下载安装：
 https://developer.microsoft.com/en-us/microsoft-edge/webview2/
 
 ---
 
 ## Linux
 
-### Requirements
+### 系统要求
 
-- 64-bit Linux distribution
-- GTK 3 and WebKitGTK (for WebView)
-- glibc 2.31 or later
+- 64 位 Linux 发行版
+- GTK 3 和 WebKitGTK（用于 WebView）
+- glibc 2.31 或更高
 
-### AppImage (Universal)
+### AppImage（通用）
 
-AppImage works on most Linux distributions without installation:
+AppImage 无需安装即可在大多数 Linux 发行版上运行：
 
 ```bash
-# Download the AppImage
+# 下载 AppImage
 wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.AppImage
 
-# Make it executable
+# 添加执行权限
 chmod +x Viben_*.AppImage
 
-# Run
+# 运行
 ./Viben_*.AppImage
 ```
 
 :::tip
-For easier access, move the AppImage to `~/.local/bin/` and add that directory to your PATH.
+为方便访问，可以将 AppImage 移动到 `~/.local/bin/` 并将该目录添加到 PATH。
 :::
 
 ### Debian/Ubuntu (.deb)
 
-For Debian, Ubuntu, Linux Mint, and other Debian-based distributions:
+适用于 Debian、Ubuntu、Linux Mint 等基于 Debian 的发行版：
 
 ```bash
-# Download the .deb package
+# 下载 .deb 包
 wget https://github.com/LinXueyuanStdio/viben/releases/latest/download/Viben_x.x.x_amd64.deb
 
-# Install
+# 安装
 sudo dpkg -i Viben_*_amd64.deb
 
-# Fix any missing dependencies
+# 修复缺失的依赖
 sudo apt-get install -f
 ```
 
-Launch from your application menu or run:
+从应用菜单启动或运行：
 
 ```bash
 viben
 ```
 
-### Dependencies
+### 依赖
 
-If you encounter dependency issues, install these packages:
+如果遇到依赖问题，安装以下包：
 
-**Ubuntu/Debian:**
+**Ubuntu/Debian：**
 ```bash
 sudo apt-get install libwebkit2gtk-4.1-0 libappindicator3-1
 ```
 
-**Fedora:**
+**Fedora：**
 ```bash
 sudo dnf install webkit2gtk4.1 libappindicator-gtk3
 ```
 
-**Arch Linux:**
+**Arch Linux：**
 ```bash
 sudo pacman -S webkit2gtk-4.1 libappindicator-gtk3
 ```
 
 ---
 
-## Verifying Downloads
+## 验证下载
 
-All releases include SHA256 checksums for verification.
+所有发布版本都包含 SHA256 校验和用于验证。
 
-### Download Checksums
+### 下载校验和
 
-1. Download `checksums.txt` from the release page
-2. Download your platform's installer
+1. 从发布页面下载 `checksums.txt`
+2. 下载对应平台的安装包
 
-### Verify on macOS/Linux
+### macOS/Linux 验证
 
 ```bash
-# Navigate to download directory
+# 进入下载目录
 cd ~/Downloads
 
-# Verify checksum
+# 验证校验和
 sha256sum -c checksums.txt 2>/dev/null | grep -E "Viben.*OK"
 ```
 
-### Verify on Windows (PowerShell)
+### Windows (PowerShell) 验证
 
 ```powershell
-# Get the hash of downloaded file
+# 获取下载文件的哈希
 $hash = (Get-FileHash "Viben_x.x.x_x64-setup.exe" -Algorithm SHA256).Hash
 
-# Compare with checksums.txt
+# 与 checksums.txt 比较
 Get-Content checksums.txt | Select-String $hash
 ```
 
 ---
 
-## Updating
+## 更新
 
-Viben does not currently auto-update. To update:
+Viben 目前不支持自动更新。要更新：
 
-1. Download the latest version from [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
-2. Install over the existing version (your settings will be preserved)
+1. 从 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop) 下载最新版本
+2. 覆盖安装（你的设置会保留）
 
 :::info
-Auto-update functionality is planned for a future release.
+自动更新功能计划在未来版本中推出。
 :::
 
 ---
 
-## Uninstalling
+## 卸载
 
 ### macOS
 
-1. Open **Finder** > **Applications**
-2. Drag **Viben** to the Trash
-3. Empty Trash
+1. 打开 **Finder** > **Applications**
+2. 将 **Viben** 拖到废纸篓
+3. 清空废纸篓
 
-To remove all data:
+要删除所有数据：
 ```bash
 rm -rf ~/Library/Application\ Support/com.viben.app
 rm -rf ~/Library/Caches/com.viben.app
@@ -231,23 +233,31 @@ rm -rf ~/Library/Caches/com.viben.app
 
 ### Windows
 
-1. Open **Settings** > **Apps** > **Installed apps**
-2. Find **Viben**
-3. Click **Uninstall**
+1. 打开 **设置** > **应用** > **已安装的应用**
+2. 找到 **Viben**
+3. 点击 **卸载**
 
-Or use Control Panel > Programs and Features.
+或使用控制面板 > 程序和功能。
 
 ### Linux
 
-**AppImage:** Simply delete the AppImage file.
+**AppImage：** 直接删除 AppImage 文件。
 
-**Debian package:**
+**Debian 包：**
 ```bash
 sudo apt-get remove viben
 ```
 
-To remove configuration:
+要删除配置：
 ```bash
 rm -rf ~/.config/viben
 rm -rf ~/.local/share/viben
 ```
+
+---
+
+## 下一步
+
+- [功能介绍](./features) - 探索完整功能
+- [快速入门](../getting-started/quick-start) - 2 分钟上手
+- [客户端配置](../getting-started/client-configuration) - 配置 MCP 客户端

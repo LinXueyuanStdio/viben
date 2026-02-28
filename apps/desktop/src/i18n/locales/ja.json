@@ -139,7 +139,34 @@
     "system": "システム",
     "language": "言語",
     "storage": "ストレージ",
-    "downloadPath": "ダウンロードパス"
+    "downloadPath": "ダウンロードパス",
+    "developerDescription": "開発者ツール、デバッグ設定、トラブルシューティング",
+    "developer": {
+      "devtools": "開発者ツール",
+      "preferredIDE": "優先IDE",
+      "preferredIDEDescription": "Vibenはこのエディタでプロジェクトを開きます",
+      "preferredTerminal": "優先ターミナル",
+      "preferredTerminalDescription": "Vibenはここでターミナルセッションを開きます",
+      "yoloMode": "YOLOモード",
+      "yoloModeDescription": "--dangerously-skip-permissionsフラグでエクゼキュータを起動し、すべての安全プロンプトをバイパスします。細心の注意を払ってください。",
+      "yoloModeWarning": "このモードは許可システムをバイパスします。実行されるコードを完全に信頼できる場合のみ有効にしてください。",
+      "debugLogs": "デバッグ＆ログ",
+      "openLogsFolder": "ログフォルダを開く",
+      "openConfigFolder": "設定フォルダを開く",
+      "copyDebugInfo": "デバッグ情報をコピー",
+      "loadDebugInfo": "デバッグ情報を読み込む",
+      "systemInfo": "システム情報",
+      "paths": "パス",
+      "noRecentErrors": "最近のエラーはありません",
+      "reportingIssues": "問題の報告",
+      "reportingIssuesDescription": "バグを報告する際は、「デバッグ情報をコピー」をクリックして、問題の診断に役立つシステム情報を取得してください。",
+      "os": "OS",
+      "osVersion": "バージョン",
+      "appVersion": "アプリバージョン",
+      "arch": "アーキテクチャ",
+      "logs": "ログ",
+      "config": "設定"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +911,23 @@
     "noCommandsDesc": ".claude/commands/フォルダにコマンドファイルが見つかりません。",
     "selectCommand": "コマンドを選択して表示",
     "rootNamespace": "ルート"
+  },
+  "snakeGame": {
+    "title": "スネークゲーム",
+    "score": "スコア:",
+    "length": "長さ:",
+    "speed": "速度:",
+    "gameOver": "ゲームオーバー!",
+    "finalScore": "最終スコア: {{score}}",
+    "restart": "リスタート",
+    "pause": "一時停止",
+    "start": "スタート",
+    "reset": "リセット",
+    "instructions": "遊び方",
+    "instruction1": "矢印キーまたはボタンでヘビの方向を操作",
+    "instruction2": "青いドットを食べて成長し、ポイントを獲得",
+    "instruction3": "5個食べるごとに速度が上がります",
+    "instruction4": "壁や自分にぶつかるとゲームオーバー",
+    "instruction5": "スペースで一時停止/再開、Rでリセット"
   }
 }

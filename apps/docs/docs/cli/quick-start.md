@@ -1,53 +1,53 @@
 ---
 sidebar_position: 3
-title: "Quick Start"
-description: "Get started with Viben CLI in 5 minutes"
+title: "快速开始"
+description: "5 分钟内开始使用 Viben CLI"
 ---
 
-# Quick Start
+# 快速开始
 
-Get Viben CLI up and running in 5 minutes.
+5 分钟内让 Viben CLI 运行起来。
 
-## Step 1: Install Viben CLI
+## 步骤 1：安装 Viben CLI
 
 ```bash
 npm install -g @viben/cli
 ```
 
-Verify installation:
+验证安装：
 
 ```bash
 viben --help
 ```
 
-## Step 2: Initialize Your First Workspace
+## 步骤 2：初始化你的第一个工作区
 
-Navigate to your project directory and initialize Viben:
+导航到你的项目目录并初始化 Viben：
 
 ```bash
 cd /path/to/your/project
 viben init
 ```
 
-Output:
+输出：
 
 ```
 Initialized Viben workspace in /path/to/your/project
   Created .viben/config.yaml
 
 Next steps:
-  viben provider create -t anthropic    # Set up API provider
-  viben mcp install <name>              # Install MCP servers
-  viben skill install <name>            # Install skills
+  viben provider create -t anthropic    # 设置 API 提供商
+  viben mcp install <name>              # 安装 MCP 服务器
+  viben skill install <name>            # 安装技能
 ```
 
-## Step 3: Configure an API Provider
+## 步骤 3：配置 API 提供商
 
-Set up your preferred AI provider. Viben supports multiple providers including Anthropic, OpenAI, Google, Azure, and more.
+设置你首选的 AI 提供商。Viben 支持多种提供商，包括 Anthropic、OpenAI、Google、Azure 等。
 
-### Option A: Using Environment Variables (Recommended)
+### 选项 A：使用环境变量（推荐）
 
-Set your API key as an environment variable:
+将 API 密钥设置为环境变量：
 
 ```bash
 # Anthropic
@@ -57,46 +57,46 @@ export ANTHROPIC_API_KEY="sk-ant-xxx"
 export OPENAI_API_KEY="sk-xxx"
 ```
 
-Then create the provider:
+然后创建提供商：
 
 ```bash
 viben provider create -t anthropic
 ```
 
-### Option B: Providing API Key Directly
+### 选项 B：直接提供 API 密钥
 
 ```bash
 viben provider create -t anthropic --api-key "sk-ant-xxx"
 ```
 
 :::tip
-When providing the API key directly, it will be encrypted and stored securely in `~/.viben/providers.yaml`.
+当直接提供 API 密钥时，它将被加密并安全存储在 `~/.viben/providers.yaml` 中。
 :::
 
-### Verify Provider
+### 验证提供商
 
-Check provider connectivity:
+检查提供商连通性：
 
 ```bash
 viben provider status
 ```
 
-Output:
+输出：
 
 ```
 Provider Status:
   anthropic-main   anthropic   ✓ connected   latency: 120ms
 ```
 
-## Step 4: Create Your First Agent
+## 步骤 4：创建你的第一个智能体
 
-Create an AI agent instance:
+创建一个 AI 智能体实例：
 
 ```bash
 viben agent create -n my-agent
 ```
 
-Output:
+输出：
 
 ```
 Agent: my-agent
@@ -109,57 +109,58 @@ Paths:
   Sessions: ~/.viben/agents/my-agent/.agent_sessions/
 ```
 
-### Configure the Agent
+### 配置智能体
 
-Set the model for your agent:
+为你的智能体设置模型：
 
 ```bash
-viben agent config -n my-agent set model claude-sonnet-4-20250514
+viben agent config -n my-agent --set model=claude-sonnet-4-20250514
 ```
 
-### Set as Default
+### 设为默认
 
-Make this agent the default:
+将此智能体设为默认：
 
 ```bash
 viben agent set-default -n my-agent
 ```
 
-## Step 5: Install MCP Servers
+## 步骤 5：安装 MCP 服务器
 
-Install commonly used MCP servers:
-
-```bash
-# File system access
-viben mcp install filesystem
-
-# Git operations
-viben mcp install git
-```
-
-List installed MCP servers:
+安装常用的 MCP 服务器：
 
 ```bash
-viben mcp list
+# 文件系统访问
+viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem /home/user
+
+# Git 操作
+viben mcp add git --agent my-agent --command npx --args @anthropic-ai/mcp-server-git
 ```
 
-Output:
+列出已安装的 MCP 服务器：
 
-```
-Installed MCP Servers:
-  filesystem    v1.2.0    enabled    Local filesystem access
-  git           v2.0.1    enabled    Git operations
+```bash
+viben mcp list --agent my-agent
 ```
 
-## Step 6: Verify Setup
+输出：
 
-Check the overall status:
+```
+MCP Servers for Agent: my-agent
+  Name         Command                              Enabled
+  filesystem   npx @anthropic-ai/mcp-server-fs      yes
+  git          npx @anthropic-ai/mcp-server-git     yes
+```
+
+## 步骤 6：验证设置
+
+检查整体状态：
 
 ```bash
 viben agent status
 ```
 
-Output:
+输出：
 
 ```
 Agent: my-agent (default)
@@ -175,87 +176,85 @@ Memory:
 Sessions: 0
 ```
 
-## Common Workflows
+## 常见工作流
 
-### View All Configuration
+### 查看所有配置
 
 ```bash
-# List all config (shows both global and workspace)
+# 列出所有配置（显示全局和工作区）
 viben config list --show-origin
 ```
 
-### Edit Configuration
+### 编辑配置
 
 ```bash
-# Open config in your editor
+# 在编辑器中打开配置
 viben config edit
 
-# Or set specific values
+# 或设置特定值
 viben config set settings.editor vim
 ```
 
-### Manage Multiple Agents
+### 管理多个智能体
 
 ```bash
-# List all agents
+# 列出所有智能体
 viben agent list
 
-# Create agent from template
+# 从模板创建智能体
 viben agent create -n research-bot -f coding-assistant
 
-# Switch default agent
+# 切换默认智能体
 viben agent set-default -n research-bot
 ```
 
-### Configure Model Aliases
+### 配置模型别名
 
-Set up convenient model aliases:
+设置便捷的模型别名：
 
 ```bash
-# Create aliases for quick reference
-viben model aliases create -n fast -f claude-3-5-haiku-latest
-viben model aliases create -n smart -f claude-sonnet-4-20250514
-viben model aliases create -n best -f claude-opus-4-20250514
+# 创建快速引用的别名
+viben model alias create -n fast -m claude-3-5-haiku-latest
+viben model alias create -n smart -m claude-sonnet-4-20250514
+viben model alias create -n best -m claude-opus-4-20250514
 ```
 
-Now you can use `fast`, `smart`, or `best` instead of full model names:
+现在你可以使用 `fast`、`smart` 或 `best` 代替完整的模型名称：
 
 ```bash
-viben agent config -n my-agent set model smart
+viben agent config -n my-agent --set model=smart
 ```
 
-### Set Up Model Fallbacks
+### 设置模型回退链
 
-Configure fallback models in case the primary is unavailable:
+配置备用模型，以防主模型不可用：
 
 ```bash
-viben model fallbacks create -n claude-sonnet-4-20250514
-viben model fallbacks create -n gpt-4-turbo
-viben model fallbacks create -n claude-3-5-haiku-latest
+viben model fallback set claude-sonnet-4-20250514 gpt-4-turbo claude-3-5-haiku-latest
 ```
 
-### Workspace-Specific Configuration
+### 工作区特定配置
 
-Override global settings for a specific project:
+为特定项目覆盖全局设置：
 
 ```bash
-# In your project directory
+# 在你的项目目录中
 viben config set --workspace mcp.enabled '["filesystem", "git", "browser"]'
 ```
 
-## JSON Output for Automation
+## 自动化的 JSON 输出
 
-All commands support `--json` flag for scripting and AI agent integration:
+所有命令都支持 `--json` 标志，用于脚本和 AI 智能体集成：
 
 ```bash
-# Get agent list as JSON
+# 获取智能体列表的 JSON
 viben agent list --json
 
-# Get provider status as JSON
+# 获取提供商状态的 JSON
 viben provider status --json
 ```
 
-Example JSON output:
+示例 JSON 输出：
 
 ```json
 {
@@ -274,25 +273,28 @@ Example JSON output:
 }
 ```
 
-## Quick Reference
+## 快速参考
 
-| Task | Command |
-|------|---------|
-| Initialize workspace | `viben init` |
-| Create provider | `viben provider create -t <type>` |
-| Create agent | `viben agent create -n <name>` |
-| Configure agent | `viben agent config -n <name> set <key> <value>` |
-| Install MCP | `viben mcp install <name>` |
-| Install skill | `viben skill install <name>` |
-| Check status | `viben agent status` |
-| List agents | `viben agent list` |
-| List providers | `viben provider list` |
-| List models | `viben model list` |
+| 任务 | 命令 |
+|------|------|
+| 初始化工作区 | `viben init` |
+| 创建提供商 | `viben provider create -t <type>` |
+| 创建智能体 | `viben agent create -n <name>` |
+| 配置智能体 | `viben agent config -n <name> --set <key>=<value>` |
+| 添加 MCP | `viben mcp add <name> --agent <id> --command <cmd>` |
+| 安装技能 | `viben skill install <name>` |
+| 检查状态 | `viben agent status` |
+| 列出智能体 | `viben agent list` |
+| 列出提供商 | `viben provider list` |
+| 列出模型 | `viben model list` |
+| 启动 Gateway | `viben gateway start` |
+| 查看执行器 | `viben executor list` |
 
-## Next Steps
+## 下一步
 
-Now that you have Viben CLI set up, you can:
+现在你已经设置好了 Viben CLI，你可以：
 
-- Explore [Agent Management](/docs/cli#architecture-overview) to understand the full agent lifecycle
-- Configure additional [API Providers](/docs/cli#configuration-file-format) for model variety
-- Install more [MCP Servers](/docs/mcp-server/configuration) for extended capabilities
+- 探索 [智能体管理](/docs/cli/agents) 了解完整的智能体生命周期
+- 配置额外的 [API 提供商](/docs/cli/configuration) 获取更多模型选择
+- 安装更多 [MCP 服务器](/docs/mcp-server/configuration) 扩展功能
+- 了解 [Gateway](/docs/cli/commands/gateway) 运行时架构

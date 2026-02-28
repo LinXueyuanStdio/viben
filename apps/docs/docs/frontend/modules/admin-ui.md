@@ -1,6 +1,12 @@
-# Admin UI Module
+---
+sidebar_position: 5
+title: Admin UI
+description: 管理后台：包审核、内容审核、平台管理
+---
 
-> Admin dashboard for package moderation, content moderation, and platform management.
+# Admin UI 模块
+
+> 管理后台，用于包审核、内容审核和平台管理。
 
 ---
 
