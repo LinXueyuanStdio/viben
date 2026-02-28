@@ -10,6 +10,7 @@ import { ContainerService } from "../services/container";
 import { HistoryService } from "../services/history";
 import { MessageBus } from "../services/message-bus";
 import { ChannelRouter, ChannelRuntime, channelManager } from "../channels";
+import { TaskQueueManager } from "./queue";
 
 /**
  * Application state for the gateway
@@ -31,6 +32,8 @@ export interface AppState {
   channelRouter: ChannelRouter;
   /** Channel runtime for managing polling clients */
   channelRuntime: ChannelRuntime;
+  /** Task queue for concurrent agent execution control */
+  taskQueue: TaskQueueManager;
 }
 
 /**
@@ -60,6 +63,9 @@ export function createAppState(): AppState {
     pollingTimeout: 30,
   });
 
+  // Create task queue manager
+  const taskQueue = new TaskQueueManager(events);
+
   return {
     events,
     sessionStore,
@@ -69,5 +75,6 @@ export function createAppState(): AppState {
     messageBus,
     channelRouter,
     channelRuntime,
+    taskQueue,
   };
 }

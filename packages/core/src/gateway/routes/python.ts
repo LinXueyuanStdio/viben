@@ -215,7 +215,7 @@ async function detectPythonInterpreters(): Promise<PythonInfo[]> {
 /**
  * Get CLI tool candidates based on platform
  */
-function getCliToolCandidates(tool: "git" | "gh" | "claude"): string[] {
+function getCliToolCandidates(tool: CliToolName): string[] {
   const candidates: string[] = [];
   const home = homedir();
 
@@ -281,7 +281,7 @@ function getCliToolCandidates(tool: "git" | "gh" | "claude"): string[] {
  */
 async function detectCliToolVersion(
   toolPath: string,
-  tool: "git" | "gh" | "claude",
+  tool: CliToolName,
 ): Promise<{ version: string | null; valid: boolean }> {
   try {
     const { stdout, stderr } = await execAsync(`"${toolPath}" --version`, {
@@ -331,7 +331,7 @@ function getToolSource(toolPath: string): CliToolInfo["source"] {
  * Detect a single CLI tool
  */
 async function detectCliTool(
-  tool: "git" | "gh" | "claude",
+  tool: CliToolName,
   userConfigPath?: string,
 ): Promise<CliToolInfo> {
   const home = homedir();
@@ -460,20 +460,34 @@ async function detectCliTool(
 }
 
 /**
- * Detect all CLI tools (git, gh, claude)
+ * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor)
  */
 async function detectAllCliTools(config?: {
   gitPath?: string;
   ghPath?: string;
   claudePath?: string;
+  pythonPath?: string;
+  codexPath?: string;
+  aiderPath?: string;
+  goosePath?: string;
+  clinePath?: string;
+  continuePath?: string;
+  cursorPath?: string;
 }): Promise<CliToolsInfo> {
-  const [git, gh, claude] = await Promise.all([
+  const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor] = await Promise.all([
+    detectCliTool("python", config?.pythonPath),
     detectCliTool("git", config?.gitPath),
     detectCliTool("gh", config?.ghPath),
     detectCliTool("claude", config?.claudePath),
+    detectCliTool("codex", config?.codexPath),
+    detectCliTool("aider", config?.aiderPath),
+    detectCliTool("goose", config?.goosePath),
+    detectCliTool("cline", config?.clinePath),
+    detectCliTool("continue", config?.continuePath),
+    detectCliTool("cursor", config?.cursorPath),
   ]);
 
-  return { git, gh, claude };
+  return { python, git, gh, claude, codex, aider, goose, cline, continue: continueInfo, cursor };
 }
 
 /**
