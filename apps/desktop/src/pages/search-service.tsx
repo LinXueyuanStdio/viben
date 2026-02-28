@@ -352,15 +352,13 @@ function ServerCard({
     const url = server.transport === "sse" ? `${baseUrl}/sse` : `${baseUrl}/mcp`;
 
     const config: Record<string, unknown> = {
-      "browse-mcp": {
-        url,
-        transport: server.transport === "sse" ? "sse" : "streamable-http",
-      },
+      url,
+      transport: server.transport === "sse" ? "sse" : "streamable-http",
     };
 
     // Add API key header
     if (selectedApiKey) {
-      (config["browse-mcp"] as Record<string, unknown>).headers = {
+      config.headers = {
         "Authorization": includeRealKey && fullApiKey
           ? `Bearer ${fullApiKey}`
           : `Bearer <${selectedApiKey.name}: ${selectedApiKey.keyPrefix}...>`,
