@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Package } from 'lucide-react';
+import { VibenLogo } from '@/components/shared/viben-logo';
 
 export default function AuthLayout({
   children,
@@ -9,7 +9,7 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
       <Link href="/" className="mb-8 flex items-center gap-2">
-        <Package className="h-8 w-8 text-primary" />
+        <VibenLogo size={32} />
         <span className="font-serif text-2xl font-semibold">Viben</span>
       </Link>
       {children}
