@@ -18,6 +18,9 @@
     "configure": "配置",
     "apply": "应用",
     "close": "关闭",
+    "details": "详情",
+    "pid": "进程ID",
+    "port": "端口",
     "clearSearch": "清除搜索",
     "builtIn": "内置",
     "calls": "{{count}} 次调用",
@@ -1039,7 +1042,15 @@
     "clickToCopy": "点击\"复制\"以复制包含真实 API 密钥的配置。",
     "serverRunning": "服务器正在运行",
     "serverStopped": "服务器已停止",
-    "serverError": "服务器错误"
+    "serverError": "服务器错误",
+    "serverStarted": "服务器启动成功",
+    "serverStartFailed": "服务器启动失败",
+    "serverStartedTitle": "服务器已启动",
+    "serverStartFailedTitle": "服务器启动失败",
+    "serverStopFailed": "停止服务器失败",
+    "commandExecuted": "执行的命令",
+    "endpoint": "端点地址",
+    "errorDetails": "错误详情"
   },
   "auth": {
     "signIn": "登录",

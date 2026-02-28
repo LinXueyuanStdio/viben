@@ -18,6 +18,9 @@
     "configure": "Configure",
     "apply": "Apply",
     "close": "Close",
+    "details": "Details",
+    "pid": "PID",
+    "port": "Port",
     "clearSearch": "Clear search",
     "builtIn": "Built-in",
     "calls": "{{count}} calls",
@@ -1038,8 +1041,16 @@
     "selectKeyToCopy": "Select an API key to copy the configuration with the real key.",
     "clickToCopy": "Click \"Copy\" to copy the configuration with the real API key.",
     "serverRunning": "Server is running",
-    "serverStopped": "Server is stopped",
-    "serverError": "Server error"
+    "serverStopped": "Server stopped",
+    "serverError": "Server error",
+    "serverStarted": "Server started successfully",
+    "serverStartFailed": "Failed to start server",
+    "serverStartedTitle": "Server Started",
+    "serverStartFailedTitle": "Server Start Failed",
+    "serverStopFailed": "Failed to stop server",
+    "commandExecuted": "Command executed",
+    "endpoint": "Endpoint",
+    "errorDetails": "Error details"
   },
   "auth": {
     "signIn": "Sign In",

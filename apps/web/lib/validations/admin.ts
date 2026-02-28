@@ -14,8 +14,8 @@ import { z } from 'zod';
  * Query parameters for listing packages for admin review.
  */
 export const listAdminPackagesQuerySchema = z.object({
-  type: z.enum(['mcp', 'skill']).optional(),
-  status: z.enum(['pending', 'approved', 'rejected', 'featured']).optional(),
+  type: z.enum(['mcp', 'skill']).nullish().transform(v => v ?? undefined),
+  status: z.enum(['pending', 'approved', 'rejected', 'featured']).nullish().transform(v => v ?? undefined),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
   sort: z.enum(['newest', 'oldest']).default('oldest'),
@@ -52,9 +52,9 @@ export const featurePackageSchema = z.object({
 export const listLogsQuerySchema = z.object({
   entityType: z
     .enum(['mcp', 'skill', 'comment', 'collection', 'user', 'report'])
-    .optional(),
-  entityId: z.string().optional(),
-  adminId: z.string().optional(),
+    .nullish().transform(v => v ?? undefined),
+  entityId: z.string().nullish().transform(v => v ?? undefined),
+  adminId: z.string().nullish().transform(v => v ?? undefined),
   action: z
     .enum([
       'approve',
@@ -66,7 +66,7 @@ export const listLogsQuerySchema = z.object({
       'ban',
       'unban',
     ])
-    .optional(),
+    .nullish().transform(v => v ?? undefined),
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(20),
 });
