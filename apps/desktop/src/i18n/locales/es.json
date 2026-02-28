@@ -804,9 +804,44 @@
     "skillsAvailable": "{{count}} actualización(es) de habilidad(es) disponible(s)",
     "mixedAvailable": "{{mcpCount}} MCP y {{skillCount}} actualización(es) de habilidad(es)"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Dirección de host a la que está vinculado el servicio de gateway",
+    "portDescription": "Número de puerto en el que escucha el servicio de gateway (requiere reinicio)",
+    "connectivityTestDescription": "Verificar el estado de conexión y los endpoints disponibles del servicio de gateway"
+  },
+  "observability": {
+    "allRoutes": "Todas las rutas",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Ejecución de agente)",
+      "agents": "/api/agents (Gestión de agentes)",
+      "workspaces": "/api/workspaces (Espacios de trabajo)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Chats grupales)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesión",
+        "config": "Configuración",
+        "info": "Información",
+        "workspace": "Espacio de trabajo",
+        "auth": "Autenticación"
+      },
+      "sources": {
+        "builtin": "Integrado",
+        "workspace": "Espacio de trabajo",
+        "skill": "Habilidad"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Espacios de trabajo",
     "addWorkspace": "Añadir espacio de trabajo",
+    "addDescription": "Añadir un nuevo espacio de trabajo al proyecto",
+    "taskPromptWithDescription": "Por favor ayúdame con esta tarea:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Por favor ayúdame con esta tarea: {{title}}",
     "noWorkspaces": "Sin espacios de trabajo aún",
     "global": "Global",
     "custom": "Personalizado",

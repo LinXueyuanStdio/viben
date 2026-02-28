@@ -910,6 +910,41 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "addDescription": "Dodaj opis...",
+    "taskPromptWithDescription": "Proszę, pomóż mi z tym zadaniem:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Proszę, pomóż mi z tym zadaniem: {{title}}"
+  },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Adres hosta, do którego jest przywiązana usługa bramy",
+    "portDescription": "Numer portu, na którym nasłuchuje usługa bramy (wymaga ponownego uruchomienia)",
+    "connectivityTestDescription": "Sprawdź stan połączenia i dostępne punkty końcowe usługi bramy"
+  },
+  "observability": {
+    "allRoutes": "Wszystkie trasy",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Wykonanie agenta)",
+      "agents": "/api/agents (Zarządzanie agentami)",
+      "workspaces": "/api/workspaces (Przestrzenie robocze)",
+      "chat": "/api/chat (Czat)",
+      "groupChats": "/api/group-chats (Czaty grupowe)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesja",
+        "config": "Konfiguracja",
+        "info": "Informacja",
+        "workspace": "Przestrzeń robocza",
+        "auth": "Uwierzytelnianie"
+      },
+      "sources": {
+        "builtin": "Wbudowany",
+        "workspace": "Przestrzeń robocza",
+        "skill": "Umiejętność"
+      }
+    }
   }
 }

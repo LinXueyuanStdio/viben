@@ -31,6 +31,15 @@ export interface PackageInfo {
 }
 
 /**
+ * A single detected CLI tool path
+ */
+export interface CliToolPath {
+  path: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+}
+
+/**
  * CLI tool detection result
  */
 export interface CliToolInfo {
@@ -39,6 +48,8 @@ export interface CliToolInfo {
   version?: string;
   source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
   message?: string;
+  /** All discovered paths for this tool */
+  alternatives?: CliToolPath[];
 }
 
 /**
@@ -466,7 +477,7 @@ function getToolSource(toolPath: string): CliToolInfo["source"] {
 }
 
 /**
- * Detect a single CLI tool
+ * Detect a single CLI tool and collect all valid paths
  */
 async function detectCliTool(
   tool: CliToolName,
@@ -474,18 +485,24 @@ async function detectCliTool(
 ): Promise<CliToolInfo> {
   const home = homedir();
   const config = TOOL_CONFIGS[tool];
+  const allPaths: CliToolPath[] = [];
+  const seenPaths = new Set<string>();
+
+  // Helper to add a valid path
+  const addPath = (path: string, version: string | undefined, source: CliToolPath["source"]) => {
+    // Normalize path and check for duplicates
+    const normalizedPath = path.replace(/\/+$/, "");
+    if (!seenPaths.has(normalizedPath)) {
+      seenPaths.add(normalizedPath);
+      allPaths.push({ path: normalizedPath, version, source });
+    }
+  };
 
   // 1. Check user-configured path first
   if (userConfigPath) {
     const { version, valid } = await detectCliToolVersion(userConfigPath, tool);
     if (valid) {
-      return {
-        found: true,
-        path: userConfigPath,
-        version: version || undefined,
-        source: "user-config",
-        message: `Using user-configured ${tool}`,
-      };
+      addPath(userConfigPath, version || undefined, "user-config");
     }
   }
 
@@ -500,6 +517,10 @@ async function detectCliTool(
     if (tool === "python") {
       homebrewPaths.push(
         "/opt/homebrew/bin/python3",
+        "/opt/homebrew/bin/python3.13",
+        "/opt/homebrew/bin/python3.12",
+        "/opt/homebrew/bin/python3.11",
+        "/opt/homebrew/bin/python3.10",
         "/usr/local/bin/python3",
       );
     }
@@ -508,13 +529,7 @@ async function detectCliTool(
       if (await isExecutable(toolPath)) {
         const { version, valid } = await detectCliToolVersion(toolPath, tool);
         if (valid) {
-          return {
-            found: true,
-            path: toolPath,
-            version: version || undefined,
-            source: "homebrew",
-            message: `Using Homebrew ${tool}`,
-          };
+          addPath(toolPath, version || undefined, "homebrew");
         }
       }
     }
@@ -527,16 +542,10 @@ async function detectCliTool(
     const { stdout } = await execAsync(`${whichCmd} ${toolCmd}`, { timeout: 5000 });
     const toolPath = stdout.trim().split("\n")[0]; // Take first result
 
-    if (toolPath) {
+    if (toolPath && !seenPaths.has(toolPath)) {
       const { version, valid } = await detectCliToolVersion(toolPath, tool);
       if (valid) {
-        return {
-          found: true,
-          path: toolPath,
-          version: version || undefined,
-          source: getToolSource(toolPath),
-          message: `Using system ${tool}`,
-        };
+        addPath(toolPath, version || undefined, getToolSource(toolPath));
       }
     }
   } catch {
@@ -566,13 +575,7 @@ async function detectCliTool(
         if (await isExecutable(toolPathNvm)) {
           const { version, valid } = await detectCliToolVersion(toolPathNvm, tool);
           if (valid) {
-            return {
-              found: true,
-              path: toolPathNvm,
-              version: version || undefined,
-              source: "nvm",
-              message: `Using NVM ${tool}`,
-            };
+            addPath(toolPathNvm, version || undefined, "nvm");
           }
         }
       }
@@ -583,42 +586,80 @@ async function detectCliTool(
 
   // 5. Check pyenv paths for python (Unix only)
   if (tool === "python" && process.platform !== "win32") {
-    const pyenvPath = join(home, ".pyenv/shims/python3");
-    if (await isExecutable(pyenvPath)) {
-      const { version, valid } = await detectCliToolVersion(pyenvPath, tool);
-      if (valid) {
-        return {
-          found: true,
-          path: pyenvPath,
-          version: version || undefined,
-          source: "pyenv",
-          message: "Using pyenv Python",
-        };
+    const pyenvPaths = [
+      join(home, ".pyenv/shims/python3"),
+      join(home, ".pyenv/shims/python"),
+    ];
+    for (const pyenvPath of pyenvPaths) {
+      if (await isExecutable(pyenvPath)) {
+        const { version, valid } = await detectCliToolVersion(pyenvPath, tool);
+        if (valid) {
+          addPath(pyenvPath, version || undefined, "pyenv");
+        }
       }
     }
   }
 
-  // 6. Check platform-specific standard locations
+  // 6. Check conda/anaconda paths for python (Unix only)
+  if (tool === "python" && process.platform !== "win32") {
+    const condaPaths = [
+      join(home, "anaconda3/bin/python3"),
+      join(home, "anaconda3/bin/python"),
+      join(home, "miniconda3/bin/python3"),
+      join(home, "miniconda3/bin/python"),
+      "/opt/anaconda3/bin/python3",
+      "/opt/miniconda3/bin/python3",
+    ];
+    for (const condaPath of condaPaths) {
+      if (await isExecutable(condaPath)) {
+        const { version, valid } = await detectCliToolVersion(condaPath, tool);
+        if (valid) {
+          addPath(condaPath, version || undefined, "system-path");
+        }
+      }
+    }
+  }
+
+  // 7. Check platform-specific standard locations
   const candidates = getCliToolCandidates(tool);
   for (const toolPath of candidates) {
-    if (toolPath.includes(".nvm") && config.detectMethod === "npm-global") continue; // Already handled above
-    if (toolPath.includes(".pyenv") && tool === "python") continue; // Already handled above
     if (toolPath.includes("*")) continue; // Skip glob patterns
+    if (seenPaths.has(toolPath)) continue; // Already checked
     if (await isExecutable(toolPath)) {
       const { version, valid } = await detectCliToolVersion(toolPath, tool);
       if (valid) {
-        return {
-          found: true,
-          path: toolPath,
-          version: version || undefined,
-          source: getToolSource(toolPath),
-          message: `Using ${tool}`,
-        };
+        addPath(toolPath, version || undefined, getToolSource(toolPath));
       }
     }
   }
 
-  // 7. Not found
+  // 8. Check system paths
+  if (tool === "python") {
+    const systemPaths = ["/usr/bin/python3", "/usr/bin/python"];
+    for (const sysPath of systemPaths) {
+      if (!seenPaths.has(sysPath) && await isExecutable(sysPath)) {
+        const { version, valid } = await detectCliToolVersion(sysPath, tool);
+        if (valid) {
+          addPath(sysPath, version || undefined, "system-path");
+        }
+      }
+    }
+  }
+
+  // Return result with all alternatives
+  if (allPaths.length > 0) {
+    const primary = allPaths[0];
+    return {
+      found: true,
+      path: primary.path,
+      version: primary.version,
+      source: primary.source,
+      message: `Using ${tool}`,
+      alternatives: allPaths.length > 1 ? allPaths : undefined,
+    };
+  }
+
+  // Not found
   return {
     found: false,
     source: "fallback",
