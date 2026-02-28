@@ -1605,7 +1605,8 @@ function EnvironmentSection() {
   // CLI Tools detection state
   const [cliToolsInfo, setCliToolsInfo] = useState<Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string } | null>>({});
   const [cliToolsLoading, setCliToolsLoading] = useState(false);
-  const [checkingTool, setCheckingTool] = useState<string | null>(null);
+  // Note: setCheckingTool removed - not currently used after removing checkCliToolPath
+  const [checkingTool] = useState<string | null>(null);
 
   // Detect CLI tools on mount
   const detectCliTools = useCallback(async () => {
@@ -1636,28 +1637,6 @@ function EnvironmentSection() {
   useEffect(() => {
     detectCliTools();
   }, []);
-
-  // Check a single CLI tool with custom path
-  const checkCliToolPath = async (tool: string, path: string) => {
-    if (!path) {
-      pathMap[tool]?.setter("");
-      detectCliTools();
-      return;
-    }
-    setCheckingTool(tool);
-    try {
-      const client = getGatewayClient();
-      const result = await client.checkCliToolPath(tool as Parameters<typeof client.checkCliToolPath>[0], path);
-      if (result.found) {
-        pathMap[tool]?.setter(path);
-        setCliToolsInfo((prev) => ({ ...prev, [tool]: result }));
-      }
-    } catch (err) {
-      console.error(`[EnvironmentSection] ${tool} path check error:`, err);
-    } finally {
-      setCheckingTool(null);
-    }
-  };
 
   // Helper to translate source names
   const getSourceLabel = (source: string): string => {
