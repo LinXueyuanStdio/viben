@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Store,
@@ -10,7 +10,6 @@ import {
   ChevronRight,
   Package,
   AlertCircle,
-  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -179,13 +178,6 @@ export function MarketplacePage() {
     }
   };
 
-  // Handle load more (official only - uses cursor-based pagination)
-  const handleLoadMore = async () => {
-    if (source === "official" && officialRegistry.hasMore) {
-      await officialRegistry.loadMore();
-    }
-  };
-
   // Loading states
   const isLoading = source === "official"
     ? officialRegistry.isLoading
@@ -203,6 +195,33 @@ export function MarketplacePage() {
   // Display data
   const displayServers = officialRegistry.displayServers;
   const displayPackages = cloudMcp.displayPackages;
+
+  // Infinite scroll observer ref
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Load more trigger ref callback for infinite scroll
+  const loadMoreRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (isLoading) return;
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0]?.isIntersecting && officialRegistry.hasMore && !isLoading) {
+            officialRegistry.loadMore();
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (node) {
+        observerRef.current.observe(node);
+      }
+    },
+    [isLoading, officialRegistry]
+  );
 
   return (
     <div className="p-6 h-full flex flex-col">
@@ -393,37 +412,24 @@ export function MarketplacePage() {
                         <OfficialServerCard
                           server={server}
                           onSelect={() => handleSelectServer(server)}
-                          onInstall={() => {
-                            // If only one package, install directly
-                            const packages = server._original?.server?.packages;
-                            if (packages && packages.length === 1) {
-                              handleInstallOfficial(packages[0]);
-                            } else {
-                              handleSelectServer(server);
-                            }
-                          }}
-                          installed={false}
                         />
                       </motion.div>
                     ))}
                   </motion.div>
 
-                  {/* Load More Button (Official uses cursor pagination) */}
+                  {/* Infinite scroll trigger */}
                   {officialRegistry.hasMore && (
-                    <div className="flex justify-center pt-4 pb-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleLoadMore}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 mr-2" />
-                        )}
-                        {t("marketplace.loadMore")}
-                      </Button>
+                    <div
+                      ref={loadMoreRef}
+                      className="flex items-center justify-center py-8"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      ) : (
+                        <Button variant="outline" onClick={() => officialRegistry.loadMore()}>
+                          {t("marketplace.loadMore")}
+                        </Button>
+                      )}
                     </div>
                   )}
                 </>
@@ -473,8 +479,6 @@ export function MarketplacePage() {
                       <PackageCard
                         package={pkg}
                         onSelect={() => handleSelectPackage(pkg)}
-                        onInstall={() => handleInstallCommunity(pkg)}
-                        installed={false}
                       />
                     </motion.div>
                   ))}

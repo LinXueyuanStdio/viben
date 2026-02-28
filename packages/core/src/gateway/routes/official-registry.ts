@@ -369,7 +369,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         const query = search.toLowerCase();
         servers = servers.filter((s) =>
           s.name.toLowerCase().includes(query) ||
-          s.description.toLowerCase().includes(query) ||
+          (s.description && s.description.toLowerCase().includes(query)) ||
           s.id.toLowerCase().includes(query)
         );
       }
@@ -420,7 +420,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
     try {
       const registry = await getRegistry();
       const server = registry.servers.find(
-        (s) => s.id === name || s.name === name || s.qualifiedName === name
+        (s) => s.id === name || s.name === name || s.slug === name
       );
 
       if (!server) {
@@ -447,7 +447,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
     try {
       const registry = await getRegistry();
       const server = registry.servers.find(
-        (s) => s.id === name || s.name === name || s.qualifiedName === name
+        (s) => s.id === name || s.name === name || s.slug === name
       );
 
       if (!server) {
@@ -455,10 +455,21 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         return { error: "Server not found" };
       }
 
-      // Extract versions from packages
-      const versions = server.packages
-        .filter((p) => p.version)
-        .map((p) => p.version as string);
+      // Return the version of this server (version is stored at server level)
+      // The original data contains packages with versions if we need them
+      const versions: string[] = [];
+      if (server.version) {
+        versions.push(server.version);
+      }
+      // Also check original data for package versions
+      const original = server._original?.server;
+      if (original?.packages) {
+        for (const pkg of original.packages) {
+          if (pkg.version && !versions.includes(pkg.version)) {
+            versions.push(pkg.version);
+          }
+        }
+      }
 
       return [...new Set(versions)];
     } catch (err) {

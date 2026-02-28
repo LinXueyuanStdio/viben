@@ -1139,7 +1139,7 @@ function SpanDetailPanel({
 
         {/* Span ID with copy */}
         <div className="flex items-center gap-1 mt-2">
-          <span className="text-xs text-muted-foreground">ID:</span>
+          <span className="text-xs text-muted-foreground">{t("common.id")}:</span>
           <code className="text-xs font-mono truncate flex-1">{span.spanId}</code>
           <TooltipProvider>
             <Tooltip>

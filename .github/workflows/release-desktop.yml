@@ -159,7 +159,7 @@ jobs:
 
             - **macOS**: Download the `.dmg` file and drag Viben to Applications
               - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-              - Or run: `xattr -cr /Applications/Viben.app`
+              - Or run: `xattr -cr /Applications/Viben.app` or `xattr -d com.apple.quarantine /Applications/Viben.app`
             - **Windows**: Download the `.msi` or `.exe` installer and run it
             - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
 
