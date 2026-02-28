@@ -18,6 +18,9 @@ import {
   Edit2,
   X,
   Activity,
+  Terminal,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMcp } from "@/hooks/use-mcp";
@@ -27,7 +30,9 @@ import { useServiceKeys } from "@/hooks/use-service-keys";
 import { useUsage, type ApiKeyUsage } from "@/hooks/use-usage";
 import { useOnPageEnter, useServerStatus } from "@/hooks/use-mcp-status-monitor";
 import { useAppStore } from "@/stores";
+import { toast } from "@/hooks/use-toast";
 import type { McpServerInstance, McpServerStatus, ServiceApiKey } from "@/types";
+import type { McpStatus } from "@/lib/gateway";
 import { useTranslation } from "react-i18next";
 
 export function SearchServicePage() {

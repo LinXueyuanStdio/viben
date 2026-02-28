@@ -363,7 +363,8 @@
       "gateway": "网关",
       "channels": "消息渠道",
       "executors": "执行器",
-      "sandbox": "沙箱"
+      "sandbox": "沙箱",
+      "setup": "设置向导"
     },
     "notifications": {
       "description": "配置通知的接收方式和时间",
@@ -397,6 +398,9 @@
       "dndHint": "通知将被静音但仍会记录"
     },
     "generalDescription": "通用应用设置",
+    "onboarding": "设置向导",
+    "onboardingDescription": "重新运行初始设置向导，配置 Python、AI 客户端和登录",
+    "openOnboarding": "打开设置向导",
     "appearanceDescription": "自定义 Viben 在设备上的外观。",
     "environmentDescription": "Python 和包配置",
     "storageDescription": "管理下载和缓存",

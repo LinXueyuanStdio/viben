@@ -363,7 +363,8 @@
       "gateway": "Gateway",
       "channels": "Channels",
       "executors": "Executors",
-      "sandbox": "Sandbox"
+      "sandbox": "Sandbox",
+      "setup": "Setup"
     },
     "notifications": {
       "description": "Configure how and when you receive notifications",
@@ -397,6 +398,9 @@
       "dndHint": "Notifications will be silenced but still recorded"
     },
     "generalDescription": "General application settings",
+    "onboarding": "Setup Wizard",
+    "onboardingDescription": "Re-run the initial setup wizard to configure Python, AI clients, and login",
+    "openOnboarding": "Open Setup Wizard",
     "appearanceDescription": "Customize Viben's appearance on your device.",
     "environmentDescription": "Python and package configuration",
     "storageDescription": "Manage downloads and cache",

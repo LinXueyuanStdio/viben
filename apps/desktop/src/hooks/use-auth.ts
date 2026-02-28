@@ -6,6 +6,54 @@ import i18n from "@/i18n";
 import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "@/hooks/use-toast";
 
+// Global OAuth listener state - prevents multiple listeners from being registered
+let oauthListenerInitialized = false;
+
+/**
+ * Initialize OAuth listeners globally (called once on first useAuth mount)
+ * This ensures only one listener handles OAuth callbacks across all components
+ */
+function initializeOAuthListeners() {
+  if (oauthListenerInitialized) return;
+  oauthListenerInitialized = true;
+
+  // Register OAuth callback listener (lives for app lifetime)
+  listen<string>("oauth-callback", async (event) => {
+    const sessionBase64 = event.payload;
+    if (sessionBase64) {
+      try {
+        // Decode base64url to JSON
+        const sessionJson = atob(sessionBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        const sessionData = JSON.parse(sessionJson);
+
+        // Set session directly from decoded data
+        await useAuthStore.getState().setSessionFromOAuth(sessionData);
+
+        // Show success toast
+        const { user } = useAuthStore.getState();
+        toast.success(i18n.t("toast.auth.loginSuccess"), {
+          description: i18n.t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
+        });
+      } catch (err) {
+        console.error("OAuth callback failed:", err);
+        toast.error(i18n.t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
+        });
+      }
+    }
+  });
+
+  // Register OAuth error listener (lives for app lifetime)
+  listen<string>("oauth-error", async (event) => {
+    const error = event.payload;
+    console.error("OAuth error:", error);
+    useAuthStore.getState().setLoading(false);
+    toast.error(i18n.t("toast.auth.loginFailed"), {
+      description: `OAuth: ${error}`,
+    });
+  });
+}
+
 /**
  * Hook for authentication with auto-refresh support
  *
@@ -94,52 +142,12 @@ export function useAuth() {
     };
   }, [store.user?.expiresAt, scheduleRefresh, clearRefreshTimeout]);
 
-  // Initialize auth state on mount
+  // Initialize auth state and OAuth listeners on mount
   useEffect(() => {
+    // Initialize OAuth listeners globally (only once across all components)
+    initializeOAuthListeners();
+    // Initialize auth state
     store.initializeAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Listen for OAuth callback from deep link (viben://oauth?session=<base64url>)
-  useEffect(() => {
-    const unlistenCallback = listen<string>("oauth-callback", async (event) => {
-      const sessionBase64 = event.payload;
-      if (sessionBase64) {
-        try {
-          // Decode base64url to JSON
-          const sessionJson = atob(sessionBase64.replace(/-/g, '+').replace(/_/g, '/'));
-          const sessionData = JSON.parse(sessionJson);
-
-          // Set session directly from decoded data
-          await store.setSessionFromOAuth(sessionData);
-
-          // Show success toast
-          const { user } = useAuthStore.getState();
-          toast.success(i18n.t("toast.auth.loginSuccess"), {
-            description: i18n.t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
-          });
-        } catch (err) {
-          console.error("OAuth callback failed:", err);
-          toast.error(i18n.t("toast.auth.loginFailed"), {
-            description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
-          });
-        }
-      }
-    });
-
-    const unlistenError = listen<string>("oauth-error", async (event) => {
-      const error = event.payload;
-      console.error("OAuth error:", error);
-      store.setLoading(false);
-      toast.error(i18n.t("toast.auth.loginFailed"), {
-        description: `OAuth: ${error}`,
-      });
-    });
-
-    return () => {
-      unlistenCallback.then((fn) => fn());
-      unlistenError.then((fn) => fn());
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -187,8 +195,8 @@ export function useAuth() {
   // Wrapped logout with toast
   const logout = useCallback(async () => {
     await store.logout();
-    toast.info(t("toast.auth.loggedOut"));
-  }, [store, t]);
+    toast.info(i18n.t("toast.auth.loggedOut"));
+  }, [store]);
 
   return {
     /** Current user session */

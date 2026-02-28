@@ -1,7 +1,7 @@
 # Module Specifications Index
 
 > Detailed specifications for each task in the Platform Upgrade v3.0.
-> **Status: ALL CORE MODULES COMPLETED**
+> **Status: Core Web modules completed. Kanban/Chat modules in specification phase.**
 
 ---
 
@@ -122,6 +122,8 @@ This directory contains detailed specifications for implementing each module of 
 ## Social Chat System
 
 > **新增**: Desktop 社交聊天功能，类微信设计
+>
+> ⚠️ **Note**: 所有规格已完成，但**尚未实现**。
 
 | Module | Description | Status |
 |--------|-------------|--------|
@@ -129,15 +131,17 @@ This directory contains detailed specifications for implementing each module of 
 | [social-chat/chat-prd.md](./social-chat/chat-prd.md) | 聊天页面 PRD | ✅ Done |
 | [social-chat/contacts-prd.md](./social-chat/contacts-prd.md) | 联系人页面 PRD | ✅ Done |
 | [social-chat/agent-team-prd.md](./social-chat/agent-team-prd.md) | 智能体团队 PRD | ✅ Done |
-| social-chat/chat-spec.md | 聊天功能开发规范 | 📝 TODO |
-| social-chat/contacts-spec.md | 联系人功能开发规范 | 📝 TODO |
-| social-chat/data-model.md | 数据模型设计 | 📝 TODO |
+| [social-chat/chat-spec.md](./social-chat/chat-spec.md) | 聊天功能开发规范 | ✅ Done |
+| [social-chat/contacts-spec.md](./social-chat/contacts-spec.md) | 联系人功能开发规范 | ✅ Done |
+| [social-chat/data-model.md](./social-chat/data-model.md) | 数据模型设计 | ✅ Done |
 
 ---
 
 ## Kanban System (vibe-kanban 迁移)
 
 > **新增**: 将 vibe-kanban 核心功能迁移到 packages/core，使用基于文件的存储
+>
+> ⚠️ **Note**: UI 已实现 (`workspace-kanban.tsx`)，后端核心模块尚未实现。
 
 | Module | Description | Status |
 |--------|-------------|--------|

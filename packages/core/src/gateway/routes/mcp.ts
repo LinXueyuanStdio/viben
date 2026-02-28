@@ -38,6 +38,14 @@ interface McpStatus {
   pid: number | null;
   transport: string | null;
   port: number | null;
+  /** Command that was executed */
+  command?: string;
+  /** Full command line arguments */
+  args?: string[];
+  /** Startup timestamp */
+  startedAt?: string;
+  /** Endpoint URL for connecting */
+  endpointUrl?: string;
 }
 
 interface PortStatus {
@@ -427,12 +435,21 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
         throw new Error("Failed to start browse-mcp: no PID");
       }
 
+      // Build endpoint URL based on transport
+      const endpointUrl = transport === "sse"
+        ? `http://localhost:${port}/sse`
+        : `http://localhost:${port}/mcp`;
+
       browseMcpProcess = child;
       browseMcpStatus = {
         running: true,
         pid: child.pid,
         transport,
         port,
+        command: python_path,
+        args,
+        startedAt: new Date().toISOString(),
+        endpointUrl,
       };
 
       return browseMcpStatus;

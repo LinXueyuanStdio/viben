@@ -10,6 +10,19 @@ This directory contains guidelines for backend development. The backend is built
 
 **Important**: `packages/core` is the single boundary for all apps to access underlying capabilities. See [CLAUDE.md](../../../CLAUDE.md) for core architecture principles.
 
+## Architecture Note
+
+> **Important**: Viben has a dual-language architecture:
+
+| Component | Language | Purpose |
+|-----------|----------|---------|
+| `packages/core` | TypeScript | Gateway API, CLI, Agent system, MCP client |
+| `backend/browse-mcp` | Python | MCP server for academic search (arXiv, PubMed, etc.) |
+
+**This directory's guidelines focus on `packages/core` (TypeScript).**
+
+For Python MCP server development, see [Plugin Architecture](./plugin-architecture.md) which documents the stevedore-based plugin system in `backend/browse-mcp`.
+
 ---
 
 ## Guidelines Index
@@ -19,7 +32,7 @@ This directory contains guidelines for backend development. The backend is built
 | Guide | Description | Status |
 |-------|-------------|--------|
 | [Directory Structure](./directory-structure.md) | 模块组织与文件布局 | ✅ Complete |
-| [Plugin Architecture](./plugin-architecture.md) | 可插拔 Provider 系统 (stevedore) | ✅ Complete |
+| [Plugin Architecture](./plugin-architecture.md) | Python MCP 可插拔 Provider 系统 (stevedore) | ✅ Complete |
 | [Telemetry Guidelines](./telemetry-guidelines.md) | OpenTelemetry tracing, metrics, logging | ✅ Complete |
 | [API Module](./api-module.md) | API 模块设计与路由规范 | ✅ Complete |
 | [Quality](./quality.md) | 代码质量标准与审查指南 | ✅ Complete |

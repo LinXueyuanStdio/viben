@@ -33,6 +33,7 @@ import {
   Clock,
   Zap,
   Box,
+  Sparkles,
 } from "lucide-react";
 import { VibenLogo } from "@/components/ui/viben-logo";
 import { Button } from "@/components/ui/button";
@@ -366,6 +367,7 @@ export function SettingsPage() {
 
 function GeneralSection() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
     language,
     setLanguage,
@@ -379,6 +381,7 @@ function GeneralSection() {
     setAutoSetTimezone,
     timezone,
     setTimezone,
+    setOnboardingCompleted,
   } = useAppStore();
 
   // Handle language change
@@ -512,6 +515,35 @@ function GeneralSection() {
             </SelectContent>
           </Select>
         </SettingsItem>
+      </div>
+
+      {/* Onboarding Section */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <SectionHeader title={t("settings.sections.setup")} />
+        <div className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-medium text-foreground">
+                {t("settings.onboarding")}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {t("settings.onboardingDescription")}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOnboardingCompleted(false);
+              navigate("/onboarding");
+            }}
+          >
+            {t("settings.openOnboarding")}
+          </Button>
+        </div>
       </div>
     </div>
   );

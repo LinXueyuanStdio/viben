@@ -23,12 +23,14 @@ This directory contains guidelines for frontend development. These specs ensure 
 
 ### Feature Guidelines
 
-| Guide | Description | Status |
-|-------|-------------|--------|
-| [Provider System](./PROVIDER_SYSTEM.md) | AI Provider 配置与管理系统 | ✅ Complete |
-| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" 和 "Publish My Skill" 向导流程 | ✅ Complete |
-| [Chat Integration](./chat-integration.md) | 工作空间聊天页面集成 (**desktop only**) | ✅ Complete |
-| [Vibe Kanban Layout](./vibe-kanban-layout-architecture.md) | Vibe Kanban 三栏布局架构设计 | ✅ Complete |
+| Guide | Description | Spec | Impl |
+|-------|-------------|------|------|
+| [Provider System](./PROVIDER_SYSTEM.md) | AI Provider 配置与管理系统 | ✅ | ✅ |
+| [Marketplace Publish Flow](./marketplace-publish-flow.md) | "Publish My MCP" 和 "Publish My Skill" 向导流程 | ✅ | ❌ |
+| [Chat Integration](./chat-integration.md) | 工作空间聊天页面集成 (**desktop only**) | ✅ | ✅ |
+| [Vibe Kanban Layout](./vibe-kanban-layout-architecture.md) | Vibe Kanban 三栏布局架构设计 | ✅ | ✅ |
+
+> **Legend:** Spec = 规格文档完成, Impl = 代码实现完成
 
 ### To Fill
 
