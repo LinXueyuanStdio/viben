@@ -328,10 +328,7 @@ export function SettingsGatewayPage() {
                 {t("gateway.connectivityTest", "连通性检测")}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {t(
-                  "gateway.connectivityTestDescription",
-                  "检测网关服务的连接状态和可用端点"
-                )}
+                {t("gateway.connectivityTestDescription")}
               </p>
             </div>
           </div>
@@ -473,11 +470,8 @@ export function SettingsGatewayPage() {
 
         {/* Host Configuration */}
         <SettingsItem
-          title={t("gateway.host", "主机")}
-          description={t(
-            "gateway.hostDescription",
-            "网关服务绑定的主机地址"
-          )}
+          title={t("gateway.host")}
+          description={t("gateway.hostDescription")}
         >
           <code className="bg-muted px-2 py-1 rounded text-sm">
             {config?.host || "127.0.0.1"}
@@ -486,11 +480,8 @@ export function SettingsGatewayPage() {
 
         {/* Port Configuration */}
         <SettingsItem
-          title={t("gateway.port", "端口")}
-          description={t(
-            "gateway.portDescription",
-            "网关服务监听的端口号 (需要重启生效)"
-          )}
+          title={t("gateway.port")}
+          description={t("gateway.portDescription")}
         >
           <div className="flex items-center gap-2">
             <Input

@@ -1698,69 +1698,114 @@ function EnvironmentSection() {
     navigator.clipboard.writeText(text);
   };
 
-  // Render a single CLI tool row
+  // Render a single CLI tool row with dropdown
   const renderToolRow = (config: CliToolConfig, isFirst: boolean) => {
     const info = cliToolsInfo[config.key];
     const { value: customPath, setter: setCustomPath } = pathMap[config.key] || { value: "", setter: () => {} };
     const Icon = config.icon;
     const isChecking = checkingTool === config.key;
+    const isFound = info?.found === true;
+    const isLoading = cliToolsLoading || isChecking;
+
+    // Determine the display value for the select
+    const currentValue = customPath || (isFound ? "auto" : "not-installed");
+
+    const handleValueChange = (value: string) => {
+      if (value === "auto") {
+        setCustomPath("");
+      } else if (value === "not-installed") {
+        // Do nothing, just show the state
+      } else {
+        setCustomPath(value);
+      }
+    };
 
     return (
-      <div key={config.key} className={cn("space-y-2", !isFirst && "pt-3 border-t")}>
-        <div className="flex items-center justify-between">
-          <label className="text-sm font-medium flex items-center gap-2">
-            <Icon className="h-4 w-4" />
-            {t(`settings.cliTools.${config.key}Path`, { defaultValue: `${config.key.charAt(0).toUpperCase() + config.key.slice(1)} Path` })}
-          </label>
-          {info && (
-            <span className="text-xs text-muted-foreground">
-              {info.found ? (
-                <>
-                  <span className="text-green-600 mr-1">●</span>
-                  {t("settings.cliTools.version", { defaultValue: "v{{version}}", version: info.version || "?" })}
-                  {" • "}
-                  {getSourceLabel(info.source)}
-                </>
-              ) : (
-                <>
-                  <span className="text-yellow-600 mr-1">●</span>
-                  {t("settings.cliTools.notDetected", { defaultValue: "Not detected" })}
-                </>
-              )}
-            </span>
+      <div key={config.key} className={cn("flex items-center gap-3 py-2", !isFirst && "border-t")}>
+        {/* Status indicator */}
+        <div className="flex-shrink-0">
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : isFound ? (
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          ) : (
+            <XCircle className="h-4 w-4 text-destructive" />
           )}
         </div>
-        <div className="flex gap-2">
-          <Input
-            type="text"
-            value={customPath}
-            onChange={(e) => setCustomPath(e.target.value)}
-            className="flex-1 rounded-xl"
-            placeholder={info?.path || t(`settings.cliTools.${config.key}PathPlaceholder`, { defaultValue: `${config.key} (default)` })}
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => checkCliToolPath(config.key, customPath)}
-            disabled={isChecking}
-            className="rounded-xl"
-          >
-            {isChecking ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4" />
-            )}
-          </Button>
+
+        {/* Tool name and icon */}
+        <div className="flex items-center gap-2 min-w-[120px]">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">
+            {t(`settings.cliTools.${config.key}Name`, { defaultValue: config.key.charAt(0).toUpperCase() + config.key.slice(1) })}
+          </span>
         </div>
-        {info?.found && info.path && !customPath && (
-          <p className="text-xs text-muted-foreground font-mono truncate">
-            {t("settings.cliTools.detectedPath", { defaultValue: "Auto-detected" })}: {info.path}
-          </p>
+
+        {/* Dropdown or status */}
+        <div className="flex-1">
+          <Select value={currentValue} onValueChange={handleValueChange} disabled={isLoading}>
+            <SelectTrigger className="h-8 rounded-lg text-xs">
+              <SelectValue>
+                {isLoading ? (
+                  <span className="text-muted-foreground">{t("settings.cliTools.detecting", { defaultValue: "Detecting..." })}</span>
+                ) : isFound ? (
+                  customPath ? (
+                    <span className="font-mono truncate">{customPath}</span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-green-600">{t("settings.cliTools.autoDetected", { defaultValue: "Auto-detected" })}</span>
+                      <span className="text-muted-foreground">•</span>
+                      <span className="text-muted-foreground">v{info?.version || "?"}</span>
+                    </span>
+                  )
+                ) : (
+                  <span className="text-destructive">{t("settings.cliTools.notInstalled", { defaultValue: "Not installed" })}</span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {isFound && info?.path && (
+                <SelectItem value="auto">
+                  <div className="flex flex-col">
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      {t("settings.cliTools.autoDetected", { defaultValue: "Auto-detected" })}
+                      <span className="text-muted-foreground text-xs">v{info.version || "?"}</span>
+                    </span>
+                    <span className="text-xs text-muted-foreground font-mono truncate max-w-[300px]">{info.path}</span>
+                  </div>
+                </SelectItem>
+              )}
+              {!isFound && (
+                <SelectItem value="not-installed" disabled>
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-3 w-3 text-destructive" />
+                    <span>{t("settings.cliTools.notInstalled", { defaultValue: "Not installed" })}</span>
+                  </div>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Version badge (when found) */}
+        {isFound && !isLoading && (
+          <span className="flex-shrink-0 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
+            {getSourceLabel(info?.source || "system-path")}
+          </span>
         )}
-        {!info?.found && config.installHint && (
-          <p className="text-xs text-muted-foreground">
-            {t("settings.cliTools.installHint", { defaultValue: "Install:" })} <code className="bg-muted px-1 py-0.5 rounded">{config.installHint}</code>
-          </p>
+
+        {/* Install hint (when not found) */}
+        {!isFound && !isLoading && config.installHint && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-shrink-0 h-7 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => copyToClipboard(config.installHint!)}
+          >
+            <Copy className="h-3 w-3 mr-1" />
+            {config.installHint}
+          </Button>
         )}
       </div>
     );
@@ -1781,8 +1826,8 @@ function EnvironmentSection() {
       </div>
 
       {/* CLI Tools - Core */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <div className="flex items-center justify-between">
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold">{t("settings.cliTools.coreTitle", { defaultValue: "Core Tools" })}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -1799,7 +1844,9 @@ function EnvironmentSection() {
           </Button>
         </div>
 
-        {coreTools.map((tool, index) => renderToolRow(tool, index === 0))}
+        <div className="divide-y">
+          {coreTools.map((tool, index) => renderToolRow(tool, index === 0))}
+        </div>
       </div>
 
       {/* browse-mcp Package */}
@@ -1855,17 +1902,23 @@ function EnvironmentSection() {
       </div>
 
       {/* CLI Tools - AI Assistants */}
-      <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <div className="flex items-center justify-between">
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold">{t("settings.cliTools.aiTitle", { defaultValue: "AI Coding Assistants" })}</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               {t("settings.cliTools.aiDescription", { defaultValue: "Claude, Codex, Aider, and other AI tools" })}
             </p>
           </div>
+          {/* Show count of installed AI tools */}
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
+            {aiTools.filter(tool => cliToolsInfo[tool.key]?.found).length}/{aiTools.length} {t("settings.cliTools.installed", { defaultValue: "installed" })}
+          </span>
         </div>
 
-        {aiTools.map((tool, index) => renderToolRow(tool, index === 0))}
+        <div className="divide-y">
+          {aiTools.map((tool, index) => renderToolRow(tool, index === 0))}
+        </div>
       </div>
     </div>
   );
