@@ -151,6 +151,7 @@ export const useAuthStore = create<AuthState>()(
             user: session,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -183,6 +184,7 @@ export const useAuthStore = create<AuthState>()(
             user: session,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
@@ -199,6 +201,15 @@ export const useAuthStore = create<AuthState>()(
         try {
           const client = getApiClient();
 
+          // Normalize expiresAt to milliseconds
+          // If expiresAt is less than a reasonable timestamp in ms (year 2000 = 946684800000),
+          // it's likely in seconds and needs to be converted
+          let expiresAt = data.expiresAt;
+          if (expiresAt < 946684800000) {
+            // Convert seconds to milliseconds
+            expiresAt = expiresAt * 1000;
+          }
+
           // Build session object
           const session: UserSession = {
             id: data.user.id,
@@ -208,7 +219,7 @@ export const useAuthStore = create<AuthState>()(
             avatarUrl: data.user.avatarUrl,
             accessToken: data.accessToken,
             refreshToken: data.refreshToken,
-            expiresAt: data.expiresAt,
+            expiresAt,
           };
 
           // Set token for future requests
@@ -218,6 +229,7 @@ export const useAuthStore = create<AuthState>()(
             user: session,
             isAuthenticated: true,
             isLoading: false,
+            isInitialized: true, // Mark as initialized to prevent re-validation
           });
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
