@@ -369,7 +369,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         const query = search.toLowerCase();
         servers = servers.filter((s) =>
           s.name.toLowerCase().includes(query) ||
-          s.description.toLowerCase().includes(query) ||
+          (s.description && s.description.toLowerCase().includes(query)) ||
           s.id.toLowerCase().includes(query)
         );
       }
@@ -420,7 +420,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
     try {
       const registry = await getRegistry();
       const server = registry.servers.find(
-        (s) => s.id === name || s.name === name || s.qualifiedName === name
+        (s) => s.id === name || s.name === name || s.slug === name
       );
 
       if (!server) {
@@ -447,7 +447,7 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
     try {
       const registry = await getRegistry();
       const server = registry.servers.find(
-        (s) => s.id === name || s.name === name || s.qualifiedName === name
+        (s) => s.id === name || s.name === name || s.slug === name
       );
 
       if (!server) {
@@ -455,10 +455,11 @@ export function registerOfficialRegistryRoutes(fastify: FastifyInstance): void {
         return { error: "Server not found" };
       }
 
-      // Extract versions from packages
-      const versions = server.packages
-        .filter((p) => p.version)
-        .map((p) => p.version as string);
+      // Extract versions from packages in the original server data
+      const packages = server._original.server.packages || [];
+      const versions = packages
+        .filter((p: RawPackage) => p.version)
+        .map((p: RawPackage) => p.version as string);
 
       return [...new Set(versions)];
     } catch (err) {

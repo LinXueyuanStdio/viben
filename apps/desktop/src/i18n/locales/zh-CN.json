@@ -103,6 +103,8 @@
     "mcpMarketplace": "MCP 市场",
     "mcpServices": "MCP 服务",
     "dedicatedSearchServices": "专用搜索服务",
+    "pageDebugServices": "页面调试服务",
+    "pageDebug": "页面调试",
     "skillsMarket": "技能市场",
     "logs": "日志",
     "documents": "文档",
@@ -1031,6 +1033,33 @@
     "serverRunning": "服务器正在运行",
     "serverStopped": "服务器已停止",
     "serverError": "服务器错误"
+  },
+  "pageDebug": {
+    "title": "页面调试",
+    "subtitle": "让 AI 自动调试 Tauri 应用的 WebView 页面",
+    "status": "调试服务状态",
+    "running": "运行中",
+    "stopped": "已停止",
+    "socketPath": "Socket 路径",
+    "features": "可用工具",
+    "devOnly": "仅开发环境可用",
+    "productionDisabled": "生产环境已禁用此功能",
+    "aiInstructions": "AI 客户端配置",
+    "copyConfig": "复制配置",
+    "testCommand": "测试命令",
+    "testCommandHint": "在终端运行此命令以测试 MCP 服务器连接",
+    "tools": {
+      "takeScreenshot": "截图",
+      "queryPage": "查询页面",
+      "click": "点击",
+      "typeText": "输入文本",
+      "getPageContent": "获取页面内容",
+      "executeJs": "执行 JavaScript",
+      "getTauriState": "获取 Tauri 状态",
+      "getWindows": "获取窗口列表",
+      "launchApp": "启动应用",
+      "stopApp": "停止应用"
+    }
   },
   "auth": {
     "signIn": "登录",
