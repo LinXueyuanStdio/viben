@@ -410,9 +410,11 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
 
     try {
       // Start browse-mcp process
-      const args = transport === "sse"
-        ? ["-m", "browse_mcp", "--transport", "sse", "--port", String(port)]
-        : ["-m", "browse_mcp"];
+      // Both SSE and HTTP transports need port argument
+      // SSE uses /sse endpoint, HTTP uses /mcp endpoint
+      // Normalize transport: "http" -> "streamable-http" for MCP SDK compatibility
+      const normalizedTransport = transport === "http" ? "streamable-http" : transport;
+      const args = ["-m", "browse_mcp", "--transport", normalizedTransport, "--port", String(port)];
 
       const child = spawn(python_path, args, {
         detached: true,
