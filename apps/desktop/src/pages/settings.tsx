@@ -1707,16 +1707,25 @@ function EnvironmentSection() {
     const isFound = info?.found === true;
     const isLoading = cliToolsLoading || isChecking;
 
-    // Determine the display value for the select
-    const currentValue = customPath || (isFound ? "auto" : "not-installed");
+    // Get all discovered paths (primary + alternatives)
+    const allPaths = isFound && info?.path ? [
+      { path: info.path, version: info.version, source: info.source },
+      ...(info.alternatives || [])
+    ] : [];
+
+    // Determine current selection - if customPath matches one of the discovered paths, use that path as value
+    const currentValue = customPath || (isFound ? info?.path || "not-installed" : "not-installed");
+
+    // Find the currently selected path info
+    const selectedPathInfo = allPaths.find(p => p.path === currentValue);
 
     const handleValueChange = (value: string) => {
-      if (value === "auto") {
-        setCustomPath("");
-      } else if (value === "not-installed") {
+      if (value === "not-installed") {
         // Do nothing, just show the state
       } else {
-        setCustomPath(value);
+        // Set the selected path (or empty string if it's the primary/default path)
+        const isPrimary = value === info?.path;
+        setCustomPath(isPrimary ? "" : value);
       }
     };
 
@@ -1748,34 +1757,40 @@ function EnvironmentSection() {
               <SelectValue>
                 {isLoading ? (
                   <span className="text-muted-foreground">{t("settings.cliTools.detecting", { defaultValue: "Detecting..." })}</span>
-                ) : isFound ? (
-                  customPath ? (
-                    <span className="font-mono truncate">{customPath}</span>
-                  ) : (
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-green-600">{t("settings.cliTools.autoDetected", { defaultValue: "Auto-detected" })}</span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">v{info?.version || "?"}</span>
-                    </span>
-                  )
+                ) : isFound && selectedPathInfo ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-green-600 truncate max-w-[200px] font-mono text-[11px]">{selectedPathInfo.path}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground">v{selectedPathInfo.version || "?"}</span>
+                  </span>
                 ) : (
                   <span className="text-destructive">{t("settings.cliTools.notInstalled", { defaultValue: "Not installed" })}</span>
                 )}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              {isFound && info?.path && (
-                <SelectItem value="auto">
-                  <div className="flex flex-col">
+            <SelectContent className="max-w-[450px]">
+              {/* Show all discovered paths */}
+              {allPaths.map((pathInfo, index) => (
+                <SelectItem key={pathInfo.path} value={pathInfo.path}>
+                  <div className="flex flex-col gap-0.5">
                     <span className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
-                      {t("settings.cliTools.autoDetected", { defaultValue: "Auto-detected" })}
-                      <span className="text-muted-foreground text-xs">v{info.version || "?"}</span>
+                      <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                      <span className="text-xs font-mono truncate max-w-[320px]">{pathInfo.path}</span>
+                      {index === 0 && (
+                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded flex-shrink-0">
+                          {t("settings.cliTools.recommended", { defaultValue: "Recommended" })}
+                        </span>
+                      )}
                     </span>
-                    <span className="text-xs text-muted-foreground font-mono truncate max-w-[300px]">{info.path}</span>
+                    <span className="flex items-center gap-2 text-[11px] text-muted-foreground ml-5">
+                      <span>v{pathInfo.version || "?"}</span>
+                      <span>•</span>
+                      <span>{getSourceLabel(pathInfo.source)}</span>
+                    </span>
                   </div>
                 </SelectItem>
-              )}
+              ))}
+              {/* Show not installed state */}
               {!isFound && (
                 <SelectItem value="not-installed" disabled>
                   <div className="flex items-center gap-2">
@@ -1784,14 +1799,20 @@ function EnvironmentSection() {
                   </div>
                 </SelectItem>
               )}
+              {/* Show count of discovered paths */}
+              {allPaths.length > 1 && (
+                <div className="px-2 py-1.5 text-[11px] text-muted-foreground border-t mt-1">
+                  {t("settings.cliTools.foundCount", { count: allPaths.length, defaultValue: "{{count}} locations found" })}
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Version badge (when found) */}
-        {isFound && !isLoading && (
+        {/* Source badge (when found) */}
+        {isFound && !isLoading && selectedPathInfo && (
           <span className="flex-shrink-0 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-            {getSourceLabel(info?.source || "system-path")}
+            {getSourceLabel(selectedPathInfo.source)}
           </span>
         )}
 

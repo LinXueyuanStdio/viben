@@ -942,6 +942,9 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "addDescription": "Açıklama ekle...",
+    "taskPromptWithDescription": "Lütfen bu görevde bana yardım edin:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Lütfen bu görevde bana yardım edin: {{title}}"
   }
 }

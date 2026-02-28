@@ -239,6 +239,30 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     targetDir
   );
 
+  // Add .viben/worktrees to root .gitignore
+  const rootGitignorePath = join(targetDir, ".gitignore");
+  const worktreesIgnoreEntry = ".viben/worktrees";
+  if (existsSync(rootGitignorePath)) {
+    const rootGitignoreContent = readFileSync(rootGitignorePath, "utf-8");
+    if (!rootGitignoreContent.includes(worktreesIgnoreEntry)) {
+      const newContent = rootGitignoreContent.endsWith("\n")
+        ? `${rootGitignoreContent}\n# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`
+        : `${rootGitignoreContent}\n\n# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`;
+      await writeFile(rootGitignorePath, newContent, "utf-8");
+      warnings.push(`Added ${worktreesIgnoreEntry} to root .gitignore`);
+    }
+  } else {
+    // Create root .gitignore with worktrees entry
+    const newGitignore = `# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`;
+    await writeFileIfNeeded(
+      rootGitignorePath,
+      newGitignore,
+      writeOpts,
+      createdFiles,
+      targetDir
+    );
+  }
+
   const version = "1.0.0";
   await writeFileIfNeeded(
     join(vibenDir, ".version"),

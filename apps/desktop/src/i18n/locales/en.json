@@ -554,6 +554,8 @@
       "notInstalled": "Not installed",
       "installed": "installed",
       "detectedPath": "Auto-detected",
+      "recommended": "Recommended",
+      "foundCount": "{{count}} locations found",
       "installHint": "Install:",
       "sourceUserConfig": "User Configuration",
       "sourceHomebrew": "Homebrew",

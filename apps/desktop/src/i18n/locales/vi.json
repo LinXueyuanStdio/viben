@@ -785,9 +785,42 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "hostDescription": "Dia chi may chu ma dich vu gateway lien ket",
+    "portDescription": "So cong ma dich vu gateway lang nghe (can khoi dong lai)",
+    "connectivityTestDescription": "Kiem tra trang thai ket noi va cac diem cuoi co san cua dich vu gateway"
+  },
+  "observability": {
+    "allRoutes": "Tat ca tuyen duong",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Thuc thi Tri tue nhan tao)",
+      "agents": "/api/agents (Quan ly Tri tue nhan tao)",
+      "workspaces": "/api/workspaces (Khong gian lam viec)",
+      "chat": "/api/chat (Tro chuyen)",
+      "groupChats": "/api/group-chats (Nhom tro chuyen)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Phien",
+        "config": "Cau hinh",
+        "info": "Thong tin",
+        "workspace": "Khong gian lam viec",
+        "auth": "Xac thuc"
+      },
+      "sources": {
+        "builtin": "Tich hop san",
+        "workspace": "Khong gian lam viec",
+        "skill": "Ky nang"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
+    "taskPromptWithDescription": "Vui long giup toi hoan thanh nhiem vu sau:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Vui long giup toi hoan thanh nhiem vu sau: {{title}}",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",
     "custom": "Custom",

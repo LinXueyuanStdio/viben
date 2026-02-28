@@ -910,6 +910,39 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "taskPromptWithDescription": "कृपया इस कार्य में मेरी मदद करें:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "कृपया इस कार्य में मेरी मदद करें: {{title}}"
+  },
+  "gateway": {
+    "hostDescription": "होस्ट पता जिस पर गेटवे सेवा बाइंड है",
+    "portDescription": "पोर्ट नंबर जिस पर गेटवे सेवा सुनती है (पुनः आरंभ आवश्यक)",
+    "connectivityTestDescription": "गेटवे सेवा की कनेक्शन स्थिति और उपलब्ध एंडपॉइंट्स की जाँच करें"
+  },
+  "observability": {
+    "allRoutes": "सभी रूट",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (एजेंट निष्पादन)",
+      "agents": "/api/agents (एजेंट प्रबंधन)",
+      "workspaces": "/api/workspaces (कार्यक्षेत्र)",
+      "chat": "/api/chat (चैट)",
+      "groupChats": "/api/group-chats (ग्रुप चैट)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "सत्र",
+        "config": "कॉन्फ़िगरेशन",
+        "info": "जानकारी",
+        "workspace": "कार्यक्षेत्र",
+        "auth": "प्रमाणीकरण"
+      },
+      "sources": {
+        "builtin": "अंतर्निहित",
+        "workspace": "कार्यक्षेत्र",
+        "skill": "कौशल"
+      }
+    }
   }
 }
