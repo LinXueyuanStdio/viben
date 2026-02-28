@@ -1,3 +1,9 @@
+---
+sidebar_position: 1
+title: Social Chat 模块
+description: Desktop 应用的社交聊天功能模块
+---
+
 # Social Chat 模块规范
 
 > Desktop 应用的社交聊天功能，包含【聊天】和【联系人】两个核心页面。
@@ -20,13 +26,13 @@
 
 | 文档 | 描述 | 状态 |
 |------|------|------|
-| [index.md](./index.md) | 模块概述（本文档） | ✅ 完成 |
-| [chat-prd.md](./chat-prd.md) | 聊天功能 PRD | ✅ 完成 |
-| [contacts-prd.md](./contacts-prd.md) | 联系人功能 PRD | ✅ 完成 |
-| [agent-team-prd.md](./agent-team-prd.md) | 智能体团队 PRD | ✅ 完成 |
-| [chat-spec.md](./chat-spec.md) | 聊天功能开发规范 | ✅ 完成 |
-| [contacts-spec.md](./contacts-spec.md) | 联系人功能开发规范 | ✅ 完成 |
-| [data-model.md](./data-model.md) | 数据模型设计 | ✅ 完成 |
+| 模块概述（本文档） | 模块概述与架构 | ✅ 完成 |
+| [聊天功能 PRD](./chat-prd.md) | 聊天功能产品需求 | ✅ 完成 |
+| [聊天功能规范](./chat-spec.md) | 聊天功能开发规范 | ✅ 完成 |
+| [联系人功能规范](./contacts-spec.md) | 联系人功能开发规范 | ✅ 完成 |
+| 联系人功能 PRD | 联系人功能产品需求 | 📋 计划中 |
+| 智能体团队 PRD | 智能体团队产品需求 | 📋 计划中 |
+| 数据模型设计 | 数据模型详细设计 | 📋 计划中 |
 
 ---
 
@@ -131,6 +137,7 @@
 
 ## 相关文档
 
-- [Desktop Integration](../desktop-integration.md) - Desktop 整体架构
-- [Workspace Chat](../workspace/) - Workspace 相关规范
-- [viben-core](../viben-core-integration.md) - 核心库集成
+- [聊天集成](../chat-integration.md) - 工作空间聊天集成规范
+- [聊天输入组件](../chat-input-components.md) - ChatInput 统一组件
+- [设计系统](../design-system.md) - Viben 设计系统
+- [组件指南](../components.md) - React 组件开发指南

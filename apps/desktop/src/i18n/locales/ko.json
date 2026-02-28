@@ -139,7 +139,43 @@
     "system": "시스템",
     "language": "언어",
     "storage": "저장소",
-    "downloadPath": "다운로드 경로"
+    "downloadPath": "다운로드 경로",
+    "sections": {
+      "general": "일반",
+      "account": "계정",
+      "appearance": "외관",
+      "environment": "환경",
+      "storage": "저장소",
+      "developer": "개발자",
+      "about": "정보"
+    },
+    "developerDescription": "개발자 도구, 디버그 설정 및 문제 해결",
+    "developer": {
+      "devtools": "개발자 도구",
+      "preferredIDE": "선호 IDE",
+      "preferredIDEDescription": "Viben이 이 에디터에서 프로젝트를 엽니다",
+      "preferredTerminal": "선호 터미널",
+      "preferredTerminalDescription": "Viben이 이 터미널에서 세션을 엽니다",
+      "yoloMode": "YOLO 모드",
+      "yoloModeDescription": "--dangerously-skip-permissions 플래그로 실행기를 시작하여 모든 안전 프롬프트를 우회합니다. 주의해서 사용하세요.",
+      "yoloModeWarning": "이 모드는 권한 시스템을 우회합니다. 실행 중인 코드를 완전히 신뢰하는 경우에만 활성화하세요.",
+      "debugLogs": "디버그 및 로그",
+      "openLogsFolder": "로그 폴더 열기",
+      "openConfigFolder": "설정 폴더 열기",
+      "copyDebugInfo": "디버그 정보 복사",
+      "loadDebugInfo": "디버그 정보 로드",
+      "systemInfo": "시스템 정보",
+      "paths": "경로",
+      "noRecentErrors": "최근 오류 없음",
+      "reportingIssues": "문제 보고",
+      "reportingIssuesDescription": "버그를 보고할 때 \"디버그 정보 복사\"를 클릭하여 문제 진단에 도움이 되는 시스템 정보를 가져오세요.",
+      "os": "운영체제",
+      "osVersion": "버전",
+      "appVersion": "앱 버전",
+      "arch": "아키텍처",
+      "logs": "로그",
+      "config": "설정"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +920,23 @@
     "noCommandsDesc": ".claude/commands/ 폴더에서 명령 파일을 찾을 수 없습니다.",
     "selectCommand": "보려면 명령 선택",
     "rootNamespace": "루트"
+  },
+  "snakeGame": {
+    "title": "스네이크 게임",
+    "score": "점수:",
+    "length": "길이:",
+    "speed": "속도:",
+    "gameOver": "게임 오버!",
+    "finalScore": "최종 점수: {{score}}",
+    "restart": "다시 시작",
+    "pause": "일시 정지",
+    "start": "시작",
+    "reset": "리셋",
+    "instructions": "게임 방법",
+    "instruction1": "방향키 또는 버튼으로 뱀의 방향을 조종합니다",
+    "instruction2": "청록색 점을 먹으면 길어지고 점수를 얻습니다",
+    "instruction3": "5개마다 속도가 빨라집니다",
+    "instruction4": "벽이나 자신에게 부딪히면 게임 오버",
+    "instruction5": "스페이스바로 일시정지/재개, R로 리셋"
   }
 }

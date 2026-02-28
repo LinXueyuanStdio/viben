@@ -1,46 +1,76 @@
 ---
 sidebar_position: 8
 title: "viben agent"
-description: "Manage agent instances, templates, sessions, and memory"
+description: "管理智能体实例、模板、会话和记忆"
 ---
 
 # viben agent
 
-Manage agent instances, templates, sessions, and memory.
+管理智能体实例、模板、会话和记忆。
 
-## Usage
+## 架构概述
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Viben CLI                            │
+├─────────────────────────────────────────────────────────┤
+│  Agent Instance (独立的智能体实例)                      │
+│      ├── config.yaml (智能体配置)                       │
+│      ├── mcp_servers.json (MCP 配置)                    │
+│      ├── skills/ (智能体专属技能)                       │
+│      ├── memory/ (智能体记忆)                           │
+│      │   ├── MEMORY.md (主记忆)                         │
+│      │   └── YYYY-MM-DD.md (每日日志, append-only)      │
+│      ├── .agentrc (启动配置)                            │
+│      ├── .agent_history (命令历史)                      │
+│      └── .agent_sessions/<session_id>/ (会话存储)       │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 核心概念
+
+| 概念 | 说明 |
+|------|------|
+| **Agent** | 独立的智能体实例，拥有自己的配置、记忆、会话 |
+| **Memory** | 智能体的长期记忆 (MEMORY.md + 每日日志) |
+| **Session** | 智能体的会话存储 (对话历史、状态) |
+| **Workspace Config** | 项目工作区的 agent 类型配置 (如 `.claude/`) |
+
+## 用法
 
 ```bash
 viben agent <subcommand> [options]
 ```
 
-## Subcommands
+## 子命令
 
-| Subcommand | Description |
-|------------|-------------|
-| `list` | List all agents |
-| `create` | Create a new agent |
-| `show` | Show agent details |
-| `remove` | Remove an agent |
-| `config` | View or set agent configuration |
-| `set-default` | Set the default agent |
-| `status` | Show agent status |
-| `template` | Manage agent templates |
-| `session` | Manage agent sessions |
-| `memory` | Manage agent memory |
+| 子命令 | 说明 |
+|--------|------|
+| `list` | 列出所有智能体 |
+| `create` | 创建新智能体 |
+| `show` | 显示智能体详情 |
+| `remove` | 删除智能体 |
+| `config` | 查看或设置智能体配置 |
+| `set-default` | 设置默认智能体 |
+| `set-template` | 设置为模板 |
+| `status` | 显示智能体状态 |
+| `template` | 管理智能体模板 |
+| `session` | 管理智能体会话 |
+| `memory` | 管理智能体记忆 |
+| `chat` | 使用智能体进行非交互式对话 |
 
-## Agent Management
+## 智能体管理
 
-### List Agents
+### 列出智能体
 
-List all configured agents:
+列出所有配置的智能体：
 
 ```bash
 viben agent list
 viben agent list --json
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Agents:
@@ -51,7 +81,7 @@ Agents:
 * = current agent
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 
 ```json
 {
@@ -80,52 +110,43 @@ Agents:
 }
 ```
 
-### Create Agent
+### 创建智能体
 
-Create a new agent:
+创建新智能体：
 
 ```bash
-# Create new agent
+# 创建新智能体
 viben agent create -n my-agent
 
-# Create from template
+# 从模板创建
 viben agent create -n my-agent -f coding-assistant
 
-# Create from config file
+# 从配置文件创建
 viben agent create -n my-agent -f /path/to/config.yaml
 
-# Clone existing agent
+# 克隆现有智能体
 viben agent create -n my-agent --clone main
+
+# 使用特定 executor
+viben agent create -n my-agent --executor /path/to/executor
 ```
 
-**Output:**
+**输出：**
 
 ```
 Created agent 'my-agent'
   Path: ~/.viben/agents/my-agent/
 ```
 
-**JSON output:**
+### 显示智能体
 
-```json
-{
-  "success": true,
-  "data": {
-    "id": "my-agent",
-    "path": "~/.viben/agents/my-agent/"
-  }
-}
-```
-
-### Show Agent
-
-Show agent details:
+显示智能体详情：
 
 ```bash
 viben agent show -n my-agent
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Agent: my-agent
@@ -150,39 +171,33 @@ MCP: filesystem, git (2 enabled)
 Skills: code-review, commit (2 enabled)
 ```
 
-### Remove Agent
+### 删除智能体
 
-Remove an agent:
+删除智能体：
 
 ```bash
-# Remove agent (with confirmation)
+# 删除智能体（需确认）
 viben agent remove -n my-agent
 
-# Force remove without confirmation
+# 强制删除无需确认
 viben agent remove -n my-agent --force
 ```
 
-**Output:**
+### 配置智能体
 
-```
-Removed agent 'my-agent'
-```
-
-### Configure Agent
-
-View or set agent configuration:
+查看或设置智能体配置：
 
 ```bash
-# View configuration
+# 查看配置
 viben agent config -n my-agent
 
-# Set configuration value
-viben agent config -n my-agent set model gpt-4
-viben agent config -n my-agent set plan true
-viben agent config -n my-agent set mcp.enabled '["filesystem", "git"]'
+# 设置配置值
+viben agent config -n my-agent --set model=gpt-4
+viben agent config -n my-agent --set plan=true
+viben agent config -n my-agent --set mcp.enabled='["filesystem", "git"]'
 ```
 
-**Output (View):**
+**输出（查看）：**
 
 ```yaml
 id: my-agent
@@ -201,42 +216,97 @@ skills:
     - commit
 ```
 
-### Set Default Agent
-
-Set the default agent:
+### 设置默认智能体
 
 ```bash
 viben agent set-default -n my-agent
 ```
 
-**Output:**
+**输出：**
 
 ```
 Set 'my-agent' as default agent
 ```
 
-### Agent Status
-
-Show agent status:
+### 设置为模板
 
 ```bash
-# All agents status
+viben agent set-template -n my-agent --description "A general coding assistant template"
+```
+
+### 智能体状态
+
+显示智能体状态：
+
+```bash
+# 所有智能体状态
 viben agent status
 
-# Specific agent status
+# 特定智能体状态
 viben agent status -n my-agent
 ```
 
-## Template Management
+## 智能体对话
 
-### List Templates
+使用指定智能体进行非交互式对话：
+
+```bash
+# 基本用法
+viben agent chat -n my-agent -p "分析这段代码"
+
+# 从 stdin 读取
+echo "写一个排序函数" | viben agent chat -n my-agent
+
+# 指定工作目录
+viben agent chat -n my-agent -p "分析项目结构" -C /path/to/project
+
+# 使用特定 session
+viben agent chat -n my-agent -p "继续上次的工作" -s main
+
+# 恢复已有 session
+viben agent chat -n my-agent -p "接着做" --resume abc123
+
+# 强制创建新 session
+viben agent chat -n my-agent -p "开始新任务" --new-session
+
+# 覆盖模型
+viben agent chat -n my-agent -p "复杂推理任务" --model claude-3-opus
+
+# 不加载记忆
+viben agent chat -n my-agent -p "独立任务" --no-memory
+
+# JSON 格式输出
+viben agent chat -n my-agent -p "快速任务" --json
+```
+
+### chat 选项
+
+| 选项 | 说明 |
+|------|------|
+| `-n, --name <id>` | 智能体 ID（必需） |
+| `-p, --prompt <prompt>` | 提示词（可选，无则从 stdin 读取） |
+| `-C, --cwd <dir>` | 工作目录（默认当前目录） |
+| `-s, --session <id>` | 指定 session ID |
+| `--resume <id>` | 恢复已有 session |
+| `--new-session` | 强制创建新 session |
+| `--model <model>` | 覆盖智能体配置的模型 |
+| `--no-memory` | 不加载智能体记忆 |
+| `--dangerously-skip-permissions` | 跳过权限检查 |
+| `--input-format <format>` | 输入格式: text, stream-json |
+| `--output-format <format>` | 输出格式: text, stream-json |
+| `--verbose` | 详细输出 |
+| `--json` | JSON 格式输出结果 |
+
+## 模板管理
+
+### 列出模板
 
 ```bash
 viben agent template list
 viben agent template list --json
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Agent Templates:
@@ -245,41 +315,35 @@ Agent Templates:
   code-reviewer       claude-code   "Code review specialist"
 ```
 
-### Create Template
+### 创建模板
 
-Create a template from an existing agent:
+从现有智能体创建模板：
 
 ```bash
 viben agent template create -n coding-assistant --clone my-agent
 ```
 
-**Output:**
-
-```
-Created template 'coding-assistant' from agent 'my-agent'
-```
-
-### Show Template
+### 显示模板
 
 ```bash
 viben agent template show -n coding-assistant
 ```
 
-### Remove Template
+### 删除模板
 
 ```bash
 viben agent template remove -n coding-assistant
 ```
 
-## Session Management
+## 会话管理
 
-### List Sessions
+### 列出会话
 
 ```bash
 viben agent session list -n my-agent
 ```
 
-**Output:**
+**输出：**
 
 ```
 Sessions for my-agent:
@@ -288,49 +352,43 @@ Sessions for my-agent:
   bugfix   "Fix login issue"       3d ago    23 messages
 ```
 
-### Create Session
+### 创建会话
 
 ```bash
-viben agent session create -n my-agent "feature-auth"
+viben agent session create -n my-agent --session-name "feature-auth"
 ```
 
-**Output:**
-
-```
-Created session 'feature-auth' for agent 'my-agent'
-```
-
-### Show Session
+### 显示会话
 
 ```bash
 viben agent session show -n my-agent -s main
 ```
 
-### Remove Session
+### 删除会话
 
 ```bash
 viben agent session remove -n my-agent -s feature-auth
 ```
 
-### Clear Session History
+### 清空会话历史
 
 ```bash
 viben agent session clear -n my-agent -s main
 ```
 
-## Memory Management
+## 记忆管理
 
-### Show Memory
+### 显示记忆
 
 ```bash
-# Show all memory
+# 显示所有记忆
 viben agent memory show -n my-agent
 
-# Show specific date
+# 显示特定日期
 viben agent memory show -n my-agent --date 2024-01-16
 ```
 
-**Output:**
+**输出：**
 
 ```
 Memory for my-agent:
@@ -350,50 +408,48 @@ Memory for my-agent:
 - Discovered issue with Y
 ```
 
-### Append Memory
+### 追加记忆
 
-Append content to today's log:
+追加内容到今日日志：
 
 ```bash
 viben agent memory append -n my-agent "Completed feature X implementation"
 ```
 
-**Output:**
+### 编辑记忆
 
-```
-Appended to 2024-01-16.md
-```
-
-### Edit Memory
-
-Open memory file in editor:
+在编辑器中打开记忆文件：
 
 ```bash
-# Edit main memory file
+# 编辑主记忆文件
 viben agent memory edit -n my-agent
 
-# Edit specific date
+# 编辑特定日期
 viben agent memory edit -n my-agent --date 2024-01-16
 ```
 
-## Agent Configuration File
+## 智能体配置文件
 
 ```yaml
 # ~/.viben/agents/my-agent/config.yaml
 version: 1
 
+# 智能体元数据
 id: my-agent
 name: "My Coding Assistant"
 description: "A helpful coding assistant"
 created: 2024-01-15T10:30:00Z
 
-type: claude-code
+# 智能体类型（决定运行时行为）
+type: claude-code  # claude-code | cursor | gemini | codex | ...
 
+# 类型特定配置
 type_config:
   plan: true
   dangerously_skip_permissions: false
   append_prompt: "You are a helpful coding assistant."
 
+# MCP 配置
 mcp:
   enabled:
     - filesystem
@@ -401,29 +457,61 @@ mcp:
   disabled:
     - browser
 
+# Skills 配置
 skills:
   enabled:
     - code-review
     - commit
 ```
 
-## Agent Types
+## MCP Servers 配置
 
-| Type | Description |
-|------|-------------|
-| `claude-code` | Claude Code agent |
-| `cursor` | Cursor agent |
-| `gemini` | Gemini agent |
-| `codex` | OpenAI Codex agent |
-| `windsurf` | Windsurf agent |
-| `amp` | AMP agent |
-| `opencode` | OpenCode agent |
-| `qwen-code` | Qwen Code agent |
-| `droid` | Droid agent |
+```json
+// ~/.viben/agents/my-agent/mcp_servers.json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-filesystem"],
+      "env": {
+        "ROOT": "/path/to/workspace"
+      }
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-server-git"]
+    }
+  }
+}
+```
 
-## Error Handling
+## 智能体类型
 
-### Agent Not Found
+| 类型 | 说明 |
+|------|------|
+| `claude-code` | Claude Code 智能体 |
+| `cursor` | Cursor 智能体 |
+| `gemini` | Gemini 智能体 |
+| `codex` | OpenAI Codex 智能体 |
+| `windsurf` | Windsurf 智能体 |
+| `amp` | AMP 智能体 |
+| `opencode` | OpenCode 智能体 |
+| `qwen-code` | Qwen Code 智能体 |
+| `aider` | Aider 智能体 |
+
+## 运行时配置合并
+
+智能体实际运行时，配置按以下顺序叠加：
+
+```
+1. ~/.viben/agents/<id>/config.yaml     # 智能体基础配置
+2. <project>/.claude/ (或其他 agent 类型)  # 工作区 agent 类型配置
+3. 命令行参数                              # 运行时覆盖
+```
+
+## 错误处理
+
+### 智能体未找到
 
 ```json
 {
@@ -435,7 +523,7 @@ skills:
 }
 ```
 
-### Agent Already Exists
+### 智能体已存在
 
 ```json
 {
@@ -447,9 +535,10 @@ skills:
 }
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben provider](./provider) - Provider management
-- [viben model](./model) - Model management
-- [viben mcp](./mcp) - MCP server management
-- [viben skill](./skill) - Skill management
+- [viben executor](./executor) - 执行器管理
+- [viben provider](./provider) - 提供商管理
+- [viben model](./model) - 模型管理
+- [viben mcp](./mcp) - MCP 服务器管理
+- [viben skill](./skill) - 技能管理

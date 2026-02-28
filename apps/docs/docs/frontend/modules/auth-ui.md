@@ -1,6 +1,12 @@
-# T7: Auth UI
+---
+sidebar_position: 3
+title: Auth UI
+description: 认证 UI：登录、注册、OAuth 组件
+---
 
-> Implement authentication UI components and pages.
+# Auth UI
+
+> 实现认证相关的 UI 组件和页面。
 
 ---
 

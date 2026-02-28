@@ -1,120 +1,133 @@
 ---
 sidebar_position: 1
-title: "Introduction"
-description: "Viben - Search, download, and read any content from extensible sources via MCP plugins"
+title: "Viben 简介"
+description: "Viben - 多智能体工作空间管理器，集成看板、日历、时间线和任务管理"
 ---
 
 # Viben
 
-**Viben** is a Python-based MCP (Model Context Protocol) server that enables AI assistants to search, download, and read content from any source through an extensible plugin system. Out of the box, it supports 19+ academic databases, and you can extend it to support social media, documentation sites, news feeds, and more.
+**Viben** 是一个多智能体工作空间管理器，帮助你统一管理 AI 助手、MCP 服务器和开发任务。无论你使用 Claude Code、Cursor、Codex 还是其他 AI 编程助手，Viben 都能让你在一个地方管理所有配置和任务。
 
-## Key Features
+## 产品架构
 
-- **Multi-Source Support** - Search and download content from 19+ built-in academic sources including arXiv, PubMed, Semantic Scholar, and more. Extend with plugins for any content type.
+Viben 由以下核心产品组成：
 
-- **Extensible Plugin System** - Add new content sources by installing plugins or creating your own. Use the `ContentSource[T]` API to support any content type beyond academic papers.
+| 产品 | 描述 | 适用场景 |
+|------|------|----------|
+| **桌面应用** | 本地多智能体工作空间管理 | 日常开发、任务管理 |
+| **Web 应用** | MCP/Skill 包市场 | 发现和分享工具 |
+| **CLI 工具** | 命令行智能体管理 | 自动化、脚本集成 |
+| **MCP 服务器** | 学术论文搜索服务 | AI 助手扩展能力 |
 
-- **Unified Interface** - All sources accessible through three consistent tools: `browse_search`, `browse_download`, and `browse_read`.
+## 核心功能
 
-- **Standardized Output** - Content is returned in a consistent format regardless of source, making it easy for AI assistants to process results.
+### 多工作空间管理
 
-- **MCP Integration** - Compatible with MCP clients like Claude Desktop, Claude Code, Cline (VS Code), and Zed Editor.
+管理多个项目工作空间，每个工作空间可以有独立的：
+- MCP 服务器配置
+- 智能体配置（Claude Code、Cursor、Codex）
+- Skills 配置
+- 任务看板
 
-- **Asynchronous Operations** - Efficiently handles concurrent searches and downloads for fast results.
+### 智能体编排
 
-- **Pagination Support** - Read specific pages or page ranges from documents using the `page`, `start_page`, and `end_page` parameters.
+支持多种 AI 编程助手的配置管理：
 
-## Quick Install
+| 智能体 | 配置目录 | 说明 |
+|--------|----------|------|
+| Claude Code | `.claude/` | Anthropic 的编程助手 |
+| Cursor | `.cursor/` | AI 代码编辑器 |
+| Codex | `.codex/` | OpenAI 的编程模型 |
+
+### MCP 服务器集成
+
+内置学术论文搜索 MCP 服务器，支持 19+ 学术数据源：
+
+**免费数据源**：
+- arXiv、PubMed、PMC、bioRxiv、medRxiv
+- Semantic Scholar、CrossRef、Google Scholar
+- CORE、IACR
+
+**付费数据源**（需 API 密钥）：
+- IEEE Xplore、Scopus、Springer、ScienceDirect
+
+### 任务管理
+
+集成看板系统，支持：
+- 任务卡片管理
+- 优先级和标签
+- 子任务和依赖关系
+- 活动记录和评论
+
+## 快速开始
+
+### 桌面应用（推荐）
+
+下载桌面应用是最简单的方式：
+
+[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+
+| 平台 | 下载格式 |
+|------|----------|
+| **macOS** | `.dmg` (Universal) |
+| **Windows** | `.msi` 或 `.exe` |
+| **Linux** | `.AppImage` 或 `.deb` |
+
+### CLI 工具
+
+通过 npm 安装命令行工具：
+
+```bash
+npm install -g viben
+```
+
+或使用 npx 直接运行：
+
+```bash
+npx viben
+```
+
+### MCP 服务器
+
+安装学术搜索 MCP 服务器：
 
 ```bash
 pip install browse-mcp
 ```
 
-Then start the server:
+## MCP 工具
 
-```bash
-browse-mcp
-```
+Viben MCP 服务器提供三个核心工具：
 
-## Available Tools
+| 工具 | 功能 |
+|------|------|
+| `browse_search` | 搜索学术论文和内容 |
+| `browse_download` | 下载论文 PDF |
+| `browse_read` | 提取和阅读论文内容 |
 
-| Tool | Description |
-|------|-------------|
-| `browse_search` | Search content across multiple sources |
-| `browse_download` | Download content files and return file paths |
-| `browse_read` | Extract and read text content from files |
+## Gateway API
 
-## Beyond Academic Papers
+Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
 
-While Viben started as an academic paper search tool, it now supports **any content type** through its plugin system. Here are some examples of what you can do:
+- RESTful API 服务
+- WebSocket 实时通信
+- Server-Sent Events (SSE) 事件流
+- 多智能体编排和协调
 
-### Social Media Plugin
+主要端点：
 
-Install the social media plugin to search content from platforms like GitHub, Twitter, Zhihu, and Xiaohongshu:
+| 端点 | 功能 |
+|------|------|
+| `/health` | 健康检查 |
+| `/api/agents` | 智能体管理 |
+| `/api/sessions` | 会话管理 |
+| `/api/providers` | Provider 管理 |
+| `/api/models` | 模型管理 |
 
-```bash
-pip install browse-mcp-plugin-social-media
-```
+## 下一步
 
-Then search social media content:
-
-```python
-# Search GitHub repositories
-browse_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
-
-# Search Twitter posts
-browse_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
-
-# Search Chinese platforms
-browse_search([{"searcher": "zhihu", "query": "artificial intelligence", "max_results": 5}])
-```
-
-### Plugin Architecture
-
-Viben uses stevedore for automatic plugin discovery. Any installed plugin that registers in the `browse_mcp.searchers` namespace is automatically loaded:
-
-```
-browse-mcp (core)
-    |
-    +-- browse-mcp-plugin-social-media (GitHub, Twitter, Zhihu...)
-    |
-    +-- browse-mcp-plugin-news (RSS feeds, news sites...)
-    |
-    +-- your-custom-plugin (your content sources...)
-```
-
-See the [Plugins](plugins/overview) section for more information.
-
-## Supported Academic Platforms
-
-### Free and Open Access
-
-| Source | Description |
-|--------|-------------|
-| arXiv | Pre-print repository for physics, mathematics, CS |
-| PubMed | Biomedical literature database |
-| PubMed Central (PMC) | Free full-text biomedical articles |
-| bioRxiv | Pre-print server for biology |
-| medRxiv | Pre-print server for health sciences |
-| Semantic Scholar | AI-powered research tool |
-| CrossRef | DOI registration and metadata provider |
-| Google Scholar | Academic search engine |
-| CORE | Open access research papers aggregator |
-| IACR | Cryptology pre-prints |
-
-### API Key Required
-
-| Source | Description |
-|--------|-------------|
-| IEEE Xplore | IEEE's digital library |
-| Scopus | Elsevier's citation database |
-| Springer Link | Springer's scientific publications |
-| Science Direct | Elsevier's full-text database |
-
-## Next Steps
-
-- [Installation](getting-started/installation) - Detailed installation instructions
-- [Quick Start](getting-started/quick-start) - Get up and running in 2 minutes
-- [Client Configuration](getting-started/client-configuration) - Configure Claude Desktop, Cline, and more
-- [Plugins Overview](plugins/overview) - Learn about the plugin system
-- [browse_search Tool](mcp/tools/browse-search) - Learn how to search content
+- [安装指南](getting-started/installation) - 详细安装说明
+- [快速入门](getting-started/quick-start) - 2 分钟上手
+- [桌面应用](desktop/index) - 桌面应用完整指南
+- [MCP 配置](getting-started/client-configuration) - 配置 Claude Desktop 等客户端
+- [插件系统](plugins/overview) - 了解插件扩展机制

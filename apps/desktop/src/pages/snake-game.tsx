@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RotateCcw, Play, Pause } from "lucide-react";
@@ -11,6 +12,7 @@ const CELL_SIZE = 20;
 const INITIAL_SPEED = 150;
 
 export default function SnakeGame() {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [snake, setSnake] = useState<Position[]>([{ x: 10, y: 10 }]);
   const [food, setFood] = useState<Position>({ x: 15, y: 15 });
@@ -258,22 +260,22 @@ export default function SnakeGame() {
       <Card>
         <CardHeader>
           <CardTitle className="font-serif text-3xl text-center">
-            贪吃蛇游戏
+            {t("snakeGame.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Game Stats */}
           <div className="flex justify-between items-center">
             <div className="text-lg">
-              <span className="font-semibold text-[oklch(0.70_0.18_75)]">得分:</span>{" "}
+              <span className="font-semibold text-[oklch(0.70_0.18_75)]">{t("snakeGame.score")}</span>{" "}
               <span className="font-mono font-bold text-xl">{score}</span>
             </div>
             <div className="text-lg">
-              <span className="font-semibold text-[oklch(0.70_0.18_75)]">长度:</span>{" "}
+              <span className="font-semibold text-[oklch(0.70_0.18_75)]">{t("snakeGame.length")}</span>{" "}
               <span className="font-mono font-bold text-xl">{snake.length}</span>
             </div>
             <div className="text-lg">
-              <span className="font-semibold text-[oklch(0.70_0.18_75)]">速度:</span>{" "}
+              <span className="font-semibold text-[oklch(0.70_0.18_75)]">{t("snakeGame.speed")}</span>{" "}
               <span className="font-mono font-bold text-xl">
                 {Math.round((INITIAL_SPEED - speed) / 10)}
               </span>
@@ -292,16 +294,16 @@ export default function SnakeGame() {
               {gameOver && (
                 <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
                   <div className="text-center space-y-4">
-                    <p className="text-white font-serif text-3xl font-bold">游戏结束!</p>
+                    <p className="text-white font-serif text-3xl font-bold">{t("snakeGame.gameOver")}</p>
                     <p className="text-white text-xl">
-                      最终得分: <span className="font-mono font-bold">{score}</span>
+                      {t("snakeGame.finalScore", { score })}
                     </p>
                     <Button
                       onClick={resetGame}
                       className="bg-[oklch(0.70_0.18_75)] hover:bg-[oklch(0.62_0.18_75)]"
                     >
                       <RotateCcw className="w-4 h-4 mr-2" />
-                      重新开始
+                      {t("snakeGame.restart")}
                     </Button>
                   </div>
                 </div>
@@ -321,18 +323,18 @@ export default function SnakeGame() {
                 {isPlaying ? (
                   <>
                     <Pause className="w-4 h-4 mr-2" />
-                    暂停
+                    {t("snakeGame.pause")}
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4 mr-2" />
-                    开始
+                    {t("snakeGame.start")}
                   </>
                 )}
               </Button>
               <Button onClick={resetGame} variant="outline" size="lg">
                 <RotateCcw className="w-4 h-4 mr-2" />
-                重置
+                {t("snakeGame.reset")}
               </Button>
             </div>
 
@@ -378,13 +380,13 @@ export default function SnakeGame() {
           {/* Instructions */}
           <Card className="bg-[oklch(0.985_0.002_75)]">
             <CardContent className="pt-6">
-              <h3 className="font-semibold mb-2 text-[oklch(0.70_0.18_75)]">游戏说明</h3>
+              <h3 className="font-semibold mb-2 text-[oklch(0.70_0.18_75)]">{t("snakeGame.instructions")}</h3>
               <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• 使用方向键或按钮控制蛇的移动方向</li>
-                <li>• 吃到青色圆点可以增加长度和得分</li>
-                <li>• 每吃 5 个食物速度会增加</li>
-                <li>• 撞到墙壁或自己身体游戏结束</li>
-                <li>• 按空格键暂停/继续,按 R 键重置游戏</li>
+                <li>• {t("snakeGame.instruction1")}</li>
+                <li>• {t("snakeGame.instruction2")}</li>
+                <li>• {t("snakeGame.instruction3")}</li>
+                <li>• {t("snakeGame.instruction4")}</li>
+                <li>• {t("snakeGame.instruction5")}</li>
               </ul>
             </CardContent>
           </Card>

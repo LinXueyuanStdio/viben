@@ -360,6 +360,7 @@
       "appearance": "Appearance",
       "environment": "Environment",
       "storage": "Storage",
+      "developer": "Developer",
       "about": "About",
       "preferences": "Preferences",
       "languageAndTime": "Language & Time",
@@ -373,7 +374,51 @@
       "channels": "Channels",
       "executors": "Executors",
       "sandbox": "Sandbox",
-      "setup": "Setup"
+      "setup": "Setup",
+      "terminalFonts": "Terminal Fonts"
+    },
+    "terminalFonts": {
+      "description": "Customize terminal font appearance, cursor behavior, and display settings",
+      "fontConfig": {
+        "title": "Font Configuration",
+        "fontFamily": "Font Family",
+        "fontFamilyDescription": "Primary monospace font for terminal text",
+        "selectFont": "Select a font...",
+        "fontSize": "Font Size",
+        "fontSizeDescription": "Base font size in pixels (10-24px)",
+        "fontWeight": "Font Weight",
+        "fontWeightDescription": "Font weight from 100 (thin) to 900 (black), in steps of 100",
+        "lineHeight": "Line Height",
+        "lineHeightDescription": "Line height as a multiple of font size (1.0-2.0)",
+        "letterSpacing": "Letter Spacing",
+        "letterSpacingDescription": "Horizontal spacing between characters (-2 to 5px)"
+      },
+      "cursorConfig": {
+        "title": "Cursor Configuration",
+        "cursorStyle": "Cursor Style",
+        "cursorStyleDescription": "Visual style of the terminal cursor",
+        "cursorBlink": "Cursor Blink",
+        "cursorBlinkDescription": "Whether the cursor should blink",
+        "styles": {
+          "block": "Block",
+          "underline": "Underline",
+          "bar": "Bar"
+        }
+      },
+      "preview": {
+        "title": "Live Preview",
+        "description": "Preview your terminal settings in real-time"
+      },
+      "presets": {
+        "title": "Quick Presets",
+        "description": "Apply pre-configured presets from popular IDEs and terminals",
+        "vscode": "VS Code",
+        "intellij": "IntelliJ",
+        "macos": "macOS Terminal",
+        "ubuntu": "Ubuntu Terminal",
+        "reset": "Reset to Default"
+      },
+      "export": "Copy Config"
     },
     "account": {
       "description": "Manage your account and login status",
@@ -501,7 +546,34 @@
     "pressKeys": "Press keys...",
     "clearShortcut": "Clear shortcut",
     "enterKey": "Enter",
-    "cmdEnter": "Cmd+Enter"
+    "cmdEnter": "Cmd+Enter",
+    "developerDescription": "Developer tools, debug settings, and troubleshooting",
+    "developer": {
+      "devtools": "Developer Tools",
+      "preferredIDE": "Preferred IDE",
+      "preferredIDEDescription": "Viben will open projects in this editor",
+      "preferredTerminal": "Preferred Terminal",
+      "preferredTerminalDescription": "Viben will open terminal sessions here",
+      "yoloMode": "YOLO Mode",
+      "yoloModeDescription": "Start executors with --dangerously-skip-permissions flag, bypassing all safety prompts. Use with extreme caution.",
+      "yoloModeWarning": "This mode bypasses permission system. Only enable if you fully trust the code being executed.",
+      "debugLogs": "Debug & Logs",
+      "openLogsFolder": "Open Logs Folder",
+      "openConfigFolder": "Open Config Folder",
+      "copyDebugInfo": "Copy Debug Info",
+      "loadDebugInfo": "Load Debug Info",
+      "systemInfo": "System Information",
+      "paths": "Paths",
+      "noRecentErrors": "No recent errors",
+      "reportingIssues": "Reporting Issues",
+      "reportingIssuesDescription": "When reporting bugs, click \"Copy Debug Info\" to get system information that helps us diagnose the issue.",
+      "os": "OS",
+      "osVersion": "Version",
+      "appVersion": "App Version",
+      "arch": "Arch",
+      "logs": "Logs",
+      "config": "Config"
+    }
   },
   "sandbox": {
     "availableProviders": "Available Providers",
@@ -2675,6 +2747,24 @@
     "code": "Code",
     "previewNotAvailable": "Preview not available",
     "switchToCodeView": "Switch to Code view to see the content"
+  },
+  "snakeGame": {
+    "title": "Snake Game",
+    "score": "Score:",
+    "length": "Length:",
+    "speed": "Speed:",
+    "gameOver": "Game Over!",
+    "finalScore": "Final Score: {{score}}",
+    "restart": "Restart",
+    "pause": "Pause",
+    "start": "Start",
+    "reset": "Reset",
+    "instructions": "How to Play",
+    "instruction1": "Use arrow keys or buttons to control the snake's direction",
+    "instruction2": "Eat the teal dots to grow longer and score points",
+    "instruction3": "Speed increases every 5 food items",
+    "instruction4": "Game ends if you hit the wall or yourself",
+    "instruction5": "Press space to pause/resume, R to reset"
   },
   "observability": {
     "title": "Observability",

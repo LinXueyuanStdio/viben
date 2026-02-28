@@ -139,6 +139,14 @@ interface AppState {
   setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
   setShowHideWindowScope: (scope: "all" | "chatRelated") => void;
   resetShortcuts: () => void;
+
+  // Developer Tools
+  preferredIDE: string;
+  setPreferredIDE: (ide: string) => void;
+  preferredTerminal: string;
+  setPreferredTerminal: (terminal: string) => void;
+  dangerouslySkipPermissions: boolean;
+  setDangerouslySkipPermissions: (enabled: boolean) => void;
 }
 
 // Generate unique ID
@@ -399,6 +407,14 @@ export const useAppStore = create<AppState>()(
           shortcuts: { ...DEFAULT_SHORTCUTS },
           showHideWindowScope: "all",
         }),
+
+      // Developer Tools
+      preferredIDE: "vscode",
+      setPreferredIDE: (ide) => set({ preferredIDE: ide }),
+      preferredTerminal: "system",
+      setPreferredTerminal: (terminal) => set({ preferredTerminal: terminal }),
+      dangerouslySkipPermissions: false,
+      setDangerouslySkipPermissions: (enabled) => set({ dangerouslySkipPermissions: enabled }),
     }),
     {
       name: "viben-storage",
@@ -426,6 +442,9 @@ export const useAppStore = create<AppState>()(
         onboardingCompleted: state.onboardingCompleted,
         shortcuts: state.shortcuts,
         showHideWindowScope: state.showHideWindowScope,
+        preferredIDE: state.preferredIDE,
+        preferredTerminal: state.preferredTerminal,
+        dangerouslySkipPermissions: state.dangerouslySkipPermissions,
       }),
     }
   )

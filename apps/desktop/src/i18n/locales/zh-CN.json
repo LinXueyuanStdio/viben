@@ -360,6 +360,7 @@
       "appearance": "外观",
       "environment": "环境",
       "storage": "存储",
+      "developer": "开发者",
       "about": "关于",
       "preferences": "偏好",
       "languageAndTime": "语言与时间",
@@ -373,7 +374,51 @@
       "channels": "消息渠道",
       "executors": "执行器",
       "sandbox": "沙箱",
-      "setup": "设置向导"
+      "setup": "设置向导",
+      "terminalFonts": "终端字体"
+    },
+    "terminalFonts": {
+      "description": "自定义终端字体外观、光标行为和显示设置",
+      "fontConfig": {
+        "title": "字体配置",
+        "fontFamily": "字体系列",
+        "fontFamilyDescription": "终端文本的主要等宽字体",
+        "selectFont": "选择字体...",
+        "fontSize": "字体大小",
+        "fontSizeDescription": "基础字体大小（10-24 像素）",
+        "fontWeight": "字体粗细",
+        "fontWeightDescription": "字体粗细从 100（细）到 900（粗），步进 100",
+        "lineHeight": "行高",
+        "lineHeightDescription": "行高为字体大小的倍数（1.0-2.0）",
+        "letterSpacing": "字间距",
+        "letterSpacingDescription": "字符间的水平间距（-2 到 5 像素）"
+      },
+      "cursorConfig": {
+        "title": "光标配置",
+        "cursorStyle": "光标样式",
+        "cursorStyleDescription": "终端光标的视觉样式",
+        "cursorBlink": "光标闪烁",
+        "cursorBlinkDescription": "光标是否闪烁",
+        "styles": {
+          "block": "方块",
+          "underline": "下划线",
+          "bar": "竖线"
+        }
+      },
+      "preview": {
+        "title": "实时预览",
+        "description": "实时预览终端设置效果"
+      },
+      "presets": {
+        "title": "快速预设",
+        "description": "应用来自流行 IDE 和终端的预配置设置",
+        "vscode": "VS Code",
+        "intellij": "IntelliJ",
+        "macos": "macOS 终端",
+        "ubuntu": "Ubuntu 终端",
+        "reset": "恢复默认"
+      },
+      "export": "复制配置"
     },
     "account": {
       "description": "管理你的账户和登录状态",
@@ -501,7 +546,34 @@
     "pressKeys": "按下快捷键...",
     "clearShortcut": "清除快捷键",
     "enterKey": "回车键",
-    "cmdEnter": "Cmd+回车"
+    "cmdEnter": "Cmd+回车",
+    "developerDescription": "开发者工具、调试设置和故障排除",
+    "developer": {
+      "devtools": "开发者工具",
+      "preferredIDE": "首选 IDE",
+      "preferredIDEDescription": "Viben 将在此编辑器中打开项目",
+      "preferredTerminal": "首选终端",
+      "preferredTerminalDescription": "Viben 将在此终端中打开会话",
+      "yoloMode": "YOLO 模式",
+      "yoloModeDescription": "使用 --dangerously-skip-permissions 标志启动执行器，绕过所有安全提示。请谨慎使用。",
+      "yoloModeWarning": "此模式会绕过权限系统。仅在完全信任正在执行的代码时启用。",
+      "debugLogs": "调试与日志",
+      "openLogsFolder": "打开日志文件夹",
+      "openConfigFolder": "打开配置文件夹",
+      "copyDebugInfo": "复制调试信息",
+      "loadDebugInfo": "加载调试信息",
+      "systemInfo": "系统信息",
+      "paths": "路径",
+      "noRecentErrors": "暂无错误",
+      "reportingIssues": "报告问题",
+      "reportingIssuesDescription": "报告 Bug 时，点击\"复制调试信息\"获取系统信息，帮助我们诊断问题。",
+      "os": "操作系统",
+      "osVersion": "系统版本",
+      "appVersion": "应用版本",
+      "arch": "架构",
+      "logs": "日志",
+      "config": "配置"
+    }
   },
   "sandbox": {
     "availableProviders": "可用提供者",
@@ -2675,6 +2747,24 @@
     "code": "代码",
     "previewNotAvailable": "预览不可用",
     "switchToCodeView": "切换到代码视图查看内容"
+  },
+  "snakeGame": {
+    "title": "贪吃蛇游戏",
+    "score": "得分:",
+    "length": "长度:",
+    "speed": "速度:",
+    "gameOver": "游戏结束!",
+    "finalScore": "最终得分: {{score}}",
+    "restart": "重新开始",
+    "pause": "暂停",
+    "start": "开始",
+    "reset": "重置",
+    "instructions": "游戏说明",
+    "instruction1": "使用方向键或按钮控制蛇的移动方向",
+    "instruction2": "吃到青色圆点可以增加长度和得分",
+    "instruction3": "每吃 5 个食物速度会增加",
+    "instruction4": "撞到墙壁或自己身体游戏结束",
+    "instruction5": "按空格键暂停/继续,按 R 键重置游戏"
   },
   "observability": {
     "title": "可观测性",

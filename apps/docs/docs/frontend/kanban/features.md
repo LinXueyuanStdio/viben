@@ -1,3 +1,9 @@
+---
+sidebar_position: 3
+title: Kanban 功能规格
+description: 基于 vibe-kanban 的完整功能规格
+---
+
 # Kanban Features Specification
 
 > 基于 vibe-kanban 的完整功能规格，适配 Viben Design System

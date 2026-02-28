@@ -125,6 +125,15 @@ export function InspectorPage() {
         ...buildGatewayInspectorHeaders(inspectorStatus.authToken, parsedConfig.headers),
       };
 
+      console.log("[Inspector] effectiveConfig:", {
+        proxyUrl,
+        targetUrl,
+        originalTransport,
+        effectiveUrl,
+        effectiveHeaders,
+        authToken: inspectorStatus.authToken ? "present" : "missing",
+      });
+
       return {
         ...parsedConfig,
         // Connection to proxy is always streamable-http, regardless of target transport

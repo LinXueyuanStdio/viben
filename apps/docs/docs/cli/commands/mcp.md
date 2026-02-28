@@ -1,58 +1,57 @@
 ---
 sidebar_position: 5
 title: "viben mcp"
-description: "Manage MCP servers - install, configure, enable/disable"
+description: "管理 MCP 服务器 - 添加、配置、启用/禁用"
 ---
 
 # viben mcp
 
-Manage MCP (Model Context Protocol) servers.
+管理 MCP（Model Context Protocol）服务器。
 
-## Usage
+## 用法
 
 ```bash
 viben mcp <subcommand> [options]
 ```
 
-## Subcommands
+## 子命令
 
-| Subcommand | Description |
-|------------|-------------|
-| `install <name>` | Install an MCP server |
-| `uninstall <name>` | Uninstall an MCP server |
-| `list` | List installed MCP servers |
-| `enable <name>` | Enable an MCP server |
-| `disable <name>` | Disable an MCP server |
-| `config <name>` | View or set MCP configuration |
+| 子命令 | 说明 |
+|--------|------|
+| `add <name>` | 为智能体添加 MCP 服务器 |
+| `remove <name>` | 从智能体移除 MCP 服务器 |
+| `list` | 列出 MCP 服务器 |
+| `enable <name>` | 启用 MCP 服务器 |
+| `disable <name>` | 禁用 MCP 服务器 |
+| `config <name>` | 查看或设置 MCP 配置 |
 
-## Commands
+## 命令
 
-### Install MCP Server
+### 添加 MCP 服务器
 
-Install an MCP server from the marketplace:
-
-```bash
-# Install latest version
-viben mcp install filesystem
-
-# Install specific version
-viben mcp install filesystem@1.2.0
-
-# Install to workspace only
-viben mcp install filesystem --workspace
-```
-
-**Output (Human-readable):**
-
-```
-Installing filesystem@1.2.0...
-Installed filesystem v1.2.0
-```
-
-**Output (JSON):**
+为智能体添加 MCP 服务器：
 
 ```bash
-viben mcp install filesystem --json
+# 基本添加
+viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem /home/user
+
+# 添加带环境变量
+viben mcp add github --agent my-agent --command npx --args @anthropic-ai/mcp-server-github --env GITHUB_TOKEN=xxx
+
+# 添加到全局配置
+viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-filesystem
+```
+
+**输出（人类可读）：**
+
+```
+Added MCP server 'filesystem' to agent 'my-agent'
+```
+
+**输出（JSON）：**
+
+```bash
+viben mcp add filesystem --agent my-agent --json
 ```
 
 ```json
@@ -60,214 +59,137 @@ viben mcp install filesystem --json
   "success": true,
   "data": {
     "name": "filesystem",
-    "version": "1.2.0",
-    "path": "~/.viben/mcp/filesystem/"
+    "agent": "my-agent",
+    "command": "npx",
+    "args": ["@anthropic-ai/mcp-server-filesystem", "/home/user"]
   }
 }
 ```
 
-### Uninstall MCP Server
+### 移除 MCP 服务器
 
-Remove an installed MCP server:
-
-```bash
-viben mcp uninstall filesystem
-```
-
-**Output:**
-
-```
-Uninstalled filesystem
-```
-
-**JSON output:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "name": "filesystem",
-    "removed": true
-  }
-}
-```
-
-### List MCP Servers
-
-List installed MCP servers:
+从智能体移除 MCP 服务器：
 
 ```bash
-# List installed MCPs
-viben mcp list
-
-# List available MCPs from marketplace
-viben mcp list --available
+viben mcp remove filesystem --agent my-agent
 ```
 
-**Output (Human-readable):**
+**输出：**
 
 ```
-Installed MCP Servers:
-  filesystem    v1.2.0    enabled    Local filesystem access
-  git           v2.0.1    enabled    Git operations
-  browser       v1.0.0    disabled   Browser automation
+Removed MCP server 'filesystem' from agent 'my-agent'
 ```
 
-**Output (JSON):**
+### 列出 MCP 服务器
+
+列出智能体的 MCP 服务器：
 
 ```bash
-viben mcp list --json
+# 列出特定智能体的 MCP
+viben mcp list --agent my-agent
+
+# 列出全局 MCP
+viben mcp list --global
+```
+
+**输出（人类可读）：**
+
+```
+MCP Servers for Agent: my-agent
+  Name         Command                              Enabled
+  filesystem   npx @anthropic-ai/mcp-server-fs      yes
+  git          npx @anthropic-ai/mcp-server-git     yes
+  browser      playwright run                       no
+```
+
+**输出（JSON）：**
+
+```bash
+viben mcp list --agent my-agent --json
 ```
 
 ```json
 {
   "success": true,
   "data": {
-    "installed": [
+    "agent": "my-agent",
+    "servers": [
       {
         "name": "filesystem",
-        "version": "1.2.0",
-        "status": "enabled",
-        "description": "Local filesystem access"
+        "command": "npx",
+        "args": ["@anthropic-ai/mcp-server-filesystem"],
+        "enabled": true
       },
       {
         "name": "git",
-        "version": "2.0.1",
-        "status": "enabled",
-        "description": "Git operations"
-      },
-      {
-        "name": "browser",
-        "version": "1.0.0",
-        "status": "disabled",
-        "description": "Browser automation"
+        "command": "npx",
+        "args": ["@anthropic-ai/mcp-server-git"],
+        "enabled": true
       }
     ]
   }
 }
 ```
 
-### Enable MCP Server
-
-Enable an installed MCP server:
+### 启用 MCP 服务器
 
 ```bash
-viben mcp enable filesystem
+viben mcp enable filesystem --agent my-agent
 ```
 
-**Output:**
+**输出：**
 
 ```
-Enabled filesystem
+Enabled MCP server 'filesystem'
 ```
 
-**JSON output:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "name": "filesystem",
-    "status": "enabled"
-  }
-}
-```
-
-### Disable MCP Server
-
-Disable an MCP server without uninstalling:
+### 禁用 MCP 服务器
 
 ```bash
-viben mcp disable browser
+viben mcp disable browser --agent my-agent
 ```
 
-**Output:**
+**输出：**
 
 ```
-Disabled browser
+Disabled MCP server 'browser'
 ```
 
-**JSON output:**
+### 配置 MCP 服务器
 
-```json
-{
-  "success": true,
-  "data": {
-    "name": "browser",
-    "status": "disabled"
-  }
-}
-```
-
-### Configure MCP Server
-
-View or modify MCP server configuration:
+查看或修改 MCP 服务器配置：
 
 ```bash
-# View configuration
-viben mcp config filesystem
+# 查看配置
+viben mcp config filesystem --agent my-agent
 
-# Set configuration value
-viben mcp config filesystem set root /path/to/dir
+# 设置配置值
+viben mcp config filesystem --agent my-agent set root /path/to/dir
 
-# Set multiple values
-viben mcp config filesystem set allowed_dirs '["~/Documents", "~/Projects"]'
+# 设置环境变量
+viben mcp config filesystem --agent my-agent set env.ROOT /path/to/workspace
 ```
 
-**Output (View):**
+**输出（查看）：**
 
 ```
 MCP Configuration: filesystem
+Agent: my-agent
 
-root: /home/user
-allowed_dirs:
-  - /home/user/Documents
-  - /home/user/Projects
-read_only: false
-```
-
-**Output (Set):**
-
-```
-Set filesystem.root = /path/to/dir
-```
-
-**JSON output:**
-
-```json
-{
-  "success": true,
-  "data": {
-    "name": "filesystem",
-    "config": {
-      "root": "/path/to/dir",
-      "allowed_dirs": ["/home/user/Documents", "/home/user/Projects"],
-      "read_only": false
-    }
-  }
-}
-```
-
-## MCP Server Configuration File
-
-MCP servers are configured in `~/.viben/mcp/<name>/config.yaml` or via `mcp_servers.json`:
-
-### YAML Format
-
-```yaml
-# ~/.viben/mcp/filesystem/config.yaml
-version: 1
-name: filesystem
+command: npx
+args:
+  - @anthropic-ai/mcp-server-filesystem
+  - /home/user
+env:
+  ROOT: /home/user
 enabled: true
-config:
-  root: /home/user
-  allowed_dirs:
-    - /home/user/Documents
-    - /home/user/Projects
-  read_only: false
 ```
 
-### JSON Format (mcp_servers.json)
+## MCP 服务器配置文件
+
+MCP 服务器配置存储在智能体目录中：
+
+### JSON 格式 (mcp_servers.json)
 
 ```json
 {
@@ -282,80 +204,87 @@ config:
     "git": {
       "command": "npx",
       "args": ["-y", "@anthropic-ai/mcp-server-git"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
     }
   }
 }
 ```
 
-## Scope
+## 作用域
 
-MCP servers can be installed globally or per-workspace:
+MCP 服务器可以在不同作用域配置：
 
-| Location | Description |
-|----------|-------------|
-| `~/.viben/mcp/` | Global MCP servers (all workspaces) |
-| `<project>/.viben/mcp/` | Workspace-specific MCP servers |
-
-```bash
-# Install globally (default)
-viben mcp install filesystem
-
-# Install for workspace only
-viben mcp install filesystem --workspace
-```
-
-## Error Handling
-
-### MCP Not Found
+| 位置 | 说明 |
+|------|------|
+| `~/.viben/agents/<id>/mcp_servers.json` | 智能体特定配置 |
+| `~/.viben/mcp/` | 全局共享 MCP 服务器 |
+| `<project>/.viben/mcp/` | 工作区特定 MCP 服务器 |
 
 ```bash
-viben mcp install unknown-mcp
+# 添加到智能体
+viben mcp add filesystem --agent my-agent --command npx --args @anthropic-ai/mcp-server-filesystem
+
+# 添加到全局
+viben mcp add filesystem --global --command npx --args @anthropic-ai/mcp-server-filesystem
 ```
+
+## 常用 MCP 服务器
+
+| 名称 | 包名 | 说明 |
+|------|------|------|
+| filesystem | `@anthropic-ai/mcp-server-filesystem` | 本地文件系统访问 |
+| git | `@anthropic-ai/mcp-server-git` | Git 操作 |
+| github | `@modelcontextprotocol/server-github` | GitHub API |
+| postgres | `@modelcontextprotocol/server-postgres` | PostgreSQL 数据库 |
+| sqlite | `@modelcontextprotocol/server-sqlite` | SQLite 数据库 |
+| puppeteer | `@modelcontextprotocol/server-puppeteer` | 浏览器自动化 |
+
+## 错误处理
+
+### MCP 未找到
 
 ```json
 {
   "success": false,
   "error": {
     "code": "MCP_NOT_FOUND",
-    "message": "MCP server 'unknown-mcp' not found in marketplace"
+    "message": "MCP server 'unknown-mcp' not found"
   }
 }
 ```
 
-### Already Installed
-
-```bash
-viben mcp install filesystem
-```
+### 已存在
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "ALREADY_INSTALLED",
-    "message": "MCP server 'filesystem' is already installed (v1.2.0)"
+    "code": "ALREADY_EXISTS",
+    "message": "MCP server 'filesystem' already exists for agent 'my-agent'"
   }
 }
 ```
 
-### Not Installed
-
-```bash
-viben mcp enable unknown-mcp
-```
+### 智能体未找到
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "NOT_INSTALLED",
-    "message": "MCP server 'unknown-mcp' is not installed"
+    "code": "AGENT_NOT_FOUND",
+    "message": "Agent 'unknown-agent' not found"
   }
 }
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben service](./service) - Service management
-- [viben config](./config) - Configuration management
-- [viben agent](./agent) - Agent management
+- [viben service](./service) - 服务管理
+- [viben config](./config) - 配置管理
+- [viben agent](./agent) - 智能体管理

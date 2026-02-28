@@ -127,7 +127,9 @@ function App() {
             <Route path="agents" element={null} />
             <Route path="sandbox" element={null} />
             <Route path="environment" element={null} />
+            <Route path="terminalFonts" element={null} />
             <Route path="storage" element={null} />
+            <Route path="developer" element={null} />
             <Route path="about" element={null} />
           </Route>
           <Route path="about" element={<AboutPage />} />

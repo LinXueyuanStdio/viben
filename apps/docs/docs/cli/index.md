@@ -1,169 +1,186 @@
 ---
 sidebar_position: 1
-title: "CLI Overview"
-description: "Viben CLI - Bootstrap tool for configuring applications, managing services, and querying status"
+title: "CLI 概述"
+description: "Viben CLI - 用于配置应用、管理服务和查询状态的引导工具"
 ---
 
 # Viben CLI
 
-**Viben CLI** (`viben`) is a bootstrap tool for configuring applications, managing AI agent instances, and querying system status. It serves both human users and AI agents, providing a unified interface for complex configuration tasks.
+**Viben CLI** (`viben`) 是一个用于配置应用、管理 AI 智能体实例和查询系统状态的引导工具。它同时服务于人类用户和 AI 智能体，为复杂配置任务提供统一的接口。
 
-## What is Viben CLI?
+## 什么是 Viben CLI？
 
-Viben CLI is designed with two primary use cases:
+Viben CLI 针对两种主要使用场景设计：
 
-1. **For Humans**: Command-line configuration of applications, starting services, and viewing status
-2. **For AI Agents**: Agents use the CLI via Bash tools to configure complex agent setups, MCP servers, and skills
+1. **面向人类**：通过命令行配置应用、启动服务和查看状态
+2. **面向 AI 智能体**：智能体通过 Bash 工具使用 CLI 来配置复杂的 agent 设置、MCP 服务器和技能
 
-## Key Features
+## 核心功能
 
-| Feature | Description |
-|---------|-------------|
-| **Agent Management** | Create, configure, and manage multiple AI agent instances |
-| **Provider Configuration** | Set up API providers (OpenAI, Anthropic, Google, Azure, etc.) |
-| **Model Management** | Configure model aliases, fallbacks, and per-model settings |
-| **MCP Server Management** | Install, enable, and configure MCP servers |
-| **Skills Management** | Install and manage agent skills |
-| **Service Control** | Start, stop, and monitor background services |
-| **Scope-Aware** | Automatic workspace detection with global/workspace config support |
+| 功能 | 说明 |
+|------|------|
+| **Agent 管理** | 创建、配置和管理多个 AI 智能体实例 |
+| **Provider 配置** | 设置 API 提供商（OpenAI、Anthropic、Google、Azure 等） |
+| **Model 管理** | 配置模型别名、回退链和模型级设置 |
+| **Executor 发现** | 发现本地已安装的执行器（Claude Code、Cursor 等） |
+| **MCP 服务器管理** | 安装、启用和配置 MCP 服务器 |
+| **Skill 管理** | 安装和管理智能体技能 |
+| **Gateway 运行时** | 启动连接 channels 到 agent loop 的核心运行时 |
+| **Channel 管理** | 配置聊天渠道（Telegram、Discord、飞书等） |
+| **Cron 定时任务** | 管理智能体的定时任务 |
+| **Team 协作** | 初始化团队协作工作区 |
+| **服务控制** | 启动、停止和监控后台服务 |
+| **作用域感知** | 自动检测工作区，支持全局/工作区配置 |
 
-## Design Principles
+## 设计原则
 
-### Simple and Focused
+### 简单且聚焦
 
-The CLI does not handle complex interactive tasks. It focuses on:
-- Configuration management
-- Status queries
-- Service lifecycle
+CLI 不处理复杂的交互式任务。它专注于：
+- 配置管理
+- 状态查询
+- 服务生命周期
 
-### Human + Machine Friendly
+### 人机友好
 
-- **Human mode**: Colorful, formatted terminal output (default)
-- **Machine mode**: Structured JSON output with `--json` flag for AI agents to parse
+- **人类模式**：彩色、格式化的终端输出（默认）
+- **机器模式**：使用 `--json` 标志输出结构化 JSON，便于 AI 智能体解析
 
-### Scope Aware
+### 作用域感知
 
-The CLI automatically detects your workspace context:
-- If you're in a directory with `.viben/`, workspace config is used
-- Otherwise, global config (`~/.viben/`) is used
-- Override with `--global` or `--workspace` flags
+CLI 自动检测你的工作区上下文：
+- 如果当前目录包含 `.viben/`，则使用工作区配置
+- 否则使用全局配置（`~/.viben/`）
+- 可通过 `--global` 或 `--workspace` 标志覆盖
 
-## Tech Stack
+## 技术栈
 
-| Component | Choice | Reason |
-|-----------|--------|--------|
-| Runtime | Node.js | Reuse existing TypeScript code and packages |
-| Framework | Commander.js | Mature, stable, rich ecosystem |
-| Config | YAML | Human-readable, supports comments |
-| Output | Chalk + JSON | Colored terminal + structured output |
+| 组件 | 选择 | 原因 |
+|------|------|------|
+| 运行时 | Node.js | 复用现有 TypeScript 代码和包 |
+| 框架 | Commander.js | 成熟、稳定、生态丰富 |
+| 配置 | YAML | 人类可读，支持注释 |
+| 输出 | Chalk + JSON | 彩色终端 + 结构化输出 |
 
-## Command Overview
+## 命令概览
 
 ```
 viben <command> [subcommand] [options]
 
 Commands:
-  init          Initialize workspace in current directory
-  config        Configuration management (git-style)
-  service       Manage background services
-  agent         Manage agent instances and templates
-  provider      Manage API providers (OpenAI, Anthropic, etc.)
-  model         Manage models, aliases, and fallbacks
-  mcp           Manage MCP servers
-  skill         Manage skills
-  workspace     Workspace operations
-  version       Show version info
-  help          Show help
+  init          在当前目录初始化工作区
+  config        配置管理（git 风格）
+  service       管理后台服务
+  gateway       启动 Gateway（消息总线 + agent 循环）
+  executor      发现和查看执行器（Claude Code、Cursor 等）
+  agent         管理智能体实例和模板
+  provider      管理 API 提供商（OpenAI、Anthropic 等）
+  model         管理模型、别名和回退链
+  mcp           管理 MCP 服务器
+  skill         管理技能
+  channel       管理聊天渠道（Telegram、Discord、WhatsApp、飞书）
+  cron          管理定时任务
+  team          团队协作工作区管理
+  workspace     工作区操作
+  version       显示版本信息
+  help          显示帮助
 ```
 
-### Global Options
+### 全局选项
 
-All commands support these global options:
+所有命令都支持以下全局选项：
 
-| Option | Description |
-|--------|-------------|
-| `--json` | Output as JSON (for agent parsing) |
-| `--global`, `-g` | Use global config |
-| `--workspace` | Use workspace config (current directory) |
-| `-n`, `--name <id>` | Specify agent name/ID (default: current or 'main') |
-| `--verbose`, `-v` | Verbose output |
-| `--quiet`, `-q` | Suppress non-essential output |
-| `--help`, `-h` | Show help |
+| 选项 | 说明 |
+|------|------|
+| `--json` | 输出 JSON（供智能体解析） |
+| `--global`, `-g` | 使用全局配置 |
+| `--workspace` | 使用工作区配置（当前目录） |
+| `-n`, `--name <id>` | 指定智能体名称/ID（默认：当前或 'main'） |
+| `--verbose`, `-v` | 详细输出 |
+| `--quiet`, `-q` | 抑制非必要输出 |
+| `--help`, `-h` | 显示帮助 |
 
-## Architecture Overview
+## 架构概览
 
 ```
-~/.viben/                                    # State directory
-├── config.yaml                              # Global configuration
-├── agents/                                  # Agent instances
-│   └── <agent-id>/                          # Individual agent
-│       ├── config.yaml                      # Agent configuration
-│       ├── mcp_servers.json                 # MCP servers config
-│       ├── skills/                          # Agent-specific skills
-│       └── memory/                          # Agent memory
-├── providers.yaml                           # API provider configurations
-├── models.yaml                              # Model configurations
-├── mcp/                                     # Shared MCP servers
-└── skills/                                  # Shared skills
+~/.viben/                                    # 状态目录
+├── config.yaml                              # 全局配置
+├── agents/                                  # 智能体实例
+│   └── <agent-id>/                          # 单个智能体
+│       ├── config.yaml                      # 智能体配置
+│       ├── mcp_servers.json                 # MCP 服务器配置
+│       ├── skills/                          # 智能体专属技能
+│       ├── memory/                          # 智能体记忆
+│       │   ├── MEMORY.md                    # 主记忆文件
+│       │   └── YYYY-MM-DD.md                # 每日日志
+│       ├── .agentrc                         # 启动配置
+│       ├── .agent_history                   # 命令历史
+│       └── .agent_sessions/                 # 会话存储
+├── providers.yaml                           # API 提供商配置
+├── models.yaml                              # 模型配置
+├── channels.yaml                            # 渠道配置
+├── cron.yaml                                # 定时任务配置
+├── mcp/                                     # 共享 MCP 服务器
+└── skills/                                  # 共享技能
 
-<project>/.viben/                            # Workspace config (optional)
-└── config.yaml                              # Workspace-specific overrides
+<project>/.viben/                            # 工作区配置（可选）
+└── config.yaml                              # 工作区特定覆盖
 ```
 
-## Configuration File Format
+## 配置文件格式
 
-Viben CLI uses YAML for human-readable configuration:
+Viben CLI 使用 YAML 进行人类可读的配置：
 
 ```yaml
 # ~/.viben/config.yaml
 version: 1
 
-# Global settings
+# 全局设置
 settings:
   editor: code
   pager: less
   color: auto
 
-# Default MCP servers
+# 默认 MCP 服务器
 mcp:
   enabled:
     - filesystem
     - git
 
-# Default skills
+# 默认技能
 skills:
   enabled:
     - code-review
     - commit
 ```
 
-## Environment Variables
+## 环境变量
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VIBEN_STATE_DIR` | State directory | `~/.viben` |
-| `VIBEN_CONFIG_PATH` | Config file path | `~/.viben/config.yaml` |
-| `VIBEN_AGENT` | Current agent ID | `main` |
-| `VIBEN_SCOPE` | Config scope | Auto-detected |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `VIBEN_STATE_DIR` | 状态目录 | `~/.viben` |
+| `VIBEN_CONFIG_PATH` | 配置文件路径 | `~/.viben/config.yaml` |
+| `VIBEN_AGENT` | 当前智能体 ID | `main` |
+| `VIBEN_SCOPE` | 配置作用域 | 自动检测 |
 
-## Agent Integration
+## 智能体集成
 
-AI agents can use Viben CLI through Bash tool calls. The `--json` flag ensures structured output that agents can parse:
+AI 智能体可以通过 Bash 工具调用使用 Viben CLI。`--json` 标志确保输出结构化，便于智能体解析：
 
 ```bash
-# Get current configuration
+# 获取当前配置
 viben config list --json
 
-# Install MCP server for workspace
+# 为工作区安装 MCP 服务器
 viben mcp install filesystem --workspace --json
 
-# Configure agent
+# 配置智能体
 viben agent config my-agent set model gpt-4 --json
 ```
 
-### JSON Response Format
+### JSON 响应格式
 
-All commands with `--json` flag return structured responses:
+所有带 `--json` 标志的命令都返回结构化响应：
 
 ```json
 {
@@ -174,7 +191,7 @@ All commands with `--json` flag return structured responses:
 }
 ```
 
-Error responses include error codes for programmatic handling:
+错误响应包含错误码，便于程序化处理：
 
 ```json
 {
@@ -186,7 +203,7 @@ Error responses include error codes for programmatic handling:
 }
 ```
 
-## Next Steps
+## 下一步
 
-- [Installation](/docs/cli/installation) - Install Viben CLI
-- [Quick Start](/docs/cli/quick-start) - Get started with basic configuration
+- [安装](/docs/cli/installation) - 安装 Viben CLI
+- [快速开始](/docs/cli/quick-start) - 开始基本配置

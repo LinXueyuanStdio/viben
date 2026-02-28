@@ -139,7 +139,34 @@
     "system": "System",
     "language": "Sprache",
     "storage": "Speicher",
-    "downloadPath": "Download-Pfad"
+    "downloadPath": "Download-Pfad",
+    "developerDescription": "Entwicklertools, Debug-Einstellungen und Fehlerbehebung",
+    "developer": {
+      "devtools": "Entwicklertools",
+      "preferredIDE": "Bevorzugte IDE",
+      "preferredIDEDescription": "Viben öffnet Projekte in diesem Editor",
+      "preferredTerminal": "Bevorzugtes Terminal",
+      "preferredTerminalDescription": "Viben öffnet Terminalsitzungen hier",
+      "yoloMode": "YOLO-Modus",
+      "yoloModeDescription": "Executoren mit --dangerously-skip-permissions-Flag starten und alle Sicherheitsabfragen umgehen. Mit äußerster Vorsicht verwenden.",
+      "yoloModeWarning": "Dieser Modus umgeht das Berechtigungssystem. Nur aktivieren, wenn Sie dem ausgeführten Code vollständig vertrauen.",
+      "debugLogs": "Debug & Protokolle",
+      "openLogsFolder": "Protokollordner öffnen",
+      "openConfigFolder": "Konfigurationsordner öffnen",
+      "copyDebugInfo": "Debug-Info kopieren",
+      "loadDebugInfo": "Debug-Info laden",
+      "systemInfo": "Systeminformationen",
+      "paths": "Pfade",
+      "noRecentErrors": "Keine kürzlichen Fehler",
+      "reportingIssues": "Probleme melden",
+      "reportingIssuesDescription": "Beim Melden von Fehlern klicken Sie auf \"Debug-Info kopieren\", um Systeminformationen zu erhalten, die uns bei der Diagnose helfen.",
+      "os": "Betriebssystem",
+      "osVersion": "Version",
+      "appVersion": "App-Version",
+      "arch": "Architektur",
+      "logs": "Protokolle",
+      "config": "Konfiguration"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +911,23 @@
     "noCommandsDesc": "Keine Befehlsdateien im Ordner .claude/commands/ gefunden.",
     "selectCommand": "Befehl zum Anzeigen auswählen",
     "rootNamespace": "Wurzel"
+  },
+  "snakeGame": {
+    "title": "Snake-Spiel",
+    "score": "Punkte:",
+    "length": "Länge:",
+    "speed": "Geschwindigkeit:",
+    "gameOver": "Spiel vorbei!",
+    "finalScore": "Endpunktzahl: {{score}}",
+    "restart": "Neustart",
+    "pause": "Pause",
+    "start": "Start",
+    "reset": "Zurücksetzen",
+    "instructions": "Spielanleitung",
+    "instruction1": "Verwende Pfeiltasten oder Buttons um die Schlange zu steuern",
+    "instruction2": "Friss die türkisen Punkte um zu wachsen und Punkte zu sammeln",
+    "instruction3": "Nach 5 Punkten erhöht sich die Geschwindigkeit",
+    "instruction4": "Bei Kollision mit Wand oder sich selbst ist das Spiel vorbei",
+    "instruction5": "Leertaste zum Pausieren/Fortsetzen, R zum Zurücksetzen"
   }
 }

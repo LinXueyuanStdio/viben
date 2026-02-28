@@ -151,6 +151,13 @@ export function buildGatewayInspectorUrl(
 
 /**
  * Build headers for Gateway Inspector proxy request
+ *
+ * The Gateway Inspector proxy only forwards certain headers to the target MCP server:
+ * - Authorization (automatically forwarded)
+ * - Headers starting with "mcp-"
+ * - Headers specified in X-Custom-Auth-Headers (JSON array of header names)
+ *
+ * This function sets up the headers correctly so Gateway knows which ones to forward.
  */
 export function buildGatewayInspectorHeaders(
   authToken: string | null,
@@ -158,12 +165,27 @@ export function buildGatewayInspectorHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
+  // Gateway Inspector proxy authentication
   if (authToken) {
     headers["X-MCP-Proxy-Auth"] = `Bearer ${authToken}`;
   }
 
   if (customHeaders) {
+    // Copy all custom headers
     Object.assign(headers, customHeaders);
+
+    // Tell Gateway which custom headers to forward to the target server
+    // Gateway automatically forwards "authorization" and "mcp-*" headers,
+    // but other custom headers need to be explicitly listed
+    const customHeaderNames = Object.keys(customHeaders).filter((name) => {
+      const lowerName = name.toLowerCase();
+      // These are already auto-forwarded by Gateway
+      return lowerName !== "authorization" && !lowerName.startsWith("mcp-");
+    });
+
+    if (customHeaderNames.length > 0) {
+      headers["X-Custom-Auth-Headers"] = JSON.stringify(customHeaderNames);
+    }
   }
 
   return headers;

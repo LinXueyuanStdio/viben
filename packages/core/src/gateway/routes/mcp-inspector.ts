@@ -385,6 +385,10 @@ async function createTransport(
     headers["Accept"] = "text/event-stream, application/json";
     const headerHolder = { headers };
 
+    console.log(
+      `[MCP Inspector] StreamableHttp transport: url=${query.url}, headers=${JSON.stringify(headers)}`
+    );
+
     const transport = new StreamableHTTPClientTransport(
       new URL(query.url || ""),
       {
@@ -409,9 +413,9 @@ function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
   reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
   reply.raw.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, Accept, X-MCP-Proxy-Auth, MCP-Session-Id, X-Custom-Auth-Header, X-Custom-Auth-Headers, Last-Event-Id"
+    "Content-Type, Authorization, Accept, X-MCP-Proxy-Auth, MCP-Session-Id, X-Custom-Auth-Header, X-Custom-Auth-Headers, Last-Event-Id, mcp-protocol-version"
   );
-  reply.raw.setHeader("Access-Control-Expose-Headers", "MCP-Session-Id");
+  reply.raw.setHeader("Access-Control-Expose-Headers", "MCP-Session-Id, mcp-protocol-version");
   reply.raw.setHeader(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS"
@@ -736,6 +740,10 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
           transportToClient: webAppTransport,
           transportToServer: serverTransport,
         });
+
+        // Debug: log request body type and content
+        console.log("[MCP Inspector] Request body type:", typeof request.body);
+        console.log("[MCP Inspector] Request body:", JSON.stringify(request.body).slice(0, 200));
 
         await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {

@@ -1,37 +1,37 @@
 ---
 sidebar_position: 7
 title: "viben workspace"
-description: "Workspace operations - list and view workspace information"
+description: "工作区操作 - 列出和查看工作区信息"
 ---
 
 # viben workspace
 
-Workspace operations for Viben.
+Viben 工作区操作。
 
-## Usage
+## 用法
 
 ```bash
 viben workspace <subcommand> [options]
 ```
 
-## Subcommands
+## 子命令
 
-| Subcommand | Description |
-|------------|-------------|
-| `list` | List all known workspaces |
-| `current` | Show current workspace information |
+| 子命令 | 说明 |
+|--------|------|
+| `list` | 列出所有已知工作区 |
+| `current` | 显示当前工作区信息 |
 
-## Commands
+## 命令
 
-### List Workspaces
+### 列出工作区
 
-List all known workspaces:
+列出所有已知工作区：
 
 ```bash
 viben workspace list
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Known Workspaces:
@@ -40,7 +40,7 @@ Known Workspaces:
   /Users/xxx/projects/docs       0 MCPs    0 skills   last used: 3d ago
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 
 ```bash
 viben workspace list --json
@@ -74,15 +74,15 @@ viben workspace list --json
 }
 ```
 
-### Current Workspace
+### 当前工作区
 
-Show information about the current workspace:
+显示当前工作区信息：
 
 ```bash
 viben workspace current
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Current Workspace:
@@ -91,7 +91,7 @@ Current Workspace:
   Skills: code-review, commit (2 enabled)
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 
 ```bash
 viben workspace current --json
@@ -113,52 +113,52 @@ viben workspace current --json
 }
 ```
 
-## Workspace Structure
+## 工作区结构
 
-A workspace is a directory containing a `.viben/` folder:
+工作区是包含 `.viben/` 文件夹的目录：
 
 ```
 <project>/
   .viben/
-    config.yaml           # Workspace configuration
-  .claude/                # Claude Code workspace config (runtime overlay)
-  .cursor/                # Cursor workspace config (runtime overlay)
-  ...                     # Other agent type configs
+    config.yaml           # 工作区配置
+  .claude/                # Claude Code 工作区配置（运行时叠加）
+  .cursor/                # Cursor 工作区配置（运行时叠加）
+  ...                     # 其他智能体类型配置
 ```
 
-### Workspace Configuration
+### 工作区配置
 
 ```yaml
 # <project>/.viben/config.yaml
 version: 1
 
-# Override global settings
+# 覆盖全局设置
 settings:
   color: always
 
-# Workspace-specific MCP
+# 工作区特定的 MCP
 mcp:
   enabled:
     - filesystem
     - git
   disabled: []
 
-# Workspace-specific skills
+# 工作区特定的技能
 skills:
   enabled:
     - code-review
     - commit
 ```
 
-## Error Handling
+## 错误处理
 
-### Not in a Workspace
+### 不在工作区中
 
 ```bash
 viben workspace current
 ```
 
-When not in a workspace directory:
+当不在工作区目录时：
 
 ```json
 {
@@ -170,13 +170,13 @@ When not in a workspace directory:
 }
 ```
 
-### No Workspaces Found
+### 未找到工作区
 
 ```bash
 viben workspace list
 ```
 
-When no workspaces have been registered:
+当没有注册的工作区时：
 
 ```json
 {
@@ -187,15 +187,16 @@ When no workspaces have been registered:
 }
 ```
 
-Human-readable output:
+人类可读输出：
 
 ```
 No workspaces found. Run 'viben init' in a project directory to create one.
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben init](./init) - Initialize a workspace
-- [viben config](./config) - Configuration management
-- [viben mcp](./mcp) - MCP server management
-- [viben skill](./skill) - Skill management
+- [viben init](./init) - 初始化工作区
+- [viben config](./config) - 配置管理
+- [viben mcp](./mcp) - MCP 服务器管理
+- [viben skill](./skill) - 技能管理
+- [viben team](./team) - 团队工作区初始化
