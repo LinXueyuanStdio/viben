@@ -31,6 +31,7 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
+  PageDebugPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -73,6 +74,7 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="data-sources" element={<ProvidersPage />} />
             <Route path="search-service" element={<SearchServicePage />} />
+            <Route path="page-debug" element={<PageDebugPage />} />
             <Route path="logs" element={<LogsPage />} />
             {/* Default redirect for /mcp-services */}
             <Route index element={<Navigate to="dashboard" replace />} />
