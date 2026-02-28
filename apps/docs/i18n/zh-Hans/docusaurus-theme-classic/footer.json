@@ -13,7 +13,7 @@
   },
   "link.item.label.Getting Started": {
     "message": "Getting Started",
-    "description": "The label of footer link with label=Getting Started linking to /docs/intro"
+    "description": "The label of footer link with label=Getting Started linking to /user/getting-started/installation"
   },
   "link.item.label.GitHub Issues": {
     "message": "GitHub Issues",
