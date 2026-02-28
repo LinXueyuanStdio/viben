@@ -35,6 +35,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   const { t } = useTranslation();
   const navigate = useNavigate();
   const addWorkspaceToStore = useWorkspaceStore((s) => s.addWorkspace);
+  const setActiveWorkspace = useWorkspaceStore((s) => s.setActiveWorkspace);
 
   // Wizard state
   const [step, setStep] = React.useState<WizardStep>("choose");
@@ -165,7 +166,7 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
       const result = await response.json();
       const workspace = result.workspace as WorkspaceResponse;
 
-      // Add to store
+      // Add to store (this updates the sidebar immediately)
       addWorkspaceToStore({
         id: workspace.id,
         path: workspace.path,
@@ -196,8 +197,10 @@ export function AddWorkspaceModal({ open, onOpenChange }: AddWorkspaceModalProps
   // Handle go to workspace
   const handleGoToWorkspace = () => {
     if (creationResult) {
+      // Select the workspace and navigate
+      setActiveWorkspace(creationResult.workspaceId);
       onOpenChange(false);
-      navigate(`/workspace/${creationResult.workspaceId}`);
+      navigate(`/workspace/${creationResult.workspaceId}/chat`);
     }
   };
 

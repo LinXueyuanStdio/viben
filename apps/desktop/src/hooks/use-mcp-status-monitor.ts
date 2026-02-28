@@ -91,8 +91,26 @@ export function useMcpStatusMonitor() {
           if (isAlive) {
             status = "running";
           } else {
-            // PID is dead, clear it and fall through to port check
+            // PID is dead, check Gateway for error details
             detectedPid = undefined;
+
+            // Try to get detailed error info from Gateway
+            try {
+              const mcpStatus = await client.getMcpStatus();
+              if (mcpStatus.pid === server.pid && !mcpStatus.running) {
+                // This is our server that crashed
+                if (mcpStatus.error) {
+                  error = mcpStatus.error;
+                } else if (mcpStatus.exitCode !== undefined && mcpStatus.exitCode !== 0) {
+                  error = `Process exited with code ${mcpStatus.exitCode}`;
+                  if (mcpStatus.stderr) {
+                    error += `\n${mcpStatus.stderr.trim().slice(-500)}`;
+                  }
+                }
+              }
+            } catch {
+              // Ignore error fetching detailed status
+            }
           }
         }
 
@@ -120,20 +138,20 @@ export function useMcpStatusMonitor() {
             // If we had a PID that died, mark as error
             if (server.pid && !detectedPid) {
               status = "error";
-              error = "Process terminated unexpectedly";
+              error = error || "Process terminated unexpectedly";
             } else if (server.status === "running") {
               status = "error";
-              error = "Server marked as running but status check failed";
+              error = error || "Server marked as running but status check failed";
             }
           }
         } else if (status !== "running") {
           // stdio transport or no port - rely on PID check only
           if (server.pid && !detectedPid) {
             status = "error";
-            error = "Process terminated unexpectedly";
+            error = error || "Process terminated unexpectedly";
           } else if (server.status === "running" && !server.pid) {
             status = "error";
-            error = "Server marked as running but no process ID";
+            error = error || "Server marked as running but no process ID";
           }
         }
 

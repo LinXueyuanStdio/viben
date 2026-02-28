@@ -84,10 +84,11 @@ export class FeishuPoller {
 
     console.log(`[FeishuPoller] Starting ${this.channel.name}...`);
 
-    // Try to load Feishu SDK
-    let lark: typeof import("@larksuiteoapi/node-sdk") | null = null;
+    // Try to load Feishu SDK (optional dependency)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let lark: any = null;
     try {
-      lark = await import("@larksuiteoapi/node-sdk");
+      lark = await import("@larksuiteoapi/node-sdk" as string);
     } catch {
       console.error(`[FeishuPoller] @larksuiteoapi/node-sdk not installed.`);
       console.error(`[FeishuPoller] Run: pnpm add @larksuiteoapi/node-sdk`);

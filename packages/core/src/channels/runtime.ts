@@ -7,8 +7,17 @@
 
 import type { MessageBus } from "../services/message-bus";
 import type { ChannelManager } from "./manager";
-import type { Channel, TelegramChannelConfig } from "./types";
+import type {
+  Channel,
+  TelegramChannelConfig,
+  DiscordChannelConfig,
+  FeishuChannelConfig,
+  WhatsAppChannelConfig,
+} from "./types";
 import { TelegramPoller } from "./polling/telegram-poller";
+import { DiscordPoller } from "./polling/discord-poller";
+import { FeishuPoller } from "./polling/feishu-poller";
+import { WhatsAppPoller } from "./polling/whatsapp-poller";
 
 /**
  * Base interface for channel pollers
@@ -220,9 +229,26 @@ export class ChannelRuntime {
           pollingTimeout: this.pollingTimeout,
         });
 
-      // TODO: Add more channel types
-      // case "discord":
-      //   return new DiscordPoller({ ... });
+      case "discord":
+        return new DiscordPoller({
+          channel,
+          discordConfig: this.buildDiscordConfig(channel),
+          messageBus: this.messageBus,
+        });
+
+      case "feishu":
+        return new FeishuPoller({
+          channel,
+          feishuConfig: this.buildFeishuConfig(channel),
+          messageBus: this.messageBus,
+        });
+
+      case "whatsapp":
+        return new WhatsAppPoller({
+          channel,
+          whatsappConfig: this.buildWhatsAppConfig(channel),
+          messageBus: this.messageBus,
+        });
 
       default:
         return undefined;
@@ -242,6 +268,68 @@ export class ChannelRuntime {
       allow_from: channel.allow_from,
       token: (channel.config as { token?: string }).token || "",
       proxy: (channel.config as { proxy?: string }).proxy,
+    };
+  }
+
+  /**
+   * Build Discord-specific config from channel
+   */
+  private buildDiscordConfig(channel: Channel): DiscordChannelConfig {
+    const config = channel.config as {
+      token?: string;
+      gateway_url?: string;
+      intents?: number;
+    };
+    return {
+      id: channel.id,
+      type: "discord",
+      name: channel.name,
+      enabled: channel.enabled,
+      created_at: channel.created_at,
+      allow_from: channel.allow_from,
+      token: config.token || "",
+      gateway_url: config.gateway_url,
+      intents: config.intents,
+    };
+  }
+
+  /**
+   * Build Feishu-specific config from channel
+   */
+  private buildFeishuConfig(channel: Channel): FeishuChannelConfig {
+    const config = channel.config as {
+      app_id?: string;
+      app_secret?: string;
+      encrypt_key?: string;
+      verification_token?: string;
+    };
+    return {
+      id: channel.id,
+      type: "feishu",
+      name: channel.name,
+      enabled: channel.enabled,
+      created_at: channel.created_at,
+      allow_from: channel.allow_from,
+      app_id: config.app_id || "",
+      app_secret: config.app_secret || "",
+      encrypt_key: config.encrypt_key,
+      verification_token: config.verification_token,
+    };
+  }
+
+  /**
+   * Build WhatsApp-specific config from channel
+   */
+  private buildWhatsAppConfig(channel: Channel): WhatsAppChannelConfig {
+    const config = channel.config as { bridge_url?: string };
+    return {
+      id: channel.id,
+      type: "whatsapp",
+      name: channel.name,
+      enabled: channel.enabled,
+      created_at: channel.created_at,
+      allow_from: channel.allow_from,
+      bridge_url: config.bridge_url || "",
     };
   }
 }

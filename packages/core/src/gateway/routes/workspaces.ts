@@ -102,10 +102,6 @@ function createGlobalWorkspaceResponse(): WorkspaceResponse {
 }
 
 // ============================================================================
-// Route Registration
-// ============================================================================
-
-// ============================================================================
 // Detect & Create Types
 // ============================================================================
 
@@ -334,6 +330,51 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
       const message = err instanceof Error ? err.message : String(err);
       reply.status(500);
       return { error: `Failed to create workspace: ${message}` };
+    }
+  });
+
+  /**
+   * Delete (unregister) a workspace
+   * DELETE /api/workspaces/:id
+   *
+   * Removes workspace from registry. Does NOT delete actual folder.
+   * Global workspace cannot be deleted.
+   */
+  fastify.delete<{ Params: { id: string } }>("/api/workspaces/:id", async (request, reply) => {
+    const { id } = request.params;
+
+    if (!id) {
+      reply.status(400);
+      return { error: "Workspace ID is required" };
+    }
+
+    // Cannot delete global workspace
+    if (id === "global") {
+      reply.status(403);
+      return { error: "Cannot delete global workspace" };
+    }
+
+    try {
+      // Decode workspace path from ID (base64url)
+      const workspacePath = Buffer.from(id, "base64url").toString();
+
+      // Check if workspace exists in registry
+      const workspaces = await workspaceManager.listWorkspaces();
+      const workspace = workspaces.find((w) => w.path === workspacePath);
+
+      if (!workspace) {
+        reply.status(404);
+        return { error: "Workspace not found" };
+      }
+
+      // Unregister workspace (does not delete folder)
+      await workspaceManager.unregisterWorkspace(workspacePath);
+
+      return { success: true, message: "Workspace removed from registry" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      reply.status(500);
+      return { error: `Failed to delete workspace: ${message}` };
     }
   });
 }

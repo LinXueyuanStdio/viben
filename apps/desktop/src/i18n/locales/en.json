@@ -1077,6 +1077,7 @@
     "serverStartFailedTitle": "Server Start Failed",
     "serverStopFailed": "Failed to stop server",
     "serverCrashed": "Server process terminated",
+    "processTerminatedUnexpectedly": "Process terminated unexpectedly",
     "commandExecuted": "Command executed",
     "endpoint": "Endpoint",
     "errorDetails": "Error details"
