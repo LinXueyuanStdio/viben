@@ -80,7 +80,7 @@ get_worktree_base_dir() {
 
   # Default value
   if [ -z "$worktree_dir" ]; then
-    worktree_dir="../worktrees"
+    worktree_dir=".viben/worktrees"
   fi
 
   # Handle relative path

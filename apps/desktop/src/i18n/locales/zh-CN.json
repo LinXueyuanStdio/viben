@@ -555,6 +555,8 @@
       "notInstalled": "未安装",
       "installed": "已安装",
       "detectedPath": "自动检测",
+      "recommended": "推荐",
+      "foundCount": "发现 {{count}} 个位置",
       "installHint": "安装命令：",
       "sourceUserConfig": "用户配置",
       "sourceHomebrew": "Homebrew",

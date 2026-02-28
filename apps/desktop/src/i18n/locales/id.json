@@ -804,9 +804,42 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "hostDescription": "Alamat host tempat layanan gateway terikat",
+    "portDescription": "Nomor port tempat layanan gateway mendengarkan (perlu restart)",
+    "connectivityTestDescription": "Periksa status koneksi dan endpoint yang tersedia dari layanan gateway"
+  },
+  "observability": {
+    "allRoutes": "Semua Rute",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Eksekusi Agen)",
+      "agents": "/api/agents (Manajemen Agen)",
+      "workspaces": "/api/workspaces (Ruang Kerja)",
+      "chat": "/api/chat (Obrolan)",
+      "groupChats": "/api/group-chats (Obrolan Grup)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesi",
+        "config": "Konfigurasi",
+        "info": "Informasi",
+        "workspace": "Ruang Kerja",
+        "auth": "Autentikasi"
+      },
+      "sources": {
+        "builtin": "Bawaan",
+        "workspace": "Ruang Kerja",
+        "skill": "Keahlian"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
+    "taskPromptWithDescription": "Tolong bantu saya menyelesaikan tugas berikut:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Tolong bantu saya menyelesaikan tugas berikut: {{title}}",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",
     "custom": "Custom",
