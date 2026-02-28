@@ -199,6 +199,16 @@ export function ChatMonitorPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailSpan, setDetailSpan] = useState<TraceSpanNode | null>(null);
 
+  // Route filter options with i18n labels
+  const routeFilterOptions = useMemo(() => [
+    { value: "all", label: t("observability.allRoutes") },
+    { value: "/api/agent/run", label: t("observability.routeFilters.agentRun") },
+    { value: "/api/agents", label: t("observability.routeFilters.agents") },
+    { value: "/api/workspaces", label: t("observability.routeFilters.workspaces") },
+    { value: "/api/chat", label: t("observability.routeFilters.chat") },
+    { value: "/api/group-chats", label: t("observability.routeFilters.groupChats") },
+  ], [t]);
+
   // Load available dates
   const loadDates = useCallback(async () => {
     setLoading(true);
@@ -394,7 +404,7 @@ export function ChatMonitorPage() {
               <SelectValue placeholder={t("observability.filterByRoute")} />
             </SelectTrigger>
             <SelectContent>
-              {ROUTE_FILTER_OPTIONS.map((option) => (
+              {routeFilterOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
