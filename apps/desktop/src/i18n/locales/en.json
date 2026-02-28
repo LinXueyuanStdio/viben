@@ -108,6 +108,8 @@
     "mcpMarketplace": "MCP Store",
     "mcpServices": "MCP Services",
     "dedicatedSearchServices": "Dedicated Search Services",
+    "pageDebugServices": "Page Debug Services",
+    "pageDebug": "Page Debug",
     "skillsMarket": "Skills Market",
     "logs": "Logs",
     "documents": "Documents",
@@ -1210,6 +1212,33 @@
     "commandExecuted": "Command executed",
     "endpoint": "Endpoint",
     "errorDetails": "Error details"
+  },
+  "pageDebug": {
+    "title": "Page Debug",
+    "subtitle": "Let AI automatically debug Tauri WebView pages",
+    "status": "Debug Service Status",
+    "running": "Running",
+    "stopped": "Stopped",
+    "socketPath": "Socket Path",
+    "features": "Available Tools",
+    "devOnly": "Development Only",
+    "productionDisabled": "This feature is disabled in production",
+    "aiInstructions": "AI Client Configuration",
+    "copyConfig": "Copy Config",
+    "testCommand": "Test Command",
+    "testCommandHint": "Run this command in terminal to test MCP server connection",
+    "tools": {
+      "take_screenshot": "Screenshot",
+      "query_page": "Query Page",
+      "click": "Click",
+      "type_text": "Type Text",
+      "get_page_content": "Get Page Content",
+      "execute_js": "Execute JavaScript",
+      "get_tauri_state": "Get Tauri State",
+      "get_windows": "Get Windows",
+      "launch_app": "Launch App",
+      "stop_app": "Stop App"
+    }
   },
   "auth": {
     "signIn": "Sign In",
