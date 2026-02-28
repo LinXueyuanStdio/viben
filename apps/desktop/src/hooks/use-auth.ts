@@ -97,13 +97,19 @@ export function useAuth() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for OAuth callback from deep link (viben://oauth?code=xxx)
+  // Listen for OAuth callback from deep link (viben://oauth?session=<base64url>)
   useEffect(() => {
-    const unlisten = listen<string>("oauth-callback", async (event) => {
-      const code = event.payload;
-      if (code) {
+    const unlistenCallback = listen<string>("oauth-callback", async (event) => {
+      const sessionBase64 = event.payload;
+      if (sessionBase64) {
         try {
-          await store.handleOAuthCallback(code);
+          // Decode base64url to JSON
+          const sessionJson = atob(sessionBase64.replace(/-/g, '+').replace(/_/g, '/'));
+          const sessionData = JSON.parse(sessionJson);
+
+          // Set session directly from decoded data
+          await store.setSessionFromOAuth(sessionData);
+
           // Show success toast
           const { user } = useAuthStore.getState();
           toast.success("登录成功", {
@@ -118,8 +124,18 @@ export function useAuth() {
       }
     });
 
+    const unlistenError = listen<string>("oauth-error", async (event) => {
+      const error = event.payload;
+      console.error("OAuth error:", error);
+      store.setLoading(false);
+      toast.error("登录失败", {
+        description: `OAuth 认证失败: ${error}`,
+      });
+    });
+
     return () => {
-      unlisten.then((fn) => fn());
+      unlistenCallback.then((fn) => fn());
+      unlistenError.then((fn) => fn());
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

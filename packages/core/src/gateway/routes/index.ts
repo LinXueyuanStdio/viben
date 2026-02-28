@@ -38,6 +38,7 @@ import { registerFilesystemRoutes } from "./filesystem";
 import { registerTunnelRoutes } from "./tunnel";
 import { registerKanbanDataRoutes } from "./kanban-data";
 import { registerPackagesRoutes } from "./packages";
+import { registerMcpInspectorRoutes } from "./mcp-inspector";
 
 /**
  * Register all routes
@@ -78,6 +79,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerTunnelRoutes(fastify);
   registerKanbanDataRoutes(fastify);
   registerPackagesRoutes(fastify);
+  registerMcpInspectorRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -117,6 +119,11 @@ export { registerFilesystemRoutes } from "./filesystem";
 export { registerTunnelRoutes } from "./tunnel";
 export { registerPackagesRoutes } from "./packages";
 export type { InstalledPackage, InstalledPackagesResponse } from "./packages";
+export {
+  registerMcpInspectorRoutes,
+  getMcpInspectorSessionToken,
+  isMcpInspectorAuthDisabled,
+} from "./mcp-inspector";
 export type {
   SSEEventType,
   SSEMessage,

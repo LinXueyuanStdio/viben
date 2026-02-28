@@ -437,7 +437,7 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
           p.description.toLowerCase().includes(query) ||
           p.id.toLowerCase().includes(query) ||
           p.author_name.toLowerCase().includes(query) ||
-          (p.category && p.category.toLowerCase().includes(query))
+          (p.categories && p.categories.some((c) => c.toLowerCase().includes(query)))
       );
 
       return { plugins: matchingPlugins };
@@ -457,12 +457,12 @@ export function registerMarketplaceRoutes(fastify: FastifyInstance): void {
 
     try {
       const index = await getProviderIndex();
-      const plugins = index.plugins.filter((p) => p.category === categoryId);
+      const plugins = index.plugins.filter((p) => p.categories.includes(categoryId));
       return plugins;
     } catch (err) {
       const cached = await loadFromCache();
       if (cached) {
-        return cached.plugins.filter((p) => p.category === categoryId);
+        return cached.plugins.filter((p) => p.categories.includes(categoryId));
       }
       return [];
     }

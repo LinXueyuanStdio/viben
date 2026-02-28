@@ -57,8 +57,26 @@ interface AuthState {
   /**
    * Handle OAuth callback with authorization code
    * @param code - Authorization code from OAuth provider
+   * @deprecated Use setSessionFromOAuth instead - OAuth code is single-use
    */
   handleOAuthCallback: (code: string) => Promise<void>;
+
+  /**
+   * Set session directly from OAuth callback data
+   * @param data - Session data from OAuth callback
+   */
+  setSessionFromOAuth: (data: {
+    user: {
+      id: string;
+      email: string;
+      username: string;
+      displayName: string;
+      avatarUrl: string | null;
+    };
+    accessToken: string;
+    refreshToken: string | null;
+    expiresAt: number;
+  }) => Promise<void>;
 
   /**
    * Log out and clear session
@@ -157,6 +175,41 @@ export const useAuthStore = create<AuthState>()(
         try {
           const client = getApiClient();
           const session = await client.auth.handleOAuthCallback("github", code);
+
+          // Set token for future requests
+          client.setAccessToken(session.accessToken);
+
+          set({
+            user: session,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          set({
+            error: errorMessage,
+            isLoading: false,
+          });
+          throw new Error(errorMessage);
+        }
+      },
+
+      setSessionFromOAuth: async (data) => {
+        set({ isLoading: true, error: null });
+        try {
+          const client = getApiClient();
+
+          // Build session object
+          const session: UserSession = {
+            id: data.user.id,
+            email: data.user.email,
+            username: data.user.username,
+            displayName: data.user.displayName,
+            avatarUrl: data.user.avatarUrl,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            expiresAt: data.expiresAt,
+          };
 
           // Set token for future requests
           client.setAccessToken(session.accessToken);

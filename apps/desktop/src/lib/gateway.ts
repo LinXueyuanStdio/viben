@@ -3794,6 +3794,123 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // MCP Inspector (Gateway-integrated Proxy)
+  // ==========================================================================
+
+  /**
+   * Get MCP Inspector health and session count
+   */
+  async getMcpInspectorHealth(): Promise<McpInspectorHealth> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/health`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector health: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get MCP Inspector session token
+   */
+  async getMcpInspectorToken(): Promise<McpInspectorToken> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/token`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector token: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get MCP Inspector configuration
+   */
+  async getMcpInspectorConfig(authToken: string): Promise<McpInspectorConfig> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/config`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector config: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * List active MCP Inspector sessions
+   */
+  async getMcpInspectorSessions(authToken: string): Promise<McpInspectorSession[]> {
+    const response = await fetch(`${this.baseUrl}/api/mcp/inspector/sessions`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get MCP Inspector sessions: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const result = await response.json();
+    return result.sessions;
+  }
+
+  /**
+   * Close an MCP Inspector session
+   */
+  async closeMcpInspectorSession(authToken: string, sessionId: string): Promise<{ deleted: string }> {
+    const response = await fetch(
+      `${this.baseUrl}/api/mcp/inspector/sessions/${encodeURIComponent(sessionId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+          "X-MCP-Proxy-Auth": `Bearer ${authToken}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to close MCP Inspector session: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
   // Service API Keys
   // ==========================================================================
 
@@ -7081,6 +7198,36 @@ export interface McpServerPortStatus {
   pid: number | null;
   process_name: string | null;
   is_mcp_server: boolean;
+}
+
+/** MCP Inspector health response */
+export interface McpInspectorHealth {
+  status: string;
+  sessions: number;
+}
+
+/** MCP Inspector token response */
+export interface McpInspectorToken {
+  token: string | null;
+  authDisabled: boolean;
+}
+
+/** MCP Inspector config response */
+export interface McpInspectorConfig {
+  defaultEnvironment: Record<string, string>;
+  defaultCommand: string;
+  defaultArgs: string;
+  defaultTransport: string;
+  defaultServerUrl: string;
+  authRequired: boolean;
+}
+
+/** MCP Inspector session info */
+export interface McpInspectorSession {
+  sessionId: string;
+  transportType: string;
+  createdAt: string;
+  serverConnected: boolean;
 }
 
 /** Service API Key */

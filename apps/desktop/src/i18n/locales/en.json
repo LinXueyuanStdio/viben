@@ -93,7 +93,9 @@
     "you": "You",
     "unknown": "Unknown",
     "openInExplorer": "Open in file manager",
-    "learnMore": "Learn More"
+    "learnMore": "Learn More",
+    "noData": "No data",
+    "id": "ID"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -183,6 +185,7 @@
     "installHint": "Install Viben: npm install -g viben, or run in project root: pnpm run gateway:restart"
   },
   "channels": {
+    "telegramBot": "Telegram Bot",
     "addChannel": "Add Channel",
     "addChannelDesc": "Select channel type and set a name",
     "addChannelDescFull": "Select channel type and fill in required information",
@@ -486,7 +489,9 @@
     "installProviders": "Install Providers",
     "installDescription": "Install additional sandbox providers for better isolation",
     "allInstalled": "All providers installed",
-    "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)"
+    "priorityExplanation": "Provider priority: Codex (most secure) > Claude (process isolation) > Native (no isolation)",
+    "codexCli": "Codex CLI",
+    "claudeSandboxRuntime": "Claude Sandbox Runtime"
   },
   "about": {
     "title": "Viben",
@@ -1322,7 +1327,14 @@
     "chars": "chars",
     "filterInfo": "Info",
     "filterProgress": "Progress",
-    "filterStderr": "Stderr"
+    "filterStderr": "Stderr",
+    "taskStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    }
   },
   "updates": {
     "title": "Package Updates",
@@ -2532,29 +2544,6 @@
     "code": "Code",
     "previewNotAvailable": "Preview not available",
     "switchToCodeView": "Switch to Code view to see the content"
-  },
-  "inspector": {
-    "taskStatus": {
-      "pending": "Pending",
-      "running": "Running",
-      "done": "Done",
-      "failed": "Failed",
-      "cancelled": "Cancelled"
-    },
-    "progress": "Progress",
-    "messageRole": {
-      "user": "User",
-      "system": "System"
-    },
-    "tokenTypes": {
-      "bearer": "Bearer Token",
-      "apiKey": "API Key"
-    },
-    "metadata": {
-      "protocol": "Protocol",
-      "vendor": "Vendor",
-      "homepage": "Homepage"
-    }
   },
   "observability": {
     "title": "Observability",

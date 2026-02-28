@@ -93,7 +93,9 @@
     "you": "你",
     "unknown": "未知",
     "openInExplorer": "在文件管理器中打开",
-    "learnMore": "了解更多"
+    "learnMore": "了解更多",
+    "noData": "无数据",
+    "id": "ID"
   },
   "nav": {
     "dashboard": "仪表盘",
@@ -183,6 +185,7 @@
     "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
   },
   "channels": {
+    "telegramBot": "Telegram 机器人",
     "addChannel": "添加渠道",
     "addChannelDesc": "选择渠道类型并设置名称",
     "addChannelDescFull": "选择渠道类型并填写必要信息",
@@ -486,7 +489,9 @@
     "installProviders": "安装提供者",
     "installDescription": "安装额外的沙箱提供者以获得更好的隔离性",
     "allInstalled": "所有提供者已安装",
-    "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）"
+    "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）",
+    "codexCli": "Codex CLI",
+    "claudeSandboxRuntime": "Claude 沙箱运行时"
   },
   "about": {
     "title": "Viben",
@@ -1322,7 +1327,14 @@
     "chars": "字符",
     "filterInfo": "信息",
     "filterProgress": "进度",
-    "filterStderr": "错误输出"
+    "filterStderr": "错误输出",
+    "taskStatus": {
+      "pending": "待处理",
+      "running": "运行中",
+      "done": "已完成",
+      "failed": "失败",
+      "cancelled": "已取消"
+    }
   },
   "updates": {
     "title": "包更新",
@@ -2532,29 +2544,6 @@
     "code": "代码",
     "previewNotAvailable": "预览不可用",
     "switchToCodeView": "切换到代码视图查看内容"
-  },
-  "inspector": {
-    "taskStatus": {
-      "pending": "待处理",
-      "running": "运行中",
-      "done": "已完成",
-      "failed": "失败",
-      "cancelled": "已取消"
-    },
-    "progress": "进度",
-    "messageRole": {
-      "user": "用户",
-      "system": "系统"
-    },
-    "tokenTypes": {
-      "bearer": "Bearer 令牌",
-      "apiKey": "API 密钥"
-    },
-    "metadata": {
-      "protocol": "协议",
-      "vendor": "供应商",
-      "homepage": "主页"
-    }
   },
   "observability": {
     "title": "可观测性",
