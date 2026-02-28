@@ -13,31 +13,38 @@
 
 ## 架构概览
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Applications                             │
-├───────────────────┬───────────────────┬─────────────────────────┤
-│    apps/cli       │   apps/desktop    │       apps/web          │
-│    (viben CLI)    │   (Tauri + React) │     (Next.js)           │
-└─────────┬─────────┴─────────┬─────────┴───────────┬─────────────┘
-          │                   │                     │
-          └───────────────────┼─────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      packages/core                              │
-│  ┌───────────┬───────────┬───────────┬───────────┬───────────┐  │
-│  │  Agents   │ Providers │  Models   │  Config   │  Gateway  │  │
-│  └───────────┴───────────┴───────────┴───────────┴───────────┘  │
-│                    Gateway Server (:18790)                      │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-          ┌───────────────────┼───────────────────┐
-          ▼                   ▼                   ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  packages/ui    │ │  packages/chat  │ │ packages/kanban │
-│   组件库        │ │   聊天组件      │ │   看板组件      │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+```mermaid
+graph TB
+    subgraph Applications["应用层"]
+        CLI["apps/cli<br/>viben CLI"]
+        Desktop["apps/desktop<br/>Tauri + React"]
+        Web["apps/web<br/>Next.js"]
+    end
+
+    subgraph Core["packages/core"]
+        Agents["Agents"]
+        Providers["Providers"]
+        Models["Models"]
+        Config["Config"]
+        Gateway["Gateway"]
+    end
+
+    subgraph UI["UI 组件层"]
+        PkgUI["packages/ui<br/>组件库"]
+        PkgChat["packages/chat<br/>聊天组件"]
+        PkgKanban["packages/kanban<br/>看板组件"]
+    end
+
+    CLI --> Core
+    Desktop --> Core
+    Web --> Core
+
+    Core --> PkgUI
+    Core --> PkgChat
+    Core --> PkgKanban
+
+    GatewayServer["Gateway Server :18790"]
+    Core --> GatewayServer
 ```
 
 ## 快速开始

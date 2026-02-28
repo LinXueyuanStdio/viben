@@ -400,6 +400,25 @@ async function createTransport(
 }
 
 /**
+ * Set CORS headers on raw response
+ * Required when using request.raw/reply.raw which bypass Fastify's CORS middleware
+ */
+function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
+  const origin = request.headers.origin || "*";
+  reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+  reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, X-MCP-Proxy-Auth, MCP-Session-Id, X-Custom-Auth-Header, X-Custom-Auth-Headers, Last-Event-Id"
+  );
+  reply.raw.setHeader("Access-Control-Expose-Headers", "MCP-Session-Id");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+}
+
+/**
  * Authentication middleware
  */
 function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
@@ -604,6 +623,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       url?: string;
     };
   }>("/api/mcp/inspector/mcp", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string;
@@ -646,6 +668,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       url?: string;
     };
   }>("/api/mcp/inspector/mcp", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string | undefined;
@@ -785,6 +810,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       proxyFullAddress?: string;
     };
   }>("/api/mcp/inspector/stdio", async (request, reply) => {
+    // Set CORS headers for raw response handling (SSE)
+    setCorsHeaders(request, reply);
+
     if (!checkAuth(request, reply)) return;
 
     try {
@@ -906,6 +934,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
       proxyFullAddress?: string;
     };
   }>("/api/mcp/inspector/sse", async (request, reply) => {
+    // Set CORS headers for raw response handling (SSE)
+    setCorsHeaders(request, reply);
+
     if (!checkAuth(request, reply)) return;
 
     try {
@@ -973,6 +1004,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   fastify.post<{
     Querystring: { sessionId?: string };
   }>("/api/mcp/inspector/message", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
     if (!checkAuth(request, reply)) return;
 
     try {
