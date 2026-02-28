@@ -171,15 +171,15 @@ function hasDetailData(span: TraceSpan): boolean {
   );
 }
 
-// Route filter options
-const ROUTE_FILTER_OPTIONS = [
-  { value: "all", label: "全部路由" },
-  { value: "/api/agent/run", label: "/api/agent/run (智能体执行)" },
-  { value: "/api/agents", label: "/api/agents (智能体管理)" },
-  { value: "/api/workspaces", label: "/api/workspaces (工作区)" },
-  { value: "/api/chat", label: "/api/chat (对话)" },
-  { value: "/api/group-chats", label: "/api/group-chats (群聊)" },
-];
+// Route filter options - labels are provided via useRouteFilterOptions hook
+const ROUTE_FILTER_VALUES = [
+  "all",
+  "/api/agent/run",
+  "/api/agents",
+  "/api/workspaces",
+  "/api/chat",
+  "/api/group-chats",
+] as const;
 
 export function ChatMonitorPage() {
   const { t } = useTranslation();
