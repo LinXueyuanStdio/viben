@@ -139,7 +139,34 @@
     "system": "Systeem",
     "language": "Taal",
     "storage": "Opslag",
-    "downloadPath": "Downloadpad"
+    "downloadPath": "Downloadpad",
+    "developerDescription": "Ontwikkelaarstools, debug-instellingen en probleemoplossing",
+    "developer": {
+      "devtools": "Ontwikkelaarstools",
+      "preferredIDE": "Voorkeurs-IDE",
+      "preferredIDEDescription": "Viben opent projecten in deze editor",
+      "preferredTerminal": "Voorkeursterminal",
+      "preferredTerminalDescription": "Viben opent terminalsessies hier",
+      "yoloMode": "YOLO-modus",
+      "yoloModeDescription": "Start executors met de --dangerously-skip-permissions vlag, omzeil alle veiligheidsprompts. Gebruik met uiterste voorzichtigheid.",
+      "yoloModeWarning": "Deze modus omzeilt het machtigingensysteem. Schakel alleen in als u de uitgevoerde code volledig vertrouwt.",
+      "debugLogs": "Debug & Logs",
+      "openLogsFolder": "Open Logs-map",
+      "openConfigFolder": "Open Config-map",
+      "copyDebugInfo": "Kopieer Debug-info",
+      "loadDebugInfo": "Laad Debug-info",
+      "systemInfo": "Systeeminformatie",
+      "paths": "Paden",
+      "noRecentErrors": "Geen recente fouten",
+      "reportingIssues": "Problemen melden",
+      "reportingIssuesDescription": "Bij het melden van bugs, klik op \"Kopieer Debug-info\" om systeeminformatie te krijgen die ons helpt het probleem te diagnosticeren.",
+      "os": "Besturingssysteem",
+      "osVersion": "Versie",
+      "appVersion": "App-versie",
+      "arch": "Architectuur",
+      "logs": "Logs",
+      "config": "Configuratie"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +911,23 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
+  },
+  "snakeGame": {
+    "title": "Slangenspel",
+    "score": "Score",
+    "length": "Lengte",
+    "speed": "Snelheid",
+    "gameOver": "Game Over",
+    "finalScore": "Eindscore: {{score}}",
+    "restart": "Opnieuw starten",
+    "pause": "Pauze",
+    "start": "Start",
+    "reset": "Reset",
+    "instructions": "Instructies",
+    "instruction1": "Gebruik pijltjestoetsen of WASD om te bewegen",
+    "instruction2": "Eet voedsel om te groeien",
+    "instruction3": "Vermijd de muren en jezelf",
+    "instruction4": "Druk op spatie om te pauzeren",
+    "instruction5": "Snelheid neemt toe naarmate je groeit"
   }
 }

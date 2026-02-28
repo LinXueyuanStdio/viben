@@ -4757,6 +4757,70 @@ export class GatewayClient {
   }
 
   // ==========================================================================
+  // CLI Tools Detection
+  // ==========================================================================
+
+  /**
+   * Detect all CLI tools (git, gh, claude)
+   */
+  async detectCliTools(config?: {
+    gitPath?: string;
+    ghPath?: string;
+    claudePath?: string;
+  }): Promise<CliToolsInfo> {
+    const params = new URLSearchParams();
+    if (config?.gitPath) params.append("git_path", config.gitPath);
+    if (config?.ghPath) params.append("gh_path", config.ghPath);
+    if (config?.claudePath) params.append("claude_path", config.claudePath);
+
+    const url = params.toString()
+      ? `${this.baseUrl}/api/cli-tools/detect?${params}`
+      : `${this.baseUrl}/api/cli-tools/detect`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to detect CLI tools: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Check a specific CLI tool path
+   */
+  async checkCliToolPath(
+    tool: "git" | "gh" | "claude",
+    path: string
+  ): Promise<CliToolInfo> {
+    const response = await fetch(`${this.baseUrl}/api/cli-tools/check`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ tool, path }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to check CLI tool path: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  // ==========================================================================
   // Usage Tracking
   // ==========================================================================
 
@@ -6425,6 +6489,22 @@ export interface SystemInfo {
   release: string;
   type: string;
   viben_dir: string;
+}
+
+/** CLI tool detection result */
+export interface CliToolInfo {
+  found: boolean;
+  path?: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "system-path" | "fallback";
+  message?: string;
+}
+
+/** All CLI tools detection result */
+export interface CliToolsInfo {
+  git: CliToolInfo;
+  gh: CliToolInfo;
+  claude: CliToolInfo;
 }
 
 // ============================================================================

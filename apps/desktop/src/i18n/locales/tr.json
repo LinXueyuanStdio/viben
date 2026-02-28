@@ -139,7 +139,34 @@
     "system": "Sistem",
     "language": "Dil",
     "storage": "Depolama",
-    "downloadPath": "İndirme Yolu"
+    "downloadPath": "İndirme Yolu",
+    "developerDescription": "Geliştirici araçları, hata ayıklama ayarları ve sorun giderme",
+    "developer": {
+      "devtools": "Geliştirici Araçları",
+      "preferredIDE": "Tercih Edilen IDE",
+      "preferredIDEDescription": "Viben projeleri bu düzenleyicide açacak",
+      "preferredTerminal": "Tercih Edilen Terminal",
+      "preferredTerminalDescription": "Viben terminal oturumlarını burada açacak",
+      "yoloMode": "YOLO Modu",
+      "yoloModeDescription": "Executorları --dangerously-skip-permissions bayrağıyla başlat, tüm güvenlik istemlerini atla. Aşırı dikkatli kullanın.",
+      "yoloModeWarning": "Bu mod izin sistemini atlar. Yalnızca çalıştırılan koda tam güveniyorsanız etkinleştirin.",
+      "debugLogs": "Hata Ayıklama ve Loglar",
+      "openLogsFolder": "Log Klasörünü Aç",
+      "openConfigFolder": "Yapılandırma Klasörünü Aç",
+      "copyDebugInfo": "Hata Ayıklama Bilgisini Kopyala",
+      "loadDebugInfo": "Hata Ayıklama Bilgisini Yükle",
+      "systemInfo": "Sistem Bilgisi",
+      "paths": "Yollar",
+      "noRecentErrors": "Son hata yok",
+      "reportingIssues": "Sorun Bildirme",
+      "reportingIssuesDescription": "Hata bildirirken, sorunu teşhis etmemize yardımcı olacak sistem bilgilerini almak için \"Hata Ayıklama Bilgisini Kopyala\"ya tıklayın.",
+      "os": "İşletim Sistemi",
+      "osVersion": "Sürüm",
+      "appVersion": "Uygulama Sürümü",
+      "arch": "Mimari",
+      "logs": "Loglar",
+      "config": "Yapılandırma"
+    }
   },
   "about": {
     "title": "Viben",
@@ -884,5 +911,23 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
+  },
+  "snakeGame": {
+    "title": "Yılan Oyunu",
+    "score": "Skor",
+    "length": "Uzunluk",
+    "speed": "Hız",
+    "gameOver": "Oyun Bitti",
+    "finalScore": "Son Skor: {{score}}",
+    "restart": "Yeniden Başlat",
+    "pause": "Duraklat",
+    "start": "Başlat",
+    "reset": "Sıfırla",
+    "instructions": "Talimatlar",
+    "instruction1": "Hareket etmek için ok tuşlarını veya WASD kullanın",
+    "instruction2": "Büyümek için yiyecek yiyin",
+    "instruction3": "Duvarlardan ve kendinizden kaçının",
+    "instruction4": "Duraklatmak için boşluk tuşuna basın",
+    "instruction5": "Büyüdükçe hız artar"
   }
 }

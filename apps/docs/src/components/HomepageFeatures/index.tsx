@@ -11,32 +11,32 @@ type FeatureItem = {
 
 const FeatureList: FeatureItem[] = [
   {
-    title: 'Multi-Source Search',
+    title: 'Multi-Workspace Management',
     Svg: require('@site/static/img/undraw_search.svg').default,
     description: (
       <>
-        Search academic papers from 19+ sources including arXiv, PubMed,
-        Semantic Scholar, IEEE Xplore, and more through a unified interface.
+        Manage multiple project workspaces with independent MCP servers,
+        agent configurations (Claude Code, Cursor, Codex), Skills, and task boards.
       </>
     ),
   },
   {
-    title: 'MCP Integration',
+    title: 'Agent Orchestration',
     Svg: require('@site/static/img/undraw_connected.svg').default,
     description: (
       <>
-        Built on the Model Context Protocol (MCP) for seamless integration
-        with Claude Desktop, Claude Code, and other MCP-compatible clients.
+        Unified configuration management for Claude Code, Cursor, Codex and other
+        AI programming assistants. One place for all your AI tools.
       </>
     ),
   },
   {
-    title: 'Easy to Use',
+    title: 'Task & Kanban System',
     Svg: require('@site/static/img/undraw_easy.svg').default,
     description: (
       <>
-        Simple installation via pip. Configure once, search everywhere.
-        Three tools: browse_search, browse_download, and browse_read.
+        Built-in kanban board with task cards, priorities, tags, subtasks,
+        dependencies, and activity tracking for your development workflow.
       </>
     ),
   },

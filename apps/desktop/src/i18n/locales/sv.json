@@ -911,5 +911,23 @@
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
     "rootNamespace": "Root"
+  },
+  "snakeGame": {
+    "title": "Ormspel",
+    "score": "Poang",
+    "length": "Langd",
+    "speed": "Hastighet",
+    "gameOver": "Spelet slut",
+    "finalScore": "Slutpoang: {{score}}",
+    "restart": "Starta om",
+    "pause": "Paus",
+    "start": "Start",
+    "reset": "Aterstall",
+    "instructions": "Instruktioner",
+    "instruction1": "Anvand piltangenterna eller WASD for att rora dig",
+    "instruction2": "At mat for att vaxa",
+    "instruction3": "Undvik vaggar och dig sjalv",
+    "instruction4": "Tryck mellanslag for att pausa",
+    "instruction5": "Hastigheten okar nar du vaxer"
   }
 }

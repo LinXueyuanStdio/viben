@@ -505,6 +505,19 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     );
   }
 
+  // Add custom content type parser to preserve raw body for MCP Inspector routes
+  // This allows the MCP SDK's handleRequest to receive the raw JSON body
+  // We need to parse the buffer ourselves and store both raw and parsed versions
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "buffer" },
+    (_request, payload, done) => {
+      // Store the raw body as a string for MCP SDK's handleRequest
+      const rawBody = payload.toString("utf-8");
+      done(null, rawBody);
+    }
+  );
+
   // ========================================================================
   // Health & Config
   // ========================================================================
@@ -697,7 +710,8 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
           return { error: "Transport not found for sessionId " + sessionId };
         }
 
-        await transport.handleRequest(request.raw, reply.raw);
+        // Pass body to handleRequest (like Express version)
+        await transport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
         console.error("[MCP Inspector] Error in POST /mcp route:", error);
         reply.code(500);
@@ -741,10 +755,7 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
           transportToServer: serverTransport,
         });
 
-        // Debug: log request body type and content
-        console.log("[MCP Inspector] Request body type:", typeof request.body);
-        console.log("[MCP Inspector] Request body:", JSON.stringify(request.body).slice(0, 200));
-
+        // Pass body to handleRequest (like Express version)
         await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
         if (is401Error(error)) {
