@@ -159,6 +159,17 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to start channel router:", e);
   }
 
+  // Start channel runtime for long polling (receives messages from external channels)
+  try {
+    await state.channelRuntime.start();
+    const activePollers = state.channelRuntime.getActivePollers();
+    logger?.info({ count: activePollers.length }, "Channel runtime started");
+    console.log(`[Gateway] Channel runtime started (${activePollers.length} active poller(s))`);
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start channel runtime");
+    console.warn("[Gateway] Failed to start channel runtime:", e);
+  }
+
   // Register Observable Gauge callbacks for metrics
   if (enableTelemetry) {
     registerGaugeCallbacks({
@@ -175,6 +186,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     logger?.info("Shutting down gateway...");
     console.log("[Gateway] Shutting down...");
     state.channelRouter.stop();
+    await state.channelRuntime.stop();
     await state.cron.shutdown();
     state.container.killAllRunningProcesses();
     if (telemetry) {

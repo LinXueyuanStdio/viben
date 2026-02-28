@@ -55,6 +55,29 @@ export {
   type ChannelRouterConfig,
 } from "./router";
 
+// Re-export channel runtime
+export {
+  ChannelRuntime,
+  createChannelRuntime,
+  type ChannelPoller,
+  type ChannelRuntimeConfig,
+} from "./runtime";
+
+// Re-export Telegram types and functions
+export {
+  getTelegramUpdates,
+  deleteTelegramWebhook,
+  type TelegramUpdate,
+  type TelegramMessage,
+  type TelegramUser,
+  type TelegramChat,
+  type GetUpdatesOptions,
+  type GetUpdatesResult,
+} from "./telegram";
+
+// Re-export polling module
+export { TelegramPoller, type TelegramPollerConfig } from "./polling";
+
 /**
  * Send a message through any channel type
  */

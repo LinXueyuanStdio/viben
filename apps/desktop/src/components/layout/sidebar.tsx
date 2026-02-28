@@ -4,7 +4,6 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
   SearchCode,
-  LogIn,
   Store,
   Sparkles,
   Server,
@@ -23,6 +22,7 @@ import {
   Plus,
   Check,
   Loader2,
+  ListTodo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -45,11 +45,17 @@ import { GatewayStatusIndicator } from "@/components/status/gateway-status-indic
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { UserMenu } from "@/components/auth/user-menu";
-import { LoginDialog } from "@/components/auth/login-dialog";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import { CreateTaskDialog } from "@/components/workspace/kanban/create-task-dialog";
+import type { CreateTaskData } from "@/components/workspace/kanban/create-task-dialog";
+import { createTask } from "@/lib/vibe-kanban/api";
+import { useAgents } from "@/hooks/use-workspace-resources";
+import { useModels } from "@/hooks/use-models";
+import { toast } from "@/hooks/use-toast";
+import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 
 interface NavItem {
   titleKey: string;
@@ -128,6 +134,14 @@ export function Sidebar() {
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
+  // Create Task Dialog state
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+
+  // Load agents and models for task creation
+  const { agents, loading: isLoadingAgents } = useAgents({ workspacePath: activeWorkspace?.path });
+  const { models, loading: isLoadingModels } = useModels();
+
   const handleAddWorkspace = async () => {
     setIsAdding(true);
     try {
@@ -146,6 +160,36 @@ export function Sidebar() {
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
     navigate(`/workspace/${workspaceId}/chat`);
+  };
+
+  // Handle create task submission
+  const handleCreateTask = async (data: CreateTaskData) => {
+    if (!activeWorkspace) {
+      toast.error(t("sidebar.noWorkspaceSelected"));
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      await createTask({
+        title: data.title,
+        description: data.description,
+        workspace_path: activeWorkspace.path,
+        agent_id: data.agentId,
+        model_id: data.modelId,
+        branch: data.branch,
+        auto_start: data.autoStart,
+        status: "todo",
+      });
+      toast.success(t("sidebar.taskCreated"));
+      // Navigate to kanban board to see the new task
+      navigate(`/workspace/${activeWorkspaceId}/kanban`);
+    } catch (error) {
+      console.error("Failed to create task:", error);
+      toast.error(t("sidebar.taskCreateFailed"));
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   return (
@@ -382,7 +426,7 @@ export function Sidebar() {
           )}
         </ScrollArea>
 
-        {/* Bottom Status & Auth */}
+        {/* Bottom Status & New Task */}
         {collapsed ? (
           // Collapsed: all items use grid centering
           <div className="pb-4 flex flex-col gap-1">
@@ -406,29 +450,30 @@ export function Sidebar() {
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
             />
-            <div className="grid place-items-center w-full">
-              {isAuthenticated ? (
+            {/* User Menu (when authenticated) */}
+            {isAuthenticated && (
+              <div className="grid place-items-center w-full">
                 <UserMenu collapsed={collapsed} />
-              ) : (
-                <LoginDialog
-                  trigger={
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10"
-                        >
-                          <LogIn className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {t("auth.signIn")}
-                      </TooltipContent>
-                    </Tooltip>
-                  }
-                />
-              )}
+              </div>
+            )}
+            {/* New Task Button */}
+            <div className="grid place-items-center w-full">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() => setIsCreateTaskOpen(true)}
+                    disabled={!activeWorkspace}
+                  >
+                    <ListTodo className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {t("sidebar.newTask")}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         ) : (
@@ -447,22 +492,45 @@ export function Sidebar() {
                 collapsed={collapsed}
               />
             </div>
-            <div className="mt-2">
-              {isAuthenticated ? (
+            {/* User Menu (when authenticated) */}
+            {isAuthenticated && (
+              <div className="mt-2">
                 <UserMenu collapsed={collapsed} />
-              ) : (
-                <LoginDialog
-                  trigger={
-                    <Button variant="outline" className="w-full">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      {t("auth.signIn")}
-                    </Button>
-                  }
-                />
-              )}
+              </div>
+            )}
+            {/* New Task Button */}
+            <div className="mt-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsCreateTaskOpen(true)}
+                disabled={!activeWorkspace}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("sidebar.newTask")}
+              </Button>
             </div>
           </div>
         )}
+
+        {/* Create Task Dialog */}
+        <CreateTaskDialog
+          open={isCreateTaskOpen}
+          onOpenChange={setIsCreateTaskOpen}
+          onSubmit={handleCreateTask}
+          isSubmitting={isCreatingTask}
+          availableAgents={agents.map((a: AgentInfo) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description,
+          }))}
+          availableModels={models.map((m: WorkspaceModel) => ({
+            id: m.id,
+            name: m.name,
+            provider: m.provider,
+          }))}
+          isLoadingOptions={isLoadingAgents || isLoadingModels}
+        />
       </aside>
     </TooltipProvider>
   );

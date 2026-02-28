@@ -18,8 +18,10 @@ import type { ChannelManager } from "./manager";
 import type { Channel, AgentBinding, NotificationMode, ChannelConfig } from "./types";
 import type { StandardCodingAgentExecutor } from "../executors/types";
 import { createExecutor, isExecutorType, createExecutionEnv } from "../executors";
+import { SdkChatProxy, type SSEMessage } from "../executors/chat/sdk-proxy";
 import { sendChannelMessage } from "./index";
 import { homedir } from "node:os";
+import { agentManager, type Agent } from "../agents";
 
 /**
  * Channel router errors
@@ -356,14 +358,18 @@ export class ChannelRouter {
   }
 
   /**
-   * Execute an agent with the incoming message
+   * Execute an agent with the incoming message using SdkChatProxy
+   *
+   * This uses the Claude Agent SDK directly for viben agents (not executors).
+   * The agent config is loaded from ~/.viben/agents/{agent_id}/config.yaml
    */
   private async executeAgent(
     channel: Channel,
     binding: AgentBinding,
     msg: IncomingMessage
   ): Promise<string | undefined> {
-    console.log(`[ChannelRouter] Executing agent '${binding.name}' for channel message`);
+    const agentId = binding.id;
+    console.log(`[ChannelRouter] Executing agent '${binding.name}' (id=${agentId}) for channel message`);
 
     // Generate session ID for tracking
     const sessionId = `channel-${channel.id}-${msg.timestamp}`;
@@ -374,54 +380,111 @@ export class ChannelRouter {
       data: { session_id: sessionId },
     });
 
-    // Check if we have a container service for spawning agents
-    if (!this.container) {
-      console.warn("[ChannelRouter] No ContainerService available for agent execution");
-
-      // Fallback: broadcast event for external handling
-      this.events.broadcast({
-        type: "session_message",
-        data: {
-          session_id: sessionId,
-          content: msg.message,
-          role: "user",
-        },
-      });
-
-      return `Message received. Agent '${binding.name}' execution requires ContainerService.`;
-    }
-
     // Determine workspace path
     const workdir = binding.workspace_path || homedir();
 
-    // Create execution environment
-    const env = createExecutionEnv(workdir);
-
-    // Resolve executor type from binding
-    const executor = this.resolveExecutor(binding.id);
-
-    // Spawn the agent
+    // Try to load agent config from ~/.viben/agents/{agent_id}/
+    let agent: Agent | null = null;
     try {
-      await this.container.spawnAgent(
+      agent = await agentManager.getAgent(agentId);
+      if (agent) {
+        console.log(`[ChannelRouter] Loaded agent config: ${agent.name} (model=${agent.model})`);
+      } else {
+        console.warn(`[ChannelRouter] Agent '${agentId}' not found in ~/.viben/agents/`);
+      }
+    } catch (e) {
+      console.warn(`[ChannelRouter] Could not load agent config for '${agentId}':`, e);
+    }
+
+    // Create SDK proxy for agent execution
+    const proxy = new SdkChatProxy();
+
+    try {
+      console.log(`[ChannelRouter] Starting agent execution...`);
+      console.log(`[ChannelRouter]   Prompt: ${msg.message.slice(0, 100)}${msg.message.length > 100 ? '...' : ''}`);
+      console.log(`[ChannelRouter]   Working dir: ${workdir}`);
+      console.log(`[ChannelRouter]   Model: ${agent?.model || 'default'}`);
+
+      // Execute streaming and collect text responses
+      const textParts: string[] = [];
+      let hasError = false;
+      let errorMessage = "";
+
+      const stream = proxy.executeStreaming({
+        prompt: msg.message,
+        cwd: workdir,
         sessionId,
-        executor,
-        binding.id,
-        this.getExecutorType(binding.id),
-        workdir,
-        msg.message,
-        env
-      );
+        model: agent?.model,
+        systemPrompt: agent?.systemPrompt,
+        appendPrompt: agent?.appendPrompt,
+        dangerouslySkipPermissions: true, // Channel messages don't have interactive approval
+      });
 
-      console.log(`[ChannelRouter] Agent spawned successfully for session ${sessionId}`);
+      for await (const message of stream) {
+        console.log(`[ChannelRouter] SSE message: type=${message.type}`);
 
-      // Collect response from streaming events
-      const collector = new ResponseCollector(sessionId, this.events);
-      const response = await collector.collect(this.responseTimeout / 1000);
+        switch (message.type) {
+          case "text":
+            textParts.push((message as { type: "text"; content: string }).content);
+            // Broadcast text event
+            this.events.broadcast({
+              type: "session_message",
+              data: {
+                session_id: sessionId,
+                content: (message as { type: "text"; content: string }).content,
+                role: "assistant",
+              },
+            });
+            break;
 
-      return response || `Processing your message with agent '${binding.name}'...`;
+          case "tool_use":
+            console.log(`[ChannelRouter] Tool use: ${(message as { name: string }).name}`);
+            break;
+
+          case "tool_result":
+            console.log(`[ChannelRouter] Tool result: isError=${(message as { isError?: boolean }).isError}`);
+            break;
+
+          case "error":
+            hasError = true;
+            errorMessage = (message as { type: "error"; message: string }).message;
+            console.error(`[ChannelRouter] Agent error: ${errorMessage}`);
+            break;
+
+          case "result":
+            console.log(`[ChannelRouter] Agent completed: subtype=${(message as { subtype?: string }).subtype}`);
+            break;
+
+          case "question":
+            // AskUserQuestion - we can't handle interactive questions in channel mode
+            console.log(`[ChannelRouter] Agent asked a question (not supported in channel mode)`);
+            textParts.push("\n\n(Agent needs interactive input which is not supported in channel mode)");
+            break;
+        }
+      }
+
+      // Broadcast completion event
+      this.events.broadcast({
+        type: "agent_completed",
+        data: {
+          agent_id: agentId,
+          session_id: sessionId,
+          success: !hasError,
+        },
+      });
+
+      if (hasError) {
+        return `Error executing agent: ${errorMessage}`;
+      }
+
+      const response = textParts.join("");
+      console.log(`[ChannelRouter] Agent response length: ${response.length} chars`);
+
+      return response || `Agent '${binding.name}' completed but produced no output.`;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      console.error(`[ChannelRouter] Failed to spawn agent: ${errorMsg}`);
+      console.error(`[ChannelRouter] Failed to execute agent: ${errorMsg}`);
+      console.error(`[ChannelRouter] Error stack:`, err);
 
       this.events.broadcast({
         type: "error",
