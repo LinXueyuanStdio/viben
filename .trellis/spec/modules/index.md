@@ -22,62 +22,62 @@ This directory contains detailed specifications for implementing each module of 
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [project-setup.md](./project-setup.md) | T0: Next.js project initialization | 3 | Done |
+| [project-setup.md](./infrastructure/project-setup.md) | T0: Next.js project initialization | 3 | Done |
 
 ### Phase 1: Core Infrastructure
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [database.md](./database.md) | T1: Drizzle schema and migrations | 3 | Done |
-| [auth.md](./auth.md) | T2: JWE session management | 3 | Done |
-| [ui-shell.md](./ui-shell.md) | T3: Layout, navigation, theming | 2 | Done |
+| [database.md](./infrastructure/database.md) | T1: Drizzle schema and migrations | 3 | Done |
+| [auth.md](./auth/auth.md) | T2: JWE session management | 3 | Done |
+| [ui-shell.md](./infrastructure/ui-shell.md) | T3: Layout, navigation, theming | 2 | Done |
 
 ### Phase 2: User System
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [user-api.md](./user-api.md) | T4: User CRUD, OAuth, API keys | 5 | Done |
-| [auth-ui.md](./auth-ui.md) | T7: Login, register pages | 3 | Done |
-| [profile-ui.md](./profile-ui.md) | T10: Profile page, API key management | 3 | Done |
+| [user-api.md](./auth/user-api.md) | T4: User CRUD, OAuth, API keys | 5 | Done |
+| [auth-ui.md](./auth/auth-ui.md) | T7: Login, register pages | 3 | Done |
+| [profile-ui.md](./auth/profile-ui.md) | T10: Profile page, API key management | 3 | Done |
 
 ### Phase 3: Marketplace Core
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [mcp-api.md](./mcp-api.md) | T5: MCP package CRUD, search | 5 | Done |
-| [skills-api.md](./skills-api.md) | T6: Skills package CRUD, search | 5 | Done |
-| [mcp-ui.md](./mcp-ui.md) | T8: MCP marketplace pages | 5 | Done |
-| [skills-ui.md](./skills-ui.md) | T9: Skills marketplace pages | 5 | Done |
+| [mcp-api.md](./marketplace/mcp-api.md) | T5: MCP package CRUD, search | 5 | Done |
+| [skills-api.md](./marketplace/skills-api.md) | T6: Skills package CRUD, search | 5 | Done |
+| [mcp-ui.md](./marketplace/mcp-ui.md) | T8: MCP marketplace pages | 5 | Done |
+| [skills-ui.md](./marketplace/skills-ui.md) | T9: Skills marketplace pages | 5 | Done |
 
 ### Phase 4: Social & Storage
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [social-api.md](./social-api.md) | T11: Favorites, comments, ratings | 3 | Done |
-| [storage.md](./storage.md) | T12: HuggingFace storage backend | 5 | Done |
-| [packages.md](./packages.md) | T13: Upload/download API | 5 | Done |
+| [social-api.md](./marketplace/social-api.md) | T11: Favorites, comments, ratings | 3 | Done |
+| [storage.md](./packages/storage.md) | T12: HuggingFace storage backend | 5 | Done |
+| [packages.md](./packages/packages.md) | T13: Upload/download API | 5 | Done |
 
 ### Phase 5: Advanced Features
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [collections-api.md](./collections-api.md) | T15: Collections CRUD | 3 | Done |
-| [publish-ui.md](./publish-ui.md) | T16: Package publish wizard | 3 | Done |
-| [collections-ui.md](./collections-ui.md) | T18: Collection pages | 3 | Done |
-| [analytics-ui.md](./analytics-ui.md) | T19: Download statistics | 2 | Done |
+| [collections-api.md](./marketplace/collections-api.md) | T15: Collections CRUD | 3 | Done |
+| [publish-ui.md](./marketplace/publish-ui.md) | T16: Package publish wizard | 3 | Done |
+| [collections-ui.md](./marketplace/collections-ui.md) | T18: Collection pages | 3 | Done |
+| [analytics-ui.md](./admin/analytics-ui.md) | T19: Download statistics | 2 | Done |
 
 ### Phase 6: Integration & Polish
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [desktop-integration.md](./desktop-integration.md) | T20: Desktop app API client | 3 | Done |
-| [deployment.md](./deployment.md) | T21: Vercel deployment | 5 | Done |
+| [desktop-integration.md](./desktop/desktop-integration.md) | T20: Desktop app API client | 3 | Done |
+| [deployment.md](./infrastructure/deployment.md) | T21: Vercel deployment | 5 | Done |
 
 ### Phase 7: Admin System
 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
-| [admin-ui.md](./admin-ui.md) | T22: Admin dashboard, package & content moderation | 8 | Done |
+| [admin-ui.md](./admin/admin-ui.md) | T22: Admin dashboard, package & content moderation | 8 | Done |
 
 ---
 
@@ -163,7 +163,7 @@ This directory contains detailed specifications for implementing each module of 
 
 | Module | Description | Status |
 |--------|-------------|--------|
-| [desktop-page-debug-mcp.md](./desktop-page-debug-mcp.md) | 页面调试 MCP - Tauri WebView 自动调试 | 📝 规划中 |
+| [desktop-page-debug-mcp.md](./desktop/desktop-page-debug-mcp.md) | 页面调试 MCP - Tauri WebView 自动调试 | 📝 规划中 |
 
 ---
 
@@ -172,7 +172,7 @@ This directory contains detailed specifications for implementing each module of 
 | Module | Description | Effort | Status |
 |--------|-------------|--------|--------|
 | [cli-app.md](./cli-app.md) | Bootstrap CLI: config, service, agent/mcp/skill management | 8 | Specification |
-| [desktop-creator-section.md](./desktop-creator-section.md) | Desktop 创作者章节 (Publish, My Packages, Analytics) | 3 | Specification |
+| [desktop-creator-section.md](./desktop/desktop-creator-section.md) | Desktop 创作者章节 (Publish, My Packages, Analytics) | 3 | Specification |
 
 ---
 
@@ -180,8 +180,8 @@ This directory contains detailed specifications for implementing each module of 
 
 | Package | Description | Priority | Status |
 |---------|-------------|----------|--------|
-| [package-ui.md](./package-ui.md) | `@viben/ui` - 共享 UI 组件库 | P0 | Done |
-| [package-kanban.md](./package-kanban.md) | `@viben/kanban` - Kanban 核心组件 | P1 | Specification |
+| [package-ui.md](./packages/package-ui.md) | `@viben/ui` - 共享 UI 组件库 | P0 | Done |
+| [package-kanban.md](./packages/package-kanban.md) | `@viben/kanban` - Kanban 核心组件 | P1 | Specification |
 
 ---
 
@@ -226,7 +226,7 @@ Start with the [workspace/index.md](./workspace/index.md) which provides:
 
 ## Related Documents
 
-- [Platform Upgrade v3.0](../platform-upgrade-v2.md) - Master planning document
-- [Task DAG](../task-dag.md) - Task dependency graph
+- [Platform Upgrade v3.0](../roadmap/platform-upgrade-v2.md) - Master planning document
+- [Task DAG](../roadmap/desktop-task-dag.md) - Task dependency graph
 - [Backend Guidelines](../backend/index.md) - Development standards
 - [Frontend Guidelines](../frontend/index.md) - UI/UX standards

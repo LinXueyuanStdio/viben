@@ -490,5 +490,5 @@ import { PageDebugPage } from "@/pages/page-debug";
 ## 相关文档
 
 - [desktop-integration.md](./desktop-integration.md) - 桌面应用集成
-- [desktop-task-dag.md](../desktop-task-dag.md) - 桌面应用任务图
-- [mcp-services-layout](../../apps/desktop/src/components/layout/mcp-services-layout.tsx) - MCP 服务布局组件
+- [desktop-task-dag.md](../roadmap/desktop-task-dag.md) - 桌面应用任务图
+- [mcp-services-layout](../../../apps/desktop/src/components/layout/mcp-services-layout.tsx) - MCP 服务布局组件

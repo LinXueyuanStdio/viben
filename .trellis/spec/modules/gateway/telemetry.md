@@ -279,5 +279,5 @@ HTTP 状态码：
 
 ## 相关文档
 
-- [Telemetry Guidelines](../../backend/telemetry-guidelines.md) - 开发指南
-- [Desktop Chat Monitor](../../../apps/desktop/src/pages/chat-monitor.tsx) - 前端可视化
+- [Telemetry Guidelines](../../backend/patterns/telemetry-guidelines.md) - 开发指南
+- [Desktop Chat Monitor](../../../../apps/desktop/src/pages/chat-monitor.tsx) - 前端可视化

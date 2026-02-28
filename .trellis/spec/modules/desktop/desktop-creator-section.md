@@ -165,7 +165,7 @@ Use existing `useAuth` hook to get authentication token for API calls.
 
 ## Related
 
-- [Web Creator Section](../frontend/marketplace-publish-flow.md)
-- [Publish UI Spec](./publish-ui.md)
-- [Analytics UI Spec](./analytics-ui.md)
+- [Web Creator Section](../../frontend/features/marketplace-publish-flow.md)
+- [Publish UI Spec](../marketplace/publish-ui.md)
+- [Analytics UI Spec](../admin/analytics-ui.md)
 - [Desktop Integration](./desktop-integration.md)

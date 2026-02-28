@@ -1,7 +1,9 @@
 /**
  * Gateway HTTP/SSE Client
+ * 网关 HTTP/SSE 客户端
  *
- * Connects Desktop frontend to viben-gateway for real AI agent execution.
+ * Connects Desktop frontend to viben gateway for real AI agent execution.
+ * 连接桌面前端到 viben 网关，用于实际的 AI 智能体执行。
  */
 
 import type { AgentMessage } from "@/types";
@@ -456,7 +458,7 @@ export class GatewayClient {
     timestamp: string | null;
     url: string;
     endpoints: { path: string; available: boolean }[];
-    websocket: boolean;
+    websockets: { path: string; available: boolean }[];
   }> {
     const result = {
       reachable: false,
@@ -466,7 +468,7 @@ export class GatewayClient {
       timestamp: null as string | null,
       url: this.baseUrl,
       endpoints: [] as { path: string; available: boolean }[],
-      websocket: false,
+      websockets: [] as { path: string; available: boolean }[],
     };
 
     // Test health endpoint and extract detailed info
@@ -501,12 +503,19 @@ export class GatewayClient {
 
     // Only test other endpoints if health check passed
     if (result.healthCheck) {
-      // Test specific HTTP endpoints
+      // Test specific HTTP endpoints - comprehensive list
       const testEndpoints = [
         "/api/agents",
         "/api/sessions",
         "/api/cron",
         "/api/group-chats",
+        "/api/models",
+        "/api/providers",
+        "/api/channels",
+        "/api/executors",
+        "/api/workspaces",
+        "/api/mcp/servers",
+        "/api/packages",
       ];
 
       for (const path of testEndpoints) {
@@ -525,8 +534,17 @@ export class GatewayClient {
         }
       }
 
-      // Test WebSocket connectivity
-      result.websocket = await this.testWebSocket();
+      // Test WebSocket endpoints
+      const wsEndpoints = [
+        "/ws",           // Main event WebSocket
+        "/api/agent/ws", // Agent interaction WebSocket
+        "/api/terminal", // Terminal PTY WebSocket
+      ];
+
+      for (const path of wsEndpoints) {
+        const available = await this.testWebSocketEndpoint(path);
+        result.websockets.push({ path, available });
+      }
     }
 
     return result;
@@ -575,13 +593,12 @@ export class GatewayClient {
   }
 
   /**
-   * Test WebSocket connectivity to the Gateway
+   * Test WebSocket connectivity to a specific endpoint
    */
-  private async testWebSocket(): Promise<boolean> {
+  private async testWebSocketEndpoint(path: string): Promise<boolean> {
     return new Promise((resolve) => {
       const wsUrl = this.baseUrl.replace(/^http/, "ws");
-      // The Gateway WebSocket endpoint is at /ws (not /api/events)
-      const ws = new WebSocket(`${wsUrl}/ws`);
+      const ws = new WebSocket(`${wsUrl}${path}`);
       const timeout = setTimeout(() => {
         ws.close();
         resolve(false);

@@ -27,3 +27,6 @@ export {
 
 // Add Workspace Wizard
 export { AddWorkspaceModal } from "./add-workspace-modal";
+
+// Workspace Settings Dialog
+export { WorkspaceSettingsDialog } from "./workspace-settings-dialog";

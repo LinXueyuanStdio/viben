@@ -68,5 +68,5 @@
 ## 相关规范
 
 - [../workspace/desktop-chat-workany.md](../workspace/desktop-chat-workany.md) - WorkAny 组件参考
-- [../../frontend/chat-input-components.md](../../frontend/chat-input-components.md) - 输入组件规范
-- [../../frontend/chat-integration.md](../../frontend/chat-integration.md) - 聊天集成规范
+- [../../frontend/features/chat-input-components.md](../../frontend/features/chat-input-components.md) - 输入组件规范
+- [../../frontend/features/chat-integration.md](../../frontend/features/chat-integration.md) - 聊天集成规范

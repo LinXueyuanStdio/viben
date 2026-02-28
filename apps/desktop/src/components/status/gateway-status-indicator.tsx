@@ -20,13 +20,16 @@ interface GatewayStatusIndicatorProps {
 
 /**
  * Gateway Status Indicator
+ * 网关状态指示器
  *
- * Shows the connection status to viben-gateway in the sidebar.
- * - Green: Connected
- * - Yellow: Connecting
- * - Red: Disconnected or error
+ * Shows the connection status to viben gateway in the sidebar.
+ * 在侧边栏显示 viben 网关的连接状态。
+ * - Green: Connected 绿色：已连接
+ * - Yellow: Connecting 黄色：连接中
+ * - Red: Disconnected or error 红色：已断开或错误
  *
  * Clicking navigates to settings where users can configure the gateway URL.
+ * 点击跳转到设置页面，用户可以配置网关 URL。
  */
 export function GatewayStatusIndicator({
   collapsed = false,

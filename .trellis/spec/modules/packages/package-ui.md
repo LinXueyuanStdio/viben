@@ -636,7 +636,7 @@ cp apps/desktop/src/components/ui/card.tsx packages/ui/src/components/
 
 - [shadcn/ui](https://ui.shadcn.com/)
 - [Radix UI](https://www.radix-ui.com/)
-- [Viben Design System](../frontend/design-system.md)
+- [Viben Design System](../../frontend/core/design-system.md)
 
 ---
 

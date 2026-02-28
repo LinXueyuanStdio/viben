@@ -72,6 +72,8 @@ These specs exist for documentation/future reference:
 
 ## Related Documents
 
-- [modules/index.md](./modules/index.md) - Module specifications index
+- [modules/infrastructure/index.md](./modules/infrastructure/index.md) - Infrastructure specifications
+- [modules/auth/index.md](./modules/auth/index.md) - Auth module specifications
+- [modules/workspace/index.md](./modules/workspace/index.md) - Workspace specifications
 - [frontend/index.md](./frontend/index.md) - Frontend guidelines
 - [backend/index.md](./backend/index.md) - Backend guidelines
