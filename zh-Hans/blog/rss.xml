@@ -28,7 +28,7 @@
 <div class="language-bash codeBlockContainer_hDu4 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_Fx1i"><pre tabindex="0" class="prism-code language-bash codeBlock_WFie thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_bUJw"><span class="token-line" style="color:#393A34"><span class="token plain">pip </span><span class="token function" style="color:#d73a49">install</span><span class="token plain"> browse-mcp</span><br></span></code></pre></div></div>
 <p>Then start the MCP server:</p>
 <div class="language-bash codeBlockContainer_hDu4 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_Fx1i"><pre tabindex="0" class="prism-code language-bash codeBlock_WFie thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_bUJw"><span class="token-line" style="color:#393A34"><span class="token plain">browse-mcp</span><br></span></code></pre></div></div>
-<p>Check out our <a class="" href="https://linxueyuan.online/viben/zh-Hans/docs/user/intro">documentation</a> to learn more!</p>]]></content:encoded>
+<p>Check out our <a class="" href="https://linxueyuan.online/viben/zh-Hans/user/intro">documentation</a> to learn more!</p>]]></content:encoded>
             <category>announcement</category>
             <category>mcp</category>
         </item>
