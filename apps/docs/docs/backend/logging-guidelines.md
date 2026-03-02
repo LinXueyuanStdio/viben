@@ -278,5 +278,4 @@ logger.info(f"Search completed: {len(result)} results")
 
 ## 相关文档
 
-- [遥测指南](./gateway/telemetry.md)
 - [错误处理](./error-handling.md)

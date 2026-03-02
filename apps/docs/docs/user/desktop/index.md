@@ -133,6 +133,6 @@ Viben Desktop 采用现代技术栈构建：
 
 ## 下一步
 
-- [安装指南](./installation) - 详细安装说明
-- [功能介绍](./features) - 完整功能列表
-- [快速入门](../getting-started/quick-start) - 2 分钟上手
+- [安装指南](./installation.md) - 详细安装说明
+- [功能介绍](./features.md) - 完整功能列表
+- [快速入门](../getting-started/quick-start.md) - 2 分钟上手

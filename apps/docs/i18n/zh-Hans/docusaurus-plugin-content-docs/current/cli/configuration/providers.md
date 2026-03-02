@@ -448,5 +448,5 @@ viben provider status -n anthropic-main --verbose
 
 ## 下一步
 
-- [模型配置](/docs/cli/configuration/models) - 配置模型、别名和回退链
-- [Config 命令](/docs/cli/configuration/config-command) - 通用配置管理
+- [模型配置](./models.md) - 配置模型、别名和回退链
+- [Config 命令](./config-command.md) - 通用配置管理

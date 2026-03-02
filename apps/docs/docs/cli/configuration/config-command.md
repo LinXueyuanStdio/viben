@@ -343,5 +343,5 @@ viben config set mcp.enabled "not-valid-json"
 
 ## Next Steps
 
-- [Provider Configuration](/docs/cli/configuration/providers) - Configure API providers
-- [Model Configuration](/docs/cli/configuration/models) - Set up model aliases and fallbacks
+- [Provider Configuration](./providers.md) - Configure API providers
+- [Model Configuration](./models.md) - Set up model aliases and fallbacks

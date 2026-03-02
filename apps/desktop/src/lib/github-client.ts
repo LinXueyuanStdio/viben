@@ -52,6 +52,9 @@ export interface GitHubRepositoryConfig {
   full_name: string;
   default_branch: string;
   url: string;
+  description?: string;
+  stargazers_count?: number;
+  forks_count?: number;
 }
 
 /**
@@ -62,6 +65,18 @@ export interface GitHubLabel {
   name: string;
   color: string;
   description?: string;
+}
+
+/**
+ * GitHub milestone
+ */
+export interface GitHubMilestone {
+  id: number;
+  number: number;
+  title: string;
+  description?: string;
+  state: "open" | "closed";
+  due_on?: string;
 }
 
 /**
@@ -81,6 +96,7 @@ export interface GitHubIssue {
   closed_at?: string;
   html_url: string;
   comments: number;
+  milestone?: GitHubMilestone;
 }
 
 /**
@@ -95,6 +111,7 @@ export interface GitHubPullRequest {
   merged: boolean;
   merged_at?: string;
   labels: GitHubLabel[];
+  assignees?: GitHubUser[];
   user: GitHubUser;
   head: { ref: string; sha: string };
   base: { ref: string; sha: string };
@@ -105,9 +122,9 @@ export interface GitHubPullRequest {
   draft: boolean;
   comments: number;
   commits: number;
-  additions: number;
-  deletions: number;
-  changed_files: number;
+  additions?: number;
+  deletions?: number;
+  changed_files?: number;
 }
 
 /**

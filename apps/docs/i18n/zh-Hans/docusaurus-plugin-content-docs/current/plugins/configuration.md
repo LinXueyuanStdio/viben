@@ -310,4 +310,4 @@ print(response.json())
 - [插件概述](./overview) - 了解插件系统
 - [安装插件](./installing-plugins) - 安装指南
 - [可用插件](./available-plugins) - 浏览可用插件
-- [配置](../mcp-server/configuration) - 核心配置选项
+- [配置](../mcp/configuration.md) - 核心配置选项

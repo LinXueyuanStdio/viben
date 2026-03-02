@@ -343,5 +343,5 @@ viben config set mcp.enabled "not-valid-json"
 
 ## 下一步
 
-- [Provider 配置](/docs/cli/configuration/providers) - 配置 API Provider
-- [模型配置](/docs/cli/configuration/models) - 设置模型别名和回退链
+- [Provider 配置](./providers.md) - 配置 API Provider
+- [模型配置](./models.md) - 设置模型别名和回退链

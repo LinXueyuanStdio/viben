@@ -294,7 +294,7 @@ viben provider status --json
 
 现在你已经设置好了 Viben CLI，你可以：
 
-- 探索 [智能体管理](/docs/cli/agents) 了解完整的智能体生命周期
-- 配置额外的 [API 提供商](/docs/cli/configuration) 获取更多模型选择
-- 安装更多 [MCP 服务器](/docs/mcp-server/configuration) 扩展功能
-- 了解 [Gateway](/docs/cli/commands/gateway) 运行时架构
+- 探索 [智能体管理](./agents/) 了解完整的智能体生命周期
+- 配置额外的 [API 提供商](./configuration/) 获取更多模型选择
+- 安装更多 [MCP 服务器](/user/mcp/configuration) 扩展功能
+- 了解 [Gateway](./commands/gateway.md) 运行时架构

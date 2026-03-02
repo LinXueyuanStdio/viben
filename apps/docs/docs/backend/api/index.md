@@ -201,6 +201,6 @@ http://127.0.0.1:18790/docs
 
 ## 下一步
 
-- [Gateway 概述](/backend/gateway) - 了解 Gateway 架构
+- [Gateway 概述](/backend/gateway/) - 了解 Gateway 架构
 - [CLI 文档](/cli/) - 使用命令行管理智能体
-- [用户指南](/user/) - 桌面应用使用指南
+- [用户指南](/user/intro) - 桌面应用使用指南

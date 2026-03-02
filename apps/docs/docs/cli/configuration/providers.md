@@ -448,5 +448,5 @@ viben provider status -n anthropic-main --verbose
 
 ## Next Steps
 
-- [Model Configuration](/docs/cli/configuration/models) - Configure models, aliases, and fallbacks
-- [Config Command](/docs/cli/configuration/config-command) - General configuration management
+- [Model Configuration](./models.md) - Configure models, aliases, and fallbacks
+- [Config Command](./config-command.md) - General configuration management
