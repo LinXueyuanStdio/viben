@@ -910,6 +910,39 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "taskPromptWithDescription": "Будь ласка, допоможіть мені з цим завданням:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Будь ласка, допоможіть мені з цим завданням: {{title}}"
+  },
+  "gateway": {
+    "hostDescription": "Адреса хоста, до якої прив'язаний сервіс шлюзу",
+    "portDescription": "Номер порту, який прослуховує сервіс шлюзу (потрібен перезапуск)",
+    "connectivityTestDescription": "Перевірка стану підключення та доступних кінцевих точок сервісу шлюзу"
+  },
+  "observability": {
+    "allRoutes": "Всі маршрути",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Виконання агента)",
+      "agents": "/api/agents (Керування агентами)",
+      "workspaces": "/api/workspaces (Робочі простори)",
+      "chat": "/api/chat (Чат)",
+      "groupChats": "/api/group-chats (Групові чати)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Сесія",
+        "config": "Конфігурація",
+        "info": "Інформація",
+        "workspace": "Робочий простір",
+        "auth": "Автентифікація"
+      },
+      "sources": {
+        "builtin": "Вбудований",
+        "workspace": "Робочий простір",
+        "skill": "Навичка"
+      }
+    }
   }
 }

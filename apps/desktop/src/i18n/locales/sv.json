@@ -910,6 +910,39 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "taskPromptWithDescription": "Vänligen hjälp mig med denna uppgift:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Vänligen hjälp mig med denna uppgift: {{title}}"
+  },
+  "gateway": {
+    "hostDescription": "Värdadress som gateway-tjänsten är bunden till",
+    "portDescription": "Portnummer som gateway-tjänsten lyssnar på (kräver omstart)",
+    "connectivityTestDescription": "Kontrollera anslutningsstatus och tillgängliga slutpunkter för gateway-tjänsten"
+  },
+  "observability": {
+    "allRoutes": "Alla rutter",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agentkörning)",
+      "agents": "/api/agents (Agenthantering)",
+      "workspaces": "/api/workspaces (Arbetsytor)",
+      "chat": "/api/chat (Chatt)",
+      "groupChats": "/api/group-chats (Gruppchattar)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Session",
+        "config": "Konfiguration",
+        "info": "Information",
+        "workspace": "Arbetsyta",
+        "auth": "Autentisering"
+      },
+      "sources": {
+        "builtin": "Inbyggd",
+        "workspace": "Arbetsyta",
+        "skill": "Färdighet"
+      }
+    }
   }
 }

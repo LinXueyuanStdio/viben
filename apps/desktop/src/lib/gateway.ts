@@ -4761,17 +4761,31 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * Detect all CLI tools (git, gh, claude)
+   * Detect all CLI tools (python, git, gh, claude, codex, aider, goose, etc.)
    */
   async detectCliTools(config?: {
+    pythonPath?: string;
     gitPath?: string;
     ghPath?: string;
     claudePath?: string;
+    codexPath?: string;
+    aiderPath?: string;
+    goosePath?: string;
+    clinePath?: string;
+    continuePath?: string;
+    cursorPath?: string;
   }): Promise<CliToolsInfo> {
     const params = new URLSearchParams();
+    if (config?.pythonPath) params.append("python_path", config.pythonPath);
     if (config?.gitPath) params.append("git_path", config.gitPath);
     if (config?.ghPath) params.append("gh_path", config.ghPath);
     if (config?.claudePath) params.append("claude_path", config.claudePath);
+    if (config?.codexPath) params.append("codex_path", config.codexPath);
+    if (config?.aiderPath) params.append("aider_path", config.aiderPath);
+    if (config?.goosePath) params.append("goose_path", config.goosePath);
+    if (config?.clinePath) params.append("cline_path", config.clinePath);
+    if (config?.continuePath) params.append("continue_path", config.continuePath);
+    if (config?.cursorPath) params.append("cursor_path", config.cursorPath);
 
     const url = params.toString()
       ? `${this.baseUrl}/api/cli-tools/detect?${params}`
@@ -4797,7 +4811,7 @@ export class GatewayClient {
    * Check a specific CLI tool path
    */
   async checkCliToolPath(
-    tool: "git" | "gh" | "claude",
+    tool: CliToolName,
     path: string
   ): Promise<CliToolInfo> {
     const response = await fetch(`${this.baseUrl}/api/cli-tools/check`, {
@@ -6491,20 +6505,49 @@ export interface SystemInfo {
   viben_dir: string;
 }
 
+/** A single detected CLI tool path */
+export interface CliToolPath {
+  path: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+}
+
 /** CLI tool detection result */
 export interface CliToolInfo {
   found: boolean;
   path?: string;
   version?: string;
-  source: "user-config" | "homebrew" | "nvm" | "system-path" | "fallback";
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
   message?: string;
+  /** All discovered paths for this tool */
+  alternatives?: CliToolPath[];
 }
+
+/** Supported CLI tool names */
+export type CliToolName =
+  | "python"
+  | "git"
+  | "gh"
+  | "claude"
+  | "codex"
+  | "aider"
+  | "goose"
+  | "cline"
+  | "continue"
+  | "cursor";
 
 /** All CLI tools detection result */
 export interface CliToolsInfo {
+  python: CliToolInfo;
   git: CliToolInfo;
   gh: CliToolInfo;
   claude: CliToolInfo;
+  codex: CliToolInfo;
+  aider: CliToolInfo;
+  goose: CliToolInfo;
+  cline: CliToolInfo;
+  continue: CliToolInfo;
+  cursor: CliToolInfo;
 }
 
 // ============================================================================

@@ -28,10 +28,10 @@ import { QueueWorker, shouldRetry, type WorkerResult } from "./worker";
 import type { EventService } from "../../services/events";
 
 /**
- * Generate a unique task ID
+ * Generate a unique task ID using crypto randomUUID
  */
 function generateTaskId(): string {
-  return `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return `task_${randomUUID()}`;
 }
 
 /**
@@ -156,9 +156,9 @@ export class TaskQueueManager extends EventEmitter {
     this.queue.push(task);
     this.tasks.set(taskId, task);
 
-    // Persist
-    await this.persistTask(task);
-    await this.persistState();
+    // Persist immediately to prevent data loss on crash
+    await this.persistTask(task, true);
+    await this.persistState(true);
 
     // Emit events
     this.emit("task:queued", { task });

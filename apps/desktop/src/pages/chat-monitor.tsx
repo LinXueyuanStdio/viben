@@ -171,16 +171,6 @@ function hasDetailData(span: TraceSpan): boolean {
   );
 }
 
-// Route filter options
-const ROUTE_FILTER_OPTIONS = [
-  { value: "all", label: "全部路由" },
-  { value: "/api/agent/run", label: "/api/agent/run (智能体执行)" },
-  { value: "/api/agents", label: "/api/agents (智能体管理)" },
-  { value: "/api/workspaces", label: "/api/workspaces (工作区)" },
-  { value: "/api/chat", label: "/api/chat (对话)" },
-  { value: "/api/group-chats", label: "/api/group-chats (群聊)" },
-];
-
 export function ChatMonitorPage() {
   const { t } = useTranslation();
   const [dates, setDates] = useState<DateSummary[]>([]);
@@ -198,6 +188,16 @@ export function ChatMonitorPage() {
   const [routeFilter, setRouteFilter] = useState<string>("/api/agent/run");
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailSpan, setDetailSpan] = useState<TraceSpanNode | null>(null);
+
+  // Route filter options with i18n labels
+  const routeFilterOptions = useMemo(() => [
+    { value: "all", label: t("observability.allRoutes") },
+    { value: "/api/agent/run", label: t("observability.routeFilters.agentRun") },
+    { value: "/api/agents", label: t("observability.routeFilters.agents") },
+    { value: "/api/workspaces", label: t("observability.routeFilters.workspaces") },
+    { value: "/api/chat", label: t("observability.routeFilters.chat") },
+    { value: "/api/group-chats", label: t("observability.routeFilters.groupChats") },
+  ], [t]);
 
   // Load available dates
   const loadDates = useCallback(async () => {
@@ -394,7 +394,7 @@ export function ChatMonitorPage() {
               <SelectValue placeholder={t("observability.filterByRoute")} />
             </SelectTrigger>
             <SelectContent>
-              {ROUTE_FILTER_OPTIONS.map((option) => (
+              {routeFilterOptions.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

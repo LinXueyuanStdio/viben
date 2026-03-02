@@ -54,10 +54,20 @@ export function getTaskPath(taskId: string): string {
 
 /**
  * Queue persistence manager with debounced writes
+ *
+ * Uses separate debounce timers for state and tasks to avoid race conditions.
  */
 export class QueuePersistence {
-  private debounceTimer: NodeJS.Timeout | null = null;
-  private pendingWrite = false;
+  /** Debounce timer for state writes */
+  private stateDebounceTimer: NodeJS.Timeout | null = null;
+  /** Pending state to write */
+  private pendingState: QueueStateFile | null = null;
+
+  /** Debounce timers for task writes (per task ID) */
+  private taskDebounceTimers: Map<string, NodeJS.Timeout> = new Map();
+  /** Pending tasks to write (per task ID) */
+  private pendingTasks: Map<string, TaskFile> = new Map();
+
   private debounceMs: number;
 
   constructor(debounceMs: number = 500) {
@@ -92,16 +102,16 @@ export class QueuePersistence {
       return;
     }
 
-    // Debounced write
-    this.pendingWrite = true;
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+    // Debounced write using separate timer for state
+    this.pendingState = state;
+    if (this.stateDebounceTimer) {
+      clearTimeout(this.stateDebounceTimer);
     }
 
-    this.debounceTimer = setTimeout(async () => {
-      if (this.pendingWrite) {
-        await this.writeState(state);
-        this.pendingWrite = false;
+    this.stateDebounceTimer = setTimeout(async () => {
+      if (this.pendingState) {
+        await this.writeState(this.pendingState);
+        this.pendingState = null;
       }
     }, this.debounceMs);
   }
@@ -140,6 +150,8 @@ export class QueuePersistence {
 
   /**
    * Save a task with debouncing
+   *
+   * Each task has its own debounce timer to prevent race conditions.
    */
   async saveTask(task: QueueTask, immediate = false): Promise<void> {
     const taskFile: TaskFile = {
@@ -156,22 +168,34 @@ export class QueuePersistence {
     };
 
     if (immediate) {
+      // Clear any pending debounced write for this task
+      const existingTimer = this.taskDebounceTimers.get(task.id);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.taskDebounceTimers.delete(task.id);
+      }
+      this.pendingTasks.delete(task.id);
       await this.writeTask(task.id, taskFile);
       return;
     }
 
-    // For task updates, use debouncing
-    this.pendingWrite = true;
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
+    // Debounced write using per-task timer
+    this.pendingTasks.set(task.id, taskFile);
+    const existingTimer = this.taskDebounceTimers.get(task.id);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
     }
 
-    this.debounceTimer = setTimeout(async () => {
-      if (this.pendingWrite) {
-        await this.writeTask(task.id, taskFile);
-        this.pendingWrite = false;
+    const timer = setTimeout(async () => {
+      const pending = this.pendingTasks.get(task.id);
+      if (pending) {
+        await this.writeTask(task.id, pending);
+        this.pendingTasks.delete(task.id);
+        this.taskDebounceTimers.delete(task.id);
       }
     }, this.debounceMs);
+
+    this.taskDebounceTimers.set(task.id, timer);
   }
 
   /**
@@ -257,12 +281,26 @@ export class QueuePersistence {
    * Flush any pending writes immediately
    */
   async flush(): Promise<void> {
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-      this.debounceTimer = null;
+    // Flush pending state
+    if (this.stateDebounceTimer) {
+      clearTimeout(this.stateDebounceTimer);
+      this.stateDebounceTimer = null;
     }
-    // Note: The actual write would need to be tracked separately
-    // This just cancels the timer for graceful shutdown
+    if (this.pendingState) {
+      await this.writeState(this.pendingState);
+      this.pendingState = null;
+    }
+
+    // Flush all pending tasks
+    for (const [taskId, timer] of this.taskDebounceTimers) {
+      clearTimeout(timer);
+    }
+    this.taskDebounceTimers.clear();
+
+    for (const [taskId, taskFile] of this.pendingTasks) {
+      await this.writeTask(taskId, taskFile);
+    }
+    this.pendingTasks.clear();
   }
 
   /**

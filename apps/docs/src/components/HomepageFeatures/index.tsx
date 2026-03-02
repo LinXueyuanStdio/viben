@@ -12,7 +12,7 @@ type FeatureItem = {
 const FeatureList: FeatureItem[] = [
   {
     title: 'Multi-Workspace Management',
-    Svg: require('@site/static/img/undraw_search.svg').default,
+    Svg: require('@site/static/img/workspace-management.svg').default,
     description: (
       <>
         Manage multiple project workspaces with independent MCP servers,
@@ -22,7 +22,7 @@ const FeatureList: FeatureItem[] = [
   },
   {
     title: 'Agent Orchestration',
-    Svg: require('@site/static/img/undraw_connected.svg').default,
+    Svg: require('@site/static/img/agent-orchestration.svg').default,
     description: (
       <>
         Unified configuration management for Claude Code, Cursor, Codex and other
@@ -32,7 +32,7 @@ const FeatureList: FeatureItem[] = [
   },
   {
     title: 'Task & Kanban System',
-    Svg: require('@site/static/img/undraw_easy.svg').default,
+    Svg: require('@site/static/img/kanban-board.svg').default,
     description: (
       <>
         Built-in kanban board with task cards, priorities, tags, subtasks,

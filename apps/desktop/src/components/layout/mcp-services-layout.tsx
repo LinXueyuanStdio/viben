@@ -5,6 +5,7 @@ import {
   Search,
   FileText,
   Server,
+  Bug,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { motion, useReducedMotion } from "framer-motion";
@@ -34,6 +35,12 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { titleKey: "nav.dataSources", href: "/mcp-services/data-sources", icon: Database },
       { titleKey: "nav.searchService", href: "/mcp-services/search-service", icon: Search },
+    ],
+  },
+  {
+    titleKey: "nav.pageDebugServices",
+    items: [
+      { titleKey: "nav.pageDebug", href: "/mcp-services/page-debug", icon: Bug },
     ],
   },
   {

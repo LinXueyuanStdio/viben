@@ -580,10 +580,13 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     // Reset the flag
     setShouldAutoStart(false);
 
-    // Build initial prompt from task context
+    // Build initial prompt from task context using i18n
     const initialPrompt = task.description
-      ? `请帮我完成以下任务：\n\n**${task.title}**\n\n${task.description}`
-      : `请帮我完成以下任务：${task.title}`;
+      ? t("workspace.taskPromptWithDescription", {
+          title: task.title,
+          description: task.description,
+        })
+      : t("workspace.taskPromptWithoutDescription", { title: task.title });
 
     console.log(`[TaskDetailPanel] Auto-starting task ${task.id} with prompt`);
 
@@ -595,7 +598,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
 
     // Small delay to ensure the tab switch animation completes
     setTimeout(startTask, 100);
-  }, [shouldAutoStart, activeTab, task, workspacePath, agentIsStreaming, agentMessages.length, agentSendMessage]);
+  }, [shouldAutoStart, activeTab, task, workspacePath, agentIsStreaming, agentMessages.length, agentSendMessage, t]);
 
   // Slash commands for agent chat
   const agentSlashCommands = useMemo<SlashCommand[]>(() => [
