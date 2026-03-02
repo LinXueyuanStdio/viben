@@ -53,7 +53,38 @@ export type GatewayEvent =
   | { type: "channel_connection_status"; data: { channel_type: string; channel_name: string; connected: boolean; error?: string } }
   | { type: "channel_created"; data: { channel: unknown } }
   | { type: "channel_updated"; data: { channel: unknown } }
-  | { type: "channel_deleted"; data: { channel_id: string } };
+  | { type: "channel_deleted"; data: { channel_id: string } }
+  // Task queue events
+  | { type: "queue_task_queued"; data: { task: QueueTaskSummary } }
+  | { type: "queue_task_started"; data: { task: QueueTaskSummary } }
+  | { type: "queue_task_progress"; data: { task_id: string; progress: unknown } }
+  | { type: "queue_task_completed"; data: { task: QueueTaskSummary; duration?: number } }
+  | { type: "queue_task_failed"; data: { task: QueueTaskSummary; error?: string; duration?: number } }
+  | { type: "queue_task_cancelled"; data: { task: QueueTaskSummary } }
+  | { type: "queue_status_changed"; data: QueueStatusData }
+  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number } };
+
+/**
+ * Queue task summary for events
+ * All fields use snake_case naming convention
+ */
+export interface QueueTaskSummary {
+  id: string;
+  status: string;
+  agent_id: string;
+  created_at: number;
+  position?: number;
+}
+
+/**
+ * Queue status data for events
+ */
+export interface QueueStatusData {
+  pending_count: number;
+  running_count: number;
+  max_concurrency: number;
+  tasks: QueueTaskSummary[];
+}
 
 /**
  * Cron job data for events

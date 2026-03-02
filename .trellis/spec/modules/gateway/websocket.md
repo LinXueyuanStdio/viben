@@ -230,6 +230,7 @@ ws.onmessage = (event) => {
 | sessions | 会话事件 |
 | agents | 智能体事件 |
 | gateway | 网关事件 |
+| queue | 任务队列事件 |
 
 **客户端消息**:
 

@@ -71,6 +71,11 @@ function snakeToPascal(str: string): string {
  * Map gateway event type to channel name
  */
 function eventToChannel(eventType: string): string {
+  // Queue events
+  if (eventType.startsWith("queue")) {
+    return "queue";
+  }
+
   // Cron events
   if (eventType.startsWith("cron")) {
     return "cron";
