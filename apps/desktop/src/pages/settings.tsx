@@ -1584,6 +1584,7 @@ function EnvironmentSection() {
     clinePath, setClinePath,
     continuePath, setContinuePath,
     cursorPath, setCursorPath,
+    cliToolsCache, setCliToolsCache,
   } = appStore;
 
   // Map tool key to path getter/setter
@@ -1602,14 +1603,30 @@ function EnvironmentSection() {
 
   const [installCommand, setInstallCommand] = useState<string | null>(null);
 
-  // CLI Tools detection state
-  const [cliToolsInfo, setCliToolsInfo] = useState<Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string } | null>>({});
+  // CLI Tools detection state - initialize from cache if available
+  const [cliToolsInfo, setCliToolsInfo] = useState<Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string; alternatives?: Array<{ path: string; version?: string; source: string }> } | null>>(() => {
+    // Initialize from cache if available (within 24 hours)
+    const cacheAge = Date.now() - (cliToolsCache?.timestamp || 0);
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    if (cliToolsCache?.data && cacheAge < CACHE_TTL) {
+      return cliToolsCache.data as unknown as Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string; alternatives?: Array<{ path: string; version?: string; source: string }> } | null>;
+    }
+    return {};
+  });
   const [cliToolsLoading, setCliToolsLoading] = useState(false);
   // Note: setCheckingTool removed - not currently used after removing checkCliToolPath
   const [checkingTool] = useState<string | null>(null);
 
-  // Detect CLI tools on mount
-  const detectCliTools = useCallback(async () => {
+  // Detect CLI tools and update cache
+  const detectCliTools = useCallback(async (forceRefresh = false) => {
+    // Skip if we have valid cache and not forcing refresh
+    const cacheAge = Date.now() - (cliToolsCache?.timestamp || 0);
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    if (!forceRefresh && cliToolsCache?.data && cacheAge < CACHE_TTL) {
+      setCliToolsInfo(cliToolsCache.data as unknown as Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string; alternatives?: Array<{ path: string; version?: string; source: string }> } | null>);
+      return;
+    }
+
     setCliToolsLoading(true);
     try {
       const client = getGatewayClient();
@@ -1625,17 +1642,23 @@ function EnvironmentSection() {
         continuePath: continuePath || undefined,
         cursorPath: cursorPath || undefined,
       });
-      setCliToolsInfo(result as unknown as Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string } | null>);
+      setCliToolsInfo(result as unknown as Record<string, { found: boolean; path?: string; version?: string; source: string; message?: string; alternatives?: Array<{ path: string; version?: string; source: string }> } | null>);
+      // Save to cache
+      setCliToolsCache(result);
     } catch (err) {
       console.error("[EnvironmentSection] CLI tools detection error:", err);
     } finally {
       setCliToolsLoading(false);
     }
-  }, [pythonPath, gitPath, ghPath, claudePath, codexPath, aiderPath, goosePath, clinePath, continuePath, cursorPath]);
+  }, [pythonPath, gitPath, ghPath, claudePath, codexPath, aiderPath, goosePath, clinePath, continuePath, cursorPath, cliToolsCache, setCliToolsCache]);
 
-  // Auto-detect on mount
+  // Auto-detect on mount if no valid cache
   useEffect(() => {
-    detectCliTools();
+    const cacheAge = Date.now() - (cliToolsCache?.timestamp || 0);
+    const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+    if (!cliToolsCache?.data || cacheAge >= CACHE_TTL) {
+      detectCliTools(true);
+    }
   }, []);
 
   // Helper to translate source names
@@ -1834,7 +1857,7 @@ function EnvironmentSection() {
               {t("settings.cliTools.coreDescription", { defaultValue: "Python, Git, and GitHub CLI" })}
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={detectCliTools} disabled={cliToolsLoading}>
+          <Button variant="outline" size="sm" onClick={() => detectCliTools(true)} disabled={cliToolsLoading}>
             {cliToolsLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
