@@ -216,6 +216,22 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to start channel runtime:", e);
   }
 
+  // Start task queue manager
+  try {
+    await state.taskQueue.start();
+    const queueStatus = state.taskQueue.getStatus();
+    logger?.info(
+      { pending: queueStatus.pending_count, running: queueStatus.running_count },
+      "Task queue manager started"
+    );
+    console.log(
+      `[Gateway] Task queue manager started (pending: ${queueStatus.pending_count}, running: ${queueStatus.running_count})`
+    );
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start task queue manager");
+    console.warn("[Gateway] Failed to start task queue manager:", e);
+  }
+
   // Register Observable Gauge callbacks for metrics
   if (enableTelemetry) {
     registerGaugeCallbacks({
@@ -234,6 +250,8 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     state.channelRouter.stop();
     await state.channelRuntime.stop();
     await state.cron.shutdown();
+    // Gracefully shutdown task queue (waits for running tasks)
+    await state.taskQueue.shutdown();
     state.container.killAllRunningProcesses();
     if (telemetry) {
       await telemetry.shutdown();
@@ -310,6 +328,8 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
     console.log("  GET  /api/sessions - List sessions");
     console.log("  GET  /api/cron - List cron jobs");
     console.log("  GET  /api/events - SSE event stream");
+    console.log("  POST /api/queue/enqueue - Enqueue agent task");
+    console.log("  GET  /api/queue/status - Queue status");
 
     if (enableTelemetry) {
       console.log(`[Gateway] Telemetry enabled, data stored in: ${telemetryDir}`);

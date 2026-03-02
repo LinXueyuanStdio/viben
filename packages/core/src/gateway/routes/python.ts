@@ -670,7 +670,7 @@ async function detectCliTool(
 }
 
 /**
- * Detect all CLI tools
+ * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor)
  */
 async function detectAllCliTools(config?: {
   pythonPath?: string;
@@ -684,7 +684,7 @@ async function detectAllCliTools(config?: {
   continuePath?: string;
   cursorPath?: string;
 }): Promise<CliToolsInfo> {
-  const [python, git, gh, claude, codex, aider, goose, cline, continueCmd, cursor] = await Promise.all([
+  const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor] = await Promise.all([
     detectCliTool("python", config?.pythonPath),
     detectCliTool("git", config?.gitPath),
     detectCliTool("gh", config?.ghPath),
@@ -697,7 +697,7 @@ async function detectAllCliTools(config?: {
     detectCliTool("cursor", config?.cursorPath),
   ]);
 
-  return { python, git, gh, claude, codex, aider, goose, cline, continue: continueCmd, cursor };
+  return { python, git, gh, claude, codex, aider, goose, cline, continue: continueInfo, cursor };
 }
 
 /**

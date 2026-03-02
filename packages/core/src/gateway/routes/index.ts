@@ -39,6 +39,7 @@ import { registerTunnelRoutes } from "./tunnel";
 import { registerKanbanDataRoutes } from "./kanban-data";
 import { registerPackagesRoutes } from "./packages";
 import { registerMcpInspectorRoutes } from "./mcp-inspector";
+import { registerQueueRoutes } from "./queue";
 import { registerGitHubRoutes } from "./github";
 
 /**
@@ -81,6 +82,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerKanbanDataRoutes(fastify);
   registerPackagesRoutes(fastify);
   registerMcpInspectorRoutes(fastify);
+  registerQueueRoutes(fastify, state);
   registerGitHubRoutes(fastify);
 }
 
@@ -126,6 +128,7 @@ export {
   getMcpInspectorSessionToken,
   isMcpInspectorAuthDisabled,
 } from "./mcp-inspector";
+export { registerQueueRoutes } from "./queue";
 export { registerGitHubRoutes } from "./github";
 export type {
   SSEEventType,
