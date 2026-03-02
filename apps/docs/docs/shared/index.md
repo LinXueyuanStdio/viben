@@ -22,7 +22,7 @@
 - **前端开发者** 查看 architecture/ 和 data-models/
 - **后端开发者** 查看 architecture/ 和 data-models/
 - **Agent 开发者** 查看 architecture/ 和 guides/
-- **CLI 文档** 已移至独立的 [CLI](../cli/index.md) 分类
+- **CLI 文档** 已移至独立的 [CLI](/cli/) 分类
 
 ## 各分类如何引用
 

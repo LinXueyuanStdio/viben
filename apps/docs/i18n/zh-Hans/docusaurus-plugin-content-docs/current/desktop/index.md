@@ -47,7 +47,7 @@ Viben Desktop 是一个原生应用程序，将内容搜索的强大功能直接
 ## 快速开始
 
 1. **下载**适用于您平台的安装程序
-2. **安装**，按照[平台特定说明](/docs/desktop-app/installation)操作
+2. **安装**，按照[平台特定说明](./installation.md)操作
 3. **启动** Viben 应用
 4. **搜索**，使用搜索栏搜索内容
 
@@ -64,6 +64,6 @@ Viben Desktop 使用现代技术构建：
 
 ## 下一步
 
-- [安装指南](/docs/desktop-app/installation) - 详细安装说明
-- [功能特点](/docs/desktop-app/features) - 探索所有功能
-- [快速开始](/docs/getting-started/quick-start) - 搜索您的第一篇论文
+- [安装指南](./installation.md) - 详细安装说明
+- [功能特点](./features.md) - 探索所有功能
+- [快速开始](../getting-started/quick-start.md) - 搜索您的第一篇论文

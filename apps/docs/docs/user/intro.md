@@ -166,8 +166,8 @@ Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
 
 ## 下一步
 
-- [核心概念](getting-started/concepts) - 理解 Viben 的核心概念
-- [快速入门](getting-started/quick-start) - 快速上手
-- [桌面应用](desktop/index) - 桌面应用完整指南
+- [核心概念](./getting-started/concepts.md) - 理解 Viben 的核心概念
+- [快速入门](./getting-started/quick-start.md) - 快速上手
+- [桌面应用](./desktop/) - 桌面应用完整指南
 - [CLI 文档](/cli/) - 命令行工具参考
-- [MCP 配置](getting-started/client-configuration) - 配置 Claude Desktop 等客户端
+- [MCP 配置](./getting-started/client-configuration.md) - 配置 Claude Desktop 等客户端

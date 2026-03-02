@@ -144,7 +144,7 @@ viben mcp add
 
 - [核心概念](./concepts) - 理解智能体、执行器、配置等核心概念
 - [客户端配置](./client-configuration) - 配置 Cline、Zed 等其他客户端
-- [桌面应用功能](../desktop-app/features) - 探索完整功能
+- [桌面应用功能](../desktop/features.md) - 探索完整功能
 - [CLI 文档](/cli/) - 命令行工具参考
-- [browse_search 工具](../mcp-server/tools/browse-search) - 学习高级搜索选项
-- [MCP 配置](../mcp-server/configuration) - 配置 API 密钥启用付费数据源
+- [browse_search 工具](../mcp/tools/browse-search.md) - 学习高级搜索选项
+- [MCP 配置](../mcp/configuration.md) - 配置 API 密钥启用付费数据源

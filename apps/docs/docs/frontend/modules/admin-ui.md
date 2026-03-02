@@ -555,10 +555,10 @@ Use existing design system colors with semantic meaning:
 
 | Spec | Relevance |
 |------|-----------|
-| [Design System](../frontend/design-system.md) | UI patterns, colors, typography |
-| [Components](../frontend/components.md) | Component conventions |
-| [Auth Module](./auth.md) | Authentication infrastructure |
-| [Database](./database.md) | Schema conventions |
-| [MCP API](./mcp-api.md) | Package data structure |
-| [Skills API](./skills-api.md) | Skills data structure |
-| [Social API](./social-api.md) | Comments, ratings structure |
+| Design System | UI patterns, colors, typography |
+| Components | Component conventions |
+| Auth Module | Authentication infrastructure |
+| Database | Schema conventions |
+| MCP API | Package data structure |
+| Skills API | Skills data structure |
+| Social API | Comments, ratings structure |

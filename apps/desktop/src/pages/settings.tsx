@@ -1712,10 +1712,19 @@ function EnvironmentSection() {
 
     // Get all discovered paths (primary + alternatives)
     // Backend already returns deduplicated alternatives (excluding primary)
-    const allPaths = isFound && info?.path ? [
+    let allPaths = isFound && info?.path ? [
       { path: info.path, version: info.version, source: info.source },
       ...(info.alternatives || [])
     ] : [];
+
+    // If user has a saved custom path, ensure it's in the list (may have been selected in a previous session)
+    if (customPath && !allPaths.some(p => p.path === customPath)) {
+      // Add the saved path at the beginning so it shows as selected
+      allPaths = [
+        { path: customPath, version: undefined, source: "user-config" as const },
+        ...allPaths
+      ];
+    }
 
     // Determine current selection - use customPath if set, otherwise use primary detected path
     const currentValue = customPath || (isFound ? info?.path || "not-installed" : "not-installed");
@@ -1767,11 +1776,7 @@ function EnvironmentSection() {
                 {isLoading ? (
                   <span className="text-muted-foreground">{t("settings.cliTools.detecting", { defaultValue: "Detecting..." })}</span>
                 ) : isFound && selectedPathInfo ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="text-green-600 truncate max-w-[200px] font-mono text-[11px]">{selectedPathInfo.path}</span>
-                    <span className="text-muted-foreground">•</span>
-                    <span className="text-muted-foreground">v{selectedPathInfo.version || "?"}</span>
-                  </span>
+                  <span className="text-green-600 truncate max-w-[280px] font-mono text-[11px]">{selectedPathInfo.path}</span>
                 ) : (
                   <span className="text-destructive">{t("settings.cliTools.notInstalled", { defaultValue: "Not installed" })}</span>
                 )}
@@ -1818,10 +1823,10 @@ function EnvironmentSection() {
           </Select>
         </div>
 
-        {/* Source badge (when found) */}
+        {/* Version badge (when found) */}
         {isFound && !isLoading && selectedPathInfo && (
           <span className="flex-shrink-0 text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-            {getSourceLabel(selectedPathInfo.source)}
+            v{selectedPathInfo.version || "?"}
           </span>
         )}
 

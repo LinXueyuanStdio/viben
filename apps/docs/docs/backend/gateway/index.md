@@ -146,5 +146,5 @@ curl http://127.0.0.1:18790/health
 
 ## 相关文档
 
-- [CLI Gateway 命令](../../cli/gateway.md) - Gateway CLI 管理命令
-- [CLI Agent 命令](../../cli/agent.md) - Agent CLI 管理命令
+- [CLI Gateway 命令](/cli/commands/gateway) - Gateway CLI 管理命令
+- [CLI Agent 命令](/cli/commands/agent) - Agent CLI 管理命令

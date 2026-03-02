@@ -10,7 +10,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir, platform, arch, hostname, release, type } from "node:os";
 import { join } from "node:path";
-import { access, constants, readdir } from "node:fs/promises";
+import { access, constants, readdir, realpath } from "node:fs/promises";
 
 const execAsync = promisify(exec);
 
@@ -486,14 +486,25 @@ async function detectCliTool(
   const home = homedir();
   const config = TOOL_CONFIGS[tool];
   const allPaths: CliToolPath[] = [];
-  const seenPaths = new Set<string>();
+  const seenRealPaths = new Set<string>(); // Track resolved real paths to avoid symlink duplicates
 
-  // Helper to add a valid path
-  const addPath = (path: string, version: string | undefined, source: CliToolPath["source"]) => {
-    // Normalize path and check for duplicates
+  // Helper to add a valid path (resolves symlinks for deduplication)
+  const addPath = async (path: string, version: string | undefined, source: CliToolPath["source"]) => {
+    // Normalize path
     const normalizedPath = path.replace(/\/+$/, "");
-    if (!seenPaths.has(normalizedPath)) {
-      seenPaths.add(normalizedPath);
+
+    // Resolve symlinks to get the real path for deduplication
+    let realPath: string;
+    try {
+      realPath = await realpath(normalizedPath);
+    } catch {
+      // If realpath fails, use the normalized path
+      realPath = normalizedPath;
+    }
+
+    // Check if we've already seen this real path
+    if (!seenRealPaths.has(realPath)) {
+      seenRealPaths.add(realPath);
       allPaths.push({ path: normalizedPath, version, source });
     }
   };
@@ -502,7 +513,7 @@ async function detectCliTool(
   if (userConfigPath) {
     const { version, valid } = await detectCliToolVersion(userConfigPath, tool);
     if (valid) {
-      addPath(userConfigPath, version || undefined, "user-config");
+      await addPath(userConfigPath, version || undefined, "user-config");
     }
   }
 
@@ -529,7 +540,7 @@ async function detectCliTool(
       if (await isExecutable(toolPath)) {
         const { version, valid } = await detectCliToolVersion(toolPath, tool);
         if (valid) {
-          addPath(toolPath, version || undefined, "homebrew");
+          await addPath(toolPath, version || undefined, "homebrew");
         }
       }
     }
@@ -542,10 +553,10 @@ async function detectCliTool(
     const { stdout } = await execAsync(`${whichCmd} ${toolCmd}`, { timeout: 5000 });
     const toolPath = stdout.trim().split("\n")[0]; // Take first result
 
-    if (toolPath && !seenPaths.has(toolPath)) {
+    if (toolPath) {
       const { version, valid } = await detectCliToolVersion(toolPath, tool);
       if (valid) {
-        addPath(toolPath, version || undefined, getToolSource(toolPath));
+        await addPath(toolPath, version || undefined, getToolSource(toolPath));
       }
     }
   } catch {
@@ -575,7 +586,7 @@ async function detectCliTool(
         if (await isExecutable(toolPathNvm)) {
           const { version, valid } = await detectCliToolVersion(toolPathNvm, tool);
           if (valid) {
-            addPath(toolPathNvm, version || undefined, "nvm");
+            await addPath(toolPathNvm, version || undefined, "nvm");
           }
         }
       }
@@ -594,7 +605,7 @@ async function detectCliTool(
       if (await isExecutable(pyenvPath)) {
         const { version, valid } = await detectCliToolVersion(pyenvPath, tool);
         if (valid) {
-          addPath(pyenvPath, version || undefined, "pyenv");
+          await addPath(pyenvPath, version || undefined, "pyenv");
         }
       }
     }
@@ -614,7 +625,7 @@ async function detectCliTool(
       if (await isExecutable(condaPath)) {
         const { version, valid } = await detectCliToolVersion(condaPath, tool);
         if (valid) {
-          addPath(condaPath, version || undefined, "system-path");
+          await addPath(condaPath, version || undefined, "system-path");
         }
       }
     }
@@ -624,11 +635,10 @@ async function detectCliTool(
   const candidates = getCliToolCandidates(tool);
   for (const toolPath of candidates) {
     if (toolPath.includes("*")) continue; // Skip glob patterns
-    if (seenPaths.has(toolPath)) continue; // Already checked
     if (await isExecutable(toolPath)) {
       const { version, valid } = await detectCliToolVersion(toolPath, tool);
       if (valid) {
-        addPath(toolPath, version || undefined, getToolSource(toolPath));
+        await addPath(toolPath, version || undefined, getToolSource(toolPath));
       }
     }
   }
@@ -637,10 +647,10 @@ async function detectCliTool(
   if (tool === "python") {
     const systemPaths = ["/usr/bin/python3", "/usr/bin/python"];
     for (const sysPath of systemPaths) {
-      if (!seenPaths.has(sysPath) && await isExecutable(sysPath)) {
+      if (await isExecutable(sysPath)) {
         const { version, valid } = await detectCliToolVersion(sysPath, tool);
         if (valid) {
-          addPath(sysPath, version || undefined, "system-path");
+          await addPath(sysPath, version || undefined, "system-path");
         }
       }
     }

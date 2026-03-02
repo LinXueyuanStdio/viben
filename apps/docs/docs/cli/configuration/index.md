@@ -167,6 +167,6 @@ viben config edit --global
 
 ## Next Steps
 
-- [Config Command](/docs/cli/configuration/config-command) - Learn git-style configuration management
-- [Provider Configuration](/docs/cli/configuration/providers) - Configure API providers (Anthropic, OpenAI, etc.)
-- [Model Configuration](/docs/cli/configuration/models) - Set up model aliases and fallbacks
+- [Config Command](./config-command.md) - Learn git-style configuration management
+- [Provider Configuration](./providers.md) - Configure API providers (Anthropic, OpenAI, etc.)
+- [Model Configuration](./models.md) - Set up model aliases and fallbacks

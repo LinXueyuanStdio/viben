@@ -167,6 +167,6 @@ viben config edit --global
 
 ## 下一步
 
-- [Config 命令](/docs/cli/configuration/config-command) - 学习 git 风格的配置管理
-- [Provider 配置](/docs/cli/configuration/providers) - 配置 API Provider（Anthropic、OpenAI 等）
-- [模型配置](/docs/cli/configuration/models) - 设置模型别名和回退链
+- [Config 命令](./config-command.md) - 学习 git 风格的配置管理
+- [Provider 配置](./providers.md) - 配置 API Provider（Anthropic、OpenAI 等）
+- [模型配置](./models.md) - 设置模型别名和回退链

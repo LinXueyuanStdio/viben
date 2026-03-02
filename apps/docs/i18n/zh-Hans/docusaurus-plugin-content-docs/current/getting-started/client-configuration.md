@@ -260,5 +260,5 @@ tail -f ~/Library/Logs/Claude/mcp*.log
 
 ## 下一步
 
-- [配置](../mcp-server/configuration) - 配置来源和 API 密钥
-- [browse_search 工具](../mcp-server/tools/browse-search) - 了解搜索参数
+- [配置](../mcp/configuration.md) - 配置来源和 API 密钥
+- [browse_search 工具](../mcp/tools/browse-search.md) - 了解搜索参数

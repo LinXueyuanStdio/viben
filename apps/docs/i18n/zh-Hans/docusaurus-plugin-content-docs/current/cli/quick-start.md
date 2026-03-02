@@ -293,6 +293,6 @@ JSON 输出示例：
 
 现在 Viben CLI 已设置完成，您可以：
 
-- 探索[智能体管理](/docs/cli#架构概览)以了解完整的智能体生命周期
-- 配置额外的 [API Provider](/docs/cli#配置文件格式) 以获得更多模型选择
-- 安装更多 [MCP 服务器](/docs/mcp-server/configuration) 以扩展功能
+- 探索[智能体管理](./agents/)以了解完整的智能体生命周期
+- 配置额外的 [配置选项](./configuration/) 以获得更多模型选择
+- 安装更多 [MCP 服务器](/user/mcp/configuration) 以扩展功能

@@ -188,5 +188,5 @@ viben agent config my-agent set model gpt-4 --json
 
 ## 下一步
 
-- [安装](/docs/cli/installation) - 安装 Viben CLI
-- [快速开始](/docs/cli/quick-start) - 开始基本配置
+- [安装](./installation.md) - 安装 Viben CLI
+- [快速开始](./quick-start.md) - 开始基本配置

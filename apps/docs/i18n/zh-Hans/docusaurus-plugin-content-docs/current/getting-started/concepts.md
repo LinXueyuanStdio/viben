@@ -267,5 +267,5 @@ fallbacks:
 ## 下一步
 
 - [快速入门](./quick-start) - 开始使用 Viben
-- [桌面应用功能](../desktop-app/features) - 了解桌面应用功能
+- [桌面应用功能](../desktop/features.md) - 了解桌面应用功能
 - [CLI 文档](/cli/) - 命令行工具参考

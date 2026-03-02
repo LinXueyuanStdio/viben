@@ -46,20 +46,20 @@ Python MCP 服务器开发请参阅[插件架构](./plugin-architecture.md)，�
 
 | 指南 | 描述 | 状态 |
 |------|------|------|
-| [Gateway 索引](./gateway/) | Gateway 模块索引 | 完成 |
-| [健康检查](./gateway/health.md) | 健康检查端点 | 完成 |
-| [智能体 API](./gateway/agents.md) | Agent 管理 API | 完成 |
-| [模型 API](./gateway/models.md) | Model 配置 API | 完成 |
-| [会话 API](./gateway/sessions.md) | Session 管理 API | 完成 |
-| [群聊 API](./gateway/group-chats.md) | 群聊 API | 完成 |
-| [执行器 API](./gateway/executors.md) | Executor 执行 API | 完成 |
-| [定时任务 API](./gateway/cron.md) | 定时任务 API | 完成 |
-| [通道 API](./gateway/channels.md) | Channel 管理 API | 完成 |
-| [提供商 API](./gateway/providers.md) | Provider 配置 API | 完成 |
-| [任务 API](./gateway/tasks.md) | 任务管理 API | 完成 |
-| [聊天列表 API](./gateway/chat-list.md) | 聊天列表聚合 API | 完成 |
-| [事件流 API](./gateway/events.md) | SSE 事件流 | 完成 |
-| [WebSocket](./gateway/websocket.md) | WebSocket 实时通信 | 完成 |
+| [Gateway 索引](/backend/gateway/) | Gateway 模块索引 | 完成 |
+| [健康检查](/backend/gateway/health) | 健康检查端点 | 完成 |
+| [智能体 API](/backend/gateway/agents) | Agent 管理 API | 完成 |
+| [模型 API](/backend/gateway/models) | Model 配置 API | 完成 |
+| [会话 API](/backend/gateway/sessions) | Session 管理 API | 完成 |
+| [群聊 API](/backend/gateway/group-chats) | 群聊 API | 完成 |
+| [执行器 API](/backend/gateway/executors) | Executor 执行 API | 完成 |
+| [定时任务 API](/backend/gateway/cron) | 定时任务 API | 完成 |
+| [通道 API](/backend/gateway/channels) | Channel 管理 API | 完成 |
+| [提供商 API](/backend/gateway/providers) | Provider 配置 API | 完成 |
+| [任务 API](/backend/gateway/tasks) | 任务管理 API | 完成 |
+| [聊天列表 API](/backend/gateway/chat-list) | 聊天列表聚合 API | 完成 |
+| [事件流 API](/backend/gateway/events) | SSE 事件流 | 完成 |
+| [WebSocket](/backend/gateway/websocket) | WebSocket 实时通信 | 完成 |
 
 ### Web API
 

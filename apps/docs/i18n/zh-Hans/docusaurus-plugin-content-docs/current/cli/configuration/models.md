@@ -483,5 +483,5 @@ viben model aliases list --json | jq '.data.aliases.fast'
 
 ## 下一步
 
-- [Provider 配置](/docs/cli/configuration/providers) - 配置 API Provider
-- [Config 命令](/docs/cli/configuration/config-command) - 通用配置管理
+- [Provider 配置](./providers.md) - 配置 API Provider
+- [Config 命令](./config-command.md) - 通用配置管理

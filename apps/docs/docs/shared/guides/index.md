@@ -21,8 +21,8 @@ These guides help you **ask the right questions before coding**.
 
 | Guide | Purpose | When to Use |
 |-------|---------|-------------|
-| [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
-| [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [Code Reuse Thinking Guide](./code-reuse-thinking.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
+| [Cross-Layer Thinking Guide](./cross-layer-thinking.md) | Think through data flow across layers | Features spanning multiple layers |
 
 ---
 
@@ -35,7 +35,7 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple consumers need the same data
 - [ ] You're not sure where to put some logic
 
-→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md)
+→ Read [Cross-Layer Thinking Guide](./cross-layer-thinking.md)
 
 ### When to Think About Code Reuse
 
@@ -45,7 +45,7 @@ These guides help you **ask the right questions before coding**.
 - [ ] **You're modifying any constant or config**
 - [ ] **You're creating a new utility/helper function** ← Search first!
 
-→ Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+→ Read [Code Reuse Thinking Guide](./code-reuse-thinking.md)
 
 ---
 

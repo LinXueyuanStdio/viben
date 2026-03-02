@@ -483,5 +483,5 @@ viben model aliases list --json | jq '.data.aliases.fast'
 
 ## Next Steps
 
-- [Provider Configuration](/docs/cli/configuration/providers) - Configure API providers
-- [Config Command](/docs/cli/configuration/config-command) - General configuration management
+- [Provider Configuration](./providers.md) - Configure API providers
+- [Config Command](./config-command.md) - General configuration management
