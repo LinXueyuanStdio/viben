@@ -131,7 +131,32 @@ export function registerMcpRoutes(fastify: FastifyInstance): void {
    * List globally installed MCP servers
    * GET /api/mcp/installed
    */
-  fastify.get("/api/mcp/installed", async () => {
+  fastify.get("/api/mcp/installed", {
+    schema: {
+      description: "List globally installed MCP servers",
+      tags: ["mcp"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            installed: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  version: { type: "string" },
+                  path: { type: "string" },
+                  installedAt: { type: "string" },
+                },
+              },
+            },
+            total: { type: "number" },
+          },
+        },
+      },
+    },
+  }, async () => {
     const installed = await mcpManager.listInstalled();
     return {
       installed: installed.map((m) => ({

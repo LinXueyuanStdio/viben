@@ -18,7 +18,6 @@ export function StepPython({ onComplete }: StepPythonProps) {
   const {
     pythons,
     selectedPython,
-    setSelectedPython,
     browseMcpInfo,
     loading,
     error,
@@ -28,7 +27,7 @@ export function StepPython({ onComplete }: StepPythonProps) {
     getInstallCommand,
   } = usePython();
 
-  const { setSelectedPython: persistPython } = useAppStore();
+  const { setPythonPath } = useAppStore();
 
   const [customPath, setCustomPath] = React.useState("");
   const [customError, setCustomError] = React.useState<string | null>(null);
@@ -46,7 +45,8 @@ export function StepPython({ onComplete }: StepPythonProps) {
   }, [selectedPython, browseMcpInfo, getInstallCommand]);
 
   const handleSelectPython = async (python: PythonInfo) => {
-    setSelectedPython(python);
+    // Update the selected Python path in store (triggers usePython to update)
+    setPythonPath(python.path);
     await checkBrowseMcp(python.path);
   };
 
@@ -59,7 +59,8 @@ export function StepPython({ onComplete }: StepPythonProps) {
     try {
       const info = await checkPythonPath(customPath.trim());
       if (info.is_valid) {
-        setSelectedPython(info);
+        // Update the selected Python path in store
+        setPythonPath(info.path);
         await checkBrowseMcp(info.path);
       } else {
         setCustomError(t("onboarding.python.invalidPath"));
@@ -79,9 +80,7 @@ export function StepPython({ onComplete }: StepPythonProps) {
   };
 
   const handleContinue = () => {
-    if (selectedPython) {
-      persistPython(selectedPython);
-    }
+    // Python path is already persisted in store via setPythonPath
     onComplete();
   };
 
@@ -107,7 +106,7 @@ export function StepPython({ onComplete }: StepPythonProps) {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label>{t("onboarding.python.detected")}</Label>
-          <Button variant="ghost" size="sm" onClick={detectPython} disabled={loading}>
+          <Button variant="ghost" size="sm" onClick={() => detectPython(true)} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("common.refresh")}
           </Button>
         </div>

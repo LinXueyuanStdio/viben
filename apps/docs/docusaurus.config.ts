@@ -96,6 +96,23 @@ const config: Config = {
         editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
       },
     ],
+    // Gateway API documentation (OpenAPI)
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'gateway-api',
+        docsPluginId: 'backend',
+        config: {
+          gateway: {
+            specPath: 'openapi/gateway-api.json',
+            outputDir: 'docs/backend/api',
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+            },
+          },
+        },
+      },
+    ],
     // Frontend developer documentation
     [
       '@docusaurus/plugin-content-docs',
@@ -142,7 +159,7 @@ const config: Config = {
     ],
   ],
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ['@docusaurus/theme-mermaid', 'docusaurus-theme-openapi-docs'],
 
   themeConfig: {
     // Replace with your project's social card

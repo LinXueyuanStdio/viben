@@ -162,7 +162,40 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
    *
    * Always includes a "global" workspace pointing to user's home directory
    */
-  fastify.get("/api/workspaces", async () => {
+  fastify.get("/api/workspaces", {
+    schema: {
+      description: "List all workspaces including the global workspace",
+      tags: ["workspaces"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            workspaces: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  path: { type: "string" },
+                  name: { type: "string" },
+                  config_path: { type: "string" },
+                  git_repo_path: { type: "string" },
+                  type: { type: "string", enum: ["global", "custom"] },
+                  mcp: { type: "object" },
+                  skills: { type: "object" },
+                  agents: { type: "array", items: { type: "string" } },
+                  created_at: { type: "string" },
+                  updated_at: { type: "string" },
+                },
+              },
+            },
+            total: { type: "number" },
+            active_workspace_id: { type: "string", nullable: true },
+          },
+        },
+      },
+    },
+  }, async () => {
     const workspaces = await workspaceManager.listWorkspaces();
 
     // Always include a global workspace pointing to home directory
@@ -182,7 +215,42 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
    *
    * Checks if folder has .git and .viben directories
    */
-  fastify.get<{ Querystring: { path: string } }>("/api/workspaces/detect", async (request, reply) => {
+  fastify.get<{ Querystring: { path: string } }>("/api/workspaces/detect", {
+    schema: {
+      description: "Detect folder status (.git and .viben directories)",
+      tags: ["workspaces"],
+      querystring: {
+        type: "object",
+        properties: {
+          path: { type: "string", description: "Folder path to detect" },
+        },
+        required: ["path"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            path: { type: "string" },
+            folder_name: { type: "string" },
+            has_git: { type: "boolean" },
+            has_viben: { type: "boolean" },
+          },
+        },
+        400: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const { path } = request.query;
 
     if (!path) {

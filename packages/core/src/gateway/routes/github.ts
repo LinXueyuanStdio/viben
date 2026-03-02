@@ -112,7 +112,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
       const status = await github.getAuthStatus(workspacePath);
       return status;
     } catch (error) {
-      reply.code(500).send({
+      console.error("[GitHub] Auth status error:", error);
+      return reply.code(500).send({
         error: error instanceof Error ? error.message : "Failed to get auth status",
       });
     }
@@ -133,7 +134,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
       const user = await github.authenticateWithGhCli(workspacePath);
       return { user };
     } catch (error) {
-      reply.code(400).send({
+      console.error("[GitHub] gh-cli auth error:", error);
+      return reply.code(400).send({
         error: error instanceof Error ? error.message : "Failed to authenticate with gh CLI",
       });
     }

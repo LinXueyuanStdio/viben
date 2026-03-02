@@ -57,13 +57,74 @@ function toSnakeCaseUIMessage(m: { id: string; timestamp: string; type: string; 
  */
 export function registerSessionRoutes(fastify: FastifyInstance, state: AppState): void {
   // List all sessions
-  fastify.get("/api/sessions", async () => {
+  fastify.get("/api/sessions", {
+    schema: {
+      description: "List all sessions",
+      tags: ["sessions"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            sessions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  agent_id: { type: "string" },
+                  task_id: { type: "string" },
+                  status: { type: "string" },
+                  prompt: { type: "string" },
+                  session_data: { type: "object" },
+                  created_at: { type: "string", format: "date-time" },
+                  updated_at: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
     const sessions = await SessionModel.findAll();
     return { sessions: sessions.map(toSnakeCaseSession) };
   });
 
   // Get a specific session
-  fastify.get<{ Params: { id: string } }>("/api/sessions/:id", async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>("/api/sessions/:id", {
+    schema: {
+      description: "Get a specific session by ID",
+      tags: ["sessions"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Session ID" },
+        },
+        required: ["id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            agent_id: { type: "string" },
+            task_id: { type: "string" },
+            status: { type: "string" },
+            prompt: { type: "string" },
+            session_data: { type: "object" },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const { id } = request.params;
     const session = await SessionModel.findById(id);
     if (!session) {

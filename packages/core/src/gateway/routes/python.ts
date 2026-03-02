@@ -646,16 +646,18 @@ async function detectCliTool(
     }
   }
 
-  // Return result with all alternatives
+  // Return result with alternatives (excluding primary to avoid duplication)
   if (allPaths.length > 0) {
     const primary = allPaths[0];
+    // Only include alternatives that are different from the primary
+    const alternatives = allPaths.slice(1);
     return {
       found: true,
       path: primary.path,
       version: primary.version,
       source: primary.source,
       message: `Using ${tool}`,
-      alternatives: allPaths.length > 1 ? allPaths : undefined,
+      alternatives: alternatives.length > 0 ? alternatives : undefined,
     };
   }
 

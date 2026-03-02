@@ -117,6 +117,50 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     });
   }
 
+  // Register Swagger for API documentation
+  try {
+    const swaggerPlugin = await import("@fastify/swagger");
+    const swaggerUiPlugin = await import("@fastify/swagger-ui");
+
+    await app.register(swaggerPlugin.default, {
+      openapi: {
+        info: {
+          title: "Viben Gateway API",
+          description: "API for AI agent orchestration and multi-agent workspace management",
+          version: "1.0.0",
+        },
+        servers: [{ url: `http://${host}:${port}` }],
+        tags: [
+          { name: "health", description: "Health check endpoints" },
+          { name: "agents", description: "Agent management" },
+          { name: "executors", description: "Executor discovery and management" },
+          { name: "sessions", description: "Session management" },
+          { name: "providers", description: "Provider management" },
+          { name: "models", description: "Model management" },
+          { name: "channels", description: "Channel management" },
+          { name: "cron", description: "Cron job management" },
+          { name: "tasks", description: "Task management" },
+          { name: "mcp", description: "MCP server management" },
+          { name: "kanban", description: "Kanban board management" },
+        ],
+      },
+    });
+
+    await app.register(swaggerUiPlugin.default, {
+      routePrefix: "/docs",
+      uiConfig: {
+        docExpansion: "list",
+        deepLinking: true,
+      },
+    });
+
+    logger?.info("Swagger API documentation registered at /docs");
+    console.log("[Gateway] Swagger API documentation available at /docs");
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to register Swagger plugin");
+    console.warn("[Gateway] Failed to register Swagger plugin:", e);
+  }
+
   // Enable multipart file uploads
   try {
     const multipartPlugin = await import("@fastify/multipart");

@@ -34,6 +34,7 @@ const sidebars: SidebarsConfig = {
       label: 'API',
       collapsed: false,
       items: [
+        'api/index',
         'api/mcp-api',
         'api/skills-api',
         'api/user-api',

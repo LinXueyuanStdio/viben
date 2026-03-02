@@ -242,7 +242,37 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
    * List all providers
    * GET /api/providers
    */
-  fastify.get("/api/providers", async () => {
+  fastify.get("/api/providers", {
+    schema: {
+      description: "List all providers",
+      tags: ["providers"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            providers: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  type: { type: "string" },
+                  name: { type: "string" },
+                  base_url: { type: "string" },
+                  is_default: { type: "boolean" },
+                  enabled: { type: "boolean" },
+                  created_at: { type: "string", format: "date-time" },
+                  updated_at: { type: "string", format: "date-time" },
+                },
+              },
+            },
+            total: { type: "number" },
+            default_provider_id: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async () => {
     const providers = await providerManager.listProviders();
     const defaultProviderId = await providerManager.getDefault();
     return {
@@ -299,6 +329,40 @@ export function registerProviderRoutes(fastify: FastifyInstance): void {
    */
   fastify.get(
     "/api/providers/:id",
+    {
+      schema: {
+        description: "Get a specific provider by ID",
+        tags: ["providers"],
+        params: {
+          type: "object",
+          properties: {
+            id: { type: "string", description: "Provider ID" },
+          },
+          required: ["id"],
+        },
+        response: {
+          200: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              type: { type: "string" },
+              name: { type: "string" },
+              base_url: { type: "string" },
+              is_default: { type: "boolean" },
+              enabled: { type: "boolean" },
+              created_at: { type: "string", format: "date-time" },
+              updated_at: { type: "string", format: "date-time" },
+            },
+          },
+          404: {
+            type: "object",
+            properties: {
+              error: { type: "string" },
+            },
+          },
+        },
+      },
+    },
     async (
       request: FastifyRequest<{ Params: { id: string } }>,
       reply: FastifyReply

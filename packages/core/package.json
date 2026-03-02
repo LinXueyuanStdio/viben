@@ -61,10 +61,12 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.41",
     "@anthropic-ai/sdk": "^0.74.0",
-    "@modelcontextprotocol/sdk": "^1.25.2",
     "@fastify/cors": "^11.2.0",
     "@fastify/multipart": "^9.0.3",
+    "@fastify/swagger": "^9.7.0",
+    "@fastify/swagger-ui": "^5.2.5",
     "@fastify/websocket": "^11.2.0",
+    "@modelcontextprotocol/sdk": "^1.25.2",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/instrumentation-fastify": "^0.55.0",
     "@opentelemetry/instrumentation-http": "^0.212.0",
@@ -76,11 +78,11 @@
     "cloudflared": "^0.7.1",
     "commander": "^12.1.0",
     "fastify": "^5.2.1",
+    "node-pty": "^1.1.0",
     "pino": "^10.3.1",
     "shell-quote": "^1.8.3",
     "undici": "^7.22.0",
     "uuid": "^13.0.0",
-    "node-pty": "^1.1.0",
     "yaml": "^2.4.5"
   },
   "devDependencies": {

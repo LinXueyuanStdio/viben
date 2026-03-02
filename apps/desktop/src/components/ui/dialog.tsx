@@ -4,12 +4,23 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* -----------------------------------------------------------------------------
+ * Dialog Nesting Context - Tracks dialog depth for proper z-index stacking
+ * -------------------------------------------------------------------------- */
+
+const DialogNestingContext = React.createContext<number>(0);
+
+function useDialogNesting() {
+  return React.useContext(DialogNestingContext);
+}
+
+/* -----------------------------------------------------------------------------
  * Dialog Context
  * -------------------------------------------------------------------------- */
 
 interface DialogContextValue {
   open: boolean;
   setOpen: (open: boolean) => void;
+  nestingLevel: number;
 }
 
 const DialogContext = React.createContext<DialogContextValue | null>(null);
@@ -34,13 +45,17 @@ interface DialogProps {
 
 function Dialog({ children, open: controlledOpen, onOpenChange }: DialogProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const parentNestingLevel = useDialogNesting();
+  const nestingLevel = parentNestingLevel + 1;
 
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
 
   return (
-    <DialogContext.Provider value={{ open, setOpen }}>
-      {children}
+    <DialogContext.Provider value={{ open, setOpen, nestingLevel }}>
+      <DialogNestingContext.Provider value={open ? nestingLevel : parentNestingLevel}>
+        {children}
+      </DialogNestingContext.Provider>
     </DialogContext.Provider>
   );
 }
@@ -94,18 +109,22 @@ interface DialogOverlayProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const DialogOverlay = React.forwardRef<HTMLDivElement, DialogOverlayProps>(
   ({ className, ...props }, ref) => {
-    const { open, setOpen } = useDialogContext();
+    const { open, setOpen, nestingLevel } = useDialogContext();
 
     if (!open) return null;
+
+    // Base z-index is 50, each nesting level adds 10
+    const zIndex = 50 + (nestingLevel - 1) * 10;
 
     return (
       <div
         ref={ref}
         className={cn(
-          "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+          "fixed inset-0 bg-black/50 backdrop-blur-sm",
           "animate-in fade-in-0",
           className
         )}
+        style={{ zIndex }}
         onClick={() => setOpen(false)}
         {...props}
       />
@@ -123,33 +142,41 @@ interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
   ({ className, children, ...props }, ref) => {
     const { t } = useTranslation();
-    const { open, setOpen } = useDialogContext();
+    const { open, setOpen, nestingLevel } = useDialogContext();
 
-    // Handle escape key
+    // Handle escape key - only close the topmost dialog
     React.useEffect(() => {
       if (!open) return;
 
       const handleEscape = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setOpen(false);
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          setOpen(false);
+        }
       };
 
       document.addEventListener("keydown", handleEscape);
       return () => document.removeEventListener("keydown", handleEscape);
     }, [open, setOpen]);
 
-    // Prevent body scroll when dialog is open
+    // Prevent body scroll when dialog is open (only for first level)
     React.useEffect(() => {
-      if (open) {
-        document.body.style.overflow = "hidden";
-      } else {
-        document.body.style.overflow = "";
+      if (nestingLevel === 1) {
+        if (open) {
+          document.body.style.overflow = "hidden";
+        } else {
+          document.body.style.overflow = "";
+        }
+        return () => {
+          document.body.style.overflow = "";
+        };
       }
-      return () => {
-        document.body.style.overflow = "";
-      };
-    }, [open]);
+    }, [open, nestingLevel]);
 
     if (!open) return null;
+
+    // Base z-index is 50, each nesting level adds 10 (content is 1 higher than overlay)
+    const zIndex = 50 + (nestingLevel - 1) * 10 + 1;
 
     return (
       <>
@@ -157,13 +184,14 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
         <div
           ref={ref}
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
+            "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2",
             "w-full max-w-lg",
             "bg-card border border-border rounded-2xl shadow-xl",
             "animate-in fade-in-0 zoom-in-95",
             "p-6",
             className
           )}
+          style={{ zIndex }}
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-modal="true"

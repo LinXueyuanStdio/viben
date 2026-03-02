@@ -64,7 +64,41 @@ export interface HealthResponse {
  * Register health routes
  */
 export function registerHealthRoutes(fastify: FastifyInstance): void {
-  fastify.get("/health", async () => {
+  fastify.get("/health", {
+    schema: {
+      description: "Health check endpoint",
+      tags: ["health"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            status: { type: "string", enum: ["ok"] },
+            service: { type: "string" },
+            version: { type: "string" },
+            timestamp: { type: "string", format: "date-time" },
+            uptime: { type: "string" },
+            uptime_seconds: { type: "number" },
+            startup: {
+              type: "object",
+              properties: {
+                host: { type: "string" },
+                port: { type: "number" },
+                cors: { type: "boolean" },
+                started_at: { type: "string", format: "date-time" },
+                pid: { type: "number" },
+                node_version: { type: "string" },
+                platform: { type: "string" },
+                arch: { type: "string" },
+                config_dir: { type: "string" },
+                state_dir: { type: "string" },
+                command: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
     const uptimeMs = Date.now() - gatewayStartTime;
     const uptimeSeconds = Math.floor(uptimeMs / 1000);
     const hours = Math.floor(uptimeSeconds / 3600);
