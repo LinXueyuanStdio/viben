@@ -1,1 +1,0 @@
-npx -y @modelcontextprotocol/server-everything

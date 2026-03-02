@@ -33,3 +33,4 @@ urlencoding = "2"
 screenshots = "0.8"
 base64 = "0.22"
 tauri-plugin-notification = "2"
+tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", version = "0.1.0" }

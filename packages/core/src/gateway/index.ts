@@ -137,6 +137,7 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
           { name: "sessions", description: "Session management" },
           { name: "providers", description: "Provider management" },
           { name: "models", description: "Model management" },
+          { name: "workspaces", description: "Workspace management" },
           { name: "channels", description: "Channel management" },
           { name: "cron", description: "Cron job management" },
           { name: "tasks", description: "Task management" },
