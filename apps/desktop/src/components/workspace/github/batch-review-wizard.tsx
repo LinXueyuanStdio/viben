@@ -90,7 +90,7 @@ export function BatchReviewWizard({
     }
   }, [issues, localSelection.size]);
 
-  // Step 2: Analysis
+  // Step 2: Analysis - parallelized for better performance
   const handleStartAnalysis = useCallback(async () => {
     setAnalyzing(true);
     setStep("analyze");
@@ -98,7 +98,8 @@ export function BatchReviewWizard({
     const total = selectedIssues.length;
     let completed = 0;
 
-    for (const issue of selectedIssues) {
+    // Process analyses in parallel with progress tracking
+    const analyzePromises = selectedIssues.map(async (issue) => {
       try {
         const investigation = await onAnalyze(issue.number);
         setAnalysisResults((prev) => {
@@ -117,9 +118,12 @@ export function BatchReviewWizard({
           return next;
         });
       }
+      // Update progress after each analysis completes
       completed++;
       setAnalyzeProgress(Math.round((completed / total) * 100));
-    }
+    });
+
+    await Promise.all(analyzePromises);
 
     setAnalyzing(false);
     setStep("review");

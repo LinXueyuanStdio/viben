@@ -91,10 +91,16 @@ export function IssueDetail({
 
       if (result) {
         // Convert to IssueAnalysis format
+        // Map investigation complexity to analysis complexity
+        const complexityMap: Record<typeof result.complexity, "trivial" | "low" | "medium" | "high" | "critical"> = {
+          simple: "low",
+          medium: "medium",
+          complex: "high",
+        };
         setCurrentAnalysis({
           issueNumber: issue.number,
           type: "bug", // TODO: Infer from result
-          complexity: result.complexity as "trivial" | "low" | "medium" | "high" | "critical",
+          complexity: complexityMap[result.complexity] ?? "medium",
           summary: issue.title,
           requirements: [],
           acceptanceCriteria: [],

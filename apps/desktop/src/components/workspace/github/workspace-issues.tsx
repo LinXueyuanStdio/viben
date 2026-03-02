@@ -59,7 +59,7 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
     reset,
   } = useGitHubStore();
 
-  // Issues hook
+  // Issues hook - use store's filter state as single source of truth
   const {
     issues,
     loading,
@@ -67,11 +67,9 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
     hasMore,
     refresh,
     loadMore,
-    stateFilter,
-    setStateFilter,
     investigateIssue,
     importIssues,
-  } = useGitHubIssues(workspacePath);
+  } = useGitHubIssues(workspacePath, { stateFilter: filters.state });
 
   const isAuthenticated = auth.status?.authenticated ?? false;
   const hasRepository = repo.repository !== null;
@@ -113,19 +111,12 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
     };
   }, [workspacePath, reset]);
 
-  // Sync state filter
-  useEffect(() => {
-    if (stateFilter !== filters.state) {
-      setFilters({ state: stateFilter });
-    }
-  }, [stateFilter, filters.state, setFilters]);
-
+  // Single source of truth: store manages filter state
   const handleStateFilterChange = useCallback(
     (state: "open" | "closed" | "all") => {
-      setStateFilter(state);
       setFilters({ state });
     },
-    [setStateFilter, setFilters]
+    [setFilters]
   );
 
   const handleSelectIssue = useCallback(

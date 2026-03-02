@@ -272,6 +272,11 @@ export function useGitHubRepository(workspacePath: string | null): UseGitHubRepo
 // useGitHubIssues
 // ============================================================================
 
+export interface UseGitHubIssuesOptions {
+  /** External state filter - if provided, internal state is not used */
+  stateFilter?: "open" | "closed" | "all";
+}
+
 export interface UseGitHubIssuesResult {
   /** Issues list */
   issues: GitHubIssue[];
@@ -287,7 +292,7 @@ export interface UseGitHubIssuesResult {
   refresh: () => Promise<void>;
   /** Load more issues */
   loadMore: () => Promise<void>;
-  /** Set state filter */
+  /** Set state filter (only works when external stateFilter is not provided) */
   setStateFilter: (state: "open" | "closed" | "all") => void;
   /** Current state filter */
   stateFilter: "open" | "closed" | "all";
@@ -300,13 +305,20 @@ export interface UseGitHubIssuesResult {
 /**
  * Hook for GitHub issues management
  */
-export function useGitHubIssues(workspacePath: string | null): UseGitHubIssuesResult {
+export function useGitHubIssues(
+  workspacePath: string | null,
+  options?: UseGitHubIssuesOptions
+): UseGitHubIssuesResult {
   const [issues, setIssues] = useState<GitHubIssue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [stateFilter, setStateFilter] = useState<"open" | "closed" | "all">("open");
+  const [internalStateFilter, setInternalStateFilter] = useState<"open" | "closed" | "all">("open");
+
+  // Use external stateFilter if provided, otherwise use internal state
+  const stateFilter = options?.stateFilter ?? internalStateFilter;
+  const setStateFilter = setInternalStateFilter;
 
   const refresh = useCallback(async () => {
     if (!workspacePath) {

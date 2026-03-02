@@ -222,7 +222,7 @@ function AnalysisSection({ icon: Icon, title, items, variant = "bullet" }: Analy
             {variant === "numbered" ? (
               <span className="text-muted-foreground shrink-0 w-5">{index + 1}.</span>
             ) : (
-              <span className="text-muted-foreground mt-1.5">-</span>
+              <span className="text-muted-foreground mt-0.5">-</span>
             )}
             <span>{item}</span>
           </li>
