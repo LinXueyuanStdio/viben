@@ -36,7 +36,7 @@ function VibenLogo({ size = 32 }: { size?: number }) {
   );
 }
 
-const PAIN_POINTS = [
+const CHALLENGES = [
   {
     title: '代码能生成，但产品难落地',
     desc: '纯代码生成很快，但经常缺流程、缺审查、缺可追踪协作。',
@@ -67,7 +67,7 @@ const FEATURES = [
   { icon: CheckCircle2, title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。' },
 ] as const;
 
-const TRUSTED = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
+const SUPPORTED_AGENTS = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
 
 const FAQS = [
   {
@@ -126,10 +126,7 @@ export default function HomePage() {
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-1.5 text-xs font-semibold tracking-[0.15em] text-amber-300">
             MULTI-AGENT WORKSPACE
           </div>
-          <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold leading-tight text-white sm:text-6xl">
-            从想法到上线，再到迭代维护。<br className="hidden sm:block" />
-            让多智能体协作真正可控。
-          </h1>
+          <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold leading-tight text-white sm:text-6xl">从想法到上线，再到迭代维护。让多智能体协作真正可控。</h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
             Viben 不是“只会写代码”的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。
           </p>
@@ -156,7 +153,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">AI 能写代码，但代码不等于产品</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {PAIN_POINTS.map(({ title, desc }) => (
+            {CHALLENGES.map(({ title, desc }) => (
               <article key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
                 <h3 className="text-lg font-semibold">{title}</h3>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-300">{desc}</p>
@@ -217,8 +214,8 @@ export default function HomePage() {
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">开发者与团队正在用 Viben 提升交付效率</h2>
           <p className="mx-auto mt-4 max-w-2xl text-zinc-300">兼容主流智能体客户端，保留你已有的模型与工具链。</p>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-            {TRUSTED.map((name) => (
-              <div key={name} className="cursor-pointer rounded-full border border-white/15 bg-white/[0.03] px-5 py-2 text-sm font-medium transition hover:border-amber-300/40 hover:text-amber-200">
+            {SUPPORTED_AGENTS.map((name) => (
+              <div key={name} className="rounded-full border border-white/15 bg-white/[0.03] px-5 py-2 text-sm font-medium">
                 {name}
               </div>
             ))}
