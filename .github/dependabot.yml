@@ -145,17 +145,6 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  - package-ecosystem: npm
-    directory: /packages/vibe-kanban
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - javascript
-    commit-message:
-      prefix: "chore(deps)"
-
   # GitHub Actions
   - package-ecosystem: github-actions
     directory: /
