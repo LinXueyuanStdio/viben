@@ -13,6 +13,29 @@ import type { GHIssue, GHComment } from "../gh-client";
 import type { GitHubModelConfig } from "../config";
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Patterns for detecting affected areas in issue text
+ * Defined at module level to avoid recreating on each function call
+ */
+const AFFECTED_AREA_PATTERNS: Array<{ pattern: RegExp; area: string }> = [
+  { pattern: /\b(?:frontend|ui|ux|component|react|vue|angular|svelte)/gi, area: "frontend" },
+  { pattern: /\b(?:backend|api|server|route|endpoint)/gi, area: "backend" },
+  { pattern: /\b(?:database|db|sql|postgres|mysql|mongo)/gi, area: "database" },
+  { pattern: /\b(?:auth|authentication|login|session|oauth)/gi, area: "authentication" },
+  { pattern: /\b(?:test|testing|spec|coverage|jest|vitest)/gi, area: "testing" },
+  { pattern: /\b(?:doc|documentation|readme|jsdoc)/gi, area: "documentation" },
+  { pattern: /\b(?:build|ci|cd|deploy|docker|kubernetes)/gi, area: "infrastructure" },
+  { pattern: /\b(?:style|css|scss|tailwind|styled)/gi, area: "styling" },
+  { pattern: /\b(?:type|typescript|interface|schema)/gi, area: "types" },
+  { pattern: /\b(?:config|configuration|settings|env)/gi, area: "configuration" },
+  { pattern: /\b(?:cli|command|terminal)/gi, area: "cli" },
+  { pattern: /\b(?:websocket|socket|realtime)/gi, area: "realtime" },
+];
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -305,23 +328,10 @@ function detectComplexity(
 function extractAffectedAreas(text: string): string[] {
   const areas = new Set<string>();
 
-  // Common area patterns
-  const patterns: Array<{ pattern: RegExp; area: string }> = [
-    { pattern: /\b(?:frontend|ui|ux|component|react|vue|angular|svelte)/gi, area: "frontend" },
-    { pattern: /\b(?:backend|api|server|route|endpoint)/gi, area: "backend" },
-    { pattern: /\b(?:database|db|sql|postgres|mysql|mongo)/gi, area: "database" },
-    { pattern: /\b(?:auth|authentication|login|session|oauth)/gi, area: "authentication" },
-    { pattern: /\b(?:test|testing|spec|coverage|jest|vitest)/gi, area: "testing" },
-    { pattern: /\b(?:doc|documentation|readme|jsdoc)/gi, area: "documentation" },
-    { pattern: /\b(?:build|ci|cd|deploy|docker|kubernetes)/gi, area: "infrastructure" },
-    { pattern: /\b(?:style|css|scss|tailwind|styled)/gi, area: "styling" },
-    { pattern: /\b(?:type|typescript|interface|schema)/gi, area: "types" },
-    { pattern: /\b(?:config|configuration|settings|env)/gi, area: "configuration" },
-    { pattern: /\b(?:cli|command|terminal)/gi, area: "cli" },
-    { pattern: /\b(?:websocket|socket|realtime)/gi, area: "realtime" },
-  ];
-
-  for (const { pattern, area } of patterns) {
+  // Use module-level patterns constant
+  for (const { pattern, area } of AFFECTED_AREA_PATTERNS) {
+    // Reset lastIndex for global regex patterns
+    pattern.lastIndex = 0;
     if (pattern.test(text)) {
       areas.add(area);
     }

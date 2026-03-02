@@ -277,40 +277,34 @@ export async function saveGitHubConfig(
 
 /**
  * Deep merge two configs
+ * Ensures all base properties are preserved, only overriding explicitly defined properties
  */
 function mergeConfig(
   base: GitHubAutoFixConfig,
   override: Partial<GitHubAutoFixConfig>
 ): GitHubAutoFixConfig {
-  const result: GitHubAutoFixConfig = {
+  return {
+    // Model config - override takes precedence
     model: override.model ?? base.model,
-  };
 
-  // Merge models
-  if (base.models || override.models) {
-    result.models = {
+    // Models - deep merge
+    models: {
       ...base.models,
       ...override.models,
-    };
-  }
+    },
 
-  // Merge auto_fix
-  if (base.auto_fix || override.auto_fix) {
-    result.auto_fix = {
-      ...(base.auto_fix ?? {}),
-      ...(override.auto_fix ?? {}),
-    } as AutoFixConfig;
-  }
+    // Auto-fix config - deep merge with defaults preserved
+    auto_fix: {
+      ...base.auto_fix,
+      ...override.auto_fix,
+    } as AutoFixConfig,
 
-  // Merge batch
-  if (base.batch || override.batch) {
-    result.batch = {
-      ...(base.batch ?? {}),
-      ...(override.batch ?? {}),
-    } as BatchConfig;
-  }
-
-  return result;
+    // Batch config - deep merge with defaults preserved
+    batch: {
+      ...base.batch,
+      ...override.batch,
+    } as BatchConfig,
+  };
 }
 
 // ============================================================================

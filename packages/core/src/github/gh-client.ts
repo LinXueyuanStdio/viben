@@ -266,19 +266,68 @@ export class GHClient {
   }
 
   /**
-   * Get issue comments
+   * Get issue comments with pagination support
+   * Uses gh api with --paginate to fetch all comments automatically
    */
   async getIssueComments(number: number): Promise<GHComment[]> {
+    const { owner, name } = await this.getRepoInfo();
+
+    // Use gh api with --paginate flag which automatically handles pagination
+    // and concatenates all pages into a single JSON array
     const result = await this.exec([
-      "issue",
-      "view",
-      String(number),
-      "--json",
-      "comments",
+      "api",
+      "--paginate",
+      `repos/${owner}/${name}/issues/${number}/comments`,
     ]);
 
-    const data = JSON.parse(result);
-    return (data.comments?.nodes || []) as GHComment[];
+    if (!result.trim()) {
+      return [];
+    }
+
+    // gh api --paginate returns concatenated JSON arrays, need to parse carefully
+    // Each page is a separate JSON array, so we get "[...][...][...]"
+    // We need to handle this by parsing as NDJSON or combining arrays
+    try {
+      // Try parsing as a single array first (single page case)
+      const comments = JSON.parse(result) as Array<{
+        id: number;
+        body: string;
+        user: { login: string };
+        created_at: string;
+        updated_at: string;
+      }>;
+
+      return comments.map((c) => ({
+        id: String(c.id),
+        body: c.body,
+        author: { login: c.user.login },
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      }));
+    } catch {
+      // Multi-page case: arrays are concatenated like "[...][...][...]"
+      // Split by "][" and reconstruct
+      const combined = result
+        .replace(/\]\s*\[/g, ",")
+        .replace(/^\[/, "[")
+        .replace(/\]$/, "]");
+
+      const comments = JSON.parse(combined) as Array<{
+        id: number;
+        body: string;
+        user: { login: string };
+        created_at: string;
+        updated_at: string;
+      }>;
+
+      return comments.map((c) => ({
+        id: String(c.id),
+        body: c.body,
+        author: { login: c.user.login },
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      }));
+    }
   }
 
   /**

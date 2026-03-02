@@ -52,6 +52,29 @@ export interface ClusteringResult {
 }
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Common stop words to filter out during keyword extraction
+ * Defined at module level to avoid recreating on each function call
+ */
+const STOP_WORDS = new Set([
+  "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "must", "shall", "can", "need", "dare",
+  "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
+  "into", "through", "during", "before", "after", "above", "below",
+  "between", "under", "again", "further", "then", "once", "here",
+  "there", "when", "where", "why", "how", "all", "each", "few", "more",
+  "most", "other", "some", "such", "no", "nor", "not", "only", "own",
+  "same", "so", "than", "too", "very", "just", "and", "but", "if", "or",
+  "because", "until", "while", "this", "that", "these", "those", "it",
+  "its", "i", "me", "my", "we", "our", "you", "your", "he", "him", "his",
+  "she", "her", "they", "them", "their", "what", "which", "who", "whom",
+]);
+
+// ============================================================================
 // Text Processing
 // ============================================================================
 
@@ -59,28 +82,12 @@ export interface ClusteringResult {
  * Extract keywords from text
  */
 function extractKeywords(text: string): string[] {
-  // Common stop words to filter out
-  const stopWords = new Set([
-    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-    "should", "may", "might", "must", "shall", "can", "need", "dare",
-    "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
-    "into", "through", "during", "before", "after", "above", "below",
-    "between", "under", "again", "further", "then", "once", "here",
-    "there", "when", "where", "why", "how", "all", "each", "few", "more",
-    "most", "other", "some", "such", "no", "nor", "not", "only", "own",
-    "same", "so", "than", "too", "very", "just", "and", "but", "if", "or",
-    "because", "until", "while", "this", "that", "these", "those", "it",
-    "its", "i", "me", "my", "we", "our", "you", "your", "he", "him", "his",
-    "she", "her", "they", "them", "their", "what", "which", "who", "whom",
-  ]);
-
   // Normalize and tokenize
   const words = text
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
-    .filter((w) => w.length > 2 && !stopWords.has(w));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w));
 
   // Count frequencies
   const freq = new Map<string, number>();

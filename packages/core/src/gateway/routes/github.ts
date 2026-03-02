@@ -16,6 +16,82 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import * as github from "../../services/github";
 import * as autofix from "../../github";
 import { eventService } from "../../services/events";
+
+// Track workspaces with event listeners already set up to avoid duplicate registration
+const eventListenersSetup = new Set<string>();
+
+/**
+ * Convert a GitHubIssue to GHIssue format used by autofix module
+ */
+function convertToGHIssue(issue: GitHubIssue): autofix.GHIssue {
+  return {
+    number: issue.number,
+    title: issue.title,
+    body: issue.body ?? "",
+    state: issue.state === "open" ? "OPEN" : "CLOSED",
+    labels: issue.labels.map((l) => ({ name: l.name })),
+    assignees: issue.assignees.map((a) => ({ login: a.login })),
+    author: { login: issue.user.login },
+    createdAt: issue.created_at,
+    updatedAt: issue.updated_at,
+    url: issue.html_url,
+    comments: { totalCount: issue.comments },
+  };
+}
+
+/**
+ * Fetch multiple issues in parallel and convert to GHIssue format
+ */
+async function fetchIssuesAsGHIssues(
+  workspacePath: string,
+  issueNumbers: number[]
+): Promise<autofix.GHIssue[]> {
+  const issuePromises = issueNumbers.map((num) =>
+    github.getIssue(workspacePath, num).then(convertToGHIssue)
+  );
+  return Promise.all(issuePromises);
+}
+
+/**
+ * Setup event forwarding for a task queue (idempotent)
+ * Only sets up listeners once per workspace to prevent memory leaks
+ */
+function setupTaskQueueEventForwarding(
+  queue: autofix.AutoFixTaskQueue,
+  workspacePath: string
+): void {
+  if (eventListenersSetup.has(workspacePath)) {
+    return;
+  }
+
+  queue.on("status_change", (event) => {
+    eventService.githubAutofixTaskStatusChanged(
+      event.task_id,
+      workspacePath,
+      event.status
+    );
+  });
+
+  queue.on("progress", (event) => {
+    eventService.githubAutofixTaskProgress(
+      event.task_id,
+      workspacePath,
+      event.message,
+      event.percent
+    );
+  });
+
+  queue.on("log", (event) => {
+    eventService.githubAutofixTaskLog(
+      event.task_id,
+      workspacePath,
+      event.level,
+      event.message
+    );
+  });
+
+  eventListenersSetup.add(workspacePath);
+}
 import type {
   GitHubAuthStatusResponse,
   GitHubUser,
@@ -769,32 +845,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
       const queue = autofix.getTaskQueue(workspacePath);
       await queue.initialize();
 
-      // Set up event forwarding
-      queue.on("status_change", (event) => {
-        eventService.githubAutofixTaskStatusChanged(
-          event.task_id,
-          workspacePath,
-          event.status
-        );
-      });
-
-      queue.on("progress", (event) => {
-        eventService.githubAutofixTaskProgress(
-          event.task_id,
-          workspacePath,
-          event.message,
-          event.percent
-        );
-      });
-
-      queue.on("log", (event) => {
-        eventService.githubAutofixTaskLog(
-          event.task_id,
-          workspacePath,
-          event.level,
-          event.message
-        );
-      });
+      // Set up event forwarding (idempotent - only sets up once per workspace)
+      setupTaskQueueEventForwarding(queue, workspacePath);
 
       const taskId = await queue.enqueue({
         issue_numbers,
@@ -1035,32 +1087,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      // Fetch all issues
-      const issues: autofix.GHIssue[] = [];
-      for (const num of issue_numbers) {
-        const issue = await github.getIssue(workspacePath, num);
-        issues.push({
-          number: issue.number,
-          title: issue.title,
-          body: issue.body ?? "",
-          state: issue.state === "open" ? "OPEN" : "CLOSED",
-          labels: issue.labels.map((l) => ({
-            name: l.name,
-          })),
-          assignees: issue.assignees.map((a) => ({
-            login: a.login,
-          })),
-          author: {
-            login: issue.user.login,
-          },
-          createdAt: issue.created_at,
-          updatedAt: issue.updated_at,
-          url: issue.html_url,
-          comments: {
-            totalCount: issue.comments,
-          },
-        });
-      }
+      // Fetch all issues in parallel
+      const issues = await fetchIssuesAsGHIssues(workspacePath, issue_numbers);
 
       // Triage
       let results: autofix.BatchTriageResult;
@@ -1097,32 +1125,8 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
     }
 
     try {
-      // Fetch all issues
-      const issues: autofix.GHIssue[] = [];
-      for (const num of issue_numbers) {
-        const issue = await github.getIssue(workspacePath, num);
-        issues.push({
-          number: issue.number,
-          title: issue.title,
-          body: issue.body ?? "",
-          state: issue.state === "open" ? "OPEN" : "CLOSED",
-          labels: issue.labels.map((l) => ({
-            name: l.name,
-          })),
-          assignees: issue.assignees.map((a) => ({
-            login: a.login,
-          })),
-          author: {
-            login: issue.user.login,
-          },
-          createdAt: issue.created_at,
-          updatedAt: issue.updated_at,
-          url: issue.html_url,
-          comments: {
-            totalCount: issue.comments,
-          },
-        });
-      }
+      // Fetch all issues in parallel
+      const issues = await fetchIssuesAsGHIssues(workspacePath, issue_numbers);
 
       // Cluster
       const result = autofix.clusterIssues(issues, {

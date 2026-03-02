@@ -7,7 +7,7 @@
  * - Clean up worktrees after completion
  */
 
-import { exec, spawn } from "node:child_process";
+import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
@@ -20,6 +20,12 @@ import {
 import { getWorktreeBaseDir, type GitHubAutoFixConfig } from "../config";
 
 const execAsync = promisify(exec);
+
+interface ExecError extends Error {
+  code?: number;
+  killed?: boolean;
+  signal?: string;
+}
 
 // ============================================================================
 // Types
@@ -193,6 +199,9 @@ export class WorktreeManager {
 
   /**
    * Execute a command in a worktree
+   *
+   * Uses exec() which properly handles shell command parsing,
+   * including arguments with spaces (e.g., git commit -m "my message")
    */
   async execute(
     worktreePath: string,
@@ -206,62 +215,35 @@ export class WorktreeManager {
     const startTime = Date.now();
 
     return new Promise((resolve, reject) => {
-      const [cmd, ...args] = command.split(" ");
-      const proc = spawn(cmd, args, {
-        cwd: worktreePath,
-        env: {
-          ...process.env,
-          ...options?.env,
+      exec(
+        command,
+        {
+          cwd: worktreePath,
+          env: { ...process.env, ...options?.env },
+          timeout,
+          maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         },
-        shell: true,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
+        (error: ExecError | null, stdout: string, stderr: string) => {
+          const duration = Date.now() - startTime;
 
-      let stdout = "";
-      let stderr = "";
-      let killed = false;
+          if (error?.killed) {
+            return reject(
+              new GitHubError(
+                `Command timed out after ${timeout}ms`,
+                GitHubErrorCode.COMMAND_TIMEOUT,
+                { context: { command, timeout } }
+              )
+            );
+          }
 
-      const timer = setTimeout(() => {
-        killed = true;
-        proc.kill("SIGTERM");
-        reject(new GitHubError(
-          `Command timed out after ${timeout}ms`,
-          GitHubErrorCode.COMMAND_TIMEOUT,
-          { context: { command, timeout } }
-        ));
-      }, timeout);
-
-      proc.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-
-      proc.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-
-      proc.on("close", (code) => {
-        clearTimeout(timer);
-        if (killed) return;
-
-        const duration = Date.now() - startTime;
-        resolve({
-          stdout,
-          stderr,
-          exitCode: code ?? 0,
-          duration,
-        });
-      });
-
-      proc.on("error", (error) => {
-        clearTimeout(timer);
-        if (!killed) {
-          reject(new GitHubError(
-            `Command failed: ${error.message}`,
-            GitHubErrorCode.COMMAND_FAILED,
-            { context: { command }, cause: error }
-          ));
+          resolve({
+            stdout,
+            stderr,
+            exitCode: error?.code ?? 0,
+            duration,
+          });
         }
-      });
+      );
     });
   }
 
