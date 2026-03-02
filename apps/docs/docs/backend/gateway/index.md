@@ -36,6 +36,9 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 |  +-- /api/sessions        会话管理                           |
 |  +-- /api/channels        通道管理                           |
 |  +-- /api/cron            定时任务                           |
+|  +-- /api/workspaces      工作空间管理                       |
+|  +-- /api/mcp             MCP 服务器管理                     |
+|  +-- /api/kanban          看板数据管理                       |
 |  +-- /api/group-chats     群聊管理                           |
 |  +-- /api/chat-list       聊天列表聚合                       |
 |  +-- /api/events          SSE 事件流                         |
@@ -72,6 +75,9 @@ Viben Gateway 是 Viben 的核心后端服务，运行在端口 **18790**，提�
 | 会话 | `/api/sessions` | [sessions.md](./sessions.md) |
 | 通道 | `/api/channels` | [channels.md](./channels.md) |
 | 定时任务 | `/api/cron` | [cron.md](./cron.md) |
+| 工作空间 | `/api/workspaces` | [API 参考](/backend/api/) |
+| MCP | `/api/mcp` | [API 参考](/backend/api/) |
+| 看板 | `/api/kanban` | [API 参考](/backend/api/) |
 | 群聊 | `/api/group-chats` | [group-chats.md](./group-chats.md) |
 | 聊天列表 | `/api/chat-list` | [chat-list.md](./chat-list.md) |
 | 事件流 | `/api/events` | [events.md](./events.md) |

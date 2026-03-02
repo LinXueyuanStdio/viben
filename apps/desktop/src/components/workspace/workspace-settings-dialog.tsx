@@ -27,7 +27,8 @@ import { useExecutors, useAgents } from "@/hooks/use-workspace-resources";
 import { open as openPath } from "@tauri-apps/plugin-shell";
 import { toast } from "@/hooks/use-toast";
 import type { Workspace } from "@/types";
-import { GitHubSection } from "./github/github-section";
+import { GitHubAuth, GitHubRepository } from "./github";
+import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 
 // Settings section type
 type WorkspaceSettingsSection = "general" | "executors" | "agents" | "mcp" | "skills" | "github" | "about";
@@ -175,7 +176,7 @@ export function WorkspaceSettingsDialog({
       case "skills":
         return <SkillsSection key="skills" workspace={workspace} />;
       case "github":
-        return <GitHubSection key="github" workspace={workspace} />;
+        return <GitHubSettingsSection key="github" workspace={workspace} />;
       case "about":
         return <AboutSection key="about" workspace={workspace} />;
       default:
@@ -549,6 +550,66 @@ function SkillsSection(_props: SectionProps) {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* -----------------------------------------------------------------------------
+ * GitHub Settings Section (Authentication & Repository Connection)
+ * -------------------------------------------------------------------------- */
+
+function GitHubSettingsSection({ workspace }: SectionProps) {
+  const { t } = useTranslation();
+  const auth = useGitHubAuth(workspace.path);
+  const repo = useGitHubRepository(workspace.path);
+
+  const isAuthenticated = auth.status?.authenticated ?? false;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold font-serif mb-1 flex items-center gap-2">
+          <Github className="h-5 w-5" />
+          {t("workspaceSettings.github.title")}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {t("workspaceSettings.github.description")}
+        </p>
+      </div>
+
+      {/* Authentication Card */}
+      <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+        <GitHubAuth
+          status={auth.status}
+          loading={auth.loading}
+          error={auth.error}
+          onAuthenticateGhCli={auth.authenticateWithGhCli}
+          onAuthenticatePAT={auth.authenticateWithPAT}
+          onSignOut={auth.signOut}
+        />
+      </div>
+
+      {/* Repository Card (only shown when authenticated) */}
+      {isAuthenticated && (
+        <div className="rounded-xl border bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
+          <GitHubRepository
+            repository={repo.repository}
+            detectedRepository={repo.detectedRepository}
+            loading={repo.loading}
+            error={repo.error}
+            onConnect={repo.connectRepository}
+            onDisconnect={repo.disconnectRepository}
+          />
+        </div>
+      )}
+
+      {/* Hint about sidebar */}
+      {isAuthenticated && repo.repository && (
+        <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground bg-muted/50 rounded-lg border border-dashed">
+          <Github className="h-4 w-4 shrink-0" />
+          <span>{t("workspaceSettings.github.sidebarHint")}</span>
+        </div>
+      )}
     </div>
   );
 }

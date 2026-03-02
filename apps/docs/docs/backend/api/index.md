@@ -117,6 +117,40 @@ Viben Gateway 提供 RESTful API 用于智能体编排和多智能体工作空�
 | `/api/agents/:agentId/tasks` | GET | 获取智能体任务 |
 | `/api/agents/:agentId/sessions/:sessionId/tasks` | GET | 获取会话任务 |
 
+### 工作空间管理
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/workspaces` | GET | 列出所有工作空间 |
+| `/api/workspaces/detect` | GET | 检测文件夹状态 |
+| `/api/workspaces/create` | POST | 创建工作空间 |
+| `/api/workspaces/:id` | DELETE | 删除工作空间 |
+
+### MCP 服务器管理
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/mcp/installed` | GET | 列出已安装的 MCP 服务器 |
+| `/api/mcp/browse/start` | POST | 启动 Browse MCP |
+| `/api/mcp/browse/stop` | POST | 停止 Browse MCP |
+| `/api/mcp/browse/status` | GET | 获取 Browse MCP 状态 |
+| `/api/mcp/proxy/start` | POST | 启动 MCP 代理 |
+| `/api/mcp/proxy/stop` | POST | 停止 MCP 代理 |
+| `/api/mcp/proxy/status` | GET | 获取 MCP 代理状态 |
+
+### 看板管理
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/api/kanban/tasks/:taskId/comments` | GET | 获取任务评论 |
+| `/api/kanban/tasks/:taskId/comments` | POST | 添加任务评论 |
+| `/api/kanban/tasks/:taskId/comments/:commentId` | PATCH | 更新评论 |
+| `/api/kanban/tasks/:taskId/comments/:commentId` | DELETE | 删除评论 |
+| `/api/kanban/tasks/:taskId/comments/:commentId/reactions` | POST | 切换评论表情 |
+| `/api/kanban/tasks/:taskId/activities` | GET | 获取任务活动 |
+| `/api/kanban/tasks/:taskId/activities` | POST | 添加任务活动 |
+| `/api/kanban/tasks/:taskId/data` | DELETE | 清除任务数据 |
+
 ## 通用查询参数
 
 许多端点支持以下查询参数：

@@ -23,6 +23,7 @@ import {
   Check,
   ListTodo,
   Trash2,
+  Github,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,6 +69,7 @@ import type { CreateTaskData } from "@/components/workspace/kanban/create-task-d
 import { createTask } from "@/lib/vibe-kanban/api";
 import { useAgents } from "@/hooks/use-workspace-resources";
 import { useModels } from "@/hooks/use-models";
+import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
 import { toast } from "@/hooks/use-toast";
 import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 
@@ -108,13 +110,21 @@ interface WorkspaceNavItem {
   icon: React.ElementType;
 }
 
-const workspaceNavItems: WorkspaceNavItem[] = [
+// Base workspace navigation items (always visible)
+const baseWorkspaceNavItems: WorkspaceNavItem[] = [
   { titleKey: "workspace.chat", path: "chat", icon: MessageSquare },
   { titleKey: "workspace.kanban", path: "kanban", icon: LayoutDashboard },
   { titleKey: "workspace.scheduledTasks", path: "cron", icon: Clock },
   { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
   { titleKey: "workspace.files", path: "files", icon: FolderOpen },
 ];
+
+// GitHub navigation item (shown only when integrated)
+const githubNavItem: WorkspaceNavItem = {
+  titleKey: "workspace.github",
+  path: "github",
+  icon: Github,
+};
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
@@ -163,6 +173,23 @@ export function Sidebar() {
   // Load agents and models for task creation
   const { agents, loading: isLoadingAgents } = useAgents({ workspacePath: activeWorkspace?.path });
   const { models, loading: isLoadingModels } = useModels();
+
+  // Check GitHub integration status
+  const githubAuth = useGitHubAuth(activeWorkspace?.path ?? null);
+  const githubRepo = useGitHubRepository(activeWorkspace?.path ?? null);
+  const isGitHubIntegrated = !!(githubAuth.status?.authenticated && githubRepo.repository);
+
+  // Build workspace nav items based on GitHub integration status
+  const workspaceNavItems = React.useMemo(() => {
+    if (isGitHubIntegrated) {
+      // Insert GitHub after agents, before files
+      const items = [...baseWorkspaceNavItems];
+      const filesIndex = items.findIndex(item => item.path === "files");
+      items.splice(filesIndex, 0, githubNavItem);
+      return items;
+    }
+    return baseWorkspaceNavItems;
+  }, [isGitHubIntegrated]);
 
   const handleAddWorkspace = () => {
     setIsAddWorkspaceModalOpen(true);

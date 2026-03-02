@@ -181,7 +181,53 @@ export function registerKanbanDataRoutes(fastify: FastifyInstance): void {
    */
   fastify.get<{
     Params: { taskId: string };
-  }>("/api/kanban/tasks/:taskId/comments", async (request) => {
+  }>("/api/kanban/tasks/:taskId/comments", {
+    schema: {
+      description: "Get all comments for a task",
+      tags: ["kanban"],
+      params: {
+        type: "object",
+        properties: {
+          taskId: { type: "string", description: "Task ID" },
+        },
+        required: ["taskId"],
+      },
+      response: {
+        200: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              task_id: { type: "string" },
+              content: { type: "string" },
+              author: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  avatar: { type: "string" },
+                },
+              },
+              createdAt: { type: "string" },
+              updatedAt: { type: "string" },
+              reactions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    emoji: { type: "string" },
+                    count: { type: "number" },
+                    users: { type: "array", items: { type: "object" } },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
     const { taskId } = request.params;
     const store = await loadComments(taskId);
     return store.comments;
@@ -341,7 +387,42 @@ export function registerKanbanDataRoutes(fastify: FastifyInstance): void {
    */
   fastify.get<{
     Params: { taskId: string };
-  }>("/api/kanban/tasks/:taskId/activities", async (request) => {
+  }>("/api/kanban/tasks/:taskId/activities", {
+    schema: {
+      description: "Get all activities for a task",
+      tags: ["kanban"],
+      params: {
+        type: "object",
+        properties: {
+          taskId: { type: "string", description: "Task ID" },
+        },
+        required: ["taskId"],
+      },
+      response: {
+        200: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              task_id: { type: "string" },
+              type: { type: "string" },
+              actor: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  avatar: { type: "string" },
+                },
+              },
+              timestamp: { type: "string" },
+              data: { type: "object" },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
     const { taskId } = request.params;
     const store = await loadActivities(taskId);
     // Return in reverse chronological order (most recent first)

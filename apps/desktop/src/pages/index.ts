@@ -19,6 +19,7 @@ export { SubAgentDetailPage } from "./subagent-detail";
 export { PromptDetailPage } from "./prompt-detail";
 export { CommandDetailPage } from "./command-detail";
 export { WorkspaceAgentsPage } from "./workspace-agents";
+export { WorkspaceGitHubPage } from "./workspace-github";
 export { HomeRedirect } from "./home-redirect";
 export { OnboardingPage } from "./onboarding";
 export { PublishPage } from "./publish";
