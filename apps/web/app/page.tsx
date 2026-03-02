@@ -1,18 +1,19 @@
 import Link from 'next/link';
 import {
   ArrowRight,
-  LayoutGrid,
   CalendarDays,
+  CheckCircle2,
+  ChevronRight,
+  Github,
   GitBranch,
   Layers,
+  LayoutGrid,
   Monitor,
+  ShieldCheck,
+  Sparkles,
   Users,
-  Github,
-  BarChart3,
-  ChevronRight,
 } from 'lucide-react';
 
-/* ─── Logo SVG ─────────────────────────────────────────────────────────────── */
 function VibenLogo({ size = 32 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -35,351 +36,246 @@ function VibenLogo({ size = 32 }: { size?: number }) {
   );
 }
 
-/* ─── Nav ───────────────────────────────────────────────────────────────────── */
+const PAIN_POINTS = [
+  {
+    title: '代码能生成，但产品难落地',
+    desc: '纯代码生成很快，但经常缺流程、缺审查、缺可追踪协作。',
+  },
+  {
+    title: '多智能体协作难以控盘',
+    desc: '任务拆解、上下文同步、执行状态与结果复盘往往分散在多个工具里。',
+  },
+  {
+    title: '上线后维护成本持续攀升',
+    desc: '缺少可复用工作流与记忆体系，团队每次都在重复搭建同样流程。',
+  },
+] as const;
+
+const LIFECYCLE = [
+  { title: '定义目标', desc: '从需求到任务树，建立可执行的多智能体计划。', icon: Sparkles },
+  { title: '并行执行', desc: '看板 + 时间线 + 日历视图，统一调度执行进度。', icon: LayoutGrid },
+  { title: '审查发布', desc: '关键节点支持人工确认，保障可控与可追踪。', icon: ShieldCheck },
+  { title: '持续迭代', desc: '沉淀上下文与流程模板，后续任务持续复用提效。', icon: GitBranch },
+] as const;
+
+const FEATURES = [
+  { icon: LayoutGrid, title: '看板视图', desc: '拖拽管理任务优先级与状态。' },
+  { icon: CalendarDays, title: '日历规划', desc: '用时间轴安排自动化节点与截止日期。' },
+  { icon: Layers, title: 'MCP 集成', desc: '兼容 Claude、Cursor、Cline 等 MCP 生态。' },
+  { icon: Users, title: '多智能体协作', desc: '支持多角色智能体并行执行与协同审查。' },
+  { icon: Monitor, title: '桌面工作台', desc: '统一管理工作区、配置与执行监控。' },
+  { icon: CheckCircle2, title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。' },
+] as const;
+
+const TRUSTED = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
+
+const FAQS = [
+  {
+    q: 'Viben 和传统 AI 编码助手有什么不同？',
+    a: 'Viben 聚焦“多智能体工作流编排”，不只生成代码，还覆盖任务管理、审查节点与持续迭代。',
+  },
+  {
+    q: '是否必须使用特定模型？',
+    a: '不需要。Viben 基于 MCP 生态，可接入多种模型与客户端，按团队习惯自由组合。',
+  },
+  {
+    q: '适合个人开发者还是团队？',
+    a: '两者都适合。个人可用它构建稳定自动化流程，团队可统一协作规范并提升交付效率。',
+  },
+] as const;
+
 function Nav() {
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+    <header className="sticky top-0 z-50 border-b border-amber-400/10 bg-[#0b0b10]/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+        <Link href="/" className="flex items-center gap-2.5 text-zinc-100 transition-opacity hover:opacity-90">
           <VibenLogo size={28} />
-          <span className="text-lg font-bold">Viben</span>
+          <span className="text-lg font-bold tracking-tight">Viben</span>
         </Link>
         <div className="flex items-center gap-1 text-sm">
-          <Link href="/mcp" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <Link href="/mcp" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             MCP 市场
           </Link>
-          <Link href="/skills" className="rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <Link href="/skills" className="rounded-md px-3 py-1.5 text-zinc-300 transition-colors hover:bg-white/5 hover:text-white">
             技能库
-          </Link>
-          <Link href="/code-stats.html" className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <BarChart3 className="h-3.5 w-3.5" />
-            代码统计
           </Link>
           <a
             href="https://github.com/LinXueyuanStdio/viben"
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-1 flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium transition-colors hover:bg-muted"
+            className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 px-3 py-1.5 text-amber-300 transition-colors hover:bg-amber-300/10 hover:text-amber-200"
           >
             <Github className="h-3.5 w-3.5" />
             GitHub
           </a>
         </div>
       </div>
-    </nav>
+    </header>
   );
 }
 
-/* ─── Feature cards data ────────────────────────────────────────────────────── */
-const FEATURES = [
-  {
-    icon: LayoutGrid,
-    title: '看板视图',
-    desc: '拖拽式看板管理 Agent 任务。跨工作流追踪进度，直观可视化。',
-    color: 'text-blue-500',
-    bg: 'bg-blue-500/10',
-  },
-  {
-    icon: CalendarDays,
-    title: '日历规划',
-    desc: '以日历形式规划 Agent 任务和截止日期，轻松安排自动化工作流。',
-    color: 'text-violet-500',
-    bg: 'bg-violet-500/10',
-  },
-  {
-    icon: GitBranch,
-    title: '时间线',
-    desc: '追踪 Agent 执行历史与依赖关系，可视化工作流里程碑。',
-    color: 'text-amber-500',
-    bg: 'bg-amber-500/10',
-  },
-  {
-    icon: Layers,
-    title: 'MCP 集成',
-    desc: '基于 Model Context Protocol，兼容 Claude、ChatGPT 等主流 AI 助手。',
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-500/10',
-  },
-  {
-    icon: Monitor,
-    title: '桌面应用',
-    desc: '精美的原生桌面应用，集工作区管理、Agent 配置与可视化分析于一体。',
-    color: 'text-rose-500',
-    bg: 'bg-rose-500/10',
-  },
-  {
-    icon: Users,
-    title: '多 Agent 协作',
-    desc: '协调多个 AI Agent 协同工作，跨项目管理 Agent 集群。',
-    color: 'text-cyan-500',
-    bg: 'bg-cyan-500/10',
-  },
-] as const;
-
-/* ─── Agents ────────────────────────────────────────────────────────────────── */
-const AGENTS = [
-  { name: 'Claude Desktop', available: true },
-  { name: 'Claude Code', available: true },
-  { name: 'Cursor', available: true },
-  { name: 'Windsurf', available: true },
-  { name: 'Cline', available: true },
-  { name: 'ChatGPT', available: false },
-];
-
-/* ─── Page ───────────────────────────────────────────────────────────────────── */
 export default function HomePage() {
   return (
-    <>
+    <main className="min-h-screen bg-[#07070b] text-zinc-100">
+      <div className="pointer-events-none fixed inset-0 opacity-60" style={{ backgroundImage: 'radial-gradient(circle, rgba(214,216,118,0.08) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
       <Nav />
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden border-b border-border/40 bg-gradient-to-b from-background via-background to-muted/20 py-24 md:py-32">
-        {/* decorative grid */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              'linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)',
-            backgroundSize: '48px 48px',
-          }}
-        />
-        <div className="relative mx-auto max-w-4xl px-6 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            多 Agent 工作区管理平台
+      <section className="relative overflow-hidden border-b border-white/10 pb-20 pt-24 md:pt-28">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(214,216,118,0.18),transparent_45%)]" />
+        <div className="relative mx-auto max-w-5xl px-6 text-center">
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-1.5 text-xs font-semibold tracking-[0.15em] text-amber-300">
+            MULTI-AGENT WORKSPACE
           </div>
-
-          <h1 className="font-serif text-5xl font-bold tracking-tight text-foreground sm:text-7xl">
-            Viben
+          <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold leading-tight text-white sm:text-6xl">
+            从想法到上线，再到迭代维护。<br className="hidden sm:block" />
+            让多智能体协作真正可控。
           </h1>
-          <p className="mt-4 text-xl font-medium text-amber-600 dark:text-amber-400 sm:text-2xl">
-            Orchestrate AI Agent Clusters in Your Local Workspace
+          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
+            Viben 不是“只会写代码”的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。
           </p>
-          <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            用看板、日历、时间线和任务列表管理多 Agent 协作。自动化工作流，跨项目协调 AI Agent 集群。
-          </p>
-
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/mcp"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-md transition hover:bg-primary/90 hover:shadow-lg"
-            >
-              探索 MCP 市场
+            <Link href="/mcp" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+              立即开始
               <ArrowRight className="h-4 w-4" />
             </Link>
+            <Link
+              href="/code-stats.html"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-zinc-100 transition hover:bg-white/10"
+            >
+              查看代码统计
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-12 text-center">
+            <p className="mb-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-amber-300">Why Viben</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">AI 能写代码，但代码不等于产品</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {PAIN_POINTS.map(({ title, desc }) => (
+              <article key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-zinc-300">{desc}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-white/[0.02] py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-12 text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">完整生命周期，你始终在控制中</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {LIFECYCLE.map(({ title, desc, icon: Icon }, idx) => (
+              <article key={title} className="rounded-xl border border-white/10 bg-[#0f0f16] p-5">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-amber-300/10 text-amber-300">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Step {idx + 1}</p>
+                <h3 className="mt-2 font-semibold text-white">{title}</h3>
+                <p className="mt-2 text-sm text-zinc-300">{desc}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-12 flex items-end justify-between gap-4">
+            <div>
+              <p className="mb-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-amber-300">Capabilities</p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">不止代码生成，是真正可交付的工作流</h2>
+            </div>
+            <Link href="/skills" className="hidden items-center gap-1 text-sm font-medium text-amber-300 transition hover:text-amber-200 md:inline-flex">
+              探索技能库
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map(({ icon: Icon, title, desc }) => (
+              <article key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-amber-300/30">
+                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-300/10 text-amber-300">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-semibold">{title}</h3>
+                <p className="mt-2 text-sm text-zinc-300">{desc}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-[#0f0f16] py-20">
+        <div className="mx-auto max-w-6xl px-6 text-center">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">开发者与团队正在用 Viben 提升交付效率</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-zinc-300">兼容主流智能体客户端，保留你已有的模型与工具链。</p>
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
+            {TRUSTED.map((name) => (
+              <div key={name} className="cursor-pointer rounded-full border border-white/15 bg-white/[0.03] px-5 py-2 text-sm font-medium transition hover:border-amber-300/40 hover:text-amber-200">
+                {name}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-2">
+          <div>
+            <p className="mb-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-amber-300">Pricing</p>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">定价即将发布</h2>
+            <p className="mt-4 text-zinc-300">先体验核心能力，后续将提供适配个人与团队的灵活方案。</p>
             <a
               href="https://github.com/LinXueyuanStdio/viben"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-sm font-semibold transition hover:bg-muted"
+              className="mt-8 inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200"
             >
-              <Github className="h-4 w-4" />
-              View on GitHub
+              获取最新进展
+              <ArrowRight className="h-4 w-4" />
             </a>
-            <Link
-              href="/code-stats.html"
-              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-6 py-3 text-sm font-semibold transition hover:bg-muted"
-            >
-              <BarChart3 className="h-4 w-4 text-blue-500" />
-              代码统计报告
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold">常见问题</h3>
+            {FAQS.map(({ q, a }) => (
+              <article key={q} className="rounded-xl border border-white/10 bg-white/[0.03] p-5">
+                <h4 className="font-medium text-white">{q}</h4>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">{a}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-white/10 bg-[radial-gradient(circle_at_top,rgba(214,216,118,0.16),transparent_60%)] py-16">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 text-center md:flex-row md:text-left">
+          <div>
+            <h2 className="text-2xl font-bold sm:text-3xl">准备好构建真正可交付的 AI 工作流了吗？</h2>
+            <p className="mt-2 text-zinc-300">从今天开始，把多智能体协作变成团队稳定产能。</p>
+          </div>
+          <div className="flex gap-3">
+            <Link href="/mcp" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
+              进入 MCP 市场
+              <ArrowRight className="h-4 w-4" />
             </Link>
-          </div>
-
-          {/* install snippet */}
-          <div className="mx-auto mt-12 max-w-xl overflow-hidden rounded-xl border border-border bg-card/80 shadow-lg backdrop-blur">
-            <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-              <span className="h-3 w-3 rounded-full bg-rose-400" />
-              <span className="h-3 w-3 rounded-full bg-amber-400" />
-              <span className="h-3 w-3 rounded-full bg-emerald-400" />
-              <span className="ml-2 text-xs text-muted-foreground">Quick Install</span>
-            </div>
-            <pre className="overflow-x-auto p-4 text-left text-xs leading-relaxed text-foreground/90">
-              <code>
-                <span className="text-muted-foreground"># macOS / Linux</span>{'\n'}
-                {'curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash'}{'\n\n'}
-                <span className="text-muted-foreground"># Node.js</span>{'\n'}
-                {'npx viben'}{'\n\n'}
-                <span className="text-muted-foreground"># Python</span>{'\n'}
-                {'pip install browse-mcp'}
-              </code>
-            </pre>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section className="py-20 md:py-28">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">强大功能</h2>
-            <p className="mt-3 text-muted-foreground">管理 AI Agent 工作流所需的一切工具</p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, desc, color, bg }) => (
-              <div
-                key={title}
-                className="group rounded-xl border border-border bg-card p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-border/80 hover:shadow-md"
-              >
-                <div className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg ${bg}`}>
-                  <Icon className={`h-5 w-5 ${color}`} />
-                </div>
-                <h3 className="mb-2 font-semibold">{title}</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Quick Start ── */}
-      <section className="border-y border-border/40 bg-muted/30 py-20 md:py-28">
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="mb-14 text-center">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">快速开始</h2>
-            <p className="mt-3 text-muted-foreground">几分钟内即可上手</p>
-          </div>
-          <ol className="space-y-8">
-            {[
-              {
-                n: '1',
-                title: '安装',
-                body: (
-                  <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card">
-                    <pre className="overflow-x-auto p-4 text-xs leading-relaxed">
-                      <code>{'curl -fsSL https://github.com/LinXueyuanStdio/viben/releases/latest/download/install.sh | bash'}</code>
-                    </pre>
-                    <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-                      或使用 <code className="font-mono">npx viben</code> · <code className="font-mono">pip install browse-mcp</code>
-                    </p>
-                  </div>
-                ),
-              },
-              {
-                n: '2',
-                title: '配置 Claude Desktop',
-                body: (
-                  <div className="mt-2 overflow-hidden rounded-lg border border-border bg-card">
-                    <pre className="overflow-x-auto p-4 text-xs leading-relaxed">
-                      <code>{`{\n  "mcpServers": {\n    "browse-mcp": {\n      "command": "browse-mcp"\n    }\n  }\n}`}</code>
-                    </pre>
-                  </div>
-                ),
-              },
-              {
-                n: '3',
-                title: '管理 Agent',
-                body: (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    使用桌面应用配置工作区、管理 AI Agent，协调自动化工作流。
-                  </p>
-                ),
-              },
-            ].map(({ n, title, body }) => (
-              <li key={n} className="flex gap-5">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
-                  {n}
-                </div>
-                <div className="flex-1 pt-1">
-                  <h3 className="font-semibold">{title}</h3>
-                  {body}
-                </div>
-              </li>
-            ))}
-          </ol>
-          <div className="mt-12 text-center">
             <a
               href="https://github.com/LinXueyuanStdio/viben/tree/main/apps/docs"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow transition hover:bg-primary/90"
+              className="inline-flex items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/10"
             >
-              查看完整文档
-              <ChevronRight className="h-4 w-4" />
+              阅读文档
             </a>
           </div>
         </div>
       </section>
-
-      {/* ── Supported Agents ── */}
-      <section className="py-20">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">支持的 AI Agent</h2>
-          <p className="mt-3 text-muted-foreground">适配主流 AI 助手和 MCP 客户端</p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            {AGENTS.map(({ name, available }) => (
-              <div
-                key={name}
-                className={`flex items-center gap-2 rounded-full border px-5 py-2 text-sm font-medium transition ${
-                  available
-                    ? 'border-border bg-card hover:border-amber-500/50 hover:bg-amber-500/5'
-                    : 'border-dashed border-border bg-muted/40 text-muted-foreground'
-                }`}
-              >
-                {name}
-                {!available && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">即将支持</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Code Stats Banner ── */}
-      <section className="border-t border-border/40 bg-gradient-to-r from-blue-950/30 via-violet-950/30 to-blue-950/30 py-14">
-        <div className="mx-auto max-w-4xl px-6">
-          <div className="flex flex-col items-center gap-6 text-center md:flex-row md:text-left">
-            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-500/10 ring-1 ring-blue-500/30">
-              <BarChart3 className="h-8 w-8 text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl font-bold">代码库统计报告</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                501,021 行代码 · 1,340 个文件 · 14 个模块 · TypeScript 占比 50%+。
-                交互式图表，全面展示代码规模与语言分布。
-              </p>
-            </div>
-            <Link
-              href="/code-stats.html"
-              className="flex-shrink-0 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-blue-500"
-            >
-              查看统计
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-border/40 bg-muted/20 py-12">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="flex flex-col gap-8 md:flex-row md:justify-between">
-            <div className="flex items-center gap-3">
-              <VibenLogo size={36} />
-              <div>
-                <p className="font-bold">Viben</p>
-                <p className="text-xs text-muted-foreground">Multi-Agent Workspace Manager</p>
-              </div>
-            </div>
-            <div className="flex gap-12 text-sm">
-              <div className="space-y-2">
-                <p className="font-semibold">资源</p>
-                <a href="https://github.com/LinXueyuanStdio/viben/tree/main/apps/docs" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-foreground">文档</a>
-                <a href="https://github.com/LinXueyuanStdio/viben" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-foreground">GitHub</a>
-                <Link href="/code-stats.html" className="block text-muted-foreground hover:text-foreground">代码统计</Link>
-              </div>
-              <div className="space-y-2">
-                <p className="font-semibold">社区</p>
-                <a href="https://github.com/LinXueyuanStdio/viben/issues" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-foreground">反馈问题</a>
-                <a href="https://github.com/LinXueyuanStdio/viben/discussions" target="_blank" rel="noopener noreferrer" className="block text-muted-foreground hover:text-foreground">讨论</a>
-              </div>
-            </div>
-          </div>
-          <div className="mt-8 border-t border-border/40 pt-6 text-center text-xs text-muted-foreground">
-            Copyright &copy; {new Date().getFullYear()} Viben Project. MIT License.
-          </div>
-        </div>
-      </footer>
-    </>
+    </main>
   );
 }
