@@ -168,7 +168,50 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   // List all tasks with optional workspace_path filter
   fastify.get<{
     Querystring: { workspace_path?: string };
-  }>("/api/tasks", async (request) => {
+  }>("/api/tasks", {
+    schema: {
+      description: "List all tasks with optional workspace filter",
+      tags: ["tasks"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Filter tasks by workspace path" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            tasks: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  status: { type: "string", enum: ["todo", "inprogress", "inreview", "done", "cancelled"] },
+                  workspace_path: { type: "string" },
+                  agent_id: { type: "string" },
+                  session_id: { type: "string" },
+                  task_index: { type: "number" },
+                  prompt: { type: "string" },
+                  cost: { type: "number" },
+                  duration: { type: "number" },
+                  favorite: { type: "boolean" },
+                  has_in_progress_attempt: { type: "boolean" },
+                  last_attempt_failed: { type: "boolean" },
+                  executor: { type: "string" },
+                  created_at: { type: "string" },
+                  updated_at: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async (request) => {
     const { workspace_path } = request.query;
     let tasks = await sessionStoreService.listAllTasks();
 
@@ -187,7 +230,49 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // Get a specific task
-  fastify.get<{ Params: { id: string } }>("/api/tasks/:id", async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>("/api/tasks/:id", {
+    schema: {
+      description: "Get a specific task by ID",
+      tags: ["tasks"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Task ID" },
+        },
+        required: ["id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            title: { type: "string" },
+            description: { type: "string" },
+            status: { type: "string" },
+            workspace_path: { type: "string" },
+            agent_id: { type: "string" },
+            session_id: { type: "string" },
+            task_index: { type: "number" },
+            prompt: { type: "string" },
+            cost: { type: "number" },
+            duration: { type: "number" },
+            favorite: { type: "boolean" },
+            has_in_progress_attempt: { type: "boolean" },
+            last_attempt_failed: { type: "boolean" },
+            executor: { type: "string" },
+            created_at: { type: "string" },
+            updated_at: { type: "string" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const { id } = request.params;
     const task = await sessionStoreService.getTask(id);
     if (!task) {

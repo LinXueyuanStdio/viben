@@ -1,120 +1,173 @@
 ---
 sidebar_position: 1
-title: "简介"
-description: "Viben - 通过 MCP 插件从可扩展的来源搜索、下载和阅读任何内容"
+title: "Viben 简介"
+description: "Viben - 多智能体工作空间管理器，集成看板、日历、时间线和任务管理"
 ---
 
 # Viben
 
-**Viben** 是一个基于 Python 的 MCP（模型上下文协议）服务器，它使 AI 助手能够通过可扩展的插件系统从任何来源搜索、下载和阅读内容。开箱即用，它支持 19+ 个学术数据库，您还可以扩展它以支持社交媒体、文档站点、新闻源等。
+**Viben** 是一个多智能体工作空间管理器，帮助你统一管理 AI 助手、MCP 服务器和开发任务。无论你使用 Claude Code、Cursor、Codex 还是其他 AI 编程助手，Viben 都能让你在一个地方管理所有配置和任务。
 
-## 主要特性
+## 产品架构
 
-- **多源支持** - 从 19+ 个内置学术来源搜索和下载内容，包括 arXiv、PubMed、Semantic Scholar 等。通过插件扩展支持任何内容类型。
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Viben 架构概览                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
+│   │   Web   │     │ Desktop │     │   CLI   │     │  Docs   │  │
+│   │ (Next)  │     │ (Tauri) │     │  (Node) │     │(Docusr) │  │
+│   └────┬────┘     └────┬────┘     └────┬────┘     └─────────┘  │
+│        │               │               │                        │
+│        └───────────────┼───────────────┘                        │
+│                        │                                        │
+│              ┌─────────┴─────────┐                              │
+│              │   @viben/core     │                              │
+│              │   (Gateway API)   │                              │
+│              └───────────────────┘                              │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-- **可扩展插件系统** - 通过安装插件或创建自己的插件来添加新的内容来源。使用 `ContentSource[T]` API 支持学术论文之外的任何内容类型。
+Viben 由以下核心产品组成：
 
-- **统一接口** - 所有来源都可以通过三个一致的工具访问：`browse_search`、`browse_download` 和 `browse_read`。
+| 产品 | 描述 | 适用场景 |
+|------|------|----------|
+| **桌面应用** | 本地多智能体工作空间管理 | 日常开发、任务管理 |
+| **Web 应用** | MCP/Skill 包市场 | 发现和分享工具 |
+| **CLI 工具** | 命令行智能体管理 | 自动化、脚本集成 |
+| **MCP 服务器** | 学术论文搜索服务 | AI 助手扩展能力 |
 
-- **标准化输出** - 无论来源如何，内容都以一致的格式返回，使 AI 助手易于处理结果。
+:::tip CLI 文档
+完整的 CLI 命令参考请查看 [CLI 文档](/cli/)，包含所有命令的详细用法和示例。
+:::
 
-- **MCP 集成** - 与 MCP 客户端兼容，如 Claude Desktop、Claude Code、Cline（VS Code）和 Zed Editor。
+## 核心概念
 
-- **异步操作** - 高效处理并发搜索和下载，快速获取结果。
+在深入了解功能之前，建议先理解 Viben 的核心概念。详见 [核心概念](getting-started/concepts)。
 
-- **分页支持** - 使用 `page`、`start_page` 和 `end_page` 参数从文档中读取特定页面或页面范围。
+### 智能体 vs 执行器
 
-## 快速安装
+Viben 区分两种类型的实体：
+
+| 概念 | 说明 | 可编辑 |
+|------|------|--------|
+| **智能体 (Agent)** | 用户创建的配置，定义系统提示词、模型参数、MCP 服务器等 | 是 |
+| **执行器 (Executor)** | 底层 AI 工具运行时 (Claude Code, Cursor, Gemini 等) | 否 |
+
+智能体通过 `executor_type` 字段指定使用哪个执行器运行。
+
+### 多工作空间管理
+
+管理多个项目工作空间，每个工作空间可以有独立的：
+- MCP 服务器配置
+- 智能体配置
+- Skills 配置
+- 任务看板
+
+### 配置优先级
+
+配置按以下优先级合并 (后者覆盖前者)：
+
+```
+全局配置 (~/.viben/) → 项目配置 (<project>/.viben/) → 命令行参数
+```
+
+### 支持的执行器
+
+| 执行器 | 类型 | CLI 命令 | MCP 支持 |
+|--------|------|----------|----------|
+| Claude Code | CLAUDE_CODE | `claude` | ✓ |
+| AMP | AMP | `amp` | ✓ |
+| Gemini | GEMINI | `gemini` | - |
+| Codex | CODEX | `codex` | - |
+| Cursor | CURSOR_AGENT | `cursor` | ✓ |
+| Qwen Code | QWEN_CODE | `qwen` | - |
+| Copilot | COPILOT | `copilot` | - |
+
+## 快速开始
+
+### 桌面应用（推荐）
+
+下载桌面应用是最简单的方式：
+
+[![最新版本](https://img.shields.io/github/v/release/LinXueyuanStdio/viben?filter=desktop-v*&label=Desktop%20App)](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+
+| 平台 | 下载格式 |
+|------|----------|
+| **macOS** | `.dmg` (Universal) |
+| **Windows** | `.msi` 或 `.exe` |
+| **Linux** | `.AppImage` 或 `.deb` |
+
+### CLI 工具
+
+通过 npm 安装命令行工具：
+
+```bash
+npm install -g viben
+```
+
+或使用 npx 直接运行：
+
+```bash
+npx viben
+```
+
+详细的 CLI 用法请查看 [CLI 快速入门](/cli/quick-start)。
+
+### MCP 服务器
+
+安装学术搜索 MCP 服务器：
 
 ```bash
 pip install browse-mcp
 ```
 
-然后启动服务器：
+## MCP 工具
 
-```bash
-browse-mcp
-```
+Viben MCP 服务器提供三个核心工具：
 
-## 可用工具
+| 工具 | 功能 |
+|------|------|
+| `browse_search` | 搜索学术论文和内容 |
+| `browse_download` | 下载论文 PDF |
+| `browse_read` | 提取和阅读论文内容 |
 
-| 工具 | 描述 |
-|------|-------------|
-| `browse_search` | 在多个来源中搜索内容 |
-| `browse_download` | 下载内容文件并返回文件路径 |
-| `browse_read` | 从文件中提取和阅读文本内容 |
+支持 18+ 学术数据源：
 
-## 超越学术论文
+**免费数据源**：arXiv、PubMed、PMC、bioRxiv、medRxiv、Semantic Scholar、CrossRef、Google Scholar、CORE、IACR
 
-虽然 Viben 最初是一个学术论文搜索工具，但现在它通过插件系统支持**任何内容类型**。以下是一些您可以做的事情：
+**付费数据源**（需 API 密钥）：IEEE Xplore、Scopus、Springer、ScienceDirect
 
-### 社交媒体插件
+## Gateway API
 
-安装社交媒体插件以从 GitHub、Twitter、知乎和小红书等平台搜索内容：
+Viben Gateway 是核心后端服务，运行在端口 **18790**，提供：
 
-```bash
-pip install browse-mcp-plugin-social-media
-```
+- RESTful API 服务
+- WebSocket 实时通信
+- Server-Sent Events (SSE) 事件流
+- 多智能体编排和协调
 
-然后搜索社交媒体内容：
+主要端点：
 
-```python
-# 搜索 GitHub 仓库
-browse_search([{"searcher": "github", "query": "machine learning", "max_results": 10}])
+| 端点 | 功能 |
+|------|------|
+| `/health` | 健康检查 |
+| `/api/agents` | 智能体管理 |
+| `/api/executors` | 执行器管理 |
+| `/api/sessions` | 会话管理 |
+| `/api/providers` | Provider 管理 |
+| `/api/models` | 模型管理 |
 
-# 搜索 Twitter 帖子
-browse_search([{"searcher": "twitter", "query": "#AI", "max_results": 20}])
-
-# 搜索中文平台
-browse_search([{"searcher": "zhihu", "query": "人工智能", "max_results": 5}])
-```
-
-### 插件架构
-
-Viben 使用 stevedore 进行自动插件发现。任何在 `browse_mcp.searchers` 命名空间中注册的已安装插件都会自动加载：
-
-```
-browse-mcp (核心)
-    |
-    +-- browse-mcp-plugin-social-media (GitHub, Twitter, 知乎...)
-    |
-    +-- browse-mcp-plugin-news (RSS 源, 新闻站点...)
-    |
-    +-- your-custom-plugin (您的内容来源...)
-```
-
-查看[插件](./plugins/overview)部分了解更多信息。
-
-## 支持的学术平台
-
-### 免费和开放获取
-
-| 来源 | 描述 |
-|--------|-------------|
-| arXiv | 物理、数学、计算机科学的预印本库 |
-| PubMed | 生物医学文献数据库 |
-| PubMed Central (PMC) | 免费全文生物医学文章 |
-| bioRxiv | 生物学预印本服务器 |
-| medRxiv | 健康科学预印本服务器 |
-| Semantic Scholar | AI 驱动的研究工具 |
-| CrossRef | DOI 注册和元数据提供商 |
-| Google Scholar | 学术搜索引擎 |
-| CORE | 开放获取研究论文聚合器 |
-| IACR | 密码学预印本 |
-
-### 需要 API 密钥
-
-| 来源 | 描述 |
-|--------|-------------|
-| IEEE Xplore | IEEE 数字图书馆 |
-| Scopus | Elsevier 的引文数据库 |
-| Springer Link | Springer 的科学出版物 |
-| Science Direct | Elsevier 的全文数据库 |
+:::info API 文档
+完整的 Gateway API 文档请查看 [API 参考](/backend/api/)。
+:::
 
 ## 下一步
 
-- [安装](./getting-started/installation) - 详细的安装说明
-- [快速开始](./getting-started/quick-start) - 2 分钟内快速上手
-- [客户端配置](./getting-started/client-configuration) - 配置 Claude Desktop、Cline 等
-- [插件概述](./plugins/overview) - 了解插件系统
-- [browse_search 工具](./mcp-server/tools/browse-search) - 了解如何搜索内容
+- [核心概念](getting-started/concepts) - 理解 Viben 的核心概念
+- [快速入门](getting-started/quick-start) - 快速上手
+- [桌面应用](desktop-app/index) - 桌面应用完整指南
+- [CLI 文档](/cli/) - 命令行工具参考
+- [MCP 配置](getting-started/client-configuration) - 配置 Claude Desktop 等客户端

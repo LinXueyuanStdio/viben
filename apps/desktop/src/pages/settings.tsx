@@ -1569,6 +1569,7 @@ function EnvironmentSection() {
   const {
     browseMcpInfo,
     getInstallCommand,
+    checkBrowseMcp,
   } = usePython();
 
   const appStore = useAppStore();
@@ -1710,12 +1711,13 @@ function EnvironmentSection() {
     const isLoading = cliToolsLoading || isChecking;
 
     // Get all discovered paths (primary + alternatives)
+    // Backend already returns deduplicated alternatives (excluding primary)
     const allPaths = isFound && info?.path ? [
       { path: info.path, version: info.version, source: info.source },
       ...(info.alternatives || [])
     ] : [];
 
-    // Determine current selection - if customPath matches one of the discovered paths, use that path as value
+    // Determine current selection - use customPath if set, otherwise use primary detected path
     const currentValue = customPath || (isFound ? info?.path || "not-installed" : "not-installed");
 
     // Find the currently selected path info
@@ -1725,9 +1727,14 @@ function EnvironmentSection() {
       if (value === "not-installed") {
         // Do nothing, just show the state
       } else {
-        // Set the selected path (or empty string if it's the primary/default path)
-        const isPrimary = value === info?.path;
-        setCustomPath(isPrimary ? "" : value);
+        // Always save the selected path
+        setCustomPath(value);
+        // For Python, also check browse-mcp with the new path
+        if (config.key === "python") {
+          checkBrowseMcp(value).catch((err) => {
+            console.error("[EnvironmentSection] browse-mcp check failed:", err);
+          });
+        }
       }
     };
 
@@ -2351,13 +2358,6 @@ function AboutSection() {
   const { t } = useTranslation();
   const appVersion = "0.1.0";
   const updateAvailable = false;
-  const { selectedPython, browseMcpInfo } = usePython();
-  const { setupBannerDismissed, setSetupBannerDismissed } = useAppStore();
-
-  // Setup status
-  const pythonValid = selectedPython?.is_valid ?? false;
-  const mcpInstalled = browseMcpInfo?.installed ?? false;
-  const isSetupComplete = pythonValid && mcpInstalled;
 
   // Handle external link click using Tauri opener
   const handleExternalLink = async (url: string) => {
@@ -2386,74 +2386,6 @@ function AboutSection() {
           <div>
             <h3 className="text-lg font-semibold font-serif">{t("about.title")}</h3>
             <p className="text-sm text-muted-foreground">{t("about.version", { version: appVersion })}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* System Status */}
-      <div className="rounded-xl border bg-card p-4 space-y-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          {t("about.systemStatus", { defaultValue: "System Status" })}
-        </h3>
-
-        {/* Python Status */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {pythonValid ? (
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            ) : (
-              <XCircle className="h-4 w-4 text-red-600" />
-            )}
-            <span className="text-sm">{t("about.python310", "Python 3.10+")}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {pythonValid ? selectedPython?.version || t("about.detected", "Detected") : t("about.notFound", "Not found")}
-          </span>
-        </div>
-
-        {/* Browse MCP Status */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {mcpInstalled ? (
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-            ) : (
-              <XCircle className="h-4 w-4 text-red-600" />
-            )}
-            <span className="text-sm">{t("about.browseMcpPackage", "browse-mcp package")}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {mcpInstalled ? browseMcpInfo?.version || t("common.installed") : t("common.notInstalled")}
-          </span>
-        </div>
-
-        {/* Overall Status */}
-        <div className="pt-2 border-t">
-          <div className="flex items-center gap-2">
-            {isSetupComplete ? (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium">
-                  {t("about.systemReady", { defaultValue: "System ready" })}
-                </span>
-              </>
-            ) : (
-              <>
-                <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm font-medium">
-                  {t("about.setupRequired", { defaultValue: "Setup required" })}
-                </span>
-                {setupBannerDismissed && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-auto text-xs h-6"
-                    onClick={() => setSetupBannerDismissed(false)}
-                  >
-                    {t("about.showBanner", { defaultValue: "Show banner" })}
-                  </Button>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>

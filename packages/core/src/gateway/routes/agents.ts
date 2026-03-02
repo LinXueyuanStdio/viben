@@ -126,7 +126,45 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       workspace_path?: string;
       include_global?: string;
     };
-  }>("/api/agents", async (request) => {
+  }>("/api/agents", {
+    schema: {
+      description: "List all agents",
+      tags: ["agents"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path to include workspace agents" },
+          include_global: { type: "string", description: "Include global agents (default: true)" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            agents: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  agent_type: { type: "string" },
+                  source: { type: "string", enum: ["global", "workspace"] },
+                  workspace_path: { type: "string" },
+                  config_path: { type: "string" },
+                  description: { type: "string" },
+                  model: { type: "string" },
+                  provider: { type: "string" },
+                  executor_type: { type: "string" },
+                },
+              },
+            },
+            total: { type: "number" },
+          },
+        },
+      },
+    },
+  }, async (request) => {
     const { workspace_path, include_global } = request.query;
     const includeGlobal = include_global !== "false"; // Default: true
     const homeDir = process.env.HOME || "/";

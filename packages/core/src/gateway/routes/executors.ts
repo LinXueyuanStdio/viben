@@ -750,7 +750,52 @@ export function registerExecutorRoutes(fastify: FastifyInstance): void {
   // List executors (workspace-scoped)
   fastify.get<{
     Querystring: { workspace_path?: string; include_global?: string };
-  }>("/api/executors", async (request) => {
+  }>("/api/executors", {
+    schema: {
+      description: "List available executors",
+      tags: ["executors"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path for context" },
+          include_global: { type: "string", description: "Include global config (default: true)" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            executors: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  type: { type: "string", description: "Executor type (e.g., CLAUDE_CODE)" },
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  docs_url: { type: "string" },
+                  availability: {
+                    type: "object",
+                    properties: {
+                      type: { type: "string", enum: ["LOGIN_DETECTED", "INSTALLATION_FOUND", "NOT_FOUND"] },
+                      last_auth_timestamp: { type: "number" },
+                    },
+                  },
+                  supports_mcp: { type: "boolean" },
+                  capabilities: { type: "array", items: { type: "string" } },
+                  has_workspace_config: { type: "boolean" },
+                  workspace_path: { type: "string" },
+                },
+              },
+            },
+            workspace_path: { type: "string" },
+            include_global: { type: "boolean" },
+            total: { type: "number" },
+          },
+        },
+      },
+    },
+  }, async (request) => {
     const workspacePath = request.query.workspace_path;
     // Parse include_global as string from query params (default: true)
     const includeGlobal = request.query.include_global !== "false";

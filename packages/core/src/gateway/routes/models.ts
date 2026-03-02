@@ -364,7 +364,49 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   // ========================================================================
 
   // List all models (with query parameter support)
-  fastify.get("/api/models", async (
+  fastify.get("/api/models", {
+    schema: {
+      description: "List all models",
+      tags: ["models"],
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path for context" },
+          include_global: { type: "string", description: "Include global models (default: true)" },
+          include_provider_predefined: { type: "string", description: "Include provider predefined models" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            workspace_path: { type: "string" },
+            models: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  provider: { type: "string" },
+                  provider_id: { type: "string" },
+                  provider_name: { type: "string" },
+                  description: { type: "string" },
+                  context_window: { type: "number" },
+                  max_output_tokens: { type: "number" },
+                  is_default: { type: "boolean" },
+                  enabled: { type: "boolean" },
+                  is_available: { type: "boolean" },
+                },
+              },
+            },
+            total: { type: "number" },
+            default_model_id: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (
     request: FastifyRequest<{ Querystring: ModelsQuery }>
   ) => {
     const { workspace_path, include_global, include_provider_predefined } = request.query;
@@ -390,7 +432,42 @@ export function registerModelRoutes(fastify: FastifyInstance): void {
   });
 
   // Get a specific model by ID
-  fastify.get("/api/models/:id", async (
+  fastify.get("/api/models/:id", {
+    schema: {
+      description: "Get a specific model by ID",
+      tags: ["models"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Model ID or alias" },
+        },
+        required: ["id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            provider: { type: "string" },
+            description: { type: "string" },
+            context_window: { type: "number" },
+            max_output_tokens: { type: "number" },
+            is_default: { type: "boolean" },
+            enabled: { type: "boolean" },
+            is_available: { type: "boolean" },
+            config: { type: "object" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply
   ) => {
