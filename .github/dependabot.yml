@@ -2,7 +2,7 @@ version: 2
 updates:
   # Python dependencies
   - package-ecosystem: pip
-    directory: /apps/backend
+    directory: /backend/browse-mcp
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -12,9 +12,31 @@ updates:
     commit-message:
       prefix: "chore(deps)"
 
-  # npm dependencies
+  - package-ecosystem: pip
+    directory: /backend/plugins/browse-mcp-plugin-context7
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: pip
+    directory: /backend/plugins/browse-mcp-plugin-social-media
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - python
+    commit-message:
+      prefix: "chore(deps)"
+
+  # pnpm workspace dependencies
   - package-ecosystem: npm
-    directory: /apps/frontend
+    directory: /
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
