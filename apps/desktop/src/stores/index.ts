@@ -4,3 +4,12 @@ export { useWorkspaceStore } from "./workspace-store";
 export { useChatConfigStore } from "./chat-config-store";
 export { useNotificationStore } from "./notification-store";
 export { useChannelStore } from "./channel-store";
+export {
+  useGitHubStore,
+  type IssueAnalysis,
+  type AutoFixTask,
+  type AutoFixTaskStatus,
+  type GitHubConfig,
+  type IssueFilters,
+  type GitHubAuthStatus,
+} from "./github-store";
