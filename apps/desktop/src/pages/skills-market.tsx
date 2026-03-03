@@ -90,8 +90,8 @@ export function SkillsMarketPage() {
   // Install state with detailed progress tracking
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
-  // Progress state - will be used in next subtask for progress bar UI
-  const [_installProgress, setInstallProgress] = useState<
+  // Progress state for progress bar UI
+  const [installProgress, setInstallProgress] = useState<
     Map<string, { stage: string; progress: number; message?: string }>
   >(new Map());
 
@@ -201,20 +201,41 @@ export function SkillsMarketPage() {
         });
       }
     } catch (error) {
-      // Handle unexpected errors
+      // Handle unexpected errors with structured error codes when available
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      // Provide user-friendly error messages for common issues
+      // Check for structured error code first
       let description = errorMessage;
+      const errorCode = error && typeof error === 'object' && 'code' in error
+        ? (error as { code: string }).code
+        : undefined;
 
-      if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
-        description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
-      } else if (errorMessage.includes("corrupt") || errorMessage.includes("invalid") || errorMessage.includes("zip")) {
-        description = t("skillsMarket.installErrorCorrupt");
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("download")) {
-        description = t("skillsMarket.installErrorNetwork");
-      } else if (errorMessage.includes("permission") || errorMessage.includes("access")) {
-        description = t("skillsMarket.installErrorPermission");
+      // Use error codes for user-friendly messages
+      switch (errorCode) {
+        case 'ALREADY_EXISTS':
+        case 'FILE_CONFLICT':
+          description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
+          break;
+        case 'VALIDATION_ERROR':
+          description = t("skillsMarket.installErrorCorrupt");
+          break;
+        case 'NETWORK_ERROR':
+          description = t("skillsMarket.installErrorNetwork");
+          break;
+        case 'PERMISSION_ERROR':
+          description = t("skillsMarket.installErrorPermission");
+          break;
+        default:
+          // Fallback to string matching for errors without codes
+          if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
+            description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
+          } else if (errorMessage.includes("corrupt") || errorMessage.includes("invalid") || errorMessage.includes("zip")) {
+            description = t("skillsMarket.installErrorCorrupt");
+          } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("download")) {
+            description = t("skillsMarket.installErrorNetwork");
+          } else if (errorMessage.includes("permission") || errorMessage.includes("access")) {
+            description = t("skillsMarket.installErrorPermission");
+          }
       }
 
       toast.error(t("skillsMarket.installError"), {
@@ -400,6 +421,7 @@ export function SkillsMarketPage() {
                       onViewDetails={handleViewDetails}
                       isInstalled={installedIds.has(skill.id)}
                       isInstalling={installingIds.has(skill.id)}
+                      installProgress={installProgress.get(skill.id)?.progress ?? 0}
                       onInstall={handleInstall}
                     />
                   </motion.div>

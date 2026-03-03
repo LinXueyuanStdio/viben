@@ -52,6 +52,17 @@ export interface InstallSkillOptions {
 }
 
 /**
+ * Error codes for skill installation failures
+ */
+export type InstallErrorCode =
+  | 'ALREADY_EXISTS'
+  | 'FILE_CONFLICT'
+  | 'VALIDATION_ERROR'
+  | 'NETWORK_ERROR'
+  | 'PERMISSION_ERROR'
+  | 'UNKNOWN_ERROR';
+
+/**
  * Result of skill installation
  */
 export interface InstallSkillResult {
@@ -67,6 +78,8 @@ export interface InstallSkillResult {
   message: string;
   /** Error message if installation failed */
   error?: string;
+  /** Structured error code for programmatic handling */
+  errorCode?: InstallErrorCode;
 }
 
 // ============================================
@@ -108,6 +121,9 @@ export async function downloadAndInstallSkill(
 ): Promise<InstallSkillResult> {
   const { package: pkg, onProgress, force = false } = options;
 
+  // Declare tempZipPath outside try block to ensure cleanup in finally
+  let tempZipPath: string | undefined;
+
   try {
     // Report download start
     onProgress?.({
@@ -141,7 +157,7 @@ export async function downloadAndInstallSkill(
     }
 
     // Save to temporary file
-    const tempZipPath = await join(tempDir, `${pkg.slug}-${pkg.version}.zip`);
+    tempZipPath = await join(tempDir, `${pkg.slug}-${pkg.version}.zip`);
     const arrayBuffer = await blob.arrayBuffer();
     await writeFile(tempZipPath, new Uint8Array(arrayBuffer));
 
@@ -167,13 +183,6 @@ export async function downloadAndInstallSkill(
       },
     });
 
-    // Clean up temporary file
-    try {
-      await remove(tempZipPath);
-    } catch {
-      // Ignore cleanup errors
-    }
-
     // Report completion
     onProgress?.({
       stage: 'complete',
@@ -192,6 +201,23 @@ export async function downloadAndInstallSkill(
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
 
+    // Determine structured error code from the error
+    let errorCode: InstallErrorCode = 'UNKNOWN_ERROR';
+    if (error && typeof error === 'object' && 'code' in error) {
+      const code = (error as { code: string }).code;
+      if (code === 'ALREADY_EXISTS') {
+        errorCode = 'ALREADY_EXISTS';
+      } else if (code === 'FILE_CONFLICT') {
+        errorCode = 'FILE_CONFLICT';
+      } else if (code === 'VALIDATION_ERROR') {
+        errorCode = 'VALIDATION_ERROR';
+      }
+    } else if (errorMessage.includes('network') || errorMessage.includes('fetch') || errorMessage.includes('download')) {
+      errorCode = 'NETWORK_ERROR';
+    } else if (errorMessage.includes('permission') || errorMessage.includes('access') || errorMessage.includes('EACCES')) {
+      errorCode = 'PERMISSION_ERROR';
+    }
+
     // Report error
     onProgress?.({
       stage: 'error',
@@ -207,7 +233,17 @@ export async function downloadAndInstallSkill(
       path: '',
       message: 'Installation failed',
       error: errorMessage,
+      errorCode,
     };
+  } finally {
+    // Clean up temporary file regardless of success or failure
+    if (tempZipPath) {
+      try {
+        await remove(tempZipPath);
+      } catch {
+        // Ignore cleanup errors
+      }
+    }
   }
 }
 

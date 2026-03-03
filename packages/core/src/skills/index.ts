@@ -32,7 +32,7 @@ import type {
   AvailableSkill,
   AgentSkillConfig,
 } from "./types";
-import { extractZipToDirectory } from "./extract";
+import { extractZipToDirectory, parseSkillMetadataFromContent } from "./extract";
 
 export * from "./types";
 
@@ -691,59 +691,10 @@ This skill was installed from the marketplace.
 
   /**
    * Parse YAML frontmatter from SKILL.md
+   * Uses the shared parseSkillMetadataFromContent utility for consistency
    */
   private parseSkillFrontmatter(content: string): SkillMetadata | null {
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) {
-      return null;
-    }
-
-    try {
-      // Simple YAML parsing for frontmatter
-      const frontmatter = match[1];
-      const metadata: SkillMetadata = { name: "" };
-      const arrayFields: Record<string, string[]> = {};
-      let currentArrayField: string | null = null;
-
-      for (const line of frontmatter.split("\n")) {
-        // Handle array continuation
-        if (currentArrayField && line.trim().startsWith("-")) {
-          const value = line.trim().slice(1).trim();
-          if (value) {
-            arrayFields[currentArrayField].push(value);
-          }
-          continue;
-        }
-        currentArrayField = null;
-
-        const [key, ...valueParts] = line.split(":");
-        const value = valueParts.join(":").trim();
-
-        if (key && value) {
-          const cleanKey = key.trim();
-          if (cleanKey === "name") metadata.name = value;
-          else if (cleanKey === "description") metadata.description = value;
-          else if (cleanKey === "version") metadata.version = value;
-          else if (cleanKey === "author") metadata.author = value;
-        } else if (key && !value) {
-          // Could be start of an array field
-          const cleanKey = key.trim();
-          if (["tags", "triggers", "tools"].includes(cleanKey)) {
-            currentArrayField = cleanKey;
-            arrayFields[cleanKey] = [];
-          }
-        }
-      }
-
-      // Add array fields to metadata
-      if (arrayFields.tags) metadata.tags = arrayFields.tags;
-      if (arrayFields.triggers) metadata.triggers = arrayFields.triggers;
-      if (arrayFields.tools) metadata.tools = arrayFields.tools;
-
-      return metadata.name ? metadata : null;
-    } catch {
-      return null;
-    }
+    return parseSkillMetadataFromContent(content);
   }
 }
 

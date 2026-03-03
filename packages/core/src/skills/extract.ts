@@ -198,12 +198,12 @@ export async function extractZipToDirectory(
 
         // Check if this is SKILL.md
         if (basename(extractPath) === "SKILL.md") {
-          // Try to extract skill name from SKILL.md
+          // Try to extract skill name from SKILL.md using shared parser
           try {
             const content = await readFile(extractPath, "utf-8");
-            const nameMatch = content.match(/^name:\s*(.+)$/m);
-            if (nameMatch) {
-              skillName = nameMatch[1].trim();
+            const metadata = parseSkillMetadataFromContent(content);
+            if (metadata?.name) {
+              skillName = metadata.name;
             }
           } catch {
             // Ignore errors reading SKILL.md
@@ -351,6 +351,81 @@ async function validateExtractedSkill(skillDir: string): Promise<string[]> {
   }
 
   return warnings;
+}
+
+/**
+ * Skill metadata extracted from SKILL.md frontmatter
+ */
+export interface SkillMetadataFromContent {
+  name: string;
+  description?: string;
+  version?: string;
+  author?: string;
+  tags?: string[];
+  triggers?: string[];
+  tools?: string[];
+}
+
+/**
+ * Parse skill metadata from SKILL.md content
+ *
+ * This is a shared utility for parsing SKILL.md frontmatter consistently
+ * across the codebase (used by both extract.ts and SkillsManager).
+ *
+ * @param content - Content of SKILL.md file
+ * @returns Parsed metadata or null if invalid
+ */
+export function parseSkillMetadataFromContent(content: string): SkillMetadataFromContent | null {
+  const match = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) {
+    return null;
+  }
+
+  try {
+    const frontmatter = match[1];
+    const metadata: SkillMetadataFromContent = { name: "" };
+    const arrayFields: Record<string, string[]> = {};
+    let currentArrayField: string | null = null;
+
+    for (const line of frontmatter.split("\n")) {
+      // Handle array continuation
+      if (currentArrayField && line.trim().startsWith("-")) {
+        const value = line.trim().slice(1).trim();
+        if (value) {
+          arrayFields[currentArrayField].push(value);
+        }
+        continue;
+      }
+      currentArrayField = null;
+
+      const [key, ...valueParts] = line.split(":");
+      const value = valueParts.join(":").trim();
+
+      if (key && value) {
+        const cleanKey = key.trim();
+        if (cleanKey === "name") metadata.name = value;
+        else if (cleanKey === "description") metadata.description = value;
+        else if (cleanKey === "version") metadata.version = value;
+        else if (cleanKey === "author") metadata.author = value;
+      } else if (key && !value) {
+        // Could be start of an array field
+        const cleanKey = key.trim();
+        if (["tags", "triggers", "tools"].includes(cleanKey)) {
+          currentArrayField = cleanKey;
+          arrayFields[cleanKey] = [];
+        }
+      }
+    }
+
+    // Add array fields to metadata
+    if (arrayFields.tags) metadata.tags = arrayFields.tags;
+    if (arrayFields.triggers) metadata.triggers = arrayFields.triggers;
+    if (arrayFields.tools) metadata.tools = arrayFields.tools;
+
+    return metadata.name ? metadata : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
