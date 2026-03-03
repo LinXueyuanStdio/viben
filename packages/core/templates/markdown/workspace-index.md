@@ -13,12 +13,12 @@ This directory tracks records for all developers working with AI Agents on this 
 ```
 workspace/
 |-- index.md              # This file - main index
-\-- {developer}/          # Per-developer directory
++-- {developer}/          # Per-developer directory
     |-- index.md          # Personal index with session history
     |-- tasks/         # Task files
     |   |-- *.json        # Active tasks
-    |   \-- archive/      # Archived tasks by month
-    \-- journal-N.md     # Journal files (sequential: 1, 2, 3...)
+    |   +-- archive/      # Archived tasks by month
+    +-- journal-N.md     # Journal files (sequential: 1, 2, 3...)
 ```
 
 ---
@@ -38,7 +38,7 @@ workspace/
 Run the initialization script:
 
 ```bash
-./.viben/scripts/init-developer.sh <your-name>
+python3 ./.viben/scripts/init_developer.py <your-name>
 ```
 
 This will:
@@ -51,12 +51,12 @@ This will:
 
 1. Get your developer name:
    ```bash
-   ./.viben/scripts/get-developer.sh
+   python3 ./.viben/scripts/get_developer.py
    ```
 
 2. Read your personal index:
    ```bash
-   cat .viben/workspace/$(./.viben/scripts/get-developer.sh)/index.md
+   cat .viben/workspace/$(python3 ./.viben/scripts/get_developer.py)/index.md
    ```
 
 ---

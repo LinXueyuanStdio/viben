@@ -1,0 +1,555 @@
+{
+  "generatedAt": "2026-03-03T06:02:07.546724+00:00",
+  "summary": {
+    "totalLines": 1822131,
+    "totalFiles": 6643,
+    "totalModules": 25,
+    "codeLines": 892688,
+    "docLines": 464277,
+    "configLines": 465166
+  },
+  "languages": [
+    {
+      "lang": "TypeScript",
+      "ext": "ts",
+      "lines": 502085,
+      "files": 1667,
+      "color": "#3178C6"
+    },
+    {
+      "lang": "Markdown",
+      "ext": "md",
+      "lines": 463509,
+      "files": 1805,
+      "color": "#083FA1"
+    },
+    {
+      "lang": "TSX",
+      "ext": "tsx",
+      "lines": 312841,
+      "files": 1369,
+      "color": "#61DAFB"
+    },
+    {
+      "lang": "JSON",
+      "ext": "json",
+      "lines": 232901,
+      "files": 751,
+      "color": "#F59E0B"
+    },
+    {
+      "lang": "YAML",
+      "ext": "yml",
+      "lines": 92208,
+      "files": 53,
+      "color": "#CB171E"
+    },
+    {
+      "lang": "Python",
+      "ext": "py",
+      "lines": 52617,
+      "files": 219,
+      "color": "#3776AB"
+    },
+    {
+      "lang": "PNG",
+      "ext": "png",
+      "lines": 48198,
+      "files": 180,
+      "color": "#6B7280"
+    },
+    {
+      "lang": "Shell",
+      "ext": "sh",
+      "lines": 39474,
+      "files": 152,
+      "color": "#89E051"
+    },
+    {
+      "lang": "LOCK",
+      "ext": "lock",
+      "lines": 37455,
+      "files": 7,
+      "color": "#6B7280"
+    },
+    {
+      "lang": "HTML",
+      "ext": "html",
+      "lines": 12918,
+      "files": 21,
+      "color": "#E34F26"
+    },
+    {
+      "lang": "CSS",
+      "ext": "css",
+      "lines": 4904,
+      "files": 22,
+      "color": "#1572B6"
+    },
+    {
+      "lang": "CSV",
+      "ext": "csv",
+      "lines": 4368,
+      "files": 72,
+      "color": "#6B7280"
+    },
+    {
+      "lang": "ICNS",
+      "ext": "icns",
+      "lines": 4110,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "lang": "Rust",
+      "ext": "rs",
+      "lines": 3894,
+      "files": 27,
+      "color": "#DEA584"
+    },
+    {
+      "lang": "JavaScript",
+      "ext": "js",
+      "lines": 2019,
+      "files": 13,
+      "color": "#F7DF1E"
+    }
+  ],
+  "modules": [
+    {
+      "name": "apps/desktop",
+      "lines": 483746,
+      "files": 1453,
+      "color": "#F59E0B"
+    },
+    {
+      "name": "packages/core",
+      "lines": 367977,
+      "files": 989,
+      "color": "#3B82F6"
+    },
+    {
+      "name": "apps/docs",
+      "lines": 199423,
+      "files": 952,
+      "color": "#8B5CF6"
+    },
+    {
+      "name": "apps/web",
+      "lines": 155310,
+      "files": 868,
+      "color": "#10B981"
+    },
+    {
+      "name": "backend/browse-mcp",
+      "lines": 41116,
+      "files": 154,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/kanban",
+      "lines": 23271,
+      "files": 222,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/chat",
+      "lines": 20823,
+      "files": 75,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/plugins",
+      "lines": 10608,
+      "files": 48,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/ui",
+      "lines": 6093,
+      "files": 81,
+      "color": "#06B6D4"
+    },
+    {
+      "name": "packages/api-client",
+      "lines": 4437,
+      "files": 18,
+      "color": "#6B7280"
+    },
+    {
+      "name": "apps/landingpage",
+      "lines": 3759,
+      "files": 12,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/package-kanban.md",
+      "lines": 3093,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/patterns",
+      "lines": 2109,
+      "files": 12,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/package-ui.md",
+      "lines": 1935,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/core",
+      "lines": 1911,
+      "files": 12,
+      "color": "#6B7280"
+    },
+    {
+      "name": "apps/cli",
+      "lines": 1809,
+      "files": 21,
+      "color": "#EC4899"
+    },
+    {
+      "name": "backend/architecture",
+      "lines": 1656,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/packages.md",
+      "lines": 1512,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "name": "packages/storage.md",
+      "lines": 1182,
+      "files": 3,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/index.md",
+      "lines": 535,
+      "files": 5,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/directory-structure.md",
+      "lines": 108,
+      "files": 2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/database-guidelines.md",
+      "lines": 102,
+      "files": 2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/logging-guidelines.md",
+      "lines": 102,
+      "files": 2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/error-handling.md",
+      "lines": 102,
+      "files": 2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "backend/quality-guidelines.md",
+      "lines": 102,
+      "files": 2,
+      "color": "#6B7280"
+    }
+  ],
+  "desktopDirs": [
+    {
+      "name": "components",
+      "lines": 146848,
+      "files": 615,
+      "color": "#8B5CF6"
+    },
+    {
+      "name": "pages",
+      "lines": 86991,
+      "files": 120,
+      "color": "#3B82F6"
+    },
+    {
+      "name": "i18n",
+      "lines": 70419,
+      "files": 66,
+      "color": "#6B7280"
+    },
+    {
+      "name": "hooks",
+      "lines": 65022,
+      "files": 195,
+      "color": "#10B981"
+    },
+    {
+      "name": "lib",
+      "lines": 32594,
+      "files": 47,
+      "color": "#F59E0B"
+    },
+    {
+      "name": "stores",
+      "lines": 7211,
+      "files": 27,
+      "color": "#EC4899"
+    },
+    {
+      "name": "types",
+      "lines": 7089,
+      "files": 30,
+      "color": "#6366F1"
+    },
+    {
+      "name": "features",
+      "lines": 4251,
+      "files": 99,
+      "color": "#6B7280"
+    },
+    {
+      "name": "db",
+      "lines": 2916,
+      "files": 12,
+      "color": "#6B7280"
+    },
+    {
+      "name": "index.css",
+      "lines": 1506,
+      "files": 3,
+      "color": "#6B7280"
+    }
+  ],
+  "apps": [
+    {
+      "name": "desktop",
+      "lines": 483746,
+      "files": 1453,
+      "color": "#F59E0B"
+    },
+    {
+      "name": "docs",
+      "lines": 199423,
+      "files": 952,
+      "color": "#8B5CF6"
+    },
+    {
+      "name": "web",
+      "lines": 155310,
+      "files": 868,
+      "color": "#10B981"
+    },
+    {
+      "name": "landingpage",
+      "lines": 3759,
+      "files": 12,
+      "color": "#6B7280"
+    },
+    {
+      "name": "cli",
+      "lines": 1809,
+      "files": 21,
+      "color": "#EC4899"
+    }
+  ],
+  "density": [
+    {
+      "name": "desktop",
+      "density": 332.9,
+      "color": "#F59E0B"
+    },
+    {
+      "name": "pkg/core",
+      "density": 372.1,
+      "color": "#3B82F6"
+    },
+    {
+      "name": "docs",
+      "density": 209.5,
+      "color": "#8B5CF6"
+    },
+    {
+      "name": "web",
+      "density": 178.9,
+      "color": "#10B981"
+    },
+    {
+      "name": "be/browse-mcp",
+      "density": 267.0,
+      "color": "#6B7280"
+    },
+    {
+      "name": "pkg/kanban",
+      "density": 104.8,
+      "color": "#6B7280"
+    },
+    {
+      "name": "pkg/chat",
+      "density": 277.6,
+      "color": "#6B7280"
+    },
+    {
+      "name": "be/plugins",
+      "density": 221.0,
+      "color": "#6B7280"
+    },
+    {
+      "name": "pkg/ui",
+      "density": 75.2,
+      "color": "#06B6D4"
+    },
+    {
+      "name": "pkg/api-client",
+      "density": 246.5,
+      "color": "#6B7280"
+    },
+    {
+      "name": "landingpage",
+      "density": 313.2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "be/patterns",
+      "density": 175.8,
+      "color": "#6B7280"
+    },
+    {
+      "name": "be/core",
+      "density": 159.2,
+      "color": "#6B7280"
+    },
+    {
+      "name": "cli",
+      "density": 86.1,
+      "color": "#EC4899"
+    }
+  ],
+  "categories": [
+    {
+      "label": "源代码",
+      "lines": 892688,
+      "color": "#3B82F6"
+    },
+    {
+      "label": "文档",
+      "lines": 464277,
+      "color": "#8B5CF6"
+    },
+    {
+      "label": "配置",
+      "lines": 465166,
+      "color": "#F59E0B"
+    }
+  ],
+  "topFiles": [
+    {
+      "path": "pnpm-lock.yaml",
+      "lines": 30412,
+      "ext": "yaml"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/pnpm-lock.yaml",
+      "lines": 30412,
+      "ext": "yaml"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/pnpm-lock.yaml",
+      "lines": 28443,
+      "ext": "yaml"
+    },
+    {
+      "path": ".auto-claude/specs/001-package-extraction-from-zip/task_logs.json",
+      "lines": 12744,
+      "ext": "json"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/.auto-claude/specs/001-package-extraction-from-zip/task_logs.json",
+      "lines": 12744,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/lib/gateway.ts",
+      "lines": 7960,
+      "ext": "ts"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/desktop/src/lib/gateway.ts",
+      "lines": 7679,
+      "ext": "ts"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/desktop/src/lib/gateway.ts",
+      "lines": 7679,
+      "ext": "ts"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/desktop/src-tauri/Cargo.lock",
+      "lines": 7348,
+      "ext": "lock"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/desktop/src-tauri/Cargo.lock",
+      "lines": 7348,
+      "ext": "lock"
+    },
+    {
+      "path": "apps/desktop/src-tauri/Cargo.lock",
+      "lines": 7348,
+      "ext": "lock"
+    },
+    {
+      "path": "apps/desktop/src-tauri/gen/schemas/macOS-schema.json",
+      "lines": 6799,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src-tauri/gen/schemas/desktop-schema.json",
+      "lines": 6799,
+      "ext": "json"
+    },
+    {
+      "path": ".auto-claude/specs/002-update-desktop-model-icons/task_logs.json",
+      "lines": 5995,
+      "ext": "json"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/.auto-claude/specs/002-update-desktop-model-icons/task_logs.json",
+      "lines": 5995,
+      "ext": "json"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/docs/openapi/gateway-api.json",
+      "lines": 5734,
+      "ext": "json"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/docs/openapi/gateway-api.json",
+      "lines": 5734,
+      "ext": "json"
+    },
+    {
+      "path": "apps/docs/openapi/gateway-api.json",
+      "lines": 5734,
+      "ext": "json"
+    },
+    {
+      "path": "Cargo.lock",
+      "lines": 4731,
+      "ext": "lock"
+    },
+    {
+      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/backend/browse-mcp/poetry.lock",
+      "lines": 3560,
+      "ext": "lock"
+    }
+  ]
+}

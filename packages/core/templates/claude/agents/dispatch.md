@@ -131,18 +131,18 @@ Task(
 ```
 
 **Important**: The `[finish]` marker in prompt triggers different context injection:
-- Lighter context focused on final verification
 - finish-work.md checklist
+- update-spec.md (spec update process and templates)
 - prd.md for verifying requirements are met
 
-This is different from regular "check" which has full specs for self-fix loop.
+The finish agent actively updates spec docs when it detects new patterns or contracts in the changes. This is different from regular "check" which has full specs for self-fix loop.
 
 ### action: "create-pr"
 
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
 ```bash
-./.viben/scripts/multi-agent/create-pr.sh
+python3 ./.viben/scripts/multi_agent/create_pr.py
 ```
 
 This will:
@@ -209,6 +209,6 @@ If a subagent reports failure, read the output and decide:
 ## Key Constraints
 
 1. **Do not read spec/requirement files directly** - Let Hook inject to subagents
-2. **Only commit via create-pr action** - Use `multi-agent/create-pr.sh` at the end of pipeline
+2. **Only commit via create-pr action** - Use `multi_agent/create_pr.py` at the end of pipeline
 3. **All subagents should use opus model for complex tasks**
 4. **Keep dispatch logic simple** - Complex logic belongs in subagents

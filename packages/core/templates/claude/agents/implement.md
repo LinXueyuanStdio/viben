@@ -43,7 +43,7 @@ Read relevant specs based on task type:
 
 - Backend: `.viben/spec/backend/`
 - Frontend: `.viben/spec/frontend/`
-- Shared: `.viben/spec/shared/`
+- Guides: `.viben/spec/guides/`
 
 ### 2. Understand Requirements
 

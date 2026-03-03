@@ -24,11 +24,11 @@
 
 ```bash
 # Check if already initialized
-./.viben/scripts/get-developer.sh
+python3 ./.viben/scripts/get_developer.py
 
 # If not initialized, run:
-./.viben/scripts/init-developer.sh <your-name>
-# Example: ./.viben/scripts/init-developer.sh cursor-agent
+python3 ./.viben/scripts/init_developer.py <your-name>
+# Example: python3 ./.viben/scripts/init_developer.py cursor-agent
 ```
 
 This creates:
@@ -39,17 +39,18 @@ This creates:
 - Human developers: Use your name, e.g., `john-doe`
 - Cursor AI: `cursor-agent` or `cursor-<task>`
 - Claude Code: `claude-agent` or `claude-<task>`
+- iFlow cli: `iflow-agent` or `iflow-<task>`
 
 ### Step 1: Understand Current Context
 
 ```bash
 # Get full context in one command
-./.viben/scripts/get-context.sh
+python3 ./.viben/scripts/get_context.py
 
 # Or check manually:
-./.viben/scripts/get-developer.sh      # Your identity
-./.viben/scripts/task.sh list          # Active tasks
-git status && git log --oneline -10      # Git state
+python3 ./.viben/scripts/get_developer.py      # Your identity
+python3 ./.viben/scripts/task.py list          # Active tasks
+git status && git log --oneline -10              # Git state
 ```
 
 ### Step 2: Read Project Guidelines [MANDATORY]
@@ -106,35 +107,43 @@ cat .viben/spec/backend/logging-guidelines.md    # For logging
 .viben/
 |-- .developer           # Developer identity (gitignored)
 |-- scripts/
-|   |-- common/              # Shared utilities
-|   |   |-- paths.sh         # Path utilities
-|   |   |-- developer.sh     # Developer management
-|   |   \-- git-context.sh   # Git context implementation
-|   |-- init-developer.sh    # Initialize developer identity
-|   |-- get-developer.sh     # Get current developer name
-|   |-- task.sh              # Manage tasks
-|   |-- get-context.sh       # Get session context
-|   \-- add-session.sh       # One-click session recording
+|   |-- __init__.py          # Python package init
+|   |-- common/              # Shared utilities (Python)
+|   |   |-- __init__.py
+|   |   |-- paths.py         # Path utilities
+|   |   |-- developer.py     # Developer management
+|   |   +-- git_context.py   # Git context implementation
+|   |-- multi_agent/         # Multi-agent pipeline scripts
+|   |   |-- __init__.py
+|   |   |-- start.py         # Start worktree agent
+|   |   |-- status.py        # Monitor agent status
+|   |   |-- create_pr.py     # Create PR
+|   |   +-- cleanup.py       # Cleanup worktree
+|   |-- init_developer.py    # Initialize developer identity
+|   |-- get_developer.py     # Get current developer name
+|   |-- task.py              # Manage tasks
+|   |-- get_context.py       # Get session context
+|   +-- add_session.py       # One-click session recording
 |-- workspace/           # Developer workspaces
 |   |-- index.md         # Workspace index + Session template
-|   \-- {developer}/     # Per-developer directories
+|   +-- {developer}/     # Per-developer directories
 |       |-- index.md     # Personal index (with @@@auto markers)
-|       \-- journal-N.md # Journal files (sequential numbering)
+|       +-- journal-N.md # Journal files (sequential numbering)
 |-- tasks/               # Task tracking
-|   \-- {MM}-{DD}-{name}/
-|       \-- task.json
+|   +-- {MM}-{DD}-{name}/
+|       +-- task.json
 |-- spec/                # [!] MUST READ before coding
 |   |-- frontend/        # Frontend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
-|   |   \-- *.md                   # Topic-specific docs
+|   |   +-- *.md                   # Topic-specific docs
 |   |-- backend/         # Backend guidelines (if applicable)
 |   |   |-- index.md               # Start here - guidelines index
-|   |   \-- *.md                   # Topic-specific docs
-|   \-- guides/          # Thinking guides
+|   |   +-- *.md                   # Topic-specific docs
+|   +-- guides/          # Thinking guides
 |       |-- index.md                      # Guides index
 |       |-- cross-layer-thinking-guide.md # Pre-implementation checklist
-|       \-- *.md                          # Other guides
-\-- workflow.md             # This document
+|       +-- *.md                          # Other guides
++-- workflow.md             # This document
 ```
 
 ---
@@ -147,10 +156,10 @@ Use the unified context script:
 
 ```bash
 # Get all context in one command
-./.viben/scripts/get-context.sh
+python3 ./.viben/scripts/get_context.py
 
 # Or get JSON format
-./.viben/scripts/get-context.sh --json
+python3 ./.viben/scripts/get_context.py --json
 ```
 
 ### Step 2: Read Development Guidelines [!] REQUIRED
@@ -183,10 +192,10 @@ Use the task management script:
 
 ```bash
 # List active tasks
-./.viben/scripts/task.sh list
+python3 ./.viben/scripts/task.py list
 
 # Create new task (creates directory with task.json)
-./.viben/scripts/task.sh create "<title>" --slug <task-name>
+python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>
 ```
 
 ---
@@ -197,23 +206,23 @@ Use the task management script:
 
 ```
 1. Create or select task
-   \-> ./.viben/scripts/task.sh create "<title>" --slug <name> or list
+   --> python3 ./.viben/scripts/task.py create "<title>" --slug <name> or list
 
 2. Write code according to guidelines
-   \-> Read .viben/spec/ docs relevant to your task
-   \-> For cross-layer: read .viben/spec/guides/
+   --> Read .viben/spec/ docs relevant to your task
+   --> For cross-layer: read .viben/spec/guides/
 
 3. Self-test
-   \-> Run project's lint/test commands (see spec docs)
-   \-> Manual feature testing
+   --> Run project's lint/test commands (see spec docs)
+   --> Manual feature testing
 
 4. Commit code
-   \-> git add <files>
-   \-> git commit -m "type(scope): description"
+   --> git add <files>
+   --> git commit -m "type(scope): description"
        Format: feat/fix/docs/refactor/test/chore
 
 5. Record session (one command)
-   \-> ./.viben/scripts/add-session.sh --title "Title" --commit "hash"
+   --> python3 ./.viben/scripts/add_session.py --title "Title" --commit "hash"
 ```
 
 ### Code Quality Checklist
@@ -236,7 +245,7 @@ Use the task management script:
 After code is committed, use:
 
 ```bash
-./.viben/scripts/add-session.sh \
+python3 ./.viben/scripts/add_session.py \
   --title "Session Title" \
   --commit "abc1234" \
   --summary "Brief summary"
@@ -252,7 +261,7 @@ This automatically:
 
 Use `/viben:finish-work` command to run through:
 1. [OK] All code committed, commit message follows convention
-2. [OK] Session recorded via `add-session.sh`
+2. [OK] Session recorded via `add_session.py`
 3. [OK] No lint/test errors
 4. [OK] Working directory clean (or WIP noted)
 5. [OK] Spec docs updated if needed
@@ -269,9 +278,9 @@ Use `/viben:finish-work` command to run through:
 ```
 workspace/
 |-- index.md              # Main index (Active Developers table)
-\-- {developer}/          # Per-developer directory
++-- {developer}/          # Per-developer directory
     |-- index.md          # Personal index (with @@@auto markers)
-    \-- journal-N.md      # Journal files (sequential: 1, 2, 3...)
+    +-- journal-N.md      # Journal files (sequential: 1, 2, 3...)
 ```
 
 **When to update**:
@@ -288,13 +297,13 @@ workspace/
 spec/
 |-- frontend/           # Frontend docs (if applicable)
 |   |-- index.md        # Start here
-|   \-- *.md            # Topic-specific docs
+|   +-- *.md            # Topic-specific docs
 |-- backend/            # Backend docs (if applicable)
 |   |-- index.md        # Start here
-|   \-- *.md            # Topic-specific docs
-\-- guides/             # Thinking guides
+|   +-- *.md            # Topic-specific docs
++-- guides/             # Thinking guides
     |-- index.md        # Start here
-    \-- *.md            # Guide-specific docs
+    +-- *.md            # Guide-specific docs
 ```
 
 **When to update**:
@@ -309,19 +318,19 @@ Each task is a directory containing `task.json`:
 ```
 tasks/
 |-- 01-21-my-task/
-|   \-- task.json
-\-- archive/
-    \-- 2026-01/
-        \-- 01-15-old-task/
-            \-- task.json
+|   +-- task.json
++-- archive/
+    +-- 2026-01/
+        +-- 01-15-old-task/
+            +-- task.json
 ```
 
 **Commands**:
 ```bash
-./.viben/scripts/task.sh create "<title>" [--slug <name>]   # Create task directory
-./.viben/scripts/task.sh archive <name>  # Archive to archive/{year-month}/
-./.viben/scripts/task.sh list            # List active tasks
-./.viben/scripts/task.sh list-archive    # List archived tasks
+python3 ./.viben/scripts/task.py create "<title>" [--slug <name>]   # Create task directory
+python3 ./.viben/scripts/task.py archive <name>  # Archive to archive/{year-month}/
+python3 ./.viben/scripts/task.py list            # List active tasks
+python3 ./.viben/scripts/task.py list-archive    # List archived tasks
 ```
 
 ---
@@ -331,7 +340,7 @@ tasks/
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `./.viben/scripts/get-context.sh` for full context
+   - Run `python3 ./.viben/scripts/get_context.py` for full context
    - [!] **MUST read** relevant `.viben/spec/` docs
 
 2. **During development**:
@@ -344,7 +353,7 @@ tasks/
    - Use `/viben:finish-work` for completion checklist
    - After fix bug, use `/viben:break-loop` for deep analysis
    - Human commits after testing passes
-   - Use `add-session.sh` to record progress
+   - Use `add_session.py` to record progress
 
 ### [X] DON'T - Should Not Do
 
@@ -380,12 +389,12 @@ git commit -m "type(scope): description"
 
 ```bash
 # Session management
-./.viben/scripts/get-context.sh    # Get full context
-./.viben/scripts/add-session.sh    # Record session
+python3 ./.viben/scripts/get_context.py    # Get full context
+python3 ./.viben/scripts/add_session.py    # Record session
 
 # Task management
-./.viben/scripts/task.sh list      # List tasks
-./.viben/scripts/task.sh create "<title>" # Create task
+python3 ./.viben/scripts/task.py list      # List tasks
+python3 ./.viben/scripts/task.py create "<title>" # Create task
 
 # Slash commands
 /viben:finish-work          # Pre-commit checklist
