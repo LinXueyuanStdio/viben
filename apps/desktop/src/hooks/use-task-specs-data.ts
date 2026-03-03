@@ -2,33 +2,32 @@
  * Task Specs Data Hook
  * 任务规格数据加载 Hook
  *
- * Loads task-specific data from the .viben/tasks/{taskId}/ directory,
- * including PRD, implementation plan, logs, and modified files.
+ * Loads task-specific data from the Gateway API:
+ * - PRD content
+ * - Implementation plan subtasks
+ * - Execution logs
+ * - Modified files
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getGatewayClient } from "@/lib/gateway";
-import type { TaskLog, TaskLogPhase, LogEntry, TaskFile } from "@/components/workspace/task-tabs";
+import type {
+  TaskSpecsDataResponse,
+  TaskSpecSubtask,
+  TaskLogs,
+  TaskFileEntry,
+} from "@/lib/gateway/modules/tasks";
+
+// Re-export types for convenience
+export type { TaskSpecSubtask as ImplementationSubtask } from "@/lib/gateway/modules/tasks";
 
 /**
- * Subtask data from implementation_plan.json
- */
-export interface ImplementationSubtask {
-  id: string;
-  title: string;
-  description?: string;
-  status: "pending" | "in_progress" | "completed" | "failed";
-  files?: string[];
-  order?: number;
-}
-
-/**
- * Implementation plan structure (from Auto-Claude)
+ * Implementation plan structure (for compatibility)
  */
 export interface ImplementationPlan {
   version?: string;
   task_id?: string;
-  subtasks: ImplementationSubtask[];
+  subtasks: TaskSpecSubtask[];
   created_at?: string;
   updated_at?: string;
 }
@@ -42,13 +41,13 @@ export interface TaskSpecsData {
   prdPath: string | null;
 
   // Subtasks from implementation plan
-  subtasks: ImplementationSubtask[];
+  subtasks: TaskSpecSubtask[];
 
   // Execution logs
-  logs: TaskLog | null;
+  logs: TaskLogs | null;
 
   // Modified files
-  files: TaskFile[];
+  files: TaskFileEntry[];
 
   // Loading and error states
   isLoading: boolean;
@@ -59,73 +58,10 @@ export interface TaskSpecsData {
 }
 
 /**
- * Parse log file content into log entries
- */
-function parseLogContent(content: string, phaseId: string): LogEntry[] {
-  const entries: LogEntry[] = [];
-  const lines = content.split("\n").filter((line) => line.trim());
-
-  for (const line of lines) {
-    // Try to parse structured log format: [timestamp] [level] message
-    const match = line.match(/^\[([^\]]+)\]\s*\[([^\]]+)\]\s*(.*)$/);
-
-    if (match) {
-      const [, timestamp, level, message] = match;
-      const entryType = mapLogLevel(level);
-
-      entries.push({
-        id: `${phaseId}-${entries.length}`,
-        type: entryType,
-        message: message,
-        timestamp: timestamp || new Date().toISOString(),
-      });
-    } else {
-      // Fallback: treat as plain text
-      entries.push({
-        id: `${phaseId}-${entries.length}`,
-        type: "text",
-        message: line,
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
-  return entries;
-}
-
-/**
- * Map log level string to LogEntryType
- */
-function mapLogLevel(level: string): LogEntry["type"] {
-  const normalized = level.toLowerCase().trim();
-  switch (normalized) {
-    case "error":
-    case "err":
-      return "error";
-    case "warn":
-    case "warning":
-      return "warning";
-    case "success":
-    case "ok":
-      return "success";
-    case "info":
-      return "info";
-    case "tool_start":
-    case "start":
-      return "tool_start";
-    case "tool_end":
-    case "end":
-      return "tool_end";
-    default:
-      return "text";
-  }
-}
-
-/**
- * Hook to load task specs data from .viben/tasks/{taskId}/ directory
+ * Hook to load task specs data from Gateway API
  *
  * @param taskId - Task ID to load data for
- * @param workspacePath - Workspace path where .viben directory is located
+ * @param workspacePath - Workspace path where task is located
  * @returns TaskSpecsData object with loaded data and loading state
  */
 export function useTaskSpecsData(
@@ -134,9 +70,9 @@ export function useTaskSpecsData(
 ): TaskSpecsData {
   const [prdContent, setPrdContent] = useState<string | null>(null);
   const [prdPath, setPrdPath] = useState<string | null>(null);
-  const [subtasks, setSubtasks] = useState<ImplementationSubtask[]>([]);
-  const [logs, setLogs] = useState<TaskLog | null>(null);
-  const [files, setFiles] = useState<TaskFile[]>([]);
+  const [subtasks, setSubtasks] = useState<TaskSpecSubtask[]>([]);
+  const [logs, setLogs] = useState<TaskLogs | null>(null);
+  const [files, setFiles] = useState<TaskFileEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -147,7 +83,7 @@ export function useTaskSpecsData(
   });
 
   /**
-   * Load all specs data for the task
+   * Load specs data from Gateway API
    */
   const loadSpecsData = useCallback(async () => {
     if (!taskId || !workspacePath) {
@@ -174,152 +110,31 @@ export function useTaskSpecsData(
     setIsLoading(true);
     setError(null);
 
-    const client = getGatewayClient();
-    const specsDir = `${workspacePath}/.viben/tasks/${taskId}`;
-
     try {
-      // Load PRD content (spec.md)
-      const prdFilePath = `${specsDir}/spec.md`;
-      try {
-        const prdResult = await client.readFile(prdFilePath);
-        setPrdContent(prdResult.content);
-        setPrdPath(prdFilePath);
-      } catch {
-        // PRD file doesn't exist yet
-        setPrdContent(null);
-        setPrdPath(null);
-      }
+      const client = getGatewayClient();
+      const specsData: TaskSpecsDataResponse = await client.getTaskSpecsData(
+        taskId,
+        workspacePath
+      );
 
-      // Load implementation plan (implementation_plan.json)
-      try {
-        const planPath = `${specsDir}/implementation_plan.json`;
-        const planResult = await client.readFile(planPath);
-        const plan = JSON.parse(planResult.content) as ImplementationPlan;
-        setSubtasks(plan.subtasks || []);
-      } catch {
-        // Plan doesn't exist yet
-        setSubtasks([]);
-      }
-
-      // Load logs from logs/ directory
-      try {
-        const logsDir = `${specsDir}/logs`;
-        const logsListResult = await client.listFiles(logsDir);
-
-        if (logsListResult.entries && logsListResult.entries.length > 0) {
-          const phases: TaskLogPhase[] = [];
-
-          // Standard phase files to look for
-          const phaseFiles = ["planning.log", "coding.log", "validation.log"];
-
-          for (const phaseFile of phaseFiles) {
-            const entry = logsListResult.entries.find((e) => e.name === phaseFile);
-            if (entry) {
-              try {
-                const logPath = `${logsDir}/${phaseFile}`;
-                const logResult = await client.readFile(logPath);
-                const phaseName = phaseFile.replace(".log", "");
-                const entries = parseLogContent(logResult.content, phaseName);
-
-                // Determine phase status based on entries
-                let status: TaskLogPhase["status"] = "pending";
-                if (entries.length > 0) {
-                  const hasError = entries.some((e) => e.type === "error");
-                  const hasSuccess = entries.some((e) => e.type === "success");
-                  if (hasError) status = "failed";
-                  else if (hasSuccess) status = "complete";
-                  else status = "running";
-                }
-
-                phases.push({
-                  id: phaseName,
-                  name: phaseName.charAt(0).toUpperCase() + phaseName.slice(1),
-                  status,
-                  entries,
-                });
-              } catch {
-                // Skip unreadable log files
-              }
-            }
-          }
-
-          // Also check for any other .log files
-          for (const entry of logsListResult.entries) {
-            if (
-              entry.name.endsWith(".log") &&
-              !phaseFiles.includes(entry.name)
-            ) {
-              try {
-                const logPath = `${logsDir}/${entry.name}`;
-                const logResult = await client.readFile(logPath);
-                const phaseName = entry.name.replace(".log", "");
-                const entries = parseLogContent(logResult.content, phaseName);
-
-                phases.push({
-                  id: phaseName,
-                  name: phaseName.charAt(0).toUpperCase() + phaseName.slice(1),
-                  status: entries.length > 0 ? "complete" : "pending",
-                  entries,
-                });
-              } catch {
-                // Skip unreadable log files
-              }
-            }
-          }
-
-          if (phases.length > 0) {
-            setLogs({
-              taskId,
-              phases,
-            });
-          } else {
-            setLogs(null);
-          }
-        } else {
-          setLogs(null);
-        }
-      } catch {
-        // Logs directory doesn't exist
-        setLogs(null);
-      }
-
-      // Load modified files list (files.json or scan directory)
-      try {
-        // First try to read files.json
-        const filesJsonPath = `${specsDir}/files.json`;
-        try {
-          const filesResult = await client.readFile(filesJsonPath);
-          const filesData = JSON.parse(filesResult.content) as {
-            files?: Array<{ path: string; name?: string }>;
-          };
-          if (filesData.files && Array.isArray(filesData.files)) {
-            const loadedFiles: TaskFile[] = filesData.files.map((f) => {
-              const name = f.name || f.path.split("/").pop() || f.path;
-              const extension = name.includes(".")
-                ? name.split(".").pop()
-                : undefined;
-              return {
-                path: f.path,
-                name,
-                type: "file" as const,
-                extension,
-              };
-            });
-            setFiles(loadedFiles);
-          } else {
-            setFiles([]);
-          }
-        } catch {
-          // files.json doesn't exist, try to list the specs directory
-          // and look for any files that might be relevant
-          setFiles([]);
-        }
-      } catch {
-        setFiles([]);
-      }
+      // Update state from API response
+      setPrdContent(specsData.prd_content);
+      setPrdPath(specsData.prd_path);
+      setSubtasks(specsData.subtasks || []);
+      setLogs(specsData.logs);
+      setFiles(specsData.files || []);
     } catch (err) {
       console.error("[useTaskSpecsData] Error loading specs data:", err);
-      setError(err instanceof Error ? err.message : "Failed to load task data");
+      // Don't set error for 404 (task specs not found is not an error)
+      if (err instanceof Error && !err.message.includes("404")) {
+        setError(err.message);
+      }
+      // Reset to empty state on error
+      setPrdContent(null);
+      setPrdPath(null);
+      setSubtasks([]);
+      setLogs(null);
+      setFiles([]);
     } finally {
       setIsLoading(false);
     }

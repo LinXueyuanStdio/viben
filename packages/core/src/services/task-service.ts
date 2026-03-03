@@ -168,115 +168,29 @@ export interface UnifiedTask {
   completedAt?: string;
 }
 
-/**
- * Legacy CLI TaskStatus for compatibility
- */
-type LegacyCLIStatus = "planning" | "in_progress" | "completed";
-
-/**
- * Legacy Gateway TaskStatus for compatibility
- */
-type LegacyGatewayStatus =
-  | "todo"
-  | "running"
-  | "inprogress"
-  | "completed"
-  | "done"
-  | "error"
-  | "inreview"
-  | "stopped"
-  | "cancelled";
-
 // =============================================================================
-// Status Mapping Functions
+// Status Constants
 // =============================================================================
 
 /**
- * Map CLI status to unified TaskStatus
+ * All valid unified task statuses
  */
-export function mapCLIStatus(status: LegacyCLIStatus | string): TaskStatus {
-  switch (status) {
-    case "planning":
-      return "backlog";
-    case "in_progress":
-      return "in_progress";
-    case "completed":
-      return "done";
-    default:
-      return "backlog";
-  }
-}
+export const VALID_TASK_STATUSES: TaskStatus[] = [
+  "backlog",
+  "queue",
+  "in_progress",
+  "ai_review",
+  "human_review",
+  "done",
+  "pr_created",
+  "error",
+];
 
 /**
- * Map Gateway status to unified TaskStatus
+ * Check if a status is valid
  */
-export function mapGatewayStatus(status: LegacyGatewayStatus | string): TaskStatus {
-  switch (status) {
-    case "todo":
-      return "backlog";
-    case "running":
-    case "inprogress":
-      return "in_progress";
-    case "completed":
-    case "done":
-      return "done";
-    case "error":
-      return "error";
-    case "inreview":
-      return "human_review";
-    case "stopped":
-    case "cancelled":
-      return "human_review"; // With reviewReason: "stopped"
-    default:
-      return "backlog";
-  }
-}
-
-/**
- * Map unified TaskStatus to legacy CLI status
- */
-export function toCliStatus(status: TaskStatus): string {
-  switch (status) {
-    case "backlog":
-    case "queue":
-      return "planning";
-    case "in_progress":
-    case "ai_review":
-    case "human_review":
-      return "in_progress";
-    case "done":
-    case "pr_created":
-      return "completed";
-    case "error":
-      return "in_progress"; // Keep as in_progress for CLI
-    default:
-      return "planning";
-  }
-}
-
-/**
- * Map unified TaskStatus to Kanban-compatible status (for Gateway API)
- */
-export function toKanbanStatus(
-  status: TaskStatus
-): "todo" | "inprogress" | "inreview" | "done" | "cancelled" {
-  switch (status) {
-    case "backlog":
-    case "queue":
-      return "todo";
-    case "in_progress":
-    case "ai_review":
-      return "inprogress";
-    case "human_review":
-      return "inreview";
-    case "done":
-    case "pr_created":
-      return "done";
-    case "error":
-      return "inreview";
-    default:
-      return "todo";
-  }
+export function isValidTaskStatus(status: string): status is TaskStatus {
+  return VALID_TASK_STATUSES.includes(status as TaskStatus);
 }
 
 // =============================================================================
@@ -680,44 +594,14 @@ export class TaskService {
   }
 
   /**
-   * Normalize a legacy status value to the unified TaskStatus
+   * Normalize a status value to the unified TaskStatus
+   * Only accepts unified status values, defaults to "backlog" for invalid values
    */
   normalizeStatus(status: string): TaskStatus {
-    // First try as CLI status
-    if (["planning", "in_progress", "completed"].includes(status)) {
-      return mapCLIStatus(status as LegacyCLIStatus);
+    if (isValidTaskStatus(status)) {
+      return status;
     }
-    // Then try as Gateway status
-    const gatewayStatuses = [
-      "todo",
-      "running",
-      "inprogress",
-      "completed",
-      "done",
-      "error",
-      "inreview",
-      "stopped",
-      "cancelled",
-    ];
-    if (gatewayStatuses.includes(status)) {
-      return mapGatewayStatus(status as LegacyGatewayStatus);
-    }
-    // Already a unified status
-    if (
-      [
-        "backlog",
-        "queue",
-        "in_progress",
-        "ai_review",
-        "human_review",
-        "done",
-        "pr_created",
-        "error",
-      ].includes(status)
-    ) {
-      return status as TaskStatus;
-    }
-    // Default
+    // Default for invalid status
     return "backlog";
   }
 
@@ -738,6 +622,294 @@ export class TaskService {
   getTasksDir(workspacePath: string): string {
     return this.tasksDir(workspacePath);
   }
+
+  // ==========================================================================
+  // Task Specs Data (PRD, Logs, Files)
+  // ==========================================================================
+
+  /**
+   * Get task specs data from the task directory
+   *
+   * Reads:
+   * - spec.md (PRD content)
+   * - implementation_plan.json (subtasks)
+   * - logs/ directory (execution logs)
+   * - files.json (modified files)
+   *
+   * @param taskDir - Absolute path to task directory
+   * @returns TaskSpecsData object
+   */
+  async getTaskSpecsData(taskDir: string): Promise<TaskSpecsData> {
+    const result: TaskSpecsData = {
+      prdContent: null,
+      prdPath: null,
+      subtasks: [],
+      logs: null,
+      files: [],
+    };
+
+    // 1. Read PRD content (spec.md)
+    const specPath = join(taskDir, "spec.md");
+    if (existsSync(specPath)) {
+      try {
+        result.prdContent = await readFile(specPath, "utf-8");
+        result.prdPath = specPath;
+      } catch {
+        // Ignore read errors
+      }
+    }
+
+    // 2. Read implementation plan (implementation_plan.json)
+    const planPath = join(taskDir, "implementation_plan.json");
+    if (existsSync(planPath)) {
+      try {
+        const planContent = await readFile(planPath, "utf-8");
+        const plan = JSON.parse(planContent) as ImplementationPlanFile;
+        result.subtasks = plan.subtasks || [];
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    // 3. Read logs from logs/ directory
+    const logsDir = join(taskDir, "logs");
+    if (existsSync(logsDir)) {
+      try {
+        const logEntries = await readdir(logsDir, { withFileTypes: true });
+        const phases: TaskLogPhase[] = [];
+
+        // Standard phase files
+        const standardPhases = ["planning", "coding", "validation"];
+
+        for (const entry of logEntries) {
+          if (entry.isFile() && entry.name.endsWith(".log")) {
+            const phaseName = entry.name.replace(".log", "");
+            const logPath = join(logsDir, entry.name);
+
+            try {
+              const logContent = await readFile(logPath, "utf-8");
+              const entries = this.parseLogContent(logContent, phaseName);
+
+              // Determine phase status
+              let status: TaskLogPhase["status"] = "pending";
+              if (entries.length > 0) {
+                const hasError = entries.some((e) => e.type === "error");
+                const hasSuccess = entries.some((e) => e.type === "success");
+                if (hasError) status = "failed";
+                else if (hasSuccess) status = "complete";
+                else status = "running";
+              }
+
+              phases.push({
+                id: phaseName,
+                name: phaseName.charAt(0).toUpperCase() + phaseName.slice(1),
+                status,
+                entries,
+                order: standardPhases.indexOf(phaseName),
+              });
+            } catch {
+              // Ignore unreadable files
+            }
+          }
+        }
+
+        // Sort by order (standard phases first)
+        phases.sort((a, b) => {
+          const orderA = a.order !== undefined && a.order >= 0 ? a.order : 999;
+          const orderB = b.order !== undefined && b.order >= 0 ? b.order : 999;
+          return orderA - orderB;
+        });
+
+        if (phases.length > 0) {
+          result.logs = { phases };
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+
+    // 4. Read modified files (files.json)
+    const filesJsonPath = join(taskDir, "files.json");
+    if (existsSync(filesJsonPath)) {
+      try {
+        const filesContent = await readFile(filesJsonPath, "utf-8");
+        const filesData = JSON.parse(filesContent) as {
+          files?: Array<{ path: string; name?: string; type?: string }>;
+        };
+        if (filesData.files && Array.isArray(filesData.files)) {
+          result.files = filesData.files.map((f) => {
+            const name = f.name || f.path.split("/").pop() || f.path;
+            const extension = name.includes(".") ? name.split(".").pop() : undefined;
+            return {
+              path: f.path,
+              name,
+              type: (f.type as "file" | "directory") || "file",
+              extension,
+            };
+          });
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Parse log file content into structured log entries
+   */
+  private parseLogContent(content: string, phaseId: string): TaskLogEntry[] {
+    const entries: TaskLogEntry[] = [];
+    const lines = content.split("\n").filter((line) => line.trim());
+
+    for (const line of lines) {
+      // Try to parse structured format: [timestamp] [level] message
+      const match = line.match(/^\[([^\]]+)\]\s*\[([^\]]+)\]\s*(.*)$/);
+
+      if (match) {
+        const [, timestamp, level, message] = match;
+        entries.push({
+          id: `${phaseId}-${entries.length}`,
+          type: this.mapLogLevel(level),
+          message,
+          timestamp: timestamp || new Date().toISOString(),
+        });
+      } else {
+        // Fallback: plain text
+        entries.push({
+          id: `${phaseId}-${entries.length}`,
+          type: "text",
+          message: line,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
+
+    return entries;
+  }
+
+  /**
+   * Map log level string to entry type
+   */
+  private mapLogLevel(level: string): TaskLogEntryType {
+    const normalized = level.toLowerCase().trim();
+    switch (normalized) {
+      case "error":
+      case "err":
+        return "error";
+      case "warn":
+      case "warning":
+        return "warning";
+      case "success":
+      case "ok":
+        return "success";
+      case "info":
+        return "info";
+      case "tool_start":
+      case "start":
+        return "tool_start";
+      case "tool_end":
+      case "end":
+        return "tool_end";
+      default:
+        return "text";
+    }
+  }
+}
+
+// =============================================================================
+// Task Specs Types
+// =============================================================================
+
+/**
+ * Log entry type
+ */
+export type TaskLogEntryType =
+  | "text"
+  | "error"
+  | "warning"
+  | "success"
+  | "info"
+  | "tool_start"
+  | "tool_end";
+
+/**
+ * A single log entry
+ */
+export interface TaskLogEntry {
+  id: string;
+  type: TaskLogEntryType;
+  message: string;
+  timestamp: string;
+  details?: string;
+}
+
+/**
+ * Log phase status
+ */
+export type TaskLogPhaseStatus = "pending" | "running" | "complete" | "failed";
+
+/**
+ * A log phase (planning, coding, validation)
+ */
+export interface TaskLogPhase {
+  id: string;
+  name: string;
+  status: TaskLogPhaseStatus;
+  entries: TaskLogEntry[];
+  order?: number;
+}
+
+/**
+ * Task logs structure
+ */
+export interface TaskLogs {
+  phases: TaskLogPhase[];
+}
+
+/**
+ * Task file entry
+ */
+export interface TaskFileEntry {
+  path: string;
+  name: string;
+  type: "file" | "directory";
+  extension?: string;
+}
+
+/**
+ * Implementation plan subtask (from file)
+ */
+export interface ImplementationPlanSubtask {
+  id: string;
+  title: string;
+  description?: string;
+  status: SubtaskStatus;
+  files?: string[];
+  order?: number;
+}
+
+/**
+ * Implementation plan file structure
+ */
+export interface ImplementationPlanFile {
+  version?: string;
+  task_id?: string;
+  subtasks: ImplementationPlanSubtask[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Task specs data returned by getTaskSpecsData
+ */
+export interface TaskSpecsData {
+  prdContent: string | null;
+  prdPath: string | null;
+  subtasks: ImplementationPlanSubtask[];
+  logs: TaskLogs | null;
+  files: TaskFileEntry[];
 }
 
 /**

@@ -344,6 +344,36 @@
   }
 }
 
+/* Task card running pulse animation */
+@keyframes task-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--info) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(var(--info) / 0);
+  }
+}
+
+/* Task card stuck/warning pulse animation */
+@keyframes task-warning-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--warning) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 4px hsl(var(--warning) / 0);
+  }
+}
+
+/* Progress shimmer animation */
+@keyframes progress-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
 @layer utilities {
   /* Skeleton loading style */
   .skeleton {
@@ -415,6 +445,45 @@
                 border-color var(--duration-fast) var(--ease-out-expo),
                 fill var(--duration-fast) var(--ease-out-expo),
                 stroke var(--duration-fast) var(--ease-out-expo);
+  }
+
+  /* Task card running pulse - applies to card container */
+  .task-running-pulse {
+    animation: task-pulse 2s ease-in-out infinite;
+  }
+
+  /* Task card stuck/warning pulse - applies to card container */
+  .task-stuck-pulse {
+    animation: task-warning-pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Enhanced card styling with hover effect */
+  .task-card-enhanced {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .task-card-enhanced:hover {
+    transform: translateY(-1px);
+  }
+
+  /* Progress shimmer animation utility */
+  .animate-progress-shimmer {
+    animation: progress-shimmer 1.5s infinite;
+    background-size: 200% 100%;
+  }
+
+  /* Task running content indicator (subtle left border) */
+  .task-running-content {
+    border-left: 2px solid hsl(var(--info));
+    padding-left: 0.5rem;
+    margin-left: -0.5rem;
+  }
+
+  /* Task stuck content indicator */
+  .task-stuck-content {
+    border-left: 2px solid hsl(var(--warning));
+    padding-left: 0.5rem;
+    margin-left: -0.5rem;
   }
 }
 

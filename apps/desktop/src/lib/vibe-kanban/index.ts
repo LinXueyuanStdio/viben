@@ -8,7 +8,9 @@ export type {
   ReviewReason,
   ExecutionPhase,
   KanbanColumnId,
-  LegacyTaskStatus,
+  SubtaskStatus,
+  Subtask,
+  ExecutionProgress,
 } from "./types";
 
 export {
@@ -23,7 +25,8 @@ export {
   REVIEW_REASON_COLORS,
   REVIEW_REASON_LABELS,
   COLUMN_LABELS,
-  mapLegacyStatus,
+  VALID_TASK_STATUSES,
+  isValidTaskStatus,
 } from "./types";
 
 // API client

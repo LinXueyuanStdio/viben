@@ -107,6 +107,7 @@ export type {
   DefaultModelResponse,
   DiscoveredModel,
   DiscoverModelsResponse,
+  ProviderModelResponse,
   ProviderEnabledModelsResponse,
 } from "./model";
 

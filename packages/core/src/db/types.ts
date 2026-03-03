@@ -3,9 +3,18 @@
  */
 
 /**
- * Task status
+ * Task status - unified status system
+ * State flow: backlog → queue → in_progress → ai_review → human_review → done/pr_created
  */
-export type TaskStatus = "todo" | "inprogress" | "done" | "cancelled" | "inreview";
+export type TaskStatus =
+  | "backlog"       // 待办 - Tasks waiting to be started
+  | "queue"         // 排队 - Tasks waiting for available capacity
+  | "in_progress"   // 执行中 - Currently running (planning/coding)
+  | "ai_review"     // AI审查 - AI automatic review
+  | "human_review"  // 人工审查 - Needs human review
+  | "done"          // 完成 - Completed
+  | "pr_created"    // PR已创建 - PR has been created
+  | "error";        // 错误 - Error state
 
 /**
  * Task entity

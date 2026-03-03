@@ -133,6 +133,7 @@ import {
   type TaskStatus as VibeTaskStatus,
   type ReviewReason as VibeReviewReason,
   type ExecutionPhase as VibeExecutionPhase,
+  type Subtask,
   type KanbanColumnId,
   STATUS_TO_COLUMN,
   COLUMN_TO_STATUS,
@@ -144,6 +145,7 @@ import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
 import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
 import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
+import { PhaseProgressIndicator } from "@/components/workspace/kanban/phase-progress-indicator";
 
 // Kanban column IDs - using new 6-column layout from Auto-Claude
 // backlog → queue → in_progress → ai_review → human_review → done
@@ -411,7 +413,19 @@ const TaskCardContent = memo(function TaskCardContent({
         </div>
       )}
 
-      {/* Row 5: Footer - time, assignee, due date, and action buttons */}
+      {/* Row 5: Phase progress indicator with subtask visualization */}
+      {(task.subtasks_detail && task.subtasks_detail.length > 0) ||
+        (executionPhase && executionPhase !== "complete" && isRunning) ? (
+        <PhaseProgressIndicator
+          phase={executionPhase}
+          subtasks={task.subtasks_detail as Subtask[] | undefined}
+          phaseProgress={task.execution_progress?.phaseProgress}
+          isStuck={isStuck}
+          isRunning={isRunning}
+        />
+      ) : null}
+
+      {/* Row 6: Footer - time, assignee, due date, and action buttons */}
       {hasFooter && (
         <div className="flex items-center justify-between gap-1.5 pt-1.5 mt-0.5 border-t border-border/30">
           {/* Left side: Time, Assignee, Due Date */}
@@ -721,7 +735,6 @@ export function WorkspaceKanbanPage() {
     archivedTaskIds,
     archiveTask,
     archiveAllDone,
-    archivedCount,
   } = useWorkspaceKanbanQueue(workspace?.path);
 
   // Fetch tasks for the workspace
@@ -1871,8 +1884,8 @@ export function WorkspaceKanbanPage() {
                             isOpen={selectedTaskId === task.id}
                             tabIndex={selectedTaskId === task.id ? 0 : -1}
                             showMoreMenu
-                            renderMoreMenu={() => (
-                              <DropdownMenu>
+                            renderMoreMenu={(onOpenChange) => (
+                              <DropdownMenu onOpenChange={onOpenChange}>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     variant="ghost"
@@ -1882,7 +1895,7 @@ export function WorkspaceKanbanPage() {
                                     <MoreHorizontal className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuContent align="end" className="w-48 z-50" sideOffset={5}>
                                   {/* Start task - only show for non-running tasks */}
                                   {!task.has_in_progress_attempt && task.status !== "done" && (
                                     <>
@@ -1951,6 +1964,11 @@ export function WorkspaceKanbanPage() {
                               task={task}
                               onTitleChange={(title) =>
                                 handleTitleChange(task.id, title)
+                              }
+                              onArchive={
+                                task.status === "done"
+                                  ? () => handleArchiveTask(task.id)
+                                  : undefined
                               }
                             />
                           </KanbanCard>

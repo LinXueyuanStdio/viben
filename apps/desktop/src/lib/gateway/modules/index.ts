@@ -83,3 +83,6 @@ export * from "./kanban";
 
 // Preferences module
 export * from "./preferences";
+
+// Tasks module
+export * from "./tasks";
