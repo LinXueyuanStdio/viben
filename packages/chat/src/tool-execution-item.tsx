@@ -167,8 +167,9 @@ function getResultSummary(
   output: string | undefined,
   isError: boolean | undefined
 ): ResultInfo {
-  if (!output) {
-    return { summary: "", isWarning: false };
+  // Handle non-string output (could be object at runtime despite types)
+  if (!output || typeof output !== "string") {
+    return { summary: output ? JSON.stringify(output) : "", isWarning: false };
   }
 
   // Extract content from <tool_use_error> tag if present
@@ -274,6 +275,10 @@ function ToolDetailModal({
 
   const formatOutput = (output: string | undefined): string => {
     if (!output) return "No output";
+    // Handle non-string output (could be object at runtime despite types)
+    if (typeof output !== "string") {
+      return JSON.stringify(output, null, 2);
+    }
     // Extract content from <tool_use_error> tag if present
     const toolUseErrorMatch = output.match(
       /<tool_use_error>([\s\S]*?)<\/tool_use_error>/
