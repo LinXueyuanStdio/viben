@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest';
+import { expect } from 'vitest';
+import * as matchers from '@testing-library/jest-dom/matchers';
+
+expect.extend(matchers);
 
 // Mock environment variables
 // JWE_SECRET must be exactly 32 bytes for A256GCM encryption
