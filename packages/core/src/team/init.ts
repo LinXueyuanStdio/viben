@@ -20,6 +20,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
+import { initDeveloper } from "../cli/commands/user";
 
 export type { ProjectType, ExecutorType } from "./types";
 
@@ -118,6 +119,93 @@ function sha256(content: string): string {
 }
 
 /**
+ * Directories to scan for template hashes
+ * Includes .viben and all executor config directories
+ */
+const TEMPLATE_DIRS = [".viben", ".claude", ".cursor", ".iflow", ".opencode", ".codex", ".kilo", ".kiro", ".gemini", ".antigravity"];
+
+/**
+ * Patterns to exclude from hash tracking
+ * Matches trellis behavior for consistency
+ */
+const EXCLUDE_FROM_HASH = [
+  ".template-hashes.json", // Hash file itself
+  ".version", // Version file
+  ".gitignore", // Git ignore files
+  ".developer", // Developer identity file
+  "workspace/", // Workspace files (user data)
+  "tasks/", // Task files (user data)
+  ".current-task", // Current task marker
+  "spec/frontend/", // User-filled spec files
+  "spec/backend/", // User-filled spec files
+  ".backup-", // Backup directories
+  "__pycache__", // Python cache
+  ".pyc", // Python bytecode
+  ".pyo", // Python optimized
+  ".DS_Store", // macOS files
+  ".git", // Git files
+];
+
+/**
+ * Check if a path should be excluded from hashing
+ */
+function shouldExclude(relativePath: string): boolean {
+  return EXCLUDE_FROM_HASH.some((pattern) => relativePath.includes(pattern));
+}
+
+/**
+ * Recursively collect all files in a directory for hashing
+ */
+function collectFilesForHash(
+  baseDir: string,
+  dir: string,
+  files: string[] = []
+): string[] {
+  const fullDir = join(baseDir, dir);
+  if (!fs.existsSync(fullDir)) {
+    return files;
+  }
+
+  const entries = fs.readdirSync(fullDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const relativePath = join(dir, entry.name);
+    if (shouldExclude(relativePath)) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      collectFilesForHash(baseDir, relativePath, files);
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Initialize template hashes by scanning created files
+ */
+function initializeHashes(cwd: string): Record<string, string> {
+  const hashes: Record<string, string> = {};
+
+  for (const dir of TEMPLATE_DIRS) {
+    const files = collectFilesForHash(cwd, dir);
+    for (const relativePath of files) {
+      const fullPath = join(cwd, relativePath);
+      try {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        hashes[relativePath] = sha256(content);
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+  }
+
+  return hashes;
+}
+
+/**
  * Detect available Python command (python3 or python)
  */
 function getPythonCommand(): string {
@@ -195,8 +283,7 @@ async function copyTemplateDir(
 async function configureClaude(
   cwd: string,
   options: { force?: boolean; skipExisting?: boolean },
-  createdFiles: string[],
-  hashes: Record<string, string>
+  createdFiles: string[]
 ): Promise<void> {
   const claudeDir = join(cwd, ".claude");
   ensureDir(join(claudeDir, "agents"));
@@ -216,7 +303,6 @@ async function configureClaude(
     createdFiles,
     cwd
   );
-  hashes[".claude/settings.json"] = sha256(settingsContent);
 
   // Agents
   await copyTemplateDir(
@@ -813,7 +899,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   const executors = options.executors || ["CURSOR", "CLAUDE_CODE"];
   const createdFiles: string[] = [];
   const warnings: string[] = [];
-  const hashes: Record<string, string> = {};
 
   // Validate developer name
   validateDeveloperName(options.developerName);
@@ -852,7 +937,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     createdFiles,
     targetDir
   );
-  hashes[".viben/workflow.md"] = sha256(workflowMd);
 
   // Copy worktree.yaml (multi-agent enabled by default)
   const worktreeYaml = readTemplate("viben/worktree.yaml");
@@ -863,7 +947,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     createdFiles,
     targetDir
   );
-  hashes[".viben/worktree.yaml"] = sha256(worktreeYaml);
 
   // Copy .gitignore
   const gitignore = readTemplate("viben/gitignore.txt");
@@ -922,7 +1005,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   for (const executor of executors) {
     switch (executor) {
       case "CLAUDE_CODE":
-        await configureClaude(targetDir, writeOpts, createdFiles, hashes);
+        await configureClaude(targetDir, writeOpts, createdFiles);
         break;
       case "CURSOR":
         await configureCursor(targetDir, writeOpts, createdFiles);
@@ -967,27 +1050,27 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   );
 
   // ===================
-  // Create template hashes file
+  // Create template hashes file by scanning created files
   // ===================
+  const templateHashes = initializeHashes(targetDir);
   await writeFileIfNeeded(
     join(vibenDir, ".template-hashes.json"),
-    JSON.stringify(hashes, null, 2),
+    JSON.stringify(templateHashes, null, 2),
     writeOpts,
     createdFiles,
     targetDir
   );
 
   // ===================
-  // Initialize developer identity via Python script
+  // Initialize developer identity (TypeScript native implementation)
   // ===================
   try {
-    const pythonCmd = getPythonCommand();
-    const scriptPath = join(vibenDir, "scripts/init_developer.py");
-    if (fs.existsSync(scriptPath)) {
-      execSync(`${pythonCmd} "${scriptPath}" "${options.developerName}"`, {
-        cwd: targetDir,
-        stdio: "pipe",
-      });
+    const initResult = await initDeveloper(options.developerName, targetDir);
+    if (initResult.success) {
+      // Add created files to the list
+      for (const file of initResult.files) {
+        createdFiles.push(`.viben/${file}`);
+      }
 
       // Create bootstrap task to guide user through filling guidelines
       createBootstrapTask(
@@ -998,7 +1081,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
       );
     }
   } catch {
-    // Silent failure - user can run init_developer.py manually
+    // Silent failure - user can run 'viben user init' manually
   }
 
   return {

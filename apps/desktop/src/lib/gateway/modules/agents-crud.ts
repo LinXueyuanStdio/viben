@@ -23,10 +23,14 @@ import type {
  */
 export async function listAgents(
   baseUrl: string,
-  workspacePath?: string
+  options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }
 ): Promise<AgentResponse[]> {
   const params = new URLSearchParams();
-  if (workspacePath) params.set("workspace_path", workspacePath);
+  if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
+  if (options?.includeGlobal !== undefined) params.set("include_global", String(options.includeGlobal));
 
   const response = await fetch(
     `${baseUrl}/api/agents?${params.toString()}`,
@@ -44,7 +48,8 @@ export async function listAgents(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.agents || data; // Handle both {agents: []} and direct array formats
 }
 
 /**
@@ -53,10 +58,10 @@ export async function listAgents(
 export async function getAgent(
   baseUrl: string,
   agentId: string,
-  workspacePath?: string
-): Promise<AgentResponse | null> {
+  options?: { workspacePath?: string }
+): Promise<AgentResponse> {
   const params = new URLSearchParams();
-  if (workspacePath) params.set("workspace_path", workspacePath);
+  if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
 
   const response = await fetch(
     `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${params.toString()}`,
@@ -65,10 +70,6 @@ export async function getAgent(
       headers: { Accept: "application/json" },
     }
   );
-
-  if (response.status === 404) {
-    return null;
-  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -114,19 +115,29 @@ export async function createAgent(
 export async function updateAgent(
   baseUrl: string,
   agentId: string,
-  updates: UpdateAgentOptions
+  options: UpdateAgentOptions
 ): Promise<AgentResponse> {
-  const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(updates),
-    }
-  );
+  // Extract workspace_path for query param, rest goes to body
+  const { workspace_path, ...bodyOptions } = options;
+
+  // Build URL with optional workspace_path query param
+  const params = new URLSearchParams();
+  if (workspace_path) {
+    params.set("workspace_path", workspace_path);
+  }
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
+    : `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(bodyOptions),
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -145,10 +156,10 @@ export async function updateAgent(
 export async function deleteAgent(
   baseUrl: string,
   agentId: string,
-  workspacePath?: string
+  options?: { workspacePath?: string }
 ): Promise<void> {
   const params = new URLSearchParams();
-  if (workspacePath) params.set("workspace_path", workspacePath);
+  if (options?.workspacePath) params.set("workspace_path", options.workspacePath);
 
   const response = await fetch(
     `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${params.toString()}`,
@@ -216,6 +227,14 @@ export async function setDefaultAgent(
       response.status
     );
   }
+}
+
+/**
+ * Get default agent ID (compatibility method)
+ */
+export async function getDefaultAgentId(baseUrl: string): Promise<string | null> {
+  const response = await getDefaultAgent(baseUrl);
+  return response.default_agent_id;
 }
 
 // ============================================================================

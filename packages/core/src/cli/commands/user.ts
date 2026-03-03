@@ -88,8 +88,11 @@ async function getDeveloper(repoRoot: string): Promise<string | null> {
 
 /**
  * Initialize developer identity
+ * @param name - Developer name
+ * @param repoRoot - Root directory containing .viben folder
+ * @returns Object with success status and list of created files
  */
-async function initDeveloper(
+export async function initDeveloper(
   name: string,
   repoRoot: string
 ): Promise<{ success: boolean; files: string[] }> {

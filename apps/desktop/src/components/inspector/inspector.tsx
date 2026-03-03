@@ -9,6 +9,7 @@ import { InspectorTasks } from "./inspector-tasks";
 import { InspectorElicitations } from "./inspector-elicitations";
 import { InspectorAuth } from "./inspector-auth";
 import { InspectorMetadata } from "./inspector-metadata";
+import { InspectorApps } from "./inspector-apps";
 
 export type InspectorTab =
   | "tools"
@@ -20,7 +21,8 @@ export type InspectorTab =
   | "tasks"
   | "elicitations"
   | "auth"
-  | "metadata";
+  | "metadata"
+  | "apps";
 
 interface InspectorProps {
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
@@ -51,7 +53,7 @@ export function Inspector({
   // Render content based on active tab
   switch (activeTab) {
     case "tools":
-      return <InspectorTools makeRequest={makeRequest} enabled={hasTools} />;
+      return <InspectorTools makeRequest={makeRequest} enabled={hasTools} serverCapabilities={serverCapabilities} />;
     case "resources":
       return <InspectorResources makeRequest={makeRequest} enabled={hasResources} />;
     case "prompts":
@@ -77,7 +79,9 @@ export function Inspector({
           enabled={true}
         />
       );
+    case "apps":
+      return <InspectorApps makeRequest={makeRequest} enabled={hasTools} />;
     default:
-      return <InspectorTools makeRequest={makeRequest} enabled={hasTools} />;
+      return <InspectorTools makeRequest={makeRequest} enabled={hasTools} serverCapabilities={serverCapabilities} />;
   }
 }

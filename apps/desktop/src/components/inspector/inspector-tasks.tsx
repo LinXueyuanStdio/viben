@@ -40,6 +40,8 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
   const { t } = useTranslation();
   const [tasks, setTasks] = useState<McpTask[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -53,17 +55,53 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
     );
   }, [tasks, searchQuery]);
 
-  const fetchTasks = async () => {
+  const fetchTasks = async (cursor?: string) => {
     if (!enabled) return;
-    setLoading(true);
+
+    const isLoadMore = !!cursor;
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      const response = await makeRequest<{ tasks: McpTask[] }>("tasks/list", {});
-      setTasks(response.tasks || []);
+      const params: Record<string, unknown> = {};
+      if (cursor) {
+        params.cursor = cursor;
+      }
+
+      const response = await makeRequest<{ tasks: McpTask[]; nextCursor?: string }>("tasks/list", params);
+      const newTasks = response.tasks || [];
+
+      if (isLoadMore) {
+        // Append to existing tasks
+        setTasks((prev) => [...prev, ...newTasks]);
+      } else {
+        // Replace tasks on fresh load
+        setTasks(newTasks);
+      }
+
+      // Store next cursor for pagination
+      setNextCursor(response.nextCursor);
     } catch (error) {
       console.error("Error fetching tasks:", error);
-      setTasks([]);
+      if (!isLoadMore) {
+        setTasks([]);
+      }
+      setNextCursor(undefined);
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadMoreTasks = () => {
+    if (nextCursor) {
+      fetchTasks(nextCursor);
     }
   };
 
@@ -76,9 +114,16 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
     }
   };
 
+  const refreshTasks = async () => {
+    // Clear cursor and fetch from beginning
+    setNextCursor(undefined);
+    await fetchTasks();
+  };
+
   const clearAll = () => {
     setTasks([]);
     setSearchQuery("");
+    setNextCursor(undefined);
   };
 
   const toggleTask = (id: string) => {
@@ -165,7 +210,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={clearAll} disabled={tasks.length === 0}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchTasks} disabled={loading}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={refreshTasks} disabled={loading}>
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </div>
@@ -210,7 +255,7 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <ListTodo className="h-8 w-8 text-muted-foreground/50 mb-2" />
               <p className="text-xs text-muted-foreground">{t("inspector.noTasks")}</p>
-              <Button size="sm" className="mt-3" onClick={fetchTasks} disabled={loading}>
+              <Button size="sm" className="mt-3" onClick={() => fetchTasks()} disabled={loading}>
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
                 {t("inspector.listTasks")}
               </Button>
@@ -220,14 +265,15 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
               {t("inspector.noTasksFound")}
             </div>
           ) : (
-            filteredTasks.map((task: McpTask) => {
-              const style = getStatusStyle(task.status);
-              const Icon = style.icon;
-              const isExpanded = expandedTasks.has(task.id);
+            <>
+              {filteredTasks.map((task: McpTask) => {
+                const style = getStatusStyle(task.status);
+                const Icon = style.icon;
+                const isExpanded = expandedTasks.has(task.id);
 
-              return (
-                <div key={task.id} className="rounded-lg border border-border overflow-hidden">
-                  <div
+                return (
+                  <div key={task.id} className="rounded-lg border border-border overflow-hidden">
+                    <div
                     className="flex items-center gap-2 p-2.5 cursor-pointer hover:bg-muted/50"
                     onClick={() => toggleTask(task.id)}
                   >
@@ -323,8 +369,26 @@ export function InspectorTasks({ makeRequest, enabled = true }: InspectorTasksPr
                   )}
                 </div>
               );
-            })
-          )}
+            })}
+            {/* Load More Button */}
+            {nextCursor && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-7 text-xs"
+                  onClick={loadMoreTasks}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : null}
+                  {t("inspector.loadMore", "Load More")}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
         </div>
       </div>
 

@@ -6,9 +6,9 @@
  * - list: List session history
  */
 import chalk from "chalk";
-import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { appendFile } from "node:fs/promises";
+import { resolve, join, basename } from "node:path";
 import type { Command } from "commander";
 import type { OutputContext } from "../types";
 import {
@@ -18,6 +18,22 @@ import {
   outputTable,
   handleCommandError,
 } from "../lib";
+import {
+  findVibenRoot,
+  getDeveloper as getWorkspaceDeveloper,
+  getWorkspaceDir as getDevWorkspaceDir,
+  getAllDevelopers,
+  getJournalInfo,
+  getCurrentSessionNumber,
+  generateSessionContent,
+  createNewJournalFile,
+  updateIndexWithSession,
+  getTodayDate,
+  MAX_JOURNAL_LINES,
+  DIR_VIBEN,
+  DIR_WORKSPACE,
+  FILE_JOURNAL_PREFIX,
+} from "../lib/viben-workspace";
 
 // =============================================================================
 // Types
@@ -48,14 +64,6 @@ interface SessionAddResult {
 }
 
 // =============================================================================
-// Constants
-// =============================================================================
-
-const DIR_WORKFLOW = ".viben";
-const DIR_WORKSPACE = "workspace";
-const FILE_DEVELOPER = ".developer";
-
-// =============================================================================
 // Helper Functions
 // =============================================================================
 
@@ -63,67 +71,26 @@ const FILE_DEVELOPER = ".developer";
  * Find the nearest directory containing .viben/ folder
  */
 function getRepoRoot(startPath?: string): string {
-  let current = resolve(startPath || process.cwd());
-
-  while (current !== resolve(current, "..")) {
-    if (existsSync(join(current, DIR_WORKFLOW))) {
-      return current;
-    }
-    current = resolve(current, "..");
+  const root = findVibenRoot(startPath);
+  if (!root) {
+    // Fallback to current directory
+    return resolve(process.cwd());
   }
-
-  // Fallback to current directory
-  return process.cwd();
+  return root;
 }
 
 /**
  * Get developer name from .developer file
  */
 function getDeveloper(repoRoot: string): string | null {
-  const devFile = join(repoRoot, DIR_WORKFLOW, FILE_DEVELOPER);
-
-  if (!existsSync(devFile)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(devFile, "utf-8");
-    for (const line of content.split("\n")) {
-      if (line.startsWith("name=")) {
-        return line.split("=")[1]?.trim() || null;
-      }
-    }
-  } catch {
-    // Ignore errors
-  }
-
-  return null;
+  return getWorkspaceDeveloper(repoRoot);
 }
 
 /**
  * Get workspace directory for the developer
  */
 function getWorkspaceDir(repoRoot: string, developer: string): string {
-  return join(repoRoot, DIR_WORKFLOW, DIR_WORKSPACE, developer);
-}
-
-/**
- * Get all developers from workspace directory
- */
-function getAllDevelopers(repoRoot: string): string[] {
-  const workspaceDir = join(repoRoot, DIR_WORKFLOW, DIR_WORKSPACE);
-
-  if (!existsSync(workspaceDir)) {
-    return [];
-  }
-
-  try {
-    return readdirSync(workspaceDir, { withFileTypes: true })
-      .filter((dirent) => dirent.isDirectory() && !dirent.name.startsWith("."))
-      .map((dirent) => dirent.name);
-  } catch {
-    return [];
-  }
+  return join(repoRoot, DIR_VIBEN, DIR_WORKSPACE, developer);
 }
 
 /**
@@ -197,102 +164,121 @@ function parseSessionsFromIndex(indexPath: string): SessionEntry[] {
 }
 
 /**
- * Find Python interpreter
+ * Add a new session (native TypeScript implementation)
  */
-function findPython(): string {
-  const candidates = ["python3", "python"];
-
-  for (const candidate of candidates) {
-    try {
-      const result = spawnSync(candidate, ["--version"], {
-        encoding: "utf-8",
-        timeout: 5000,
-      });
-      if (result.status === 0) {
-        return candidate;
-      }
-    } catch {
-      // Continue to next candidate
-    }
-  }
-
-  throw new Error("Python interpreter not found. Please install Python 3.");
-}
-
-/**
- * Find the add_session.py script
- */
-function findAddSessionScript(repoRoot: string): string {
-  // Check .viben/scripts/add_session.py
-  const scriptPath = join(repoRoot, DIR_WORKFLOW, "scripts", "add_session.py");
-
-  if (existsSync(scriptPath)) {
-    return scriptPath;
-  }
-
-  throw new Error(
-    `Script not found: ${scriptPath}\nRun 'viben team init' to initialize the workspace.`
-  );
-}
-
-/**
- * Run the add_session.py script
- */
-function runAddSessionScript(
+async function addSession(
   repoRoot: string,
   title: string,
   commit: string,
   summary: string,
-  contentFile?: string
-): SessionAddResult {
-  const python = findPython();
-  const script = findAddSessionScript(repoRoot);
-
-  const args = [script, "--title", title, "--commit", commit, "--summary", summary];
-
-  if (contentFile) {
-    args.push("--content-file", contentFile);
+  extraContent: string
+): Promise<SessionAddResult> {
+  const developer = getDeveloper(repoRoot);
+  if (!developer) {
+    throw new Error("Developer not initialized");
   }
 
-  // Run the script
-  const result = spawnSync(python, args, {
-    cwd: repoRoot,
-    encoding: "utf-8",
-    timeout: 30000,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-
-  if (result.error) {
-    throw new Error(`Failed to run add_session.py: ${result.error.message}`);
+  const workspaceDir = getWorkspaceDir(repoRoot, developer);
+  if (!existsSync(workspaceDir)) {
+    throw new Error("Workspace directory not found");
   }
 
-  // The script outputs status to stderr
-  if (result.stderr) {
-    // Output the script's progress messages
-    process.stderr.write(result.stderr);
-  }
+  const indexPath = join(workspaceDir, "index.md");
+  const today = getTodayDate();
 
-  if (result.status !== 0) {
-    throw new Error(
-      `add_session.py failed with exit code ${result.status}\n${result.stderr || ""}`
-    );
-  }
+  // Get current journal info
+  const { file: journalFile, number: currentNum, lines: currentLines } = getJournalInfo(repoRoot);
+  const currentSession = getCurrentSessionNumber(indexPath);
+  const newSession = currentSession + 1;
 
-  // Parse session number from stderr output
-  // Expected format: "Session: 16"
-  const sessionMatch = result.stderr?.match(/Session:\s*(\d+)/);
-  const sessionNum = sessionMatch ? parseInt(sessionMatch[1], 10) : 0;
-
-  // Parse journal file from stderr output
-  // Expected format: "[OK] Appended session to journal-1.md"
-  const journalMatch = result.stderr?.match(/Appended session to (journal-\d+\.md)/);
-  const journalFile = journalMatch ? journalMatch[1] : "journal-1.md";
-
-  return {
-    session: sessionNum,
+  // Generate session content
+  const sessionContent = generateSessionContent({
+    sessionNum: newSession,
     title,
     commit,
-    journalFile,
+    summary,
+    extraContent,
+    date: today,
+  });
+  const contentLines = sessionContent.split("\n").length;
+
+  // Log progress to stderr
+  console.error("========================================");
+  console.error("ADD SESSION");
+  console.error("========================================");
+  console.error("");
+  console.error(`Session: ${newSession}`);
+  console.error(`Title: ${title}`);
+  console.error(`Commit: ${commit}`);
+  console.error("");
+  console.error(`Current journal file: ${FILE_JOURNAL_PREFIX}${currentNum}.md`);
+  console.error(`Current lines: ${currentLines}`);
+  console.error(`New content lines: ${contentLines}`);
+  console.error(`Total after append: ${currentLines + contentLines}`);
+  console.error("");
+
+  // Determine target file
+  let targetFile = journalFile;
+  let targetNum = currentNum;
+
+  // Check if we need to create a new journal file
+  if (currentLines + contentLines > MAX_JOURNAL_LINES) {
+    targetNum = currentNum + 1;
+    console.error(`[!] Exceeds ${MAX_JOURNAL_LINES} lines, creating ${FILE_JOURNAL_PREFIX}${targetNum}.md`);
+    targetFile = await createNewJournalFile({
+      workspaceDir,
+      number: targetNum,
+      developer,
+      date: today,
+      prevNumber: currentNum,
+    });
+    console.error(`Created: ${targetFile}`);
+  }
+
+  // Append session content to journal file
+  if (targetFile) {
+    await appendFile(targetFile, sessionContent, "utf-8");
+    console.error(`[OK] Appended session to ${basename(targetFile)}`);
+  }
+
+  console.error("");
+
+  // Update index.md
+  const activeFile = `${FILE_JOURNAL_PREFIX}${targetNum}.md`;
+  const updated = await updateIndexWithSession({
+    indexPath,
+    workspaceDir,
+    sessionNum: newSession,
+    title,
+    commit,
+    activeFile,
+    date: today,
+  });
+
+  if (!updated) {
+    throw new Error("Failed to update index.md - markers not found");
+  }
+
+  console.error(`Updating index.md for session ${newSession}...`);
+  console.error(`  Title: ${title}`);
+  console.error(`  Commit: ${commit}`);
+  console.error(`  Active File: ${activeFile}`);
+  console.error("");
+  console.error("[OK] Updated index.md successfully!");
+  console.error("");
+  console.error("========================================");
+  console.error(`[OK] Session ${newSession} added successfully!`);
+  console.error("========================================");
+  console.error("");
+  console.error("Files updated:");
+  console.error(`  - ${basename(targetFile || "journal")}`);
+  console.error("  - index.md");
+
+  return {
+    session: newSession,
+    title,
+    commit,
+    journalFile: basename(targetFile || "journal-1.md"),
   };
 }
 
@@ -359,12 +345,72 @@ export function registerSessionCommand(program: Command): void {
             process.exit(1);
           }
 
-          const result = runAddSessionScript(
+          // Read extra content from file or stdin
+          let extraContent = "(Add details)";
+          if (options.contentFile) {
+            if (existsSync(options.contentFile)) {
+              extraContent = readFileSync(options.contentFile, "utf-8");
+            }
+          } else if (!process.stdin.isTTY && process.stdin.readable && !process.stdin.readableEnded) {
+            // Read from stdin if available (non-interactive mode)
+            // Only read if stdin is readable and not already ended (has actual piped data)
+            try {
+              // Try to read with a short timeout
+              const readPromise = new Promise<string>(async (resolve, reject) => {
+                const chunks: Buffer[] = [];
+                let hasData = false;
+
+                // Listen for data event
+                const onData = (chunk: Buffer) => {
+                  hasData = true;
+                  chunks.push(chunk);
+                };
+
+                const onEnd = () => {
+                  cleanup();
+                  const content = Buffer.concat(chunks).toString("utf-8").trim();
+                  resolve(content);
+                };
+
+                const onError = (err: Error) => {
+                  cleanup();
+                  reject(err);
+                };
+
+                const cleanup = () => {
+                  process.stdin.removeListener("data", onData);
+                  process.stdin.removeListener("end", onEnd);
+                  process.stdin.removeListener("error", onError);
+                };
+
+                process.stdin.on("data", onData);
+                process.stdin.on("end", onEnd);
+                process.stdin.on("error", onError);
+
+                // If no data arrives within 100ms, assume no stdin input
+                setTimeout(() => {
+                  if (!hasData) {
+                    cleanup();
+                    resolve("");
+                  }
+                }, 100);
+              });
+
+              const stdinContent = await readPromise;
+              if (stdinContent) {
+                extraContent = stdinContent;
+              }
+            } catch {
+              // Keep default value if stdin read fails
+            }
+          }
+
+          const result = await addSession(
             repoRoot,
             options.title,
             options.commit,
             options.summary,
-            options.contentFile
+            extraContent
           );
 
           output(

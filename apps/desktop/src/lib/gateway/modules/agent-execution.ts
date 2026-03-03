@@ -9,6 +9,7 @@ import type {
   SpawnAgentRequest,
   ExecutorType,
   BackgroundTask,
+  SSEMessageEvent,
 } from "../types";
 
 // ============================================================================
@@ -17,13 +18,14 @@ import type {
 
 /**
  * Spawn agent and get SSE stream
+ * Returns an async generator that yields SSE events
  */
-export async function spawnAgentStream(
+export async function* spawnAgentStream(
   baseUrl: string,
   agentType: ExecutorType,
   request: SpawnAgentRequest,
   signal?: AbortSignal
-): Promise<Response> {
+): AsyncGenerator<SSEMessageEvent, void, unknown> {
   const response = await fetch(
     `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/spawn`,
     {
@@ -45,22 +47,58 @@ export async function spawnAgentStream(
     );
   }
 
-  return response;
+  if (!response.body) {
+    throw new GatewayError("No response body for SSE stream");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") {
+            return;
+          }
+          try {
+            const event = JSON.parse(data) as SSEMessageEvent;
+            yield event;
+          } catch {
+            // Skip invalid JSON
+            console.warn("[GatewayClient] Invalid SSE data:", data);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /**
  * Continue session with SSE stream
+ * Returns an async generator that yields SSE events
  */
-export async function continueSessionStream(
+export async function* continueSessionStream(
   baseUrl: string,
   agentType: ExecutorType,
   sessionId: string,
   prompt: string,
   resetToMessageId?: string,
   signal?: AbortSignal
-): Promise<Response> {
+): AsyncGenerator<SSEMessageEvent, void, unknown> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/sessions/${encodeURIComponent(sessionId)}/continue`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/continue`,
     {
       method: "POST",
       headers: {
@@ -84,7 +122,41 @@ export async function continueSessionStream(
     );
   }
 
-  return response;
+  if (!response.body) {
+    throw new GatewayError("No response body for SSE stream");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6);
+          if (data === "[DONE]") {
+            return;
+          }
+          try {
+            const event = JSON.parse(data) as SSEMessageEvent;
+            yield event;
+          } catch {
+            console.warn("[GatewayClient] Invalid SSE data:", data);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 /**
@@ -92,14 +164,17 @@ export async function continueSessionStream(
  */
 export async function stopAgent(
   baseUrl: string,
-  agentType: ExecutorType,
+  _agentType: ExecutorType,
   sessionId: string
-): Promise<{ success: boolean }> {
+): Promise<void> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/sessions/${encodeURIComponent(sessionId)}/stop`,
+    `${baseUrl}/api/agent/stop/${encodeURIComponent(sessionId)}`,
     {
       method: "POST",
-      headers: { Accept: "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
     }
   );
 
@@ -110,8 +185,6 @@ export async function stopAgent(
       response.status
     );
   }
-
-  return response.json();
 }
 
 /**
@@ -153,55 +226,34 @@ export async function sendAgentInput(
 // ============================================================================
 
 /**
- * List background tasks
+ * Subscribe to background task updates (SSE)
+ * Returns an EventSource-like interface
  */
-export async function listBackgroundTasks(
-  baseUrl: string
-): Promise<BackgroundTask[]> {
-  const response = await fetch(`${baseUrl}/api/tasks`, {
-    method: "GET",
-    headers: { Accept: "application/json" },
-  });
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to list background tasks: ${errorMessage}`,
-      response.status
-    );
-  }
-
-  return response.json();
-}
-
-/**
- * Get background task by ID
- */
-export async function getBackgroundTask(
+export function subscribeToBackgroundTasks(
   baseUrl: string,
-  taskId: string
-): Promise<BackgroundTask | null> {
-  const response = await fetch(
-    `${baseUrl}/api/tasks/${encodeURIComponent(taskId)}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
+  onTasks: (tasks: BackgroundTask[]) => void,
+  onError?: (error: Error) => void
+): { close: () => void } {
+  const eventSource = new EventSource(`${baseUrl}/api/agent/tasks/subscribe`);
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "tasks") {
+        onTasks(data.tasks);
+      }
+    } catch (e) {
+      onError?.(e instanceof Error ? e : new Error(String(e)));
     }
-  );
+  };
 
-  if (response.status === 404) {
-    return null;
-  }
+  eventSource.onerror = () => {
+    onError?.(new Error("SSE connection error"));
+  };
 
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to get background task: ${errorMessage}`,
-      response.status
-    );
-  }
-
-  return response.json();
+  return {
+    close: () => eventSource.close(),
+  };
 }
 
 /**
@@ -210,9 +262,9 @@ export async function getBackgroundTask(
 export async function stopBackgroundTask(
   baseUrl: string,
   taskId: string
-): Promise<{ success: boolean }> {
+): Promise<{ success: boolean; taskId: string }> {
   const response = await fetch(
-    `${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/stop`,
+    `${baseUrl}/api/agent/tasks/${encodeURIComponent(taskId)}/stop`,
     {
       method: "POST",
       headers: { Accept: "application/json" },
@@ -228,28 +280,4 @@ export async function stopBackgroundTask(
   }
 
   return response.json();
-}
-
-/**
- * Delete background task
- */
-export async function deleteBackgroundTask(
-  baseUrl: string,
-  taskId: string
-): Promise<void> {
-  const response = await fetch(
-    `${baseUrl}/api/tasks/${encodeURIComponent(taskId)}`,
-    {
-      method: "DELETE",
-      headers: { Accept: "application/json" },
-    }
-  );
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to delete background task: ${errorMessage}`,
-      response.status
-    );
-  }
 }

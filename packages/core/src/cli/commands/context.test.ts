@@ -2,16 +2,34 @@
  * Context CLI Command Tests
  *
  * Tests for the context command that displays development context.
+ * Ensures TypeScript implementation matches Python scripts/common/git_context.py
+ *
+ * Python reference files:
+ * - templates/viben/scripts/get_context.py
+ * - templates/viben/scripts/common/git_context.py
+ * - templates/viben/scripts/common/paths.py
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerContextCommand } from "./context";
 
-// Mock the python-runner module
-vi.mock("../lib/python-runner", () => ({
+// Mock the viben-workspace module
+vi.mock("../lib/viben-workspace", () => ({
   findVibenRoot: vi.fn(),
-  runVibenScript: vi.fn(),
-  getVibenScriptPath: vi.fn(),
+  getDeveloper: vi.fn(),
+  getActiveJournalFile: vi.fn(),
+  countLines: vi.fn(),
+  getCurrentTask: vi.fn(),
+  getGitBranch: vi.fn(),
+  getGitStatus: vi.fn(),
+  getGitStatusCount: vi.fn(),
+  getRecentCommits: vi.fn(),
+  getActiveTasks: vi.fn(),
+  readTaskJson: vi.fn(),
+  DIR_VIBEN: ".viben",
+  DIR_WORKSPACE: "workspace",
+  DIR_TASKS: "tasks",
+  DIR_SPEC: "spec",
 }));
 
 // Mock chalk to avoid color output in tests
@@ -32,66 +50,50 @@ vi.spyOn(process, "exit").mockImplementation((code?: number | string | null | un
   throw new Error(`process.exit(${code})`);
 });
 
-import { findVibenRoot, runVibenScript } from "../lib/python-runner";
+import {
+  findVibenRoot,
+  getDeveloper,
+  getActiveJournalFile,
+  countLines,
+  getCurrentTask,
+  getGitBranch,
+  getGitStatus,
+  getGitStatusCount,
+  getRecentCommits,
+  getActiveTasks,
+  readTaskJson,
+} from "../lib/viben-workspace";
 
 /**
- * Sample context data for testing
+ * Sample task data for testing
  */
-const sampleContextData = {
-  developer: "john",
-  git: {
-    branch: "feature/user-auth",
-    isClean: false,
-    uncommittedChanges: 3,
-    recentCommits: [
-      { hash: "abc1234", message: "feat(auth): add login endpoint" },
-      { hash: "def5678", message: "fix: resolve typo in config" },
-      { hash: "ghi9012", message: "docs: update README" },
-    ],
+const sampleTasks = [
+  {
+    dir: "03-03-add-user-auth",
+    name: "add-user-auth",
+    status: "in_progress",
+    assignee: "john",
+    title: "Add user authentication",
+    priority: "P1",
   },
-  tasks: {
-    active: [
-      { dir: "03-03-add-user-auth", name: "add-user-auth", status: "in_progress" },
-      { dir: "03-02-fix-bug", name: "fix-bug", status: "planning" },
-    ],
-    directory: ".viben/tasks",
+  {
+    dir: "03-02-fix-bug",
+    name: "fix-bug",
+    status: "planning",
+    assignee: "alice",
+    title: "Fix login bug",
+    priority: "P2",
   },
-  journal: {
-    file: ".viben/workspace/john/journal-1.md",
-    lines: 1500,
-    nearLimit: false,
-  },
-};
+];
 
 /**
- * Sample text output from Python script
+ * Sample commits for testing
  */
-const sampleTextOutput = `========================================
-SESSION CONTEXT
-========================================
-
-## DEVELOPER
-Name: john
-
-## GIT STATUS
-Branch: feature/user-auth
-Working directory: 3 uncommitted change(s)
-
-## RECENT COMMITS
-abc1234 feat(auth): add login endpoint
-def5678 fix: resolve typo in config
-ghi9012 docs: update README
-
-## ACTIVE TASKS
-- 03-03-add-user-auth/ (in_progress) @john
-- 03-02-fix-bug/ (planning) @alice
-Total: 2 active task(s)
-
-## JOURNAL FILE
-Active file: .viben/workspace/john/journal-1.md
-Line count: 1500 / 2000
-
-========================================`;
+const sampleCommits = [
+  { hash: "abc1234", message: "feat(auth): add login endpoint" },
+  { hash: "def5678", message: "fix: resolve typo in config" },
+  { hash: "ghi9012", message: "docs: update README" },
+];
 
 describe("Context CLI Command", () => {
   let program: Command;
@@ -127,56 +129,67 @@ describe("Context CLI Command", () => {
     await program.parseAsync(["node", "test", ...args]);
   }
 
+  // Helper to set up standard mocks
+  function setupStandardMocks() {
+    vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+    vi.mocked(getDeveloper).mockReturnValue("john");
+    vi.mocked(getGitBranch).mockReturnValue("feature/user-auth");
+    vi.mocked(getGitStatus).mockReturnValue([
+      " M src/auth.ts",
+      " M src/api.ts",
+      "?? src/new-file.ts",
+    ]);
+    vi.mocked(getGitStatusCount).mockReturnValue(3);
+    vi.mocked(getRecentCommits).mockReturnValue(sampleCommits);
+    vi.mocked(getActiveTasks).mockReturnValue(sampleTasks);
+    vi.mocked(getCurrentTask).mockReturnValue(null);
+    vi.mocked(getActiveJournalFile).mockReturnValue("/workspace/.viben/workspace/john/journal-1.md");
+    vi.mocked(countLines).mockReturnValue(1500);
+    vi.mocked(readTaskJson).mockReturnValue(null);
+  }
+
   // ============================================================================
   // Basic functionality tests
   // ============================================================================
 
   describe("basic functionality", () => {
     it("should display context in text format by default", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: sampleTextOutput,
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["context"]);
 
       expect(findVibenRoot).toHaveBeenCalled();
-      expect(runVibenScript).toHaveBeenCalledWith("get_context.py", []);
-      expect(consoleSpy).toHaveBeenCalledWith(sampleTextOutput);
+      expect(getDeveloper).toHaveBeenCalled();
+      expect(getGitBranch).toHaveBeenCalled();
+
+      // Check output contains key sections
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("SESSION CONTEXT");
+      expect(output).toContain("## DEVELOPER");
+      expect(output).toContain("Name: john");
+      expect(output).toContain("## GIT STATUS");
     });
 
     it("should display context in JSON format with --json flag", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["--json", "context"]);
 
-      expect(runVibenScript).toHaveBeenCalledWith("get_context.py", ["--json"]);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"success": true')
-      );
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const response = JSON.parse(output);
+
+      expect(response.success).toBe(true);
+      expect(response.data.developer).toBe("john");
+      expect(response.data.git.branch).toBe("feature/user-auth");
     });
 
     it("should display context in JSON format with local --json flag", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["context", "--json"]);
 
-      expect(runVibenScript).toHaveBeenCalledWith("get_context.py", ["--json"]);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"developer"')
-      );
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain('"developer"');
     });
   });
 
@@ -209,37 +222,14 @@ describe("Context CLI Command", () => {
       );
     });
 
-    it("should show error when Python script fails", async () => {
+    it("should show error when developer not initialized", async () => {
       vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: "",
-        stderr: "Python script error",
-        code: 1,
-      });
+      vi.mocked(getDeveloper).mockReturnValue(null);
 
-      await expect(runCommand(["context"])).rejects.toThrow("process.exit(1)");
+      await runCommand(["context"]);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Python script error")
-      );
-    });
-
-    it("should show error with JSON format when script fails", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: "",
-        stderr: "Script not found",
-        code: 1,
-      });
-
-      await expect(runCommand(["--json", "context"])).rejects.toThrow("process.exit(1)");
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"success": false')
-      );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("SCRIPT_ERROR")
-      );
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("ERROR: Not initialized");
     });
   });
 
@@ -249,12 +239,7 @@ describe("Context CLI Command", () => {
 
   describe("JSON output structure", () => {
     it("should include developer info in JSON output", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["--json", "context"]);
 
@@ -266,12 +251,7 @@ describe("Context CLI Command", () => {
     });
 
     it("should include git info in JSON output", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["--json", "context"]);
 
@@ -286,12 +266,7 @@ describe("Context CLI Command", () => {
     });
 
     it("should include tasks info in JSON output", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["--json", "context"]);
 
@@ -304,12 +279,7 @@ describe("Context CLI Command", () => {
     });
 
     it("should include journal info in JSON output", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
 
       await runCommand(["--json", "context"]);
 
@@ -329,17 +299,13 @@ describe("Context CLI Command", () => {
 
   describe("edge cases", () => {
     it("should handle empty developer name", async () => {
-      const emptyDeveloperData = {
-        ...sampleContextData,
-        developer: "",
-      };
-
       vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(emptyDeveloperData),
-        stderr: "",
-        code: 0,
-      });
+      vi.mocked(getDeveloper).mockReturnValue("");
+      vi.mocked(getGitBranch).mockReturnValue("main");
+      vi.mocked(getGitStatusCount).mockReturnValue(0);
+      vi.mocked(getRecentCommits).mockReturnValue([]);
+      vi.mocked(getActiveTasks).mockReturnValue([]);
+      vi.mocked(getActiveJournalFile).mockReturnValue(null);
 
       await runCommand(["--json", "context"]);
 
@@ -351,20 +317,8 @@ describe("Context CLI Command", () => {
     });
 
     it("should handle no active tasks", async () => {
-      const noTasksData = {
-        ...sampleContextData,
-        tasks: {
-          active: [],
-          directory: ".viben/tasks",
-        },
-      };
-
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(noTasksData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
+      vi.mocked(getActiveTasks).mockReturnValue([]);
 
       await runCommand(["--json", "context"]);
 
@@ -375,22 +329,11 @@ describe("Context CLI Command", () => {
     });
 
     it("should handle clean git status", async () => {
-      const cleanGitData = {
-        ...sampleContextData,
-        git: {
-          branch: "main",
-          isClean: true,
-          uncommittedChanges: 0,
-          recentCommits: [],
-        },
-      };
-
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(cleanGitData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
+      vi.mocked(getGitBranch).mockReturnValue("main");
+      vi.mocked(getGitStatus).mockReturnValue([]);
+      vi.mocked(getGitStatusCount).mockReturnValue(0);
+      vi.mocked(getRecentCommits).mockReturnValue([]);
 
       await runCommand(["--json", "context"]);
 
@@ -402,21 +345,8 @@ describe("Context CLI Command", () => {
     });
 
     it("should handle journal near limit warning", async () => {
-      const nearLimitData = {
-        ...sampleContextData,
-        journal: {
-          file: ".viben/workspace/john/journal-1.md",
-          lines: 1900,
-          nearLimit: true,
-        },
-      };
-
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(nearLimitData),
-        stderr: "",
-        code: 0,
-      });
+      setupStandardMocks();
+      vi.mocked(countLines).mockReturnValue(1900);
 
       await runCommand(["--json", "context"]);
 
@@ -427,66 +357,84 @@ describe("Context CLI Command", () => {
       expect(response.data.journal.lines).toBe(1900);
     });
 
-    it("should handle malformed JSON from script gracefully", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: "{ invalid json }",
-        stderr: "",
-        code: 0,
-      });
+    it("should handle no journal file", async () => {
+      setupStandardMocks();
+      vi.mocked(getActiveJournalFile).mockReturnValue(null);
 
-      await runCommand(["--json", "context"]);
+      await runCommand(["context"]);
 
-      // Should output the raw string when JSON parsing fails
-      expect(consoleSpy).toHaveBeenCalledWith("{ invalid json }");
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("No journal file found");
     });
   });
 
   // ============================================================================
-  // Script integration tests
+  // Current task tests
   // ============================================================================
 
-  describe("script integration", () => {
-    it("should call runVibenScript with correct script name", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: sampleTextOutput,
-        stderr: "",
-        code: 0,
+  describe("current task", () => {
+    it("should display current task when set", async () => {
+      setupStandardMocks();
+      vi.mocked(getCurrentTask).mockReturnValue(".viben/tasks/03-03-add-user-auth");
+      vi.mocked(readTaskJson).mockReturnValue({
+        name: "add-user-auth",
+        status: "in_progress",
+        createdAt: "2024-03-03",
+        description: "Add user authentication",
       });
 
       await runCommand(["context"]);
 
-      expect(runVibenScript).toHaveBeenCalledWith(
-        "get_context.py",
-        expect.any(Array)
-      );
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("## CURRENT TASK");
+      expect(output).toContain("Path: .viben/tasks/03-03-add-user-auth");
+      expect(output).toContain("Name: add-user-auth");
     });
 
-    it("should pass --json flag to Python script when JSON output requested", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: JSON.stringify(sampleContextData),
-        stderr: "",
-        code: 0,
-      });
-
-      await runCommand(["--json", "context"]);
-
-      expect(runVibenScript).toHaveBeenCalledWith("get_context.py", ["--json"]);
-    });
-
-    it("should not pass --json flag for text output", async () => {
-      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
-      vi.mocked(runVibenScript).mockResolvedValue({
-        stdout: sampleTextOutput,
-        stderr: "",
-        code: 0,
-      });
+    it("should display (none) when no current task", async () => {
+      setupStandardMocks();
+      vi.mocked(getCurrentTask).mockReturnValue(null);
 
       await runCommand(["context"]);
 
-      expect(runVibenScript).toHaveBeenCalledWith("get_context.py", []);
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("## CURRENT TASK");
+      expect(output).toContain("(none)");
+    });
+  });
+
+  // ============================================================================
+  // My tasks filter tests
+  // ============================================================================
+
+  describe("my tasks filter", () => {
+    it("should show tasks assigned to current developer", async () => {
+      setupStandardMocks();
+
+      await runCommand(["context"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("## MY TASKS (Assigned to me)");
+      expect(output).toContain("[P1] Add user authentication (in_progress)");
+    });
+
+    it("should show message when no tasks assigned", async () => {
+      setupStandardMocks();
+      vi.mocked(getActiveTasks).mockReturnValue([
+        {
+          dir: "03-02-fix-bug",
+          name: "fix-bug",
+          status: "planning",
+          assignee: "alice",
+          title: "Fix login bug",
+          priority: "P2",
+        },
+      ]);
+
+      await runCommand(["context"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(output).toContain("(no tasks assigned to you)");
     });
   });
 });

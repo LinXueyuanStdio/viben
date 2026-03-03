@@ -48,7 +48,7 @@ export async function listProviders(
 export async function getProvider(
   baseUrl: string,
   providerId: string
-): Promise<ProviderResponse | null> {
+): Promise<ProviderResponse> {
   const response = await fetch(
     `${baseUrl}/api/providers/${encodeURIComponent(providerId)}`,
     {
@@ -56,10 +56,6 @@ export async function getProvider(
       headers: { Accept: "application/json" },
     }
   );
-
-  if (response.status === 404) {
-    return null;
-  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -246,9 +242,9 @@ export async function discoverModels(
   providerId: string
 ): Promise<DiscoverModelsResponse> {
   const response = await fetch(
-    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/discover`,
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/discover-models`,
     {
-      method: "POST",
+      method: "GET",
       headers: { Accept: "application/json" },
     }
   );
@@ -321,6 +317,88 @@ export async function updateProviderEnabledModels(
   return response.json();
 }
 
+/**
+ * List enabled models for a specific provider
+ */
+export async function listProviderEnabledModels(
+  baseUrl: string,
+  providerId: string
+): Promise<string[]> {
+  const response = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/models`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to list provider enabled models: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  const data = await response.json() as {
+    provider_id: string;
+    models: Array<{ id: string; enabled: boolean }>;
+    total: number;
+  };
+  // Extract enabled model IDs from the models array
+  return data.models.filter(m => m.enabled).map(m => m.id);
+}
+
+/**
+ * Enable a model for a specific provider
+ */
+export async function enableProviderModel(
+  baseUrl: string,
+  providerId: string,
+  modelId: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}/enable`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to enable provider model: ${errorMessage}`,
+      response.status
+    );
+  }
+}
+
+/**
+ * Disable a model for a specific provider
+ */
+export async function disableProviderModel(
+  baseUrl: string,
+  providerId: string,
+  modelId: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/models/${encodeURIComponent(modelId)}/disable`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to disable provider model: ${errorMessage}`,
+      response.status
+    );
+  }
+}
+
 // ============================================================================
 // API Keys Info
 // ============================================================================
@@ -345,4 +423,78 @@ export async function getApiKeyProviders(
   }
 
   return response.json();
+}
+
+// ============================================================================
+// Additional Provider Operations
+// ============================================================================
+
+/**
+ * Get default provider
+ */
+export async function getDefaultProvider(
+  baseUrl: string
+): Promise<{ default_provider_id: string | null; provider: ProviderResponse | null }> {
+  const response = await fetch(`${baseUrl}/api/providers/default`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to get default provider: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Enable a provider
+ */
+export async function enableProvider(
+  baseUrl: string,
+  providerId: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/enable`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to enable provider: ${errorMessage}`,
+      response.status
+    );
+  }
+}
+
+/**
+ * Disable a provider
+ */
+export async function disableProvider(
+  baseUrl: string,
+  providerId: string
+): Promise<void> {
+  const response = await fetch(
+    `${baseUrl}/api/providers/${encodeURIComponent(providerId)}/disable`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to disable provider: ${errorMessage}`,
+      response.status
+    );
+  }
 }

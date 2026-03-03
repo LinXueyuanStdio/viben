@@ -156,18 +156,15 @@ export async function deleteWorkspace(
 
 /**
  * Get active workspace
+ * Updated to match original gateway.ts return type
  */
 export async function getActiveWorkspace(
   baseUrl: string
-): Promise<WorkspaceResponse | null> {
+): Promise<{ active_workspace: WorkspaceResponse | null }> {
   const response = await fetch(`${baseUrl}/api/workspaces/active`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
-
-  if (response.status === 404) {
-    return null;
-  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -182,18 +179,23 @@ export async function getActiveWorkspace(
 
 /**
  * Set active workspace
+ * Updated to match original gateway.ts signature and return type
  */
 export async function setActiveWorkspace(
   baseUrl: string,
-  workspaceId: string
-): Promise<void> {
+  options: { workspaceId?: string; path?: string }
+): Promise<WorkspaceResponse> {
+  const body: Record<string, string> = {};
+  if (options.workspaceId) body.workspace_id = options.workspaceId;
+  if (options.path) body.path = options.path;
+
   const response = await fetch(`${baseUrl}/api/workspaces/active`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ workspace_id: workspaceId }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -203,6 +205,9 @@ export async function setActiveWorkspace(
       response.status
     );
   }
+
+  const data = await response.json();
+  return data.active_workspace;
 }
 
 // ============================================================================
@@ -233,4 +238,15 @@ export async function detectAgents(
   }
 
   return response.json();
+}
+
+/**
+ * Detect workspace agents (alias for detectAgents)
+ * Added to match original gateway.ts naming
+ */
+export async function detectWorkspaceAgents(
+  baseUrl: string,
+  workspaceId: string
+): Promise<DetectAgentsResponse> {
+  return detectAgents(baseUrl, workspaceId);
 }

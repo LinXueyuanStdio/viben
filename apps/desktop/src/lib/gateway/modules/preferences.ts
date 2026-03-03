@@ -41,7 +41,7 @@ export async function updatePreferences(
   prefs: Partial<PreferencesResponse>
 ): Promise<PreferencesResponse> {
   const response = await fetch(`${baseUrl}/api/preferences`, {
-    method: "PUT",
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",

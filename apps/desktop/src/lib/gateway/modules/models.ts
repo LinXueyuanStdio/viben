@@ -44,7 +44,7 @@ export async function listModels(
 export async function getModel(
   baseUrl: string,
   modelId: string
-): Promise<ModelResponse | null> {
+): Promise<ModelResponse> {
   const response = await fetch(
     `${baseUrl}/api/models/${encodeURIComponent(modelId)}`,
     {
@@ -52,10 +52,6 @@ export async function getModel(
       headers: { Accept: "application/json" },
     }
   );
-
-  if (response.status === 404) {
-    return null;
-  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -211,7 +207,7 @@ export async function setDefaultModel(
 export async function enableModel(
   baseUrl: string,
   modelId: string
-): Promise<ModelResponse> {
+): Promise<void> {
   const response = await fetch(
     `${baseUrl}/api/models/${encodeURIComponent(modelId)}/enable`,
     {
@@ -227,8 +223,6 @@ export async function enableModel(
       response.status
     );
   }
-
-  return response.json();
 }
 
 /**
@@ -237,7 +231,7 @@ export async function enableModel(
 export async function disableModel(
   baseUrl: string,
   modelId: string
-): Promise<ModelResponse> {
+): Promise<void> {
   const response = await fetch(
     `${baseUrl}/api/models/${encodeURIComponent(modelId)}/disable`,
     {
@@ -253,6 +247,4 @@ export async function disableModel(
       response.status
     );
   }
-
-  return response.json();
 }
