@@ -88,7 +88,11 @@ export function getDeveloper(repoRoot: string): string | null {
     const content = readFileSync(devFile, "utf-8");
     for (const line of content.split("\n")) {
       if (line.startsWith("name=")) {
-        return line.split("=")[1]?.trim() || null;
+        // Use split with limit 2 to match Python: line.split("=", 1)[1]
+        // This correctly handles values containing "=" characters
+        const parts = line.split("=");
+        const value = parts.slice(1).join("=").trim();
+        return value || null;
       }
     }
   } catch {
@@ -239,7 +243,16 @@ export function countLines(filePath: string): number {
 
   try {
     const content = readFileSync(filePath, "utf-8");
-    return content.split("\n").length;
+    // Match Python's splitlines() behavior:
+    // - "a\nb" -> ["a", "b"] (length 2)
+    // - "a\nb\n" -> ["a", "b"] (length 2, not 3)
+    // - "" -> [] (length 0, but we return 1 for empty file like Python)
+    const lines = content.split("\n");
+    // If content ends with newline, the last element is empty string - don't count it
+    if (lines.length > 0 && lines[lines.length - 1] === "") {
+      return lines.length - 1;
+    }
+    return lines.length;
   } catch {
     return 0;
   }

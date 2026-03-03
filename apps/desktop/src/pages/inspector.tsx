@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inspector, NotificationsPanel, ConfigManager, type InspectorConfig } from "@/components/inspector";
+import { Inspector, NotificationsPanel, ConfigManager, LoggingLevelControl, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
   parseMcpConfig,
@@ -459,6 +459,7 @@ export function InspectorPage() {
   const hasPrompts = serverCapabilities?.prompts !== undefined;
   const hasRoots = serverCapabilities?.roots !== undefined;
   const hasSampling = serverCapabilities?.sampling !== undefined;
+  const hasLogging = serverCapabilities?.logging !== undefined;
   // Tasks capability check - MCP 2024-11-05 added tasks support
   const hasTasks = (serverCapabilities as Record<string, unknown>)?.tasks !== undefined;
 
@@ -691,6 +692,13 @@ export function InspectorPage() {
                 </div>
               )}
             </div>
+
+            {/* Logging Level Control - only shown when connected and logging is supported */}
+            <LoggingLevelControl
+              enabled={hasLogging}
+              connectionStatus={connectionStatus}
+              makeRequest={makeRequest}
+            />
           </div>
         </div>
 

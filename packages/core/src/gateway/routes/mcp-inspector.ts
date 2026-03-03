@@ -29,6 +29,10 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
 import { whichSync } from "../../executors/utils";
+import {
+  validateOrigin,
+  setSecurityHeaders,
+} from "../middleware/origin-validation";
 
 // ============================================================================
 // Types
@@ -423,6 +427,16 @@ function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS"
   );
+  // Set security headers for DNS rebinding protection
+  setSecurityHeaders(reply);
+}
+
+/**
+ * Validate origin for DNS rebinding protection
+ * Returns false and sends 403 response if origin is not allowed
+ */
+function checkOrigin(request: FastifyRequest, reply: FastifyReply): boolean {
+  return validateOrigin(request, reply);
 }
 
 /**
@@ -674,6 +688,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
 
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string;
@@ -718,6 +735,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/mcp", async (request, reply) => {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -809,6 +829,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
    * DELETE /api/mcp/inspector/mcp
    */
   fastify.delete("/api/mcp/inspector/mcp", async (request, reply) => {
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.headers["mcp-session-id"] as string | undefined;
@@ -862,6 +885,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/stdio", async (request, reply) => {
     // Set CORS headers for raw response handling (SSE)
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -993,6 +1019,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
     // Set CORS headers
     setCorsHeaders(request, reply);
 
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
+
     if (!checkAuth(request, reply)) return;
 
     const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
@@ -1050,6 +1079,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/sse", async (request, reply) => {
     // Set CORS headers for raw response handling (SSE)
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 
@@ -1120,6 +1152,9 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   }>("/api/mcp/inspector/message", async (request, reply) => {
     // Set CORS headers for raw response handling
     setCorsHeaders(request, reply);
+
+    // DNS rebinding protection
+    if (!checkOrigin(request, reply)) return;
 
     if (!checkAuth(request, reply)) return;
 

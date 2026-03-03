@@ -29,3 +29,19 @@ export type {
   StreamableHttpTransportConfig,
   TransportConnectionStatus,
 } from "./transport-selector";
+export { LoggingLevelControl } from "./logging-level-control";
+export type { LoggingLevel } from "./logging-level-control";
+export {
+  getSandboxProxyUrl,
+  isSandboxMessage,
+  isAppMessage,
+  isAllowedOrigin,
+  DEFAULT_ALLOWED_ORIGINS,
+  formatSecurityResults,
+  calculateSecurityScore,
+} from "./sandbox-security";
+export type {
+  SandboxSecurityResult,
+  InspectorToSandboxMessage,
+  SandboxToInspectorMessage,
+} from "./sandbox-security";

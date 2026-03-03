@@ -350,6 +350,7 @@ export function useMcpConnection({
         prompts: caps?.prompts ? {} : undefined,
         roots: caps?.roots ? {} : undefined,
         sampling: caps?.sampling ? {} : undefined,
+        logging: caps?.logging ? {} : undefined,
       };
 
       clientRef.current = client;

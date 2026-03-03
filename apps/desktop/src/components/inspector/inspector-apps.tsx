@@ -12,6 +12,9 @@ import {
   RefreshCw,
   ArrowLeft,
   ExternalLink,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +29,16 @@ import DynamicJsonForm, {
   generateDefaultValue,
 } from "./dynamic-json-form";
 import { cn } from "@/lib/utils";
+import {
+  type SandboxSecurityResult,
+  type SandboxToInspectorMessage,
+  getSandboxProxyUrl,
+  isSandboxMessage,
+  isAppMessage,
+  isAllowedOrigin,
+  DEFAULT_ALLOWED_ORIGINS,
+} from "./sandbox-security";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 // =============================================================================
 // Types
@@ -650,60 +663,207 @@ export function InspectorApps({ makeRequest, enabled = true }: InspectorAppsProp
 }
 
 // =============================================================================
-// App Viewer Component
+// App Viewer Component with Dual-Layer Sandbox Architecture
 // =============================================================================
 
 interface AppViewerProps {
   resourceUri: string;
   toolInput?: Record<string, unknown>;
   toolResult?: ToolCallResult | null;
+  /** Callback when security test results are received */
+  onSecurityResult?: (result: SandboxSecurityResult) => void;
 }
 
-function AppViewer({ resourceUri, toolInput, toolResult }: AppViewerProps) {
+function AppViewer({ resourceUri, toolInput, toolResult, onSecurityResult }: AppViewerProps) {
   const { t } = useTranslation();
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const [iframeError, setIframeError] = useState<string | null>(null);
+  const sandboxRef = useRef<HTMLIFrameElement>(null);
 
-  // Post message to iframe with tool data
+  // Sandbox state
+  const [sandboxReady, setSandboxReady] = useState(false);
+  const [appLoaded, setAppLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [securityResult, setSecurityResult] = useState<SandboxSecurityResult | null>(null);
+
+  // Sandbox proxy URL
+  const sandboxProxyUrl = useMemo(() => getSandboxProxyUrl(), []);
+
+  // ==========================================================================
+  // Message handling
+  // ==========================================================================
+
   useEffect(() => {
-    if (!iframeLoaded || !iframeRef.current) return;
+    function handleMessage(event: MessageEvent) {
+      const { data, origin, source } = event;
 
-    const message = {
-      type: "mcp-ui-init",
-      toolInput,
-      toolResult,
-    };
+      // Only accept messages from our sandbox iframe
+      if (source !== sandboxRef.current?.contentWindow) {
+        return;
+      }
 
-    try {
-      iframeRef.current.contentWindow?.postMessage(message, "*");
-    } catch (error) {
-      console.error("Failed to post message to iframe:", error);
+      // Validate origin (allow null for sandboxed iframes)
+      if (!isAllowedOrigin(origin, DEFAULT_ALLOWED_ORIGINS)) {
+        console.warn("[AppViewer] Message from untrusted origin:", origin);
+        return;
+      }
+
+      console.log("[AppViewer] Message from sandbox:", data?.type);
+
+      // Handle sandbox messages
+      if (isSandboxMessage(data)) {
+        handleSandboxMessage(data);
+        return;
+      }
+
+      // Handle app messages (relayed through sandbox)
+      if (isAppMessage(data)) {
+        handleAppMessage(data);
+        return;
+      }
     }
-  }, [iframeLoaded, toolInput, toolResult]);
 
-  // Handle iframe load
-  const handleIframeLoad = useCallback(() => {
-    setIframeLoaded(true);
-    setIframeError(null);
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [onSecurityResult]);
+
+  const handleSandboxMessage = useCallback((message: SandboxToInspectorMessage) => {
+    switch (message.type) {
+      case "mcp-sandbox-ready":
+        console.log("[AppViewer] Sandbox ready, initializing app");
+        setSandboxReady(true);
+        // Send init message with app URL
+        sandboxRef.current?.contentWindow?.postMessage(
+          { type: "mcp-sandbox-init", appUrl: resourceUri },
+          "*"
+        );
+        break;
+
+      case "mcp-sandbox-security-result":
+        console.log("[AppViewer] Security test results:", message.results);
+        setSecurityResult(message.results);
+        onSecurityResult?.(message.results);
+        break;
+
+      case "mcp-sandbox-app-loaded":
+        console.log("[AppViewer] App loaded:", message.url);
+        setAppLoaded(true);
+        setError(null);
+        // Send tool data to app
+        if (toolInput || toolResult) {
+          sandboxRef.current?.contentWindow?.postMessage(
+            { type: "mcp-ui-init", toolInput, toolResult },
+            "*"
+          );
+        }
+        break;
+
+      case "mcp-sandbox-app-error":
+        console.error("[AppViewer] App error:", message.error);
+        setError(message.error);
+        setAppLoaded(false);
+        break;
+    }
+  }, [resourceUri, toolInput, toolResult, onSecurityResult]);
+
+  const handleAppMessage = useCallback((message: { type: string; [key: string]: unknown }) => {
+    // Handle messages from the app (relayed through sandbox)
+    console.log("[AppViewer] App message:", message.type);
+
+    switch (message.type) {
+      case "mcp-ui-result":
+        // App sent a result (e.g., user action completed)
+        console.log("[AppViewer] App result:", message.result);
+        break;
+
+      case "mcp-ui-error":
+        // App encountered an error
+        console.error("[AppViewer] App error:", message.error);
+        break;
+    }
   }, []);
 
-  // Handle iframe error
-  const handleIframeError = useCallback(() => {
-    setIframeError(t("inspector.appLoadError", "Failed to load app"));
-    setIframeLoaded(false);
-  }, [t]);
+  // ==========================================================================
+  // Send tool data when it changes
+  // ==========================================================================
 
+  useEffect(() => {
+    if (!appLoaded || !sandboxRef.current) return;
+
+    sandboxRef.current.contentWindow?.postMessage(
+      { type: "mcp-ui-init", toolInput, toolResult },
+      "*"
+    );
+  }, [appLoaded, toolInput, toolResult]);
+
+  // ==========================================================================
   // Open in new tab
+  // ==========================================================================
+
   const handleOpenExternal = useCallback(() => {
     window.open(resourceUri, "_blank");
   }, [resourceUri]);
+
+  // ==========================================================================
+  // Render security badge
+  // ==========================================================================
+
+  const renderSecurityBadge = () => {
+    if (!securityResult) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted">
+              <Shield className="h-3 w-3 text-muted-foreground" />
+              <span className="text-muted-foreground">{t("inspector.checking", "Checking...")}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t("inspector.securityCheckPending", "Running security checks...")}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    if (securityResult.passed) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-green-500/10">
+              <ShieldCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
+              <span className="text-green-600 dark:text-green-400">{t("inspector.secure", "Secure")}</span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent>
+            {t("inspector.securityPassed", "App is running in isolated sandbox")}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-500/10">
+            <ShieldAlert className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+            <span className="text-amber-600 dark:text-amber-400">{t("inspector.warning", "Warning")}</span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          {t("inspector.securityWarning", "Some security checks did not pass. Use caution.")}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  // ==========================================================================
+  // Render
+  // ==========================================================================
 
   return (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-muted/30">
         <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden">
+          {renderSecurityBadge()}
           <span className="truncate font-mono">{resourceUri}</span>
         </div>
         <Button
@@ -717,18 +877,27 @@ function AppViewer({ resourceUri, toolInput, toolResult }: AppViewerProps) {
         </Button>
       </div>
 
-      {/* Iframe */}
+      {/* Sandbox iframe (outer layer) */}
       <div className="flex-1 relative">
-        {!iframeLoaded && !iframeError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {/* Loading state */}
+        {(!sandboxReady || !appLoaded) && !error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">
+                {!sandboxReady
+                  ? t("inspector.initializingSandbox", "Initializing sandbox...")
+                  : t("inspector.loadingApp", "Loading app...")}
+              </span>
+            </div>
           </div>
         )}
 
-        {iframeError && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50">
+        {/* Error state */}
+        {error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted/50 z-10">
             <AlertTriangle className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">{iframeError}</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
             <Button
               variant="outline"
               size="sm"
@@ -741,14 +910,13 @@ function AppViewer({ resourceUri, toolInput, toolResult }: AppViewerProps) {
           </div>
         )}
 
+        {/* Dual-layer iframe: outer sandbox proxy, inner app iframe */}
         <iframe
-          ref={iframeRef}
-          src={resourceUri}
+          ref={sandboxRef}
+          src={sandboxProxyUrl}
           className="w-full h-full border-0"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-          title="MCP App"
+          sandbox="allow-scripts allow-forms allow-popups allow-modals"
+          title="MCP App Sandbox"
         />
       </div>
     </div>

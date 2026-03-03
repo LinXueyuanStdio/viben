@@ -4,7 +4,77 @@
  */
 
 // ============================================================================
-// Helper Functions
+// URL Building Helpers
+// ============================================================================
+
+/**
+ * Options for building URLs with query parameters
+ */
+export interface BuildUrlOptions {
+  /** Workspace path parameter */
+  workspacePath?: string;
+  /** Include global flag */
+  includeGlobal?: boolean;
+  /** Additional custom parameters */
+  params?: Record<string, string | number | boolean | undefined>;
+}
+
+/**
+ * Build a URL with query parameters
+ * Handles common patterns for workspace_path and other parameters
+ *
+ * @param baseUrl - Gateway base URL
+ * @param path - API path (e.g., "/api/agents")
+ * @param options - URL options including workspacePath and custom params
+ * @returns Fully constructed URL string
+ *
+ * @example
+ * ```ts
+ * // Simple path
+ * buildUrl("http://localhost:8080", "/api/agents")
+ * // => "http://localhost:8080/api/agents"
+ *
+ * // With workspace path
+ * buildUrl("http://localhost:8080", "/api/agents", { workspacePath: "/path/to/project" })
+ * // => "http://localhost:8080/api/agents?workspace_path=%2Fpath%2Fto%2Fproject"
+ *
+ * // With custom params
+ * buildUrl("http://localhost:8080", "/api/sessions", {
+ *   workspacePath: "/path",
+ *   params: { limit: 10, active: true }
+ * })
+ * // => "http://localhost:8080/api/sessions?workspace_path=%2Fpath&limit=10&active=true"
+ * ```
+ */
+export function buildUrl(
+  baseUrl: string,
+  path: string,
+  options?: BuildUrlOptions
+): string {
+  const params = new URLSearchParams();
+
+  if (options?.workspacePath) {
+    params.set("workspace_path", options.workspacePath);
+  }
+
+  if (options?.includeGlobal !== undefined) {
+    params.set("include_global", String(options.includeGlobal));
+  }
+
+  if (options?.params) {
+    for (const [key, value] of Object.entries(options.params)) {
+      if (value !== undefined) {
+        params.set(key, String(value));
+      }
+    }
+  }
+
+  const query = params.toString();
+  return query ? `${baseUrl}${path}?${query}` : `${baseUrl}${path}`;
+}
+
+// ============================================================================
+// Error Handling Helpers
 // ============================================================================
 
 /**
