@@ -17,7 +17,7 @@
 # ===========================================
 node_modules/
 .pnpm-store/
-# pnpm-lock.yaml should be committed for reproducible builds
+pnpm-lock.yaml
 package-lock.json
 yarn.lock
 .npm/
