@@ -1,14 +1,8 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Children, isValidElement, useEffect, useState, ReactNode } from 'react';
 import { cn } from '@/lib/utils/index';
-
-// Check if user prefers reduced motion
-const getPrefersReducedMotion = () => {
-  if (typeof window === 'undefined') return false;
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-};
 
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
@@ -24,11 +18,10 @@ interface AnimatedGridProps {
  */
 export function AnimatedGrid({ children, className }: AnimatedGridProps) {
   const [mounted, setMounted] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     setMounted(true);
-    setPrefersReducedMotion(getPrefersReducedMotion());
   }, []);
 
   const containerVariants = {
