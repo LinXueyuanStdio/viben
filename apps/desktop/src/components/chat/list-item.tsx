@@ -67,8 +67,8 @@ export interface ListItemProps {
 
   // Avatar configuration
   avatar: {
-    /** Icon to display in avatar */
-    icon: LucideIcon;
+    /** Icon to display in avatar - can be a LucideIcon component or any React node (e.g., @lobehub/icons) */
+    icon: LucideIcon | React.ReactNode;
     /** Gradient class (e.g., "from-blue-500 to-cyan-400") */
     gradient: string;
   };
@@ -224,7 +224,8 @@ function ListItemContent({
   actions,
   className,
 }: Omit<ListItemProps, "contextMenu">) {
-  const Icon = avatar.icon;
+  // Check if icon is a LucideIcon (function component) or a ReactNode (already rendered element)
+  const isLucideIcon = typeof avatar.icon === "function";
   const hasActions = actions && actions.length > 0;
 
   return (
@@ -243,7 +244,13 @@ function ListItemContent({
           avatar.gradient
         )}
       >
-        <Icon className="h-5 w-5 text-white" />
+        {isLucideIcon ? (
+          React.createElement(avatar.icon as LucideIcon, {
+            className: "h-5 w-5 text-white",
+          })
+        ) : (
+          (avatar.icon as React.ReactNode)
+        )}
 
         {/* Top-right: Count badge (e.g., member count) */}
         {indicators?.count !== undefined && (
