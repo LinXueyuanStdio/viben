@@ -123,6 +123,13 @@ export {
   // Collapsible column
   CollapsibleColumn,
   type CollapsibleColumnProps,
+  // Resizable column
+  ResizableColumn,
+  type ResizableColumnProps,
+  // Phase progress indicator
+  PhaseProgressIndicator,
+  type PhaseProgressIndicatorProps,
+  type IndicatorExecutionPhase,
   // Drag preview
   DragPreview,
   type DragPreviewProps,
@@ -176,3 +183,34 @@ export {
   type UseDragPreviewOptions,
   type UseDragPreviewReturn,
 } from "./hooks/use-drag-preview";
+export {
+  useColumnResize,
+  type ColumnWidths,
+  type UseColumnResizeOptions,
+  type UseColumnResizeReturn,
+} from "./hooks/use-column-resize";
+
+// Constants - Task metadata types and labels
+export {
+  // Execution phases
+  type ExecutionPhase,
+  EXECUTION_PHASE_LABELS,
+  EXECUTION_PHASE_BADGE_COLORS,
+  // Task categories
+  type TaskCategory,
+  TASK_CATEGORY_LABELS,
+  TASK_CATEGORY_COLORS,
+  TASK_CATEGORY_ICONS,
+  // Task complexity
+  type TaskComplexity,
+  TASK_COMPLEXITY_LABELS,
+  TASK_COMPLEXITY_COLORS,
+  // Task impact
+  type TaskImpact,
+  TASK_IMPACT_LABELS,
+  TASK_IMPACT_COLORS,
+  // Review reasons
+  type ReviewReason,
+  REVIEW_REASON_LABELS,
+  REVIEW_REASON_COLORS,
+} from "./constants";

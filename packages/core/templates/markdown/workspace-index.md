@@ -35,10 +35,10 @@ workspace/
 
 ### For New Developers
 
-Run the initialization script:
+Run the initialization command:
 
 ```bash
-python3 ./.viben/scripts/init_developer.py <your-name>
+viben user init <your-name>
 ```
 
 This will:
@@ -51,12 +51,12 @@ This will:
 
 1. Get your developer name:
    ```bash
-   python3 ./.viben/scripts/get_developer.py
+   viben user get
    ```
 
 2. Read your personal index:
    ```bash
-   cat .viben/workspace/$(python3 ./.viben/scripts/get_developer.py)/index.md
+   cat .viben/workspace/$(viben user get)/index.md
    ```
 
 ---

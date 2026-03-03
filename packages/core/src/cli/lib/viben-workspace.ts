@@ -9,6 +9,20 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { appendFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
 
+// Re-export TaskService for unified task operations
+export {
+  TaskService,
+  taskService,
+  type UnifiedTask,
+  type TaskStatus,
+  type ReviewReason,
+  type SubtaskStatus,
+  mapCLIStatus,
+  mapGatewayStatus,
+  toCliStatus,
+  toKanbanStatus,
+} from "../../services/task-service";
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -1819,220 +1833,19 @@ export function calcElapsed(started: string | null | undefined): string {
 }
 
 // =============================================================================
-// CLI Adapter
+// CLI Adapter (Re-exported from swarm module)
 // =============================================================================
 
-/**
- * Supported platform types
- */
-export type Platform = "claude" | "opencode" | "cursor" | "iflow" | "codex" | "kilo" | "kiro" | "gemini" | "antigravity";
-
-/**
- * Agent name mapping for platforms with built-in agents
- */
-const AGENT_NAME_MAP: Record<Platform, Record<string, string>> = {
-  claude: {},
-  opencode: { plan: "viben-plan" },
-  cursor: {},
-  iflow: {},
-  codex: {},
-  kilo: {},
-  kiro: {},
-  gemini: {},
-  antigravity: {},
-};
-
-/**
- * CLI Adapter for multi-platform support
- */
-export class CLIAdapter {
-  constructor(public readonly platform: Platform) {}
-
-  /**
-   * Get platform-specific agent name
-   */
-  getAgentName(agent: string): string {
-    const mapping = AGENT_NAME_MAP[this.platform] || {};
-    return mapping[agent] || agent;
-  }
-
-  /**
-   * Get platform-specific config directory name
-   */
-  get configDirName(): string {
-    switch (this.platform) {
-      case "opencode": return ".opencode";
-      case "cursor": return ".cursor";
-      case "iflow": return ".iflow";
-      case "codex": return ".agents";
-      case "kilo": return ".kilocode";
-      case "kiro": return ".kiro";
-      case "gemini": return ".gemini";
-      case "antigravity": return ".agent";
-      default: return ".claude";
-    }
-  }
-
-  /**
-   * Get path to agent definition file
-   */
-  getAgentPath(agent: string, projectRoot: string): string {
-    const mappedName = this.getAgentName(agent);
-    return join(projectRoot, this.configDirName, "agents", `${mappedName}.md`);
-  }
-
-  /**
-   * Get environment variables for non-interactive mode
-   */
-  getNonInteractiveEnv(): Record<string, string> {
-    switch (this.platform) {
-      case "opencode": return { OPENCODE_NON_INTERACTIVE: "1" };
-      case "codex": return { CODEX_NON_INTERACTIVE: "1" };
-      case "kiro": return { KIRO_NON_INTERACTIVE: "1" };
-      case "gemini":
-      case "antigravity":
-        return {};
-      default: return { CLAUDE_NON_INTERACTIVE: "1" };
-    }
-  }
-
-  /**
-   * Build CLI command for running an agent
-   */
-  buildRunCommand(options: {
-    agent: string;
-    prompt: string;
-    sessionId?: string;
-    skipPermissions?: boolean;
-    verbose?: boolean;
-    jsonOutput?: boolean;
-  }): string[] {
-    const { agent, prompt, sessionId, skipPermissions = true, verbose = true, jsonOutput = true } = options;
-    const mappedAgent = this.getAgentName(agent);
-
-    if (this.platform === "opencode") {
-      const cmd = ["opencode", "run", "--agent", mappedAgent];
-      if (jsonOutput) {
-        cmd.push("--format", "json");
-      }
-      if (verbose) {
-        cmd.push("--log-level", "DEBUG", "--print-logs");
-      }
-      cmd.push(prompt);
-      return cmd;
-    } else if (this.platform === "codex") {
-      return ["codex", "exec", prompt];
-    } else if (this.platform === "kiro") {
-      return ["kiro", "run", prompt];
-    } else if (this.platform === "gemini") {
-      return ["gemini", prompt];
-    } else if (this.platform === "antigravity") {
-      throw new Error("Antigravity workflows are UI slash commands; CLI agent run is not supported.");
-    } else {
-      // claude
-      const cmd = ["claude", "-p", "--agent", mappedAgent];
-      if (sessionId) {
-        cmd.push("--session-id", sessionId);
-      }
-      if (skipPermissions) {
-        cmd.push("--dangerously-skip-permissions");
-      }
-      if (jsonOutput) {
-        cmd.push("--output-format", "stream-json");
-      }
-      if (verbose) {
-        cmd.push("--verbose");
-      }
-      cmd.push(prompt);
-      return cmd;
-    }
-  }
-
-  /**
-   * Build CLI command for resuming a session
-   */
-  buildResumeCommand(sessionId: string): string[] {
-    switch (this.platform) {
-      case "opencode": return ["opencode", "run", "--session", sessionId];
-      case "codex": return ["codex", "resume", sessionId];
-      case "kiro": return ["kiro", "resume", sessionId];
-      case "gemini": return ["gemini", "--resume", sessionId];
-      case "antigravity":
-        throw new Error("Antigravity workflows are UI slash commands; CLI resume is not supported.");
-      default: return ["claude", "--resume", sessionId];
-    }
-  }
-
-  /**
-   * Get human-readable resume command string
-   */
-  getResumeCommandStr(sessionId: string, cwd?: string): string {
-    const cmd = this.buildResumeCommand(sessionId);
-    const cmdStr = cmd.join(" ");
-    if (cwd) {
-      return `cd ${cwd} && ${cmdStr}`;
-    }
-    return cmdStr;
-  }
-
-  /**
-   * Get CLI executable name
-   */
-  get cliName(): string {
-    switch (this.platform) {
-      case "opencode": return "opencode";
-      case "cursor": return "cursor";
-      case "kiro": return "kiro";
-      case "gemini": return "gemini";
-      case "antigravity": return "agy";
-      default: return "claude";
-    }
-  }
-
-  /**
-   * Check if platform supports session ID on creation
-   */
-  get supportsSessionIdOnCreate(): boolean {
-    return this.platform === "claude";
-  }
-}
-
-/**
- * Get CLI adapter for specified platform
- *
- * @param platform - Platform name
- * @returns CLIAdapter instance
- */
-export function getCLIAdapter(platform: string = "claude"): CLIAdapter {
-  const validPlatforms: Platform[] = ["claude", "opencode", "cursor", "iflow", "codex", "kilo", "kiro", "gemini", "antigravity"];
-  if (!validPlatforms.includes(platform as Platform)) {
-    throw new Error(`Unsupported platform: ${platform}`);
-  }
-  return new CLIAdapter(platform as Platform);
-}
-
-/**
- * Auto-detect platform based on existing config directories
- *
- * @param projectRoot - Project root directory
- * @returns Detected platform
- */
-export function detectPlatform(projectRoot: string): Platform {
-  // Check environment variable first
-  const envPlatform = process.env.VIBEN_PLATFORM?.toLowerCase();
-  if (envPlatform && ["claude", "opencode", "cursor", "iflow", "codex", "kilo", "kiro", "gemini", "antigravity"].includes(envPlatform)) {
-    return envPlatform as Platform;
-  }
-
-  // Check platform-specific directories
-  if (existsSync(join(projectRoot, ".opencode"))) return "opencode";
-  if (existsSync(join(projectRoot, ".iflow"))) return "iflow";
-  if (existsSync(join(projectRoot, ".cursor")) && !existsSync(join(projectRoot, ".claude"))) return "cursor";
-  if (existsSync(join(projectRoot, ".gemini"))) return "gemini";
-  if (existsSync(join(projectRoot, ".agents", "skills"))) return "codex";
-  if (existsSync(join(projectRoot, ".kilocode"))) return "kilo";
-  if (existsSync(join(projectRoot, ".kiro", "skills"))) return "kiro";
-  if (existsSync(join(projectRoot, ".agent", "workflows"))) return "antigravity";
-
-  return "claude";
-}
+// Re-export CLI adapter types and functions from the swarm module
+// for backward compatibility
+export {
+  type Platform,
+  type RunCommandOptions,
+  type ICLIAdapter,
+  CLIAdapter,
+  createCLIAdapter,
+  createCLIAdapterAuto,
+  detectPlatform,
+  getCLIAdapter,
+  getCLIAdapterAuto,
+} from "./swarm/cli-adapter";

@@ -11,6 +11,8 @@ import type {
   SSEPlanEvent,
   SSEResultEvent,
   SSEErrorEvent,
+  SSEQuestionEvent,
+  SSESdkSessionEvent,
   AgentMessage,
   AvailabilityInfo,
 } from "./types";
@@ -21,6 +23,8 @@ import type {
 
 /**
  * Convert SSE event to AgentMessage
+ *
+ * SSE events from backend use flat structure (properties directly on event).
  */
 export function sseEventToAgentMessage(
   event: SSEMessageEvent
@@ -28,66 +32,97 @@ export function sseEventToAgentMessage(
   const id = crypto.randomUUID();
 
   switch (event.type) {
+    case "sdk_session": {
+      const sdkSessionEvent = event as SSESdkSessionEvent;
+      return {
+        id,
+        type: "sdk_session",
+        sdkSessionId: sdkSessionEvent.sdkSessionId,
+      };
+    }
     case "text": {
-      const data = event.data as SSETextEvent["data"];
+      const textEvent = event as SSETextEvent;
       return {
         id,
         type: "text",
-        content: data.content,
+        content: textEvent.content,
       };
     }
     case "tool_use": {
-      const data = event.data as SSEToolUseEvent["data"];
+      const toolEvent = event as SSEToolUseEvent;
       return {
-        id: data.id || id,
+        id: toolEvent.id || id,
         type: "tool_use",
-        name: data.name,
-        input: data.input,
+        name: toolEvent.name,
+        input: toolEvent.input as Record<string, unknown>,
       };
     }
     case "tool_result": {
-      const data = event.data as SSEToolResultEvent["data"];
+      const resultEvent = event as SSEToolResultEvent;
       return {
         id,
         type: "tool_result",
-        toolUseId: data.tool_use_id,
-        output: data.output,
-        isError: data.is_error,
+        toolUseId: resultEvent.toolUseId,
+        output: resultEvent.output,
+        isError: resultEvent.isError,
       };
     }
     case "plan": {
-      const data = event.data as SSEPlanEvent["data"];
+      const planEvent = event as SSEPlanEvent;
       return {
         id,
         type: "plan",
         plan: {
-          goal: data.goal,
-          steps: data.steps.map((s) => ({
+          goal: planEvent.plan.goal,
+          steps: planEvent.plan.steps.map((s) => ({
             id: s.id,
             description: s.description,
             status: s.status as "pending" | "in_progress" | "completed" | "failed" | "cancelled",
           })),
-          notes: data.notes,
+          notes: planEvent.plan.notes,
         },
       };
     }
+    case "question": {
+      const questionEvent = event as SSEQuestionEvent;
+      return {
+        id: questionEvent.id || id,
+        type: "text",
+        content: questionEvent.questions
+          .map((q) => `**${q.header}**: ${q.question}`)
+          .join("\n"),
+      };
+    }
     case "result": {
-      const data = event.data as SSEResultEvent["data"];
+      const resultEvent = event as SSEResultEvent;
+      // Backend sends cost/duration/subtype instead of content
+      // Generate a summary message for UI display
+      const parts: string[] = [];
+      if (resultEvent.subtype) {
+        parts.push(`Status: ${resultEvent.subtype}`);
+      }
+      if (resultEvent.duration !== undefined) {
+        parts.push(`Duration: ${(resultEvent.duration / 1000).toFixed(2)}s`);
+      }
+      if (resultEvent.cost !== undefined) {
+        parts.push(`Cost: $${resultEvent.cost.toFixed(4)}`);
+      }
       return {
         id,
         type: "result",
-        content: data.content,
+        content: parts.length > 0 ? parts.join(" | ") : "Completed",
       };
     }
     case "error": {
-      const data = event.data as SSEErrorEvent["data"];
+      const errorEvent = event as SSEErrorEvent;
       return {
         id,
         type: "error",
-        message: data.message,
+        message: errorEvent.message,
         isError: true,
       };
     }
+    case "session":
     case "done":
       return null;
     default:

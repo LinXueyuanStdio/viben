@@ -269,6 +269,10 @@ export type KanbanHeaderProps =
       addTaskLabel?: string;
       /** Number of tasks in this column */
       taskCount?: number;
+      /** Work-in-progress limit for this column */
+      wipLimit?: number;
+      /** Show warning style when WIP limit is exceeded */
+      showWipWarning?: boolean;
     };
 
 export const KanbanHeader = (props: KanbanHeaderProps) => {
@@ -278,6 +282,9 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
 
   const addTaskLabel = props.addTaskLabel ?? "Add task";
   const taskCount = props.taskCount;
+  const wipLimit = props.wipLimit;
+  const isOverWip = wipLimit !== undefined && taskCount !== undefined && taskCount > wipLimit;
+  const showWarning = props.showWipWarning !== false && isOverWip;
 
   return (
     <div
@@ -302,13 +309,17 @@ export const KanbanHeader = (props: KanbanHeaderProps) => {
         <p className="m-0 text-sm font-semibold truncate" style={{ color: `hsl(var(${props.color}))` }}>{props.name}</p>
         {taskCount !== undefined && (
           <span
-            className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
-            style={{
+            className={cn(
+              "inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums",
+              showWarning && "bg-destructive/20 text-destructive"
+            )}
+            style={showWarning ? undefined : {
               backgroundColor: `hsl(var(${props.color}) / 0.15)`,
               color: `hsl(var(${props.color}))`,
             }}
           >
             {taskCount}
+            {wipLimit !== undefined && `/${wipLimit}`}
           </span>
         )}
       </span>
@@ -421,7 +432,7 @@ export const KanbanProvider = ({
     >
       <div
         className={cn(
-          "inline-grid grid-flow-col auto-cols-[280px] divide-x border-x items-stretch min-h-full",
+          "inline-flex flex-row divide-x border-x items-stretch min-h-full",
           className
         )}
       >
@@ -433,7 +444,8 @@ export const KanbanProvider = ({
           className="cursor-grabbing"
           style={{ zIndex: 9999 }}
         >
-          {activeId ? renderDragOverlay(activeId) : null}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {activeId ? (renderDragOverlay(activeId) as any) : null}
         </DragOverlay>
       )}
     </DndContext>

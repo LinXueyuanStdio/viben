@@ -241,7 +241,7 @@ export function Sidebar() {
         model_id: data.modelId,
         branch: data.branch,
         auto_start: data.autoStart,
-        status: "todo",
+        status: "backlog",
       });
       toast.success(t("sidebar.taskCreated"));
       // Navigate to kanban board to see the new task

@@ -22,18 +22,25 @@ import type { TaskWithAttemptStatus, TaskStatus } from "@/lib/vibe-kanban";
 
 /**
  * Get status icon component
+ * Using new Auto-Claude status system: backlog, queue, in_progress, ai_review, human_review, done, pr_created, error
  */
 function getStatusIcon(status: TaskStatus) {
   switch (status) {
-    case "todo":
+    case "backlog":
       return Circle;
-    case "inprogress":
+    case "queue":
       return Clock;
-    case "inreview":
+    case "in_progress":
+      return Clock;
+    case "ai_review":
+      return AlertCircle;
+    case "human_review":
       return AlertCircle;
     case "done":
       return CheckCircle2;
-    case "cancelled":
+    case "pr_created":
+      return CheckCircle2;
+    case "error":
       return XCircle;
     default:
       return Circle;
@@ -45,15 +52,21 @@ function getStatusIcon(status: TaskStatus) {
  */
 function getStatusColor(status: TaskStatus) {
   switch (status) {
-    case "todo":
+    case "backlog":
       return "text-muted-foreground";
-    case "inprogress":
+    case "queue":
+      return "text-cyan-500";
+    case "in_progress":
       return "text-blue-500";
-    case "inreview":
+    case "ai_review":
       return "text-amber-500";
+    case "human_review":
+      return "text-purple-500";
     case "done":
       return "text-green-500";
-    case "cancelled":
+    case "pr_created":
+      return "text-blue-500";
+    case "error":
       return "text-red-500";
     default:
       return "text-muted-foreground";
@@ -62,13 +75,17 @@ function getStatusColor(status: TaskStatus) {
 
 /**
  * Status labels for display
+ * Using new Auto-Claude status system
  */
 const STATUS_LABELS: Record<TaskStatus, { key: string; fallback: string }> = {
-  todo: { key: "kanban.todo", fallback: "Todo" },
-  inprogress: { key: "kanban.inProgress", fallback: "In Progress" },
-  inreview: { key: "kanban.inReview", fallback: "In Review" },
-  done: { key: "kanban.done", fallback: "Done" },
-  cancelled: { key: "kanban.cancelled", fallback: "Cancelled" },
+  backlog: { key: "workspace.column.backlog", fallback: "Backlog" },
+  queue: { key: "workspace.column.queue", fallback: "Queue" },
+  in_progress: { key: "workspace.column.inProgress", fallback: "In Progress" },
+  ai_review: { key: "workspace.column.aiReview", fallback: "AI Review" },
+  human_review: { key: "workspace.column.humanReview", fallback: "Human Review" },
+  done: { key: "workspace.column.done", fallback: "Done" },
+  pr_created: { key: "workspace.column.prCreated", fallback: "PR Created" },
+  error: { key: "workspace.column.error", fallback: "Error" },
 };
 
 /**
@@ -215,11 +232,14 @@ export function TasksTabContent({
   // Group tasks by status
   const tasksByStatus = React.useMemo(() => {
     const groups: Record<TaskStatus, TaskWithAttemptStatus[]> = {
-      todo: [],
-      inprogress: [],
-      inreview: [],
+      backlog: [],
+      queue: [],
+      in_progress: [],
+      ai_review: [],
+      human_review: [],
       done: [],
-      cancelled: [],
+      pr_created: [],
+      error: [],
     };
 
     for (const task of tasks) {
@@ -231,8 +251,8 @@ export function TasksTabContent({
     return groups;
   }, [tasks]);
 
-  // Status order for display (excluding cancelled by default)
-  const statusOrder: TaskStatus[] = ["inprogress", "todo", "inreview", "done"];
+  // Status order for display (error shown separately)
+  const statusOrder: TaskStatus[] = ["in_progress", "queue", "ai_review", "human_review", "backlog", "done", "pr_created"];
 
   if (isLoading) {
     return (
@@ -262,11 +282,11 @@ export function TasksTabContent({
           onTaskClick={onTaskClick}
         />
       ))}
-      {/* Show cancelled tasks if any exist */}
-      {tasksByStatus.cancelled.length > 0 && (
+      {/* Show error tasks if any exist */}
+      {tasksByStatus.error.length > 0 && (
         <TaskGroup
-          status="cancelled"
-          tasks={tasksByStatus.cancelled}
+          status="error"
+          tasks={tasksByStatus.error}
           onTaskClick={onTaskClick}
         />
       )}

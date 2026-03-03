@@ -54,7 +54,8 @@ export async function listGroupChats(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.group_chats as GroupChat[];
 }
 
 /**
@@ -290,7 +291,8 @@ export async function listGroupChatSessions(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.sessions as GroupChatSession[];
 }
 
 /**
@@ -335,7 +337,7 @@ export async function createGroupChatSession(
   baseUrl: string,
   groupChatId: string,
   workspacePath: string,
-  request: CreateGroupChatSessionRequest
+  request?: CreateGroupChatSessionRequest
 ): Promise<GroupChatSession> {
   const searchParams = new URLSearchParams();
   searchParams.set("workspace_path", workspacePath);
@@ -348,7 +350,7 @@ export async function createGroupChatSession(
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(request || {}),
     }
   );
 
@@ -468,4 +470,128 @@ export async function sendGroupChatMessage(
   }
 
   return response.json();
+}
+
+// ============================================================================
+// Group Chat Members (additional methods)
+// ============================================================================
+
+/**
+ * List members of a group chat
+ */
+export async function listGroupChatMembers(
+  baseUrl: string,
+  groupChatId: string,
+  workspacePath: string
+): Promise<GroupChatMember[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
+  const response = await fetch(
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/members?${searchParams.toString()}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to list group chat members: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.members as GroupChatMember[];
+}
+
+// ============================================================================
+// Sessions (additional methods)
+// ============================================================================
+
+/**
+ * Delete a group chat session
+ */
+export async function deleteGroupChatSession(
+  baseUrl: string,
+  groupChatId: string,
+  sessionId: string,
+  workspacePath: string
+): Promise<void> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
+  const response = await fetch(
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}?${searchParams.toString()}`,
+    {
+      method: "DELETE",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to delete group chat session: ${errorMessage}`,
+      response.status
+    );
+  }
+}
+
+/**
+ * List available agents in a session (for view switching)
+ */
+export async function listSessionAgents(
+  baseUrl: string,
+  groupChatId: string,
+  sessionId: string,
+  workspacePath: string
+): Promise<string[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
+  const response = await fetch(
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/agents?${searchParams.toString()}`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to list session agents: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  const data = await response.json();
+  return data.agents as string[];
+}
+
+// ============================================================================
+// WebSocket Connection
+// ============================================================================
+
+/**
+ * Connect to a group chat session WebSocket for real-time updates
+ */
+export function connectGroupChatWs(
+  baseUrl: string,
+  groupChatId: string,
+  sessionId: string,
+  workspacePath: string,
+  memberType: string,
+  memberId: string
+): WebSocket {
+  const wsUrl = baseUrl.replace(/^http/, "ws");
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+  searchParams.set("member_type", memberType);
+  searchParams.set("member_id", memberId);
+  const url = `${wsUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/ws?${searchParams.toString()}`;
+  return new WebSocket(url);
 }

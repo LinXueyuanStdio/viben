@@ -2,12 +2,13 @@
  * Swarm CLI commands
  *
  * Manage multi-agent pipelines using git worktrees.
- * This command delegates to Python scripts in the .viben/scripts/multi_agent/ directory.
+ * This command uses TypeScript implementations in packages/core/src/cli/lib/swarm/
  */
 import { Command } from "commander";
-import { spawn, execSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join, resolve, basename } from "node:path";
+import { join, basename } from "node:path";
 import chalk from "chalk";
 import type { OutputContext } from "../types";
 import {
@@ -17,29 +18,44 @@ import {
   handleCommandError,
 } from "../lib";
 
-// =============================================================================
-// Types
-// =============================================================================
+// Import TypeScript implementations
+import {
+  // Types
+  type AgentEntry,
+  type Registry,
+  type StartResult,
+  type CleanupResult,
+  type AgentStatus,
+  // Registry functions
+  getRegistryPath,
+  readRegistry,
+  registrySearchAgent,
+  // Start functions
+  startAgent,
+  // Status functions
+  isProcessRunning,
+  getAllAgentStatuses,
+  findAgentStatus,
+  getRecentLogEntries,
+  tailFollowConsole,
+  // Cleanup functions
+  listWorktrees,
+  cleanupWorktree,
+  cleanupMerged,
+  cleanupAll,
+  // CLI Adapter
+  getCLIAdapter,
+  type Platform,
+} from "../lib/swarm";
 
-interface AgentEntry {
-  id: string;
-  worktree_path: string;
-  pid: number;
-  task_dir: string;
-  started_at: string;
-  platform: string;
-}
-
-interface Registry {
-  agents: AgentEntry[];
-}
+import { findVibenRoot } from "../lib/viben-workspace";
 
 // =============================================================================
 // Constants
 // =============================================================================
 
-/** Mapping from CLI executor IDs to Python script platform names */
-const EXECUTOR_TO_PLATFORM: Record<string, string> = {
+/** Mapping from CLI executor IDs to platform names */
+const EXECUTOR_TO_PLATFORM: Record<string, Platform> = {
   CLAUDE_CODE: "claude",
   CURSOR: "cursor",
   GEMINI: "gemini",
@@ -65,188 +81,6 @@ function getOutputContext(program: Command): OutputContext {
     verbose: opts.verbose ?? false,
     quiet: opts.quiet ?? false,
   };
-}
-
-/**
- * Find the .viben directory (workflow root)
- */
-function findVibenRoot(startDir: string = process.cwd()): string | null {
-  let current = resolve(startDir);
-  while (current !== "/") {
-    if (existsSync(join(current, ".viben"))) {
-      return current;
-    }
-    const parent = resolve(current, "..");
-    if (parent === current) break;
-    current = parent;
-  }
-  return null;
-}
-
-/**
- * Get path to Python script
- */
-function getScriptPath(repoRoot: string, scriptName: string): string {
-  return join(repoRoot, ".viben", "scripts", "multi_agent", scriptName);
-}
-
-/**
- * Run a Python script and return its output
- */
-async function runPythonScript(
-  repoRoot: string,
-  scriptName: string,
-  args: string[] = [],
-  options: { cwd?: string; verbose?: boolean } = {}
-): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  const scriptPath = getScriptPath(repoRoot, scriptName);
-
-  if (!existsSync(scriptPath)) {
-    return {
-      exitCode: 1,
-      stdout: "",
-      stderr: `Script not found: ${scriptPath}`,
-    };
-  }
-
-  return new Promise((resolvePromise) => {
-    const child = spawn("python3", [scriptPath, ...args], {
-      cwd: options.cwd || repoRoot,
-      env: process.env,
-      stdio: ["inherit", "pipe", "pipe"],
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout?.on("data", (data) => {
-      stdout += data.toString();
-      if (options.verbose) {
-        process.stdout.write(data);
-      }
-    });
-
-    child.stderr?.on("data", (data) => {
-      stderr += data.toString();
-      if (options.verbose) {
-        process.stderr.write(data);
-      }
-    });
-
-    child.on("close", (code) => {
-      resolvePromise({
-        exitCode: code ?? 1,
-        stdout,
-        stderr,
-      });
-    });
-
-    child.on("error", (err) => {
-      resolvePromise({
-        exitCode: 1,
-        stdout: "",
-        stderr: err.message,
-      });
-    });
-  });
-}
-
-/**
- * Run a Python script with passthrough (interactive mode)
- */
-async function runPythonScriptPassthrough(
-  repoRoot: string,
-  scriptName: string,
-  args: string[] = [],
-  options: { cwd?: string } = {}
-): Promise<number> {
-  const scriptPath = getScriptPath(repoRoot, scriptName);
-
-  if (!existsSync(scriptPath)) {
-    console.error(chalk.red(`Script not found: ${scriptPath}`));
-    return 1;
-  }
-
-  return new Promise((resolvePromise) => {
-    const child = spawn("python3", [scriptPath, ...args], {
-      cwd: options.cwd || repoRoot,
-      env: process.env,
-      stdio: "inherit",
-    });
-
-    child.on("close", (code) => {
-      resolvePromise(code ?? 1);
-    });
-
-    child.on("error", (err) => {
-      console.error(chalk.red(`Failed to run script: ${err.message}`));
-      resolvePromise(1);
-    });
-  });
-}
-
-/**
- * Get the registry file path
- */
-function getRegistryPath(repoRoot: string): string | null {
-  // First, get the developer name
-  const developerFile = join(repoRoot, ".viben", ".developer");
-  if (!existsSync(developerFile)) {
-    return null;
-  }
-
-  try {
-    const content = readFileSync(developerFile, "utf-8");
-    let developerName: string | null = null;
-    for (const line of content.split("\n")) {
-      if (line.startsWith("name=")) {
-        // Use substring to handle values containing '='
-        developerName = line.substring(line.indexOf("=") + 1).trim();
-        break;
-      }
-    }
-    if (!developerName) return null;
-
-    return join(
-      repoRoot,
-      ".viben",
-      "workspace",
-      developerName,
-      ".agents",
-      "registry.json"
-    );
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Read the agent registry
- */
-function readRegistry(repoRoot: string): Registry {
-  const registryPath = getRegistryPath(repoRoot);
-  if (!registryPath || !existsSync(registryPath)) {
-    return { agents: [] };
-  }
-
-  try {
-    const content = readFileSync(registryPath, "utf-8");
-    return JSON.parse(content) as Registry;
-  } catch {
-    return { agents: [] };
-  }
-}
-
-/**
- * Check if a process is running
- */
-function isProcessRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -306,70 +140,58 @@ function resolveTaskDir(repoRoot: string, taskName: string): string | null {
 /**
  * List all worktrees and registered agents
  */
-async function listWorktrees(
+async function listWorktreesCommand(
   ctx: OutputContext,
   repoRoot: string
 ): Promise<void> {
-  // Use cleanup.py --list for listing
-  const exitCode = await runPythonScriptPassthrough(
-    repoRoot,
-    "cleanup.py",
-    ["--list"]
-  );
+  const worktrees = listWorktrees(repoRoot);
+  const registry = readRegistry(repoRoot);
 
   if (ctx.json) {
-    // For JSON output, read and output the registry directly
-    const registry = readRegistry(repoRoot);
-
-    // Get worktree list from git
-    let worktrees: { path: string; commit: string; branch: string }[] = [];
-    try {
-      const gitOutput = execSync("git worktree list --porcelain", {
-        cwd: repoRoot,
-        encoding: "utf-8",
-      });
-
-      // Parse worktree output record by record for robustness
-      // Each record starts with "worktree " and handles detached worktrees
-      let currentWorktree: { path: string; commit: string; branch: string } | null = null;
-
-      for (const line of gitOutput.split("\n")) {
-        if (line.startsWith("worktree ")) {
-          // Save previous worktree if exists
-          if (currentWorktree) {
-            worktrees.push(currentWorktree);
-          }
-          currentWorktree = { path: line.substring(9), commit: "", branch: "" };
-        } else if (currentWorktree) {
-          if (line.startsWith("HEAD ")) {
-            currentWorktree.commit = line.substring(5, 12);
-          } else if (line.startsWith("branch ")) {
-            currentWorktree.branch = line.substring(7).replace("refs/heads/", "");
-          } else if (line.startsWith("detached")) {
-            currentWorktree.branch = "(detached)";
-          }
-        }
-      }
-      // Don't forget the last worktree
-      if (currentWorktree) {
-        worktrees.push(currentWorktree);
-      }
-    } catch {
-      // Ignore errors
-    }
-
     output(ctx, successResponse({ worktrees, agents: registry.agents }));
+    return;
   }
 
-  if (exitCode !== 0) {
-    process.exit(exitCode);
+  // Human-readable output
+  console.log(chalk.blue("=== Git Worktrees ==="));
+  console.log();
+
+  if (worktrees.length === 0) {
+    console.log("  (no worktrees)");
+  } else {
+    console.log("PATH".padEnd(50) + "COMMIT".padEnd(10) + "BRANCH");
+    for (const wt of worktrees) {
+      console.log(
+        wt.path.padEnd(50) +
+        wt.commit.substring(0, 7).padEnd(10) +
+        `[${wt.branch || "(detached)"}]`
+      );
+    }
+  }
+  console.log();
+
+  console.log(chalk.blue("=== Registered Agents ==="));
+  console.log();
+
+  if (registry.agents.length === 0) {
+    console.log("  (no agents registered)");
+  } else {
+    for (const agent of registry.agents) {
+      const statusIcon = isProcessRunning(agent.pid)
+        ? chalk.green("●")
+        : chalk.red("○");
+      console.log(`  ${statusIcon} ${agent.id} (PID: ${agent.pid})`);
+      console.log(chalk.dim(`    Worktree: ${agent.worktree_path}`));
+      console.log(chalk.dim(`    Started:  ${agent.started_at}`));
+      console.log();
+    }
   }
 }
 
 /**
  * Start an agent in a worktree
  */
-async function startAgent(
+async function startAgentCommand(
   ctx: OutputContext,
   repoRoot: string,
   taskName: string,
@@ -391,20 +213,8 @@ async function startAgent(
     return;
   }
 
-  // Build args for start.py
-  const args: string[] = [taskDir];
-
-  // Add platform option if executor specified
-  if (options.executor) {
-    const platform =
-      EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] ||
-      options.executor.toLowerCase();
-    args.push("--platform", platform);
-  }
-
   // Handle resume
   if (options.resume) {
-    // For resume, we need to use the CLI adapter's resume command
     const registry = readRegistry(repoRoot);
     const agent = findAgent(registry, taskName);
 
@@ -433,26 +243,10 @@ async function startAgent(
       return;
     }
 
-    // Build resume command based on platform
-    const platform = agent.platform || "claude";
-    let resumeCmd: string[];
-
-    switch (platform) {
-      case "opencode":
-        resumeCmd = ["opencode", "run", "--session", sessionId];
-        break;
-      case "codex":
-        resumeCmd = ["codex", "resume", sessionId];
-        break;
-      case "kiro":
-        resumeCmd = ["kiro", "resume", sessionId];
-        break;
-      case "gemini":
-        resumeCmd = ["gemini", "--resume", sessionId];
-        break;
-      default:
-        resumeCmd = ["claude", "--resume", sessionId];
-    }
+    // Build resume command using CLI adapter
+    const platform = (agent.platform || "claude") as Platform;
+    const adapter = getCLIAdapter(platform);
+    const resumeCmd = adapter.buildResumeCommand(sessionId);
 
     if (!ctx.quiet) {
       console.log(chalk.blue("=== Resuming Agent ==="));
@@ -475,32 +269,61 @@ async function startAgent(
     return;
   }
 
-  // Run start.py
+  // Determine platform
+  const platform: Platform = options.executor
+    ? EXECUTOR_TO_PLATFORM[options.executor.toUpperCase()] || "claude"
+    : "claude";
+
+  // Start agent using TypeScript implementation
+  if (!ctx.quiet) {
+    console.log(chalk.blue("=== Multi-Agent Pipeline: Start ==="));
+    console.log(`[INFO] Task: ${taskDir}`);
+    console.log(`[INFO] Platform: ${platform}`);
+  }
+
+  const result: StartResult = await startAgent(repoRoot, taskDir, {
+    platform,
+    detach: options.detach ?? true,
+    skipPermissions: true,
+    verbose: ctx.verbose,
+    jsonOutput: true,
+  });
+
   if (ctx.json) {
-    const result = await runPythonScript(repoRoot, "start.py", args, {
-      verbose: ctx.verbose,
-    });
-
-    if (result.exitCode === 0) {
-      // Read registry to get the started agent
-      const registry = readRegistry(repoRoot);
-      const agent = findAgent(registry, taskName);
-      output(ctx, successResponse({ agent, output: result.stdout }));
+    if (result.success) {
+      output(ctx, successResponse(result));
     } else {
-      output(ctx, errorResponse("START_FAILED", result.stderr || result.stdout));
+      output(ctx, errorResponse("START_FAILED", result.error || "Unknown error"));
     }
-
-    process.exit(result.exitCode);
   } else {
-    const exitCode = await runPythonScriptPassthrough(repoRoot, "start.py", args);
-    process.exit(exitCode);
+    if (result.success) {
+      console.log();
+      console.log(chalk.green("=== Agent Started ==="));
+      console.log();
+      console.log(`  ID:        ${result.agentId}`);
+      console.log(`  PID:       ${result.pid}`);
+      console.log(`  Session:   ${result.sessionId || "N/A"}`);
+      console.log(`  Worktree:  ${result.worktreePath}`);
+      console.log(`  Log:       ${result.logFile}`);
+      console.log();
+      console.log(chalk.yellow(`To monitor: tail -f ${result.logFile}`));
+      console.log(chalk.yellow(`To stop:    kill ${result.pid}`));
+      if (result.sessionId) {
+        const adapter = getCLIAdapter(platform);
+        const resumeCmd = adapter.getResumeCommandStr(result.sessionId, result.worktreePath);
+        console.log(chalk.yellow(`To resume:  ${resumeCmd}`));
+      }
+    } else {
+      console.error(chalk.red(`Error: ${result.error}`));
+      process.exit(1);
+    }
   }
 }
 
 /**
  * Stop a running agent
  */
-async function stopAgent(
+async function stopAgentCommand(
   ctx: OutputContext,
   repoRoot: string,
   taskName: string | undefined,
@@ -591,7 +414,7 @@ async function stopAgent(
 /**
  * Show agent status
  */
-async function showStatus(
+async function showStatusCommand(
   ctx: OutputContext,
   repoRoot: string,
   taskName: string | undefined,
@@ -603,75 +426,214 @@ async function showStatus(
     log?: boolean;
   }
 ): Promise<void> {
-  // Build args for status.py
-  const args: string[] = [];
-
-  if (taskName) {
-    if (options.detail) {
-      args.push("--detail", taskName);
-    } else if (options.watch) {
-      args.push("--watch", taskName);
-    } else if (options.log) {
-      args.push("--log", taskName);
-    } else {
-      args.push("--detail", taskName);
+  // Handle watch mode
+  if (options.watch && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
     }
-  } else if (options.running) {
-    // Filter handled in Python script output
-  } else if (options.stopped) {
-    // Filter handled in Python script output
+
+    const logFile = join(status.worktreePath, ".agent-log");
+    if (!existsSync(logFile)) {
+      console.error(chalk.red(`Log file not found: ${logFile}`));
+      process.exit(1);
+      return;
+    }
+
+    console.log(chalk.blue(`Watching: ${logFile}`));
+    console.log(chalk.dim("Press Ctrl+C to stop"));
+    console.log();
+
+    tailFollowConsole(logFile);
+    return;
   }
 
-  if (ctx.json && !options.watch) {
-    // For JSON output, read registry directly and compute status in TypeScript
-    // This avoids redundant Python script call and ensures consistency
-    const registry = readRegistry(repoRoot);
-    const agents = registry.agents.map((agent) => ({
-      ...agent,
-      running: isProcessRunning(agent.pid),
-    }));
-
-    // Apply filters
-    let filteredAgents = agents;
-    if (options.running) {
-      filteredAgents = agents.filter((a) => a.running);
-    } else if (options.stopped) {
-      filteredAgents = agents.filter((a) => !a.running);
+  // Handle log mode
+  if (options.log && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
     }
 
-    output(ctx, successResponse({ agents: filteredAgents }));
-  } else {
-    // Passthrough mode for interactive output
-    const exitCode = await runPythonScriptPassthrough(repoRoot, "status.py", args);
-    process.exit(exitCode);
+    const logFile = join(status.worktreePath, ".agent-log");
+    if (!existsSync(logFile)) {
+      console.error(chalk.red(`Log file not found: ${logFile}`));
+      process.exit(1);
+      return;
+    }
+
+    console.log(chalk.blue(`=== Recent Log: ${taskName} ===`));
+    console.log(chalk.dim(`Platform: ${status.platform}`));
+    console.log();
+
+    const entries = getRecentLogEntries(logFile, 50, status.platform);
+    for (const entry of entries) {
+      console.log(entry);
+    }
+    return;
+  }
+
+  // Handle detail mode
+  if ((options.detail || taskName) && taskName) {
+    const status = findAgentStatus(taskName, repoRoot);
+    if (!status) {
+      console.error(chalk.red(`Agent not found: ${taskName}`));
+      process.exit(1);
+      return;
+    }
+
+    if (ctx.json) {
+      output(ctx, successResponse(status));
+      return;
+    }
+
+    console.log(chalk.blue(`=== Agent Detail: ${status.id} ===`));
+    console.log();
+    console.log(`  ID:        ${status.id}`);
+    console.log(`  PID:       ${status.pid}`);
+    console.log(`  Session:   ${status.sessionId || "N/A"}`);
+    console.log(`  Worktree:  ${status.worktreePath}`);
+    console.log(`  Task Dir:  ${status.taskDir}`);
+    console.log(`  Started:   ${status.startedAt}`);
+    console.log();
+
+    if (status.running) {
+      console.log(`  Status:    ${chalk.green("Running")}`);
+    } else {
+      console.log(`  Status:    ${chalk.red("Stopped")}`);
+      if (status.sessionId) {
+        const adapter = getCLIAdapter(status.platform as Platform);
+        const resumeCmd = adapter.getResumeCommandStr(status.sessionId, status.worktreePath);
+        console.log();
+        console.log(chalk.yellow(`  Resume: ${resumeCmd}`));
+      }
+    }
+
+    // Show git changes
+    if (existsSync(status.worktreePath)) {
+      console.log();
+      console.log(chalk.blue("=== Git Changes ==="));
+      console.log();
+
+      try {
+        const gitStatus = execSync("git status --short", {
+          cwd: status.worktreePath,
+          encoding: "utf-8",
+        });
+        if (gitStatus.trim()) {
+          const lines = gitStatus.trim().split("\n");
+          for (const line of lines.slice(0, 10)) {
+            console.log(`  ${line}`);
+          }
+          if (lines.length > 10) {
+            console.log(`  ... and ${lines.length - 10} more`);
+          }
+        } else {
+          console.log("  (no changes)");
+        }
+      } catch {
+        console.log("  (could not get git status)");
+      }
+    }
+
+    console.log();
+    return;
+  }
+
+  // Summary mode (default)
+  const allStatuses = getAllAgentStatuses(repoRoot);
+
+  // Apply filters
+  let filteredStatuses = allStatuses;
+  if (options.running) {
+    filteredStatuses = allStatuses.filter((s) => s.running);
+  } else if (options.stopped) {
+    filteredStatuses = allStatuses.filter((s) => !s.running);
+  }
+
+  if (ctx.json) {
+    output(ctx, successResponse({ agents: filteredStatuses }));
+    return;
+  }
+
+  // Human-readable summary
+  const runningCount = allStatuses.filter((s) => s.running).length;
+  const totalCount = allStatuses.length;
+
+  console.log(chalk.blue("=== Swarm Status ==="));
+  console.log(`Agents: ${chalk.green(runningCount.toString())} running / ${totalCount} registered`);
+  console.log();
+
+  const runningAgents = filteredStatuses.filter((s) => s.running);
+  const stoppedAgents = filteredStatuses.filter((s) => !s.running);
+
+  if (runningAgents.length > 0) {
+    console.log(chalk.cyan("Running:"));
+    for (const agent of runningAgents) {
+      console.log(`  ${chalk.green("▶")} ${chalk.cyan(agent.id)} ${chalk.green("[running]")}`);
+      if (agent.phase) {
+        console.log(`    Phase:    ${agent.phase}`);
+      }
+      console.log(`    Elapsed:  ${agent.elapsed}`);
+      if (agent.branch) {
+        console.log(`    Branch:   ${chalk.dim(agent.branch)}`);
+      }
+      console.log(`    Modified: ${agent.modifiedFiles} file(s)`);
+      if (agent.lastTool) {
+        console.log(`    Activity: ${chalk.yellow(agent.lastTool)}`);
+      }
+      console.log(`    PID:      ${chalk.dim(agent.pid.toString())}`);
+      console.log();
+    }
+  }
+
+  if (stoppedAgents.length > 0) {
+    console.log(chalk.red("Stopped:"));
+    for (const agent of stoppedAgents) {
+      console.log(`  ${chalk.red("○")} ${agent.id} ${chalk.red("[stopped]")}`);
+      if (agent.lastMessage) {
+        console.log(`    ${chalk.dim(`"${agent.lastMessage}"`)}`);
+      }
+      if (agent.sessionId) {
+        const adapter = getCLIAdapter(agent.platform as Platform);
+        const resumeCmd = adapter.getResumeCommandStr(agent.sessionId, agent.worktreePath);
+        console.log(`    ${chalk.yellow(resumeCmd)}`);
+      }
+      console.log();
+    }
   }
 }
 
 /**
  * Show agent registry
  */
-async function showRegistry(
+async function showRegistryCommand(
   ctx: OutputContext,
   repoRoot: string
 ): Promise<void> {
+  const registryPath = getRegistryPath(repoRoot);
+  const registry = readRegistry(repoRoot);
+
   if (ctx.json) {
-    const registry = readRegistry(repoRoot);
-    const registryPath = getRegistryPath(repoRoot);
     output(ctx, successResponse({ path: registryPath, ...registry }));
-  } else {
-    const exitCode = await runPythonScriptPassthrough(
-      repoRoot,
-      "status.py",
-      ["--registry"]
-    );
-    process.exit(exitCode);
+    return;
   }
+
+  console.log(chalk.blue("=== Agent Registry ==="));
+  console.log();
+  console.log(`File: ${registryPath}`);
+  console.log();
+  console.log(JSON.stringify(registry, null, 2));
 }
 
 /**
  * Cleanup worktrees
  */
-async function cleanupWorktrees(
+async function cleanupWorktreesCommand(
   ctx: OutputContext,
   repoRoot: string,
   branch: string | undefined,
@@ -683,19 +645,77 @@ async function cleanupWorktrees(
     list?: boolean;
   }
 ): Promise<void> {
-  // Build args for cleanup.py
-  const args: string[] = [];
-
+  // Handle list option
   if (options.list) {
-    args.push("--list");
-  } else if (options.merged) {
-    args.push("--merged");
-  } else if (options.all) {
-    args.push("--all");
-  } else if (branch) {
-    args.push(branch);
-  } else {
-    // Show help
+    await listWorktreesCommand(ctx, repoRoot);
+    return;
+  }
+
+  // Handle merged option
+  if (options.merged) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning Merged Worktrees ==="));
+      console.log();
+    }
+
+    const results = await cleanupMerged(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No merged worktrees found");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle all option
+  if (options.all) {
+    if (!ctx.quiet) {
+      console.log(chalk.blue("=== Cleaning All Worktrees ==="));
+      console.log(chalk.red("WARNING: This will remove ALL worktrees!"));
+      console.log();
+    }
+
+    const results = await cleanupAll(repoRoot, {
+      keepBranch: options.keepBranch,
+      skipConfirm: options.yes,
+    });
+
+    if (ctx.json) {
+      output(ctx, successResponse({ results }));
+      return;
+    }
+
+    if (results.length === 0) {
+      console.log("No worktrees to remove");
+    } else {
+      for (const result of results) {
+        if (result.success) {
+          console.log(chalk.green(`Cleaned: ${result.branch}`));
+        } else {
+          console.log(chalk.red(`Failed: ${result.branch} - ${result.error}`));
+        }
+      }
+    }
+    return;
+  }
+
+  // Handle specific branch
+  if (!branch) {
     output(ctx, errorResponse("MISSING_ARG", "Branch name or --merged/--all required"), () => {
       console.error(chalk.red("Error: Branch name or --merged/--all required"));
       console.log();
@@ -709,24 +729,39 @@ async function cleanupWorktrees(
     return;
   }
 
-  if (options.keepBranch) {
-    args.push("--keep-branch");
+  if (!ctx.quiet) {
+    console.log(chalk.blue(`=== Cleaning Worktree: ${branch} ===`));
+    console.log();
   }
 
-  if (options.yes) {
-    args.push("--yes");
-  }
+  const result: CleanupResult = await cleanupWorktree(repoRoot, branch, {
+    keepBranch: options.keepBranch,
+    skipConfirm: options.yes,
+  });
 
-  if (ctx.json && options.list) {
-    const result = await runPythonScript(repoRoot, "cleanup.py", args);
-    if (result.exitCode === 0) {
-      output(ctx, successResponse({ output: result.stdout }));
+  if (ctx.json) {
+    if (result.success) {
+      output(ctx, successResponse(result));
     } else {
-      output(ctx, errorResponse("CLEANUP_ERROR", result.stderr));
+      output(ctx, errorResponse("CLEANUP_FAILED", result.error || "Unknown error"));
+    }
+    return;
+  }
+
+  if (result.success) {
+    console.log(chalk.green(`Cleanup complete for: ${branch}`));
+    if (result.archived) {
+      console.log(`  Archived: ${result.archived}`);
+    }
+    if (result.worktreeRemoved) {
+      console.log("  Worktree removed");
+    }
+    if (result.branchDeleted) {
+      console.log("  Branch deleted");
     }
   } else {
-    const exitCode = await runPythonScriptPassthrough(repoRoot, "cleanup.py", args);
-    process.exit(exitCode);
+    console.error(chalk.red(`Error: ${result.error}`));
+    process.exit(1);
   }
 }
 
@@ -756,7 +791,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await listWorktrees(ctx, repoRoot);
+        await listWorktreesCommand(ctx, repoRoot);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -781,7 +816,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await startAgent(ctx, repoRoot, task, options);
+        await startAgentCommand(ctx, repoRoot, task, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -804,7 +839,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await stopAgent(ctx, repoRoot, task, options);
+        await stopAgentCommand(ctx, repoRoot, task, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -830,7 +865,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await showStatus(ctx, repoRoot, task, options);
+        await showStatusCommand(ctx, repoRoot, task, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -850,7 +885,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await showRegistry(ctx, repoRoot);
+        await showRegistryCommand(ctx, repoRoot);
       } catch (error) {
         handleCommandError(ctx, error);
       }
@@ -876,7 +911,7 @@ export function registerSwarmCommand(program: Command): void {
       }
 
       try {
-        await cleanupWorktrees(ctx, repoRoot, branch, options);
+        await cleanupWorktreesCommand(ctx, repoRoot, branch, options);
       } catch (error) {
         handleCommandError(ctx, error);
       }

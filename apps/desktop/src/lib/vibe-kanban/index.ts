@@ -5,12 +5,25 @@ export type {
   TaskStatus,
   CreateTaskRequest,
   UpdateTaskRequest,
+  ReviewReason,
+  ExecutionPhase,
+  KanbanColumnId,
+  LegacyTaskStatus,
 } from "./types";
 
 export {
   STATUS_TO_COLUMN,
   COLUMN_TO_STATUS,
   VISIBLE_STATUSES,
+  KANBAN_COLUMNS,
+  COLUMN_COLOR_VARS,
+  COLUMN_COLORS,
+  TASK_STATUS_COLORS,
+  TASK_STATUS_PRIORITY,
+  REVIEW_REASON_COLORS,
+  REVIEW_REASON_LABELS,
+  COLUMN_LABELS,
+  mapLegacyStatus,
 } from "./types";
 
 // API client

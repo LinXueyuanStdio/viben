@@ -292,3 +292,34 @@ export async function getAgentTemplate(
 
   return response.json();
 }
+
+/**
+ * Create agent from template
+ */
+export async function createAgentFromTemplate(
+  baseUrl: string,
+  templateId: string,
+  agentId: string
+): Promise<AgentResponse> {
+  const response = await fetch(
+    `${baseUrl}/api/agents/templates/${encodeURIComponent(templateId)}/instantiate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ agent_id: agentId }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to create agent from template: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}

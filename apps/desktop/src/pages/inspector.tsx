@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inspector, NotificationsPanel, ConfigManager, LoggingLevelControl, type InspectorConfig } from "@/components/inspector";
+import { Inspector, HistoryAndNotifications, ConfigManager, LoggingLevelControl, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
   parseMcpConfig,
@@ -56,7 +56,12 @@ export function InspectorPage() {
   const {
     inspectorNotifications,
     addInspectorNotification,
+    removeInspectorNotification,
     clearInspectorNotifications,
+    inspectorHistory,
+    addInspectorHistory,
+    removeInspectorHistory,
+    clearInspectorHistory,
   } = useAppStore();
 
   // Gateway Inspector hook (built-in proxy)
@@ -267,7 +272,7 @@ export function InspectorPage() {
     connectionError,
     connect,
     disconnect,
-    makeRequest,
+    makeRequest: rawMakeRequest,
   } = useMcpConnection({
     config: effectiveConfig,
     onNotification: useCallback(
@@ -282,6 +287,37 @@ export function InspectorPage() {
     ),
     enabled: canConnect,
   });
+
+  // Wrap makeRequest to record history
+  const makeRequest = useCallback(
+    async <T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> => {
+      const startTime = Date.now();
+      try {
+        const response = await rawMakeRequest<T>(method, params);
+        const duration = Date.now() - startTime;
+        addInspectorHistory({
+          method,
+          params,
+          response,
+          duration,
+          status: "success",
+        });
+        return response;
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        addInspectorHistory({
+          method,
+          params,
+          duration,
+          status: "error",
+          error: errorMessage,
+        });
+        throw error;
+      }
+    },
+    [rawMakeRequest, addInspectorHistory]
+  );
 
   const handleConnect = useCallback(async () => {
     console.log("[Inspector] handleConnect called", {
@@ -870,16 +906,19 @@ export function InspectorPage() {
         >
           {/* Drag Handle */}
           <div
-            className="absolute w-full h-4 -top-2 cursor-row-resize flex items-center justify-center hover:bg-accent/50"
+            className="absolute w-full h-4 -top-2 cursor-row-resize flex items-center justify-center hover:bg-accent/50 z-10"
             onMouseDown={handleBottomDragStart}
           >
             <div className="w-8 h-1 rounded-full bg-border" />
           </div>
-          <div className="h-full overflow-auto">
-            <NotificationsPanel
+          <div className="h-full overflow-hidden">
+            <HistoryAndNotifications
+              history={inspectorHistory}
               notifications={inspectorNotifications}
+              onClearHistory={clearInspectorHistory}
+              onRemoveHistory={removeInspectorHistory}
               onClearNotifications={clearInspectorNotifications}
-              onRemoveNotification={() => {}}
+              onRemoveNotification={removeInspectorNotification}
             />
           </div>
         </div>

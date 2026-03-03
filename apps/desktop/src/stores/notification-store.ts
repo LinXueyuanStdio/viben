@@ -8,6 +8,8 @@ import type {
   NotificationPreferences,
 } from "@/types";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/types/notification";
+import { getGatewayClient } from "@/lib/gateway";
+import type { GatewayNotificationPreferences } from "@/lib/gateway/types";
 
 /** Maximum number of notifications to store */
 const MAX_NOTIFICATIONS = 100;
@@ -16,12 +18,70 @@ const MAX_NOTIFICATIONS = 100;
 const generateNotificationId = () =>
   `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+/** Local storage key for migrated flag */
+const MIGRATION_KEY = "viben-notifications-migrated-to-gateway";
+
+/**
+ * Convert Gateway notification preferences to local format
+ */
+function gatewayToLocalPreferences(gateway: GatewayNotificationPreferences): NotificationPreferences {
+  return {
+    enabled: gateway.enabled,
+    sound: gateway.sound,
+    categories: gateway.categories as Record<NotificationCategory, boolean>,
+    methods: gateway.methods as Record<NotificationCategory, NotificationMethod>,
+    systemNotifications: true, // Always true when syncing with Gateway
+    doNotDisturb: {
+      enabled: gateway.do_not_disturb.enabled,
+      start: gateway.do_not_disturb.start,
+      end: gateway.do_not_disturb.end,
+    },
+    retentionDays: gateway.retention_days,
+  };
+}
+
+/**
+ * Convert local notification preferences to Gateway format
+ */
+function localToGatewayPreferences(local: Partial<NotificationPreferences>): Partial<GatewayNotificationPreferences> {
+  const result: Partial<GatewayNotificationPreferences> = {};
+
+  if (local.enabled !== undefined) {
+    result.enabled = local.enabled;
+  }
+  if (local.sound !== undefined) {
+    result.sound = local.sound;
+  }
+  if (local.categories !== undefined) {
+    result.categories = local.categories as GatewayNotificationPreferences["categories"];
+  }
+  if (local.methods !== undefined) {
+    result.methods = local.methods as GatewayNotificationPreferences["methods"];
+  }
+  if (local.doNotDisturb !== undefined) {
+    result.do_not_disturb = {
+      enabled: local.doNotDisturb.enabled,
+      start: local.doNotDisturb.start,
+      end: local.doNotDisturb.end,
+    };
+  }
+  if (local.retentionDays !== undefined) {
+    result.retention_days = local.retentionDays;
+  }
+
+  return result;
+}
+
 interface NotificationState {
   // Notifications list
   notifications: AppNotification[];
 
   // User preferences
   preferences: NotificationPreferences;
+
+  // Loading state for preferences
+  preferencesLoading: boolean;
+  preferencesLoaded: boolean;
 
   // Actions: Notification management
   addNotification: (input: CreateNotificationInput) => string;
@@ -32,6 +92,7 @@ interface NotificationState {
   clearCategory: (category: NotificationCategory) => void;
 
   // Actions: Preference management
+  loadPreferences: () => Promise<void>;
   setPreferences: (prefs: Partial<NotificationPreferences>) => void;
   setCategoryEnabled: (category: NotificationCategory, enabled: boolean) => void;
   setCategoryMethod: (category: NotificationCategory, method: NotificationMethod) => void;
@@ -51,12 +112,68 @@ interface NotificationState {
   shouldShowNotification: (category: NotificationCategory) => boolean;
 }
 
+/**
+ * Sync preferences to Gateway (fire and forget)
+ */
+async function syncPreferencesToGateway(prefs: Partial<NotificationPreferences>): Promise<void> {
+  try {
+    const client = getGatewayClient();
+    const gatewayPrefs = localToGatewayPreferences(prefs);
+    await client.updateNotificationPreferences(gatewayPrefs);
+  } catch (error) {
+    console.warn("[NotificationStore] Failed to sync preferences to Gateway:", error);
+    // Don't throw - we want to keep local state even if Gateway sync fails
+  }
+}
+
 export const useNotificationStore = create<NotificationState>()(
   persist(
     (set, get) => ({
       // Initial state
       notifications: [],
       preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+      preferencesLoading: false,
+      preferencesLoaded: false,
+
+      // Load preferences from Gateway
+      loadPreferences: async () => {
+        const { preferencesLoaded, preferencesLoading } = get();
+
+        // Skip if already loaded or loading
+        if (preferencesLoaded || preferencesLoading) {
+          return;
+        }
+
+        set({ preferencesLoading: true });
+
+        try {
+          const client = getGatewayClient();
+          const gatewayPrefs = await client.getNotificationPreferences();
+          const localPrefs = gatewayToLocalPreferences(gatewayPrefs);
+
+          set({
+            preferences: localPrefs,
+            preferencesLoading: false,
+            preferencesLoaded: true,
+          });
+
+          // Mark as migrated
+          localStorage.setItem(MIGRATION_KEY, "true");
+        } catch (error) {
+          console.warn("[NotificationStore] Failed to load preferences from Gateway:", error);
+          set({
+            preferencesLoading: false,
+            preferencesLoaded: true, // Mark as loaded even on error to prevent infinite retries
+          });
+
+          // If Gateway is not available, check if we need to migrate localStorage data
+          const migrated = localStorage.getItem(MIGRATION_KEY);
+          if (!migrated) {
+            // First time - try to migrate later when Gateway is available
+            console.log("[NotificationStore] Will migrate localStorage preferences when Gateway is available");
+          }
+        }
+      },
 
       // Add a new notification
       addNotification: (input) => {
@@ -118,48 +235,64 @@ export const useNotificationStore = create<NotificationState>()(
           ),
         })),
 
-      // Update preferences (partial update)
-      setPreferences: (prefs) =>
+      // Update preferences (partial update) and sync to Gateway
+      setPreferences: (prefs) => {
         set((state) => ({
           preferences: { ...state.preferences, ...prefs },
-        })),
+        }));
+        // Sync to Gateway in background
+        syncPreferencesToGateway(prefs);
+      },
 
-      // Toggle category notifications
-      setCategoryEnabled: (category, enabled) =>
+      // Toggle category notifications and sync to Gateway
+      setCategoryEnabled: (category, enabled) => {
+        const newCategories = {
+          ...get().preferences.categories,
+          [category]: enabled,
+        };
         set((state) => ({
           preferences: {
             ...state.preferences,
-            categories: {
-              ...state.preferences.categories,
-              [category]: enabled,
-            },
+            categories: newCategories,
           },
-        })),
+        }));
+        // Sync to Gateway in background
+        syncPreferencesToGateway({ categories: newCategories });
+      },
 
-      // Set notification method for a category
-      setCategoryMethod: (category, method) =>
+      // Set notification method for a category and sync to Gateway
+      setCategoryMethod: (category, method) => {
+        const newMethods = {
+          ...get().preferences.methods,
+          [category]: method,
+        };
         set((state) => ({
           preferences: {
             ...state.preferences,
-            methods: {
-              ...state.preferences.methods,
-              [category]: method,
-            },
+            methods: newMethods,
           },
-        })),
+        }));
+        // Sync to Gateway in background
+        syncPreferencesToGateway({ methods: newMethods });
+      },
 
-      // Set do not disturb settings
-      setDoNotDisturb: (enabled, start, end) =>
+      // Set do not disturb settings and sync to Gateway
+      setDoNotDisturb: (enabled, start, end) => {
+        const currentDnd = get().preferences.doNotDisturb;
+        const newDnd = {
+          enabled,
+          start: start ?? currentDnd.start,
+          end: end ?? currentDnd.end,
+        };
         set((state) => ({
           preferences: {
             ...state.preferences,
-            doNotDisturb: {
-              enabled,
-              start: start ?? state.preferences.doNotDisturb.start,
-              end: end ?? state.preferences.doNotDisturb.end,
-            },
+            doNotDisturb: newDnd,
           },
-        })),
+        }));
+        // Sync to Gateway in background
+        syncPreferencesToGateway({ doNotDisturb: newDnd });
+      },
 
       // Get total unread count
       getUnreadCount: () => get().notifications.filter((n) => !n.read).length,
@@ -233,8 +366,10 @@ export const useNotificationStore = create<NotificationState>()(
     }),
     {
       name: "viben-notifications",
+      // Only persist notifications list, not preferences (preferences are in Gateway)
       partialize: (state) => ({
         notifications: state.notifications,
+        // Keep preferences in localStorage as fallback when Gateway is unavailable
         preferences: state.preferences,
       }),
     }

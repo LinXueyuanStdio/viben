@@ -519,6 +519,12 @@ export function useGroupChat(
     setError(null);
     try {
       const result = await client.getGroupChat(chatId, workspacePath);
+      if (!result) {
+        setError("Group chat not found");
+        setCurrentGroupChat(null);
+        setMembers([]);
+        return;
+      }
       setCurrentGroupChat(result);
       setMembers(result.members);
       // Store group name for notifications

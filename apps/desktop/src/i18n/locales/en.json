@@ -481,7 +481,13 @@
       "doNotDisturbDescription": "Silence notifications during specific hours",
       "dndStart": "Start time",
       "dndEnd": "End time",
-      "dndHint": "Notifications will be silenced but still recorded"
+      "dndHint": "Notifications will be silenced but still recorded",
+      "taskCompleteCategory": "Task Complete",
+      "taskCompleteDescription": "Notifications when tasks finish successfully",
+      "taskFailedCategory": "Task Failed",
+      "taskFailedDescription": "Notifications when tasks encounter errors",
+      "reviewNeededCategory": "Review Needed",
+      "reviewNeededDescription": "Notifications when tasks need your review or approval"
     },
     "generalDescription": "General application settings",
     "onboarding": "Setup Wizard",
@@ -2209,6 +2215,47 @@
     "timestamps": "Timestamps",
     "activity": "Activity",
     "addDescription": "Add description...",
+    "tabs": {
+      "subtasks": "Subtasks",
+      "prd": "PRD",
+      "logs": "Logs",
+      "files": "Files"
+    },
+    "subtasksTab": {
+      "completed": "{{completed}} of {{total}} completed",
+      "noSubtasks": "No subtasks defined",
+      "subtasksWillAppear": "Implementation subtasks will appear here after planning",
+      "files": "file(s)"
+    },
+    "prdTab": {
+      "title": "PRD",
+      "noPRD": "No PRD available",
+      "prdWillAppear": "Product requirements document will appear here after task planning",
+      "loadError": "Failed to load PRD"
+    },
+    "logsTab": {
+      "title": "Logs",
+      "noLogs": "No logs yet",
+      "logsWillAppear": "Logs will appear here when the task runs",
+      "loadError": "Failed to load logs",
+      "planning": "Planning",
+      "coding": "Coding",
+      "validation": "Validation",
+      "pending": "Pending",
+      "running": "Running",
+      "complete": "Complete",
+      "failed": "Failed",
+      "entries": "entries"
+    },
+    "filesTab": {
+      "title": "Files",
+      "noFiles": "No files found",
+      "filesWillAppear": "Modified files will appear here after task execution",
+      "loadError": "Failed to load files",
+      "selectFile": "Select a file to view",
+      "openInIDE": "Open in IDE",
+      "noContent": "No content available"
+    },
     "taskPromptWithDescription": "Please help me complete the following task:\n\n**{{title}}**\n\n{{description}}",
     "taskPromptWithoutDescription": "Please help me complete the following task: {{title}}",
     "viewMode": {
@@ -2277,7 +2324,57 @@
     "hideStats": "Hide Stats",
     "showStats": "Show Stats",
     "viewKanban": "Kanban View",
-    "viewList": "List View"
+    "viewList": "List View",
+    "taskCard": {
+      "stuck": "Stuck",
+      "archived": "Archived",
+      "recover": "Recover",
+      "resume": "Resume",
+      "viewPR": "View PR",
+      "archive": "Archive",
+      "phase": {
+        "idle": "Idle",
+        "planning": "Planning",
+        "coding": "Coding",
+        "rate_limit_paused": "Rate Limited",
+        "auth_failure_paused": "Auth Required",
+        "qa_review": "AI Review",
+        "qa_fixing": "Fixing Issues",
+        "complete": "Complete",
+        "failed": "Failed"
+      },
+      "category": {
+        "feature": "Feature",
+        "bug_fix": "Bug Fix",
+        "refactoring": "Refactoring",
+        "documentation": "Docs",
+        "security": "Security",
+        "performance": "Performance",
+        "ui_ux": "UI/UX",
+        "infrastructure": "Infrastructure",
+        "testing": "Testing"
+      },
+      "complexity": {
+        "trivial": "Trivial",
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "complex": "Complex"
+      },
+      "impact": {
+        "low": "Low Impact",
+        "medium": "Medium Impact",
+        "high": "High Impact",
+        "critical": "Critical Impact"
+      },
+      "reviewReason": {
+        "completed": "Completed",
+        "errors": "Has Errors",
+        "qa_rejected": "QA Issues",
+        "plan_review": "Approve Plan",
+        "stopped": "Stopped"
+      }
+    }
   },
   "sync": {
     "workspaceSync": "Workspace Sync",

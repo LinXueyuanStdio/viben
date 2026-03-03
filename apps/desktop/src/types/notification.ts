@@ -8,7 +8,16 @@
  */
 
 // Notification category - determines icon and filtering
-export type NotificationCategory = "chat" | "group" | "cron" | "agent" | "system";
+export type NotificationCategory =
+  | "chat"
+  | "group"
+  | "cron"
+  | "agent"
+  | "system"
+  // Auto-Claude inspired task notifications
+  | "task_complete"
+  | "task_failed"
+  | "review_needed";
 
 // Notification method - how notifications are delivered
 export type NotificationMethod = "toast" | "system" | "both";
@@ -121,6 +130,10 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     cron: true,
     agent: true,
     system: true,
+    // Auto-Claude inspired task notifications
+    task_complete: true,
+    task_failed: true,
+    review_needed: true,
   },
   methods: {
     chat: "both",
@@ -128,6 +141,10 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
     cron: "both",
     agent: "both",
     system: "both",
+    // Auto-Claude inspired task notifications
+    task_complete: "both",
+    task_failed: "both",
+    review_needed: "both",
   },
   systemNotifications: true,
   sound: true,

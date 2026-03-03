@@ -14,6 +14,7 @@ export { InspectorApps } from "./inspector-apps";
 export { NotificationsPanel } from "./notifications-panel";
 export { HistoryPanel } from "./inspector-history";
 export type { HistoryEntry } from "./inspector-history";
+export { HistoryAndNotifications } from "./history-and-notifications";
 export { default as DynamicJsonForm } from "./dynamic-json-form";
 export type { JsonValue, JsonSchemaType, DynamicJsonFormRef } from "./dynamic-json-form";
 export { CompletionInput } from "./completion-input";

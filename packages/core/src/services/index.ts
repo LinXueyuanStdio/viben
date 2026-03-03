@@ -21,6 +21,9 @@ export {
   type GatewayEvent,
   type CronJobData,
   type EventListener,
+  type McpProcessStatusData,
+  type McpServerEventData,
+  type McpConfigChangedData,
 } from "./events";
 
 // Session store service
@@ -39,11 +42,23 @@ export {
   type UIMessage,
   type AgentMessage,
   type SessionStats,
-  type TaskConfig,
-  type TaskStatus,
   type LibraryFile,
   type ArtifactType,
 } from "./session-store";
+
+// Task service (unified task storage)
+export {
+  TaskService,
+  taskService,
+  mapCLIStatus,
+  mapGatewayStatus,
+  toCliStatus,
+  toKanbanStatus,
+  type UnifiedTask,
+  type TaskStatus,
+  type ReviewReason,
+  type SubtaskStatus,
+} from "./task-service";
 
 // Cron service
 export {
@@ -121,3 +136,18 @@ export {
 
 // GitHub service
 export * from "./github";
+
+// MCP Monitor service
+export {
+  McpMonitorService,
+  type McpProcessStatus,
+  type McpServerInfo,
+  type McpMonitorConfig,
+} from "./mcp-monitor";
+
+// Config Watcher service
+export {
+  ConfigWatcherService,
+  getMcpServersConfigPath,
+  type ConfigWatcherConfig,
+} from "./config-watcher";

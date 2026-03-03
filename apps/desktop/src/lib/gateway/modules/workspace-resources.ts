@@ -11,6 +11,7 @@ import type {
   AgentsResponse,
   ChatListResponse,
   AgentDetails,
+  AgentResponse,
 } from "../types";
 
 // ============================================================================
@@ -65,7 +66,7 @@ export async function getExecutors(
  * Get models for a workspace
  * Updated to match original gateway.ts endpoint and signature
  */
-export async function getWorkspaceModels(
+export async function getModels(
   baseUrl: string,
   options?: {
     workspacePath?: string;
@@ -106,6 +107,12 @@ export async function getWorkspaceModels(
   return response.json();
 }
 
+/**
+ * Get models for a workspace (alias for getModels)
+ * @deprecated Use getModels instead
+ */
+export const getWorkspaceModels = getModels;
+
 // ============================================================================
 // Agents
 // ============================================================================
@@ -114,7 +121,7 @@ export async function getWorkspaceModels(
  * Get agents for a workspace
  * Updated to match original gateway.ts endpoint and signature
  */
-export async function getWorkspaceAgents(
+export async function getAgents(
   baseUrl: string,
   options?: {
     workspacePath?: string;
@@ -149,6 +156,12 @@ export async function getWorkspaceAgents(
 
   return response.json();
 }
+
+/**
+ * Get agents for a workspace (alias for getAgents)
+ * @deprecated Use getAgents instead
+ */
+export const getWorkspaceAgents = getAgents;
 
 /**
  * Get agent details by type (executor type)
@@ -189,7 +202,7 @@ export async function getAgentById(
   baseUrl: string,
   agentId: string,
   workspacePath?: string
-): Promise<AgentDetails | null> {
+): Promise<AgentResponse> {
   const params = new URLSearchParams();
   if (workspacePath) {
     params.set("workspace_path", workspacePath);
@@ -204,10 +217,6 @@ export async function getAgentById(
     method: "GET",
     headers: { Accept: "application/json" },
   });
-
-  if (response.status === 404) {
-    return null;
-  }
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);

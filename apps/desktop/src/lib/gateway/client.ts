@@ -15,12 +15,17 @@ import {
   diagnose,
 
   // Agent execution module
+  spawnAgent,
   spawnAgentStream,
   continueSessionStream,
   stopAgent,
   sendAgentInput,
+  checkAvailability,
   stopBackgroundTask,
   subscribeToBackgroundTasks,
+  startBackgroundTask,
+  type StartBackgroundTaskRequest,
+  type StartBackgroundTaskResponse,
 
   // Sessions module
   listSessions,
@@ -55,6 +60,7 @@ import {
   setDefaultAgent,
   listAgentTemplates,
   getAgentTemplate,
+  createAgentFromTemplate,
 
   // Models module
   listModels,
@@ -106,6 +112,8 @@ import {
 
   // Workspace Resources module
   getExecutors,
+  getModels,
+  getAgents,
   getWorkspaceModels,
   getWorkspaceAgents,
   getAgentDetails,
@@ -120,12 +128,16 @@ import {
   deleteGroupChat,
   addMember,
   removeMember,
+  listGroupChatMembers,
   listGroupChatSessions,
   getGroupChatSession,
   createGroupChatSession,
   archiveGroupChatSession,
+  deleteGroupChatSession,
+  listSessionAgents,
   listGroupChatMessages,
   sendGroupChatMessage,
+  connectGroupChatWs,
 
   // MCP Servers module
   getMcpServers,
@@ -283,14 +295,18 @@ import {
   setPreferredIDE,
   getPreferredTerminal,
   setPreferredTerminal,
+  getNotificationPreferences,
+  updateNotificationPreferences,
 } from "./modules";
 
 // Import types
 import type {
   SpawnAgentRequest,
+  SpawnAgentResponse,
   SSEMessageEvent,
   ExecutorType,
   BackgroundTask,
+  AvailabilityInfo,
   FileSession,
   SessionMessage,
   UIMessage,
@@ -312,6 +328,7 @@ import type {
   ProviderUpdate,
   ProvidersListResponse,
   ProviderStatus,
+  DiscoveredModel,
   DiscoverModelsResponse,
   ProviderEnabledModelsResponse,
   ApiKeyProvidersResponse,
@@ -405,6 +422,7 @@ import type {
   // Preferences types
   PreferencesResponse,
   DeveloperPreferences,
+  GatewayNotificationPreferences,
 } from "./types";
 
 // ============================================================================
@@ -511,6 +529,17 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
+   * Spawn a new agent process (non-streaming)
+   * Returns the session ID
+   */
+  async spawnAgent(
+    executorType: ExecutorType,
+    request: SpawnAgentRequest
+  ): Promise<SpawnAgentResponse> {
+    return spawnAgent(this.baseUrl, executorType, request);
+  }
+
+  /**
    * Spawn agent with SSE streaming
    * Returns an async generator that yields SSE events
    */
@@ -583,6 +612,13 @@ export class GatewayClient {
     );
   }
 
+  /**
+   * Check agent availability
+   */
+  async checkAvailability(executorType: ExecutorType): Promise<AvailabilityInfo> {
+    return checkAvailability(this.baseUrl, executorType);
+  }
+
   // ==========================================================================
   // Background Task Methods
   // ==========================================================================
@@ -603,6 +639,17 @@ export class GatewayClient {
     onError?: (error: Error) => void
   ): { close: () => void } {
     return subscribeToBackgroundTasks(this.baseUrl, onTasks, onError);
+  }
+
+  /**
+   * Start a background task
+   * This runs the agent in the background (server-side) and returns immediately.
+   * Use subscribeToBackgroundTasks to monitor task progress.
+   */
+  async startBackgroundTask(
+    request: StartBackgroundTaskRequest
+  ): Promise<StartBackgroundTaskResponse> {
+    return startBackgroundTask(this.baseUrl, request);
   }
 
   // ==========================================================================
@@ -892,6 +939,16 @@ export class GatewayClient {
     return getAgentTemplate(this.baseUrl, templateId);
   }
 
+  /**
+   * Create agent from template
+   */
+  async createAgentFromTemplate(
+    templateId: string,
+    agentId: string
+  ): Promise<AgentResponse> {
+    return createAgentFromTemplate(this.baseUrl, templateId, agentId);
+  }
+
   // ==========================================================================
   // Model Module Methods
   // ==========================================================================
@@ -1032,6 +1089,15 @@ export class GatewayClient {
    */
   async discoverModels(providerId: string): Promise<DiscoverModelsResponse> {
     return discoverModels(this.baseUrl, providerId);
+  }
+
+  /**
+   * Discover models from provider (returns array directly)
+   * Convenience method that extracts models from the response
+   */
+  async discoverProviderModels(providerId: string): Promise<DiscoveredModel[]> {
+    const response = await discoverModels(this.baseUrl, providerId);
+    return response.models;
   }
 
   /**
@@ -1258,7 +1324,17 @@ export class GatewayClient {
   }
 
   /**
+   * Get models
+   */
+  async getModels(
+    options?: { workspacePath?: string; includeGlobal?: boolean; includeProviderPredefined?: boolean }
+  ): Promise<WorkspaceModelsResponse> {
+    return getModels(this.baseUrl, options);
+  }
+
+  /**
    * Get models for a workspace
+   * @deprecated Use getModels instead
    */
   async getWorkspaceModels(
     options?: { workspacePath?: string; includeGlobal?: boolean; includeProviderPredefined?: boolean }
@@ -1267,7 +1343,17 @@ export class GatewayClient {
   }
 
   /**
+   * Get agents
+   */
+  async getAgents(
+    options?: { workspacePath?: string; includeGlobal?: boolean }
+  ): Promise<AgentsResponse> {
+    return getAgents(this.baseUrl, options);
+  }
+
+  /**
    * Get agents for a workspace
+   * @deprecated Use getAgents instead
    */
   async getWorkspaceAgents(
     options?: { workspacePath?: string; includeGlobal?: boolean }
@@ -1288,7 +1374,7 @@ export class GatewayClient {
   async getAgentById(
     agentId: string,
     workspacePath?: string
-  ): Promise<AgentDetails | null> {
+  ): Promise<AgentResponse> {
     return getAgentById(this.baseUrl, agentId, workspacePath);
   }
 
@@ -1365,10 +1451,41 @@ export class GatewayClient {
   }
 
   /**
+   * Add member to group chat
+   * @deprecated Use addMember instead
+   */
+  async addGroupChatMember(
+    groupChatId: string,
+    workspacePath: string,
+    request: AddMemberRequest
+  ): Promise<GroupChatMember> {
+    return this.addMember(groupChatId, workspacePath, request);
+  }
+
+  /**
    * Remove member from group chat
    */
   async removeMember(groupChatId: string, workspacePath: string, memberId: string): Promise<void> {
     return removeMember(this.baseUrl, groupChatId, workspacePath, memberId);
+  }
+
+  /**
+   * Remove member from group chat
+   * @deprecated Use removeMember instead
+   */
+  async removeGroupChatMember(
+    groupChatId: string,
+    workspacePath: string,
+    memberId: string
+  ): Promise<void> {
+    return this.removeMember(groupChatId, workspacePath, memberId);
+  }
+
+  /**
+   * List members of a group chat
+   */
+  async listGroupChatMembers(groupChatId: string, workspacePath: string): Promise<GroupChatMember[]> {
+    return listGroupChatMembers(this.baseUrl, groupChatId, workspacePath);
   }
 
   /**
@@ -1415,6 +1532,28 @@ export class GatewayClient {
   }
 
   /**
+   * Delete a group chat session
+   */
+  async deleteGroupChatSession(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string
+  ): Promise<void> {
+    return deleteGroupChatSession(this.baseUrl, groupChatId, sessionId, workspacePath);
+  }
+
+  /**
+   * List available agents in a session (for view switching)
+   */
+  async listSessionAgents(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string
+  ): Promise<string[]> {
+    return listSessionAgents(this.baseUrl, groupChatId, sessionId, workspacePath);
+  }
+
+  /**
    * List messages in group chat session
    */
   async listGroupChatMessages(
@@ -1436,6 +1575,19 @@ export class GatewayClient {
     request: SendGroupChatMessageRequest
   ): Promise<SendGroupChatMessageResponse> {
     return sendGroupChatMessage(this.baseUrl, groupChatId, sessionId, workspacePath, request);
+  }
+
+  /**
+   * Connect to a group chat session WebSocket for real-time updates
+   */
+  connectGroupChatWs(
+    groupChatId: string,
+    sessionId: string,
+    workspacePath: string,
+    memberType: string,
+    memberId: string
+  ): WebSocket {
+    return connectGroupChatWs(this.baseUrl, groupChatId, sessionId, workspacePath, memberType, memberId);
   }
 
   // ==========================================================================
@@ -2566,5 +2718,21 @@ export class GatewayClient {
    */
   async setPreferredTerminal(terminal: string): Promise<void> {
     return setPreferredTerminal(this.baseUrl, terminal);
+  }
+
+  /**
+   * Get notification preferences
+   */
+  async getNotificationPreferences(): Promise<GatewayNotificationPreferences> {
+    return getNotificationPreferences(this.baseUrl);
+  }
+
+  /**
+   * Update notification preferences
+   */
+  async updateNotificationPreferences(
+    prefs: Partial<GatewayNotificationPreferences>
+  ): Promise<GatewayNotificationPreferences> {
+    return updateNotificationPreferences(this.baseUrl, prefs);
   }
 }

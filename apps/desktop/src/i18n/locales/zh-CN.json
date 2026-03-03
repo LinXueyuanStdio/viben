@@ -482,7 +482,13 @@
       "doNotDisturbDescription": "在指定时间段内静音通知",
       "dndStart": "开始时间",
       "dndEnd": "结束时间",
-      "dndHint": "通知将被静音但仍会记录"
+      "dndHint": "通知将被静音但仍会记录",
+      "taskCompleteCategory": "任务完成",
+      "taskCompleteDescription": "任务成功完成时的通知",
+      "taskFailedCategory": "任务失败",
+      "taskFailedDescription": "任务遇到错误时的通知",
+      "reviewNeededCategory": "需要审核",
+      "reviewNeededDescription": "任务需要您审核或批准时的通知"
     },
     "generalDescription": "通用应用设置",
     "onboarding": "设置向导",
@@ -2211,6 +2217,47 @@
     "timestamps": "时间戳",
     "activity": "动态",
     "addDescription": "添加描述...",
+    "tabs": {
+      "subtasks": "子任务",
+      "prd": "PRD",
+      "logs": "日志",
+      "files": "文件"
+    },
+    "subtasksTab": {
+      "completed": "已完成 {{completed}}/{{total}}",
+      "noSubtasks": "暂无子任务",
+      "subtasksWillAppear": "规划后子任务将显示在这里",
+      "files": "个文件"
+    },
+    "prdTab": {
+      "title": "PRD",
+      "noPRD": "暂无 PRD",
+      "prdWillAppear": "任务规划后产品需求文档将显示在这里",
+      "loadError": "加载 PRD 失败"
+    },
+    "logsTab": {
+      "title": "日志",
+      "noLogs": "暂无日志",
+      "logsWillAppear": "任务运行后日志将显示在这里",
+      "loadError": "加载日志失败",
+      "planning": "规划中",
+      "coding": "编码中",
+      "validation": "验证中",
+      "pending": "待处理",
+      "running": "运行中",
+      "complete": "已完成",
+      "failed": "失败",
+      "entries": "条记录"
+    },
+    "filesTab": {
+      "title": "文件",
+      "noFiles": "暂无文件",
+      "filesWillAppear": "任务执行后修改的文件将显示在这里",
+      "loadError": "加载文件失败",
+      "selectFile": "选择文件查看",
+      "openInIDE": "在编辑器中打开",
+      "noContent": "无可用内容"
+    },
     "taskPromptWithDescription": "请帮我完成以下任务：\n\n**{{title}}**\n\n{{description}}",
     "taskPromptWithoutDescription": "请帮我完成以下任务：{{title}}",
     "viewMode": {
@@ -2291,7 +2338,57 @@
     "viewKanban": "看板视图",
     "viewList": "列表视图",
     "taskDetail": "详情",
-    "description": "描述"
+    "description": "描述",
+    "taskCard": {
+      "stuck": "卡住",
+      "archived": "已归档",
+      "recover": "恢复",
+      "resume": "继续",
+      "viewPR": "查看 PR",
+      "archive": "归档",
+      "phase": {
+        "idle": "空闲",
+        "planning": "规划中",
+        "coding": "编码中",
+        "rate_limit_paused": "限流暂停",
+        "auth_failure_paused": "需要认证",
+        "qa_review": "AI 审核",
+        "qa_fixing": "修复问题",
+        "complete": "已完成",
+        "failed": "失败"
+      },
+      "category": {
+        "feature": "功能",
+        "bug_fix": "缺陷修复",
+        "refactoring": "重构",
+        "documentation": "文档",
+        "security": "安全",
+        "performance": "性能",
+        "ui_ux": "UI/UX",
+        "infrastructure": "基础设施",
+        "testing": "测试"
+      },
+      "complexity": {
+        "trivial": "简单",
+        "small": "较小",
+        "medium": "中等",
+        "large": "较大",
+        "complex": "复杂"
+      },
+      "impact": {
+        "low": "低影响",
+        "medium": "中影响",
+        "high": "高影响",
+        "critical": "关键影响"
+      },
+      "reviewReason": {
+        "completed": "已完成",
+        "errors": "有错误",
+        "qa_rejected": "QA 问题",
+        "plan_review": "审批计划",
+        "stopped": "已停止"
+      }
+    }
   },
   "sync": {
     "workspaceSync": "工作区同步",

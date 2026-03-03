@@ -106,6 +106,16 @@ function eventToChannel(eventType: string): string {
     return "agents";
   }
 
+  // MCP events
+  if (eventType.startsWith("mcp")) {
+    return "mcp";
+  }
+
+  // GitHub auto-fix events
+  if (eventType.startsWith("github_autofix")) {
+    return "github";
+  }
+
   // Default to gateway channel
   return "gateway";
 }
