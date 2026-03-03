@@ -38,6 +38,7 @@ import {
   useGatewayInspector,
   buildGatewayInspectorUrl,
   buildGatewayInspectorHeaders,
+  type GatewayInspectorStatus,
 } from "@/hooks/use-gateway-inspector";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
@@ -100,51 +101,60 @@ export function InspectorPage() {
     }
   }, [configJson]);
 
-  // Build effective config for connection (with Gateway Inspector proxy if enabled)
-  const effectiveConfig = useMemo<McpServerConfig | null>(() => {
-    if (!parsedConfig) return null;
+  // Helper function to build effective config with given inspector status
+  const buildEffectiveConfig = useCallback(
+    (status: GatewayInspectorStatus | null): McpServerConfig | null => {
+      if (!parsedConfig) return null;
 
-    // If not using proxy, use original config
-    if (!useProxy || !inspectorStatus?.available) {
+      // If not using proxy, use original config
+      if (!useProxy || !status?.available) {
+        return parsedConfig;
+      }
+
+      // If using proxy, wrap the URL
+      if ("url" in parsedConfig && parsedConfig.url) {
+        const proxyUrl = status.proxyUrl;
+        const targetUrl = parsedConfig.url;
+        const originalTransport = parsedConfig.transport || "streamable-http";
+
+        const effectiveUrl = buildGatewayInspectorUrl(
+          proxyUrl,
+          targetUrl,
+          originalTransport as "stdio" | "sse" | "streamable-http"
+        );
+        const effectiveHeaders = {
+          ...parsedConfig.headers,
+          ...buildGatewayInspectorHeaders(status.authToken, parsedConfig.headers),
+        };
+
+        console.log("[Inspector] effectiveConfig:", {
+          proxyUrl,
+          targetUrl,
+          originalTransport,
+          effectiveUrl,
+          effectiveHeaders,
+          authToken: status.authToken ? "present" : "missing",
+        });
+
+        return {
+          ...parsedConfig,
+          // Connection to proxy is always streamable-http, regardless of target transport
+          transport: "streamable-http" as const,
+          url: effectiveUrl,
+          headers: effectiveHeaders,
+        };
+      }
+
       return parsedConfig;
-    }
+    },
+    [parsedConfig, useProxy]
+  );
 
-    // If using proxy, wrap the URL
-    if ("url" in parsedConfig && parsedConfig.url) {
-      const proxyUrl = inspectorStatus.proxyUrl;
-      const targetUrl = parsedConfig.url;
-      const originalTransport = parsedConfig.transport || "streamable-http";
-
-      const effectiveUrl = buildGatewayInspectorUrl(
-        proxyUrl,
-        targetUrl,
-        originalTransport as "stdio" | "sse" | "streamable-http"
-      );
-      const effectiveHeaders = {
-        ...parsedConfig.headers,
-        ...buildGatewayInspectorHeaders(inspectorStatus.authToken, parsedConfig.headers),
-      };
-
-      console.log("[Inspector] effectiveConfig:", {
-        proxyUrl,
-        targetUrl,
-        originalTransport,
-        effectiveUrl,
-        effectiveHeaders,
-        authToken: inspectorStatus.authToken ? "present" : "missing",
-      });
-
-      return {
-        ...parsedConfig,
-        // Connection to proxy is always streamable-http, regardless of target transport
-        transport: "streamable-http" as const,
-        url: effectiveUrl,
-        headers: effectiveHeaders,
-      };
-    }
-
-    return parsedConfig;
-  }, [parsedConfig, useProxy, inspectorStatus]);
+  // Build effective config for connection (with Gateway Inspector proxy if enabled)
+  const effectiveConfig = useMemo<McpServerConfig | null>(
+    () => buildEffectiveConfig(inspectorStatus),
+    [buildEffectiveConfig, inspectorStatus]
+  );
 
   // Check if config can connect
   const canConnect = useMemo(() => {
@@ -273,21 +283,62 @@ export function InspectorPage() {
   });
 
   const handleConnect = useCallback(async () => {
-    if (!canConnect) return;
+    console.log("[Inspector] handleConnect called", {
+      canConnect,
+      connectionStatus,
+      useProxy,
+      currentInspectorStatus: inspectorStatus,
+    });
+
+    if (!canConnect) {
+      console.log("[Inspector] Cannot connect - canConnect is false");
+      return;
+    }
 
     if (connectionStatus === "connected") {
+      console.log("[Inspector] Already connected, disconnecting first...");
       await disconnect();
     }
 
     setIsConnecting(true);
     try {
-      await connect();
+      // When using proxy, refresh status to get fresh auth token before connecting
+      // This handles the case where gateway was restarted and token changed
+      if (useProxy) {
+        console.log("[Inspector] Using proxy mode, refreshing status for fresh token...");
+        const freshStatus = await refreshInspectorStatus();
+        console.log("[Inspector] Fresh status received:", {
+          available: freshStatus?.available,
+          authToken: freshStatus?.authToken ? `${freshStatus.authToken.slice(0, 8)}...` : null,
+          authDisabled: freshStatus?.authDisabled,
+          proxyUrl: freshStatus?.proxyUrl,
+        });
+
+        // Build config with fresh status and pass it to connect
+        const freshConfig = buildEffectiveConfig(freshStatus);
+        console.log("[Inspector] Fresh config built:", {
+          url: freshConfig?.url,
+          transport: freshConfig?.transport,
+          headers: freshConfig?.headers ? Object.keys(freshConfig.headers) : [],
+          hasXMcpProxyAuth: freshConfig?.headers?.["X-MCP-Proxy-Auth"] ? "yes" : "no",
+        });
+
+        if (freshConfig) {
+          console.log("[Inspector] Connecting with fresh config...");
+          await connect(freshConfig);
+        } else {
+          console.error("[Inspector] Failed to build config with fresh status");
+        }
+      } else {
+        console.log("[Inspector] Direct mode (no proxy), connecting with effectiveConfig...");
+        await connect();
+      }
     } catch (error) {
-      console.error("Connection failed:", error);
+      console.error("[Inspector] Connection failed:", error);
     } finally {
       setIsConnecting(false);
     }
-  }, [canConnect, connectionStatus, connect, disconnect]);
+  }, [canConnect, connectionStatus, connect, disconnect, useProxy, refreshInspectorStatus, buildEffectiveConfig, inspectorStatus]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();

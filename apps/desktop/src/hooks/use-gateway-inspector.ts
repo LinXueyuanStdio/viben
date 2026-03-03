@@ -29,7 +29,8 @@ interface UseGatewayInspectorReturn {
   isLoading: boolean;
   error: string | null;
   sessions: McpInspectorSession[];
-  refreshStatus: () => Promise<void>;
+  /** Refresh status and return fresh status (useful for getting updated auth token) */
+  refreshStatus: () => Promise<GatewayInspectorStatus | null>;
   refreshSessions: () => Promise<void>;
   closeSession: (sessionId: string) => Promise<void>;
 }
@@ -43,7 +44,7 @@ export function useGatewayInspector(): UseGatewayInspectorReturn {
   const [error, setError] = useState<string | null>(null);
   const [sessions, setSessions] = useState<McpInspectorSession[]>([]);
 
-  const refreshStatus = useCallback(async () => {
+  const refreshStatus = useCallback(async (): Promise<GatewayInspectorStatus | null> => {
     setIsLoading(true);
     setError(null);
 
@@ -60,16 +61,20 @@ export function useGatewayInspector(): UseGatewayInspectorReturn {
       const gatewayUrl = getGatewayUrl();
       const proxyUrl = `${gatewayUrl}/api/mcp/inspector`;
 
-      setStatus({
+      const newStatus: GatewayInspectorStatus = {
         available: health.status === "ok",
         sessions: health.sessions,
         authToken: tokenInfo.token,
         authDisabled: tokenInfo.authDisabled,
         proxyUrl,
-      });
+      };
+
+      setStatus(newStatus);
+      return newStatus;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setStatus(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -131,14 +136,21 @@ export function useGatewayInspector(): UseGatewayInspectorReturn {
  * @param proxyBaseUrl - Gateway inspector base URL (e.g., http://127.0.0.1:18790/api/mcp/inspector)
  * @param targetUrl - Target MCP server URL
  * @param transportType - Transport type (stdio, sse, streamable-http)
+ *
+ * Note: The client always uses streamable-http to connect to the proxy.
+ * For stdio and sse targets, we use specific endpoints (/stdio, /sse) that establish
+ * GET-based SSE connections. But since our client uses streamable-http (POST-based),
+ * we should always use the /mcp endpoint and let the proxy handle the target transport.
  */
 export function buildGatewayInspectorUrl(
   proxyBaseUrl: string,
   targetUrl: string,
   transportType: "stdio" | "sse" | "streamable-http" = "streamable-http"
 ): string {
-  const endpoint = transportType === "stdio" ? "stdio" :
-                   transportType === "sse" ? "sse" : "mcp";
+  // When client uses streamable-http transport (POST-based), always use /mcp endpoint
+  // The transportType query param tells the proxy how to connect to the target server
+  // Only use /stdio or /sse endpoints when the CLIENT is using those transports (GET-based)
+  const endpoint = "mcp";
 
   // Ensure base URL ends with / for proper path joining
   const base = proxyBaseUrl.endsWith("/") ? proxyBaseUrl : proxyBaseUrl + "/";
