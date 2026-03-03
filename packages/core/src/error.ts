@@ -279,3 +279,23 @@ export class ServiceError extends VibenError {
     );
   }
 }
+
+/**
+ * Error thrown when file conflicts are detected during extraction
+ */
+export class FileConflictError extends VibenError {
+  constructor(
+    message: string,
+    public conflictingFiles: string[]
+  ) {
+    super(message, "FILE_CONFLICT");
+    this.name = "FileConflictError";
+  }
+
+  static filesExist(files: string[]): FileConflictError {
+    return new FileConflictError(
+      `${files.length} file(s) already exist in target directory. Use overwrite option to replace them.`,
+      files
+    );
+  }
+}

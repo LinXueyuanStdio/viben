@@ -28,6 +28,8 @@ import {
 } from "@/hooks/use-cloud-skills";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { downloadAndInstallSkill } from "@/lib/skill-installer";
+import { toast } from "@/hooks/use-toast";
 
 // Check if user prefers reduced motion
 const prefersReducedMotion =
@@ -85,9 +87,13 @@ export function SkillsMarketPage() {
   );
   const [detailOpen, setDetailOpen] = useState(false);
 
-  // Install state (for future implementation)
+  // Install state with detailed progress tracking
   const [installingIds, setInstallingIds] = useState<Set<string>>(new Set());
   const [installedIds, setInstalledIds] = useState<Set<string>>(new Set());
+  // Progress state for progress bar UI
+  const [installProgress, setInstallProgress] = useState<
+    Map<string, { stage: string; progress: number; message?: string }>
+  >(new Map());
 
   // Hooks
   const {
@@ -148,19 +154,110 @@ export function SkillsMarketPage() {
     setDetailOpen(true);
   };
 
-  // Handle install (placeholder for future implementation)
+  // Handle install with real download and extraction
   const handleInstall = async (skill: CloudSkillPackage) => {
+    // Mark as installing
     setInstallingIds((prev) => new Set(prev).add(skill.id));
 
-    // Simulate installation delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    try {
+      // Use the real installation function with progress tracking
+      const result = await downloadAndInstallSkill({
+        package: {
+          id: skill.id,
+          name: skill.name,
+          slug: skill.slug,
+          version: skill.version,
+        } as any, // CloudSkillPackage is compatible with SkillPackage for these fields
+        onProgress: (progress) => {
+          // Update progress state
+          setInstallProgress((prev) => {
+            const next = new Map(prev);
+            next.set(skill.id, {
+              stage: progress.stage,
+              progress: progress.progress,
+              message: progress.message,
+            });
+            return next;
+          });
+        },
+        force: false,
+      });
 
-    setInstallingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(skill.id);
-      return next;
-    });
-    setInstalledIds((prev) => new Set(prev).add(skill.id));
+      if (result.success) {
+        // Mark as installed
+        setInstalledIds((prev) => new Set(prev).add(skill.id));
+
+        // Show success notification
+        toast.success(t("skillsMarket.installSuccess"), {
+          description: t("skillsMarket.installSuccessDescription", {
+            name: skill.name,
+            version: skill.version,
+          }),
+        });
+      } else {
+        // Show error notification with specific error message
+        toast.error(t("skillsMarket.installError"), {
+          description: result.error || t("skillsMarket.installErrorUnknown"),
+        });
+      }
+    } catch (error) {
+      // Handle unexpected errors with structured error codes when available
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Check for structured error code first
+      let description = errorMessage;
+      const errorCode = error && typeof error === 'object' && 'code' in error
+        ? (error as { code: string }).code
+        : undefined;
+
+      // Use error codes for user-friendly messages
+      switch (errorCode) {
+        case 'ALREADY_EXISTS':
+        case 'FILE_CONFLICT':
+          description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
+          break;
+        case 'VALIDATION_ERROR':
+          description = t("skillsMarket.installErrorCorrupt");
+          break;
+        case 'NETWORK_ERROR':
+          description = t("skillsMarket.installErrorNetwork");
+          break;
+        case 'PERMISSION_ERROR':
+          description = t("skillsMarket.installErrorPermission");
+          break;
+        default:
+          // Fallback to string matching for errors without codes
+          if (errorMessage.includes("already exists") || errorMessage.includes("duplicate")) {
+            description = t("skillsMarket.installErrorDuplicate", { name: skill.name });
+          } else if (errorMessage.includes("corrupt") || errorMessage.includes("invalid") || errorMessage.includes("zip")) {
+            description = t("skillsMarket.installErrorCorrupt");
+          } else if (errorMessage.includes("network") || errorMessage.includes("fetch") || errorMessage.includes("download")) {
+            description = t("skillsMarket.installErrorNetwork");
+          } else if (errorMessage.includes("permission") || errorMessage.includes("access")) {
+            description = t("skillsMarket.installErrorPermission");
+          }
+      }
+
+      toast.error(t("skillsMarket.installError"), {
+        description,
+      });
+    } finally {
+      // Remove from installing set
+      setInstallingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(skill.id);
+        return next;
+      });
+
+      // Clear progress after a delay
+      setTimeout(() => {
+        setInstallProgress((prev) => {
+          const next = new Map(prev);
+          next.delete(skill.id);
+          return next;
+        });
+      }, 2000);
+    }
   };
 
   // Calculate total pages
@@ -324,6 +421,7 @@ export function SkillsMarketPage() {
                       onViewDetails={handleViewDetails}
                       isInstalled={installedIds.has(skill.id)}
                       isInstalling={installingIds.has(skill.id)}
+                      installProgress={installProgress.get(skill.id)?.progress ?? 0}
                       onInstall={handleInstall}
                     />
                   </motion.div>
