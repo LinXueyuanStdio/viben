@@ -396,6 +396,307 @@ if (executorSupportsChat("CLAUDE_CODE")) {
 - ✅ 表示支持非交互式 Chat 模式（通过 `viben executor chat` 命令）
 - ❌ 表示仅支持交互式会话模式
 
+#### Executor 安装指南
+
+每个 Executor 需要单独安装。以下是各 Executor 的安装方式和前置条件：
+
+##### CLAUDE_CODE (Anthropic Claude Code)
+
+**安装方式**：
+```bash
+# 方式一：通过 npx 自动安装（推荐）
+npx -y @anthropic-ai/claude-code@latest --version
+
+# 方式二：全局安装
+npm install -g @anthropic-ai/claude-code
+```
+
+**前置条件**：
+- Node.js 18.0.0 或更高版本
+- Anthropic API Key（从 https://console.anthropic.com/ 获取）
+
+**认证配置**：
+```bash
+# 首次运行时会自动提示登录
+claude
+# 或者手动配置
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**配置文件位置**：`~/.claude.json`
+
+**验证安装**：
+```bash
+claude --version
+```
+
+---
+
+##### AMP (Sourcegraph Amp)
+
+**安装方式**：
+```bash
+# macOS
+brew install sourcegraph/amp/amp
+
+# Linux
+curl -fsSL https://sourcegraph.com/.api/get-amp | sh
+
+# Windows
+# 下载安装器：https://about.sourcegraph.com/amp
+```
+
+**前置条件**：
+- 无需 API Key（使用 Sourcegraph 账号）
+
+**认证配置**：
+```bash
+# 首次运行时会打开浏览器登录
+amp auth login
+```
+
+**配置文件位置**：`~/.amp/config.json`
+
+**验证安装**：
+```bash
+amp --version
+```
+
+---
+
+##### GEMINI (Google Gemini CLI)
+
+**安装方式**：
+```bash
+# 通过 pip 安装（Python 3.8+）
+pip install google-generativeai-cli
+
+# 或通过 npm 安装
+npm install -g @google/generativeai-cli
+```
+
+**前置条件**：
+- Google Cloud 项目
+- Gemini API Key（从 https://makersuite.google.com/app/apikey 获取）
+
+**认证配置**：
+```bash
+# 设置 API Key
+export GOOGLE_API_KEY="your-api-key"
+
+# 或使用 gcloud 认证
+gcloud auth application-default login
+```
+
+**配置文件位置**：`~/.gemini/config.json`
+
+**验证安装**：
+```bash
+gemini --version
+```
+
+---
+
+##### CODEX (OpenAI Codex CLI)
+
+**安装方式**：
+```bash
+# 通过 npx 安装
+npx -y codex-cli@latest --version
+
+# 或全局安装
+npm install -g codex-cli
+```
+
+**前置条件**：
+- OpenAI API Key（从 https://platform.openai.com/api-keys 获取）
+- Codex 模型访问权限
+
+**认证配置**：
+```bash
+# 设置 API Key
+export OPENAI_API_KEY="sk-..."
+
+# 或通过命令配置
+codex config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.config/codex/config.json`
+
+**验证安装**：
+```bash
+codex --version
+```
+
+---
+
+##### OPENCODE (开源 Coding Agent)
+
+**安装方式**：
+```bash
+# 通过 pip 安装
+pip install opencode-cli
+
+# 或从源码构建
+git clone https://github.com/opencode-ai/opencode
+cd opencode && pip install -e .
+```
+
+**前置条件**：
+- Python 3.9 或更高版本
+- 支持 OpenAI 兼容 API 的模型（本地或远程）
+
+**认证配置**：
+```bash
+# 配置 API 端点
+opencode config set api-url "https://api.openai.com/v1"
+opencode config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.opencode/config.json`
+
+**验证安装**：
+```bash
+opencode --version
+```
+
+---
+
+##### CURSOR_AGENT (Cursor IDE)
+
+**安装方式**：
+- 下载 Cursor IDE：https://cursor.sh/
+- Cursor IDE 内置 Agent 功能，无需单独安装 CLI
+
+**前置条件**：
+- Cursor IDE 安装
+- Cursor 账号（支持 GitHub 登录）
+
+**认证配置**：
+- 在 Cursor IDE 中登录账号即可
+
+**配置文件位置**：
+- macOS: `~/Library/Application Support/Cursor/User/settings.json`
+- Linux: `~/.config/Cursor/User/settings.json`
+- Windows: `%APPDATA%\Cursor\User\settings.json`
+
+**验证安装**：
+```bash
+# Cursor CLI（如果已安装）
+cursor --version
+```
+
+---
+
+##### QWEN_CODE (阿里通义千问)
+
+**安装方式**：
+```bash
+# 通过 pip 安装
+pip install qwen-code-cli
+
+# 或通过 npm 安装（如果提供）
+npm install -g @alibaba/qwen-code
+```
+
+**前置条件**：
+- 阿里云账号
+- 通义千问 API Key（从 https://dashscope.aliyun.com/ 获取）
+
+**认证配置**：
+```bash
+# 设置 API Key
+export DASHSCOPE_API_KEY="sk-..."
+
+# 或通过命令配置
+qwen-code config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.qwen-code/config.json`
+
+**验证安装**：
+```bash
+qwen-code --version
+```
+
+---
+
+##### COPILOT (GitHub Copilot)
+
+**安装方式**：
+```bash
+# 安装 GitHub CLI
+brew install gh  # macOS
+# 或其他平台：https://cli.github.com/
+
+# 安装 Copilot 扩展
+gh extension install github/gh-copilot
+```
+
+**前置条件**：
+- GitHub 账号
+- GitHub Copilot 订阅（付费或学生免费）
+
+**认证配置**：
+```bash
+# 登录 GitHub
+gh auth login
+
+# 验证 Copilot 访问权限
+gh copilot --version
+```
+
+**配置文件位置**：使用 GitHub CLI 的认证配置
+
+**验证安装**：
+```bash
+gh copilot --version
+```
+
+---
+
+##### DROID (Droid AI)
+
+**安装方式**：
+```bash
+# 通过官方安装脚本
+curl -fsSL https://droid.ai/install.sh | sh
+
+# 或通过 npm
+npm install -g @droid/cli
+```
+
+**前置条件**：
+- Droid 账号
+- 支持的 LLM API（OpenAI、Anthropic 等）
+
+**认证配置**：
+```bash
+# 首次运行时会提示登录
+droid auth login
+
+# 配置 LLM API
+droid config set provider openai
+droid config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.droid/config.json`
+
+**验证安装**：
+```bash
+droid --version
+```
+
+---
+
+**注意事项**：
+
+1. **API Key 安全**：不要在代码中硬编码 API Key，使用环境变量或配置文件
+2. **网络要求**：某些 Executor（如 Gemini、Claude）需要访问国际网络
+3. **模型选择**：不同 Executor 支持的模型列表不同，请参考各自文档
+4. **费用说明**：大部分 API 服务按使用量计费，请注意控制成本
+5. **Viben 发现机制**：Viben 会自动检测已安装的 Executor，无需手动注册
+
 ### 9. 工作区管理 (Workspace)
 
 管理 Viben 工作区的创建和配置。
