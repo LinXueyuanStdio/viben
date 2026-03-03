@@ -111,13 +111,20 @@ viben task delete <task> [--force]
 
 ```bash
 viben task start <task>
+viben task start <task> --resume
 ```
+
+**选项**:
+| 选项 | 说明 |
+|------|------|
+| `--resume` | 同时恢复关联的智能体 session（如有） |
 
 设置后，hook 会自动注入该任务的上下文文件。
 
 **示例**:
 ```bash
 viben task start add-user-auth
+viben task start add-user-auth --resume    # 恢复智能体
 ```
 
 ---
@@ -303,16 +310,6 @@ viben task validate-context <task>
 
 ---
 
-### `viben task sync-context`
-
-同步上下文（移除不存在的文件，更新变更）。
-
-```bash
-viben task sync-context <task>
-```
-
----
-
 ## 任务规划与监控
 
 ### `viben task plan`
@@ -348,27 +345,77 @@ Plan Agent 会:
 
 ```bash
 # 查看所有任务状态
-viben task status [--assignee <dev>] [--json]
+viben task status                        # 显示所有任务摘要
+viben task status --assignee <dev>       # 按分配人过滤
+viben task status --status <status>      # 按状态过滤
+viben task status --running              # 只显示有运行中智能体的任务
+viben task status --json                 # JSON 输出
 
 # 查看特定任务状态
-viben task status <task> --detail
-viben task status <task> --watch
-viben task status <task> --log
+viben task status <task>                 # 显示特定任务
+viben task status <task> --detail        # 详细状态
+viben task status <task> --watch         # 实时监控智能体日志
+viben task status <task> --log           # 显示最近日志条目
 ```
 
 **选项**:
 | 选项 | 说明 |
 |------|------|
 | `--assignee`, `-a` | 按分配人过滤 |
+| `--status`, `-s` | 按状态过滤 (planning, in_progress, completed) |
+| `--running` | 只显示有运行中智能体的任务 |
 | `--json` | JSON 格式输出 |
 | `--detail` | 显示详细状态 |
 | `--watch` | 实时监控智能体日志 |
 | `--log` | 显示最近日志条目 |
 
+**摘要输出内容**:
+
+运行中智能体：
+- Phase（阶段）、Elapsed（耗时）、Branch（分支）
+- Modified files（修改文件数）、Last tool（最后工具）、PID
+
+已停止智能体：
+- Status（状态）、最后消息、Resume 命令
+
+普通任务：
+- 按 assignee 分组、显示优先级和状态
+
+**示例输出**:
+```
+=== Multi-Agent Status ===
+  Agents:  2 running / 3 registered
+  Tasks:   5 planning / 3 in_progress / 10 completed
+
+Running Agents:
+▶ add-user-auth [running] [P1] @john
+  Phase:    implement (1/4)
+  Elapsed:  5m 32s
+  Branch:   feature/user-auth
+  Modified: 3 file(s)
+  Activity: Edit
+  PID:      12345
+
+Stopped Agents:
+○ fix-login-bug [stopped]
+  "正在分析登录逻辑..."
+  viben swarm start fix-login-bug --resume
+
+───────────────────────────────────────
+
+@john:
+  ● 03-03-add-user-auth (in_progress) [P1]
+  ● 03-02-fix-bug (planning) [P2]
+
+@alice:
+  ● 03-01-docs (planning) [P3]
+```
+
 **示例**:
 ```bash
 viben task status
 viben task status --assignee john
+viben task status --running
 viben task status add-user-auth --detail
 viben task status add-user-auth --watch
 ```
@@ -507,12 +554,13 @@ viben task create-pr --dry-run          # 预览
 - [ ] `viben task remove-context` 移除上下文
 - [ ] `viben task list-context` 列出上下文
 - [ ] `viben task validate-context` 验证上下文
-- [ ] `viben task sync-context` 同步上下文
 
 ### 任务规划与监控
 - [ ] `viben task plan` 启动 Plan Agent
 - [ ] `viben task status` 查看状态
+- [ ] `viben task status --running` 过滤运行中
 - [ ] `viben task status --detail/--watch/--log` 详细监控
+- [ ] `viben task start --resume` 恢复智能体
 - [ ] `viben task create-pr` 创建 PR
 
 ---
