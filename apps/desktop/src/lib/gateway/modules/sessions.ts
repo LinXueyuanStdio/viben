@@ -29,14 +29,13 @@ export async function listSessions(
 ): Promise<FileSession[]> {
   const params = new URLSearchParams();
   if (workspacePath) params.set("workspace_path", workspacePath);
+  const query = params.toString();
+  const url = `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions${query ? `?${query}` : ""}`;
 
-  const response = await fetch(
-    `${baseUrl}/api/sessions/agent/${encodeURIComponent(agentId)}?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -46,18 +45,21 @@ export async function listSessions(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.sessions as FileSession[];
 }
 
 /**
  * Get session by ID
+ * Requires agentId for the correct API path
  */
 export async function getSession(
   baseUrl: string,
+  agentId: string,
   sessionId: string
 ): Promise<FileSession | null> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -85,17 +87,17 @@ export async function getSession(
 export async function createSession(
   baseUrl: string,
   agentId: string,
-  request: CreateFileSessionRequest
+  request?: CreateFileSessionRequest
 ): Promise<FileSession> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/agent/${encodeURIComponent(agentId)}`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(request || {}),
     }
   );
 
@@ -112,14 +114,16 @@ export async function createSession(
 
 /**
  * Update session metadata
+ * Note: Uses agent-centric API path
  */
 export async function updateSession(
   baseUrl: string,
+  agentId: string,
   sessionId: string,
   updates: Partial<Pick<FileSession, "status" | "metadata">>
 ): Promise<FileSession> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "PATCH",
       headers: {
@@ -143,13 +147,15 @@ export async function updateSession(
 
 /**
  * Delete session
+ * Note: Uses agent-centric API path
  */
 export async function deleteSession(
   baseUrl: string,
+  agentId: string,
   sessionId: string
 ): Promise<void> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -171,13 +177,15 @@ export async function deleteSession(
 
 /**
  * Get session messages (rollout format)
+ * Note: Uses agent-centric API path
  */
 export async function getSessionMessages(
   baseUrl: string,
+  agentId: string,
   sessionId: string
 ): Promise<SessionMessage[]> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -192,23 +200,29 @@ export async function getSessionMessages(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.messages as SessionMessage[];
 }
 
 /**
  * Get session UI messages (for frontend rendering)
+ * Note: Uses agent-centric API path
  */
 export async function getSessionUIMessages(
   baseUrl: string,
-  sessionId: string
+  agentId: string,
+  sessionId: string,
+  workspacePath?: string
 ): Promise<UIMessage[]> {
-  const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/ui-messages`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
+  const query = params.toString();
+  const url = `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/ui-messages${query ? `?${query}` : ""}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -218,19 +232,22 @@ export async function getSessionUIMessages(
     );
   }
 
-  return response.json();
+  const data = await response.json();
+  return data.messages as UIMessage[];
 }
 
 /**
  * Append message to session
+ * Note: Uses agent-centric API path
  */
 export async function appendMessage(
   baseUrl: string,
+  agentId: string,
   sessionId: string,
   message: AppendMessageRequest
-): Promise<void> {
+): Promise<SessionMessage> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "POST",
       headers: {
@@ -248,17 +265,21 @@ export async function appendMessage(
       response.status
     );
   }
+
+  return response.json();
 }
 
 /**
  * Clear session messages
+ * Note: Uses agent-centric API path
  */
 export async function clearSessionMessages(
   baseUrl: string,
+  agentId: string,
   sessionId: string
 ): Promise<void> {
   const response = await fetch(
-    `${baseUrl}/api/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },

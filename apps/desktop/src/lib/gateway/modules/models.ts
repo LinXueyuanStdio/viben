@@ -173,6 +173,17 @@ export async function getDefaultModel(
 }
 
 /**
+ * Get default model ID
+ * Convenience wrapper that returns just the ID
+ */
+export async function getDefaultModelId(
+  baseUrl: string
+): Promise<string | null> {
+  const result = await getDefaultModel(baseUrl);
+  return result.default_model_id;
+}
+
+/**
  * Set default model
  */
 export async function setDefaultModel(
