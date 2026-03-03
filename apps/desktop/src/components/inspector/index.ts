@@ -11,3 +11,5 @@ export { InspectorElicitations } from "./inspector-elicitations";
 export { InspectorAuth } from "./inspector-auth";
 export { InspectorMetadata } from "./inspector-metadata";
 export { NotificationsPanel } from "./notifications-panel";
+export { default as DynamicJsonForm } from "./dynamic-json-form";
+export type { JsonValue, JsonSchemaType, DynamicJsonFormRef } from "./dynamic-json-form";

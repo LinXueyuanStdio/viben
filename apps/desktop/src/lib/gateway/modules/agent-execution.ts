@@ -7,10 +7,7 @@ import { GatewayError } from "../error";
 import { parseErrorMessage } from "./core";
 import type {
   SpawnAgentRequest,
-  SpawnAgentResponse,
-  SSEMessageEvent,
   ExecutorType,
-  ExecutorConfig,
   BackgroundTask,
 } from "../types";
 
