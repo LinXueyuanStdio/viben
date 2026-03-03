@@ -3,7 +3,7 @@
  */
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Folder,
   FolderOpen,
@@ -50,6 +50,7 @@ function FileTreeItem({
   depth?: number;
   onSelect?: (file: WorkingFile) => void;
 }) {
+  const prefersReducedMotion = useReducedMotion();
   const [isExpanded, setIsExpanded] = React.useState(file.isExpanded ?? false);
 
   const handleClick = () => {
@@ -102,7 +103,7 @@ function FileTreeItem({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.15 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
           >
             {file.children.map((child, idx) => (
               <FileTreeItem
