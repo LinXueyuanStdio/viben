@@ -634,6 +634,56 @@ export class TaskQueueManager extends EventEmitter {
     }
     return count;
   }
+
+  /**
+   * Retry a failed task
+   *
+   * @param taskId - The task ID to retry
+   * @param resetCount - If true, reset retry count to 0
+   * @returns The task if retry was initiated, null if task not found or not retryable
+   */
+  async retry(taskId: string, resetCount = false): Promise<QueueTask | null> {
+    const task = this.tasks.get(taskId);
+    if (!task) return null;
+
+    // Can only retry failed tasks
+    if (task.status !== "failed") {
+      return null;
+    }
+
+    // Reset retry count if requested
+    if (resetCount) {
+      task.retry_count = 0;
+    }
+
+    // Reset task state
+    task.status = "pending";
+    task.started_at = undefined;
+    task.completed_at = undefined;
+    task.error = undefined;
+
+    // Add back to queue
+    this.queue.push(task);
+
+    // Persist immediately
+    await this.persistTask(task, true);
+    await this.persistState(true);
+
+    // Emit events
+    this.emit("task:queued", { task });
+    this.events.broadcast({
+      type: "queue_task_queued",
+      data: { task: this.taskToSummary(task) },
+    });
+    this.emitQueueChanged();
+
+    console.log(`[TaskQueue] Task ${taskId} re-queued for retry (position: ${this.queue.length})`);
+
+    // Try to start executing
+    this.tryDequeue();
+
+    return task;
+  }
 }
 
 // Re-export types

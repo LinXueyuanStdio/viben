@@ -280,6 +280,62 @@ export function registerQueueRoutes(fastify: FastifyInstance, state: AppState): 
   });
 
   /**
+   * Retry a failed task
+   * POST /api/queue/tasks/:id/retry
+   */
+  fastify.post<{
+    Params: { id: string };
+    Body: { reset_count?: boolean };
+  }>("/api/queue/tasks/:id/retry", async (request, reply) => {
+    const { id } = request.params;
+    const { reset_count = false } = request.body || {};
+    const span = tracer.startSpan(getSpanName("queue.tasks.retry"), {
+      attributes: { "queue.task_id": id, "queue.reset_count": reset_count },
+    });
+
+    try {
+      const task = await state.taskQueue.retry(id, reset_count);
+
+      if (!task) {
+        // Check if task exists at all
+        const existingTask = state.taskQueue.getTask(id);
+        if (!existingTask) {
+          span.setAttributes({ "queue.task_found": false });
+          span.setStatus({ code: SpanStatusCode.ERROR, message: "Task not found" });
+          reply.code(404);
+          return { error: `Task not found: ${id}` };
+        }
+
+        // Task exists but is not retryable (not in failed state)
+        span.setAttributes({
+          "queue.task_found": true,
+          "queue.task_status": existingTask.status,
+        });
+        span.setStatus({ code: SpanStatusCode.ERROR, message: "Task is not retryable" });
+        reply.code(400);
+        return {
+          error: `Cannot retry task: status is '${existingTask.status}', only 'failed' tasks can be retried`,
+        };
+      }
+
+      span.setAttributes({
+        "queue.task_found": true,
+        "queue.retry_initiated": true,
+      });
+      span.setStatus({ code: SpanStatusCode.OK });
+
+      return { retried: true, task };
+    } catch (e) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: e instanceof Error ? e.message : "Failed to retry task" });
+      span.recordException(e instanceof Error ? e : new Error(String(e)));
+      reply.code(400);
+      return { error: e instanceof Error ? e.message : "Failed to retry task" };
+    } finally {
+      span.end();
+    }
+  });
+
+  /**
    * Cancel/delete a task
    * DELETE /api/queue/tasks/:id
    */
