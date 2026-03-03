@@ -353,6 +353,350 @@ tail -f ~/.viben/logs/gateway-restart.log
    - ✅ 使用 **snake_case**: `workspace_path`, `include_global`, `session_id`
    - ❌ 不要使用 camelCase: `workspacePath`, `includeGlobal`, `sessionId`
 
+### 开发工作流
+
+#### 配置文件位置
+
+Viben 桌面应用使用文件系统存储配置，遵循 **file-native** 范式（YAML 格式）。所有配置文件默认存储在 `~/.viben/` 目录中。
+
+**配置目录结构**:
+
+```
+~/.viben/                          # Viben 全局状态目录
+├── config.yaml                    # 全局配置文件
+├── gateway.yaml                   # Gateway 配置
+├── agents/                        # 全局智能体配置
+│   ├── main.yaml                  # 主智能体配置
+│   └── *.yaml                     # 其他智能体配置
+├── logs/                          # 日志文件目录
+│   ├── gateway.log                # Gateway 运行日志
+│   └── gateway-restart.log        # Gateway 重启日志
+└── cache/                         # 缓存目录
+
+<project>/.viben/                  # 工作区配置目录
+├── config.yaml                    # 工作区配置文件
+└── agents/                        # 工作区智能体配置
+    └── *.yaml                     # 工作区特定智能体
+```
+
+**配置优先级** (从高到低):
+1. 工作区配置: `<project>/.viben/config.yaml`
+2. 全局配置: `~/.viben/config.yaml`
+3. 默认值 (内置)
+
+**查看配置**:
+
+```bash
+# 使用 CLI 查看配置
+viben config list                    # 列出所有配置
+viben config list --show-origin      # 显示配置来源
+viben config get <key>               # 获取特定配置项
+
+# 直接查看配置文件
+cat ~/.viben/config.yaml             # 全局配置
+cat .viben/config.yaml               # 工作区配置
+```
+
+**编辑配置**:
+
+```bash
+# 使用 CLI 编辑
+viben config edit                    # 在编辑器中打开配置
+viben config set <key> <value>       # 设置配置项
+
+# 或直接编辑 YAML 文件
+code ~/.viben/config.yaml            # 使用 VS Code 编辑
+vim ~/.viben/config.yaml             # 使用 vim 编辑
+```
+
+#### 环境变量
+
+使用环境变量可以覆盖默认配置和行为：
+
+| 环境变量 | 说明 | 默认值 |
+|---------|------|--------|
+| `VIBEN_STATE_DIR` | 全局状态目录路径 | `~/.viben` |
+| `VIBEN_AGENT` | 当前激活的智能体 ID | (无) |
+| `VIBEN_SCOPE` | 默认配置作用域 | `workspace` |
+| `RUST_LOG` | Rust 日志级别 | `info` |
+| `NODE_ENV` | Node.js 运行环境 | `development` |
+
+**使用示例**:
+
+```bash
+# 使用自定义状态目录启动应用
+VIBEN_STATE_DIR=/custom/path pnpm desktop:dev
+
+# 启用详细的 Rust 日志
+RUST_LOG=debug pnpm desktop:dev
+
+# 指定默认智能体
+VIBEN_AGENT=my-agent pnpm desktop:dev
+
+# 设置全局作用域
+VIBEN_SCOPE=global pnpm desktop:dev
+
+# 组合使用多个环境变量
+RUST_LOG=debug VIBEN_STATE_DIR=~/viben-dev pnpm desktop:dev
+```
+
+**持久化环境变量** (可选):
+
+```bash
+# 在 shell 配置文件中设置 (bash: ~/.bashrc, zsh: ~/.zshrc)
+export VIBEN_STATE_DIR=~/viben-dev
+export RUST_LOG=info
+
+# 或创建 .env 文件 (在项目根目录)
+echo "VIBEN_STATE_DIR=~/viben-dev" > .env
+echo "RUST_LOG=info" >> .env
+```
+
+#### 常见调试场景
+
+##### 场景 1: 调试 Gateway API 调用
+
+**问题**: 前端请求 Gateway API 失败或返回异常数据。
+
+**调试步骤**:
+
+1. **确认 Gateway 正在运行**:
+   ```bash
+   curl http://127.0.0.1:18790/health
+   # 预期返回: {"status":"ok"}
+   ```
+
+2. **查看 Gateway 日志**:
+   ```bash
+   tail -f ~/.viben/logs/gateway.log
+   ```
+
+3. **使用 curl 测试 API**:
+   ```bash
+   # 测试智能体 API
+   curl -X GET "http://127.0.0.1:18790/api/agents?workspace_path=/path/to/workspace"
+
+   # 测试会话 API
+   curl -X GET "http://127.0.0.1:18790/api/sessions?include_global=true"
+   ```
+
+4. **在前端检查网络请求**:
+   - 打开 DevTools (Cmd+Option+I / Ctrl+Shift+I)
+   - 切换到 Network 标签页
+   - 筛选 "Fetch/XHR" 请求
+   - 检查请求 URL、Headers、Payload 和 Response
+
+5. **检查 API 参数格式**:
+   - ✅ 正确: `workspace_path`, `include_global`, `session_id` (snake_case)
+   - ❌ 错误: `workspacePath`, `includeGlobal`, `sessionId` (camelCase)
+
+##### 场景 2: 调试智能体配置问题
+
+**问题**: 智能体无法加载、配置不生效或运行异常。
+
+**调试步骤**:
+
+1. **检查智能体配置文件**:
+   ```bash
+   # 列出所有智能体
+   viben agent list
+
+   # 查看特定智能体配置
+   viben agent show -n <agent-id>
+   cat ~/.viben/agents/<agent-id>.yaml
+   ```
+
+2. **验证 YAML 语法**:
+   ```bash
+   # 使用 yamllint 检查语法（需先安装）
+   yamllint ~/.viben/agents/<agent-id>.yaml
+
+   # 或使用在线工具: https://www.yamllint.com/
+   ```
+
+3. **检查配置作用域**:
+   ```bash
+   # 查看配置来源
+   viben config list --show-origin
+
+   # 区分全局和工作区配置
+   ls -la ~/.viben/agents/           # 全局智能体
+   ls -la .viben/agents/              # 工作区智能体
+   ```
+
+4. **使用 JSON 输出模式调试**:
+   ```bash
+   # 获取结构化输出
+   viben --json agent list
+   viben --json agent show -n <agent-id>
+   ```
+
+##### 场景 3: 调试前端渲染问题
+
+**问题**: UI 组件显示异常、样式错误或交互失败。
+
+**调试步骤**:
+
+1. **打开 React DevTools**:
+   - 安装 React DevTools 浏览器扩展
+   - 在 Tauri 应用中打开 DevTools (Cmd+Option+I / Ctrl+Shift+I)
+   - 切换到 Components 标签页
+   - 检查组件层级、Props 和 State
+
+2. **检查控制台错误**:
+   - Console 标签页查看 JavaScript 错误
+   - 注意红色错误和黄色警告
+   - 检查是否有 React 错误边界捕获的错误
+
+3. **检查样式问题**:
+   - Elements 标签页选中问题元素
+   - 查看 Computed 样式
+   - 检查 Tailwind CSS 类名是否正确应用
+   - 使用 DevTools 实时修改样式调试
+
+4. **检查状态管理**:
+   ```typescript
+   // 在浏览器控制台中访问 Zustand store
+   // (需要在开发模式下安装 zustand devtools middleware)
+   window.__ZUSTAND_DEVTOOLS_STORE__
+   ```
+
+5. **检查路由问题**:
+   - 确认当前 URL 路径
+   - 检查 React Router 配置 (`src/App.tsx`)
+   - 使用 React Router DevTools
+
+##### 场景 4: 调试 Rust 后端问题
+
+**问题**: Tauri 命令失败、后端逻辑错误或崩溃。
+
+**调试步骤**:
+
+1. **添加 Rust 日志输出**:
+   ```rust
+   use log::{info, error, debug};
+
+   #[tauri::command]
+   fn my_command(param: String) -> Result<String, String> {
+       info!("收到命令调用: param={}", param);
+       // ... 业务逻辑
+       Ok("success".to_string())
+   }
+   ```
+
+2. **启用详细日志**:
+   ```bash
+   RUST_LOG=debug pnpm desktop:dev
+   ```
+
+3. **使用 Rust 调试宏**:
+   ```rust
+   // 快速打印变量
+   dbg!(&my_variable);
+
+   // 标准输出（仅开发模式）
+   println!("Debug: {:?}", my_variable);
+   ```
+
+4. **查看 Rust 编译错误**:
+   ```bash
+   cd apps/desktop/src-tauri
+   cargo build --verbose
+   ```
+
+5. **使用 Rust 调试器**:
+   - 安装 rust-analyzer VS Code 扩展
+   - 在 `.rs` 文件中设置断点
+   - 使用 VS Code 调试面板启动调试
+
+##### 场景 5: 调试构建失败
+
+**问题**: `pnpm build` 或 `pnpm tauri-build` 失败。
+
+**调试步骤**:
+
+1. **检查 TypeScript 类型错误**:
+   ```bash
+   pnpm typecheck
+   ```
+
+2. **检查所有包的构建**:
+   ```bash
+   # 在项目根目录
+   pnpm build
+   ```
+
+3. **逐个检查包**:
+   ```bash
+   cd packages/core && pnpm build
+   cd apps/web && pnpm build
+   cd apps/desktop && pnpm build
+   ```
+
+4. **清理缓存重新构建**:
+   ```bash
+   # 清理所有构建产物
+   pnpm clean
+
+   # 重新安装依赖
+   rm -rf node_modules pnpm-lock.yaml
+   pnpm install
+
+   # 重新构建
+   pnpm build
+   ```
+
+5. **查看详细错误信息**:
+   ```bash
+   pnpm build --verbose
+   pnpm tauri-build --verbose
+   ```
+
+##### 场景 6: 调试国际化 (i18n) 问题
+
+**问题**: 翻译文本未显示、语言切换失败或翻译缺失。
+
+**调试步骤**:
+
+1. **检查翻译文件**:
+   ```bash
+   # 查看英文翻译
+   cat apps/desktop/src/i18n/locales/en.json
+
+   # 查看中文翻译
+   cat apps/desktop/src/i18n/locales/zh-CN.json
+   ```
+
+2. **验证翻译键值**:
+   - 确认键名正确: `t('workspace.title')`
+   - 检查是否拼写错误
+   - 确认命名空间是否正确
+
+3. **检查当前语言设置**:
+   ```typescript
+   // 在浏览器控制台
+   import { useTranslation } from 'react-i18next';
+   const { i18n } = useTranslation();
+   console.log(i18n.language); // 当前语言
+   console.log(i18n.options.resources); // 所有翻译资源
+   ```
+
+4. **测试语言切换**:
+   ```typescript
+   // 在浏览器控制台
+   i18n.changeLanguage('zh-CN');
+   i18n.changeLanguage('en');
+   ```
+
+5. **启用 i18next 调试模式**:
+   ```typescript
+   // 在 src/i18n/index.ts 中
+   i18next.init({
+     debug: true, // 启用调试模式
+     // ... 其他配置
+   });
+   ```
+
 ## 故障排除
 
 ### 端口 1420 被占用
