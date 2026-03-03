@@ -234,7 +234,7 @@ function TerminalPanel() {
 
 /* ── Code: diff & review ── */
 function CodePanel() {
-  const diffLines: { type: string; num?: (number | null)[]; content: string }[] = [
+  const diffLines: { type: 'header' | 'context' | 'removed' | 'added'; num?: (number | null)[]; content: string }[] = [
     { type: 'header', content: 'src/auth/middleware.ts' },
     { type: 'context', num: [14, 14], content: "import { verify } from './jwt';" },
     { type: 'context', num: [15, 15], content: '' },
