@@ -371,6 +371,31 @@ if (executorSupportsChat("CLAUDE_CODE")) {
 - `COPILOT` - GitHub Copilot
 - `DROID` - Droid AI
 
+#### Executor 类型详细对比
+
+下表列出了所有支持的 Executor 类型及其特性：
+
+| Executor ID | CLI 命令 | 安装方式 | 认证方式 | Chat 支持 | 能力列表 |
+|------------|----------|---------|---------|----------|---------|
+| `CLAUDE_CODE` | `claude` | `npx -y @anthropic-ai/claude-code@latest` | `~/.claude.json` | ✅ | SESSION_FORK, CONTEXT_USAGE |
+| `AMP` | `amp` | 官方安装器 | `~/.amp/config.json` | ❌ | SESSION_FORK |
+| `GEMINI` | `gemini` | 官方安装器 | `~/.gemini/config.json` | ✅ | SESSION_FORK |
+| `CODEX` | `codex` | `npx -y codex-cli@latest` | `~/.config/codex/config.json` | ✅ | SESSION_FORK, SETUP_HELPER, CONTEXT_USAGE |
+| `OPENCODE` | `opencode` | 官方安装器 | `~/.opencode/config.json` | ❌ | SESSION_FORK, CONTEXT_USAGE |
+| `CURSOR_AGENT` | `cursor` | Cursor IDE 内置 | Cursor 配置 | ❌ | SETUP_HELPER |
+| `QWEN_CODE` | `qwen-code` | 官方安装器 | `~/.qwen-code/config.json` | ❌ | SESSION_FORK |
+| `COPILOT` | `gh copilot` | GitHub CLI 扩展 | GitHub 认证 | ❌ | 无 |
+| `DROID` | `droid` | 官方安装器 | `~/.droid/config.json` | ❌ | SESSION_FORK |
+
+**能力说明**：
+- `SESSION_FORK` - 支持 session 分支和恢复
+- `CONTEXT_USAGE` - 支持上下文使用量追踪
+- `SETUP_HELPER` - 提供设置和配置辅助
+
+**Chat 支持说明**：
+- ✅ 表示支持非交互式 Chat 模式（通过 `viben executor chat` 命令）
+- ❌ 表示仅支持交互式会话模式
+
 ### 9. 工作区管理 (Workspace)
 
 管理 Viben 工作区的创建和配置。
