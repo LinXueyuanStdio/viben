@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues } from "@/hooks/use-github";
 import { useGitHubStore } from "@/stores/github-store";
+import { getGitHubClient } from "@/lib/github-client";
 import { IssueListHeader } from "./issue-list-header";
 import { IssueList } from "./issue-list";
 import { IssueDetail } from "./issue-detail";
@@ -54,6 +55,8 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
     setRepoInfo,
     setInitialized,
     autoFixTasks,
+    addAutoFixTask,
+    updateAutoFixTask,
     getRunningTasksCount,
     getAwaitingApprovalCount,
     reset,
@@ -137,6 +140,46 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
       selectAllIssues();
     }
   }, [selectedIssueNumbers.size, issues.length, clearSelection, selectAllIssues]);
+
+  // Auto-fix handlers
+  const handleStartAutoFix = useCallback(async (issueNumber: number) => {
+    try {
+      const client = getGitHubClient();
+      const { task_id } = await client.createAutoFixTask(workspacePath, [issueNumber]);
+
+      // Add task to store
+      addAutoFixTask({
+        id: task_id,
+        workspace_path: workspacePath,
+        issue_numbers: [issueNumber],
+        status: "queued",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Failed to start auto-fix:", error);
+    }
+  }, [workspacePath, addAutoFixTask]);
+
+  const handleCancelAutoFix = useCallback(async (taskId: string) => {
+    try {
+      const client = getGitHubClient();
+      await client.cancelAutoFixTask(workspacePath, taskId);
+      updateAutoFixTask(taskId, { status: "cancelled" });
+    } catch (error) {
+      console.error("Failed to cancel auto-fix:", error);
+    }
+  }, [workspacePath, updateAutoFixTask]);
+
+  const handleApproveAutoFix = useCallback(async (taskId: string) => {
+    try {
+      const client = getGitHubClient();
+      await client.approveAutoFixTask(workspacePath, taskId);
+      updateAutoFixTask(taskId, { status: "executing" });
+    } catch (error) {
+      console.error("Failed to approve auto-fix:", error);
+    }
+  }, [workspacePath, updateAutoFixTask]);
 
   const runningCount = getRunningTasksCount();
   const awaitingCount = getAwaitingApprovalCount();
@@ -263,6 +306,7 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
               workspacePath={workspacePath}
               onClose={handleCloseDetail}
               onAnalyze={investigateIssue}
+              onStartAutoFix={handleStartAutoFix}
             />
           </div>
         )}
@@ -310,14 +354,8 @@ export function WorkspaceIssues({ workspacePath }: WorkspaceIssuesProps) {
             <ScrollArea className="h-[calc(100%-2.5rem)]">
               <AutoFixQueue
                 tasks={autoFixTasks}
-                onCancel={(taskId) => {
-                  // TODO: Implement cancel via API
-                  console.log("Cancel task:", taskId);
-                }}
-                onApprove={(taskId) => {
-                  // TODO: Implement approve via API
-                  console.log("Approve task:", taskId);
-                }}
+                onCancel={handleCancelAutoFix}
+                onApprove={handleApproveAutoFix}
               />
             </ScrollArea>
           )}

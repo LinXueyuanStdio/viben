@@ -6,45 +6,49 @@ import {
   CheckCircle2,
   ChevronRight,
   Github,
-  GitBranch,
   Layers,
   LayoutGrid,
   Monitor,
-  ShieldCheck,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import { DemoTabs } from './components/demo-tabs';
+import { ChallengeCard } from './components/animated-cards/challenge-card';
+import { LifecycleCard } from './components/animated-cards/lifecycle-card';
+import { FeatureCard } from './components/animated-cards/feature-card';
+import { AgentBadgeList } from './components/animated-cards/agent-badge';
 
 const CHALLENGES = [
   {
     title: '代码能生成，但产品难落地',
     desc: '纯代码生成很快，但经常缺流程、缺审查、缺可追踪协作。',
+    variant: 'code-scatter' as const,
   },
   {
     title: '多智能体协作难以控盘',
     desc: '任务拆解、上下文同步、执行状态与结果复盘往往分散在多个工具里。',
+    variant: 'agent-chaos' as const,
   },
   {
     title: '上线后维护成本持续攀升',
     desc: '缺少可复用工作流与记忆体系，团队每次都在重复搭建同样流程。',
+    variant: 'cost-rise' as const,
   },
 ] as const;
 
 const LIFECYCLE = [
-  { title: '定义目标', desc: '从需求到任务树，建立可执行的多智能体计划。', icon: Sparkles },
-  { title: '并行执行', desc: '看板 + 时间线 + 日历视图，统一调度执行进度。', icon: LayoutGrid },
-  { title: '审查发布', desc: '关键节点支持人工确认，保障可控与可追踪。', icon: ShieldCheck },
-  { title: '持续迭代', desc: '沉淀上下文与流程模板，后续任务持续复用提效。', icon: GitBranch },
+  { title: '定义目标', desc: '从需求到任务树，建立可执行的多智能体计划。', variant: 'define' as const },
+  { title: '并行执行', desc: '看板 + 时间线 + 日历视图，统一调度执行进度。', variant: 'execute' as const },
+  { title: '审查发布', desc: '关键节点支持人工确认，保障可控与可追踪。', variant: 'review' as const },
+  { title: '持续迭代', desc: '沉淀上下文与流程模板，后续任务持续复用提效。', variant: 'iterate' as const },
 ] as const;
 
 const FEATURES = [
-  { icon: LayoutGrid, title: '看板视图', desc: '拖拽管理任务优先级与状态。' },
-  { icon: CalendarDays, title: '日历规划', desc: '用时间轴安排自动化节点与截止日期。' },
-  { icon: Layers, title: 'MCP 集成', desc: '兼容 Claude、Cursor、Cline 等 MCP 生态。' },
-  { icon: Users, title: '多智能体协作', desc: '支持多角色智能体并行执行与协同审查。' },
-  { icon: Monitor, title: '桌面工作台', desc: '统一管理工作区、配置与执行监控。' },
-  { icon: CheckCircle2, title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。' },
+  { icon: LayoutGrid, title: '看板视图', desc: '拖拽管理任务优先级与状态。', variant: 'kanban' as const },
+  { icon: CalendarDays, title: '日历规划', desc: '用时间轴安排自动化节点与截止日期。', variant: 'calendar' as const },
+  { icon: Layers, title: 'MCP 集成', desc: '兼容 Claude、Cursor、Cline 等 MCP 生态。', variant: 'mcp' as const },
+  { icon: Users, title: '多智能体协作', desc: '支持多角色智能体并行执行与协同审查。', variant: 'agents' as const },
+  { icon: Monitor, title: '桌面工作台', desc: '统一管理工作区、配置与执行监控。', variant: 'desktop' as const },
+  { icon: CheckCircle2, title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。', variant: 'release' as const },
 ] as const;
 
 const SUPPORTED_AGENTS = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
@@ -52,7 +56,7 @@ const SUPPORTED_AGENTS = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf',
 const FAQS = [
   {
     q: 'Viben 和传统 AI 编码助手有什么不同？',
-    a: 'Viben 聚焦“多智能体工作流编排”，不只生成代码，还覆盖任务管理、审查节点与持续迭代。',
+    a: 'Viben 聚焦"多智能体工作流编排"，不只生成代码，还覆盖任务管理、审查节点与持续迭代。',
   },
   {
     q: '是否必须使用特定模型？',
@@ -108,7 +112,7 @@ export default function HomePage() {
           </div>
           <h1 className="mx-auto max-w-4xl text-balance text-4xl font-bold leading-tight text-white sm:text-6xl">从想法到上线，再到迭代维护。让多智能体协作真正可控。</h1>
           <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-zinc-300 sm:text-lg">
-            Viben 不是“只会写代码”的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。
+            Viben 不是"只会写代码"的助手，而是完整的协作系统。统一管理计划、执行、审查与复盘，让 AI 生产力稳定落地。
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link href="/mcp" className="inline-flex items-center gap-2 rounded-lg bg-amber-300 px-6 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-amber-200">
@@ -127,6 +131,7 @@ export default function HomePage() {
       </section>
       <DemoTabs />
 
+      {/* CHALLENGES Section */}
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
@@ -134,36 +139,28 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">AI 能写代码，但代码不等于产品</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            {CHALLENGES.map(({ title, desc }) => (
-              <article key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-6">
-                <h3 className="text-lg font-semibold">{title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-300">{desc}</p>
-              </article>
+            {CHALLENGES.map(({ title, desc, variant }) => (
+              <ChallengeCard key={title} title={title} desc={desc} variant={variant} />
             ))}
           </div>
         </div>
       </section>
 
+      {/* LIFECYCLE Section */}
       <section className="border-y border-white/10 bg-white/[0.02] py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">完整生命周期，你始终在控制中</h2>
           </div>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {LIFECYCLE.map(({ title, desc, icon: Icon }, idx) => (
-              <article key={title} className="rounded-xl border border-white/10 bg-[#0f0f16] p-5">
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-amber-300/10 text-amber-300">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Step {idx + 1}</p>
-                <h3 className="mt-2 font-semibold text-white">{title}</h3>
-                <p className="mt-2 text-sm text-zinc-300">{desc}</p>
-              </article>
+            {LIFECYCLE.map(({ title, desc, variant }, idx) => (
+              <LifecycleCard key={title} title={title} desc={desc} step={idx + 1} variant={variant} />
             ))}
           </div>
         </div>
       </section>
 
+      {/* FEATURES Section */}
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 flex items-end justify-between gap-4">
@@ -177,33 +174,25 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <article key={title} className="rounded-xl border border-white/10 bg-white/[0.03] p-6 transition-colors hover:border-amber-300/30">
-                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-300/10 text-amber-300">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="font-semibold">{title}</h3>
-                <p className="mt-2 text-sm text-zinc-300">{desc}</p>
-              </article>
+            {FEATURES.map(({ icon, title, desc, variant }) => (
+              <FeatureCard key={title} icon={icon} title={title} desc={desc} variant={variant} />
             ))}
           </div>
         </div>
       </section>
 
+      {/* SUPPORTED AGENTS Section */}
       <section className="border-y border-white/10 bg-[#0f0f16] py-20">
         <div className="mx-auto max-w-6xl px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">开发者与团队正在用 Viben 提升交付效率</h2>
           <p className="mx-auto mt-4 max-w-2xl text-zinc-300">兼容主流智能体客户端，保留你已有的模型与工具链。</p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            {SUPPORTED_AGENTS.map((name) => (
-              <div key={name} className="rounded-full border border-white/15 bg-white/[0.03] px-5 py-2 text-sm font-medium">
-                {name}
-              </div>
-            ))}
+          <div className="mt-10">
+            <AgentBadgeList agents={SUPPORTED_AGENTS} />
           </div>
         </div>
       </section>
 
+      {/* FAQ & Pricing Section */}
       <section className="py-20">
         <div className="mx-auto grid max-w-6xl gap-10 px-6 md:grid-cols-2">
           <div>
@@ -232,6 +221,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* CTA Section */}
       <section className="border-t border-white/10 bg-[radial-gradient(circle_at_top,rgba(214,216,118,0.16),transparent_60%)] py-16">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 px-6 text-center md:flex-row md:text-left">
           <div>

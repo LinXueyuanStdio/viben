@@ -333,6 +333,13 @@ export function PageDebugPage() {
         </Tabs>
       </div>
 
+      {/* Usage Note */}
+      <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50 p-4">
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          <strong>{t("pageDebug.usageNote")}:</strong> {t("pageDebug.usageNoteDescription")}
+        </p>
+      </div>
+
       {/* Test Command */}
       <div>
         <div className="flex items-center justify-between mb-3">

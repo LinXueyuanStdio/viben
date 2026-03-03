@@ -948,6 +948,56 @@ export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
   // ========================================================================
 
   /**
+   * SSE transport - POST messages via SSE URL
+   * POST /api/mcp/inspector/sse
+   *
+   * Some MCP clients POST to the same SSE URL instead of using /message.
+   * This handler extracts the sessionId and forwards to the message handler.
+   */
+  fastify.post<{
+    Querystring: {
+      transportType?: string;
+      url?: string;
+      sessionId?: string;
+    };
+  }>("/api/mcp/inspector/sse", async (request, reply) => {
+    // Set CORS headers
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    console.log(`[MCP Inspector] SSE POST received for sessionId ${sessionId}`);
+
+    if (!sessionId) {
+      reply.code(400);
+      return { error: "sessionId query parameter or Mcp-Session-Id header required" };
+    }
+
+    const headerHolder = sessionHeaderHolders.get(sessionId);
+    if (headerHolder) {
+      updateHeadersInPlace(
+        headerHolder.headers as Record<string, string>,
+        getHttpHeaders(request)
+      );
+    }
+
+    const transport = webAppTransports.get(sessionId) as SSEServerTransport;
+    if (!transport) {
+      reply.code(404);
+      return { error: "Session not found" };
+    }
+
+    try {
+      await transport.handlePostMessage(request.raw, reply.raw);
+    } catch (error) {
+      console.error("[MCP Inspector] Error in POST /sse route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  /**
    * SSE transport - SSE endpoint
    * GET /api/mcp/inspector/sse
    */

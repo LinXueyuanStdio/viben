@@ -11,7 +11,7 @@ import type {
   GitHubIssue,
   GitHubIssueInvestigation,
   GitHubRepositoryConfig,
-} from "@/lib/github-client";
+} from "@viben/core";
 
 // ============================================================================
 // Types
@@ -36,7 +36,7 @@ export interface IssueAnalysis {
 }
 
 /**
- * Auto-fix task status
+ * Auto-fix task status (matches core package AutoFixTaskStatus)
  */
 export type AutoFixTaskStatus =
   | "queued"
@@ -51,22 +51,22 @@ export type AutoFixTaskStatus =
   | "cancelled";
 
 /**
- * Auto-fix task
+ * Auto-fix task (uses snake_case to match core package)
  */
 export interface AutoFixTask {
   id: string;
-  workspacePath: string;
-  issueNumbers: number[];
+  workspace_path: string;
+  issue_numbers: number[];
   status: AutoFixTaskStatus;
-  worktreePath?: string;
-  branchName?: string;
+  worktree_path?: string;
+  branch_name?: string;
   analysis?: IssueAnalysis;
-  prNumber?: number;
+  pr_number?: number;
   error?: string;
   progress?: number;
-  progressMessage?: string;
-  createdAt: string;
-  updatedAt: string;
+  progress_message?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
@@ -289,7 +289,7 @@ export const useGitHubStore = create<GitHubState & GitHubActions>()(
       updateAutoFixTask: (taskId, updates) =>
         set((state) => ({
           autoFixTasks: state.autoFixTasks.map((t) =>
-            t.id === taskId ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+            t.id === taskId ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
           ),
         })),
 

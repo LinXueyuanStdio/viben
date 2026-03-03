@@ -89,6 +89,12 @@ export interface GitHubRepositoryConfig {
   default_branch: string;
   /** Repository URL */
   url: string;
+  /** Repository description */
+  description?: string;
+  /** Number of stars */
+  stargazers_count?: number;
+  /** Number of forks */
+  forks_count?: number;
 }
 
 // ============================================================================
@@ -245,6 +251,8 @@ export interface GitHubPullRequest {
   deletions: number;
   /** Number of changed files */
   changed_files: number;
+  /** Assignees */
+  assignees?: GitHubUser[];
 }
 
 // ============================================================================

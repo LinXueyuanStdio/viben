@@ -12,6 +12,7 @@ import {
   type GitHubRepository,
   type GitHubRepositoryConfig,
   type GitHubIssue,
+  type GitHubComment,
   type GitHubPullRequest,
   type GitHubRelease,
   type GitHubIssueInvestigation,
@@ -663,5 +664,96 @@ export function useGitHubReleases(workspacePath: string | null): UseGitHubReleas
     refresh,
     loadMore,
     createRelease,
+  };
+}
+
+// ============================================================================
+// useGitHubComments
+// ============================================================================
+
+export interface UseGitHubCommentsResult {
+  /** Comments list */
+  comments: GitHubComment[];
+  /** Loading state */
+  loading: boolean;
+  /** Error message */
+  error: string | null;
+  /** Current page */
+  page: number;
+  /** Has more pages */
+  hasMore: boolean;
+  /** Refresh comments */
+  refresh: () => Promise<void>;
+  /** Load more comments */
+  loadMore: () => Promise<void>;
+}
+
+/**
+ * Hook for fetching GitHub issue comments
+ */
+export function useGitHubComments(
+  workspacePath: string | null,
+  issueNumber: number | null
+): UseGitHubCommentsResult {
+  const [comments, setComments] = useState<GitHubComment[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!workspacePath || !issueNumber) {
+      setComments([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setPage(1);
+
+    try {
+      const client = getGitHubClient();
+      const result = await client.getIssueComments(workspacePath, issueNumber, 1, 30);
+      setComments(result.items);
+      setHasMore(result.has_more);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load comments");
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, issueNumber]);
+
+  const loadMore = useCallback(async () => {
+    if (!workspacePath || !issueNumber || !hasMore || loading) return;
+
+    setLoading(true);
+    const nextPage = page + 1;
+
+    try {
+      const client = getGitHubClient();
+      const result = await client.getIssueComments(workspacePath, issueNumber, nextPage, 30);
+      setComments((prev) => [...prev, ...result.items]);
+      setPage(nextPage);
+      setHasMore(result.has_more);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load more comments");
+    } finally {
+      setLoading(false);
+    }
+  }, [workspacePath, issueNumber, page, hasMore, loading]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return {
+    comments,
+    loading,
+    error,
+    page,
+    hasMore,
+    refresh,
+    loadMore,
   };
 }
