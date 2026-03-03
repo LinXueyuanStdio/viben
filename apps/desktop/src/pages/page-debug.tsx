@@ -52,6 +52,7 @@ export function PageDebugPage() {
   const [copiedTest, setCopiedTest] = useState(false);
   const [socketStatus, setSocketStatus] = useState<SocketStatus>("checking");
   const [isChecking, setIsChecking] = useState(false);
+  const [activeTab, setActiveTab] = useState("http");
 
   // Check if the MCP socket server is running
   const checkSocketStatus = async () => {
@@ -96,16 +97,6 @@ export function PageDebugPage() {
       "viben-page-debug": {
         transport: "sse",
         url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/sse`,
-      },
-    },
-  };
-
-  // Alternative: streamable-http config
-  const httpStreamConfig = {
-    mcpServers: {
-      "viben-page-debug": {
-        transport: "http",
-        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/mcp`,
       },
     },
   };
@@ -284,7 +275,7 @@ export function PageDebugPage() {
       {/* AI Client Configuration */}
       <div>
         <h3 className="text-sm font-medium mb-3">{t("pageDebug.aiInstructions")}</h3>
-        <Tabs defaultValue="http" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="http" className="flex items-center gap-2">
               <Globe className="h-4 w-4" />

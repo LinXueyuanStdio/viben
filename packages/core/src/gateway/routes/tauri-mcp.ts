@@ -96,10 +96,10 @@ class TauriMcpClient extends EventEmitter {
         this.connected = false;
         this.socket = null;
         // Reject all pending requests
-        for (const [id, pending] of this.pendingRequests) {
+        Array.from(this.pendingRequests.entries()).forEach(([, pending]) => {
           clearTimeout(pending.timeout);
           pending.reject(new Error("Socket closed"));
-        }
+        });
         this.pendingRequests.clear();
       });
     });
