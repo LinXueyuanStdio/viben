@@ -35,6 +35,7 @@ import {
   Lock,
   GripVertical,
   Settings,
+  ListPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,9 @@ import {
   COLUMN_COLORS as VIBE_COLUMN_COLORS,
 } from "@/lib/vibe-kanban";
 import { useTranslation } from "react-i18next";
+import { useToast } from "@/hooks/use-toast";
+import { useWorkspaceKanbanQueue } from "@/stores/kanban-queue-store";
+import { QueueSettingsModal } from "@/components/workspace/kanban/queue-settings-modal";
 
 // Kanban column IDs - using new 6-column layout from Auto-Claude
 // backlog → queue → in_progress → ai_review → human_review → done
@@ -677,6 +681,12 @@ export function WorkspaceKanbanPage() {
   // Board settings dialog state
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Queue settings modal state
+  const [queueSettingsOpen, setQueueSettingsOpen] = useState(false);
+
+  // Toast notifications
+  const toast = useToast();
+
   // Command palette state
   const { isOpen: isCommandPaletteOpen, setIsOpen: setIsCommandPaletteOpen } =
     useCommandPalette();
@@ -701,6 +711,18 @@ export function WorkspaceKanbanPage() {
     setSettingsOpen(false);
   }, []);
   const workspace = workspaceId ? getWorkspace(workspaceId) : undefined;
+
+  // Queue settings and archived tasks store
+  const {
+    maxParallelTasks,
+    setMaxParallelTasks,
+    showArchived,
+    toggleShowArchived,
+    archivedTaskIds,
+    archiveTask,
+    archiveAllDone,
+    archivedCount,
+  } = useWorkspaceKanbanQueue(workspace?.path);
 
   // Fetch tasks for the workspace
   const {
@@ -767,12 +789,14 @@ export function WorkspaceKanbanPage() {
   );
 
   // Calculate stats - transform tasks to match StatsItem interface
+  // Using basic fields available on all tasks
   const statsItems = useMemo(() =>
     (tasks ?? []).map((t) => ({
       id: t.id,
       status: t.status,
-      priority: t.kanbanPriority,
-      dueDate: t.dueDate,
+      // priority and dueDate are UI-enriched fields, may not be present
+      priority: undefined as IssuePriority | undefined,
+      dueDate: undefined as string | undefined,
     })),
     [tasks]
   );
@@ -802,10 +826,11 @@ export function WorkspaceKanbanPage() {
       title: task.title,
       description: task.description,
       status: task.status,
-      priority: task.kanbanPriority,
-      tags: task.tags,
-      assignee: task.kanbanAssignee,
-      dueDate: task.dueDate,
+      // These UI-enriched fields may not be present on backend tasks
+      priority: undefined,
+      tags: undefined,
+      assignee: undefined,
+      dueDate: undefined,
       created_at: task.created_at,
       updated_at: task.updated_at,
       session_id: task.session_id,
@@ -824,21 +849,36 @@ export function WorkspaceKanbanPage() {
   const isPanelOpen = selectedTaskId !== null;
 
   // Group tasks by column (already sorted)
+  // For the Done column, filter out archived tasks unless showArchived is enabled
   const tasksByColumn = useMemo(() => {
     const grouped: Record<string, EnhancedTask[]> = {};
 
     for (const column of columnStatuses) {
       // Get tasks for this column (map vibe-kanban status to column id)
-      const columnTasks = (sortedTasks ?? []).filter((task) => {
+      let columnTasks = (sortedTasks ?? []).filter((task) => {
         const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
         return mappedColumn === column.id;
       });
+
+      // For Done column, filter archived tasks unless showArchived is enabled
+      if (column.id === "done" && !showArchived) {
+        columnTasks = columnTasks.filter((task) => !archivedTaskIds.includes(task.id));
+      }
 
       grouped[column.id] = columnTasks;
     }
 
     return grouped;
-  }, [sortedTasks, columnStatuses]);
+  }, [sortedTasks, columnStatuses, showArchived, archivedTaskIds]);
+
+  // Count archived tasks in Done column (for badge display)
+  const archivedDoneCount = useMemo(() => {
+    const doneTasks = (sortedTasks ?? []).filter((task) => {
+      const mappedColumn = STATUS_TO_COLUMN[task.status as VibeTaskStatus];
+      return mappedColumn === "done";
+    });
+    return doneTasks.filter((task) => archivedTaskIds.includes(task.id)).length;
+  }, [sortedTasks, archivedTaskIds]);
 
   // Handle drag end - move task to new status
   const handleDragEnd = useCallback(
@@ -889,18 +929,25 @@ export function WorkspaceKanbanPage() {
 
       const status = COLUMN_TO_STATUS[createDialogColumnId as ColumnId] ?? "backlog";
 
-      await createTask.mutateAsync({
-        workspace_path: workspace.path,
-        title: data.title,
-        description: data.description ?? null,
-        status,
-        agent_id: data.agentId,
-        model_id: data.modelId,
-        branch: data.branch,
-        auto_start: data.autoStart,
-      });
+      try {
+        await createTask.mutateAsync({
+          workspace_path: workspace.path,
+          title: data.title,
+          description: data.description ?? null,
+          status,
+          agent_id: data.agentId,
+          model_id: data.modelId,
+          branch: data.branch,
+          auto_start: data.autoStart,
+        });
+        toast.success(t("workspace.taskCreated", "Task created successfully"));
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown error";
+        toast.error(t("workspace.taskCreateFailed", "Failed to create task: {{message}}", { message }));
+        throw error; // Re-throw to let the dialog know it failed
+      }
     },
-    [workspace, createTask, createDialogColumnId]
+    [workspace, createTask, createDialogColumnId, toast, t]
   );
 
   // Quick add task (with title from QuickTaskInput)
@@ -1084,6 +1131,45 @@ export function WorkspaceKanbanPage() {
       closeMoreMenu();
     },
     [workspace, updateTaskStatus, closeMoreMenu]
+  );
+
+  // Queue All - move all backlog tasks to queue
+  const handleQueueAll = useCallback(async () => {
+    if (!workspace) return;
+    const backlogTasks = tasksByColumn["backlog"] ?? [];
+    if (backlogTasks.length === 0) return;
+
+    for (const task of backlogTasks) {
+      updateTaskStatus.mutate({
+        taskId: task.id,
+        status: "queue",
+        workspacePath: workspace.path,
+      });
+    }
+    toast.success(
+      t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
+    );
+  }, [workspace, tasksByColumn, updateTaskStatus, toast, t]);
+
+  // Archive All - archive all done tasks
+  const handleArchiveAll = useCallback(() => {
+    const doneTasks = tasksByColumn["done"] ?? [];
+    const taskIds = doneTasks.map((t) => t.id);
+    if (taskIds.length === 0) return;
+
+    archiveAllDone(taskIds);
+    toast.success(
+      t("workspace.archiveAllSuccess", "Archived {{count}} tasks", { count: taskIds.length })
+    );
+  }, [tasksByColumn, archiveAllDone, toast, t]);
+
+  // Archive single task
+  const handleArchiveTask = useCallback(
+    (taskId: string) => {
+      archiveTask(taskId);
+      toast.success(t("workspace.taskArchived", "Task archived"));
+    },
+    [archiveTask, toast, t]
   );
 
   // Command palette commands
@@ -1555,16 +1641,143 @@ export function WorkspaceKanbanPage() {
                               <p className="m-0 text-sm font-semibold truncate" style={{ color: `hsl(var(${colorVar}))` }}>
                                 {column.name}
                               </p>
-                              <span
-                                className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
-                                style={{
-                                  backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
-                                  color: `hsl(var(${colorVar}))`,
-                                }}
-                              >
-                                {columnTasks.length}
-                              </span>
+                              {/* In Progress column - show capacity indicator */}
+                              {column.id === "in_progress" && maxParallelTasks ? (
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums",
+                                    columnTasks.length >= maxParallelTasks
+                                      ? "bg-warning/20 text-warning border border-warning/30"
+                                      : undefined
+                                  )}
+                                  style={columnTasks.length < maxParallelTasks ? {
+                                    backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                    color: `hsl(var(${colorVar}))`,
+                                  } : undefined}
+                                  title={t("workspace.capacityIndicator", "{{current}} of {{max}} parallel tasks", { current: columnTasks.length, max: maxParallelTasks })}
+                                >
+                                  {columnTasks.length}/{maxParallelTasks}
+                                </span>
+                              ) : (
+                                <span
+                                  className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-medium rounded-full tabular-nums"
+                                  style={{
+                                    backgroundColor: `hsl(var(${colorVar}) / 0.15)`,
+                                    color: `hsl(var(${colorVar}))`,
+                                  }}
+                                >
+                                  {columnTasks.length}
+                                </span>
+                              )}
                             </span>
+
+                            {/* Backlog column - Queue All button */}
+                            {column.id === "backlog" && columnTasks.length > 0 && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 rounded-md transition-colors"
+                                      style={{ color: "hsl(var(--info))" }}
+                                      onClick={handleQueueAll}
+                                      aria-label={t("workspace.queueAll", "Queue All")}
+                                    >
+                                      <ListPlus className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {t("workspace.queueAll", "Queue All")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+
+                            {/* Queue column - Settings button */}
+                            {column.id === "queue" && (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 rounded-md transition-colors hover:bg-info/10"
+                                      style={{ color: "hsl(var(--info))" }}
+                                      onClick={() => setQueueSettingsOpen(true)}
+                                      aria-label={t("workspace.queueSettings", "Queue Settings")}
+                                    >
+                                      <Settings className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    {t("workspace.queueSettings", "Queue Settings")}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+
+                            {/* Done column - Archive All + Archive Toggle */}
+                            {column.id === "done" && (
+                              <>
+                                {/* Archive All button - only show when there are unarchived tasks */}
+                                {columnTasks.length > 0 && !showArchived && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 rounded-md transition-colors opacity-60 hover:opacity-100"
+                                          onClick={handleArchiveAll}
+                                          aria-label={t("workspace.archiveAll", "Archive All")}
+                                        >
+                                          <Archive className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {t("workspace.archiveAll", "Archive All")}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+
+                                {/* Archive toggle button - show when there are archived tasks */}
+                                {archivedDoneCount > 0 && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className={cn(
+                                            "h-6 w-6 rounded-md transition-colors relative",
+                                            showArchived
+                                              ? "text-primary bg-primary/10 hover:bg-primary/20"
+                                              : "opacity-60 hover:opacity-100"
+                                          )}
+                                          onClick={toggleShowArchived}
+                                          aria-label={showArchived
+                                            ? t("workspace.hideArchived", "Hide Archived")
+                                            : t("workspace.showArchived", "Show Archived")}
+                                        >
+                                          <Archive className="h-3.5 w-3.5" />
+                                          <span className="absolute -top-1 -right-1 text-[9px] font-medium bg-muted rounded-full min-w-[12px] h-[12px] flex items-center justify-center">
+                                            {archivedDoneCount}
+                                          </span>
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs">
+                                        {showArchived
+                                          ? t("workspace.hideArchived", "Hide Archived")
+                                          : t("workspace.showArchived", "Show Archived ({{count}})", { count: archivedDoneCount })}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </>
+                            )}
+
                             {/* Add task button - primary action */}
                             <TooltipProvider>
                               <Tooltip>
@@ -1886,6 +2099,14 @@ export function WorkspaceKanbanPage() {
         onOpenChange={setSettingsOpen}
         columns={columnConfigs}
         onColumnsChange={handleColumnsChange}
+      />
+
+      {/* Queue Settings Modal */}
+      <QueueSettingsModal
+        open={queueSettingsOpen}
+        onOpenChange={setQueueSettingsOpen}
+        currentMaxParallel={maxParallelTasks}
+        onSave={setMaxParallelTasks}
       />
     </PageWrapper>
   );

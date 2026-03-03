@@ -38,6 +38,26 @@ export type ReviewReason =
  */
 export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
 
+/**
+ * Subtask detail - structured subtask data
+ */
+export interface Subtask {
+  id: string;
+  name: string;
+  title?: string;
+  status: SubtaskStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Execution progress tracking
+ */
+export interface ExecutionProgress {
+  phase: ExecutionPhase;
+  phaseProgress?: number;  // 0-100
+}
+
 // Task model - unified task with all fields (reference: Auto-Claude UnifiedTask)
 export interface Task {
   id: string;
@@ -106,6 +126,9 @@ export interface TaskWithAttemptStatus extends Task {
   stuck_duration?: number;      // How long stuck (ms)
   execution_phase?: ExecutionPhase;
   archived?: boolean;
+  // Subtask visualization
+  subtasks_detail?: Subtask[];           // Structured subtask data
+  execution_progress?: ExecutionProgress; // Phase progress tracking
 }
 
 /**

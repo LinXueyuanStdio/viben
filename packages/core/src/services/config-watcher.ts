@@ -155,7 +155,8 @@ export class ConfigWatcherService {
     if (!this.isRunning) return;
 
     // Close all watchers
-    for (const filePath of this.watchers.keys()) {
+    const filePaths = Array.from(this.watchers.keys());
+    for (const filePath of filePaths) {
       this.unwatch(filePath);
     }
 

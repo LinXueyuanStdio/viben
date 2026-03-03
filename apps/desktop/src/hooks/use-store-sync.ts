@@ -2,7 +2,9 @@ import { useEffect, useCallback, useRef } from "react";
 import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
 import { getGatewayClient } from "@/lib/gateway";
 import { useAppStore } from "@/stores";
+import { useMcpWebSocket } from "./use-mcp-websocket";
 import type { McpServerInstance, McpServerStatusInfo } from "@/types";
+import type { McpConfigChangedData } from "@/lib/gateway/types";
 
 /**
  * Event types for cross-window store synchronization
@@ -104,6 +106,7 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
  * 2. Persists changes back to Gateway file
  * 3. Emits events when the store changes for cross-window sync
  * 4. Listens for events from other windows
+ * 5. Listens for WebSocket config change events from Gateway
  */
 export function useStoreSync(windowType: "main" | "tray" = "main") {
   const {
@@ -143,6 +146,26 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
       isInitialLoading = false;
     }
   }, []);
+
+  /**
+   * Handle WebSocket config change event
+   */
+  const handleConfigChanged = useCallback((data: McpConfigChangedData) => {
+    console.log("[StoreSync] Config file changed via WebSocket:", data.change_type);
+
+    // Reload from file when config changes
+    // Use a small delay to ensure the file write is complete
+    setTimeout(() => {
+      loadFromFile();
+    }, 100);
+  }, [loadFromFile]);
+
+  // Subscribe to WebSocket for real-time config change notifications
+  const { isConnected: wsConnected } = useMcpWebSocket({
+    enabled: true,
+    updateStore: false, // Don't auto-update status, we handle config changes ourselves
+    onConfigChanged: handleConfigChanged,
+  });
 
   /**
    * Save current state to file and emit update event
@@ -242,7 +265,7 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     };
   }, [mcpServerStatuses, debouncedSaveStatuses]);
 
-  // Listen for sync events from other windows
+  // Listen for sync events from other windows (Tauri events as backup)
   useEffect(() => {
     const unlistenFns: UnlistenFn[] = [];
 
@@ -277,6 +300,7 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
   return {
     saveAndEmit,
     reloadFromFile: loadFromFile,
+    wsConnected,
   };
 }
 

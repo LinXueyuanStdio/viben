@@ -13,3 +13,7 @@ export {
   type IssueFilters,
   type GitHubAuthStatus,
 } from "./github-store";
+export {
+  useKanbanQueueStore,
+  useWorkspaceKanbanQueue,
+} from "./kanban-queue-store";

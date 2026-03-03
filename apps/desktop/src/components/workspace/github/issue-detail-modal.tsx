@@ -337,7 +337,7 @@ export function IssueDetailModal({
       const newTask = await createTask({
         title: issue.title,
         description: issue.body || undefined,
-        status: "todo",
+        status: "backlog",
         workspace_path: workspacePath,
         github_issue_number: issue.number,
         github_issue_url: issue.html_url,

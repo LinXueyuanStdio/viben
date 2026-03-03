@@ -68,6 +68,7 @@ import {
   useToggleCommentReaction,
   useKanbanActivities,
   useAgentConversation,
+  useTaskSpecsData,
 } from "@/hooks";
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
@@ -366,6 +367,9 @@ export function TaskDetailPanel({
   const [activeTab, setActiveTab] = useState<string>("details");
   // Track if we should auto-start when switching to agent chat
   const [shouldAutoStart, setShouldAutoStart] = useState(false);
+
+  // Load task specs data (PRD, subtasks, logs, files) from .viben/tasks/{taskId}/
+  const specsData = useTaskSpecsData(task?.id ?? null, workspacePath);
 
   // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
   useEffect(() => {
@@ -786,11 +790,20 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           <TabsTrigger value="subtasks" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             {t("workspace.tabs.subtasks", "Subtasks")}
-            {task.subtasks && task.subtasks.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
-              </Badge>
-            )}
+            {(() => {
+              // Use implementation plan subtasks if available, otherwise fall back to task.subtasks
+              const subtasksList = specsData.subtasks.length > 0
+                ? specsData.subtasks
+                : task.subtasks || [];
+              const completedCount = specsData.subtasks.length > 0
+                ? specsData.subtasks.filter((s) => s.status === "completed").length
+                : (task.subtasks || []).filter((s) => s.completed).length;
+              return subtasksList.length > 0 ? (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {completedCount}/{subtasksList.length}
+                </Badge>
+              ) : null;
+            })()}
           </TabsTrigger>
           <TabsTrigger value="prd" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -803,11 +816,16 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           <TabsTrigger value="files" className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4" />
             {t("workspace.tabs.files", "Files")}
-            {task.modifiedFiles && task.modifiedFiles.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                {task.modifiedFiles.length}
-              </Badge>
-            )}
+            {(() => {
+              const fileCount = specsData.files.length > 0
+                ? specsData.files.length
+                : (task.modifiedFiles?.length ?? 0);
+              return fileCount > 0 ? (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                  {fileCount}
+                </Badge>
+              ) : null;
+            })()}
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -1190,16 +1208,35 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         {/* Subtasks Tab */}
         <TabsContent value="subtasks" className="flex-1 min-h-0">
           <TaskSubtasksTab
-            subtasks={(task.subtasks || []).map((s) => ({
-              id: s.id,
-              title: s.title,
-              completed: s.completed,
-              description: undefined, // Extended description not available in basic subtask
-              files: undefined, // Associated files not available in basic subtask
-            }))}
+            subtasks={
+              // Prefer implementation plan subtasks from specs directory
+              specsData.subtasks.length > 0
+                ? specsData.subtasks.map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    completed: s.status === "completed",
+                    description: s.description,
+                    files: s.files,
+                    status: s.status,
+                  }))
+                : // Fallback to basic subtasks from task data
+                  (task.subtasks || []).map((s) => ({
+                    id: s.id,
+                    title: s.title,
+                    completed: s.completed,
+                    description: undefined,
+                    files: undefined,
+                  }))
+            }
+            isLoading={specsData.isLoading}
             onSubtaskClick={(subtaskId) => {
               // Could navigate to subtask or show details
               console.log("Subtask clicked:", subtaskId);
+            }}
+            onFileClick={(filePath) => {
+              // Open file in editor
+              const client = getGatewayClient();
+              client.openFile(filePath).catch(console.error);
             }}
           />
         </TabsContent>
@@ -1208,13 +1245,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         <TabsContent value="prd" className="flex-1 min-h-0">
           <TaskPRDTab
             taskId={task.id}
-            prdContent={task.prdContent}
-            prdPath={task.specsPath ? `${task.specsPath}/prd.md` : undefined}
-            isLoading={false}
-            onRefresh={() => {
-              // TODO: Implement PRD refresh via gateway API
-              console.log("Refresh PRD for task:", task.id);
-            }}
+            prdContent={specsData.prdContent ?? task.prdContent}
+            prdPath={specsData.prdPath ?? (task.specsPath ? `${task.specsPath}/spec.md` : undefined)}
+            isLoading={specsData.isLoading}
+            error={specsData.error}
+            onRefresh={specsData.refresh}
             onOpenInEditor={(path) => {
               // Open file in default editor via gateway
               const client = getGatewayClient();
@@ -1227,13 +1262,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         <TabsContent value="logs" className="flex-1 min-h-0">
           <TaskLogsTab
             taskId={task.id}
-            logs={task.logs}
-            isLoading={false}
+            logs={specsData.logs ?? task.logs}
+            isLoading={specsData.isLoading}
+            error={specsData.error}
             autoScroll={true}
-            onRefresh={() => {
-              // TODO: Implement logs refresh via gateway API
-              console.log("Refresh logs for task:", task.id);
-            }}
+            onRefresh={specsData.refresh}
           />
         </TabsContent>
 
@@ -1241,12 +1274,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         <TabsContent value="files" className="flex-1 min-h-0">
           <TaskFilesTab
             taskId={task.id}
-            files={task.modifiedFiles}
-            isLoading={false}
-            onRefresh={() => {
-              // TODO: Implement files refresh via gateway API
-              console.log("Refresh files for task:", task.id);
-            }}
+            files={specsData.files.length > 0 ? specsData.files : task.modifiedFiles}
+            isLoading={specsData.isLoading}
+            error={specsData.error}
+            onRefresh={specsData.refresh}
             onOpenInIDE={(path) => {
               // Open file in default editor via gateway
               const client = getGatewayClient();

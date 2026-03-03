@@ -5,6 +5,7 @@ import {
   cn,
   ScrollArea,
   Badge,
+  Skeleton,
 } from "@viben/ui";
 import * as Collapsible from "@radix-ui/react-collapsible";
 import {
@@ -13,8 +14,16 @@ import {
   ChevronRight,
   FileText,
   ListChecks,
+  Loader2,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+/**
+ * Subtask status from implementation plan
+ */
+export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
 
 /**
  * Subtask with extended information for display in the tab
@@ -25,13 +34,70 @@ export interface ExtendedSubtask {
   completed: boolean;
   description?: string;
   files?: string[];
+  status?: SubtaskStatus;
 }
 
 export interface TaskSubtasksTabProps {
   subtasks: ExtendedSubtask[];
   className?: string;
+  isLoading?: boolean;
   onSubtaskClick?: (subtaskId: string) => void;
   onFileClick?: (filePath: string) => void;
+}
+
+/**
+ * Get status icon component based on subtask status
+ */
+function getStatusIcon(subtask: ExtendedSubtask) {
+  // Use explicit status if available
+  if (subtask.status) {
+    switch (subtask.status) {
+      case "completed":
+        return <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />;
+      case "in_progress":
+        return <Loader2 className="h-5 w-5 text-blue-500 animate-spin shrink-0 mt-0.5" />;
+      case "failed":
+        return <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />;
+      case "pending":
+      default:
+        return <Clock className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />;
+    }
+  }
+
+  // Fallback to completed boolean
+  return subtask.completed ? (
+    <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+  ) : (
+    <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+  );
+}
+
+/**
+ * Get status label for badge
+ */
+function getStatusLabel(status: SubtaskStatus | undefined): string | null {
+  switch (status) {
+    case "in_progress":
+      return "In Progress";
+    case "failed":
+      return "Failed";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Get status color for badge
+ */
+function getStatusColor(status: SubtaskStatus | undefined): string {
+  switch (status) {
+    case "in_progress":
+      return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
+    case "failed":
+      return "bg-red-500/10 text-red-600 dark:text-red-400";
+    default:
+      return "";
+  }
 }
 
 /**
@@ -46,6 +112,7 @@ export interface TaskSubtasksTabProps {
 export function TaskSubtasksTab({
   subtasks,
   className,
+  isLoading = false,
   onSubtaskClick,
   onFileClick,
 }: TaskSubtasksTabProps) {
@@ -67,6 +134,20 @@ export function TaskSubtasksTab({
       return next;
     });
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={cn("p-4 space-y-4", className)}>
+        <Skeleton className="h-16 w-full rounded-lg" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (totalCount === 0) {
     return (
@@ -117,6 +198,12 @@ export function TaskSubtasksTab({
             const hasFiles = subtask.files && subtask.files.length > 0;
             const isExpandable = hasDescription || hasFiles;
 
+            const isCompleted = subtask.status === "completed" || subtask.completed;
+            const isFailed = subtask.status === "failed";
+            const isInProgress = subtask.status === "in_progress";
+            const statusLabel = getStatusLabel(subtask.status);
+            const statusColor = getStatusColor(subtask.status);
+
             return (
               <Collapsible.Root
                 key={subtask.id}
@@ -126,9 +213,10 @@ export function TaskSubtasksTab({
                 <div
                   className={cn(
                     "rounded-lg border transition-colors",
-                    subtask.completed
-                      ? "bg-green-500/5 border-green-500/20"
-                      : "bg-background border-border hover:border-primary/30"
+                    isCompleted && "bg-green-500/5 border-green-500/20",
+                    isFailed && "bg-red-500/5 border-red-500/20",
+                    isInProgress && "bg-blue-500/5 border-blue-500/20",
+                    !isCompleted && !isFailed && !isInProgress && "bg-background border-border hover:border-primary/30"
                   )}
                 >
                   <Collapsible.Trigger asChild disabled={!isExpandable}>
@@ -141,22 +229,29 @@ export function TaskSubtasksTab({
                       onClick={() => onSubtaskClick?.(subtask.id)}
                     >
                       {/* Status Icon */}
-                      {subtask.completed ? (
-                        <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                      ) : (
-                        <Circle className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                      )}
+                      {getStatusIcon(subtask)}
 
                       {/* Title and Meta */}
                       <div className="flex-1 min-w-0">
-                        <span
-                          className={cn(
-                            "text-sm font-medium",
-                            subtask.completed && "text-muted-foreground line-through"
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "text-sm font-medium",
+                              isCompleted && "text-muted-foreground line-through"
+                            )}
+                          >
+                            {subtask.title}
+                          </span>
+                          {/* Status badge for in_progress and failed */}
+                          {statusLabel && (
+                            <Badge
+                              variant="secondary"
+                              className={cn("text-xs py-0", statusColor)}
+                            >
+                              {statusLabel}
+                            </Badge>
                           )}
-                        >
-                          {subtask.title}
-                        </span>
+                        </div>
 
                         {/* File Tags (collapsed preview) */}
                         {hasFiles && !isExpanded && (

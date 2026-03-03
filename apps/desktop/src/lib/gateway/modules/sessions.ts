@@ -116,6 +116,9 @@ export async function createSession(
 /**
  * Update session metadata
  * Note: Uses agent-centric API path
+ *
+ * @experimental This endpoint may not be implemented in all backend versions.
+ * Check backend compatibility before using.
  */
 export async function updateSession(
   baseUrl: string,
@@ -123,6 +126,9 @@ export async function updateSession(
   sessionId: string,
   updates: Partial<Pick<FileSession, "status" | "metadata">>
 ): Promise<FileSession> {
+  // Note: This endpoint (PATCH /api/agents/:id/sessions/:session_id) may not exist
+  // in all backend implementations. The current backend only supports GET, POST, DELETE.
+  // This function is provided for forward compatibility when the backend adds PATCH support.
   const response = await fetch(
     `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
@@ -274,12 +280,18 @@ export async function appendMessage(
 /**
  * Clear session messages
  * Note: Uses agent-centric API path
+ *
+ * @experimental This endpoint may not be implemented in all backend versions.
+ * Check backend compatibility before using.
  */
 export async function clearSessionMessages(
   baseUrl: string,
   agentId: string,
   sessionId: string
 ): Promise<void> {
+  // Note: This endpoint (DELETE /api/agents/:id/sessions/:session_id/messages) may not exist
+  // in all backend implementations. The current backend only supports GET, POST on messages.
+  // This function is provided for forward compatibility when the backend adds DELETE support.
   const response = await fetch(
     `${baseUrl}/api/agents/${encodeURIComponent(agentId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
     {
@@ -336,34 +348,19 @@ export async function discoverExecutorSessions(
 
 /**
  * List executor sessions
+ *
+ * Note: This function delegates to discoverExecutorSessions which uses the
+ * correct backend endpoint (/api/executors/:type/discover-sessions).
+ *
+ * @deprecated Use {@link discoverExecutorSessions} instead for clarity.
  */
 export async function listExecutorSessions(
   baseUrl: string,
   executorType: string,
   workspacePath: string
 ): Promise<ExecutorSession[]> {
-  const url = buildUrl(
-    baseUrl,
-    `/api/executors/${encodeURIComponent(executorType)}/sessions`,
-    { workspacePath }
-  );
-
-  const response = await fetch(url,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
-
-  if (!response.ok) {
-    const errorMessage = await parseErrorMessage(response);
-    throw new GatewayError(
-      `Failed to list executor sessions: ${errorMessage}`,
-      response.status
-    );
-  }
-
-  return response.json();
+  // Delegate to discoverExecutorSessions which uses the correct endpoint
+  return discoverExecutorSessions(baseUrl, executorType, workspacePath);
 }
 
 /**

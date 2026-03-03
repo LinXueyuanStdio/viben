@@ -7,7 +7,7 @@
  */
 
 export { TaskSubtasksTab } from "./task-subtasks-tab";
-export type { TaskSubtasksTabProps, ExtendedSubtask } from "./task-subtasks-tab";
+export type { TaskSubtasksTabProps, ExtendedSubtask, SubtaskStatus } from "./task-subtasks-tab";
 
 export { TaskPRDTab } from "./task-prd-tab";
 export type { TaskPRDTabProps } from "./task-prd-tab";
