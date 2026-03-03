@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   ChevronDown,
   ChevronRight,
@@ -411,6 +411,7 @@ export function ToolExecutionItem({
   onArtifactClick,
 }: ToolExecutionItemProps) {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [showModal, setShowModal] = React.useState(false);
   const hasSubagentMessages = subagentMessages && subagentMessages.length > 0;
   // Default to expanded when there are subagent messages
@@ -567,8 +568,9 @@ export function ToolExecutionItem({
 
     return (
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
         className={cn("flex gap-3 w-full min-w-0", className)}
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500/10">
@@ -622,7 +624,7 @@ export function ToolExecutionItem({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
                   className="overflow-hidden"
                 >
                   <div className="border-t border-violet-500/10 px-4 py-3 space-y-3 min-w-0 overflow-hidden">
@@ -704,8 +706,9 @@ export function ToolExecutionItem({
   return (
     <>
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
         className={cn("flex gap-3 w-full min-w-0", className)}
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
