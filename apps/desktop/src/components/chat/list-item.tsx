@@ -67,7 +67,12 @@ export interface ListItemProps {
 
   // Avatar configuration
   avatar: {
-    /** Icon to display in avatar - can be a LucideIcon component or any React node (e.g., @lobehub/icons) */
+    /**
+     * Icon to display in avatar.
+     * Can be:
+     * - A component reference (LucideIcon, forwardRef component) - will be rendered with h-5 w-5 text-white
+     * - A React element (pre-rendered, e.g., from getModelIcon()) - will be used as-is
+     */
     icon: LucideIcon | React.ReactNode;
     /** Gradient class (e.g., "from-blue-500 to-cyan-400") */
     gradient: string;
@@ -224,8 +229,14 @@ function ListItemContent({
   actions,
   className,
 }: Omit<ListItemProps, "contextMenu">) {
-  // Check if icon is a LucideIcon (function component) or a ReactNode (already rendered element)
-  const isLucideIcon = typeof avatar.icon === "function";
+  // Check if icon is a component (function or forwardRef) vs a ReactNode (already rendered element)
+  // forwardRef components are objects with $$typeof, not functions
+  const isComponent =
+    typeof avatar.icon === "function" ||
+    (typeof avatar.icon === "object" &&
+      avatar.icon !== null &&
+      "$$typeof" in avatar.icon &&
+      !React.isValidElement(avatar.icon));
   const hasActions = actions && actions.length > 0;
 
   return (
@@ -244,8 +255,8 @@ function ListItemContent({
           avatar.gradient
         )}
       >
-        {isLucideIcon ? (
-          React.createElement(avatar.icon as LucideIcon, {
+        {isComponent ? (
+          React.createElement(avatar.icon as React.ComponentType<{ className?: string }>, {
             className: "h-5 w-5 text-white",
           })
         ) : (
