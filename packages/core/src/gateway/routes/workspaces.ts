@@ -337,6 +337,12 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
         const includeCursor = viben_options?.include_cursor ?? true;
         const force = viben_options?.force ?? false;
 
+        // Build executors list based on options
+        const executors: ("CURSOR" | "CLAUDE_CODE")[] = ["CLAUDE_CODE"];
+        if (includeCursor) {
+          executors.push("CURSOR");
+        }
+
         try {
           const result = await initTeam({
             targetDir: workspacePath,
@@ -344,7 +350,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
             projectType,
             force,
             skipExisting: !force,
-            includeCursor,
+            executors,
           });
 
           vibenInitialized = result.success;

@@ -1,0 +1,6 @@
+{"file": ".viben/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".viben/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/modules/cli/task.md", "reason": "Spec 文档"}
+{"file": "packages/core/templates/viben/scripts/task.py", "reason": "主要 Python 脚本"}
+{"file": "packages/core/templates/viben/scripts/multi_agent/status.py", "reason": "Status 脚本"}
+{"file": "packages/core/templates/viben/scripts/multi_agent/plan.py", "reason": "Plan 脚本"}

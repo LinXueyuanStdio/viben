@@ -13,6 +13,7 @@ Usage:
 
 import json
 import os
+import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -35,21 +36,44 @@ OUTPUT_PATH = PROJECT_ROOT / "apps" / "web" / "public" / "data" / "code-stats.js
 
 # Directories to exclude
 EXCLUDE_DIRS = {
+    # Build & cache
     "node_modules",
-    ".git",
-    ".next",
     "dist",
     "build",
     "target",
     "__pycache__",
-    ".turbo",
-    ".vercel",
     "coverage",
     ".nyc_output",
     "vendor",
+    # Virtual environments
     ".venv",
     "venv",
     "env",
+    # Hidden/tool directories
+    ".git",
+    ".next",
+    ".turbo",
+    ".vercel",
+    ".auto-claude",
+    ".claude",
+    ".viben",
+    ".trellis",
+    ".cache",
+    ".idea",
+    ".vscode",
+}
+
+# Files to exclude (lock files, generated files, etc.)
+EXCLUDE_FILES = {
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    "Cargo.lock",
+    "poetry.lock",
+    "Gemfile.lock",
+    "composer.lock",
+    "go.sum",
+    ".DS_Store",
 }
 
 # Language color mapping
@@ -113,7 +137,33 @@ def get_extension(filename: str) -> str:
 def should_exclude(path: Path) -> bool:
     """Check if path should be excluded."""
     parts = path.parts
-    return any(part in EXCLUDE_DIRS for part in parts)
+    # Check excluded directories
+    if any(part in EXCLUDE_DIRS for part in parts):
+        return True
+    # Check excluded files
+    if path.name in EXCLUDE_FILES:
+        return True
+    return False
+
+
+def get_git_tracked_files(root: Path) -> set[str]:
+    """Get set of files tracked by git (respects .gitignore)."""
+    try:
+        result = subprocess.run(
+            ["git", "ls-files"],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return set(result.stdout.strip().split("\n")) if result.stdout.strip() else set()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return set()
+
+
+def is_git_repo(root: Path) -> bool:
+    """Check if directory is a git repository."""
+    return (root / ".git").exists()
 
 
 def get_module_name(path: Path) -> str | None:
@@ -188,6 +238,15 @@ def analyze_codebase():
     """Analyze the codebase using pygount."""
     print(f"Analyzing codebase at {PROJECT_ROOT}...")
 
+    # Get git tracked files if in a git repo (respects .gitignore)
+    use_git = is_git_repo(PROJECT_ROOT)
+    git_files = get_git_tracked_files(PROJECT_ROOT) if use_git else set()
+
+    if use_git:
+        print(f"Using git ls-files ({len(git_files)} tracked files, respecting .gitignore)")
+    else:
+        print("Not a git repository, scanning all files")
+
     # Data structures
     lang_stats = defaultdict(lambda: {"lines": 0, "files": 0})
     module_stats = defaultdict(lambda: {"lines": 0, "files": 0})
@@ -207,6 +266,10 @@ def analyze_codebase():
         for filename in files:
             filepath = Path(root) / filename
             rel_path = filepath.relative_to(PROJECT_ROOT)
+
+            # Skip if using git and file is not tracked
+            if use_git and str(rel_path) not in git_files:
+                continue
 
             if should_exclude(rel_path):
                 continue

@@ -1,390 +1,312 @@
 {
-  "generatedAt": "2026-03-03T06:02:07.546724+00:00",
+  "generatedAt": "2026-03-03T06:41:17.274933+00:00",
   "summary": {
-    "totalLines": 1822131,
-    "totalFiles": 6643,
-    "totalModules": 25,
-    "codeLines": 892688,
-    "docLines": 464277,
-    "configLines": 465166
+    "totalLines": 470001,
+    "totalFiles": 1748,
+    "totalModules": 12,
+    "codeLines": 305638,
+    "docLines": 94074,
+    "configLines": 70289
   },
   "languages": [
     {
       "lang": "TypeScript",
       "ext": "ts",
-      "lines": 502085,
-      "files": 1667,
+      "lines": 171578,
+      "files": 576,
       "color": "#3178C6"
-    },
-    {
-      "lang": "Markdown",
-      "ext": "md",
-      "lines": 463509,
-      "files": 1805,
-      "color": "#083FA1"
     },
     {
       "lang": "TSX",
       "ext": "tsx",
-      "lines": 312841,
-      "files": 1369,
+      "lines": 106292,
+      "files": 469,
       "color": "#61DAFB"
+    },
+    {
+      "lang": "Markdown",
+      "ext": "md",
+      "lines": 92726,
+      "files": 350,
+      "color": "#083FA1"
     },
     {
       "lang": "JSON",
       "ext": "json",
-      "lines": 232901,
-      "files": 751,
+      "lines": 52612,
+      "files": 84,
       "color": "#F59E0B"
-    },
-    {
-      "lang": "YAML",
-      "ext": "yml",
-      "lines": 92208,
-      "files": 53,
-      "color": "#CB171E"
     },
     {
       "lang": "Python",
       "ext": "py",
-      "lines": 52617,
-      "files": 219,
+      "lines": 20287,
+      "files": 84,
       "color": "#3776AB"
     },
     {
       "lang": "PNG",
       "ext": "png",
-      "lines": 48198,
-      "files": 180,
+      "lines": 6221,
+      "files": 52,
       "color": "#6B7280"
     },
     {
       "lang": "Shell",
       "ext": "sh",
-      "lines": 39474,
-      "files": 152,
+      "lines": 6038,
+      "files": 24,
       "color": "#89E051"
-    },
-    {
-      "lang": "LOCK",
-      "ext": "lock",
-      "lines": 37455,
-      "files": 7,
-      "color": "#6B7280"
     },
     {
       "lang": "HTML",
       "ext": "html",
-      "lines": 12918,
-      "files": 21,
+      "lines": 2885,
+      "files": 6,
       "color": "#E34F26"
+    },
+    {
+      "lang": "TOML",
+      "ext": "toml",
+      "lines": 1901,
+      "files": 18,
+      "color": "#9C4121"
     },
     {
       "lang": "CSS",
       "ext": "css",
-      "lines": 4904,
-      "files": 22,
+      "lines": 1781,
+      "files": 7,
       "color": "#1572B6"
-    },
-    {
-      "lang": "CSV",
-      "ext": "csv",
-      "lines": 4368,
-      "files": 72,
-      "color": "#6B7280"
     },
     {
       "lang": "ICNS",
       "ext": "icns",
-      "lines": 4110,
-      "files": 3,
+      "lines": 1370,
+      "files": 1,
+      "color": "#6B7280"
+    },
+    {
+      "lang": "Plain Text",
+      "ext": "txt",
+      "lines": 1348,
+      "files": 20,
       "color": "#6B7280"
     },
     {
       "lang": "Rust",
       "ext": "rs",
-      "lines": 3894,
-      "files": 27,
+      "lines": 1298,
+      "files": 9,
       "color": "#DEA584"
     },
     {
       "lang": "JavaScript",
       "ext": "js",
-      "lines": 2019,
-      "files": 13,
+      "lines": 1047,
+      "files": 6,
       "color": "#F7DF1E"
+    },
+    {
+      "lang": "YAML",
+      "ext": "yml",
+      "lines": 848,
+      "files": 10,
+      "color": "#CB171E"
     }
   ],
   "modules": [
     {
-      "name": "apps/desktop",
-      "lines": 483746,
-      "files": 1453,
-      "color": "#F59E0B"
-    },
-    {
       "name": "packages/core",
-      "lines": 367977,
-      "files": 989,
+      "lines": 154529,
+      "files": 484,
       "color": "#3B82F6"
     },
     {
+      "name": "apps/desktop",
+      "lines": 150096,
+      "files": 482,
+      "color": "#F59E0B"
+    },
+    {
       "name": "apps/docs",
-      "lines": 199423,
-      "files": 952,
+      "lines": 62316,
+      "files": 205,
       "color": "#8B5CF6"
     },
     {
       "name": "apps/web",
-      "lines": 155310,
-      "files": 868,
+      "lines": 52714,
+      "files": 305,
       "color": "#10B981"
     },
     {
       "name": "backend/browse-mcp",
-      "lines": 41116,
-      "files": 154,
+      "lines": 10145,
+      "files": 50,
       "color": "#6B7280"
     },
     {
       "name": "packages/kanban",
-      "lines": 23271,
-      "files": 222,
+      "lines": 7757,
+      "files": 74,
       "color": "#6B7280"
     },
     {
       "name": "packages/chat",
-      "lines": 20823,
-      "files": 75,
+      "lines": 6941,
+      "files": 25,
       "color": "#6B7280"
     },
     {
       "name": "backend/plugins",
-      "lines": 10608,
-      "files": 48,
+      "lines": 3536,
+      "files": 16,
       "color": "#6B7280"
     },
     {
       "name": "packages/ui",
-      "lines": 6093,
-      "files": 81,
+      "lines": 2031,
+      "files": 27,
       "color": "#06B6D4"
     },
     {
       "name": "packages/api-client",
-      "lines": 4437,
-      "files": 18,
+      "lines": 1479,
+      "files": 6,
       "color": "#6B7280"
     },
     {
       "name": "apps/landingpage",
-      "lines": 3759,
-      "files": 12,
-      "color": "#6B7280"
-    },
-    {
-      "name": "packages/package-kanban.md",
-      "lines": 3093,
-      "files": 3,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/patterns",
-      "lines": 2109,
-      "files": 12,
-      "color": "#6B7280"
-    },
-    {
-      "name": "packages/package-ui.md",
-      "lines": 1935,
-      "files": 3,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/core",
-      "lines": 1911,
-      "files": 12,
+      "lines": 1253,
+      "files": 4,
       "color": "#6B7280"
     },
     {
       "name": "apps/cli",
-      "lines": 1809,
-      "files": 21,
+      "lines": 603,
+      "files": 7,
       "color": "#EC4899"
-    },
-    {
-      "name": "backend/architecture",
-      "lines": 1656,
-      "files": 3,
-      "color": "#6B7280"
-    },
-    {
-      "name": "packages/packages.md",
-      "lines": 1512,
-      "files": 3,
-      "color": "#6B7280"
-    },
-    {
-      "name": "packages/storage.md",
-      "lines": 1182,
-      "files": 3,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/index.md",
-      "lines": 535,
-      "files": 5,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/directory-structure.md",
-      "lines": 108,
-      "files": 2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/database-guidelines.md",
-      "lines": 102,
-      "files": 2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/logging-guidelines.md",
-      "lines": 102,
-      "files": 2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/error-handling.md",
-      "lines": 102,
-      "files": 2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "backend/quality-guidelines.md",
-      "lines": 102,
-      "files": 2,
-      "color": "#6B7280"
     }
   ],
   "desktopDirs": [
     {
       "name": "components",
-      "lines": 146848,
-      "files": 615,
+      "lines": 49136,
+      "files": 205,
       "color": "#8B5CF6"
     },
     {
       "name": "pages",
-      "lines": 86991,
-      "files": 120,
+      "lines": 29209,
+      "files": 40,
       "color": "#3B82F6"
     },
     {
       "name": "i18n",
-      "lines": 70419,
-      "files": 66,
+      "lines": 23481,
+      "files": 22,
       "color": "#6B7280"
     },
     {
       "name": "hooks",
-      "lines": 65022,
-      "files": 195,
+      "lines": 21742,
+      "files": 65,
       "color": "#10B981"
     },
     {
       "name": "lib",
-      "lines": 32594,
-      "files": 47,
+      "lines": 11096,
+      "files": 16,
       "color": "#F59E0B"
     },
     {
       "name": "stores",
-      "lines": 7211,
-      "files": 27,
+      "lines": 2427,
+      "files": 9,
       "color": "#EC4899"
     },
     {
       "name": "types",
-      "lines": 7089,
-      "files": 30,
+      "lines": 2363,
+      "files": 10,
       "color": "#6366F1"
     },
     {
       "name": "features",
-      "lines": 4251,
-      "files": 99,
+      "lines": 1417,
+      "files": 33,
       "color": "#6B7280"
     },
     {
       "name": "db",
-      "lines": 2916,
-      "files": 12,
+      "lines": 972,
+      "files": 4,
       "color": "#6B7280"
     },
     {
       "name": "index.css",
-      "lines": 1506,
-      "files": 3,
+      "lines": 502,
+      "files": 1,
       "color": "#6B7280"
     }
   ],
   "apps": [
     {
       "name": "desktop",
-      "lines": 483746,
-      "files": 1453,
+      "lines": 150096,
+      "files": 482,
       "color": "#F59E0B"
     },
     {
       "name": "docs",
-      "lines": 199423,
-      "files": 952,
+      "lines": 62316,
+      "files": 205,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "lines": 155310,
-      "files": 868,
+      "lines": 52714,
+      "files": 305,
       "color": "#10B981"
     },
     {
       "name": "landingpage",
-      "lines": 3759,
-      "files": 12,
+      "lines": 1253,
+      "files": 4,
       "color": "#6B7280"
     },
     {
       "name": "cli",
-      "lines": 1809,
-      "files": 21,
+      "lines": 603,
+      "files": 7,
       "color": "#EC4899"
     }
   ],
   "density": [
     {
-      "name": "desktop",
-      "density": 332.9,
-      "color": "#F59E0B"
-    },
-    {
       "name": "pkg/core",
-      "density": 372.1,
+      "density": 319.3,
       "color": "#3B82F6"
     },
     {
+      "name": "desktop",
+      "density": 311.4,
+      "color": "#F59E0B"
+    },
+    {
       "name": "docs",
-      "density": 209.5,
+      "density": 304.0,
       "color": "#8B5CF6"
     },
     {
       "name": "web",
-      "density": 178.9,
+      "density": 172.8,
       "color": "#10B981"
     },
     {
       "name": "be/browse-mcp",
-      "density": 267.0,
+      "density": 202.9,
       "color": "#6B7280"
     },
     {
@@ -406,135 +328,30 @@
       "name": "pkg/ui",
       "density": 75.2,
       "color": "#06B6D4"
-    },
-    {
-      "name": "pkg/api-client",
-      "density": 246.5,
-      "color": "#6B7280"
-    },
-    {
-      "name": "landingpage",
-      "density": 313.2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "be/patterns",
-      "density": 175.8,
-      "color": "#6B7280"
-    },
-    {
-      "name": "be/core",
-      "density": 159.2,
-      "color": "#6B7280"
-    },
-    {
-      "name": "cli",
-      "density": 86.1,
-      "color": "#EC4899"
     }
   ],
   "categories": [
     {
       "label": "源代码",
-      "lines": 892688,
+      "lines": 305638,
       "color": "#3B82F6"
     },
     {
       "label": "文档",
-      "lines": 464277,
+      "lines": 94074,
       "color": "#8B5CF6"
     },
     {
       "label": "配置",
-      "lines": 465166,
+      "lines": 70289,
       "color": "#F59E0B"
     }
   ],
   "topFiles": [
     {
-      "path": "pnpm-lock.yaml",
-      "lines": 30412,
-      "ext": "yaml"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/pnpm-lock.yaml",
-      "lines": 30412,
-      "ext": "yaml"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/pnpm-lock.yaml",
-      "lines": 28443,
-      "ext": "yaml"
-    },
-    {
-      "path": ".auto-claude/specs/001-package-extraction-from-zip/task_logs.json",
-      "lines": 12744,
-      "ext": "json"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/.auto-claude/specs/001-package-extraction-from-zip/task_logs.json",
-      "lines": 12744,
-      "ext": "json"
-    },
-    {
       "path": "apps/desktop/src/lib/gateway.ts",
       "lines": 7960,
       "ext": "ts"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/desktop/src/lib/gateway.ts",
-      "lines": 7679,
-      "ext": "ts"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/desktop/src/lib/gateway.ts",
-      "lines": 7679,
-      "ext": "ts"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/desktop/src-tauri/Cargo.lock",
-      "lines": 7348,
-      "ext": "lock"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/desktop/src-tauri/Cargo.lock",
-      "lines": 7348,
-      "ext": "lock"
-    },
-    {
-      "path": "apps/desktop/src-tauri/Cargo.lock",
-      "lines": 7348,
-      "ext": "lock"
-    },
-    {
-      "path": "apps/desktop/src-tauri/gen/schemas/macOS-schema.json",
-      "lines": 6799,
-      "ext": "json"
-    },
-    {
-      "path": "apps/desktop/src-tauri/gen/schemas/desktop-schema.json",
-      "lines": 6799,
-      "ext": "json"
-    },
-    {
-      "path": ".auto-claude/specs/002-update-desktop-model-icons/task_logs.json",
-      "lines": 5995,
-      "ext": "json"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/.auto-claude/specs/002-update-desktop-model-icons/task_logs.json",
-      "lines": 5995,
-      "ext": "json"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/apps/docs/openapi/gateway-api.json",
-      "lines": 5734,
-      "ext": "json"
-    },
-    {
-      "path": ".auto-claude/worktrees/tasks/002-update-desktop-model-icons/apps/docs/openapi/gateway-api.json",
-      "lines": 5734,
-      "ext": "json"
     },
     {
       "path": "apps/docs/openapi/gateway-api.json",
@@ -542,14 +359,94 @@
       "ext": "json"
     },
     {
-      "path": "Cargo.lock",
-      "lines": 4731,
-      "ext": "lock"
+      "path": "apps/desktop/src/pages/workspace-chat.tsx",
+      "lines": 3244,
+      "ext": "tsx"
     },
     {
-      "path": ".auto-claude/worktrees/tasks/001-package-extraction-from-zip/backend/browse-mcp/poetry.lock",
-      "lines": 3560,
-      "ext": "lock"
+      "path": "apps/desktop/src/i18n/locales/zh-CN.json",
+      "lines": 3109,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/i18n/locales/en.json",
+      "lines": 3094,
+      "ext": "json"
+    },
+    {
+      "path": "apps/web/lib/db/migrations/meta/0000_snapshot.json",
+      "lines": 2617,
+      "ext": "json"
+    },
+    {
+      "path": "apps/desktop/src/pages/settings.tsx",
+      "lines": 2588,
+      "ext": "tsx"
+    },
+    {
+      "path": "packages/core/src/gateway/routes/group-chats.ts",
+      "lines": 2165,
+      "ext": "ts"
+    },
+    {
+      "path": "apps/desktop/src/components/file-browser/index.tsx",
+      "lines": 2125,
+      "ext": "tsx"
+    },
+    {
+      "path": "packages/core/src/cli/commands/channel.test.ts",
+      "lines": 2114,
+      "ext": "ts"
+    },
+    {
+      "path": "apps/desktop/src/pages/settings-channels.tsx",
+      "lines": 1952,
+      "ext": "tsx"
+    },
+    {
+      "path": "apps/desktop/src/hooks/use-agent-conversation.ts",
+      "lines": 1862,
+      "ext": "ts"
+    },
+    {
+      "path": "packages/core/src/gateway/routes/executors.ts",
+      "lines": 1632,
+      "ext": "ts"
+    },
+    {
+      "path": "apps/desktop/src/components/chat/chat-input.tsx",
+      "lines": 1596,
+      "ext": "tsx"
+    },
+    {
+      "path": "packages/core/src/db/index.test.ts",
+      "lines": 1530,
+      "ext": "ts"
+    },
+    {
+      "path": "packages/core/src/gateway/routes/models.test.ts",
+      "lines": 1429,
+      "ext": "ts"
+    },
+    {
+      "path": "docs/code-stats.html",
+      "lines": 1421,
+      "ext": "html"
+    },
+    {
+      "path": "apps/desktop/src/pages/chat-monitor.tsx",
+      "lines": 1387,
+      "ext": "tsx"
+    },
+    {
+      "path": "apps/desktop/src-tauri/icons/icon.icns",
+      "lines": 1370,
+      "ext": "icns"
+    },
+    {
+      "path": "apps/desktop/src/pages/agent-detail.tsx",
+      "lines": 1346,
+      "ext": "tsx"
     }
   ]
 }

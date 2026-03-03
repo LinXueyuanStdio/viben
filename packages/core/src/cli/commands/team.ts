@@ -16,23 +16,12 @@ import {
   errorResponse,
   handleCommandError,
 } from "../lib";
-import { initTeam, type ProjectType, type ExecutorType } from "../../team";
+import { initTeam, type ProjectType, EXECUTOR_TEMPLATE_CONFIGS } from "../../team";
 
 /**
- * Executor type mapping from CLI flag to internal type
+ * Valid executor types for team init (these have template support)
  */
-const EXECUTOR_MAP: Record<string, ExecutorType> = {
-  CURSOR: "cursor",
-  CLAUDE_CODE: "claude",
-  CLAUDE: "claude",
-  IFLOW: "iflow",
-  OPENCODE: "opencode",
-  CODEX: "codex",
-  KILO: "kilo",
-  KIRO: "kiro",
-  GEMINI: "gemini",
-  ANTIGRAVITY: "antigravity",
-};
+const VALID_EXECUTORS = Object.keys(EXECUTOR_TEMPLATE_CONFIGS);
 
 /**
  * Detect developer name from git config
@@ -70,31 +59,13 @@ export function registerTeamCommand(program: Command): void {
     .option("-f, --force", "Force overwrite existing files")
     .option("-s, --skip-existing", "Skip existing files without error")
     // Executor selection
-    .option("--executor <type>", "AI executor to configure: CURSOR, CLAUDE_CODE, IFLOW, OPENCODE, CODEX, KILO, KIRO, GEMINI, ANTIGRAVITY")
-    .option("--cursor", "Include Cursor configuration")
-    .option("--claude", "Include Claude Code configuration")
-    .option("--iflow", "Include iFlow CLI configuration")
-    .option("--opencode", "Include OpenCode configuration")
-    .option("--codex", "Include Codex skills")
-    .option("--kilo", "Include Kilo CLI configuration")
-    .option("--kiro", "Include Kiro Code skills")
-    .option("--gemini", "Include Gemini CLI configuration")
-    .option("--antigravity", "Include Antigravity workflows")
+    .option("--executor <type>", "AI executor to configure (can be specified multiple times)")
     .action(async (targetDir: string, options: {
       yes?: boolean;
       user?: string;
       force?: boolean;
       skipExisting?: boolean;
       executor?: string;
-      cursor?: boolean;
-      claude?: boolean;
-      iflow?: boolean;
-      opencode?: boolean;
-      codex?: boolean;
-      kilo?: boolean;
-      kiro?: boolean;
-      gemini?: boolean;
-      antigravity?: boolean;
     }) => {
       const ctx: OutputContext = {
         json: program.opts().json ?? false,
@@ -147,13 +118,13 @@ export function registerTeamCommand(program: Command): void {
         }
 
         // Determine which executors to configure
-        const executors: ExecutorType[] = [];
+        let executors: string[] = [];
 
         // Check --executor flag
         if (options.executor) {
           const executorKey = options.executor.toUpperCase();
-          if (EXECUTOR_MAP[executorKey]) {
-            executors.push(EXECUTOR_MAP[executorKey]);
+          if (VALID_EXECUTORS.includes(executorKey)) {
+            executors.push(executorKey);
           } else {
             output(
               ctx,
@@ -162,32 +133,16 @@ export function registerTeamCommand(program: Command): void {
                 console.log(chalk.red(`Error: Invalid executor "${options.executor}".`));
                 console.log();
                 console.log("Valid executors:");
-                console.log(chalk.gray("  CURSOR, CLAUDE_CODE, IFLOW, OPENCODE, CODEX, KILO, KIRO, GEMINI, ANTIGRAVITY"));
+                console.log(chalk.gray(`  ${VALID_EXECUTORS.join(", ")}`));
               }
             );
             process.exit(1);
           }
         }
 
-        // Check individual executor flags
-        if (options.cursor) executors.push("cursor");
-        if (options.claude) executors.push("claude");
-        if (options.iflow) executors.push("iflow");
-        if (options.opencode) executors.push("opencode");
-        if (options.codex) executors.push("codex");
-        if (options.kilo) executors.push("kilo");
-        if (options.kiro) executors.push("kiro");
-        if (options.gemini) executors.push("gemini");
-        if (options.antigravity) executors.push("antigravity");
-
-        // Default: Cursor + Claude if no explicit selection and -y mode
-        if (executors.length === 0 && options.yes) {
-          executors.push("cursor", "claude");
-        }
-
-        // Default: Cursor + Claude if no explicit selection
+        // Default: CURSOR + CLAUDE_CODE if no explicit selection
         if (executors.length === 0) {
-          executors.push("cursor", "claude");
+          executors = ["CURSOR", "CLAUDE_CODE"];
         }
 
         // Deduplicate
@@ -223,32 +178,11 @@ export function registerTeamCommand(program: Command): void {
             console.log(`Created ${chalk.bold(result.files.length)} files:`);
             console.log(chalk.gray("  .viben/     - Workflow files, scripts, specs"));
 
-            if (uniqueExecutors.includes("claude")) {
-              console.log(chalk.gray("  .claude/    - Claude Code configuration"));
-            }
-            if (uniqueExecutors.includes("cursor")) {
-              console.log(chalk.gray("  .cursor/    - Cursor IDE configuration"));
-            }
-            if (uniqueExecutors.includes("iflow")) {
-              console.log(chalk.gray("  .iflow/     - iFlow CLI configuration"));
-            }
-            if (uniqueExecutors.includes("opencode")) {
-              console.log(chalk.gray("  .opencode/  - OpenCode configuration"));
-            }
-            if (uniqueExecutors.includes("codex")) {
-              console.log(chalk.gray("  .agents/skills/ - Codex skills"));
-            }
-            if (uniqueExecutors.includes("kilo")) {
-              console.log(chalk.gray("  .kilocode/  - Kilo CLI configuration"));
-            }
-            if (uniqueExecutors.includes("kiro")) {
-              console.log(chalk.gray("  .kiro/skills/ - Kiro Code skills"));
-            }
-            if (uniqueExecutors.includes("gemini")) {
-              console.log(chalk.gray("  .gemini/    - Gemini CLI configuration"));
-            }
-            if (uniqueExecutors.includes("antigravity")) {
-              console.log(chalk.gray("  .agent/workflows/ - Antigravity workflows"));
+            for (const executor of uniqueExecutors) {
+              const config = EXECUTOR_TEMPLATE_CONFIGS[executor];
+              if (config) {
+                console.log(chalk.gray(`  ${config.configDir.padEnd(12)} - ${config.name} configuration`));
+              }
             }
 
             console.log(chalk.gray("  AGENTS.md   - Root instructions file"));

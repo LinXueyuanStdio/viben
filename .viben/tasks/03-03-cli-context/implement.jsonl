@@ -1,0 +1,5 @@
+{"file": ".viben/workflow.md", "reason": "Project workflow and conventions"}
+{"file": ".viben/spec/backend/index.md", "reason": "Backend development guide"}
+{"file": ".trellis/spec/modules/cli/context.md", "reason": "Spec 文档"}
+{"file": "packages/core/templates/viben/scripts/get_context.py", "reason": "Python 脚本"}
+{"file": "packages/core/templates/viben/scripts/common/git_context.py", "reason": "核心实现"}
