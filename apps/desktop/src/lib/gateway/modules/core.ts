@@ -163,20 +163,38 @@ async function testWebSocketEndpoint(baseUrl: string, path: string): Promise<boo
     try {
       const wsUrl = baseUrl.replace(/^http/, "ws") + path;
       const ws = new WebSocket(wsUrl);
+      let resolved = false;
+
+      const cleanup = () => {
+        if (!resolved) {
+          resolved = true;
+          ws.close();
+        }
+      };
+
       const timeout = setTimeout(() => {
-        ws.close();
+        cleanup();
         resolve(false);
       }, 3000);
 
       ws.onopen = () => {
         clearTimeout(timeout);
-        ws.close();
+        cleanup();
         resolve(true);
       };
 
       ws.onerror = () => {
         clearTimeout(timeout);
+        cleanup();
         resolve(false);
+      };
+
+      ws.onclose = () => {
+        clearTimeout(timeout);
+        if (!resolved) {
+          resolved = true;
+          resolve(false);
+        }
       };
     } catch {
       resolve(false);

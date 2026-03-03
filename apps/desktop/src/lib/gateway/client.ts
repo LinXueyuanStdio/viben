@@ -63,6 +63,7 @@ import {
   updateModel,
   deleteModel,
   getDefaultModel,
+  getDefaultModelId,
   setDefaultModel,
   enableModel,
   disableModel,
@@ -90,6 +91,8 @@ import {
   setApiKey,
   clearApiKey,
   verifyApiKey,
+  validateApiKey,
+  getAllApiKeys,
   // Workspaces module
   listWorkspaces,
   getWorkspace,
@@ -618,9 +621,10 @@ export class GatewayClient {
 
   /**
    * Get session by ID
+   * Requires agentId for the correct API path
    */
-  async getSession(sessionId: string): Promise<FileSession | null> {
-    return getSession(this.baseUrl, sessionId);
+  async getSession(agentId: string, sessionId: string): Promise<FileSession | null> {
+    return getSession(this.baseUrl, agentId, sessionId);
   }
 
   /**
@@ -628,57 +632,69 @@ export class GatewayClient {
    */
   async createSession(
     agentId: string,
-    request: CreateFileSessionRequest
+    request?: CreateFileSessionRequest
   ): Promise<FileSession> {
     return createSession(this.baseUrl, agentId, request);
   }
 
   /**
    * Update session metadata
+   * Requires agentId for the correct API path
    */
   async updateSession(
+    agentId: string,
     sessionId: string,
     updates: Partial<Pick<FileSession, "status" | "metadata">>
   ): Promise<FileSession> {
-    return updateSession(this.baseUrl, sessionId, updates);
+    return updateSession(this.baseUrl, agentId, sessionId, updates);
   }
 
   /**
    * Delete session
+   * Requires agentId for the correct API path
    */
-  async deleteSession(sessionId: string): Promise<void> {
-    return deleteSession(this.baseUrl, sessionId);
+  async deleteSession(agentId: string, sessionId: string): Promise<void> {
+    return deleteSession(this.baseUrl, agentId, sessionId);
   }
 
   /**
    * Get session messages (rollout format)
+   * Requires agentId for the correct API path
    */
-  async getSessionMessages(sessionId: string): Promise<SessionMessage[]> {
-    return getSessionMessages(this.baseUrl, sessionId);
+  async getSessionMessages(agentId: string, sessionId: string): Promise<SessionMessage[]> {
+    return getSessionMessages(this.baseUrl, agentId, sessionId);
   }
 
   /**
    * Get session UI messages (for frontend rendering)
+   * Requires agentId for the correct API path
    */
-  async getSessionUIMessages(sessionId: string): Promise<UIMessage[]> {
-    return getSessionUIMessages(this.baseUrl, sessionId);
+  async getSessionUIMessages(
+    agentId: string,
+    sessionId: string,
+    workspacePath?: string
+  ): Promise<UIMessage[]> {
+    return getSessionUIMessages(this.baseUrl, agentId, sessionId, workspacePath);
   }
 
   /**
    * Append message to session
+   * Requires agentId for the correct API path
    */
   async appendMessage(
+    agentId: string,
     sessionId: string,
     message: AppendMessageRequest
-  ): Promise<void> {
-    return appendMessage(this.baseUrl, sessionId, message);
+  ): Promise<SessionMessage> {
+    return appendMessage(this.baseUrl, agentId, sessionId, message);
   }
 
   /**
    * Clear session messages
+   * Requires agentId for the correct API path
    */
-  async clearSessionMessages(sessionId: string): Promise<void> {
-    return clearSessionMessages(this.baseUrl, sessionId);
+  async clearSessionMessages(agentId: string, sessionId: string): Promise<void> {
+    return clearSessionMessages(this.baseUrl, agentId, sessionId);
   }
 
   /**
@@ -933,6 +949,13 @@ export class GatewayClient {
   }
 
   /**
+   * Get default model ID (convenience method)
+   */
+  async getDefaultModelId(): Promise<string | null> {
+    return getDefaultModelId(this.baseUrl);
+  }
+
+  /**
    * Enable model
    */
   async enableModel(modelId: string): Promise<void> {
@@ -1099,9 +1122,37 @@ export class GatewayClient {
 
   /**
    * Verify API key for provider
+   * @deprecated Use validateApiKey for more detailed response
    */
-  async verifyApiKey(providerId: string): Promise<boolean> {
-    return verifyApiKey(this.baseUrl, providerId);
+  async verifyApiKey(providerId: string, apiKey: string): Promise<boolean> {
+    return verifyApiKey(this.baseUrl, providerId, apiKey);
+  }
+
+  /**
+   * Validate an API key for a provider
+   * Tests if the provided API key is valid for the specified provider
+   */
+  async validateApiKey(
+    providerId: string,
+    apiKey: string
+  ): Promise<{ valid: boolean; error?: string }> {
+    return validateApiKey(this.baseUrl, providerId, apiKey);
+  }
+
+  /**
+   * Get all API keys (masked)
+   * Returns a map of provider_id -> masked_api_key
+   */
+  async getAllApiKeys(): Promise<Record<string, string>> {
+    return getAllApiKeys(this.baseUrl);
+  }
+
+  /**
+   * Delete API key for a provider
+   * Alias for clearApiKey for backward compatibility
+   */
+  async deleteApiKey(providerId: string): Promise<void> {
+    return clearApiKey(this.baseUrl, providerId);
   }
 
   // ==========================================================================
@@ -1148,6 +1199,22 @@ export class GatewayClient {
    * Delete workspace
    */
   async deleteWorkspace(workspaceId: string): Promise<void> {
+    return deleteWorkspace(this.baseUrl, workspaceId);
+  }
+
+  /**
+   * Add (register) a workspace
+   * @deprecated Use createWorkspace instead
+   */
+  async addWorkspace(path: string, name?: string): Promise<WorkspaceResponse> {
+    return createWorkspace(this.baseUrl, path, name);
+  }
+
+  /**
+   * Remove (unregister) a workspace
+   * @deprecated Use deleteWorkspace instead
+   */
+  async removeWorkspace(workspaceId: string): Promise<void> {
     return deleteWorkspace(this.baseUrl, workspaceId);
   }
 

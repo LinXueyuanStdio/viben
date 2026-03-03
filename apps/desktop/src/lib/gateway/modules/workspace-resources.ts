@@ -151,14 +151,15 @@ export async function getWorkspaceAgents(
 }
 
 /**
- * Get agent details by type
+ * Get agent details by type (executor type)
+ * Note: This is the same as getExecutorDetails in the original gateway.ts
  */
 export async function getAgentDetails(
   baseUrl: string,
   agentType: string
 ): Promise<AgentDetails | null> {
   const response = await fetch(
-    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/details`,
+    `${baseUrl}/api/agents/${encodeURIComponent(agentType)}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },

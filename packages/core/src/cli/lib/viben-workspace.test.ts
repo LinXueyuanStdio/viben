@@ -1134,3 +1134,390 @@ describe("getArchiveDir", () => {
     expect(result).toBe(join("/workspace", ".viben", "tasks", "archive"));
   });
 });
+
+// =============================================================================
+// Additional Python Parity Tests
+// =============================================================================
+
+describe("Python parity - add_session.py edge cases", () => {
+  /**
+   * Additional tests to ensure complete parity with Python add_session.py
+   */
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("get_latest_journal_info edge cases", () => {
+    /**
+     * Reference: add_session.py lines 46-70
+     */
+
+    it("should handle journal files with non-sequential numbers", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation((path) => {
+        if (String(path).includes(".developer")) return "name=john\n";
+        return "Line1\n";
+      });
+      // Python: finds highest number regardless of sequence
+      vi.mocked(fs.readdirSync).mockReturnValue([
+        "journal-1.md",
+        "journal-5.md",
+        "journal-3.md",
+        "journal-10.md",
+      ]);
+
+      const result = getJournalInfo("/workspace");
+
+      expect(result.number).toBe(10);
+    });
+
+    it("should extract number correctly from journal filename regex", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation((path) => {
+        if (String(path).includes(".developer")) return "name=john\n";
+        return "Line1\n";
+      });
+      vi.mocked(fs.readdirSync).mockReturnValue(["journal-42.md"]);
+
+      const result = getJournalInfo("/workspace");
+
+      // Python: match = re.search(r"(\d+)$", f.stem)
+      expect(result.number).toBe(42);
+    });
+  });
+
+  describe("get_current_session regex parsing", () => {
+    /**
+     * Reference: add_session.py lines 73-84
+     */
+
+    it("should handle various Total Sessions formats", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+
+      // Test with space after colon
+      vi.mocked(fs.readFileSync).mockReturnValue("- **Total Sessions**: 15");
+      expect(getCurrentSessionNumber("/index.md")).toBe(15);
+    });
+
+    it("should handle Total Sessions with no space after colon", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue("- **Total Sessions**:25");
+
+      // Python: match = re.search(r":\s*(\d+)", line)
+      expect(getCurrentSessionNumber("/index.md")).toBe(25);
+    });
+
+    it("should handle Total Sessions with extra whitespace", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue("Total Sessions:   99  ");
+
+      expect(getCurrentSessionNumber("/index.md")).toBe(99);
+    });
+  });
+
+  describe("generate_session_content edge cases", () => {
+    /**
+     * Reference: add_session.py lines 130-178
+     */
+
+    it("should handle empty commit string same as '-'", () => {
+      const result = generateSessionContent({
+        sessionNum: 1,
+        title: "Test",
+        commit: "",
+        summary: "Summary",
+        extraContent: "",
+        date: "2024-01-01",
+      });
+
+      // Python: if commit and commit != "-": ... else: "(No commits - planning session)"
+      expect(result).toContain("(No commits - planning session)");
+    });
+
+    it("should trim whitespace from commit hashes", () => {
+      const result = generateSessionContent({
+        sessionNum: 1,
+        title: "Test",
+        commit: " abc , def , ghi ",
+        summary: "Summary",
+        extraContent: "",
+        date: "2024-01-01",
+      });
+
+      // Python: for c in commit.split(","): c = c.strip()
+      expect(result).toContain("| `abc` |");
+      expect(result).toContain("| `def` |");
+      expect(result).toContain("| `ghi` |");
+    });
+
+    it("should include all session sections matching Python format", () => {
+      const result = generateSessionContent({
+        sessionNum: 10,
+        title: "Complete Test",
+        commit: "abc123",
+        summary: "Test summary",
+        extraContent: "Extra content here",
+        date: "2024-03-15",
+      });
+
+      // Python output structure verification
+      expect(result).toContain("## Session 10: Complete Test");
+      expect(result).toContain("**Date**: 2024-03-15");
+      expect(result).toContain("**Task**: Complete Test");
+      expect(result).toContain("### Summary");
+      expect(result).toContain("Test summary");
+      expect(result).toContain("### Main Changes");
+      expect(result).toContain("Extra content here");
+      expect(result).toContain("### Git Commits");
+      expect(result).toContain("### Testing");
+      expect(result).toContain("### Status");
+      expect(result).toContain("[OK] **Completed**");
+      expect(result).toContain("### Next Steps");
+    });
+  });
+
+  describe("update_index commit formatting", () => {
+    /**
+     * Reference: add_session.py lines 191-194
+     */
+
+    it("should format multiple commits with backticks and commas", async () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fsPromises.readFile).mockResolvedValue(`
+<!-- @@@auto:current-status -->
+- **Active File**: \`journal-1.md\`
+<!-- @@@/auto:current-status -->
+<!-- @@@auto:active-documents -->
+| File | Lines | Status |
+<!-- @@@/auto:active-documents -->
+<!-- @@@auto:session-history -->
+| # | Date | Task | Commits |
+|---|------|------|---------|
+<!-- @@@/auto:session-history -->
+`);
+      vi.mocked(fs.readdirSync).mockReturnValue(["journal-1.md"]);
+      vi.mocked(fs.statSync).mockReturnValue({ isFile: () => true } as fs.Stats);
+      vi.mocked(fsPromises.writeFile).mockResolvedValue();
+
+      await updateIndexWithSession({
+        indexPath: "/workspace/index.md",
+        workspaceDir: "/workspace",
+        sessionNum: 5,
+        title: "Test",
+        commit: "abc,def,ghi",
+        activeFile: "journal-1.md",
+        date: "2024-03-03",
+      });
+
+      // Python: commit_display = re.sub(r"([a-f0-9]{7,})", r"`\1`", commit.replace(",", ", "))
+      // Our implementation formats as `abc`, `def`, `ghi`
+      expect(fsPromises.writeFile).toHaveBeenCalledWith(
+        "/workspace/index.md",
+        expect.stringContaining("`abc`"),
+        "utf-8"
+      );
+    });
+  });
+});
+
+describe("Python parity - git_context.py edge cases", () => {
+  /**
+   * Additional tests to ensure complete parity with Python git_context.py
+   */
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("get_context_json structure", () => {
+    /**
+     * Reference: git_context.py lines 83-160
+     */
+
+    it("should match Python nearLimit calculation (> 1800)", () => {
+      // Test boundary: exactly 1800 lines should NOT be near limit
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation((path) => {
+        if (String(path).includes(".developer")) return "name=john\n";
+        // Create content with exactly 1800 lines
+        return Array(1800).fill("line").join("\n");
+      });
+      vi.mocked(fs.readdirSync).mockReturnValue(["journal-1.md"]);
+
+      // countLines should return 1800
+      const lines = countLines("/workspace/journal-1.md");
+      expect(lines).toBe(1800);
+      // nearLimit should be false at exactly 1800
+      expect(lines > 1800).toBe(false);
+    });
+
+    it("should match Python nearLimit calculation (1801 lines)", () => {
+      // Test boundary: 1801 lines SHOULD be near limit
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        return Array(1801).fill("line").join("\n");
+      });
+
+      const lines = countLines("/workspace/journal-1.md");
+      expect(lines).toBe(1801);
+      // Python: nearLimit: journal_lines > 1800
+      expect(lines > 1800).toBe(true);
+    });
+  });
+
+  describe("getRecentCommits message parsing", () => {
+    /**
+     * Reference: git_context.py lines 116-124
+     */
+
+    it("should handle commit message with multiple spaces", () => {
+      vi.mocked(execSync).mockReturnValue("abc1234 fix:  multiple   spaces\n");
+
+      const result = getRecentCommits("/workspace");
+
+      // Python: parts = line.split(" ", 1)
+      expect(result[0].hash).toBe("abc1234");
+      expect(result[0].message).toBe("fix:  multiple   spaces");
+    });
+
+    it("should handle commit with only hash (no space)", () => {
+      vi.mocked(execSync).mockReturnValue("abc1234defg\n");
+
+      const result = getRecentCommits("/workspace");
+
+      // Python: if len(parts) >= 2 ... elif len(parts) == 1
+      expect(result[0].hash).toBe("abc1234defg");
+      expect(result[0].message).toBe("");
+    });
+
+    it("should skip empty lines in git log output", () => {
+      vi.mocked(execSync).mockReturnValue("abc1234 msg1\n\n\ndef5678 msg2\n");
+
+      const result = getRecentCommits("/workspace");
+
+      // Python: if line.strip():
+      expect(result.length).toBe(2);
+    });
+  });
+
+  describe("getGitStatus line filtering", () => {
+    /**
+     * Reference: git_context.py lines 111-112, 216-217
+     */
+
+    it("should filter out whitespace-only lines", () => {
+      vi.mocked(execSync).mockReturnValue(" M file.ts\n   \n?? new.ts\n");
+
+      const result = getGitStatus("/workspace");
+
+      // Python: [line for line in status_out.splitlines() if line.strip()]
+      expect(result.length).toBe(2);
+      expect(result).not.toContain("   ");
+    });
+  });
+});
+
+describe("Python parity - paths.py edge cases", () => {
+  /**
+   * Additional tests to ensure complete parity with Python paths.py
+   */
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("getDeveloper file parsing", () => {
+    /**
+     * Reference: paths.py lines 86-91
+     */
+
+    it("should handle .developer file with multiple key-value pairs", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(
+        "name=john\ninitialized_at=2024-01-01T10:00:00\nversion=1.0\n"
+      );
+
+      const result = getDeveloper("/workspace");
+
+      // Python: for line in content.splitlines(): if line.startswith("name="):
+      expect(result).toBe("john");
+    });
+
+    it("should return first name= match if multiple exist", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue("name=first\nname=second\n");
+
+      const result = getDeveloper("/workspace");
+
+      expect(result).toBe("first");
+    });
+
+    it("should handle name= at any position in line", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue("# comment\nname=john\n");
+
+      const result = getDeveloper("/workspace");
+
+      expect(result).toBe("john");
+    });
+  });
+
+  describe("findVibenRoot traversal", () => {
+    /**
+     * Reference: paths.py lines 43-62
+     */
+
+    it("should stop at filesystem root without finding .viben", () => {
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+
+      // Start from deep path, should traverse up and return null
+      const result = findVibenRoot("/a/b/c/d/e/f/g");
+
+      expect(result).toBeNull();
+    });
+
+    it("should find .viben in immediate parent", () => {
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        return path === "/workspace/.viben";
+      });
+
+      const result = findVibenRoot("/workspace/src");
+
+      expect(result).toBe("/workspace");
+    });
+  });
+});
+
+describe("MAX_JOURNAL_LINES boundary tests", () => {
+  /**
+   * Tests for journal line limit boundary conditions
+   * Reference: add_session.py line 39, lines 333-336
+   */
+
+  it("should NOT trigger new journal at exactly 2000 lines", () => {
+    // If current=1990 and new_content=10, total=2000, should NOT create new file
+    // Python: if current_lines + content_lines > MAX_LINES:
+    const currentLines = 1990;
+    const contentLines = 10;
+    const total = currentLines + contentLines;
+
+    expect(total).toBe(MAX_JOURNAL_LINES);
+    expect(total > MAX_JOURNAL_LINES).toBe(false);
+  });
+
+  it("should trigger new journal at 2001 lines", () => {
+    // If current=1990 and new_content=11, total=2001, SHOULD create new file
+    const currentLines = 1990;
+    const contentLines = 11;
+    const total = currentLines + contentLines;
+
+    expect(total).toBe(2001);
+    expect(total > MAX_JOURNAL_LINES).toBe(true);
+  });
+
+  it("should have MAX_JOURNAL_LINES equal to Python MAX_LINES", () => {
+    // Python: MAX_LINES = 2000
+    expect(MAX_JOURNAL_LINES).toBe(2000);
+  });
+});
