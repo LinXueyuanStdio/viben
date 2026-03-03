@@ -6,6 +6,7 @@
 
 // Re-export ExecutorType from main types
 export type { ExecutorType } from "../types";
+import type { ExecutorType } from "../types";
 
 /**
  * Configuration for an AI executor's template setup
@@ -26,7 +27,7 @@ export interface ExecutorTemplateConfig {
  * Not all ExecutorType values have templates - only those that support
  * project-level configuration files.
  */
-export const EXECUTOR_TEMPLATE_CONFIGS: Record<string, ExecutorTemplateConfig> = {
+export const EXECUTOR_TEMPLATE_CONFIGS: Partial<Record<ExecutorType, ExecutorTemplateConfig>> = {
   CLAUDE_CODE: {
     name: "Claude Code",
     configDir: ".claude",

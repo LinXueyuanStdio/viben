@@ -16,12 +16,12 @@ import {
   errorResponse,
   handleCommandError,
 } from "../lib";
-import { initTeam, type ProjectType, EXECUTOR_TEMPLATE_CONFIGS } from "../../team";
+import { initTeam, type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "../../team";
 
 /**
  * Valid executor types for team init (these have template support)
  */
-const VALID_EXECUTORS = Object.keys(EXECUTOR_TEMPLATE_CONFIGS);
+const VALID_EXECUTORS = Object.keys(EXECUTOR_TEMPLATE_CONFIGS) as ExecutorType[];
 
 /**
  * Detect developer name from git config
@@ -118,11 +118,11 @@ export function registerTeamCommand(program: Command): void {
         }
 
         // Determine which executors to configure
-        let executors: string[] = [];
+        let executors: ExecutorType[] = [];
 
         // Check --executor flag
         if (options.executor) {
-          const executorKey = options.executor.toUpperCase();
+          const executorKey = options.executor.toUpperCase() as ExecutorType;
           if (VALID_EXECUTORS.includes(executorKey)) {
             executors.push(executorKey);
           } else {
@@ -179,7 +179,7 @@ export function registerTeamCommand(program: Command): void {
             console.log(chalk.gray("  .viben/     - Workflow files, scripts, specs"));
 
             for (const executor of uniqueExecutors) {
-              const config = EXECUTOR_TEMPLATE_CONFIGS[executor];
+              const config = EXECUTOR_TEMPLATE_CONFIGS[executor as keyof typeof EXECUTOR_TEMPLATE_CONFIGS];
               if (config) {
                 console.log(chalk.gray(`  ${config.configDir.padEnd(12)} - ${config.name} configuration`));
               }

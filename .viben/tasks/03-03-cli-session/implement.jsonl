@@ -1,4 +1,0 @@
-{"file": ".viben/workflow.md", "reason": "Project workflow and conventions"}
-{"file": ".viben/spec/backend/index.md", "reason": "Backend development guide"}
-{"file": ".trellis/spec/modules/cli/session.md", "reason": "Spec 文档"}
-{"file": "packages/core/templates/viben/scripts/add_session.py", "reason": "Python 脚本"}

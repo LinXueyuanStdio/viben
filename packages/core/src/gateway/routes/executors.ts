@@ -501,7 +501,8 @@ interface ExecutorInfo {
  * Executor metadata (name, description, docs_url)
  * Keys use uppercase ExecutorType format
  */
-const EXECUTOR_METADATA: Record<ExecutorType, { name: string; description: string; docsUrl?: string }> = {
+const EXECUTOR_METADATA: Partial<Record<ExecutorType, { name: string; description: string; docsUrl?: string }>> = {
+  // Runtime executors (can be spawned and executed)
   CLAUDE_CODE: {
     name: "Claude Code",
     description: "Anthropic's coding assistant powered by Claude",
@@ -543,6 +544,43 @@ const EXECUTOR_METADATA: Record<ExecutorType, { name: string; description: strin
   DROID: {
     name: "Droid",
     description: "Droid AI coding assistant",
+  },
+  // Template-only executors (for team init configuration)
+  CURSOR: {
+    name: "Cursor",
+    description: "AI-first code editor",
+    docsUrl: "https://cursor.so",
+  },
+  IFLOW: {
+    name: "iFlow CLI",
+    description: "iFlow coding assistant",
+  },
+  KILO: {
+    name: "Kilo CLI",
+    description: "Kilo coding assistant",
+  },
+  KIRO: {
+    name: "Kiro Code",
+    description: "Kiro coding assistant",
+  },
+  ANTIGRAVITY: {
+    name: "Antigravity",
+    description: "Antigravity AI workflows",
+  },
+  WINDSURF: {
+    name: "Windsurf",
+    description: "Codeium IDE",
+    docsUrl: "https://codeium.com",
+  },
+  AIDER: {
+    name: "Aider",
+    description: "AI pair programming",
+    docsUrl: "https://aider.chat",
+  },
+  CONTINUE: {
+    name: "Continue",
+    description: "IDE plugin for AI coding",
+    docsUrl: "https://continue.dev",
   },
 };
 
