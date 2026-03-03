@@ -51,28 +51,12 @@ export {
 } from "./utils";
 
 // ============================================================================
-// Gateway Client (Singleton)
+// Gateway Client (Class-based API)
 // ============================================================================
 
-/**
- * GatewayClient class - Main client for interacting with the Gateway API
- *
- * @todo This will be implemented by another agent
- *
- * Usage:
- * ```ts
- * import { getGatewayClient } from "@/lib/gateway";
- *
- * const client = getGatewayClient();
- * const agents = await client.agents.list();
- * ```
- */
-export class GatewayClient {
-  // Placeholder - will be implemented by another agent
-  constructor() {
-    throw new Error("GatewayClient not yet implemented");
-  }
-}
+import { GatewayClient } from "./client";
+
+export { GatewayClient };
 
 /**
  * Singleton instance holder
@@ -86,8 +70,11 @@ let gatewayClientInstance: GatewayClient | null = null;
  *
  * @example
  * ```ts
+ * import { getGatewayClient } from "@/lib/gateway";
+ *
  * const client = getGatewayClient();
- * const workspaces = await client.workspaces.list();
+ * const agents = await client.listAgents();
+ * const models = await client.listModels();
  * ```
  */
 export function getGatewayClient(): GatewayClient {
@@ -95,4 +82,12 @@ export function getGatewayClient(): GatewayClient {
     gatewayClientInstance = new GatewayClient();
   }
   return gatewayClientInstance;
+}
+
+/**
+ * Reset the singleton GatewayClient instance
+ * Useful for testing or when the gateway URL changes
+ */
+export function resetGatewayClient(): void {
+  gatewayClientInstance = null;
 }
