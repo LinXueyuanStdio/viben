@@ -62,10 +62,14 @@ export async function listGroupChats(
  */
 export async function getGroupChat(
   baseUrl: string,
-  groupChatId: string
+  groupChatId: string,
+  workspacePath: string
 ): Promise<GroupChatWithMembers | null> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}?${searchParams.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -92,9 +96,19 @@ export async function getGroupChat(
  */
 export async function createGroupChat(
   baseUrl: string,
-  request: CreateGroupChatRequest
+  request: CreateGroupChatRequest,
+  workspacePath?: string
 ): Promise<GroupChatWithMembers> {
-  const response = await fetch(`${baseUrl}/api/group-chats`, {
+  const searchParams = new URLSearchParams();
+  if (workspacePath) {
+    searchParams.set("workspace_path", workspacePath);
+  }
+
+  const url = searchParams.toString()
+    ? `${baseUrl}/api/group-chats?${searchParams.toString()}`
+    : `${baseUrl}/api/group-chats`;
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -120,10 +134,14 @@ export async function createGroupChat(
 export async function updateGroupChat(
   baseUrl: string,
   groupChatId: string,
+  workspacePath: string,
   request: UpdateGroupChatRequest
 ): Promise<GroupChat> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}?${searchParams.toString()}`,
     {
       method: "PATCH",
       headers: {
@@ -150,10 +168,14 @@ export async function updateGroupChat(
  */
 export async function deleteGroupChat(
   baseUrl: string,
-  groupChatId: string
+  groupChatId: string,
+  workspacePath: string
 ): Promise<void> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}?${searchParams.toString()}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -179,10 +201,14 @@ export async function deleteGroupChat(
 export async function addMember(
   baseUrl: string,
   groupChatId: string,
+  workspacePath: string,
   request: AddMemberRequest
 ): Promise<GroupChatMember> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/members`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/members?${searchParams.toString()}`,
     {
       method: "POST",
       headers: {
@@ -210,10 +236,14 @@ export async function addMember(
 export async function removeMember(
   baseUrl: string,
   groupChatId: string,
+  workspacePath: string,
   memberId: string
 ): Promise<void> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/members/${encodeURIComponent(memberId)}`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/members/${encodeURIComponent(memberId)}?${searchParams.toString()}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -238,10 +268,14 @@ export async function removeMember(
  */
 export async function listGroupChatSessions(
   baseUrl: string,
-  groupChatId: string
+  groupChatId: string,
+  workspacePath: string
 ): Promise<GroupChatSession[]> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions?${searchParams.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -265,10 +299,14 @@ export async function listGroupChatSessions(
 export async function getGroupChatSession(
   baseUrl: string,
   groupChatId: string,
-  sessionId: string
+  sessionId: string,
+  workspacePath: string
 ): Promise<GroupChatSession | null> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}?${searchParams.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -296,10 +334,14 @@ export async function getGroupChatSession(
 export async function createGroupChatSession(
   baseUrl: string,
   groupChatId: string,
+  workspacePath: string,
   request: CreateGroupChatSessionRequest
 ): Promise<GroupChatSession> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions?${searchParams.toString()}`,
     {
       method: "POST",
       headers: {
@@ -327,10 +369,14 @@ export async function createGroupChatSession(
 export async function archiveGroupChatSession(
   baseUrl: string,
   groupChatId: string,
-  sessionId: string
+  sessionId: string,
+  workspacePath: string
 ): Promise<GroupChatSession> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/archive`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/archive?${searchParams.toString()}`,
     {
       method: "POST",
       headers: { Accept: "application/json" },
@@ -359,9 +405,11 @@ export async function listGroupChatMessages(
   baseUrl: string,
   groupChatId: string,
   sessionId: string,
+  workspacePath: string,
   params?: ListGroupChatMessagesParams
 ): Promise<ListGroupChatMessagesResponse | ListAgentMessagesResponse> {
   const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
   if (params?.view) searchParams.set("view", params.view);
   if (params?.agent_id) searchParams.set("agent_id", params.agent_id);
   if (params?.limit) searchParams.set("limit", String(params.limit));
@@ -393,10 +441,14 @@ export async function sendGroupChatMessage(
   baseUrl: string,
   groupChatId: string,
   sessionId: string,
+  workspacePath: string,
   request: SendGroupChatMessageRequest
 ): Promise<SendGroupChatMessageResponse> {
+  const searchParams = new URLSearchParams();
+  searchParams.set("workspace_path", workspacePath);
+
   const response = await fetch(
-    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/messages`,
+    `${baseUrl}/api/group-chats/${encodeURIComponent(groupChatId)}/sessions/${encodeURIComponent(sessionId)}/messages?${searchParams.toString()}`,
     {
       method: "POST",
       headers: {

@@ -19,12 +19,14 @@ import type {
  */
 export async function getMcpServers(
   baseUrl: string,
-  workspacePath: string
+  workspacePath: string | undefined,
+  executorType: string
 ): Promise<WorkspaceMcpServersResponse> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers?${params.toString()}`,
     {
       method: "GET",
       headers: { Accept: "application/json" },
@@ -47,13 +49,15 @@ export async function getMcpServers(
  */
 export async function addMcpServer(
   baseUrl: string,
-  workspacePath: string,
+  workspacePath: string | undefined,
+  executorType: string,
   server: WorkspaceMcpServerConfig
 ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers?${params.toString()}`,
     {
       method: "POST",
       headers: {
@@ -80,14 +84,16 @@ export async function addMcpServer(
  */
 export async function updateMcpServer(
   baseUrl: string,
-  workspacePath: string,
+  workspacePath: string | undefined,
+  executorType: string,
   serverName: string,
   updates: Partial<WorkspaceMcpServerConfig>
-): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+): Promise<{ success: boolean }> {
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
     {
       method: "PATCH",
       headers: {
@@ -114,13 +120,15 @@ export async function updateMcpServer(
  */
 export async function deleteMcpServer(
   baseUrl: string,
-  workspacePath: string,
+  workspacePath: string | undefined,
+  executorType: string,
   serverName: string
 ): Promise<{ success: boolean; deleted: string }> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}?${params.toString()}`,
     {
       method: "DELETE",
       headers: { Accept: "application/json" },
@@ -143,13 +151,15 @@ export async function deleteMcpServer(
  */
 export async function enableMcpServer(
   baseUrl: string,
-  workspacePath: string,
+  workspacePath: string | undefined,
+  executorType: string,
   serverName: string
 ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers/${encodeURIComponent(serverName)}/enable?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}/enable?${params.toString()}`,
     {
       method: "POST",
       headers: { Accept: "application/json" },
@@ -172,13 +182,15 @@ export async function enableMcpServer(
  */
 export async function disableMcpServer(
   baseUrl: string,
-  workspacePath: string,
+  workspacePath: string | undefined,
+  executorType: string,
   serverName: string
 ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (workspacePath) params.set("workspace_path", workspacePath);
 
   const response = await fetch(
-    `${baseUrl}/api/workspace/mcp-servers/${encodeURIComponent(serverName)}/disable?${params.toString()}`,
+    `${baseUrl}/api/executors/${encodeURIComponent(executorType)}/mcp-servers/${encodeURIComponent(serverName)}/disable?${params.toString()}`,
     {
       method: "POST",
       headers: { Accept: "application/json" },

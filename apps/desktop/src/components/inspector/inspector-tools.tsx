@@ -19,14 +19,19 @@ import {
   AlertCircle,
   Plus,
   Minus,
+  Eye,
+  FileText,
+  Image as ImageIcon,
+  ListTodo,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslation } from "react-i18next";
-import type { McpTool } from "@/types";
+import type { McpTool, McpServerCapabilities } from "@/types";
 import DynamicJsonForm, {
   type DynamicJsonFormRef,
   type JsonValue,
@@ -34,21 +39,35 @@ import DynamicJsonForm, {
   generateDefaultValue,
 } from "./dynamic-json-form";
 import { cn } from "@/lib/utils";
+import {
+  hasValidMetaPrefix,
+  hasValidMetaName,
+  isReservedMetaKey,
+  getMetaKeyValidationError,
+} from "@/lib/meta-utils";
 
 interface InspectorToolsProps {
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
   enabled?: boolean;
+  serverCapabilities?: McpServerCapabilities | null;
 }
+
+/** Task support level for a tool's execution */
+type TaskSupport = "forbidden" | "required" | "optional";
 
 interface ToolExecution {
   id: string;
   toolName: string;
   arguments: Record<string, unknown>;
   timestamp: Date;
-  status: "running" | "success" | "error";
+  status: "running" | "success" | "error" | "polling";
   result?: unknown;
   error?: string;
   duration?: number;
+  /** Whether this execution was run as a task */
+  isTask?: boolean;
+  /** Task ID if run as task */
+  taskId?: string;
 }
 
 interface ToolAnnotations {
@@ -62,6 +81,23 @@ interface ExtendedMcpTool extends McpTool {
   annotations?: ToolAnnotations;
   outputSchema?: JsonSchemaType;
   _meta?: Record<string, unknown>;
+  /** Execution configuration including task support */
+  execution?: {
+    taskSupport?: TaskSupport;
+  };
+}
+
+/**
+ * Get the task support level for a tool.
+ * Returns "forbidden" if not specified (MCP spec default).
+ */
+function getTaskSupport(tool: ExtendedMcpTool | null): TaskSupport {
+  if (!tool) return "forbidden";
+  const taskSupport = tool.execution?.taskSupport;
+  if (taskSupport === "forbidden" || taskSupport === "required" || taskSupport === "optional") {
+    return taskSupport;
+  }
+  return "forbidden";
 }
 
 interface MetadataEntry {
@@ -134,13 +170,16 @@ function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
   );
 }
 
-export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsProps) {
+export function InspectorTools({ makeRequest, enabled = true, serverCapabilities }: InspectorToolsProps) {
   const { t } = useTranslation();
   const [tools, setTools] = useState<ExtendedMcpTool[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [selectedTool, setSelectedTool] = useState<ExtendedMcpTool | null>(null);
   const [executions, setExecutions] = useState<ToolExecution[]>([]);
   const [executing, setExecuting] = useState(false);
+  const [isPollingTask, setIsPollingTask] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedExecutions, setExpandedExecutions] = useState<Set<string>>(new Set());
@@ -148,6 +187,9 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
   const [showOutputSchema, setShowOutputSchema] = useState(false);
   const [showMeta, setShowMeta] = useState(false);
   const [inputMode, setInputMode] = useState<"form" | "json">("form");
+
+  // Task mode state - whether to run the tool as a task
+  const [runAsTask, setRunAsTask] = useState(false);
 
   // Form state
   const [formValues, setFormValues] = useState<Record<string, JsonValue>>({});
@@ -157,6 +199,42 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
 
   // Metadata entries for custom _meta
   const [metadataEntries, setMetadataEntries] = useState<MetadataEntry[]>([]);
+
+  // Check if server supports task requests
+  // MCP 2024-11-05 added tasks capability
+  const serverSupportsTaskRequests = useMemo(() => {
+    return (serverCapabilities as Record<string, unknown>)?.tasks !== undefined;
+  }, [serverCapabilities]);
+
+  // Get task support for currently selected tool
+  const toolTaskSupport = useMemo(() => {
+    if (!serverSupportsTaskRequests) return "forbidden";
+    return getTaskSupport(selectedTool);
+  }, [serverSupportsTaskRequests, selectedTool]);
+
+  // Check for invalid metadata entries
+  const hasReservedMetadataEntry = useMemo(() => {
+    return metadataEntries.some(({ key }) => {
+      const trimmedKey = key.trim();
+      return trimmedKey !== "" && isReservedMetaKey(trimmedKey);
+    });
+  }, [metadataEntries]);
+
+  const hasInvalidMetaPrefixEntry = useMemo(() => {
+    return metadataEntries.some(({ key }) => {
+      const trimmedKey = key.trim();
+      return trimmedKey !== "" && !hasValidMetaPrefix(trimmedKey);
+    });
+  }, [metadataEntries]);
+
+  const hasInvalidMetaNameEntry = useMemo(() => {
+    return metadataEntries.some(({ key }) => {
+      const trimmedKey = key.trim();
+      return trimmedKey !== "" && !hasValidMetaName(trimmedKey);
+    });
+  }, [metadataEntries]);
+
+  const hasAnyMetadataError = hasReservedMetadataEntry || hasInvalidMetaPrefixEntry || hasInvalidMetaNameEntry;
 
   // Filter tools by search query
   const filteredTools = useMemo(() => {
@@ -169,20 +247,56 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     );
   }, [tools, searchQuery]);
 
-  const fetchTools = async () => {
+  const fetchTools = async (cursor?: string) => {
     if (!enabled) return;
-    setLoading(true);
+
+    const isLoadMore = !!cursor;
+    if (isLoadMore) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
-      const response = await makeRequest<{ tools: ExtendedMcpTool[] }>("tools/list", {});
-      setTools(response.tools || []);
-      if (response.tools && response.tools.length > 0 && !selectedTool) {
-        setSelectedTool(response.tools[0]);
+      const params: Record<string, unknown> = {};
+      if (cursor) {
+        params.cursor = cursor;
       }
+
+      const response = await makeRequest<{ tools: ExtendedMcpTool[]; nextCursor?: string }>("tools/list", params);
+      const newTools = response.tools || [];
+
+      if (isLoadMore) {
+        // Append to existing tools
+        setTools((prev) => [...prev, ...newTools]);
+      } else {
+        // Replace tools on fresh load
+        setTools(newTools);
+        if (newTools.length > 0 && !selectedTool) {
+          setSelectedTool(newTools[0]);
+        }
+      }
+
+      // Store next cursor for pagination
+      setNextCursor(response.nextCursor);
     } catch (error) {
       console.error("Error listing tools:", error);
-      setTools([]);
+      if (!isLoadMore) {
+        setTools([]);
+      }
+      setNextCursor(undefined);
     } finally {
-      setLoading(false);
+      if (isLoadMore) {
+        setLoadingMore(false);
+      } else {
+        setLoading(false);
+      }
+    }
+  };
+
+  const loadMoreTools = () => {
+    if (nextCursor) {
+      fetchTools(nextCursor);
     }
   };
 
@@ -191,6 +305,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     setSelectedTool(null);
     setExecutions([]);
     setSearchQuery("");
+    setNextCursor(undefined);
   };
 
   // Initialize form values when tool changes
@@ -200,6 +315,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       setJsonInput("{}");
       setJsonError(null);
       setMetadataEntries([]);
+      setRunAsTask(false);
       return;
     }
 
@@ -215,7 +331,11 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     setJsonError(null);
     setMetadataEntries([]);
     formRefs.current = {};
-  }, [selectedTool]);
+
+    // Set runAsTask based on tool's task support
+    const taskSupport = serverSupportsTaskRequests ? getTaskSupport(selectedTool) : "forbidden";
+    setRunAsTask(taskSupport === "required");
+  }, [selectedTool, serverSupportsTaskRequests]);
 
   // Validate JSON input
   const validateJsonInput = useCallback(
@@ -289,12 +409,17 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       argumentsObj = { ...formValues } as Record<string, unknown>;
     }
 
-    // Build metadata from entries
+    // Build metadata from entries, filtering out invalid keys
     const metadata: Record<string, unknown> = {};
     for (const entry of metadataEntries) {
-      const key = entry.key.trim();
-      if (key) {
-        metadata[key] = entry.value;
+      const trimmedKey = entry.key.trim();
+      if (
+        trimmedKey !== "" &&
+        hasValidMetaPrefix(trimmedKey) &&
+        !isReservedMetaKey(trimmedKey) &&
+        hasValidMetaName(trimmedKey)
+      ) {
+        metadata[trimmedKey] = entry.value;
       }
     }
 
@@ -308,6 +433,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       arguments: argumentsObj,
       timestamp: new Date(),
       status: "running",
+      isTask: runAsTask,
     };
 
     setExecutions((prev) => [newExecution, ...prev]);
@@ -319,18 +445,48 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
         arguments: argumentsObj,
       };
 
-      // Add metadata if any
-      if (Object.keys(metadata).length > 0) {
-        callParams._meta = metadata;
+      // Build _meta with user entries
+      const metaObj: Record<string, unknown> = { ...metadata };
+
+      // If running as task, add progressToken for task tracking
+      if (runAsTask) {
+        metaObj.progressToken = executionId;
       }
 
-      const response = await makeRequest("tools/call", callParams);
-      const duration = Date.now() - startTime;
-      setExecutions((prev) =>
-        prev.map((exec) =>
-          exec.id === executionId ? { ...exec, status: "success", result: response, duration } : exec
-        )
-      );
+      // Add metadata if any
+      if (Object.keys(metaObj).length > 0) {
+        callParams._meta = metaObj;
+      }
+
+      const response = await makeRequest<Record<string, unknown>>("tools/call", callParams);
+
+      // Check if response indicates a task was created
+      // MCP task response contains a task object with id, status, etc.
+      const taskResponse = response as { task?: { id: string; status: string }; content?: unknown };
+
+      if (runAsTask && taskResponse.task) {
+        // Task was created, start polling for results
+        const taskId = taskResponse.task.id;
+        setExecutions((prev) =>
+          prev.map((exec) =>
+            exec.id === executionId
+              ? { ...exec, status: "polling", taskId, result: response }
+              : exec
+          )
+        );
+
+        // Poll for task completion
+        setIsPollingTask(true);
+        await pollTaskResult(executionId, taskId, startTime);
+      } else {
+        // Regular response or task not used
+        const duration = Date.now() - startTime;
+        setExecutions((prev) =>
+          prev.map((exec) =>
+            exec.id === executionId ? { ...exec, status: "success", result: response, duration } : exec
+          )
+        );
+      }
     } catch (error) {
       const duration = Date.now() - startTime;
       setExecutions((prev) =>
@@ -342,6 +498,92 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       );
     } finally {
       setExecuting(false);
+    }
+  };
+
+  /**
+   * Poll for task result until completion or error.
+   * Uses tasks/get to check task status.
+   */
+  const pollTaskResult = async (executionId: string, taskId: string, startTime: number) => {
+    const maxAttempts = 60; // Max 60 attempts (with 1s delay = ~1 minute max)
+    const pollDelay = 1000; // 1 second between polls
+
+    try {
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        // Wait before polling (except first attempt)
+        if (attempt > 0) {
+          await new Promise((resolve) => setTimeout(resolve, pollDelay));
+        }
+
+        try {
+          const taskResult = await makeRequest<{
+            id: string;
+            status: "pending" | "running" | "completed" | "failed" | "cancelled";
+            result?: unknown;
+            error?: { message: string };
+          }>("tasks/get", { id: taskId });
+
+          if (taskResult.status === "completed") {
+            const duration = Date.now() - startTime;
+            setExecutions((prev) =>
+              prev.map((exec) =>
+                exec.id === executionId
+                  ? { ...exec, status: "success", result: taskResult.result ?? taskResult, duration }
+                  : exec
+              )
+            );
+            return;
+          }
+
+          if (taskResult.status === "failed" || taskResult.status === "cancelled") {
+            const duration = Date.now() - startTime;
+            const errorMsg = taskResult.error?.message || `Task ${taskResult.status}`;
+            setExecutions((prev) =>
+              prev.map((exec) =>
+                exec.id === executionId
+                  ? { ...exec, status: "error", error: errorMsg, duration }
+                  : exec
+              )
+            );
+            return;
+          }
+
+          // Still pending or running, continue polling
+          setExecutions((prev) =>
+            prev.map((exec) =>
+              exec.id === executionId
+                ? { ...exec, result: taskResult }
+                : exec
+            )
+          );
+        } catch (pollError) {
+          // If tasks/get fails, the server might not support task polling
+          // Fall back to treating the original response as the result
+          console.warn("Task polling failed:", pollError);
+          const duration = Date.now() - startTime;
+          setExecutions((prev) =>
+            prev.map((exec) =>
+              exec.id === executionId
+                ? { ...exec, status: "success", duration }
+                : exec
+            )
+          );
+          return;
+        }
+      }
+
+      // Timeout - mark as error
+      const duration = Date.now() - startTime;
+      setExecutions((prev) =>
+        prev.map((exec) =>
+          exec.id === executionId
+            ? { ...exec, status: "error", error: "Task polling timed out", duration }
+            : exec
+        )
+      );
+    } finally {
+      setIsPollingTask(false);
     }
   };
 
@@ -366,6 +608,137 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     });
   };
 
+  // Track which executions are showing rendered content vs JSON
+  const [renderedResults, setRenderedResults] = useState<Set<string>>(new Set());
+
+  const toggleRenderedResult = (id: string) => {
+    setRenderedResults((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Check if result has renderable content (MCP tool result format)
+  const hasRenderableContent = (result: unknown): boolean => {
+    if (!result || typeof result !== "object") return false;
+    const r = result as Record<string, unknown>;
+    if (Array.isArray(r.content)) {
+      return r.content.some(
+        (item: unknown) =>
+          item &&
+          typeof item === "object" &&
+          ((item as Record<string, unknown>).type === "text" ||
+            (item as Record<string, unknown>).type === "image" ||
+            (item as Record<string, unknown>).type === "resource")
+      );
+    }
+    return false;
+  };
+
+  // Render a single MCP content item
+  const renderContentItem = (content: Record<string, unknown>, idx: number): React.ReactNode => {
+    if (content.type === "text") {
+      return (
+        <div key={idx} className="flex gap-2">
+          <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+          <pre className="text-xs whitespace-pre-wrap break-words flex-1">
+            {String(content.text || "")}
+          </pre>
+        </div>
+      );
+    }
+
+    if (content.type === "image") {
+      const data = content.data as string | undefined;
+      const mimeType = (content.mimeType as string) || "image/png";
+      if (data) {
+        return (
+          <div key={idx} className="flex gap-2">
+            <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+            <img
+              src={`data:${mimeType};base64,${data}`}
+              alt="Tool result"
+              className="max-w-full max-h-48 rounded border border-border"
+            />
+          </div>
+        );
+      }
+    }
+
+    if (content.type === "resource") {
+      const resource = content.resource as Record<string, unknown> | undefined;
+      if (resource) {
+        const uri = resource.uri as string | undefined;
+        const text = resource.text as string | undefined;
+        const blob = resource.blob as string | undefined;
+        const mimeType = (resource.mimeType as string) || "application/octet-stream";
+
+        return (
+          <div key={idx} className="border border-border rounded p-2 space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <FileJson className="h-3 w-3" />
+              <span className="font-mono truncate">{uri || "Resource"}</span>
+            </div>
+            {text && (
+              <pre className="text-xs whitespace-pre-wrap break-words bg-muted/50 p-2 rounded max-h-32 overflow-auto">
+                {text}
+              </pre>
+            )}
+            {blob && mimeType.startsWith("image/") && (
+              <img
+                src={`data:${mimeType};base64,${blob}`}
+                alt="Resource"
+                className="max-w-full max-h-48 rounded"
+              />
+            )}
+          </div>
+        );
+      }
+    }
+
+    // Fallback for unknown content types
+    return (
+      <pre key={idx} className="text-xs bg-muted/50 p-2 rounded overflow-x-auto">
+        {JSON.stringify(content, null, 2)}
+      </pre>
+    );
+  };
+
+  // Render MCP content items
+  const renderContent = (result: unknown): React.ReactNode => {
+    if (!result || typeof result !== "object") return null;
+    const r = result as Record<string, unknown>;
+    if (!Array.isArray(r.content)) return null;
+
+    const contentItems = r.content as unknown[];
+    const renderedItems: React.ReactNode[] = [];
+
+    for (let idx = 0; idx < contentItems.length; idx++) {
+      const item = contentItems[idx];
+      if (item && typeof item === "object") {
+        const rendered = renderContentItem(item as Record<string, unknown>, idx);
+        if (rendered) {
+          renderedItems.push(rendered);
+        }
+      }
+    }
+
+    return (
+      <div className="space-y-2">
+        {renderedItems}
+        {/* Show isError if present */}
+        {Boolean(r.isError) && (
+          <div className="flex items-center gap-1.5 text-xs text-red-500">
+            <AlertCircle className="h-3.5 w-3.5" />
+            <span>{t("inspector.toolReturnedError", "Tool returned error")}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const formatDuration = (ms: number) => {
     if (ms < 1000) {
       return t("inspector.durationMs", "{{value}}ms").replace("{{value}}", String(ms));
@@ -377,6 +750,8 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     switch (status) {
       case "running":
         return { icon: Loader2, color: "text-blue-500", bg: "bg-blue-500/10", animate: true };
+      case "polling":
+        return { icon: ListTodo, color: "text-purple-500", bg: "bg-purple-500/10", animate: true };
       case "success":
         return { icon: CheckCircle, color: "text-green-500", bg: "bg-green-500/10", animate: false };
       case "error":
@@ -430,7 +805,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={clearAll} disabled={tools.length === 0}>
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchTools} disabled={loading}>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => fetchTools()} disabled={loading}>
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
             </Button>
           </div>
@@ -453,7 +828,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
               <Wrench className="h-8 w-8 text-muted-foreground/50 mb-2" />
               <p className="text-xs text-muted-foreground">{t("inspector.clickListTools")}</p>
-              <Button size="sm" className="mt-3" onClick={fetchTools} disabled={loading}>
+              <Button size="sm" className="mt-3" onClick={() => fetchTools()} disabled={loading}>
                 {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
                 {t("inspector.listTools")}
               </Button>
@@ -461,22 +836,41 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
           ) : filteredTools.length === 0 ? (
             <div className="text-center p-4 text-xs text-muted-foreground">{t("inspector.noToolsFound")}</div>
           ) : (
-            filteredTools.map((tool) => (
-              <div
-                key={tool.name}
-                onClick={() => setSelectedTool(tool)}
-                className={`p-2.5 rounded-lg cursor-pointer transition-colors ${
-                  selectedTool?.name === tool.name
-                    ? "bg-blue-500/10 border border-blue-500/30"
-                    : "hover:bg-muted/50 border border-transparent"
-                }`}
-              >
-                <div className="font-mono text-xs font-medium truncate">{tool.name}</div>
-                {tool.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tool.description}</p>
-                )}
-              </div>
-            ))
+            <>
+              {filteredTools.map((tool) => (
+                <div
+                  key={tool.name}
+                  onClick={() => setSelectedTool(tool)}
+                  className={`p-2.5 rounded-lg cursor-pointer transition-colors ${
+                    selectedTool?.name === tool.name
+                      ? "bg-blue-500/10 border border-blue-500/30"
+                      : "hover:bg-muted/50 border border-transparent"
+                  }`}
+                >
+                  <div className="font-mono text-xs font-medium truncate">{tool.name}</div>
+                  {tool.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tool.description}</p>
+                  )}
+                </div>
+              ))}
+              {/* Load More Button */}
+              {nextCursor && (
+                <div className="pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-7 text-xs"
+                    onClick={loadMoreTools}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    ) : null}
+                    {t("inspector.loadMore", "Load More")}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -624,39 +1018,92 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
                       <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
                     ) : (
                       <div className="space-y-2">
-                        {metadataEntries.map((entry) => (
-                          <div key={entry.id} className="flex items-center gap-2">
-                            <Input
-                              value={entry.key}
-                              onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
-                              placeholder="Key"
-                              className="h-8 text-xs flex-1"
-                            />
-                            <Input
-                              value={entry.value}
-                              onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
-                              placeholder="Value"
-                              className="h-8 text-xs flex-1"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => removeMetadataEntry(entry.id)}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ))}
+                        {metadataEntries.map((entry) => {
+                          const validationError = getMetaKeyValidationError(entry.key);
+                          return (
+                            <div key={entry.id} className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={entry.key}
+                                  onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
+                                  placeholder="Key (e.g. requestId)"
+                                  className={cn(
+                                    "h-8 text-xs flex-1",
+                                    validationError && "border-red-500 focus-visible:ring-red-500"
+                                  )}
+                                  aria-invalid={Boolean(validationError)}
+                                />
+                                <Input
+                                  value={entry.value}
+                                  onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
+                                  placeholder="Value"
+                                  className="h-8 text-xs flex-1"
+                                  disabled={Boolean(validationError)}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => removeMetadataEntry(entry.id)}
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              {validationError && (
+                                <p className="text-xs text-red-600 dark:text-red-400 pl-1">
+                                  {validationError}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
+                    )}
+                    {hasAnyMetadataError && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        {t("inspector.fixMetadataErrors", "Fix metadata key errors before running the tool.")}
+                      </p>
                     )}
                   </div>
 
+                  {/* Task mode checkbox - only show when server supports tasks and tool allows it */}
+                  {toolTaskSupport !== "forbidden" && (
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Checkbox
+                        id="run-as-task-form"
+                        checked={runAsTask}
+                        onCheckedChange={(checked) => setRunAsTask(checked === true)}
+                        disabled={toolTaskSupport === "required"}
+                      />
+                      <Label
+                        htmlFor="run-as-task-form"
+                        className="text-sm font-medium text-muted-foreground cursor-pointer"
+                      >
+                        {t("inspector.runAsTask", "Run as task")}
+                        {toolTaskSupport === "required" && (
+                          <span className="text-xs ml-1">({t("inspector.required", "required")})</span>
+                        )}
+                      </Label>
+                    </div>
+                  )}
+
                   {/* Action buttons */}
                   <div className="flex gap-2 pt-2">
-                    <Button onClick={executeTool} disabled={executing} className="flex-1">
-                      {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                      {executing ? t("inspector.calling") : t("inspector.callTool")}
+                    <Button
+                      onClick={executeTool}
+                      disabled={executing || isPollingTask || hasAnyMetadataError}
+                      className="flex-1"
+                    >
+                      {executing || isPollingTask ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      {isPollingTask
+                        ? t("inspector.pollingTask", "Polling Task...")
+                        : executing
+                          ? t("inspector.calling")
+                          : t("inspector.callTool")}
                     </Button>
                     <Button variant="outline" onClick={copyInput}>
                       <Copy className="h-4 w-4 mr-2" />
@@ -710,39 +1157,92 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
                       <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
                     ) : (
                       <div className="space-y-2">
-                        {metadataEntries.map((entry) => (
-                          <div key={entry.id} className="flex items-center gap-2">
-                            <Input
-                              value={entry.key}
-                              onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
-                              placeholder="Key"
-                              className="h-8 text-xs flex-1"
-                            />
-                            <Input
-                              value={entry.value}
-                              onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
-                              placeholder="Value"
-                              className="h-8 text-xs flex-1"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              onClick={() => removeMetadataEntry(entry.id)}
-                            >
-                              <Minus className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        ))}
+                        {metadataEntries.map((entry) => {
+                          const validationError = getMetaKeyValidationError(entry.key);
+                          return (
+                            <div key={entry.id} className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={entry.key}
+                                  onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
+                                  placeholder="Key (e.g. requestId)"
+                                  className={cn(
+                                    "h-8 text-xs flex-1",
+                                    validationError && "border-red-500 focus-visible:ring-red-500"
+                                  )}
+                                  aria-invalid={Boolean(validationError)}
+                                />
+                                <Input
+                                  value={entry.value}
+                                  onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
+                                  placeholder="Value"
+                                  className="h-8 text-xs flex-1"
+                                  disabled={Boolean(validationError)}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => removeMetadataEntry(entry.id)}
+                                >
+                                  <Minus className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                              {validationError && (
+                                <p className="text-xs text-red-600 dark:text-red-400 pl-1">
+                                  {validationError}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
+                    )}
+                    {hasAnyMetadataError && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        {t("inspector.fixMetadataErrors", "Fix metadata key errors before running the tool.")}
+                      </p>
                     )}
                   </div>
 
+                  {/* Task mode checkbox - only show when server supports tasks and tool allows it */}
+                  {toolTaskSupport !== "forbidden" && (
+                    <div className="flex items-center space-x-2 pt-2">
+                      <Checkbox
+                        id="run-as-task-json"
+                        checked={runAsTask}
+                        onCheckedChange={(checked) => setRunAsTask(checked === true)}
+                        disabled={toolTaskSupport === "required"}
+                      />
+                      <Label
+                        htmlFor="run-as-task-json"
+                        className="text-sm font-medium text-muted-foreground cursor-pointer"
+                      >
+                        {t("inspector.runAsTask", "Run as task")}
+                        {toolTaskSupport === "required" && (
+                          <span className="text-xs ml-1">({t("inspector.required", "required")})</span>
+                        )}
+                      </Label>
+                    </div>
+                  )}
+
                   {/* Action buttons */}
                   <div className="flex gap-2">
-                    <Button onClick={executeTool} disabled={executing || !!jsonError} className="flex-1">
-                      {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                      {executing ? t("inspector.calling") : t("inspector.callTool")}
+                    <Button
+                      onClick={executeTool}
+                      disabled={executing || isPollingTask || !!jsonError || hasAnyMetadataError}
+                      className="flex-1"
+                    >
+                      {executing || isPollingTask ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Play className="h-4 w-4 mr-2" />
+                      )}
+                      {isPollingTask
+                        ? t("inspector.pollingTask", "Polling Task...")
+                        : executing
+                          ? t("inspector.calling")
+                          : t("inspector.callTool")}
                     </Button>
                     <Button variant="outline" onClick={copyInput}>
                       <Copy className="h-4 w-4 mr-2" />
@@ -807,6 +1307,11 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
                       <Icon className={`h-3 w-3 ${style.color} ${style.animate ? "animate-spin" : ""}`} />
                     </div>
                     <span className="font-mono text-xs flex-1 truncate">{execution.toolName}</span>
+                    {execution.isTask && (
+                      <Badge variant="outline" className="h-4 px-1 text-[10px] border-purple-500/30 text-purple-600 dark:text-purple-400">
+                        {t("inspector.task", "Task")}
+                      </Badge>
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {execution.duration !== undefined ? formatDuration(execution.duration) : "..."}
                     </span>
@@ -814,6 +1319,14 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
 
                   {isExpanded && (
                     <div className="px-2.5 pb-2.5 space-y-2">
+                      {/* Task ID if present */}
+                      {execution.taskId && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <ListTodo className="h-3 w-3" />
+                          <span>Task ID: <code className="bg-muted/50 px-1 rounded">{execution.taskId}</code></span>
+                        </div>
+                      )}
+
                       {/* Arguments */}
                       {Object.keys(execution.arguments).length > 0 && (
                         <div>
@@ -825,35 +1338,73 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
                       )}
 
                       {/* Result or Error */}
-                      {execution.status !== "running" && (
+                      {execution.status !== "running" && execution.status !== "polling" && (
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs text-muted-foreground">
                               {execution.error ? t("common.error") : t("inspector.result")}:
                             </span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-5 w-5 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                copyResult(execution);
-                              }}
-                            >
-                              {copiedId === execution.id ? (
-                                <Check className="h-3 w-3 text-green-500" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
+                            <div className="flex items-center gap-1">
+                              {/* Toggle rendered/JSON view */}
+                              {!execution.error && hasRenderableContent(execution.result) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 px-1.5 text-xs gap-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleRenderedResult(execution.id);
+                                  }}
+                                  title={
+                                    renderedResults.has(execution.id)
+                                      ? t("inspector.showJson", "Show JSON")
+                                      : t("inspector.showRendered", "Show Rendered")
+                                  }
+                                >
+                                  {renderedResults.has(execution.id) ? (
+                                    <>
+                                      <Code2 className="h-3 w-3" />
+                                      <span>JSON</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="h-3 w-3" />
+                                      <span>{t("inspector.render", "Render")}</span>
+                                    </>
+                                  )}
+                                </Button>
                               )}
-                            </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-5 w-5 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyResult(execution);
+                                }}
+                              >
+                                {copiedId === execution.id ? (
+                                  <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
                           </div>
-                          <pre
-                            className={`text-xs p-2 rounded overflow-x-auto max-h-48 ${
-                              execution.error ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-muted/50"
-                            }`}
-                          >
-                            {JSON.stringify(execution.error || execution.result, null, 2)}
-                          </pre>
+                          {execution.error ? (
+                            <pre className="text-xs p-2 rounded overflow-x-auto max-h-48 bg-red-500/10 text-red-600 dark:text-red-400">
+                              {JSON.stringify(execution.error, null, 2)}
+                            </pre>
+                          ) : renderedResults.has(execution.id) &&
+                            hasRenderableContent(execution.result) ? (
+                            <div className="p-2 rounded bg-muted/50 max-h-64 overflow-auto">
+                              {renderContent(execution.result)}
+                            </div>
+                          ) : (
+                            <pre className="text-xs p-2 rounded overflow-x-auto max-h-48 bg-muted/50">
+                              {JSON.stringify(execution.result, null, 2)}
+                            </pre>
+                          )}
                         </div>
                       )}
                     </div>

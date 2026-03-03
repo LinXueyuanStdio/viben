@@ -1,13 +1,29 @@
 /**
  * Session CLI Commands Tests
  *
- * Tests for the session management CLI commands.
+ * Tests for the session management CLI commands (native TypeScript implementation).
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
 import { registerSessionCommand } from "./session";
-import * as fs from "node:fs";
-import * as child_process from "node:child_process";
+
+// Mock the viben-workspace module
+vi.mock("../lib/viben-workspace", () => ({
+  findVibenRoot: vi.fn(),
+  getDeveloper: vi.fn(),
+  getWorkspaceDir: vi.fn(),
+  getAllDevelopers: vi.fn(),
+  getJournalInfo: vi.fn(),
+  getCurrentSessionNumber: vi.fn(),
+  generateSessionContent: vi.fn(),
+  createNewJournalFile: vi.fn(),
+  updateIndexWithSession: vi.fn(),
+  getTodayDate: vi.fn(),
+  MAX_JOURNAL_LINES: 2000,
+  DIR_VIBEN: ".viben",
+  DIR_WORKSPACE: "workspace",
+  FILE_JOURNAL_PREFIX: "journal-",
+}));
 
 // Mock node:fs
 vi.mock("node:fs", () => ({
@@ -16,10 +32,11 @@ vi.mock("node:fs", () => ({
   readdirSync: vi.fn(),
 }));
 
-// Mock node:child_process
-vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(),
-  execSync: vi.fn(),
+// Mock node:fs/promises
+vi.mock("node:fs/promises", () => ({
+  appendFile: vi.fn(),
+  readFile: vi.fn(),
+  writeFile: vi.fn(),
 }));
 
 // Mock chalk to avoid color output in tests
@@ -40,11 +57,25 @@ vi.spyOn(process, "exit").mockImplementation((code?: number | string | null | un
   throw new Error(`process.exit(${code})`);
 });
 
+import * as fs from "node:fs";
+import * as fsPromises from "node:fs/promises";
+import {
+  findVibenRoot,
+  getDeveloper,
+  getWorkspaceDir,
+  getAllDevelopers,
+  getJournalInfo,
+  getCurrentSessionNumber,
+  generateSessionContent,
+  createNewJournalFile,
+  updateIndexWithSession,
+  getTodayDate,
+} from "../lib/viben-workspace";
+
 describe("Session CLI Commands", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     // Create fresh program instance
@@ -59,7 +90,6 @@ describe("Session CLI Commands", () => {
     // Spy on console
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
 
     // Reset all mocks
     vi.clearAllMocks();
@@ -68,108 +98,42 @@ describe("Session CLI Commands", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     consoleErrorSpy.mockRestore();
-    stderrSpy.mockRestore();
     vi.clearAllMocks();
   });
 
-  // ============================================================================
   // Helper to run command
-  // ============================================================================
   async function runCommand(args: string[]): Promise<void> {
     await program.parseAsync(["node", "test", ...args]);
   }
 
-  // ============================================================================
-  // Helper to setup mocks for a valid workspace
-  // ============================================================================
+  // Helper to setup standard mocks for a valid workspace
   function setupValidWorkspace(developer: string = "test-user") {
+    vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+    vi.mocked(getDeveloper).mockReturnValue(developer);
+    vi.mocked(getWorkspaceDir).mockReturnValue(`/workspace/.viben/workspace/${developer}`);
+    vi.mocked(getAllDevelopers).mockReturnValue([developer]);
+    vi.mocked(getTodayDate).mockReturnValue("2024-03-03");
+    vi.mocked(getJournalInfo).mockReturnValue({
+      file: `/workspace/.viben/workspace/${developer}/journal-1.md`,
+      number: 1,
+      lines: 100,
+    });
+    vi.mocked(getCurrentSessionNumber).mockReturnValue(4);
+    vi.mocked(generateSessionContent).mockReturnValue("\n\n## Session 5: Test\n\nContent here\n");
+    vi.mocked(updateIndexWithSession).mockResolvedValue(true);
+    vi.mocked(fsPromises.appendFile).mockResolvedValue();
+
     // Mock existsSync
-    vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
+    vi.mocked(fs.existsSync).mockImplementation((path) => {
       const pathStr = path.toString();
       if (pathStr.includes(".viben")) return true;
-      if (pathStr.includes(".developer")) return true;
-      if (pathStr.includes("add_session.py")) return true;
+      if (pathStr.includes("workspace")) return true;
       if (pathStr.includes("index.md")) return true;
       return false;
     });
 
-    // Mock readFileSync for .developer file
-    vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-      const pathStr = path.toString();
-      if (pathStr.includes(".developer")) {
-        return `name=${developer}\n`;
-      }
-      if (pathStr.includes("index.md")) {
-        return getMockIndexContent();
-      }
-      return "";
-    });
-
-    // Mock readdirSync for workspace directory
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(fs.readdirSync).mockReturnValue([
-      { name: developer, isDirectory: () => true },
-    ] as any);
-
-    // Mock spawnSync for Python
-    vi.mocked(child_process.spawnSync).mockImplementation((command, args) => {
-      if (command === "python3" && args?.includes("--version")) {
-        return {
-          status: 0,
-          stdout: "Python 3.11.0",
-          stderr: "",
-          output: ["Python 3.11.0"],
-          pid: 1234,
-          signal: null,
-        };
-      }
-      if (command === "python3" && args?.some((a) => a?.toString().includes("add_session.py"))) {
-        return {
-          status: 0,
-          stdout: "",
-          stderr: `========================================
-ADD SESSION
-========================================
-
-Session: 5
-Title: Test Session
-Commit: abc1234
-
-Current journal file: journal-1.md
-Current lines: 100
-New content lines: 50
-Total after append: 150
-
-[OK] Appended session to journal-1.md
-
-Updating index.md for session 5...
-  Title: Test Session
-  Commit: \`abc1234\`
-  Active File: journal-1.md
-
-[OK] Updated index.md successfully!
-
-========================================
-[OK] Session 5 added successfully!
-========================================
-
-Files updated:
-  - journal-1.md
-  - index.md`,
-          output: [""],
-          pid: 1234,
-          signal: null,
-        };
-      }
-      return {
-        status: 1,
-        stdout: "",
-        stderr: "Command not found",
-        output: [""],
-        pid: 1234,
-        signal: null,
-      };
-    });
+    // Mock readFileSync for index.md
+    vi.mocked(fs.readFileSync).mockImplementation(() => getMockIndexContent());
   }
 
   function getMockIndexContent(): string {
@@ -215,11 +179,13 @@ Files updated:
 
       await runCommand(["session", "add", "--title", "Test Session", "--commit", "abc1234"]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--title", "Test Session", "--commit", "abc1234"]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Test Session",
+          commit: "abc1234",
+        })
       );
+      expect(updateIndexWithSession).toHaveBeenCalled();
     });
 
     it("should support -t shorthand for title", async () => {
@@ -227,10 +193,10 @@ Files updated:
 
       await runCommand(["session", "add", "-t", "Short Title"]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--title", "Short Title"]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Short Title",
+        })
       );
     });
 
@@ -239,10 +205,10 @@ Files updated:
 
       await runCommand(["session", "add", "-t", "Title", "-c", "xyz789"]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--commit", "xyz789"]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commit: "xyz789",
+        })
       );
     });
 
@@ -251,45 +217,18 @@ Files updated:
 
       await runCommand(["session", "add", "-t", "Title", "-s", "A brief summary"]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--summary", "A brief summary"]),
-        expect.any(Object)
-      );
-    });
-
-    it("should support --content-file option", async () => {
-      setupValidWorkspace();
-
-      await runCommand([
-        "session",
-        "add",
-        "-t",
-        "Title",
-        "--content-file",
-        "/path/to/notes.md",
-      ]);
-
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--content-file", "/path/to/notes.md"]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          summary: "A brief summary",
+        })
       );
     });
 
     it("should fail when developer not initialized", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return false;
-        return false;
-      });
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue(null);
 
-      vi.mocked(fs.readFileSync).mockImplementation(() => "");
-
-      await expect(
-        runCommand(["session", "add", "-t", "Title"])
-      ).rejects.toThrow();
+      await expect(runCommand(["session", "add", "-t", "Title"])).rejects.toThrow();
 
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("Developer not initialized")
@@ -301,31 +240,8 @@ Files updated:
 
       await runCommand(["--json", "session", "add", "-t", "Test Session"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"success": true')
-      );
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('"session"')
-      );
-    });
-
-    it("should pass multiple commits separated by comma", async () => {
-      setupValidWorkspace();
-
-      await runCommand([
-        "session",
-        "add",
-        "-t",
-        "Multi-commit",
-        "-c",
-        "abc123,def456,ghi789",
-      ]);
-
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--commit", "abc123,def456,ghi789"]),
-        expect.any(Object)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"success": true'));
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('"session"'));
     });
 
     it("should use default commit value when not provided", async () => {
@@ -333,10 +249,52 @@ Files updated:
 
       await runCommand(["session", "add", "-t", "No Commit Session"]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining(["--commit", "-"]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commit: "-",
+        })
+      );
+    });
+
+    it("should create new journal when exceeding line limit", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-1.md",
+        number: 1,
+        lines: 1990,
+      });
+      // Generate content with many lines to exceed 2000 total
+      const manyLines = Array(50).fill("Line content").join("\n");
+      vi.mocked(generateSessionContent).mockReturnValue(manyLines);
+      vi.mocked(createNewJournalFile).mockResolvedValue(
+        "/workspace/.viben/workspace/test-user/journal-2.md"
+      );
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // 1990 + 50 = 2040 > 2000, should create new file
+      expect(createNewJournalFile).toHaveBeenCalled();
+    });
+
+    it("should append to existing journal when within limit", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      expect(createNewJournalFile).not.toHaveBeenCalled();
+      expect(fsPromises.appendFile).toHaveBeenCalled();
+    });
+
+    it("should update session number correctly", async () => {
+      setupValidWorkspace();
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(10);
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionNum: 11,
+        })
       );
     });
   });
@@ -351,9 +309,7 @@ Files updated:
 
       await runCommand(["session", "list"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Session History")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Session History"));
     });
 
     it("should show table with sessions", async () => {
@@ -371,9 +327,7 @@ Files updated:
       await runCommand(["session", "list", "--limit", "2"]);
 
       // Should call console.log with total count
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Total:")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("Total:"));
     });
 
     it("should support -n shorthand for limit", async () => {
@@ -385,35 +339,29 @@ Files updated:
     });
 
     it("should show message when no sessions exist", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue("john");
+      vi.mocked(getWorkspaceDir).mockReturnValue("/workspace/.viben/workspace/john");
+
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
         const pathStr = path.toString();
         if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
         if (pathStr.includes("index.md")) return false;
         return false;
       });
 
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        if (path.toString().includes(".developer")) {
-          return "name=john\n";
-        }
-        return "";
-      });
+      // Return empty content (no session history markers)
+      vi.mocked(fs.readFileSync).mockReturnValue("");
 
       await runCommand(["session", "list"]);
 
+      // chalk.gray wraps "No sessions found."
       expect(consoleSpy).toHaveBeenCalledWith("No sessions found.");
     });
 
     it("should fail when developer not initialized", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return false;
-        return false;
-      });
-
-      vi.mocked(fs.readFileSync).mockImplementation(() => "");
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue(null);
 
       await expect(runCommand(["session", "list"])).rejects.toThrow();
 
@@ -469,73 +417,33 @@ Files updated:
 
   describe("session list --all", () => {
     it("should list sessions from all users", async () => {
-      // Setup multiple developers
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
-        if (pathStr.includes("index.md")) return true;
-        return false;
-      });
-
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".developer")) {
-          return "name=john\n";
-        }
-        if (pathStr.includes("index.md")) {
-          return getMockIndexContent();
-        }
-        return "";
-      });
-
-      vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: "john", isDirectory: () => true },
-        { name: "jane", isDirectory: () => true },
-      ] as any);
+      setupValidWorkspace("john");
+      vi.mocked(getAllDevelopers).mockReturnValue(["john", "jane"]);
 
       await runCommand(["session", "list", "--all"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("All Users")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("All Users"));
     });
 
     it("should support -a shorthand for --all", async () => {
       setupValidWorkspace("john");
 
-      vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: "john", isDirectory: () => true },
-      ] as any);
-
       await runCommand(["session", "list", "-a"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("All Users")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("All Users"));
     });
 
     it("should include developer column when --all is used", async () => {
       setupValidWorkspace("john");
 
-      vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: "john", isDirectory: () => true },
-      ] as any);
-
       await runCommand(["session", "list", "--all"]);
 
       // The table should include "User" column header
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("User")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("User"));
     });
 
     it("should include developer field in JSON when --all is used", async () => {
       setupValidWorkspace("john");
-
-      vi.mocked(fs.readdirSync).mockReturnValue([
-        { name: "john", isDirectory: () => true },
-      ] as any);
 
       await runCommand(["--json", "session", "list", "--all"]);
 
@@ -551,121 +459,33 @@ Files updated:
   // ============================================================================
 
   describe("error handling", () => {
-    it("should handle Python not found error", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
-        if (pathStr.includes("add_session.py")) return true;
-        return false;
-      });
+    it("should fail when developer not initialized in add command", async () => {
+      // When not in workspace, getRepoRoot falls back to cwd
+      // Then getDeveloper returns null
+      vi.mocked(findVibenRoot).mockReturnValue(null);
+      vi.mocked(getDeveloper).mockReturnValue(null);
 
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        if (path.toString().includes(".developer")) {
-          return "name=john\n";
-        }
-        return "";
-      });
+      await expect(runCommand(["session", "add", "-t", "Title"])).rejects.toThrow();
 
-      // Mock Python not found
-      vi.mocked(child_process.spawnSync).mockReturnValue({
-        status: 1,
-        stdout: "",
-        stderr: "command not found",
-        output: [""],
-        pid: 0,
-        signal: null,
-      });
-
-      await expect(
-        runCommand(["session", "add", "-t", "Title"])
-      ).rejects.toThrow("process.exit(1)");
-    });
-
-    it("should handle script not found error", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben") && !pathStr.includes("scripts")) return true;
-        if (pathStr.includes(".developer")) return true;
-        // add_session.py specifically returns false
-        if (pathStr.includes("add_session.py")) return false;
-        if (pathStr.includes("scripts")) return true; // scripts dir exists
-        return false;
-      });
-
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        if (path.toString().includes(".developer")) {
-          return "name=john\n";
-        }
-        return "";
-      });
-
-      vi.mocked(child_process.spawnSync).mockImplementation((command, args) => {
-        // Only Python version check succeeds
-        if (command === "python3" && args?.includes("--version")) {
-          return {
-            status: 0,
-            stdout: "Python 3.11.0",
-            stderr: "",
-            output: [""],
-            pid: 1234,
-            signal: null,
-          };
-        }
-        // This should not be reached if script is not found
-        throw new Error("Should not call script");
-      });
-
-      await expect(
-        runCommand(["session", "add", "-t", "Title"])
-      ).rejects.toThrow();
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Script not found")
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Developer not initialized")
       );
     });
 
-    it("should handle script execution error", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
-        if (pathStr.includes("add_session.py")) return true;
-        return false;
-      });
+    it("should fail when workspace dir not found", async () => {
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue("john");
+      vi.mocked(getWorkspaceDir).mockReturnValue("/workspace/.viben/workspace/john");
+      vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        if (path.toString().includes(".developer")) {
-          return "name=john\n";
-        }
-        return "";
-      });
+      await expect(runCommand(["session", "add", "-t", "Title"])).rejects.toThrow();
+    });
 
-      vi.mocked(child_process.spawnSync).mockImplementation((command, args) => {
-        if (command === "python3" && args?.includes("--version")) {
-          return {
-            status: 0,
-            stdout: "Python 3.11.0",
-            stderr: "",
-            output: [""],
-            pid: 1234,
-            signal: null,
-          };
-        }
-        // Script fails
-        return {
-          status: 1,
-          stdout: "",
-          stderr: "Error: Something went wrong",
-          output: [""],
-          pid: 1234,
-          signal: null,
-        };
-      });
+    it("should handle index update failure", async () => {
+      setupValidWorkspace();
+      vi.mocked(updateIndexWithSession).mockResolvedValue(false);
 
-      await expect(
-        runCommand(["session", "add", "-t", "Title"])
-      ).rejects.toThrow("process.exit(1)");
+      await expect(runCommand(["session", "add", "-t", "Title"])).rejects.toThrow();
     });
   });
 
@@ -711,21 +531,12 @@ Files updated:
 
   describe("edge cases", () => {
     it("should handle empty workspace directory", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
-        return false;
-      });
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue("john");
+      vi.mocked(getAllDevelopers).mockReturnValue([]);
+      vi.mocked(getWorkspaceDir).mockReturnValue("/workspace/.viben/workspace/john");
 
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        if (path.toString().includes(".developer")) {
-          return "name=john\n";
-        }
-        return "";
-      });
-
-      vi.mocked(fs.readdirSync).mockReturnValue([]);
+      vi.mocked(fs.existsSync).mockReturnValue(false);
 
       await runCommand(["session", "list", "--all"]);
 
@@ -733,25 +544,16 @@ Files updated:
     });
 
     it("should handle malformed index.md", async () => {
-      vi.mocked(fs.existsSync).mockImplementation((path: fs.PathLike) => {
+      vi.mocked(findVibenRoot).mockReturnValue("/workspace");
+      vi.mocked(getDeveloper).mockReturnValue("john");
+      vi.mocked(getWorkspaceDir).mockReturnValue("/workspace/.viben/workspace/john");
+
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
         const pathStr = path.toString();
-        if (pathStr.includes(".viben")) return true;
-        if (pathStr.includes(".developer")) return true;
-        if (pathStr.includes("index.md")) return true;
-        return false;
+        return pathStr.includes("index.md") || pathStr.includes(".viben");
       });
 
-      vi.mocked(fs.readFileSync).mockImplementation((path: fs.PathOrFileDescriptor) => {
-        const pathStr = path.toString();
-        if (pathStr.includes(".developer")) {
-          return "name=john\n";
-        }
-        if (pathStr.includes("index.md")) {
-          // Malformed - missing markers
-          return "# Some content without markers\n";
-        }
-        return "";
-      });
+      vi.mocked(fs.readFileSync).mockReturnValue("# Some content without markers\n");
 
       await runCommand(["session", "list"]);
 
@@ -765,16 +567,13 @@ Files updated:
         "session",
         "add",
         "-t",
-        "Fix bug: handle \"quotes\" & <special> chars",
+        'Fix bug: handle "quotes" & <special> chars',
       ]);
 
-      expect(child_process.spawnSync).toHaveBeenCalledWith(
-        "python3",
-        expect.arrayContaining([
-          "--title",
-          "Fix bug: handle \"quotes\" & <special> chars",
-        ]),
-        expect.any(Object)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Fix bug: handle "quotes" & <special> chars',
+        })
       );
     });
   });

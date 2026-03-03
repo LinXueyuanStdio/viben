@@ -6,7 +6,6 @@
  * 提供向后兼容的基于类的 API，封装所有功能模块。
  */
 
-import { GatewayError } from "./error";
 import { getGatewayUrl, discoverGateway } from "./config";
 
 // Import module functions
@@ -20,10 +19,7 @@ import {
   continueSessionStream,
   stopAgent,
   sendAgentInput,
-  listBackgroundTasks,
-  getBackgroundTask,
   stopBackgroundTask,
-  deleteBackgroundTask,
 
   // Sessions module
   listSessions,
@@ -37,6 +33,15 @@ import {
   clearSessionMessages,
   listExecutorSessions,
   getExecutorSessionMessages,
+  discoverExecutorSessions,
+  // Backward compatibility methods
+  listAgentSessions,
+  createAgentSession,
+  getAgentSession,
+  deleteAgentSession,
+  listSessionMessages,
+  listSessionUIMessages,
+  appendSessionMessage,
 
   // Agents CRUD module
   listAgents,
@@ -45,6 +50,7 @@ import {
   updateAgent,
   deleteAgent,
   getDefaultAgent,
+  getDefaultAgentId,
   setDefaultAgent,
   listAgentTemplates,
   getAgentTemplate,
@@ -90,7 +96,7 @@ import {
   // Workspace Resources module
   getExecutors,
   getWorkspaceModels,
-  getAgents as getWorkspaceAgents,
+  getWorkspaceAgents,
   getAgentDetails,
   getChatList,
 
@@ -272,7 +278,6 @@ import type {
   SpawnAgentRequest,
   SSEMessageEvent,
   ExecutorType,
-  BackgroundTask,
   FileSession,
   SessionMessage,
   UIMessage,
@@ -285,7 +290,6 @@ import type {
   UpdateAgentOptions,
   DefaultAgentResponse,
   AgentTemplate,
-  ListTemplatesResponse,
   ModelResponse,
   CreateModelOptions,
   ModelUpdate,
@@ -474,12 +478,17 @@ export class GatewayClient {
 
   /**
    * Get detailed diagnostics from Gateway
+   * Tests connectivity and available endpoints
    */
   async diagnose(): Promise<{
-    status: "healthy" | "degraded" | "unhealthy";
-    version: string;
-    uptime: number;
-    components: Record<string, { status: string; message?: string }>;
+    reachable: boolean;
+    healthCheck: boolean;
+    version: string | null;
+    service: string | null;
+    timestamp: string | null;
+    url: string;
+    endpoints: { path: string; available: boolean }[];
+    websockets: { path: string; available: boolean }[];
   }> {
     return diagnose(this.baseUrl);
   }
@@ -498,21 +507,14 @@ export class GatewayClient {
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
     this.cancelStream();
-
     this.abortController = new AbortController();
 
-    const response = await spawnAgentStream(
+    yield* spawnAgentStream(
       this.baseUrl,
       executorType,
       request,
       this.abortController.signal
     );
-
-    if (!response.body) {
-      throw new GatewayError("No response body for SSE stream");
-    }
-
-    yield* this.parseSSEStream(response.body);
   }
 
   /**
@@ -526,10 +528,9 @@ export class GatewayClient {
   ): AsyncGenerator<SSEMessageEvent, void, unknown> {
     // Cancel any existing stream
     this.cancelStream();
-
     this.abortController = new AbortController();
 
-    const response = await continueSessionStream(
+    yield* continueSessionStream(
       this.baseUrl,
       executorType,
       sessionId,
@@ -537,51 +538,6 @@ export class GatewayClient {
       resetToMessageId,
       this.abortController.signal
     );
-
-    if (!response.body) {
-      throw new GatewayError("No response body for SSE stream");
-    }
-
-    yield* this.parseSSEStream(response.body);
-  }
-
-  /**
-   * Parse SSE stream from response body
-   */
-  private async *parseSSEStream(
-    body: ReadableStream<Uint8Array>
-  ): AsyncGenerator<SSEMessageEvent, void, unknown> {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") {
-              return;
-            }
-            try {
-              const event = JSON.parse(data) as SSEMessageEvent;
-              yield event;
-            } catch {
-              console.warn("[GatewayClient] Invalid SSE data:", data);
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
   }
 
   /**
@@ -590,7 +546,7 @@ export class GatewayClient {
   async stopAgent(
     executorType: ExecutorType,
     sessionId: string
-  ): Promise<{ success: boolean }> {
+  ): Promise<void> {
     // Cancel any ongoing stream
     this.cancelStream();
     return stopAgent(this.baseUrl, executorType, sessionId);
@@ -619,31 +575,10 @@ export class GatewayClient {
   // ==========================================================================
 
   /**
-   * List background tasks
-   */
-  async listBackgroundTasks(): Promise<BackgroundTask[]> {
-    return listBackgroundTasks(this.baseUrl);
-  }
-
-  /**
-   * Get background task by ID
-   */
-  async getBackgroundTask(taskId: string): Promise<BackgroundTask | null> {
-    return getBackgroundTask(this.baseUrl, taskId);
-  }
-
-  /**
    * Stop background task
    */
-  async stopBackgroundTask(taskId: string): Promise<{ success: boolean }> {
+  async stopBackgroundTask(taskId: string): Promise<{ success: boolean; taskId: string }> {
     return stopBackgroundTask(this.baseUrl, taskId);
-  }
-
-  /**
-   * Delete background task
-   */
-  async deleteBackgroundTask(taskId: string): Promise<void> {
-    return deleteBackgroundTask(this.baseUrl, taskId);
   }
 
   // ==========================================================================
@@ -741,14 +676,99 @@ export class GatewayClient {
   async getExecutorSessionMessages(
     executorType: string,
     sessionId: string,
-    workspacePath: string
+    workspacePath: string,
+    limit?: number
   ): Promise<ExecutorUIMessage[]> {
     return getExecutorSessionMessages(
       this.baseUrl,
       executorType,
       sessionId,
-      workspacePath
+      workspacePath,
+      limit
     );
+  }
+
+  /**
+   * Discover executor sessions (backward compatibility)
+   */
+  async discoverExecutorSessions(
+    executorType: string,
+    workspacePath: string
+  ): Promise<ExecutorSession[]> {
+    return discoverExecutorSessions(this.baseUrl, executorType, workspacePath);
+  }
+
+  // ==========================================================================
+  // Backward Compatibility Methods (for old gateway API)
+  // ==========================================================================
+
+  /**
+   * List sessions for an agent (backward compatibility)
+   */
+  async listAgentSessions(
+    agentId: string,
+    workspacePath?: string
+  ): Promise<FileSession[]> {
+    return listAgentSessions(this.baseUrl, agentId, workspacePath);
+  }
+
+  /**
+   * Create agent session (backward compatibility)
+   */
+  async createAgentSession(
+    agentId: string,
+    request?: CreateFileSessionRequest
+  ): Promise<FileSession> {
+    return createAgentSession(this.baseUrl, agentId, request);
+  }
+
+  /**
+   * Get agent session (backward compatibility)
+   */
+  async getAgentSession(
+    agentId: string,
+    sessionId: string
+  ): Promise<FileSession> {
+    return getAgentSession(this.baseUrl, agentId, sessionId);
+  }
+
+  /**
+   * Delete agent session (backward compatibility)
+   */
+  async deleteAgentSession(agentId: string, sessionId: string): Promise<void> {
+    return deleteAgentSession(this.baseUrl, agentId, sessionId);
+  }
+
+  /**
+   * List session messages (backward compatibility)
+   */
+  async listSessionMessages(
+    agentId: string,
+    sessionId: string
+  ): Promise<SessionMessage[]> {
+    return listSessionMessages(this.baseUrl, agentId, sessionId);
+  }
+
+  /**
+   * List session UI messages (backward compatibility)
+   */
+  async listSessionUIMessages(
+    agentId: string,
+    sessionId: string,
+    workspacePath?: string
+  ): Promise<UIMessage[]> {
+    return listSessionUIMessages(this.baseUrl, agentId, sessionId, workspacePath);
+  }
+
+  /**
+   * Append session message (backward compatibility)
+   */
+  async appendSessionMessage(
+    agentId: string,
+    sessionId: string,
+    message: AppendMessageRequest
+  ): Promise<SessionMessage> {
+    return appendSessionMessage(this.baseUrl, agentId, sessionId, message);
   }
 
   // ==========================================================================
@@ -758,8 +778,11 @@ export class GatewayClient {
   /**
    * List all agents
    */
-  async listAgents(workspacePath?: string): Promise<AgentResponse[]> {
-    return listAgents(this.baseUrl, workspacePath);
+  async listAgents(options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }): Promise<AgentResponse[]> {
+    return listAgents(this.baseUrl, options);
   }
 
   /**
@@ -767,9 +790,9 @@ export class GatewayClient {
    */
   async getAgent(
     agentId: string,
-    workspacePath?: string
-  ): Promise<AgentResponse | null> {
-    return getAgent(this.baseUrl, agentId, workspacePath);
+    options?: { workspacePath?: string }
+  ): Promise<AgentResponse> {
+    return getAgent(this.baseUrl, agentId, options);
   }
 
   /**
@@ -792,8 +815,8 @@ export class GatewayClient {
   /**
    * Delete agent
    */
-  async deleteAgent(agentId: string, workspacePath?: string): Promise<void> {
-    return deleteAgent(this.baseUrl, agentId, workspacePath);
+  async deleteAgent(agentId: string, options?: { workspacePath?: string }): Promise<void> {
+    return deleteAgent(this.baseUrl, agentId, options);
   }
 
   /**
@@ -811,10 +834,18 @@ export class GatewayClient {
   }
 
   /**
+   * Get default agent ID (compatibility method)
+   */
+  async getDefaultAgentId(): Promise<string | null> {
+    return getDefaultAgentId(this.baseUrl);
+  }
+
+  /**
    * List agent templates
    */
-  async listAgentTemplates(): Promise<ListTemplatesResponse> {
-    return listAgentTemplates(this.baseUrl);
+  async listAgentTemplates(): Promise<AgentTemplate[]> {
+    const response = await listAgentTemplates(this.baseUrl);
+    return response.templates;
   }
 
   /**
@@ -883,14 +914,14 @@ export class GatewayClient {
   /**
    * Enable model
    */
-  async enableModel(modelId: string): Promise<ModelResponse> {
+  async enableModel(modelId: string): Promise<void> {
     return enableModel(this.baseUrl, modelId);
   }
 
   /**
    * Disable model
    */
-  async disableModel(modelId: string): Promise<ModelResponse> {
+  async disableModel(modelId: string): Promise<void> {
     return disableModel(this.baseUrl, modelId);
   }
 
@@ -1060,15 +1091,15 @@ export class GatewayClient {
   /**
    * Get active workspace
    */
-  async getActiveWorkspace(): Promise<WorkspaceResponse | null> {
+  async getActiveWorkspace(): Promise<{ active_workspace: WorkspaceResponse | null }> {
     return getActiveWorkspace(this.baseUrl);
   }
 
   /**
    * Set active workspace
    */
-  async setActiveWorkspace(workspaceId: string): Promise<void> {
-    return setActiveWorkspace(this.baseUrl, workspaceId);
+  async setActiveWorkspace(options: { workspaceId?: string; path?: string }): Promise<WorkspaceResponse> {
+    return setActiveWorkspace(this.baseUrl, options);
   }
 
   /**
@@ -1085,27 +1116,26 @@ export class GatewayClient {
   /**
    * Get executors for a workspace
    */
-  async getExecutors(workspacePath: string): Promise<ExecutorsResponse> {
-    return getExecutors(this.baseUrl, workspacePath);
+  async getExecutors(options?: { workspacePath?: string; includeGlobal?: boolean }): Promise<ExecutorsResponse> {
+    return getExecutors(this.baseUrl, options);
   }
 
   /**
    * Get models for a workspace
    */
   async getWorkspaceModels(
-    workspacePath: string
+    options?: { workspacePath?: string; includeGlobal?: boolean; includeProviderPredefined?: boolean }
   ): Promise<WorkspaceModelsResponse> {
-    return getWorkspaceModels(this.baseUrl, workspacePath);
+    return getWorkspaceModels(this.baseUrl, options);
   }
 
   /**
    * Get agents for a workspace
    */
   async getWorkspaceAgents(
-    workspacePath: string,
-    includeGlobal = true
+    options?: { workspacePath?: string; includeGlobal?: boolean }
   ): Promise<AgentsResponse> {
-    return getWorkspaceAgents(this.baseUrl, workspacePath, includeGlobal);
+    return getWorkspaceAgents(this.baseUrl, options);
   }
 
   /**
@@ -1119,10 +1149,9 @@ export class GatewayClient {
    * Get aggregated chat list for workspace
    */
   async getChatList(
-    workspacePath: string,
-    includeGlobal = true
+    options?: { workspacePath?: string; includeGlobal?: boolean }
   ): Promise<ChatListResponse> {
-    return getChatList(this.baseUrl, workspacePath, includeGlobal);
+    return getChatList(this.baseUrl, options);
   }
 
   // ==========================================================================
@@ -1140,18 +1169,20 @@ export class GatewayClient {
    * Get group chat by ID
    */
   async getGroupChat(
-    groupChatId: string
+    groupChatId: string,
+    workspacePath: string
   ): Promise<GroupChatWithMembers | null> {
-    return getGroupChat(this.baseUrl, groupChatId);
+    return getGroupChat(this.baseUrl, groupChatId, workspacePath);
   }
 
   /**
    * Create group chat
    */
   async createGroupChat(
-    request: CreateGroupChatRequest
+    request: CreateGroupChatRequest,
+    workspacePath?: string
   ): Promise<GroupChatWithMembers> {
-    return createGroupChat(this.baseUrl, request);
+    return createGroupChat(this.baseUrl, request, workspacePath);
   }
 
   /**
@@ -1159,16 +1190,20 @@ export class GatewayClient {
    */
   async updateGroupChat(
     groupChatId: string,
+    workspacePath: string,
     request: UpdateGroupChatRequest
   ): Promise<GroupChat> {
-    return updateGroupChat(this.baseUrl, groupChatId, request);
+    return updateGroupChat(this.baseUrl, groupChatId, workspacePath, request);
   }
 
   /**
    * Delete group chat
    */
-  async deleteGroupChat(groupChatId: string): Promise<void> {
-    return deleteGroupChat(this.baseUrl, groupChatId);
+  async deleteGroupChat(
+    groupChatId: string,
+    workspacePath: string
+  ): Promise<void> {
+    return deleteGroupChat(this.baseUrl, groupChatId, workspacePath);
   }
 
   /**
@@ -1176,25 +1211,27 @@ export class GatewayClient {
    */
   async addMember(
     groupChatId: string,
+    workspacePath: string,
     request: AddMemberRequest
   ): Promise<GroupChatMember> {
-    return addMember(this.baseUrl, groupChatId, request);
+    return addMember(this.baseUrl, groupChatId, workspacePath, request);
   }
 
   /**
    * Remove member from group chat
    */
-  async removeMember(groupChatId: string, memberId: string): Promise<void> {
-    return removeMember(this.baseUrl, groupChatId, memberId);
+  async removeMember(groupChatId: string, workspacePath: string, memberId: string): Promise<void> {
+    return removeMember(this.baseUrl, groupChatId, workspacePath, memberId);
   }
 
   /**
    * List sessions for group chat
    */
   async listGroupChatSessions(
-    groupChatId: string
+    groupChatId: string,
+    workspacePath: string
   ): Promise<GroupChatSession[]> {
-    return listGroupChatSessions(this.baseUrl, groupChatId);
+    return listGroupChatSessions(this.baseUrl, groupChatId, workspacePath);
   }
 
   /**
@@ -1202,9 +1239,10 @@ export class GatewayClient {
    */
   async getGroupChatSession(
     groupChatId: string,
-    sessionId: string
+    sessionId: string,
+    workspacePath: string
   ): Promise<GroupChatSession | null> {
-    return getGroupChatSession(this.baseUrl, groupChatId, sessionId);
+    return getGroupChatSession(this.baseUrl, groupChatId, sessionId, workspacePath);
   }
 
   /**
@@ -1212,9 +1250,10 @@ export class GatewayClient {
    */
   async createGroupChatSession(
     groupChatId: string,
+    workspacePath: string,
     request: CreateGroupChatSessionRequest
   ): Promise<GroupChatSession> {
-    return createGroupChatSession(this.baseUrl, groupChatId, request);
+    return createGroupChatSession(this.baseUrl, groupChatId, workspacePath, request);
   }
 
   /**
@@ -1222,9 +1261,10 @@ export class GatewayClient {
    */
   async archiveGroupChatSession(
     groupChatId: string,
-    sessionId: string
+    sessionId: string,
+    workspacePath: string
   ): Promise<GroupChatSession> {
-    return archiveGroupChatSession(this.baseUrl, groupChatId, sessionId);
+    return archiveGroupChatSession(this.baseUrl, groupChatId, sessionId, workspacePath);
   }
 
   /**
@@ -1233,9 +1273,10 @@ export class GatewayClient {
   async listGroupChatMessages(
     groupChatId: string,
     sessionId: string,
+    workspacePath: string,
     params?: ListGroupChatMessagesParams
   ): Promise<ListGroupChatMessagesResponse | ListAgentMessagesResponse> {
-    return listGroupChatMessages(this.baseUrl, groupChatId, sessionId, params);
+    return listGroupChatMessages(this.baseUrl, groupChatId, sessionId, workspacePath, params);
   }
 
   /**
@@ -1244,9 +1285,10 @@ export class GatewayClient {
   async sendGroupChatMessage(
     groupChatId: string,
     sessionId: string,
+    workspacePath: string,
     request: SendGroupChatMessageRequest
   ): Promise<SendGroupChatMessageResponse> {
-    return sendGroupChatMessage(this.baseUrl, groupChatId, sessionId, request);
+    return sendGroupChatMessage(this.baseUrl, groupChatId, sessionId, workspacePath, request);
   }
 
   // ==========================================================================
@@ -1257,60 +1299,66 @@ export class GatewayClient {
    * Get MCP servers for workspace
    */
   async getMcpServers(
-    workspacePath: string
+    workspacePath: string | undefined,
+    executorType: string
   ): Promise<WorkspaceMcpServersResponse> {
-    return getMcpServers(this.baseUrl, workspacePath);
+    return getMcpServers(this.baseUrl, workspacePath, executorType);
   }
 
   /**
    * Add MCP server to workspace
    */
   async addMcpServer(
-    workspacePath: string,
+    workspacePath: string | undefined,
+    executorType: string,
     server: WorkspaceMcpServerConfig
   ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-    return addMcpServer(this.baseUrl, workspacePath, server);
+    return addMcpServer(this.baseUrl, workspacePath, executorType, server);
   }
 
   /**
    * Update MCP server in workspace
    */
   async updateMcpServer(
-    workspacePath: string,
+    workspacePath: string | undefined,
+    executorType: string,
     serverName: string,
     updates: Partial<WorkspaceMcpServerConfig>
-  ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-    return updateMcpServer(this.baseUrl, workspacePath, serverName, updates);
+  ): Promise<{ success: boolean }> {
+    return updateMcpServer(this.baseUrl, workspacePath, executorType, serverName, updates);
   }
 
   /**
    * Delete MCP server from workspace
    */
   async deleteMcpServer(
-    workspacePath: string,
+    workspacePath: string | undefined,
+    executorType: string,
     serverName: string
   ): Promise<{ success: boolean; deleted: string }> {
-    return deleteMcpServer(this.baseUrl, workspacePath, serverName);
+    return deleteMcpServer(this.baseUrl, workspacePath, executorType, serverName);
   }
 
   /**
    * Enable MCP server
    */
   async enableMcpServer(
-    workspacePath: string,
+    workspacePath: string | undefined,
+    executorType: string,
     serverName: string
   ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-    return enableMcpServer(this.baseUrl, workspacePath, serverName);
+    return enableMcpServer(this.baseUrl, workspacePath, executorType, serverName);
   }
 
   /**
    * Disable MCP server
    */
   async disableMcpServer(
-    workspacePath: string,
+    workspacePath: string | undefined,
+    executorType: string,
     serverName: string
   ): Promise<{ success: boolean; server: WorkspaceMcpServerConfig }> {
-    return disableMcpServer(this.baseUrl, workspacePath, serverName);
+    return disableMcpServer(this.baseUrl, workspacePath, executorType, serverName);
   }
 
   // ==========================================================================

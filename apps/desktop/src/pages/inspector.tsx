@@ -23,6 +23,7 @@ import {
   Settings2,
   WrapText,
   AlignJustify,
+  AppWindow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -696,6 +697,10 @@ export function InspectorPage() {
                   <Settings2 className="w-4 h-4 mr-2" />
                   {t("inspector.metadata")}
                 </TabsTrigger>
+                <TabsTrigger value="apps" disabled={!hasTools}>
+                  <AppWindow className="w-4 h-4 mr-2" />
+                  {t("inspector.apps", "Apps")}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="tools" className="mt-0">
@@ -766,6 +771,13 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="metadata"
+                />
+              </TabsContent>
+              <TabsContent value="apps" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="apps"
                 />
               </TabsContent>
             </Tabs>

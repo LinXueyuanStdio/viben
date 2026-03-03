@@ -19,20 +19,32 @@ import type {
 
 /**
  * Get executors for a workspace
+ * Updated to match original gateway.ts endpoint
  */
 export async function getExecutors(
   baseUrl: string,
-  workspacePath: string
+  options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }
 ): Promise<ExecutorsResponse> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (options?.workspacePath) {
+    params.set("workspace_path", options.workspacePath);
+  }
+  if (options?.includeGlobal !== undefined) {
+    params.set("include_global", String(options.includeGlobal));
+  }
 
-  const response = await fetch(
-    `${baseUrl}/api/workspace/executors?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/executors?${queryString}`
+    : `${baseUrl}/api/executors`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -51,25 +63,42 @@ export async function getExecutors(
 
 /**
  * Get models for a workspace
+ * Updated to match original gateway.ts endpoint and signature
  */
 export async function getWorkspaceModels(
   baseUrl: string,
-  workspacePath: string
+  options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+    /** Include predefined models for reference (used in Settings > Models) */
+    includeProviderPredefined?: boolean;
+  }
 ): Promise<WorkspaceModelsResponse> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
+  const params = new URLSearchParams();
+  if (options?.workspacePath) {
+    params.set("workspace_path", options.workspacePath);
+  }
+  if (options?.includeGlobal !== undefined) {
+    params.set("include_global", String(options.includeGlobal));
+  }
+  if (options?.includeProviderPredefined) {
+    params.set("include_provider_predefined", "true");
+  }
 
-  const response = await fetch(
-    `${baseUrl}/api/workspace/models?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/models?${queryString}`
+    : `${baseUrl}/api/models`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
     throw new GatewayError(
-      `Failed to get workspace models: ${errorMessage}`,
+      `Failed to get models: ${errorMessage}`,
       response.status
     );
   }
@@ -83,22 +112,32 @@ export async function getWorkspaceModels(
 
 /**
  * Get agents for a workspace
+ * Updated to match original gateway.ts endpoint and signature
  */
-export async function getAgents(
+export async function getWorkspaceAgents(
   baseUrl: string,
-  workspacePath: string,
-  includeGlobal = true
+  options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }
 ): Promise<AgentsResponse> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
-  if (includeGlobal) params.set("include_global", "true");
+  const params = new URLSearchParams();
+  if (options?.workspacePath) {
+    params.set("workspace_path", options.workspacePath);
+  }
+  if (options?.includeGlobal !== undefined) {
+    params.set("include_global", String(options.includeGlobal));
+  }
 
-  const response = await fetch(
-    `${baseUrl}/api/workspace/agents?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/agents?${queryString}`
+    : `${baseUrl}/api/agents`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
@@ -141,28 +180,77 @@ export async function getAgentDetails(
   return response.json();
 }
 
+/**
+ * Get a single agent by ID
+ * Added to match original gateway.ts functionality
+ */
+export async function getAgentById(
+  baseUrl: string,
+  agentId: string,
+  workspacePath?: string
+): Promise<AgentDetails | null> {
+  const params = new URLSearchParams();
+  if (workspacePath) {
+    params.set("workspace_path", workspacePath);
+  }
+
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/agents/${encodeURIComponent(agentId)}?${queryString}`
+    : `${baseUrl}/api/agents/${encodeURIComponent(agentId)}`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to get agent: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
 // ============================================================================
 // Chat List (Aggregated sidebar list)
 // ============================================================================
 
 /**
  * Get aggregated chat list for workspace
+ * Updated to match original gateway.js endpoint and signature
  */
 export async function getChatList(
   baseUrl: string,
-  workspacePath: string,
-  includeGlobal = true
+  options?: {
+    workspacePath?: string;
+    includeGlobal?: boolean;
+  }
 ): Promise<ChatListResponse> {
-  const params = new URLSearchParams({ workspace_path: workspacePath });
-  if (includeGlobal) params.set("include_global", "true");
+  const params = new URLSearchParams();
+  if (options?.workspacePath) {
+    params.set("workspace_path", options.workspacePath);
+  }
+  if (options?.includeGlobal !== undefined) {
+    params.set("include_global", String(options.includeGlobal));
+  }
 
-  const response = await fetch(
-    `${baseUrl}/api/workspace/chat-list?${params.toString()}`,
-    {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    }
-  );
+  const queryString = params.toString();
+  const url = queryString
+    ? `${baseUrl}/api/chat-list?${queryString}`
+    : `${baseUrl}/api/chat-list`;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
 
   if (!response.ok) {
     const errorMessage = await parseErrorMessage(response);
