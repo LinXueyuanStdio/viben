@@ -234,6 +234,7 @@ export interface McpServerCapabilities {
   prompts?: Record<string, unknown>;
   roots?: Record<string, unknown>;
   sampling?: Record<string, unknown>;
+  logging?: Record<string, unknown>;
 }
 
 // API Log types
