@@ -17,11 +17,15 @@ import {
   RefreshCw,
   ExternalLink,
   CircleAlert,
+  Globe,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const SOCKET_PATH = "/tmp/viben-mcp.sock";
+const GATEWAY_PORT = 18790;
 const isDev = import.meta.env.DEV;
 
 // List of 10 tools provided by tauri-plugin-mcp-server
@@ -44,6 +48,7 @@ type SocketStatus = "checking" | "connected" | "disconnected";
 export function PageDebugPage() {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
+  const [copiedHttp, setCopiedHttp] = useState(false);
   const [copiedTest, setCopiedTest] = useState(false);
   const [socketStatus, setSocketStatus] = useState<SocketStatus>("checking");
   const [isChecking, setIsChecking] = useState(false);
@@ -52,7 +57,19 @@ export function PageDebugPage() {
   const checkSocketStatus = async () => {
     setIsChecking(true);
     try {
-      // Try to check if the socket file exists using Tauri's fs plugin
+      // Try to check via Gateway API first
+      const response = await fetch(`http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setSocketStatus(data.available && data.connected ? "connected" : "disconnected");
+        return;
+      }
+    } catch {
+      // Gateway not available, try direct file check
+    }
+
+    try {
+      // Fallback: check if the socket file exists using Tauri's fs plugin
       const { exists } = await import("@tauri-apps/plugin-fs");
       const socketExists = await exists(SOCKET_PATH);
       setSocketStatus(socketExists ? "connected" : "disconnected");
@@ -73,9 +90,28 @@ export function PageDebugPage() {
     }
   }, []);
 
-  // MCP client configuration for AI tools (Claude Code, Cursor, etc.)
-  // Note: Using "node" instead of "npx" due to missing shebang in the package
-  const mcpConfig = {
+  // HTTP/SSE config (recommended - works with Gateway)
+  const httpMcpConfig = {
+    mcpServers: {
+      "viben-page-debug": {
+        transport: "sse",
+        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/sse`,
+      },
+    },
+  };
+
+  // Alternative: streamable-http config
+  const httpStreamConfig = {
+    mcpServers: {
+      "viben-page-debug": {
+        transport: "http",
+        url: `http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/mcp`,
+      },
+    },
+  };
+
+  // Legacy stdio config (requires npm package)
+  const stdioMcpConfig = {
     mcpServers: {
       "tauri-mcp": {
         command: "node",
@@ -88,7 +124,7 @@ export function PageDebugPage() {
   };
 
   // Test command to verify MCP server connection
-  const testCommand = `TAURI_MCP_IPC_PATH=${SOCKET_PATH} node node_modules/tauri-plugin-mcp-server/build/index.js`;
+  const testCommand = `curl -X GET http://127.0.0.1:${GATEWAY_PORT}/api/mcp/tauri/status`;
 
   const handleCopy = (
     textToCopy: string,
@@ -99,8 +135,8 @@ export function PageDebugPage() {
     setTimeout(() => setCopiedState(false), 2000);
   };
 
-  const copyConfig = () => handleCopy(JSON.stringify(mcpConfig, null, 2), setCopied);
-
+  const copyHttpConfig = () => handleCopy(JSON.stringify(httpMcpConfig, null, 2), setCopiedHttp);
+  const copyStdioConfig = () => handleCopy(JSON.stringify(stdioMcpConfig, null, 2), setCopied);
   const copyTestCommand = () => handleCopy(testCommand, setCopiedTest);
 
   // Show disabled message in production
@@ -179,9 +215,17 @@ export function PageDebugPage() {
             <RefreshCw className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`} />
           </Button>
         </div>
-        <div className="mt-3 text-sm text-muted-foreground">
-          <span className="font-medium">{t("pageDebug.socketPath")}: </span>
-          <code className="bg-muted px-2 py-0.5 rounded text-xs">{SOCKET_PATH}</code>
+        <div className="mt-3 space-y-1.5 text-sm text-muted-foreground">
+          <div>
+            <span className="font-medium">{t("pageDebug.socketPath")}: </span>
+            <code className="bg-muted px-2 py-0.5 rounded text-xs">{SOCKET_PATH}</code>
+          </div>
+          <div>
+            <span className="font-medium">{t("pageDebug.httpEndpoint")}: </span>
+            <code className="bg-muted px-2 py-0.5 rounded text-xs">
+              http://127.0.0.1:{GATEWAY_PORT}/api/mcp/tauri/sse
+            </code>
+          </div>
         </div>
       </div>
 
@@ -198,7 +242,7 @@ export function PageDebugPage() {
                 {t("pageDebug.setupDescription")}
               </p>
               <a
-                href="https://github.com/ArtificialDynasty/tauri-plugin-mcp"
+                href="https://github.com/P3GLEG/tauri-plugin-mcp"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-300 hover:underline"
@@ -239,23 +283,63 @@ export function PageDebugPage() {
 
       {/* AI Client Configuration */}
       <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-medium">{t("pageDebug.aiInstructions")}</h3>
-          <Button variant="ghost" size="sm" onClick={copyConfig}>
-            {copied ? (
-              <Check className="h-4 w-4 mr-2 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4 mr-2" />
-            )}
-            {t("pageDebug.copyConfig")}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground mb-2">
-          {t("pageDebug.configHint")}
-        </p>
-        <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
-          {JSON.stringify(mcpConfig, null, 2)}
-        </pre>
+        <h3 className="text-sm font-medium mb-3">{t("pageDebug.aiInstructions")}</h3>
+        <Tabs defaultValue="http" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="http" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              HTTP/SSE ({t("pageDebug.recommended")})
+            </TabsTrigger>
+            <TabsTrigger value="stdio" className="flex items-center gap-2">
+              <Server className="h-4 w-4" />
+              Stdio
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="http" className="space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t("pageDebug.httpConfigHint")}
+              </p>
+              <Button variant="ghost" size="sm" onClick={copyHttpConfig}>
+                {copiedHttp ? (
+                  <Check className="h-4 w-4 mr-2 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                {t("pageDebug.copyConfig")}
+              </Button>
+            </div>
+            <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
+              {JSON.stringify(httpMcpConfig, null, 2)}
+            </pre>
+            <p className="text-xs text-muted-foreground">
+              {t("pageDebug.httpNote")}
+            </p>
+          </TabsContent>
+
+          <TabsContent value="stdio" className="space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                {t("pageDebug.stdioConfigHint")}
+              </p>
+              <Button variant="ghost" size="sm" onClick={copyStdioConfig}>
+                {copied ? (
+                  <Check className="h-4 w-4 mr-2 text-green-600" />
+                ) : (
+                  <Copy className="h-4 w-4 mr-2" />
+                )}
+                {t("pageDebug.copyConfig")}
+              </Button>
+            </div>
+            <pre className="bg-muted rounded-lg p-4 text-sm overflow-x-auto">
+              {JSON.stringify(stdioMcpConfig, null, 2)}
+            </pre>
+            <p className="text-xs text-muted-foreground">
+              {t("pageDebug.stdioNote")}
+            </p>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Test Command */}
