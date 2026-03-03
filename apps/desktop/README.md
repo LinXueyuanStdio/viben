@@ -80,9 +80,47 @@ Viben 桌面应用程序，基于 Tauri 2 + React 19 + TypeScript 构建，提�
 
 ### 环境要求
 
-- Node.js 20+
-- pnpm 9+
-- Rust (用于 Tauri 构建)
+在开始开发之前,请确保你的系统满足以下要求:
+
+- **Node.js**: >= 20.0.0 ([下载安装](https://nodejs.org/))
+- **pnpm**: 9.15.0+ ([安装指南](https://pnpm.io/installation))
+- **Rust**: 最新稳定版本 (用于 Tauri 构建)
+  - 推荐使用 [rustup](https://rustup.rs/) 安装和管理 Rust 工具链
+  - 安装命令:
+    ```bash
+    # macOS / Linux
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+    # Windows
+    # 下载并运行 rustup-init.exe from https://rustup.rs/
+    ```
+  - 验证安装:
+    ```bash
+    rustc --version
+    cargo --version
+    ```
+
+#### 系统特定依赖
+
+**macOS**:
+- Xcode Command Line Tools: `xcode-select --install`
+
+**Linux (Debian/Ubuntu)**:
+```bash
+sudo apt update
+sudo apt install libwebkit2gtk-4.1-dev \
+  build-essential \
+  curl \
+  wget \
+  file \
+  libssl-dev \
+  libayatana-appindicator3-dev \
+  librsvg2-dev
+```
+
+**Windows**:
+- Microsoft Visual Studio C++ Build Tools
+- WebView2 (通常 Windows 11 自带)
 
 ### 安装依赖
 
