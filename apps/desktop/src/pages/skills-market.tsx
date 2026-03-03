@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Loader2,
   RefreshCw,
@@ -31,46 +31,16 @@ import { cn } from "@/lib/utils";
 import { downloadAndInstallSkill } from "@/lib/skill-installer";
 import { toast } from "@/hooks/use-toast";
 
-// Check if user prefers reduced motion
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.06,
-      delayChildren: prefersReducedMotion ? 0 : 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 12,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.4,
-      ease: easeOutExpo,
-    },
-  },
-};
 
 type ViewMode = "grid" | "list";
 type SortOption = "latest" | "popular" | "downloads";
 
 export function SkillsMarketPage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [mounted, setMounted] = useState(false);
 
   // View and filter state
@@ -133,6 +103,33 @@ export function SkillsMarketPage() {
     if (!selectedType) return displayedPackages;
     return displayedPackages.filter((pkg) => pkg.skillType === selectedType);
   }, [displayedPackages, selectedType]);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.06,
+        delayChildren: prefersReducedMotion ? 0 : 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 12,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.4,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   useEffect(() => {
     setMounted(true);
