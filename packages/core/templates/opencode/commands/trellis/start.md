@@ -32,7 +32,7 @@ cat .viben/workflow.md
 ### Step 2: Get Current Context
 
 ```bash
-python3 ./.viben/scripts/get_context.py
+viben team context
 ```
 
 This shows: developer identity, git status, current task (if any), active tasks.
@@ -136,7 +136,7 @@ Quick confirm:
 **Step 2: Create Task Directory** `[AI]`
 
 ```bash
-TASK_DIR=$(python3 ./.viben/scripts/task.py create "<title>" --slug <name>)
+viben task create "<title>" --slug <name>
 ```
 
 **Step 3: Write PRD** `[AI]`
@@ -218,7 +218,7 @@ Task(
 Initialize default context:
 
 ```bash
-python3 ./.viben/scripts/task.py init-context "$TASK_DIR" <type>
+viben task init-context <task-name> --type <type>
 # type: backend | frontend | fullstack
 ```
 
@@ -226,14 +226,13 @@ Add code-spec files found by Research Agent:
 
 ```bash
 # For each relevant code-spec and code pattern:
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
+viben task add-context <task-name> "<path>" --reason "<reason>"
 ```
 
 **Step 7: Activate Task** `[AI]`
 
 ```bash
-python3 ./.viben/scripts/task.py start "$TASK_DIR"
+viben task start <task-name>
 ```
 
 This sets `.current-task` so hooks can inject context.
@@ -285,7 +284,7 @@ Task(
 
 ## Continuing Existing Task
 
-If `get_context.py` shows a current task:
+If `viben team context` shows a current task:
 
 1. Read the task's `prd.md` to understand the goal
 2. Check `task.json` for current status and phase
@@ -307,17 +306,17 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 | `/viben:finish-work` | Before committing changes |
 | `/viben:record-session` | After completing a task |
 
-### AI Scripts `[AI]`
+### AI Commands `[AI]`
 
-| Script | Purpose |
-|--------|---------|
-| `python3 ./.viben/scripts/get_context.py` | Get session context |
-| `python3 ./.viben/scripts/task.py create` | Create task directory |
-| `python3 ./.viben/scripts/task.py init-context` | Initialize jsonl files |
-| `python3 ./.viben/scripts/task.py add-context` | Add code-spec/context file to jsonl |
-| `python3 ./.viben/scripts/task.py start` | Set current task |
-| `python3 ./.viben/scripts/task.py finish` | Clear current task |
-| `python3 ./.viben/scripts/task.py archive` | Archive completed task |
+| Command | Purpose |
+|---------|---------|
+| `viben team context` | Get session context |
+| `viben task create` | Create task directory |
+| `viben task init-context` | Initialize jsonl files |
+| `viben task add-context` | Add code-spec/context file to jsonl |
+| `viben task start` | Set current task |
+| `viben task finish` | Clear current task |
+| `viben task archive` | Archive completed task |
 
 ### Sub Agents `[AI]`
 

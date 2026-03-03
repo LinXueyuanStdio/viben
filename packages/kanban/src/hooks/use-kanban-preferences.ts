@@ -20,6 +20,10 @@ export interface KanbanPreferences {
   columnOrder: string[];
   hiddenColumns: string[];
 
+  // Column resize state
+  columnWidths: Record<string, number>;
+  lockedColumns: string[];
+
   // Panel state
   detailPanelWidth: number;
   showStats: boolean;
@@ -35,6 +39,8 @@ const DEFAULT_PREFERENCES: KanbanPreferences = {
   collapsedColumns: [],
   columnOrder: [],
   hiddenColumns: [],
+  columnWidths: {},
+  lockedColumns: [],
   detailPanelWidth: 30,
   showStats: false,
   savedFilters: [],

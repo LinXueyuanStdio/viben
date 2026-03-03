@@ -2,12 +2,13 @@ import { useEffect, useRef, useCallback, useMemo } from "react";
 import { getGatewayClient, type McpServerPortStatus } from "@/lib/gateway";
 import PQueue from "p-queue";
 import { useAppStore } from "@/stores";
+import { useMcpWebSocket } from "./use-mcp-websocket";
 import type { McpServerStatus, McpServerStatusInfo } from "@/types";
 
 // Configuration constants
-const POLL_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes (reduced frequency)
+const FALLBACK_POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes (only when WebSocket disconnected)
 const CACHE_TTL_MS = 60 * 1000; // 1 minute cache TTL
-const DEBOUNCE_MS = 100; // 100ms debounce for page enter (reduced for faster response)
+const DEBOUNCE_MS = 100; // 100ms debounce for page enter
 const MAX_CONCURRENT_CHECKS = 2; // Max concurrent process checks
 
 export type { McpServerPortStatus };
@@ -27,7 +28,9 @@ const pendingChecks = new Map<string, Promise<McpServerStatusInfo>>();
 
 /**
  * Hook for monitoring MCP server status
- * Provides intelligent polling with caching and debouncing
+ *
+ * Uses WebSocket for real-time updates when connected.
+ * Falls back to polling (5-minute interval) when WebSocket is disconnected.
  */
 export function useMcpStatusMonitor() {
   const {
@@ -40,6 +43,12 @@ export function useMcpStatusMonitor() {
   const queue = useMemo(() => getQueue(), []);
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Subscribe to WebSocket for real-time updates
+  const { isConnected: wsConnected } = useMcpWebSocket({
+    enabled: true,
+    updateStore: true, // Automatically update store on WebSocket events
+  });
 
   /**
    * Check if a server status is still valid (within cache TTL)
@@ -215,7 +224,7 @@ export function useMcpStatusMonitor() {
   }, [mcpServers, isStatusValid, checkServer]);
 
   /**
-   * Start the periodic polling
+   * Start the periodic polling (fallback mode when WebSocket disconnected)
    */
   const startPolling = useCallback(() => {
     // Clear existing interval if any
@@ -223,14 +232,17 @@ export function useMcpStatusMonitor() {
       clearInterval(pollIntervalRef.current);
     }
 
-    // Start new polling interval
-    pollIntervalRef.current = setInterval(() => {
-      checkAllServers(false);
-    }, POLL_INTERVAL_MS);
+    // Only poll if WebSocket is not connected
+    if (!wsConnected) {
+      // Start new polling interval
+      pollIntervalRef.current = setInterval(() => {
+        checkAllServers(false);
+      }, FALLBACK_POLL_INTERVAL_MS);
 
-    // Do an immediate check
-    checkAllServers(false);
-  }, [checkAllServers]);
+      // Do an immediate check
+      checkAllServers(false);
+    }
+  }, [checkAllServers, wsConnected]);
 
   /**
    * Stop the periodic polling
@@ -289,6 +301,21 @@ export function useMcpStatusMonitor() {
     };
   }, [mcpServers, mcpServerStatuses]);
 
+  // Manage polling based on WebSocket connection status
+  useEffect(() => {
+    if (wsConnected) {
+      // WebSocket connected - stop polling
+      stopPolling();
+    } else {
+      // WebSocket disconnected - start fallback polling
+      startPolling();
+    }
+
+    return () => {
+      stopPolling();
+    };
+  }, [wsConnected, startPolling, stopPolling]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -315,6 +342,9 @@ export function useMcpStatusMonitor() {
 
     // Direct access to statuses
     statuses: mcpServerStatuses,
+
+    // WebSocket connection status
+    wsConnected,
   };
 }
 
@@ -324,7 +354,7 @@ export function useMcpStatusMonitor() {
  */
 export function useOnPageEnter(options: { enabled?: boolean; forceCheck?: boolean } = {}) {
   const { enabled = true, forceCheck = false } = options;
-  const { triggerCheck, startPolling, stopPolling } = useMcpStatusMonitor();
+  const { triggerCheck, wsConnected } = useMcpStatusMonitor();
   const hasTriggeredRef = useRef(false);
 
   useEffect(() => {
@@ -337,15 +367,12 @@ export function useOnPageEnter(options: { enabled?: boolean; forceCheck?: boolea
       triggerCheck(forceCheck);
     }
 
-    // Start polling while on this page
-    startPolling();
+    // No need to start polling here - useMcpStatusMonitor handles it
 
-    // Cleanup: stop polling when leaving the page
     return () => {
       hasTriggeredRef.current = false;
-      stopPolling();
     };
-  }, [enabled, forceCheck, triggerCheck, startPolling, stopPolling]);
+  }, [enabled, forceCheck, triggerCheck, wsConnected]);
 }
 
 /**

@@ -58,7 +58,9 @@ import {
   appendToJsonl,
   jsonlEntryExists,
   runGitCommand,
+  getJournalInfo,
   DIR_VIBEN,
+  DIR_WORKSPACE,
   DIR_TASKS,
   DIR_SPEC,
   FILE_TASK_JSON,
@@ -82,6 +84,8 @@ import {
   type AgentRegistryEntry,
 } from "../lib/viben-workspace";
 
+import type { UnifiedTask } from "../../services/task-service";
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -92,31 +96,11 @@ const VIBEN_DIR = ".viben";
 // Types
 // =============================================================================
 
-interface TaskJson {
-  id: string;
-  name: string;
-  title: string;
-  description?: string;
-  status: string;
-  dev_type?: string;
-  scope?: string;
-  priority: string;
-  creator?: string;
-  assignee?: string;
-  createdAt: string;
-  completedAt?: string;
-  branch?: string;
-  base_branch?: string;
-  worktree_path?: string;
-  current_phase: number;
-  next_action?: Array<{ phase: number; action: string }>;
-  commit?: string;
-  pr_url?: string;
-  subtasks?: string[];
-  relatedFiles?: string[];
-  notes?: string;
-  agent?: string;
-}
+/**
+ * Task JSON format stored in .viben/tasks/<date>-<slug>/task.json
+ * This is compatible with UnifiedTask from task-service.ts
+ */
+type TaskJson = UnifiedTask;
 
 interface ContextEntry {
   file: string;
@@ -190,15 +174,28 @@ function readTaskJson(taskDir: string): TaskJson | null {
 
 /**
  * Format task status for display
+ * Uses unified status values: backlog, queue, in_progress, ai_review, human_review, done, pr_created, error
  */
 function formatStatus(status: string): string {
   switch (status) {
-    case "completed":
+    // Completed states
+    case "done":
+    case "pr_created":
+    case "completed": // Legacy
       return chalk.green(status);
+    // In-progress states
     case "in_progress":
+    case "ai_review":
+    case "queue":
       return chalk.blue(status);
-    case "planning":
+    // Waiting states
+    case "backlog":
+    case "human_review":
+    case "planning": // Legacy
       return chalk.yellow(status);
+    // Error state
+    case "error":
+      return chalk.red(status);
     default:
       return chalk.gray(status);
   }
@@ -388,7 +385,7 @@ export function registerTaskCommand(program: Command): void {
           name: taskSlug,
           title: title,
           description: options.description || "",
-          status: "planning",
+          status: "backlog",
           dev_type: undefined,
           scope: undefined,
           priority: options.priority || "P2",
@@ -743,7 +740,7 @@ export function registerTaskCommand(program: Command): void {
         if (existsSync(taskJsonPath)) {
           const taskData = readTaskJsonFromWorkspace(taskDir);
           if (taskData) {
-            taskData.status = "completed";
+            taskData.status = "done";
             taskData.completedAt = today;
             writeTaskJson(taskDir, taskData);
           }
@@ -1348,7 +1345,7 @@ export function registerTaskCommand(program: Command): void {
           name: taskName,
           title: requirement,
           description: "",
-          status: "planning",
+          status: "backlog",
           dev_type: devType,
           scope: undefined,
           priority: "P2",
@@ -1736,7 +1733,7 @@ export function registerTaskCommand(program: Command): void {
         console.log(chalk.yellow("Updating task status..."));
         if (dryRun) {
           console.log("[DRY-RUN] Would update task.json:");
-          console.log("  status: completed");
+          console.log("  status: pr_created");
           console.log(`  pr_url: ${prUrl}`);
           console.log("  current_phase: (set to create-pr phase)");
         } else {
@@ -1746,11 +1743,11 @@ export function registerTaskCommand(program: Command): void {
             createPrPhase = 4; // Default fallback
           }
 
-          updateTaskField(taskDirPath, "status", "completed");
+          updateTaskField(taskDirPath, "status", "pr_created");
           updateTaskField(taskDirPath, "pr_url", prUrl);
           updateTaskField(taskDirPath, "current_phase", createPrPhase);
 
-          console.log(chalk.green(`Task status updated to 'completed', phase ${createPrPhase}`));
+          console.log(chalk.green(`Task status updated to 'pr_created', phase ${createPrPhase}`));
         }
 
         // In dry-run, reset staging area
@@ -1766,6 +1763,524 @@ export function registerTaskCommand(program: Command): void {
         handleCommandError(ctx, error);
       }
     });
+
+  // task context
+  taskCmd
+    .command("context")
+    .description("Get session context for AI agents")
+    .option("-j, --json", "Output in JSON format")
+    .action(async (options: { json?: boolean }) => {
+      const ctx = getContext(program);
+      if (options.json) {
+        ctx.json = true;
+      }
+
+      const cwd = process.cwd();
+
+      try {
+        const repoRoot = ensureVibenDirWithRoot(cwd);
+
+        if (ctx.json) {
+          const contextData = getContextJson(repoRoot);
+          output(ctx, successResponse(contextData), () => {
+            // JSON output handled by output()
+          });
+        } else {
+          const contextText = getContextText(repoRoot);
+          output(ctx, successResponse({ context: contextText }), () => {
+            console.log(contextText);
+          });
+        }
+      } catch (error) {
+        handleCommandError(ctx, error);
+      }
+    });
+
+  // task add-session
+  taskCmd
+    .command("add-session")
+    .description("Add a new session to journal file and update index.md")
+    .requiredOption("--title <title>", "Session title")
+    .option("--commit <hashes>", "Comma-separated commit hashes", "-")
+    .option("--summary <summary>", "Brief summary", "(Add summary)")
+    .option("--content <content>", "Detailed content", "(Add details)")
+    .action(
+      async (options: {
+        title: string;
+        commit: string;
+        summary: string;
+        content: string;
+      }) => {
+        const ctx = getContext(program);
+        const cwd = process.cwd();
+        const MAX_LINES = 2000;
+
+        try {
+          const repoRoot = ensureVibenDirWithRoot(cwd);
+          const developer = getDeveloper(repoRoot);
+
+          if (!developer) {
+            throw CliError.operationFailed(
+              "Add session",
+              "Developer not initialized. Run 'viben team init-developer' first."
+            );
+          }
+
+          // Get workspace directory for developer
+          const devDir = join(repoRoot, DIR_VIBEN, DIR_WORKSPACE, developer);
+          if (!existsSync(devDir)) {
+            throw CliError.operationFailed(
+              "Add session",
+              `Workspace directory not found: ${devDir}`
+            );
+          }
+
+          const indexPath = join(devDir, "index.md");
+          const today = getTodayDate();
+
+          // Get journal info
+          const journalInfo = getLatestJournalInfo(devDir);
+          const currentSession = getSessionNumberFromIndex(indexPath);
+          const newSession = currentSession + 1;
+
+          // Generate session content
+          const sessionContent = generateSessionMarkdown({
+            sessionNum: newSession,
+            title: options.title,
+            commit: options.commit,
+            summary: options.summary,
+            extraContent: options.content,
+            date: today,
+          });
+          const contentLines = sessionContent.split("\n").length;
+
+          // Output info
+          console.log(chalk.blue("========================================"));
+          console.log(chalk.blue("ADD SESSION"));
+          console.log(chalk.blue("========================================"));
+          console.log();
+          console.log(`Session: ${newSession}`);
+          console.log(`Title: ${options.title}`);
+          console.log(`Commit: ${options.commit}`);
+          console.log();
+          console.log(`Current journal file: journal-${journalInfo.number}.md`);
+          console.log(`Current lines: ${journalInfo.lines}`);
+          console.log(`New content lines: ${contentLines}`);
+          console.log(`Total after append: ${journalInfo.lines + contentLines}`);
+          console.log();
+
+          // Determine target file
+          let targetFile = journalInfo.file;
+          let targetNum = journalInfo.number;
+
+          // Check if need to rotate journal file
+          if (journalInfo.lines + contentLines > MAX_LINES) {
+            targetNum = journalInfo.number + 1;
+            console.log(
+              chalk.yellow(
+                `[!] Exceeds ${MAX_LINES} lines, creating journal-${targetNum}.md`
+              )
+            );
+            targetFile = createNewJournalFileSync(
+              devDir,
+              targetNum,
+              developer,
+              today,
+              journalInfo.number
+            );
+            console.log(`Created: ${targetFile}`);
+          }
+
+          // Create initial journal file if none exists
+          if (!targetFile) {
+            targetNum = 1;
+            targetFile = createNewJournalFileSync(devDir, targetNum, developer, today, 0);
+            console.log(`Created initial: ${targetFile}`);
+          }
+
+          // Append session content to target file
+          const existingContent = readFileSync(targetFile, "utf-8");
+          writeFileSync(targetFile, existingContent + sessionContent, "utf-8");
+          console.log(
+            chalk.green(`[OK] Appended session to ${basename(targetFile)}`)
+          );
+          console.log();
+
+          // Update index.md
+          console.log("Updating index.md...");
+          const activeFileName = `journal-${targetNum}.md`;
+          const updateSuccess = updateIndexWithNewSession({
+            indexPath,
+            devDir,
+            sessionNum: newSession,
+            title: options.title,
+            commit: options.commit,
+            activeFile: activeFileName,
+            date: today,
+          });
+
+          if (updateSuccess) {
+            console.log(chalk.green("[OK] Updated index.md successfully!"));
+          } else {
+            console.log(
+              chalk.yellow(
+                "[!] Could not update index.md (markers not found or file missing)"
+              )
+            );
+          }
+
+          console.log();
+          console.log(chalk.green("========================================"));
+          console.log(chalk.green(`[OK] Session ${newSession} added successfully!`));
+          console.log(chalk.green("========================================"));
+          console.log();
+          console.log("Files updated:");
+          console.log(`  - ${basename(targetFile)}`);
+          console.log("  - index.md");
+
+          output(
+            ctx,
+            successResponse({
+              session: newSession,
+              journalFile: activeFileName,
+              title: options.title,
+            }),
+            () => {
+              // Already printed above
+            }
+          );
+        } catch (error) {
+          handleCommandError(ctx, error);
+        }
+      }
+    );
+}
+
+// =============================================================================
+// Add Session Command Helpers
+// =============================================================================
+
+/**
+ * Get the latest journal file info from workspace directory
+ * Returns: { file: path | null, number: number, lines: number }
+ */
+function getLatestJournalInfo(devDir: string): {
+  file: string | null;
+  number: number;
+  lines: number;
+} {
+  if (!existsSync(devDir)) {
+    return { file: null, number: 0, lines: 0 };
+  }
+
+  let latestFile: string | null = null;
+  let latestNum = -1;
+
+  try {
+    const files = readdirSync(devDir);
+    for (const file of files) {
+      if (file.startsWith("journal-") && file.endsWith(".md")) {
+        const match = file.match(/journal-(\d+)\.md$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > latestNum) {
+            latestNum = num;
+            latestFile = join(devDir, file);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  if (latestFile) {
+    let lines = 0;
+    try {
+      const content = readFileSync(latestFile, "utf-8");
+      const splitLines = content.split("\n");
+      // Match Python's splitlines() behavior - don't count trailing empty line
+      if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
+        lines = splitLines.length - 1;
+      } else {
+        lines = splitLines.length;
+      }
+    } catch {
+      // Ignore errors
+    }
+    return { file: latestFile, number: latestNum, lines };
+  }
+
+  return { file: null, number: 0, lines: 0 };
+}
+
+/**
+ * Get current session number from index.md by parsing "Total Sessions" line
+ */
+function getSessionNumberFromIndex(indexPath: string): number {
+  if (!existsSync(indexPath)) {
+    return 0;
+  }
+
+  try {
+    const content = readFileSync(indexPath, "utf-8");
+    for (const line of content.split("\n")) {
+      if (line.includes("Total Sessions")) {
+        const match = line.match(/:\s*(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return 0;
+}
+
+/**
+ * Generate session content markdown
+ */
+function generateSessionMarkdown(params: {
+  sessionNum: number;
+  title: string;
+  commit: string;
+  summary: string;
+  extraContent: string;
+  date: string;
+}): string {
+  const { sessionNum, title, commit, summary, extraContent, date } = params;
+
+  let commitTable: string;
+  if (commit && commit !== "-") {
+    const lines = ["| Hash | Message |", "|------|---------|"];
+    for (const c of commit.split(",")) {
+      const trimmed = c.trim();
+      lines.push(`| \`${trimmed}\` | (see git log) |`);
+    }
+    commitTable = lines.join("\n");
+  } else {
+    commitTable = "(No commits - planning session)";
+  }
+
+  return `
+
+## Session ${sessionNum}: ${title}
+
+**Date**: ${date}
+**Task**: ${title}
+
+### Summary
+
+${summary}
+
+### Main Changes
+
+${extraContent}
+
+### Git Commits
+
+${commitTable}
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+`;
+}
+
+/**
+ * Create a new journal file when current one exceeds MAX_LINES
+ */
+function createNewJournalFileSync(
+  devDir: string,
+  number: number,
+  developer: string,
+  date: string,
+  prevNumber: number
+): string {
+  const newFilePath = join(devDir, `journal-${number}.md`);
+  const maxLines = 2000;
+
+  const content = `# Journal - ${developer} (Part ${number})
+
+> Continuation from \`journal-${prevNumber}.md\` (archived at ~${maxLines} lines)
+> Started: ${date}
+
+---
+
+`;
+
+  writeFileSync(newFilePath, content, "utf-8");
+  return newFilePath;
+}
+
+/**
+ * Count journal files and return markdown table rows
+ */
+function countJournalFilesTable(devDir: string, activeNum: number): string {
+  const activeFile = `journal-${activeNum}.md`;
+  const resultLines: string[] = [];
+
+  try {
+    const files = readdirSync(devDir)
+      .filter((f) => f.startsWith("journal-") && f.endsWith(".md"))
+      .sort((a, b) => {
+        const numA = parseInt(a.match(/(\d+)/)?.[1] ?? "0", 10);
+        const numB = parseInt(b.match(/(\d+)/)?.[1] ?? "0", 10);
+        return numB - numA; // Descending order
+      });
+
+    for (const filename of files) {
+      const filePath = join(devDir, filename);
+      let lines = 0;
+      try {
+        const content = readFileSync(filePath, "utf-8");
+        const splitLines = content.split("\n");
+        if (splitLines.length > 0 && splitLines[splitLines.length - 1] === "") {
+          lines = splitLines.length - 1;
+        } else {
+          lines = splitLines.length;
+        }
+      } catch {
+        // Ignore errors
+      }
+      const status = filename === activeFile ? "Active" : "Archived";
+      resultLines.push(`| \`${filename}\` | ~${lines} | ${status} |`);
+    }
+  } catch {
+    // Ignore errors
+  }
+
+  return resultLines.join("\n");
+}
+
+/**
+ * Update index.md with new session info
+ * Processes sections marked with @@@auto markers
+ */
+function updateIndexWithNewSession(params: {
+  indexPath: string;
+  devDir: string;
+  sessionNum: number;
+  title: string;
+  commit: string;
+  activeFile: string;
+  date: string;
+}): boolean {
+  const { indexPath, devDir, sessionNum, title, commit, activeFile, date } =
+    params;
+
+  if (!existsSync(indexPath)) {
+    return false;
+  }
+
+  // Format commit for display
+  let commitDisplay = "-";
+  if (commit && commit !== "-") {
+    commitDisplay = commit
+      .split(",")
+      .map((c) => `\`${c.trim()}\``)
+      .join(", ");
+  }
+
+  // Get active file number and count all journal files
+  const match = activeFile.match(/journal-(\d+)\.md$/);
+  const activeNum = match ? parseInt(match[1], 10) : 0;
+  const filesTable = countJournalFilesTable(devDir, activeNum);
+
+  try {
+    const content = readFileSync(indexPath, "utf-8");
+
+    if (!content.includes("@@@auto:current-status")) {
+      return false;
+    }
+
+    const lines = content.split("\n");
+    const newLines: string[] = [];
+
+    let inCurrentStatus = false;
+    let inActiveDocuments = false;
+    let inSessionHistory = false;
+    let headerWritten = false;
+
+    for (const line of lines) {
+      if (line.includes("@@@auto:current-status")) {
+        newLines.push(line);
+        inCurrentStatus = true;
+        newLines.push(`- **Active File**: \`${activeFile}\``);
+        newLines.push(`- **Total Sessions**: ${sessionNum}`);
+        newLines.push(`- **Last Active**: ${date}`);
+        continue;
+      }
+
+      if (line.includes("@@@/auto:current-status")) {
+        inCurrentStatus = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (line.includes("@@@auto:active-documents")) {
+        newLines.push(line);
+        inActiveDocuments = true;
+        newLines.push("| File | Lines | Status |");
+        newLines.push("|------|-------|--------|");
+        newLines.push(filesTable);
+        continue;
+      }
+
+      if (line.includes("@@@/auto:active-documents")) {
+        inActiveDocuments = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (line.includes("@@@auto:session-history")) {
+        newLines.push(line);
+        inSessionHistory = true;
+        headerWritten = false;
+        continue;
+      }
+
+      if (line.includes("@@@/auto:session-history")) {
+        inSessionHistory = false;
+        newLines.push(line);
+        continue;
+      }
+
+      if (inCurrentStatus) {
+        continue;
+      }
+
+      if (inActiveDocuments) {
+        continue;
+      }
+
+      if (inSessionHistory) {
+        newLines.push(line);
+        if (/^\|\s*-/.test(line) && !headerWritten) {
+          newLines.push(`| ${sessionNum} | ${date} | ${title} | ${commitDisplay} |`);
+          headerWritten = true;
+        }
+        continue;
+      }
+
+      newLines.push(line);
+    }
+
+    writeFileSync(indexPath, newLines.join("\n"), "utf-8");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // =============================================================================
@@ -1878,15 +2393,28 @@ function countModifiedFiles(worktree: string): number {
 
 /**
  * Format status with color
+ * Uses unified status values: backlog, queue, in_progress, ai_review, human_review, done, pr_created, error
  */
 function statusColor(status: string): string {
   switch (status) {
-    case "completed":
+    // Completed states
+    case "done":
+    case "pr_created":
+    case "completed": // Legacy
       return chalk.green(status);
+    // In-progress states
     case "in_progress":
+    case "ai_review":
+    case "queue":
       return chalk.blue(status);
-    case "planning":
+    // Waiting states
+    case "backlog":
+    case "human_review":
+    case "planning": // Legacy
       return chalk.yellow(status);
+    // Error state
+    case "error":
+      return chalk.red(status);
     default:
       return chalk.gray(status);
   }
@@ -2062,8 +2590,9 @@ function cmdStatusSummary(repoRoot: string, options: StatusSummaryOptions = {}, 
   if (stoppedTasks.length > 0) {
     console.log(chalk.red("Stopped Agents:"));
     for (const t of stoppedTasks) {
-      if (t.status === "completed") {
-        console.log(`${chalk.green("✓")} ${t.name} ${chalk.green("[completed]")}`);
+      // Check for completed states (done, pr_created, or legacy "completed")
+      if (t.status === "done" || t.status === "pr_created" || t.status === "completed") {
+        console.log(`${chalk.green("✓")} ${t.name} ${chalk.green(`[${t.status}]`)}`);
       } else {
         if (existsSync(t.sessionIdFile)) {
           const sessionId = readFileSync(t.sessionIdFile, "utf-8").trim();
@@ -2440,4 +2969,306 @@ function cmdStatusRegistry(repoRoot: string, ctx?: OutputContext): void {
   } else {
     console.log("(registry not found)");
   }
+}
+
+// =============================================================================
+// Context Command Types and Helpers
+// =============================================================================
+
+/**
+ * Context JSON structure matching Python git_context.py get_context_json()
+ */
+interface ContextJson {
+  developer: string;
+  git: {
+    branch: string;
+    isClean: boolean;
+    uncommittedChanges: number;
+    recentCommits: Array<{ hash: string; message: string }>;
+  };
+  currentTask: {
+    path: string;
+    name: string;
+    status: string;
+    createdAt: string;
+    description: string;
+    hasPrd: boolean;
+  } | null;
+  tasks: {
+    active: Array<{
+      dir: string;
+      name: string;
+      status: string;
+      assignee: string;
+      priority: string;
+    }>;
+    directory: string;
+  };
+  myTasks: Array<{
+    title: string;
+    priority: string;
+    status: string;
+  }>;
+  journal: {
+    file: string;
+    lines: number;
+    nearLimit: boolean;
+  };
+  paths: {
+    workspace: string;
+    tasks: string;
+    spec: string;
+  };
+}
+
+/**
+ * Get context as JSON object
+ */
+function getContextJson(repoRoot: string): ContextJson {
+  const developer = getDeveloper(repoRoot) || "";
+  const tasksDir = getTasksDir(repoRoot);
+
+  // Git info
+  const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
+  const branch = branchOut.trim() || "unknown";
+
+  const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], repoRoot);
+  const statusLines = statusOut.split("\n").filter((line) => line.trim());
+  const gitStatusCount = statusLines.length;
+  const isClean = gitStatusCount === 0;
+
+  // Recent commits
+  const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], repoRoot);
+  const commits: Array<{ hash: string; message: string }> = [];
+  for (const line of logOut.split("\n")) {
+    if (line.trim()) {
+      const parts = line.split(" ", 1);
+      const hash = parts[0] || "";
+      const message = line.slice(hash.length + 1) || "";
+      commits.push({ hash, message });
+    }
+  }
+
+  // Current task
+  let currentTask: ContextJson["currentTask"] = null;
+  const currentTaskPath = getCurrentTask(repoRoot);
+  if (currentTaskPath) {
+    const currentTaskDir = join(repoRoot, currentTaskPath);
+    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
+    if (taskData) {
+      const prdFile = join(currentTaskDir, "prd.md");
+      currentTask = {
+        path: currentTaskPath,
+        name: String(taskData.name || taskData.id || "unknown"),
+        status: String(taskData.status || "unknown"),
+        createdAt: String(taskData.createdAt || "unknown"),
+        description: String(taskData.description || ""),
+        hasPrd: existsSync(prdFile),
+      };
+    }
+  }
+
+  // Active tasks
+  const activeTasks = getActiveTasks(repoRoot);
+
+  // My tasks (assigned to developer and not done)
+  const myTasks: Array<{ title: string; priority: string; status: string }> = [];
+  if (developer) {
+    for (const task of activeTasks) {
+      if (task.assignee === developer && task.status !== "done") {
+        myTasks.push({
+          title: task.title,
+          priority: task.priority,
+          status: task.status,
+        });
+      }
+    }
+  }
+
+  // Journal info
+  const journalInfo = getJournalInfo(repoRoot);
+  const journalRelative = journalInfo.file && developer
+    ? `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`
+    : "";
+
+  return {
+    developer,
+    git: {
+      branch,
+      isClean,
+      uncommittedChanges: gitStatusCount,
+      recentCommits: commits,
+    },
+    currentTask,
+    tasks: {
+      active: activeTasks,
+      directory: `${DIR_VIBEN}/${DIR_TASKS}`,
+    },
+    myTasks,
+    journal: {
+      file: journalRelative,
+      lines: journalInfo.lines,
+      nearLimit: journalInfo.lines > 1800,
+    },
+    paths: {
+      workspace: `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`,
+      tasks: `${DIR_VIBEN}/${DIR_TASKS}/`,
+      spec: `${DIR_VIBEN}/${DIR_SPEC}/`,
+    },
+  };
+}
+
+/**
+ * Get context as formatted text
+ */
+function getContextText(repoRoot: string): string {
+  const lines: string[] = [];
+  const developer = getDeveloper(repoRoot);
+
+  lines.push("========================================");
+  lines.push("SESSION CONTEXT");
+  lines.push("========================================");
+  lines.push("");
+
+  // Developer section
+  lines.push("## DEVELOPER");
+  if (!developer) {
+    lines.push(
+      `ERROR: Not initialized. Run: viben team init-developer <name>`
+    );
+    return lines.join("\n");
+  }
+
+  lines.push(`Name: ${developer}`);
+  lines.push("");
+
+  // Git status
+  lines.push("## GIT STATUS");
+  const { stdout: branchOut } = runGitCommand(["branch", "--show-current"], repoRoot);
+  const branch = branchOut.trim() || "unknown";
+  lines.push(`Branch: ${branch}`);
+
+  const { stdout: statusOut } = runGitCommand(["status", "--porcelain"], repoRoot);
+  const statusLines = statusOut.split("\n").filter((line) => line.trim());
+  const statusCount = statusLines.length;
+
+  if (statusCount === 0) {
+    lines.push("Working directory: Clean");
+  } else {
+    lines.push(`Working directory: ${statusCount} uncommitted change(s)`);
+    lines.push("");
+    lines.push("Changes:");
+    const { stdout: shortOut } = runGitCommand(["status", "--short"], repoRoot);
+    for (const line of shortOut.split("\n").slice(0, 10)) {
+      if (line.trim()) {
+        lines.push(line);
+      }
+    }
+  }
+  lines.push("");
+
+  // Recent commits
+  lines.push("## RECENT COMMITS");
+  const { stdout: logOut } = runGitCommand(["log", "--oneline", "-5"], repoRoot);
+  if (logOut.trim()) {
+    for (const line of logOut.split("\n")) {
+      if (line.trim()) {
+        lines.push(line);
+      }
+    }
+  } else {
+    lines.push("(no commits)");
+  }
+  lines.push("");
+
+  // Current task
+  lines.push("## CURRENT TASK");
+  const currentTaskPath = getCurrentTask(repoRoot);
+  if (currentTaskPath) {
+    const currentTaskDir = join(repoRoot, currentTaskPath);
+    lines.push(`Path: ${currentTaskPath}`);
+
+    const taskData = readTaskJsonFromWorkspace(currentTaskDir);
+    if (taskData) {
+      const tName = String(taskData.name || taskData.id || "unknown");
+      const tStatus = String(taskData.status || "unknown");
+      const tCreated = String(taskData.createdAt || "unknown");
+      const tDesc = String(taskData.description || "");
+
+      lines.push(`Name: ${tName}`);
+      lines.push(`Status: ${tStatus}`);
+      lines.push(`Created: ${tCreated}`);
+      if (tDesc) {
+        lines.push(`Description: ${tDesc}`);
+      }
+    }
+
+    // Check for prd.md
+    const prdFile = join(currentTaskDir, "prd.md");
+    if (existsSync(prdFile)) {
+      lines.push("");
+      lines.push("[!] This task has prd.md - read it for task details");
+    }
+  } else {
+    lines.push("(none)");
+  }
+  lines.push("");
+
+  // Active tasks
+  lines.push("## ACTIVE TASKS");
+  const tasksDir = getTasksDir(repoRoot);
+  const activeTasks = getActiveTasks(repoRoot);
+  const taskCount = activeTasks.length;
+
+  if (taskCount > 0) {
+    for (const t of activeTasks) {
+      lines.push(`- ${t.dir}/ (${t.status}) @${t.assignee}`);
+    }
+  } else {
+    lines.push("(no active tasks)");
+  }
+  lines.push(`Total: ${taskCount} active task(s)`);
+  lines.push("");
+
+  // My tasks
+  lines.push("## MY TASKS (Assigned to me)");
+  let myTaskCount = 0;
+
+  for (const t of activeTasks) {
+    if (t.assignee === developer && t.status !== "done") {
+      lines.push(`- [${t.priority}] ${t.title} (${t.status})`);
+      myTaskCount++;
+    }
+  }
+
+  if (myTaskCount === 0) {
+    lines.push("(no tasks assigned to you)");
+  }
+  lines.push("");
+
+  // Journal file
+  lines.push("## JOURNAL FILE");
+  const journalInfo = getJournalInfo(repoRoot);
+  if (journalInfo.file) {
+    const journalRelative = `${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/${journalInfo.file.split("/").pop()}`;
+    lines.push(`Active file: ${journalRelative}`);
+    lines.push(`Line count: ${journalInfo.lines} / 2000`);
+    if (journalInfo.lines > 1800) {
+      lines.push("[!] WARNING: Approaching 2000 line limit!");
+    }
+  } else {
+    lines.push("No journal file found");
+  }
+  lines.push("");
+
+  // Paths
+  lines.push("## PATHS");
+  lines.push(`Workspace: ${DIR_VIBEN}/${DIR_WORKSPACE}/${developer}/`);
+  lines.push(`Tasks: ${DIR_VIBEN}/${DIR_TASKS}/`);
+  lines.push(`Spec: ${DIR_VIBEN}/${DIR_SPEC}/`);
+  lines.push("");
+
+  lines.push("========================================");
+
+  return lines.join("\n");
 }

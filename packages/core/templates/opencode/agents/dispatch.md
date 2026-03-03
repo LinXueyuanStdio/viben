@@ -151,7 +151,7 @@ This is different from regular "check" which has full specs for self-fix loop.
 This action creates a Pull Request from the feature branch. Run it via Bash:
 
 ```bash
-python3 ./.viben/scripts/multi_agent/create_pr.py
+viben task create-pr
 ```
 
 This will:

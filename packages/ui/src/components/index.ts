@@ -26,6 +26,9 @@ export {
 } from "./card";
 export type { CardProps } from "./card";
 
+// Checkbox
+export { Checkbox } from "./checkbox";
+
 // Dialog
 export {
   Dialog,

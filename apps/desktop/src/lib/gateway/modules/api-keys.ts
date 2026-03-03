@@ -86,7 +86,8 @@ export async function getAllApiKeys(
     );
   }
 
-  return response.json();
+  const result = await response.json();
+  return result.keys;
 }
 
 /**

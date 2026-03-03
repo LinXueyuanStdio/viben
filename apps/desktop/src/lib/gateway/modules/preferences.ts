@@ -5,7 +5,7 @@
 
 import { GatewayError } from "../error";
 import { parseErrorMessage } from "./core";
-import type { PreferencesResponse, DeveloperPreferences } from "../types";
+import type { PreferencesResponse, DeveloperPreferences, GatewayNotificationPreferences } from "../types";
 
 // ============================================================================
 // Preferences
@@ -41,7 +41,7 @@ export async function updatePreferences(
   prefs: Partial<PreferencesResponse>
 ): Promise<PreferencesResponse> {
   const response = await fetch(`${baseUrl}/api/preferences`, {
-    method: "PATCH",
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -199,4 +199,57 @@ export async function setPreferredTerminal(
       response.status
     );
   }
+}
+
+// ============================================================================
+// Notification Preferences
+// ============================================================================
+
+/**
+ * Get notification preferences
+ */
+export async function getNotificationPreferences(
+  baseUrl: string
+): Promise<GatewayNotificationPreferences> {
+  const response = await fetch(`${baseUrl}/api/preferences/notifications`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to get notification preferences: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
+ * Update notification preferences
+ */
+export async function updateNotificationPreferences(
+  baseUrl: string,
+  prefs: Partial<GatewayNotificationPreferences>
+): Promise<GatewayNotificationPreferences> {
+  const response = await fetch(`${baseUrl}/api/preferences/notifications`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(prefs),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to update notification preferences: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
 }

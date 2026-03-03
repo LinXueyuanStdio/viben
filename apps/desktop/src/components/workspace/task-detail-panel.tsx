@@ -18,6 +18,9 @@ import {
   Bot,
   Trash2,
   HelpCircle,
+  FileText,
+  Terminal,
+  FolderOpen,
 } from "lucide-react";
 import {
   Button,
@@ -69,6 +72,14 @@ import {
 import { DesktopChatInput, DesktopMessageList, type SlashCommand } from "@/components/chat";
 import { getGatewayClient, type UIMessage } from "@/lib/gateway";
 import type { AgentMessage } from "@/types";
+import {
+  TaskSubtasksTab,
+  TaskPRDTab,
+  TaskLogsTab,
+  TaskFilesTab,
+  type TaskLog,
+  type TaskFile,
+} from "./task-tabs";
 
 // Editable Title Component
 function EditableTitle({
@@ -302,6 +313,11 @@ export interface TaskForPanel {
   // Phase 2: Subtasks and Relationships
   subtasks?: Subtask[];
   relationships?: TaskRelationship[];
+  // Phase 5: Extended task data for new tabs
+  specsPath?: string;           // Task specs directory path (.viben/tasks/<id>/)
+  prdContent?: string | null;   // PRD content
+  logs?: TaskLog | null;        // Execution logs
+  modifiedFiles?: TaskFile[];   // Modified files list
 }
 
 // Available task for relationships
@@ -762,10 +778,36 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         onValueChange={setActiveTab}
         className="flex-1 flex flex-col min-h-0"
       >
-        <TabsList className="mx-4 mt-2 shrink-0">
+        <TabsList className="mx-4 mt-2 shrink-0 flex-wrap h-auto gap-1">
           <TabsTrigger value="details" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             {t("workspace.taskDetail", "Details")}
+          </TabsTrigger>
+          <TabsTrigger value="subtasks" className="flex items-center gap-2">
+            <ListChecks className="h-4 w-4" />
+            {t("workspace.tabs.subtasks", "Subtasks")}
+            {task.subtasks && task.subtasks.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {task.subtasks.filter((s) => s.completed).length}/{task.subtasks.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="prd" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            {t("workspace.tabs.prd", "PRD")}
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Terminal className="h-4 w-4" />
+            {t("workspace.tabs.logs", "Logs")}
+          </TabsTrigger>
+          <TabsTrigger value="files" className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            {t("workspace.tabs.files", "Files")}
+            {task.modifiedFiles && task.modifiedFiles.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
+                {task.modifiedFiles.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -1143,6 +1185,80 @@ You are helping the user work on this task. Provide relevant suggestions, code e
               )}
             </div>
           </ScrollArea>
+        </TabsContent>
+
+        {/* Subtasks Tab */}
+        <TabsContent value="subtasks" className="flex-1 min-h-0">
+          <TaskSubtasksTab
+            subtasks={(task.subtasks || []).map((s) => ({
+              id: s.id,
+              title: s.title,
+              completed: s.completed,
+              description: undefined, // Extended description not available in basic subtask
+              files: undefined, // Associated files not available in basic subtask
+            }))}
+            onSubtaskClick={(subtaskId) => {
+              // Could navigate to subtask or show details
+              console.log("Subtask clicked:", subtaskId);
+            }}
+          />
+        </TabsContent>
+
+        {/* PRD Tab */}
+        <TabsContent value="prd" className="flex-1 min-h-0">
+          <TaskPRDTab
+            taskId={task.id}
+            prdContent={task.prdContent}
+            prdPath={task.specsPath ? `${task.specsPath}/prd.md` : undefined}
+            isLoading={false}
+            onRefresh={() => {
+              // TODO: Implement PRD refresh via gateway API
+              console.log("Refresh PRD for task:", task.id);
+            }}
+            onOpenInEditor={(path) => {
+              // Open file in default editor via gateway
+              const client = getGatewayClient();
+              client.openFile(path).catch(console.error);
+            }}
+          />
+        </TabsContent>
+
+        {/* Logs Tab */}
+        <TabsContent value="logs" className="flex-1 min-h-0">
+          <TaskLogsTab
+            taskId={task.id}
+            logs={task.logs}
+            isLoading={false}
+            autoScroll={true}
+            onRefresh={() => {
+              // TODO: Implement logs refresh via gateway API
+              console.log("Refresh logs for task:", task.id);
+            }}
+          />
+        </TabsContent>
+
+        {/* Files Tab */}
+        <TabsContent value="files" className="flex-1 min-h-0">
+          <TaskFilesTab
+            taskId={task.id}
+            files={task.modifiedFiles}
+            isLoading={false}
+            onRefresh={() => {
+              // TODO: Implement files refresh via gateway API
+              console.log("Refresh files for task:", task.id);
+            }}
+            onOpenInIDE={(path) => {
+              // Open file in default editor via gateway
+              const client = getGatewayClient();
+              client.openFile(path).catch(console.error);
+            }}
+            onLoadFileContent={async (path) => {
+              // Load file content via gateway
+              const client = getGatewayClient();
+              const result = await client.readFile(path);
+              return result.content;
+            }}
+          />
         </TabsContent>
 
         {/* Agent Chat Tab */}

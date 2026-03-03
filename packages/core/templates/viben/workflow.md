@@ -24,11 +24,11 @@
 
 ```bash
 # Check if already initialized
-python3 ./.viben/scripts/get_developer.py
+viben user get
 
 # If not initialized, run:
-python3 ./.viben/scripts/init_developer.py <your-name>
-# Example: python3 ./.viben/scripts/init_developer.py cursor-agent
+viben user init <your-name>
+# Example: viben user init cursor-agent
 ```
 
 This creates:
@@ -45,11 +45,11 @@ This creates:
 
 ```bash
 # Get full context in one command
-python3 ./.viben/scripts/get_context.py
+viben task context
 
 # Or check manually:
-python3 ./.viben/scripts/get_developer.py      # Your identity
-python3 ./.viben/scripts/task.py list          # Active tasks
+viben user get                                   # Your identity
+viben task list                                  # Active tasks
 git status && git log --oneline -10              # Git state
 ```
 
@@ -106,24 +106,6 @@ cat .viben/spec/backend/logging-guidelines.md    # For logging
 ```
 .viben/
 |-- .developer           # Developer identity (gitignored)
-|-- scripts/
-|   |-- __init__.py          # Python package init
-|   |-- common/              # Shared utilities (Python)
-|   |   |-- __init__.py
-|   |   |-- paths.py         # Path utilities
-|   |   |-- developer.py     # Developer management
-|   |   +-- git_context.py   # Git context implementation
-|   |-- multi_agent/         # Multi-agent pipeline scripts
-|   |   |-- __init__.py
-|   |   |-- start.py         # Start worktree agent
-|   |   |-- status.py        # Monitor agent status
-|   |   |-- create_pr.py     # Create PR
-|   |   +-- cleanup.py       # Cleanup worktree
-|   |-- init_developer.py    # Initialize developer identity
-|   |-- get_developer.py     # Get current developer name
-|   |-- task.py              # Manage tasks
-|   |-- get_context.py       # Get session context
-|   +-- add_session.py       # One-click session recording
 |-- workspace/           # Developer workspaces
 |   |-- index.md         # Workspace index + Session template
 |   +-- {developer}/     # Per-developer directories
@@ -146,20 +128,46 @@ cat .viben/spec/backend/logging-guidelines.md    # For logging
 +-- workflow.md             # This document
 ```
 
+### CLI Commands
+
+All workflow operations are available through the `viben` CLI:
+
+```bash
+# User management
+viben user init <name>    # Initialize developer identity
+viben user get            # Get current developer name
+
+# Task management
+viben task list           # List active tasks
+viben task create         # Create new task
+viben task start          # Set current task
+viben task finish         # Clear current task
+viben task archive        # Archive completed task
+viben task context        # Get session context
+viben task add-session    # Record session
+
+# Multi-agent operations
+viben swarm start         # Start worktree agent
+viben swarm status        # Monitor agent status
+viben swarm cleanup       # Cleanup worktree
+viben task create-pr      # Create PR from task
+viben task plan           # Start plan agent
+```
+
 ---
 
 ## Session Start Process
 
 ### Step 1: Get Session Context
 
-Use the unified context script:
+Use the unified context command:
 
 ```bash
 # Get all context in one command
-python3 ./.viben/scripts/get_context.py
+viben task context
 
 # Or get JSON format
-python3 ./.viben/scripts/get_context.py --json
+viben task context --json
 ```
 
 ### Step 2: Read Development Guidelines [!] REQUIRED
@@ -188,14 +196,14 @@ cat .viben/spec/guides/cross-layer-thinking-guide.md
 
 ### Step 3: Select Task to Develop
 
-Use the task management script:
+Use the task management commands:
 
 ```bash
 # List active tasks
-python3 ./.viben/scripts/task.py list
+viben task list
 
 # Create new task (creates directory with task.json)
-python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>
+viben task create "<title>" --slug <task-name>
 ```
 
 ---
@@ -206,7 +214,7 @@ python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>
 
 ```
 1. Create or select task
-   --> python3 ./.viben/scripts/task.py create "<title>" --slug <name> or list
+   --> viben task create "<title>" --slug <name> or list
 
 2. Write code according to guidelines
    --> Read .viben/spec/ docs relevant to your task
@@ -222,7 +230,7 @@ python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>
        Format: feat/fix/docs/refactor/test/chore
 
 5. Record session (one command)
-   --> python3 ./.viben/scripts/add_session.py --title "Title" --commit "hash"
+   --> viben task add-session --title "Title" --commit "hash"
 ```
 
 ### Code Quality Checklist
@@ -245,7 +253,7 @@ python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>
 After code is committed, use:
 
 ```bash
-python3 ./.viben/scripts/add_session.py \
+viben task add-session \
   --title "Session Title" \
   --commit "abc1234" \
   --summary "Brief summary"
@@ -261,7 +269,7 @@ This automatically:
 
 Use `/viben:finish-work` command to run through:
 1. [OK] All code committed, commit message follows convention
-2. [OK] Session recorded via `add_session.py`
+2. [OK] Session recorded via `viben task add-session`
 3. [OK] No lint/test errors
 4. [OK] Working directory clean (or WIP noted)
 5. [OK] Spec docs updated if needed
@@ -327,10 +335,10 @@ tasks/
 
 **Commands**:
 ```bash
-python3 ./.viben/scripts/task.py create "<title>" [--slug <name>]   # Create task directory
-python3 ./.viben/scripts/task.py archive <name>  # Archive to archive/{year-month}/
-python3 ./.viben/scripts/task.py list            # List active tasks
-python3 ./.viben/scripts/task.py list-archive    # List archived tasks
+viben task create "<title>" [--slug <name>]   # Create task directory
+viben task archive <name>                     # Archive to archive/{year-month}/
+viben task list                               # List active tasks
+viben task list-archive                       # List archived tasks
 ```
 
 ---
@@ -340,7 +348,7 @@ python3 ./.viben/scripts/task.py list-archive    # List archived tasks
 ### [OK] DO - Should Do
 
 1. **Before session start**:
-   - Run `python3 ./.viben/scripts/get_context.py` for full context
+   - Run `viben task context` for full context
    - [!] **MUST read** relevant `.viben/spec/` docs
 
 2. **During development**:
@@ -353,7 +361,7 @@ python3 ./.viben/scripts/task.py list-archive    # List archived tasks
    - Use `/viben:finish-work` for completion checklist
    - After fix bug, use `/viben:break-loop` for deep analysis
    - Human commits after testing passes
-   - Use `add_session.py` to record progress
+   - Use `viben task add-session` to record progress
 
 ### [X] DON'T - Should Not Do
 
@@ -389,12 +397,18 @@ git commit -m "type(scope): description"
 
 ```bash
 # Session management
-python3 ./.viben/scripts/get_context.py    # Get full context
-python3 ./.viben/scripts/add_session.py    # Record session
+viben task context           # Get full context
+viben task add-session       # Record session
 
 # Task management
-python3 ./.viben/scripts/task.py list      # List tasks
-python3 ./.viben/scripts/task.py create "<title>" # Create task
+viben task list              # List tasks
+viben task create "<title>"  # Create task
+
+# Multi-agent operations
+viben swarm start <task>     # Start worktree agent
+viben swarm status           # Monitor agent status
+viben swarm cleanup <task>   # Cleanup worktree
+viben task create-pr         # Create PR from task
 
 # Slash commands
 /viben:finish-work          # Pre-commit checklist

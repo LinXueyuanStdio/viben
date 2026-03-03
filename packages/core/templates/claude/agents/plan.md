@@ -74,12 +74,12 @@ PLAN_REQUIREMENT = <the requirement from environment>
    - <how to make the requirement actionable>
    
    ## To Retry
-   
+
    1. Delete this directory:
       rm -rf $PLAN_TASK_DIR
-   
+
    2. Run with revised requirement:
-      python3 ./.viben/scripts/multi_agent/plan.py --name "<name>" --type "<type>" --requirement "<revised requirement>"
+      viben task plan --name "<name>" --type "<type>" --requirement "<revised requirement>"
    EOF
    ```
 
@@ -152,7 +152,7 @@ ${PLAN_TASK_DIR}/
 ### Step 1: Initialize Context Files
 
 ```bash
-python3 ./.viben/scripts/task.py init-context "$PLAN_TASK_DIR" "$PLAN_DEV_TYPE"
+viben task init-context "$PLAN_TASK_DIR" -t "$PLAN_DEV_TYPE"
 ```
 
 This creates base jsonl files with standard specs for the dev type.
@@ -200,14 +200,8 @@ Output format (use exactly this format):
 Parse research agent output and add entries to jsonl files:
 
 ```bash
-# For each entry in implement.jsonl section:
-python3 ./.viben/scripts/task.py add-context "$PLAN_TASK_DIR" implement "<path>" "<reason>"
-
-# For each entry in check.jsonl section:
-python3 ./.viben/scripts/task.py add-context "$PLAN_TASK_DIR" check "<path>" "<reason>"
-
-# For each entry in debug.jsonl section:
-python3 ./.viben/scripts/task.py add-context "$PLAN_TASK_DIR" debug "<path>" "<reason>"
+# For each entry from research agent output:
+viben task add-context "$PLAN_TASK_DIR" "<path>" -r "<reason>"
 ```
 
 ### Step 4: Write prd.md
@@ -249,21 +243,18 @@ EOF
 
 ```bash
 # Set branch name
-python3 ./.viben/scripts/task.py set-branch "$PLAN_TASK_DIR" "feature/${PLAN_TASK_NAME}"
+viben task set-branch "$PLAN_TASK_DIR" -b "feature/${PLAN_TASK_NAME}"
 
 # Set scope (from research agent suggestion)
-python3 ./.viben/scripts/task.py set-scope "$PLAN_TASK_DIR" "<scope>"
+viben task set-scope "$PLAN_TASK_DIR" -s "<scope>"
 
-# Update dev_type in task.json
-jq --arg type "$PLAN_DEV_TYPE" '.dev_type = $type' \
-  "$PLAN_TASK_DIR/task.json" > "$PLAN_TASK_DIR/task.json.tmp" \
-  && mv "$PLAN_TASK_DIR/task.json.tmp" "$PLAN_TASK_DIR/task.json"
+# Update dev_type in task.json (already set during init-context)
 ```
 
 ### Step 6: Validate Configuration
 
 ```bash
-python3 ./.viben/scripts/task.py validate "$PLAN_TASK_DIR"
+viben task validate-context "$PLAN_TASK_DIR"
 ```
 
 If validation fails, fix the invalid paths and re-validate.
@@ -280,9 +271,9 @@ echo "Files created:"
 ls -la "$PLAN_TASK_DIR"
 echo ""
 echo "Context summary:"
-python3 ./.viben/scripts/task.py list-context "$PLAN_TASK_DIR"
+viben task list-context "$PLAN_TASK_DIR"
 echo ""
-echo "Ready for: python3 ./.viben/scripts/multi_agent/start.py $PLAN_TASK_DIR"
+echo "Ready for: viben swarm start $PLAN_TASK_DIR"
 ```
 
 ---

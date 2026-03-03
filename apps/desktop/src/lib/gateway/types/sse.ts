@@ -1,6 +1,9 @@
 /**
  * SSE (Server-Sent Events) Types
  * SSE 事件类型定义
+ *
+ * These types match the backend's flat SSE message format.
+ * Backend sends properties directly on the event, not nested in a `data` object.
  */
 
 // ============================================================================
@@ -10,6 +13,7 @@
 /** SSE event types from agent stream */
 export type SSEEventType =
   | "session"
+  | "sdk_session"
   | "text"
   | "tool_use"
   | "tool_result"
@@ -19,11 +23,9 @@ export type SSEEventType =
   | "error"
   | "done";
 
-/** Base SSE event */
-export interface SSEEvent {
-  type: SSEEventType;
-  data: unknown;
-}
+// ============================================================================
+// SSE Event Interfaces (Flat structure matching backend)
+// ============================================================================
 
 /** Session created event - first event from agent run */
 export interface SSESessionEvent {
@@ -33,92 +35,84 @@ export interface SSESessionEvent {
   traceId?: string;
 }
 
+/** SDK Session event - contains SDK session ID for resume */
+export interface SSESdkSessionEvent {
+  type: "sdk_session";
+  sdkSessionId: string;
+}
+
 /** Text message event */
-export interface SSETextEvent extends SSEEvent {
+export interface SSETextEvent {
   type: "text";
-  data: {
-    content: string;
-    partial?: boolean;
-  };
+  content: string;
 }
 
 /** Tool use event */
-export interface SSEToolUseEvent extends SSEEvent {
+export interface SSEToolUseEvent {
   type: "tool_use";
-  data: {
-    id: string;
-    name: string;
-    input: Record<string, unknown>;
-  };
+  id: string;
+  name: string;
+  input: unknown;
 }
 
 /** Tool result event */
-export interface SSEToolResultEvent extends SSEEvent {
+export interface SSEToolResultEvent {
   type: "tool_result";
-  data: {
-    tool_use_id: string;
-    output: string;
-    is_error?: boolean;
-  };
+  toolUseId: string;
+  output: string;
+  isError?: boolean;
 }
 
 /** Plan event */
-export interface SSEPlanEvent extends SSEEvent {
+export interface SSEPlanEvent {
   type: "plan";
-  data: {
+  plan: {
+    id: string;
     goal: string;
     steps: Array<{
       id: string;
       description: string;
-      status: string;
+      status: "pending" | "in_progress" | "completed" | "failed";
     }>;
     notes?: string;
   };
 }
 
+/** Question event - interactive question from agent */
+export interface SSEQuestionEvent {
+  type: "question";
+  id: string;
+  questions: Array<{
+    header: string;
+    question: string;
+    options: Array<{ label: string; description?: string }>;
+    multiSelect: boolean;
+  }>;
+}
+
 /** Result event */
-export interface SSEResultEvent extends SSEEvent {
+export interface SSEResultEvent {
   type: "result";
-  data: {
-    content: string;
-    success: boolean;
-  };
+  cost?: number;
+  duration?: number;
+  subtype?: "success" | "error" | "error_max_turns";
 }
 
 /** Error event */
-export interface SSEErrorEvent extends SSEEvent {
+export interface SSEErrorEvent {
   type: "error";
-  data: {
-    message: string;
-    code?: string;
-  };
+  message: string;
 }
 
 /** Done event */
-export interface SSEDoneEvent extends SSEEvent {
+export interface SSEDoneEvent {
   type: "done";
-  data: {
-    session_id: string;
-  };
-}
-
-/** Question event - interactive question from agent */
-export interface SSEQuestionEvent extends SSEEvent {
-  type: "question";
-  data: {
-    id: string;
-    questions: Array<{
-      header: string;
-      question: string;
-      options: Array<{ label: string; description?: string }>;
-      multiSelect: boolean;
-    }>;
-  };
 }
 
 /** Union type of all SSE message events */
 export type SSEMessageEvent =
   | SSESessionEvent
+  | SSESdkSessionEvent
   | SSETextEvent
   | SSEToolUseEvent
   | SSEToolResultEvent

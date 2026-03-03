@@ -6,8 +6,8 @@
 // SSE Types
 export type {
   SSEEventType,
-  SSEEvent,
   SSESessionEvent,
+  SSESdkSessionEvent,
   SSETextEvent,
   SSEToolUseEvent,
   SSEToolResultEvent,
@@ -219,4 +219,17 @@ export type {
   AgentMessage,
   PreferencesResponse,
   DeveloperPreferences,
+  GatewayNotificationCategory,
+  GatewayNotificationMethod,
+  GatewayNotificationPreferences,
 } from "./agent";
+
+// MCP WebSocket Event Types
+export type {
+  McpProcessStatus,
+  McpProcessStatusChangedData,
+  McpServerEventData,
+  McpConfigChangedData,
+  McpWebSocketEventType,
+  McpWebSocketEvent,
+} from "./mcp-events";

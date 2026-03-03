@@ -520,32 +520,46 @@ export class CLIAdapter implements ICLIAdapter {
 }
 
 // =============================================================================
+// Constants for Validation
+// =============================================================================
+
+/**
+ * Valid platform names
+ */
+const VALID_PLATFORMS: Platform[] = [
+  "claude",
+  "opencode",
+  "cursor",
+  "iflow",
+  "codex",
+  "kilo",
+  "kiro",
+  "gemini",
+  "antigravity",
+];
+
+/**
+ * Check if a string is a valid platform
+ */
+function isValidPlatform(platform: string): platform is Platform {
+  return VALID_PLATFORMS.includes(platform as Platform);
+}
+
+// =============================================================================
 // Factory Functions
 // =============================================================================
 
 /**
  * Create a CLI adapter for the specified platform
  *
- * @param platform - Platform name
+ * @param platform - Platform name (string or Platform type)
  * @returns CLIAdapter instance
  * @throws Error if platform is not supported
  */
-export function createCLIAdapter(platform: Platform): ICLIAdapter {
-  const validPlatforms: Platform[] = [
-    "claude",
-    "opencode",
-    "cursor",
-    "iflow",
-    "codex",
-    "kilo",
-    "kiro",
-    "gemini",
-    "antigravity",
-  ];
-
-  if (!validPlatforms.includes(platform)) {
+export function createCLIAdapter(platform: string | Platform = "claude"): ICLIAdapter {
+  if (!isValidPlatform(platform)) {
     throw new Error(
-      `Unsupported platform: ${platform} (must be one of: ${validPlatforms.join(", ")})`
+      `Unsupported platform: ${platform} (must be one of: ${VALID_PLATFORMS.join(", ")})`
     );
   }
 

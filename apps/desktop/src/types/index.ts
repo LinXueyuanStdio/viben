@@ -189,6 +189,18 @@ export interface InspectorNotification {
   type: "notification" | "stderr";
 }
 
+/** History entry for MCP request/response tracking */
+export interface InspectorHistoryEntry {
+  id: string;
+  method: string;
+  params?: Record<string, unknown>;
+  response?: unknown;
+  timestamp: Date;
+  duration: number;
+  status: "success" | "error";
+  error?: string;
+}
+
 /** Tool definition from MCP server */
 export interface McpTool {
   name: string;

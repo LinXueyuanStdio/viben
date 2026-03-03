@@ -138,9 +138,46 @@ export interface AgentMessage {
 // Preferences Types
 // ============================================================================
 
+/** Notification category types */
+export type GatewayNotificationCategory =
+  | "chat"
+  | "group"
+  | "cron"
+  | "agent"
+  | "system"
+  | "task_complete"
+  | "task_failed"
+  | "review_needed";
+
+/** Notification delivery method */
+export type GatewayNotificationMethod = "toast" | "system" | "both";
+
+/** Notification preferences stored in config.yaml */
+export interface GatewayNotificationPreferences {
+  /** Master toggle for all notifications */
+  enabled: boolean;
+  /** Whether to play notification sounds */
+  sound: boolean;
+  /** Per-category toggles */
+  categories: Record<GatewayNotificationCategory, boolean>;
+  /** Notification method per category */
+  methods: Record<GatewayNotificationCategory, GatewayNotificationMethod>;
+  /** Do not disturb settings */
+  do_not_disturb: {
+    enabled: boolean;
+    /** Start time in 24h format (e.g., "22:00") */
+    start: string;
+    /** End time in 24h format (e.g., "08:00") */
+    end: string;
+  };
+  /** Number of days to retain notifications */
+  retention_days: number;
+}
+
 /** Preferences response */
 export interface PreferencesResponse {
   developer?: DeveloperPreferences;
+  notifications?: GatewayNotificationPreferences;
   [key: string]: unknown;
 }
 
@@ -148,5 +185,7 @@ export interface PreferencesResponse {
 export interface DeveloperPreferences {
   preferred_ide?: string;
   preferred_terminal?: string;
+  /** Skip permission prompts (dangerous) */
+  dangerously_skip_permissions?: boolean;
   [key: string]: unknown;
 }

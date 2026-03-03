@@ -35,7 +35,8 @@ cat .viben/workflow.md  # Development process, conventions, and quick start guid
 ### Step 2: Get Current Status `[AI]`
 
 ```bash
-python3 ./.viben/scripts/get_context.py
+viben task list
+viben swarm status
 ```
 
 ### Step 3: Read Project Guidelines `[AI]`
@@ -68,7 +69,7 @@ Use when:
 - Unclear scope that needs research
 
 ```bash
-python3 ./.viben/scripts/multi_agent/plan.py \
+viben task plan \
   --name "<feature-name>" \
   --type "<backend|frontend|fullstack>" \
   --requirement "<user requirement description>"
@@ -81,10 +82,10 @@ Plan Agent will:
 4. Write prd.md with acceptance criteria
 5. Output ready-to-use task directory
 
-After plan.py completes, start the worktree agent:
+After plan completes, start the worktree agent:
 
 ```bash
-python3 ./.viben/scripts/multi_agent/start.py "$TASK_DIR"
+viben swarm start <task-name>
 ```
 
 ### Option B: Manual Configuration (For simple/clear features) `[AI]`
@@ -98,25 +99,24 @@ Use when:
 
 ```bash
 # title is task description, --slug for task directory name
-TASK_DIR=$(python3 ./.viben/scripts/task.py create "<title>" --slug <task-name>)
+viben task create "<title>" --slug <task-name>
 ```
 
 #### Step 2: Configure Task
 
 ```bash
 # Initialize jsonl context files
-python3 ./.viben/scripts/task.py init-context "$TASK_DIR" <dev_type>
+viben task init-context <task-name> --type <dev_type>
 
 # Set branch and scope
-python3 ./.viben/scripts/task.py set-branch "$TASK_DIR" feature/<name>
-python3 ./.viben/scripts/task.py set-scope "$TASK_DIR" <scope>
+viben task set-branch <task-name> --branch feature/<name>
+viben task set-scope <task-name> --scope <scope>
 ```
 
 #### Step 3: Add Context (optional: use research agent)
 
 ```bash
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
-python3 ./.viben/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
+viben task add-context <task-name> "<path>" --reason "<reason>"
 ```
 
 #### Step 4: Create prd.md
@@ -136,8 +136,8 @@ EOF
 #### Step 5: Validate and Start
 
 ```bash
-python3 ./.viben/scripts/task.py validate "$TASK_DIR"
-python3 ./.viben/scripts/multi_agent/start.py "$TASK_DIR"
+viben task validate-context <task-name>
+viben swarm start <task-name>
 ```
 
 ---
@@ -166,10 +166,10 @@ The following slash commands are for users (not AI):
 Tell the user they can use these commands to monitor:
 
 ```bash
-python3 ./.viben/scripts/multi_agent/status.py                    # Overview
-python3 ./.viben/scripts/multi_agent/status.py --log <name>       # View log
-python3 ./.viben/scripts/multi_agent/status.py --watch <name>     # Real-time monitoring
-python3 ./.viben/scripts/multi_agent/cleanup.py <branch>          # Cleanup worktree
+viben swarm status                    # Overview
+viben swarm status --log <name>       # View log
+viben swarm status --watch <name>     # Real-time monitoring
+viben swarm cleanup <branch>          # Cleanup worktree
 ```
 
 ---

@@ -310,6 +310,12 @@ export type {
   GatewayWsMessage,
   UseGatewayWebSocketOptions,
 } from "./use-gateway-websocket";
+export { useMcpWebSocket } from "./use-mcp-websocket";
+export type {
+  McpWebSocketCallbacks,
+  UseMcpWebSocketOptions,
+  UseMcpWebSocketReturn,
+} from "./use-mcp-websocket";
 
 // Background Tasks
 export { useBackgroundTasks } from "./use-background-tasks";

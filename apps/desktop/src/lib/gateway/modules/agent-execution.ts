@@ -7,14 +7,54 @@ import { GatewayError } from "../error";
 import { parseErrorMessage } from "./core";
 import type {
   SpawnAgentRequest,
+  SpawnAgentResponse,
   ExecutorType,
   BackgroundTask,
   SSEMessageEvent,
+  AvailabilityInfo,
 } from "../types";
 
 // ============================================================================
 // Agent Execution
 // ============================================================================
+
+/**
+ * Spawn a new agent process (non-streaming)
+ * Returns the session ID
+ */
+export async function spawnAgent(
+  baseUrl: string,
+  agentType: ExecutorType,
+  request: SpawnAgentRequest
+): Promise<SpawnAgentResponse> {
+  const url = `${baseUrl}/api/agents/${encodeURIComponent(agentType)}/spawn`;
+  console.log("[GatewayClient] Spawn request:", { url, agentType, request });
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  console.log("[GatewayClient] Spawn response:", {
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to spawn agent: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
 
 /**
  * Spawn agent and get SSE stream
@@ -222,6 +262,36 @@ export async function sendAgentInput(
 }
 
 // ============================================================================
+// Agent Availability
+// ============================================================================
+
+/**
+ * Check agent availability
+ */
+export async function checkAvailability(
+  baseUrl: string,
+  executorType: ExecutorType
+): Promise<AvailabilityInfo> {
+  const response = await fetch(
+    `${baseUrl}/api/agents/${encodeURIComponent(executorType)}/availability`,
+    {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to check availability: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+// ============================================================================
 // Background Task Management
 // ============================================================================
 
@@ -280,4 +350,117 @@ export async function stopBackgroundTask(
   }
 
   return response.json();
+}
+
+// ============================================================================
+// Background Task Request Types
+// ============================================================================
+
+/** Request for starting a background task */
+export interface StartBackgroundTaskRequest {
+  prompt: string;
+  cwd?: string;
+  taskId?: string;
+  sessionId?: string;
+  agentPath?: string;
+  agentConfig?: {
+    name?: string;
+    model?: string;
+    provider?: string;
+    systemPrompt?: string;
+  };
+  resume?: string;
+}
+
+/** Response from starting a background task */
+export interface StartBackgroundTaskResponse {
+  sessionId: string;
+  taskId: string;
+}
+
+/**
+ * Start a background task
+ * This runs the agent in the background (server-side) and returns immediately.
+ * Use subscribeToBackgroundTasks to monitor task progress.
+ */
+export async function startBackgroundTask(
+  baseUrl: string,
+  request: StartBackgroundTaskRequest
+): Promise<StartBackgroundTaskResponse> {
+  // Create a new AbortController for this request
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout for initial response
+
+  try {
+    const response = await fetch(`${baseUrl}/api/agent/run`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "text/event-stream",
+      },
+      body: JSON.stringify({
+        prompt: request.prompt,
+        cwd: request.cwd,
+        task_id: request.taskId,
+        session_id: request.sessionId,
+        agent_path: request.agentPath,
+        agent_config: request.agentConfig,
+        resume: request.resume,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new GatewayError(
+        `Failed to start background task: ${error || response.statusText}`,
+        response.status
+      );
+    }
+
+    // Read only the first SSE message to get session ID
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new GatewayError("No response body", 500);
+    }
+
+    const decoder = new TextDecoder();
+    let sessionId = "";
+    let buffer = "";
+
+    // Read until we get the session message
+    while (!sessionId) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === "session") {
+              sessionId = data.sessionId;
+              break;
+            }
+          } catch {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+
+    // Don't cancel the reader - let the stream continue in background
+    // The server will continue processing
+
+    return {
+      sessionId: sessionId || request.sessionId || "",
+      taskId: request.taskId || sessionId || "",
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

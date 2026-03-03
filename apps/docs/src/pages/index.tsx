@@ -1,4 +1,3 @@
-import type {ReactNode} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -7,6 +6,14 @@ import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
 
 import styles from './index.module.css';
+
+// Workaround: Docusaurus Link type is incompatible with React 18/19 mixed environment
+const TypedLink = Link as React.ComponentType<{
+  className?: string;
+  to: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}>;
 
 function HomepageHeader() {
   const {siteConfig} = useDocusaurusContext();
@@ -18,24 +25,24 @@ function HomepageHeader() {
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
-          <Link
+          <TypedLink
             className="button button--secondary button--lg"
             to="/user/intro">
             Get Started
-          </Link>
-          <Link
+          </TypedLink>
+          <TypedLink
             className="button button--secondary button--lg"
             to="https://github.com/LinXueyuanStdio/viben/releases"
             style={{marginLeft: '1rem'}}>
             Download Desktop App
-          </Link>
+          </TypedLink>
         </div>
       </div>
     </header>
   );
 }
 
-export default function Home(): ReactNode {
+export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
