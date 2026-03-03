@@ -515,10 +515,34 @@ if (isSdkAvailable("CLAUDE_CODE")) {
 | `COPILOT` | `gh copilot` | GitHub CLI 扩展 | GitHub 认证 | ❌ | 无 |
 | `DROID` | `droid` | 官方安装器 | `~/.droid/config.json` | ❌ | SESSION_FORK |
 
+#### Executor 能力详解
+
+Viben 定义了三种核心 Executor 能力，不同的 Executor 根据其底层 CLI 的特性支持不同的能力组合：
+
+| 能力 | 说明 | 使用场景 |
+|------|------|---------|
+| **SESSION_FORK** | 支持从已有会话的某个消息节点创建分支，实现多路径对话探索 | 适用于需要从历史对话中某个决策点重新开始，探索不同解决方案的场景 |
+| **CONTEXT_USAGE** | 能够追踪和报告 Token 使用量、上下文窗口占用等统计信息 | 用于成本控制、性能优化和配额管理，帮助用户了解 AI 调用的资源消耗 |
+| **SETUP_HELPER** | 提供交互式设置向导，辅助用户完成初始配置（API Key、偏好设置等） | 简化首次使用体验，通过 CLI 引导用户完成必要的配置步骤 |
+
+#### Executor 能力支持矩阵
+
+| Executor | SESSION_FORK | CONTEXT_USAGE | SETUP_HELPER | 能力总览 |
+|----------|--------------|---------------|--------------|---------|
+| `CLAUDE_CODE` | ✅ | ✅ | ❌ | 支持会话分支和上下文追踪 |
+| `CODEX` | ✅ | ✅ | ✅ | **全能力支持**，提供完整的会话管理和配置辅助 |
+| `OPENCODE` | ✅ | ✅ | ❌ | 支持会话分支和上下文追踪 |
+| `CURSOR_AGENT` | ❌ | ❌ | ✅ | 仅提供配置辅助功能 |
+| `AMP` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `GEMINI` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `QWEN_CODE` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `DROID` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `COPILOT` | ❌ | ❌ | ❌ | 无额外能力支持 |
+
 **能力说明**：
-- `SESSION_FORK` - 支持 session 分支和恢复
-- `CONTEXT_USAGE` - 支持上下文使用量追踪
-- `SETUP_HELPER` - 提供设置和配置辅助
+- `SESSION_FORK` - 支持 session 分支和恢复，允许从历史对话的任意消息节点创建新的对话分支
+- `CONTEXT_USAGE` - 支持上下文使用量追踪，提供 Token 消耗、上下文窗口占用等统计数据
+- `SETUP_HELPER` - 提供设置和配置辅助，通过交互式向导帮助用户完成初始配置
 
 **Chat 支持说明**：
 - ✅ 表示支持非交互式 Chat 模式（通过 `viben executor chat` 命令）
