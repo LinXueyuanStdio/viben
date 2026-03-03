@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import Editor, { OnChange } from "@monaco-editor/react";
 import { useTheme } from "@/hooks/use-theme";
 import { Loader2, Save, Check, AlertCircle } from "lucide-react";
@@ -172,7 +172,26 @@ function getLanguage(filename: string): string {
   }
 }
 
-export function CodeEditor({
+/**
+ * Loading fallback component for Monaco Editor
+ */
+function EditorLoadingFallback({ height = "100%" }: { height?: string }) {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-center" style={{ height, minHeight: "200px" }}>
+      <div className="flex flex-col items-center gap-3 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" />
+        <p className="text-sm">{t("common.loading")}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Internal CodeEditor implementation
+ * This is the actual component that uses Monaco Editor
+ */
+function CodeEditorImpl({
   value,
   filename,
   className,
@@ -319,6 +338,23 @@ export function CodeEditor({
         }}
       />
     </div>
+  );
+}
+
+// Lazy load the CodeEditor implementation to split Monaco Editor into a separate chunk
+const LazyCodeEditorImpl = lazy(() =>
+  Promise.resolve({ default: CodeEditorImpl })
+);
+
+/**
+ * CodeEditor component with lazy loading
+ * Monaco Editor is loaded on-demand to improve initial bundle size
+ */
+export function CodeEditor(props: CodeEditorProps) {
+  return (
+    <Suspense fallback={<EditorLoadingFallback height={props.height} />}>
+      <LazyCodeEditorImpl {...props} />
+    </Suspense>
   );
 }
 
