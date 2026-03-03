@@ -609,9 +609,73 @@ export function registerTaskCommand(program: Command): void {
           });
 
           if (options.resume) {
-            // TODO: Implement resume via swarm command when available
-            if (!ctx.quiet) {
-              console.log(chalk.gray("Note: --resume will be available when swarm command is implemented"));
+            // Find agent associated with this task in the registry
+            const agent = registrySearchAgent(task, repoRoot);
+
+            if (!agent) {
+              if (!ctx.quiet) {
+                console.log(chalk.yellow("No agent session found for this task."));
+                console.log(chalk.gray("Start an agent with: viben swarm start " + task));
+              }
+            } else {
+              // Check if agent is still running
+              if (isProcessRunning(agent.pid)) {
+                if (!ctx.quiet) {
+                  console.log(chalk.yellow(`Agent is already running (PID: ${agent.pid})`));
+                  console.log(chalk.gray(`Worktree: ${agent.worktree_path}`));
+                }
+              } else {
+                // Try to read session ID from worktree
+                const sessionIdFile = join(agent.worktree_path, ".session-id");
+                let sessionId: string | null = null;
+
+                if (existsSync(sessionIdFile)) {
+                  try {
+                    sessionId = readFileSync(sessionIdFile, "utf-8").trim();
+                  } catch {
+                    // Ignore read errors
+                  }
+                }
+
+                if (!sessionId) {
+                  if (!ctx.quiet) {
+                    console.log(chalk.yellow("No session ID found for resume."));
+                    console.log(chalk.gray("Start a new agent with: viben swarm start " + task));
+                  }
+                } else {
+                  // Build resume command using CLI adapter
+                  const platform = agent.platform || detectPlatform(repoRoot);
+                  const cliAdapter = getCLIAdapter(platform);
+                  const resumeCmd = cliAdapter.buildResumeCommand(sessionId);
+
+                  if (!ctx.quiet) {
+                    console.log();
+                    console.log(chalk.blue("=== Resuming Agent Session ==="));
+                    console.log(`  Session: ${sessionId}`);
+                    console.log(`  Platform: ${platform}`);
+                    console.log(`  Worktree: ${agent.worktree_path}`);
+                    console.log(`  Command: ${resumeCmd.join(" ")}`);
+                    console.log();
+                  }
+
+                  // Execute resume command
+                  const child = spawn(resumeCmd[0], resumeCmd.slice(1), {
+                    cwd: agent.worktree_path,
+                    stdio: "inherit",
+                  });
+
+                  child.on("error", (err) => {
+                    console.error(chalk.red(`Failed to resume: ${err.message}`));
+                  });
+
+                  // Wait for the child process to complete
+                  await new Promise<void>((resolvePromise) => {
+                    child.on("close", () => {
+                      resolvePromise();
+                    });
+                  });
+                }
+              }
             }
           }
         } else {

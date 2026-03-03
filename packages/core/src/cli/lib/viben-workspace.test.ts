@@ -17,7 +17,7 @@ import { join } from "node:path";
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
-  readdirSync: vi.fn(),
+  readdirSync: vi.fn() as ReturnType<typeof vi.fn>,
   statSync: vi.fn(),
 }));
 
@@ -53,6 +53,10 @@ function mockDirent(name: string, isDir: boolean): fs.Dirent {
     isSocket: () => false,
   } as fs.Dirent;
 }
+
+// Type assertion helper for readdirSync mock - bypasses the overloaded signature issue
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const mockReaddirSync = () => vi.mocked(fs.readdirSync) as any;
 
 import {
   // Constants
@@ -335,7 +339,7 @@ describe("getAllDevelopers", () => {
 
   it("should return list of developer directories", () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readdirSync).mockReturnValue([
+    mockReaddirSync().mockReturnValue([
       mockDirent("john", true),
       mockDirent("alice", true),
       mockDirent(".gitkeep", false),
@@ -348,7 +352,7 @@ describe("getAllDevelopers", () => {
 
   it("should exclude hidden directories", () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
-    vi.mocked(fs.readdirSync).mockReturnValue([
+    mockReaddirSync().mockReturnValue([
       mockDirent("john", true),
       mockDirent(".hidden", true),
     ] as fs.Dirent[]);
@@ -380,7 +384,7 @@ describe("getActiveJournalFile", () => {
   it("should return highest numbered journal file", () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readFileSync).mockReturnValue("name=john\n");
-    vi.mocked(fs.readdirSync).mockReturnValue([
+    mockReaddirSync().mockReturnValue([
       "journal-1.md",
       "journal-3.md",
       "journal-2.md",
@@ -396,7 +400,7 @@ describe("getActiveJournalFile", () => {
   it("should return null when no journal files exist", () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
     vi.mocked(fs.readFileSync).mockReturnValue("name=john\n");
-    vi.mocked(fs.readdirSync).mockReturnValue(["index.md", "notes.txt"]);
+    mockReaddirSync().mockReturnValue(["index.md", "notes.txt"]);
 
     const result = getActiveJournalFile("/workspace");
 
@@ -430,7 +434,7 @@ describe("getJournalInfo", () => {
       if (String(path).includes("journal-2.md")) return "Line1\nLine2\nLine3\n";
       return "";
     });
-    vi.mocked(fs.readdirSync).mockReturnValue(["journal-1.md", "journal-2.md"]);
+    mockReaddirSync().mockReturnValue(["journal-1.md", "journal-2.md"]);
 
     const result = getJournalInfo("/workspace");
 
@@ -830,10 +834,10 @@ describe("getActiveTasks", () => {
     vi.mocked(fs.existsSync).mockImplementation((path) => {
       return !String(path).includes("task.json");
     });
-    vi.mocked(fs.readdirSync).mockReturnValue([
-      { name: "01-01-task", isDirectory: () => true } as unknown as fs.Dirent,
-      { name: "archive", isDirectory: () => true } as unknown as fs.Dirent,
-    ]);
+    mockReaddirSync().mockReturnValue([
+      mockDirent("01-01-task", true),
+      mockDirent("archive", true),
+    ] as fs.Dirent[]);
 
     const result = getActiveTasks("/workspace");
 
@@ -1143,10 +1147,10 @@ describe("findTaskByName", () => {
     vi.mocked(fs.existsSync).mockImplementation((path) => {
       return String(path) === "/workspace/.viben/tasks";
     });
-    vi.mocked(fs.readdirSync).mockReturnValue([
-      { name: "01-01-my-task", isDirectory: () => true } as unknown as fs.Dirent,
-      { name: "01-02-other-task", isDirectory: () => true } as unknown as fs.Dirent,
-    ]);
+    mockReaddirSync().mockReturnValue([
+      mockDirent("01-01-my-task", true),
+      mockDirent("01-02-other-task", true),
+    ] as fs.Dirent[]);
 
     const result = findTaskByName("my-task", "/workspace/.viben/tasks");
 
@@ -1222,7 +1226,7 @@ describe("Python parity - add_session.py edge cases", () => {
         return "Line1\n";
       });
       // Python: finds highest number regardless of sequence
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      mockReaddirSync().mockReturnValue([
         "journal-1.md",
         "journal-5.md",
         "journal-3.md",
@@ -1240,7 +1244,7 @@ describe("Python parity - add_session.py edge cases", () => {
         if (String(path).includes(".developer")) return "name=john\n";
         return "Line1\n";
       });
-      vi.mocked(fs.readdirSync).mockReturnValue(["journal-42.md"]);
+      mockReaddirSync().mockReturnValue(["journal-42.md"]);
 
       const result = getJournalInfo("/workspace");
 
@@ -1358,7 +1362,7 @@ describe("Python parity - add_session.py edge cases", () => {
 |---|------|------|---------|
 <!-- @@@/auto:session-history -->
 `);
-      vi.mocked(fs.readdirSync).mockReturnValue(["journal-1.md"]);
+      mockReaddirSync().mockReturnValue(["journal-1.md"]);
       vi.mocked(fs.statSync).mockReturnValue({ isFile: () => true } as fs.Stats);
       vi.mocked(fsPromises.writeFile).mockResolvedValue();
 
@@ -1405,7 +1409,7 @@ describe("Python parity - git_context.py edge cases", () => {
         // Create content with exactly 1800 lines
         return Array(1800).fill("line").join("\n");
       });
-      vi.mocked(fs.readdirSync).mockReturnValue(["journal-1.md"]);
+      mockReaddirSync().mockReturnValue(["journal-1.md"]);
 
       // countLines should return 1800
       const lines = countLines("/workspace/journal-1.md");
@@ -1693,7 +1697,7 @@ describe("Python parity - git_context.py get_context_text()", () => {
       // Python: if assignee == developer and status != "done":
       const developer = "john";
       const assignee = "john";
-      const status = "in_progress";
+      const status: string = "in_progress";
 
       expect(assignee === developer && status !== "done").toBe(true);
     });
@@ -2024,7 +2028,7 @@ describe("Python parity - paths.py additional edge cases", () => {
       });
 
       // Simulating unsorted filesystem listing
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      mockReaddirSync().mockReturnValue([
         "journal-3.md",
         "journal-1.md",
         "journal-10.md",
@@ -2045,7 +2049,7 @@ describe("Python parity - paths.py additional edge cases", () => {
         return "";
       });
 
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      mockReaddirSync().mockReturnValue([
         "journal-1.md",
         "index.md",
         "notes.txt",
