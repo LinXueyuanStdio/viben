@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Heart } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +28,7 @@ export function FavoriteButton({
   const [isFavorited, setIsFavorited] = React.useState(initialFavorited);
   const [count, setCount] = React.useState(initialCount);
   const [isLoading, setIsLoading] = React.useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const apiPath = entityType === 'mcp' ? 'mcp' : 'skills';
 
@@ -96,8 +97,8 @@ export function FavoriteButton({
     >
       <motion.div
         initial={false}
-        animate={isFavorited ? { scale: [1, 1.3, 1] } : { scale: 1 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
+        animate={isFavorited ? { scale: prefersReducedMotion ? 1 : [1, 1.3, 1] } : { scale: 1 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.3, ease: 'easeOut' }}
       >
         <Heart
           className={cn(
