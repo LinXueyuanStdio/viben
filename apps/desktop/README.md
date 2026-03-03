@@ -150,6 +150,125 @@ pnpm tauri-dev
 pnpm desktop:restart
 ```
 
+### 调试技巧
+
+#### 浏览器 DevTools
+
+Tauri 应用使用 WebView 渲染前端界面，你可以像调试 Web 应用一样使用浏览器开发者工具：
+
+**macOS**:
+- 快捷键: `Cmd + Option + I`
+- 或在应用内右键点击 → 选择 "检查元素"
+
+**Windows/Linux**:
+- 快捷键: `Ctrl + Shift + I` 或 `F12`
+- 或在应用内右键点击 → 选择 "检查元素"
+
+**开发者工具功能**:
+- **Console**: 查看 JavaScript 日志、错误和警告
+- **Elements**: 检查 DOM 结构和 CSS 样式
+- **Network**: 监控 API 请求和响应
+- **Sources**: 设置断点调试 TypeScript/JavaScript 代码
+- **Performance**: 分析应用性能瓶颈
+- **Application**: 查看 LocalStorage、SessionStorage 和 IndexedDB
+
+#### Tauri 日志
+
+Tauri 会输出前端和后端的运行日志到终端：
+
+**开发模式日志**:
+```bash
+# 启动开发服务器时，日志会直接输出到终端
+pnpm desktop:dev
+
+# 日志类型：
+# - [Vite] 前端构建和 HMR 日志
+# - [Tauri] 后端 Rust 进程日志
+# - [WebView] 浏览器控制台输出
+```
+
+**日志级别**:
+- `INFO`: 一般信息（蓝色）
+- `WARN`: 警告信息（黄色）
+- `ERROR`: 错误信息（红色）
+- `DEBUG`: 调试信息（灰色）
+
+**过滤日志**:
+```bash
+# 只查看 Tauri 后端日志
+pnpm desktop:dev 2>&1 | grep -i tauri
+
+# 只查看错误日志
+pnpm desktop:dev 2>&1 | grep -i error
+```
+
+#### Rust 日志
+
+Tauri 后端使用 Rust 编写，你可以通过以下方式查看 Rust 日志：
+
+**1. 添加日志输出**:
+
+在 `apps/desktop/src-tauri/src/lib.rs` 或其他 Rust 文件中：
+
+```rust
+// 在 Cargo.toml 中添加依赖
+// [dependencies]
+// log = "0.4"
+// env_logger = "0.10"
+
+use log::{debug, info, warn, error};
+
+#[tauri::command]
+fn my_command() {
+    info!("这是一条信息日志");
+    debug!("这是一条调试日志");
+    warn!("这是一条警告日志");
+    error!("这是一条错误日志");
+}
+```
+
+**2. 设置日志级别**:
+
+通过环境变量控制日志详细程度：
+
+```bash
+# 显示所有日志（包括 DEBUG）
+RUST_LOG=debug pnpm desktop:dev
+
+# 只显示 INFO 及以上级别
+RUST_LOG=info pnpm desktop:dev
+
+# 只显示特定模块的日志
+RUST_LOG=viben_desktop=debug pnpm desktop:dev
+
+# 显示 Tauri 内部日志
+RUST_LOG=tauri=debug pnpm desktop:dev
+```
+
+**3. 查看编译日志**:
+
+```bash
+# 详细编译日志
+pnpm tauri-build --verbose
+
+# 查看 Cargo 构建日志
+cd apps/desktop/src-tauri
+cargo build --verbose
+```
+
+**4. 日志文件位置**:
+
+生产环境的日志文件通常存储在：
+
+- **macOS**: `~/Library/Logs/com.viben.desktop/`
+- **Windows**: `%APPDATA%\com.viben.desktop\logs\`
+- **Linux**: `~/.local/share/com.viben.desktop/logs/`
+
+**调试技巧**:
+- 使用 `dbg!()` 宏快速输出变量值: `dbg!(&my_variable);`
+- 使用 `println!()` 输出到标准输出（仅开发模式可见）
+- 在 `tauri.conf.json` 中启用 `devPath` 和 `beforeDevCommand` 查看详细启动日志
+
 ## 故障排除
 
 ### 端口 1420 被占用
