@@ -9,10 +9,10 @@ export {
   StaggerContainer,
   StaggerItem,
   AnimatedCard,
-  pageVariants,
-  staggerContainerVariants,
-  staggerItemVariants,
-  cardVariants,
+  createPageVariants,
+  createStaggerContainerVariants,
+  createStaggerItemVariants,
+  createCardVariants,
 } from "./page-wrapper";
 export { BentoGrid, BentoCard } from "./bento-grid";
 export type {
