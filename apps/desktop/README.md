@@ -269,6 +269,90 @@ cargo build --verbose
 - 使用 `println!()` 输出到标准输出（仅开发模式可见）
 - 在 `tauri.conf.json` 中启用 `devPath` 和 `beforeDevCommand` 查看详细启动日志
 
+#### Gateway 通信调试
+
+桌面应用通过 Viben Gateway (基于 `packages/core`) 与后端服务通信。Gateway 运行在独立的 Node.js 进程中，提供 RESTful API 接口。
+
+**Gateway 配置**:
+- **端口**: `18790` (默认)
+- **基础 URL**: `http://127.0.0.1:18790`
+- **配置文件**: `~/.viben/gateway.yaml`
+
+**API 端点**:
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/health` | GET | 健康检查，返回 Gateway 状态 |
+| `/api/agents` | GET/POST | 智能体管理（列表、创建、更新） |
+| `/api/agents/:id` | GET/PUT/DELETE | 单个智能体操作 |
+| `/api/cron` | GET/POST | Cron 任务管理 |
+| `/api/cron/:id` | GET/PUT/DELETE | 单个 Cron 任务操作 |
+| `/api/sessions` | GET/POST | 会话管理 |
+| `/api/sessions/:id` | GET/PUT/DELETE | 单个会话操作 |
+
+**重启 Gateway**:
+
+如果 Gateway 服务异常或需要应用配置更改：
+
+```bash
+# 在项目根目录
+pnpm gateway:restart
+```
+
+重启脚本会自动执行：
+1. 杀死端口 18790 上的进程
+2. 清理所有 Gateway 相关进程
+3. 验证端口已释放
+4. 重新启动 Gateway 服务
+
+脚本位置: `scripts/restart-gateway.sh`
+
+**测试 Gateway 连接**:
+
+```bash
+# 1. 检查 Gateway 健康状态
+curl http://127.0.0.1:18790/health
+
+# 2. 列出所有智能体
+curl http://127.0.0.1:18790/api/agents
+
+# 3. 列出所有 Cron 任务
+curl http://127.0.0.1:18790/api/cron
+
+# 4. 列出所有会话
+curl http://127.0.0.1:18790/api/sessions
+```
+
+**查看 Gateway 日志**:
+
+```bash
+# 运行时日志
+tail -f ~/.viben/logs/gateway.log
+
+# 重启日志
+tail -f ~/.viben/logs/gateway-restart.log
+```
+
+**常见问题**:
+
+1. **Gateway 未启动**:
+   ```bash
+   # 检查 Gateway 进程
+   lsof -i:18790
+
+   # 如果没有输出，启动 Gateway
+   pnpm gateway:restart
+   ```
+
+2. **API 请求失败**:
+   - 检查 Gateway 日志: `~/.viben/logs/gateway.log`
+   - 确认端口 18790 未被其他应用占用
+   - 验证 Gateway 配置: `~/.viben/gateway.yaml`
+
+3. **Query 参数格式**:
+   - ✅ 使用 **snake_case**: `workspace_path`, `include_global`, `session_id`
+   - ❌ 不要使用 camelCase: `workspacePath`, `includeGlobal`, `sessionId`
+
 ## 故障排除
 
 ### 端口 1420 被占用
