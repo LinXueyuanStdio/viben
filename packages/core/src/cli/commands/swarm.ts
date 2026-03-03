@@ -6,8 +6,8 @@
  */
 import { Command } from "commander";
 import { spawn, execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join, resolve, basename } from "node:path";
 import chalk from "chalk";
 import type { OutputContext } from "../types";
 import {
@@ -200,7 +200,8 @@ function getRegistryPath(repoRoot: string): string | null {
     let developerName: string | null = null;
     for (const line of content.split("\n")) {
       if (line.startsWith("name=")) {
-        developerName = line.split("=")[1]?.trim();
+        // Use substring to handle values containing '='
+        developerName = line.substring(line.indexOf("=") + 1).trim();
         break;
       }
     }
@@ -265,6 +266,7 @@ function findAgent(
 
 /**
  * Get task directory from task name
+ * Sanitizes input to prevent path traversal attacks
  */
 function resolveTaskDir(repoRoot: string, taskName: string): string | null {
   const tasksDir = join(repoRoot, ".viben", "tasks");
@@ -272,19 +274,21 @@ function resolveTaskDir(repoRoot: string, taskName: string): string | null {
     return null;
   }
 
-  // Direct path check
-  if (existsSync(join(tasksDir, taskName))) {
-    return join(".viben", "tasks", taskName);
+  // Sanitize taskName to prevent path traversal (e.g., ../../etc/passwd)
+  const safeTaskName = basename(taskName);
+
+  // Direct path check with sanitized name
+  if (existsSync(join(tasksDir, safeTaskName))) {
+    return join(".viben", "tasks", safeTaskName);
   }
 
-  // Search for matching task
+  // Search for matching task using fs.readdirSync instead of shell command
+  // This avoids command injection vulnerabilities
   try {
-    const entries = execSync(`ls -1 "${tasksDir}"`, { encoding: "utf-8" })
-      .trim()
-      .split("\n");
+    const entries = readdirSync(tasksDir);
 
     for (const entry of entries) {
-      if (entry.includes(taskName) || taskName.includes(entry)) {
+      if (entry.includes(safeTaskName) || safeTaskName.includes(entry)) {
         return join(".viben", "tasks", entry);
       }
     }
@@ -325,21 +329,30 @@ async function listWorktrees(
         encoding: "utf-8",
       });
 
-      let currentPath = "";
-      let currentCommit = "";
+      // Parse worktree output record by record for robustness
+      // Each record starts with "worktree " and handles detached worktrees
+      let currentWorktree: { path: string; commit: string; branch: string } | null = null;
+
       for (const line of gitOutput.split("\n")) {
         if (line.startsWith("worktree ")) {
-          currentPath = line.substring(9);
-        } else if (line.startsWith("HEAD ")) {
-          currentCommit = line.substring(5, 12);
-        } else if (line.startsWith("branch ")) {
-          const branch = line.substring(7).replace("refs/heads/", "");
-          worktrees.push({
-            path: currentPath,
-            commit: currentCommit,
-            branch,
-          });
+          // Save previous worktree if exists
+          if (currentWorktree) {
+            worktrees.push(currentWorktree);
+          }
+          currentWorktree = { path: line.substring(9), commit: "", branch: "" };
+        } else if (currentWorktree) {
+          if (line.startsWith("HEAD ")) {
+            currentWorktree.commit = line.substring(5, 12);
+          } else if (line.startsWith("branch ")) {
+            currentWorktree.branch = line.substring(7).replace("refs/heads/", "");
+          } else if (line.startsWith("detached")) {
+            currentWorktree.branch = "(detached)";
+          }
         }
+      }
+      // Don't forget the last worktree
+      if (currentWorktree) {
+        worktrees.push(currentWorktree);
       }
     } catch {
       // Ignore errors
@@ -610,27 +623,23 @@ async function showStatus(
   }
 
   if (ctx.json && !options.watch) {
-    const result = await runPythonScript(repoRoot, "status.py", args);
-    if (result.exitCode === 0) {
-      // Try to parse as JSON, otherwise return raw output
-      const registry = readRegistry(repoRoot);
-      const agents = registry.agents.map((agent) => ({
-        ...agent,
-        running: isProcessRunning(agent.pid),
-      }));
+    // For JSON output, read registry directly and compute status in TypeScript
+    // This avoids redundant Python script call and ensures consistency
+    const registry = readRegistry(repoRoot);
+    const agents = registry.agents.map((agent) => ({
+      ...agent,
+      running: isProcessRunning(agent.pid),
+    }));
 
-      // Apply filters
-      let filteredAgents = agents;
-      if (options.running) {
-        filteredAgents = agents.filter((a) => a.running);
-      } else if (options.stopped) {
-        filteredAgents = agents.filter((a) => !a.running);
-      }
-
-      output(ctx, successResponse({ agents: filteredAgents }));
-    } else {
-      output(ctx, errorResponse("STATUS_ERROR", result.stderr || result.stdout));
+    // Apply filters
+    let filteredAgents = agents;
+    if (options.running) {
+      filteredAgents = agents.filter((a) => a.running);
+    } else if (options.stopped) {
+      filteredAgents = agents.filter((a) => !a.running);
     }
+
+    output(ctx, successResponse({ agents: filteredAgents }));
   } else {
     // Passthrough mode for interactive output
     const exitCode = await runPythonScriptPassthrough(repoRoot, "status.py", args);
