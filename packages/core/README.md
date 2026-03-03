@@ -351,13 +351,141 @@ console.log(availability.status); // "LOGIN_DETECTED" | "INSTALLATION_FOUND" | "
 const allAvailability = getAllExecutorsAvailability();
 
 // 非交互式 Chat 模式
+// 注意：使用 createChatProxy 替代已废弃的 spawnChat
+import { createChatProxy } from "@viben/core";
+
 if (executorSupportsChat("CLAUDE_CODE")) {
-  const result = await spawnChat("CLAUDE_CODE", {
+  const proxy = createChatProxy("CLAUDE_CODE");
+  const result = await proxy.execute({
     prompt: "帮我分析这段代码",
     cwd: "/path/to/project",
-    format: "stream-json",
+    outputFormat: "text",
   });
+  console.log(`Exit code: ${result.exitCode}`);
 }
+```
+
+#### Chat 模式使用示例
+
+Chat 模式支持两种数据格式：`text` (纯文本) 和 `stream-json` (JSON 流)。
+
+##### 1. 纯文本格式 (text)
+
+适用于简单的文本交互场景。
+
+```typescript
+import { createChatProxy, executorSupportsChat } from "@viben/core";
+
+// 检查执行器是否支持 Chat 模式
+if (!executorSupportsChat("CLAUDE_CODE")) {
+  throw new Error("Executor does not support chat mode");
+}
+
+// 创建 Chat 代理
+const chatProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+
+// 执行纯文本格式的 Chat
+const result = await chatProxy.execute({
+  prompt: "帮我写一个 TypeScript 函数来计算斐波那契数列",
+  cwd: process.cwd(),
+  inputFormat: "text",
+  outputFormat: "text",
+  verbose: true,
+});
+
+console.log(`Chat completed with exit code: ${result.exitCode}`);
+if (result.sessionId) {
+  console.log(`Session ID: ${result.sessionId}`);
+}
+```
+
+##### 2. JSON 流格式 (stream-json)
+
+适用于需要结构化数据的程序化场景，支持实时解析 SSE 事件流。
+
+```typescript
+import { createChatProxy } from "@viben/core";
+
+const chatProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+
+// 执行 JSON 流格式的 Chat
+const result = await chatProxy.execute({
+  prompt: "分析这个项目的架构并给出改进建议",
+  cwd: "/path/to/project",
+  inputFormat: "stream-json",
+  outputFormat: "stream-json",
+  sessionId: "custom-session-123",
+  model: "claude-sonnet-4-20250514",
+  dangerouslySkipPermissions: false,
+});
+
+console.log(`Chat completed with exit code: ${result.exitCode}`);
+```
+
+**stream-json 格式说明**：
+
+- **输入格式**：通过 stdin 发送 JSON 行，每行一个事件
+  ```json
+  {"type":"user","message":{"role":"user","content":"分析代码"}}
+  ```
+
+- **输出格式**：接收 SSE (Server-Sent Events) 格式的 JSON 流
+  ```
+  data: {"type":"text","content":"正在分析代码..."}
+
+  data: {"type":"tool_use","name":"read_file","input":{"path":"src/main.ts"}}
+
+  data: {"type":"result","exitCode":0,"sessionId":"abc123"}
+  ```
+
+##### 3. 恢复已有 Session
+
+```typescript
+import { createChatProxy } from "@viben/core";
+
+const chatProxy = createChatProxy("CLAUDE_CODE");
+
+// 恢复之前的会话并继续对话
+const result = await chatProxy.execute({
+  prompt: "继续上面的工作",
+  resume: "previous-session-id",
+  cwd: "/path/to/project",
+});
+```
+
+##### 4. SDK 模式 vs Spawn 模式
+
+Chat 代理支持两种执行策略：
+
+- **SDK 模式** (`preferSdk: true`, 默认): 使用 Anthropic SDK 直接调用 API，支持更高级的功能（仅 CLAUDE_CODE）
+- **Spawn 模式** (`preferSdk: false`): 通过子进程调用 CLI 命令，与命令行体验完全一致
+
+```typescript
+import { createChatProxy, isSdkAvailable } from "@viben/core";
+
+// 检查 SDK 是否可用
+if (isSdkAvailable("CLAUDE_CODE")) {
+  // 使用 SDK 模式（推荐）
+  const sdkProxy = createChatProxy("CLAUDE_CODE", { preferSdk: true });
+  await sdkProxy.execute({ prompt: "你好" });
+} else {
+  // 降级到 Spawn 模式
+  const spawnProxy = createChatProxy("CLAUDE_CODE", { preferSdk: false });
+  await spawnProxy.execute({ prompt: "你好" });
+}
+```
+
+**差异对比**：
+
+| 特性 | SDK 模式 | Spawn 模式 |
+|------|---------|-----------|
+| 可用性 | 仅 CLAUDE_CODE | 所有支持 Chat 的执行器 |
+| 性能 | 更快（直接 API 调用） | 较慢（需启动子进程） |
+| 功能 | 支持高级特性（如流式解析） | 基础功能 |
+| 依赖 | 需要 @anthropic-ai/sdk | 需要安装对应 CLI |
+| IO 处理 | 程序化处理 | 继承父进程 stdio |
+| 推荐场景 | 生产环境、自动化 | 开发调试、CLI 使用 |
+
 ```
 
 支持的执行器类型:
