@@ -78,7 +78,6 @@
     "cloudflared": "^0.7.1",
     "commander": "^12.1.0",
     "fastify": "^5.2.1",
-    "node-pty": "^1.1.0",
     "pino": "^10.3.1",
     "shell-quote": "^1.8.3",
     "undici": "^7.22.0",
@@ -93,5 +92,8 @@
     "tsup": "^8.0.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"
+  },
+  "optionalDependencies": {
+    "node-pty": "^1.1.0"
   }
 }
