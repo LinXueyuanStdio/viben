@@ -12,6 +12,7 @@
 | [config.md](./config.md) | `viben config` | Git 风格配置管理 | 待实现 |
 | [workspace.md](./workspace.md) | `viben workspace` | 工作区操作 | 待实现 |
 | [team.md](./team.md) | `viben team` | 团队协作工作区初始化 | 待实现 |
+| [user.md](./user.md) | `viben user` | 用户身份管理 | 已实现 |
 
 ### 服务与运行时
 
@@ -68,6 +69,7 @@ Commands:
   config        Configuration management (git-style)
   workspace     Workspace operations
   team          Team collaboration workspace setup
+  user          Manage user identity (init, get, status)
 
   # 服务与运行时
   service       Manage background services

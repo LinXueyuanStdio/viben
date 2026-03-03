@@ -156,25 +156,33 @@ name=john
 
 ---
 
-## Python 脚本映射
+## 实现说明
 
-| 命令 | 脚本 |
-|------|------|
+实现方式: **原生 TypeScript** (不依赖 Python)
+
+对应 Python 脚本参考:
+
+| 命令 | 参考脚本 |
+|------|----------|
 | `viben user init` | `init_developer.py` |
 | `viben user get` | `get_developer.py` |
+
+实现文件:
+- `packages/core/src/cli/commands/user.ts`
+- `packages/core/src/cli/commands/user.test.ts`
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `viben user init <name>` 初始化用户身份
-- [ ] 创建 `.viben/.developer` 文件
-- [ ] 创建 `.viben/workspace/<name>/` 目录结构
-- [ ] 创建 `index.md` 和 `journal-1.md`
-- [ ] 已初始化时提示当前用户
-- [ ] `viben user get` 获取当前用户
-- [ ] `viben user get --json` JSON 输出
-- [ ] 未初始化时输出错误信息
+- [x] `viben user init <name>` 初始化用户身份
+- [x] 创建 `.viben/.developer` 文件
+- [x] 创建 `.viben/workspace/<name>/` 目录结构
+- [x] 创建 `index.md` 和 `journal-1.md`
+- [x] 已初始化时提示当前用户
+- [x] `viben user get` 获取当前用户
+- [x] `viben user get --json` JSON 输出
+- [x] 未初始化时输出错误信息
 
 ---
 
