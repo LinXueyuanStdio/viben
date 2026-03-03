@@ -19,9 +19,9 @@ import { join, dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
-import { type ProjectType, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
+import { type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
 
-export type { ProjectType } from "./types";
+export type { ProjectType, ExecutorType } from "./types";
 
 // =============================================================================
 // Template Path Helpers
@@ -463,7 +463,7 @@ export interface InitOptions {
   /** Skip existing files without error */
   skipExisting?: boolean;
   /** Executors to configure (default: CURSOR, CLAUDE_CODE) */
-  executors?: string[];
+  executors?: ExecutorType[];
 }
 
 /**
@@ -695,7 +695,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
       case "KIRO":
         await configureKiro(targetDir, writeOpts, createdFiles);
         break;
-      case "GEMINI_CLI":
+      case "GEMINI":
         await configureGemini(targetDir, writeOpts, createdFiles);
         break;
       case "ANTIGRAVITY":

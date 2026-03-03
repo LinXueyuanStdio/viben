@@ -22,7 +22,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { workspaceManager } from "../../workspace";
 import type { Workspace } from "../../workspace";
-import { initTeam, type ProjectType } from "../../team/init";
+import { initTeam, type ProjectType, type ExecutorType } from "../../team/init";
 
 const execAsync = promisify(exec);
 
@@ -338,7 +338,7 @@ export function registerWorkspaceRoutes(fastify: FastifyInstance): void {
         const force = viben_options?.force ?? false;
 
         // Build executors list based on options
-        const executors: ("CURSOR" | "CLAUDE_CODE")[] = ["CLAUDE_CODE"];
+        const executors: ExecutorType[] = ["CLAUDE_CODE"];
         if (includeCursor) {
           executors.push("CURSOR");
         }
