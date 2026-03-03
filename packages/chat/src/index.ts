@@ -12,6 +12,10 @@ export * from "./types";
 // Utilities
 export { cn, isImageFile, formatTokens } from "./utils";
 
+// Model icons
+export { getModelIcon } from "./model-icons";
+export type { ModelIconOptions } from "./model-icons";
+
 // ChatInput - Main chat input component
 export {
   ChatInput,

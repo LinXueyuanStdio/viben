@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { getModelIcon } from "@/lib/model-icons";
 import {
   useProviders,
   type ProviderType,
@@ -744,6 +745,9 @@ export function SettingsModelPage() {
                                 )}>
                                   {isEnabled && <Check className="h-3 w-3 text-primary-foreground" />}
                                 </div>
+                                <span className="flex-shrink-0">
+                                  {getModelIcon(model.id, { size: 16 })}
+                                </span>
                                 <span className="font-medium text-sm truncate">{model.name}</span>
                               </button>
                               <div className="flex items-center gap-2 flex-shrink-0">

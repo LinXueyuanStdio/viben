@@ -6,9 +6,10 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { Terminal, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import type { Executor, ExecutorType } from "@/types";
 import type { ChatListItem } from "@/lib/gateway";
+import { getExecutorIcon } from "@/lib/model-icons";
 import {
   ListItem,
   gradients,
@@ -119,7 +120,7 @@ export function ExecutorListItem({
           : t("executor.noSessions", "No sessions")
       }
       avatar={{
-        icon: Terminal,
+        icon: getExecutorIcon(executorType, { size: 20, className: "text-white" }),
         gradient: getExecutorGradient(executorType),
       }}
       indicators={{

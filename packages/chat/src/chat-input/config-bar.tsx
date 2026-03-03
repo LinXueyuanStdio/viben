@@ -8,7 +8,6 @@ import * as React from "react";
 import { useTranslation } from "react-i18next";
 import {
   Bot,
-  Cpu,
   Terminal,
   Wrench,
   Sparkles,
@@ -31,6 +30,7 @@ import { ToolsConfigPopover } from "../tools-config-popover";
 import { SkillsConfigPopover } from "../skills-config-popover";
 import { ContextDetailsPopover } from "../context-details-popover";
 import { formatTokens } from "../utils";
+import { getModelIcon } from "../model-icons";
 import type {
   AgentOption,
   ModelOption,
@@ -248,7 +248,9 @@ export function ChatInputConfigBar({
                 className="h-8 px-2 gap-1.5 text-xs"
                 disabled={isLoading || disabled}
               >
-                <Cpu className="h-3.5 w-3.5" />
+                <span className="h-3.5 w-3.5 shrink-0 flex items-center justify-center">
+                  {getModelIcon(selectedModelId || undefined, { size: 14 })}
+                </span>
                 <span className="max-w-[80px] truncate">
                   {selectedModel?.name || t("chat.model", "模型")}
                 </span>
@@ -270,9 +272,12 @@ export function ChatInputConfigBar({
                     onClick={() => onModelChange?.(model.id)}
                   >
                     {model.id === selectedModelId && (
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-3.5 w-3.5 shrink-0" />
                     )}
-                    <span className={model.id !== selectedModelId ? "ml-5" : ""}>
+                    <span className={`h-4 w-4 shrink-0 flex items-center justify-center ${model.id !== selectedModelId ? "ml-5" : ""}`}>
+                      {getModelIcon(model.id, { size: 14 })}
+                    </span>
+                    <span className="truncate">
                       {model.name}
                       {model.provider && (
                         <span className="text-muted-foreground ml-1">

@@ -7,10 +7,7 @@
 
 import * as React from "react";
 import { useTranslation } from "react-i18next";
-import { Users, Bot, Plus, Loader2, Sparkles } from "lucide-react";
-import Claude from "@lobehub/icons/es/Claude";
-import Gemini from "@lobehub/icons/es/Gemini";
-import OpenAI from "@lobehub/icons/es/OpenAI";
+import { Users, Bot, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +24,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import {
+  getExecutorIcon,
+  getExecutorDisplayName,
+  getExecutorAvatarGradient,
+} from "@/lib/model-icons";
 import type { AgentInfo } from "@/lib/gateway";
 import type { MemberRole } from "@/lib/gateway";
 
@@ -133,72 +135,6 @@ export function CreateGroupChatDialog({
     }
   };
 
-  // Get executor icon based on executor_type
-  const getExecutorIcon = (executorType?: string) => {
-    const type = executorType?.toUpperCase();
-    switch (type) {
-      case "CLAUDE_CODE":
-        return <Claude.Color size={16} />;
-      case "CODEX":
-        return <OpenAI size={16} />;
-      case "GEMINI":
-        return <Gemini.Color size={16} />;
-      case "CURSOR_AGENT":
-      case "CURSOR":
-        return <Sparkles className="h-4 w-4 text-white" />;
-      default:
-        return <Bot className="h-4 w-4 text-white" />;
-    }
-  };
-
-  // Get executor display name
-  const getExecutorDisplayName = (executorType?: string) => {
-    const type = executorType?.toUpperCase();
-    switch (type) {
-      case "CLAUDE_CODE":
-        return "Claude Code";
-      case "CODEX":
-        return "Codex";
-      case "GEMINI":
-        return "Gemini";
-      case "CURSOR_AGENT":
-      case "CURSOR":
-        return "Cursor";
-      case "COPILOT":
-        return "Copilot";
-      case "QWEN_CODE":
-        return "Qwen Code";
-      case "AMP":
-        return "Amp";
-      case "OPENCODE":
-        return "Opencode";
-      case "DROID":
-        return "Droid";
-      default:
-        return executorType || "Agent";
-    }
-  };
-
-  // Get avatar gradient for agent
-  const getAvatarGradient = (executorType?: string) => {
-    const type = executorType?.toUpperCase();
-    switch (type) {
-      case "CLAUDE_CODE":
-        return "from-orange-500 to-amber-400";
-      case "CODEX":
-        return "from-emerald-500 to-teal-400";
-      case "GEMINI":
-        return "from-blue-500 to-indigo-400";
-      case "CURSOR_AGENT":
-      case "CURSOR":
-        return "from-violet-500 to-purple-400";
-      case "COPILOT":
-        return "from-gray-600 to-gray-500";
-      default:
-        return "from-blue-500 to-cyan-400";
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -278,10 +214,10 @@ export function CreateGroupChatDialog({
                         <div
                           className={cn(
                             "w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br shadow-md",
-                            getAvatarGradient(agent.executor_type)
+                            getExecutorAvatarGradient(agent.executor_type)
                           )}
                         >
-                          {getExecutorIcon(agent.executor_type)}
+                          {getExecutorIcon(agent.executor_type, { size: 16 })}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">

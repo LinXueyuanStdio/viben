@@ -6,7 +6,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { Bot, Settings, History, Copy, Trash2, Star } from "lucide-react";
+import { Settings, History, Copy, Trash2, Star } from "lucide-react";
 import {
   ListItem,
   getGradientByName,
@@ -14,6 +14,7 @@ import {
   type ListItemSource,
   type ListItemBadge,
 } from "./list-item";
+import { getModelIcon } from "@/lib/model-icons";
 
 // ============================================================================
 // Types
@@ -134,7 +135,7 @@ export function AgentListItem({
         t("agent.noDescription", "暂无描述")
       }
       avatar={{
-        icon: Bot,
+        icon: getModelIcon(agent.model, { size: 20, className: "text-white" }),
         gradient: getGradientByName(agent.name),
       }}
       indicators={{
