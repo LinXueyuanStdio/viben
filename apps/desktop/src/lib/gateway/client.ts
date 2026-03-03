@@ -20,6 +20,7 @@ import {
   stopAgent,
   sendAgentInput,
   stopBackgroundTask,
+  subscribeToBackgroundTasks,
 
   // Sessions module
   listSessions,
@@ -73,10 +74,16 @@ import {
   updateProvider,
   deleteProvider,
   setDefaultProvider,
+  getDefaultProvider,
   testProvider,
   discoverModels,
   getProviderEnabledModels,
   updateProviderEnabledModels,
+  listProviderEnabledModels,
+  enableProviderModel,
+  disableProviderModel,
+  enableProvider,
+  disableProvider,
   getApiKeyProviders,
 
   // API Keys module
@@ -92,12 +99,14 @@ import {
   getActiveWorkspace,
   setActiveWorkspace,
   detectAgents,
+  detectWorkspaceAgents,
 
   // Workspace Resources module
   getExecutors,
   getWorkspaceModels,
   getWorkspaceAgents,
   getAgentDetails,
+  getAgentById,
   getChatList,
 
   // Group Chat module
@@ -278,6 +287,7 @@ import type {
   SpawnAgentRequest,
   SSEMessageEvent,
   ExecutorType,
+  BackgroundTask,
   FileSession,
   SessionMessage,
   UIMessage,
@@ -579,6 +589,17 @@ export class GatewayClient {
    */
   async stopBackgroundTask(taskId: string): Promise<{ success: boolean; taskId: string }> {
     return stopBackgroundTask(this.baseUrl, taskId);
+  }
+
+  /**
+   * Subscribe to background task updates (SSE)
+   * Returns an EventSource-like interface with close() method
+   */
+  subscribeToBackgroundTasks(
+    onTasks: (tasks: BackgroundTask[]) => void,
+    onError?: (error: Error) => void
+  ): { close: () => void } {
+    return subscribeToBackgroundTasks(this.baseUrl, onTasks, onError);
   }
 
   // ==========================================================================
@@ -1010,6 +1031,48 @@ export class GatewayClient {
   }
 
   /**
+   * List enabled models for a specific provider
+   */
+  async listProviderEnabledModels(providerId: string): Promise<string[]> {
+    return listProviderEnabledModels(this.baseUrl, providerId);
+  }
+
+  /**
+   * Enable a model for a specific provider
+   */
+  async enableProviderModel(providerId: string, modelId: string): Promise<void> {
+    return enableProviderModel(this.baseUrl, providerId, modelId);
+  }
+
+  /**
+   * Disable a model for a specific provider
+   */
+  async disableProviderModel(providerId: string, modelId: string): Promise<void> {
+    return disableProviderModel(this.baseUrl, providerId, modelId);
+  }
+
+  /**
+   * Get default provider
+   */
+  async getDefaultProvider(): Promise<{ default_provider_id: string | null; provider: ProviderResponse | null }> {
+    return getDefaultProvider(this.baseUrl);
+  }
+
+  /**
+   * Enable a provider
+   */
+  async enableProvider(providerId: string): Promise<void> {
+    return enableProvider(this.baseUrl, providerId);
+  }
+
+  /**
+   * Disable a provider
+   */
+  async disableProvider(providerId: string): Promise<void> {
+    return disableProvider(this.baseUrl, providerId);
+  }
+
+  /**
    * Get API key providers info
    */
   async getApiKeyProviders(): Promise<ApiKeyProvidersResponse> {
@@ -1109,6 +1172,13 @@ export class GatewayClient {
     return detectAgents(this.baseUrl, workspaceId);
   }
 
+  /**
+   * Detect workspace agents (alias for detectAgents)
+   */
+  async detectWorkspaceAgents(workspaceId: string): Promise<DetectAgentsResponse> {
+    return detectWorkspaceAgents(this.baseUrl, workspaceId);
+  }
+
   // ==========================================================================
   // Workspace Resources Module Methods
   // ==========================================================================
@@ -1143,6 +1213,16 @@ export class GatewayClient {
    */
   async getAgentDetails(agentType: string): Promise<AgentDetails | null> {
     return getAgentDetails(this.baseUrl, agentType);
+  }
+
+  /**
+   * Get agent by ID with optional workspace path
+   */
+  async getAgentById(
+    agentId: string,
+    workspacePath?: string
+  ): Promise<AgentDetails | null> {
+    return getAgentById(this.baseUrl, agentId, workspacePath);
   }
 
   /**

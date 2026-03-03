@@ -1567,7 +1567,27 @@
       "done": "已完成",
       "failed": "失败",
       "cancelled": "已取消"
-    }
+    },
+    "exportConfig": "导出配置",
+    "exportConfigDesc": "将当前检查器配置导出为 JSON 文件。",
+    "importConfig": "导入配置",
+    "importConfigDesc": "导入之前导出的检查器配置文件。",
+    "import": "导入",
+    "sensitiveDataWarning": "检测到敏感数据",
+    "sensitiveDataWarningDesc": "您的配置包含 API 密钥或令牌等敏感数据。请选择要包含在导出中的数据。",
+    "exportOptions": "导出选项",
+    "includeAuthToken": "包含认证令牌",
+    "includeHeaders": "包含所有 HTTP 头",
+    "includeEnvVars": "包含环境变量",
+    "configPreview": "配置预览",
+    "downloadConfig": "下载配置",
+    "dropConfigHere": "将配置文件拖放到此处或点击浏览",
+    "acceptsJson": "支持 .json 文件",
+    "invalidConfig": "无效的配置文件",
+    "jsonParseError": "无效的 JSON 格式",
+    "validConfig": "有效的配置",
+    "applyConfig": "应用配置",
+    "importAuthWarning": "此配置包含认证令牌，将应用到您的会话中。"
   },
   "updates": {
     "title": "包更新",

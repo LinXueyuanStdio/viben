@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inspector, NotificationsPanel } from "@/components/inspector";
+import { Inspector, NotificationsPanel, ConfigManager, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
   parseMcpConfig,
@@ -385,6 +385,59 @@ export function InspectorPage() {
     setConfigJson(value);
   }, []);
 
+  // Handle config import from ConfigManager
+  const handleConfigImport = useCallback((importedConfig: InspectorConfig) => {
+    // Convert InspectorConfig to McpServerConfig JSON format
+    const mcpConfig: Record<string, unknown> = {};
+
+    // Set transport type
+    if (importedConfig.transport.type) {
+      mcpConfig.transport = importedConfig.transport.type;
+    }
+
+    // Handle remote config (url-based)
+    if (importedConfig.transport.url) {
+      mcpConfig.url = importedConfig.transport.url;
+    }
+
+    // Handle STDIO config
+    if (importedConfig.transport.command) {
+      mcpConfig.command = importedConfig.transport.command;
+      if (importedConfig.transport.args) {
+        mcpConfig.args = importedConfig.transport.args;
+      }
+      if (importedConfig.transport.env) {
+        mcpConfig.env = importedConfig.transport.env;
+      }
+      if (importedConfig.transport.cwd) {
+        mcpConfig.cwd = importedConfig.transport.cwd;
+      }
+    }
+
+    // Handle headers
+    if (importedConfig.transport.headers) {
+      mcpConfig.headers = importedConfig.transport.headers;
+    }
+
+    // Handle auth
+    if (importedConfig.auth?.token) {
+      mcpConfig.auth = importedConfig.auth.token;
+    }
+
+    // Handle timeout
+    if (importedConfig.transport.timeout) {
+      mcpConfig.timeout = importedConfig.transport.timeout;
+    }
+
+    // Update proxy setting
+    if (importedConfig.proxy?.enabled !== undefined) {
+      setUseProxy(importedConfig.proxy.enabled);
+    }
+
+    // Set the new config JSON
+    setConfigJson(JSON.stringify(mcpConfig, null, 2));
+  }, []);
+
   const getConnectionStatusInfo = (status: InspectorConnectionStatus) => {
     switch (status) {
       case "connected":
@@ -547,6 +600,14 @@ export function InspectorPage() {
                 </div>
               )}
             </div>
+
+            {/* Config Export/Import */}
+            <ConfigManager
+              config={parsedConfig}
+              configJson={configJson}
+              useProxy={useProxy}
+              onImport={handleConfigImport}
+            />
 
             {/* Config Examples - Collapsible */}
             <div className="text-xs text-muted-foreground">

@@ -13,6 +13,8 @@ import {
   File,
   Loader2,
   LayoutTemplate,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,8 +24,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "react-i18next";
 import { useCompletion, createCompletionHandler } from "@/hooks/use-completion";
 import { CompletionInput } from "./completion-input";
-import type { McpResource } from "@/types";
+import type { McpResource, McpServerCapabilities } from "@/types";
 import { UriTemplate } from "@modelcontextprotocol/sdk/shared/uriTemplate.js";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // =============================================================================
 // Types
@@ -34,6 +42,12 @@ interface InspectorResourcesProps {
   enabled?: boolean;
   /** Whether the server supports completions */
   completionsSupported?: boolean;
+  /** Server capabilities to check for subscription support */
+  serverCapabilities?: McpServerCapabilities | null;
+  /** Callback when a subscribed resource is updated (notification received) */
+  onResourceUpdated?: (uri: string) => void;
+  /** URI of a resource that was just updated via notification - parent should set this when receiving notifications/resources/updated */
+  updatedResourceUri?: string | null;
 }
 
 interface ResourceContent {
@@ -118,8 +132,17 @@ export function InspectorResources({
   makeRequest,
   enabled = true,
   completionsSupported = true,
+  serverCapabilities,
+  onResourceUpdated,
+  updatedResourceUri,
 }: InspectorResourcesProps) {
   const { t } = useTranslation();
+
+  // Check if server supports resource subscriptions
+  const supportsSubscribe = useMemo(() => {
+    const resources = serverCapabilities?.resources as Record<string, unknown> | undefined;
+    return resources?.subscribe === true;
+  }, [serverCapabilities]);
 
   // Resources state
   const [resources, setResources] = useState<McpResource[]>([]);
@@ -138,6 +161,11 @@ export function InspectorResources({
   const [selectedTemplate, setSelectedTemplate] = useState<ResourceTemplate | null>(null);
   const [templateValues, setTemplateValues] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState("resources");
+
+  // Subscription state
+  const [subscribedResources, setSubscribedResources] = useState<Set<string>>(new Set());
+  const [subscribing, setSubscribing] = useState<Set<string>>(new Set());
+  const [updatedResources, setUpdatedResources] = useState<Set<string>>(new Set());
 
   // Completion hook
   const handleCompletion = useCallback(
@@ -159,6 +187,14 @@ export function InspectorResources({
   useEffect(() => {
     clearCompletions();
   }, [selectedTemplate, clearCompletions]);
+
+  // Handle resource update notifications from parent
+  useEffect(() => {
+    if (updatedResourceUri && subscribedResources.has(updatedResourceUri)) {
+      setUpdatedResources((prev) => new Set(prev).add(updatedResourceUri));
+      onResourceUpdated?.(updatedResourceUri);
+    }
+  }, [updatedResourceUri, subscribedResources, onResourceUpdated]);
 
   // Filter resources by search query
   const filteredResources = useMemo(() => {
@@ -283,7 +319,77 @@ export function InspectorResources({
     setTemplates([]);
     setSelectedTemplate(null);
     setTemplateValues({});
+    setSubscribedResources(new Set());
+    setSubscribing(new Set());
+    setUpdatedResources(new Set());
     clearCompletions();
+  };
+
+  // Subscribe to a resource
+  const handleSubscribe = async (uri: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+
+    if (!supportsSubscribe || subscribedResources.has(uri)) return;
+
+    setSubscribing((prev) => new Set(prev).add(uri));
+    try {
+      await makeRequest("resources/subscribe", { uri });
+      setSubscribedResources((prev) => new Set(prev).add(uri));
+      // Clear any pending update indicator when subscribing
+      setUpdatedResources((prev) => {
+        const next = new Set(prev);
+        next.delete(uri);
+        return next;
+      });
+    } catch (error) {
+      console.error("Error subscribing to resource:", error);
+    } finally {
+      setSubscribing((prev) => {
+        const next = new Set(prev);
+        next.delete(uri);
+        return next;
+      });
+    }
+  };
+
+  // Unsubscribe from a resource
+  const handleUnsubscribe = async (uri: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+
+    if (!supportsSubscribe || !subscribedResources.has(uri)) return;
+
+    setSubscribing((prev) => new Set(prev).add(uri));
+    try {
+      await makeRequest("resources/unsubscribe", { uri });
+      setSubscribedResources((prev) => {
+        const next = new Set(prev);
+        next.delete(uri);
+        return next;
+      });
+      // Clear update indicator when unsubscribing
+      setUpdatedResources((prev) => {
+        const next = new Set(prev);
+        next.delete(uri);
+        return next;
+      });
+    } catch (error) {
+      console.error("Error unsubscribing from resource:", error);
+    } finally {
+      setSubscribing((prev) => {
+        const next = new Set(prev);
+        next.delete(uri);
+        return next;
+      });
+    }
+  };
+
+  // Clear update indicator when reading a resource
+  const clearUpdateIndicator = (uri: string) => {
+    setUpdatedResources((prev) => {
+      const next = new Set(prev);
+      next.delete(uri);
+      return next;
+    });
   };
 
   // Read a resource
@@ -292,6 +398,8 @@ export function InspectorResources({
     setSelectedTemplate(null);
     setReading(true);
     setResourceContent(null);
+    // Clear update indicator when reading the resource
+    clearUpdateIndicator(resource.uri);
 
     try {
       const response = await makeRequest<{ contents: ResourceContent[] }>("resources/read", {
@@ -497,6 +605,20 @@ export function InspectorResources({
                   <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                 </Button>
               </div>
+              {/* Subscription status */}
+              {supportsSubscribe && subscribedResources.size > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Bell className="h-3 w-3 text-blue-500" />
+                  <span>
+                    {subscribedResources.size} {t("inspector.subscriptions", "subscriptions")}
+                  </span>
+                  {updatedResources.size > 0 && (
+                    <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-500/10 text-orange-600 border-orange-500/20">
+                      {updatedResources.size} {t("inspector.new", "new")}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Resource List */}
@@ -527,6 +649,9 @@ export function InspectorResources({
                     const Icon = getResourceIcon(resource);
                     const isSelected =
                       selectedResource?.uri === resource.uri && !selectedTemplate;
+                    const isSubscribed = subscribedResources.has(resource.uri);
+                    const isSubscribing = subscribing.has(resource.uri);
+                    const hasUpdate = updatedResources.has(resource.uri);
 
                     return (
                       <div
@@ -535,14 +660,33 @@ export function InspectorResources({
                         className={`p-2.5 rounded-lg cursor-pointer transition-colors ${
                           isSelected
                             ? "bg-green-500/10 border border-green-500/30"
-                            : "hover:bg-muted/50 border border-transparent"
+                            : isSubscribed
+                              ? "bg-blue-500/5 border border-blue-500/20 hover:bg-blue-500/10"
+                              : "hover:bg-muted/50 border border-transparent"
                         }`}
                       >
                         <div className="flex items-center gap-2">
-                          <Icon className="h-4 w-4 text-green-500 flex-shrink-0" />
+                          <div className="relative">
+                            <Icon className={`h-4 w-4 flex-shrink-0 ${isSubscribed ? "text-blue-500" : "text-green-500"}`} />
+                            {hasUpdate && (
+                              <div className="absolute -top-1 -right-1 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-xs font-medium truncate">
-                              {getResourceDisplayName(resource)}
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-medium truncate">
+                                {getResourceDisplayName(resource)}
+                              </span>
+                              {isSubscribed && (
+                                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/20">
+                                  {t("inspector.subscribed", "Subscribed")}
+                                </Badge>
+                              )}
+                              {hasUpdate && (
+                                <Badge variant="secondary" className="h-4 px-1 text-[10px] bg-orange-500/10 text-orange-600 border-orange-500/20 animate-pulse">
+                                  {t("inspector.updated", "Updated")}
+                                </Badge>
+                              )}
                             </div>
                             {resource.mimeType && (
                               <div className="text-[10px] text-muted-foreground truncate">
@@ -550,6 +694,37 @@ export function InspectorResources({
                               </div>
                             )}
                           </div>
+                          {/* Subscribe/Unsubscribe Button */}
+                          {supportsSubscribe && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-6 w-6 p-0 flex-shrink-0 ${isSubscribed ? "text-blue-500 hover:text-blue-600" : "text-muted-foreground hover:text-foreground"}`}
+                                    onClick={(e) => isSubscribed ? handleUnsubscribe(resource.uri, e) : handleSubscribe(resource.uri, e)}
+                                    disabled={isSubscribing}
+                                  >
+                                    {isSubscribing ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : isSubscribed ? (
+                                      <BellOff className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <Bell className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">
+                                  <p className="text-xs">
+                                    {isSubscribed
+                                      ? t("inspector.unsubscribe", "Unsubscribe from updates")
+                                      : t("inspector.subscribe", "Subscribe to updates")}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                         {resource.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2 pl-6">

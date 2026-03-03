@@ -1565,7 +1565,27 @@
       "done": "Done",
       "failed": "Failed",
       "cancelled": "Cancelled"
-    }
+    },
+    "exportConfig": "Export Configuration",
+    "exportConfigDesc": "Export your current inspector configuration to a JSON file.",
+    "importConfig": "Import Configuration",
+    "importConfigDesc": "Import a previously exported inspector configuration file.",
+    "import": "Import",
+    "sensitiveDataWarning": "Sensitive Data Detected",
+    "sensitiveDataWarningDesc": "Your configuration contains sensitive data like API keys or tokens. Choose which data to include in the export.",
+    "exportOptions": "Export Options",
+    "includeAuthToken": "Include authentication token",
+    "includeHeaders": "Include all HTTP headers",
+    "includeEnvVars": "Include environment variables",
+    "configPreview": "Configuration Preview",
+    "downloadConfig": "Download Config",
+    "dropConfigHere": "Drop your config file here or click to browse",
+    "acceptsJson": "Accepts .json files",
+    "invalidConfig": "Invalid configuration file",
+    "jsonParseError": "Invalid JSON format",
+    "validConfig": "Valid configuration",
+    "applyConfig": "Apply Configuration",
+    "importAuthWarning": "This configuration includes an authentication token. It will be applied to your session."
   },
   "updates": {
     "title": "Package Updates",

@@ -645,8 +645,8 @@ AI needs to match existing patterns, not introduce new ones.
 When done:
 
 \`\`\`bash
-python3 ./.viben/scripts/task.py finish
-python3 ./.viben/scripts/task.py archive 00-bootstrap-guidelines
+viben task finish
+viben task archive 00-bootstrap-guidelines
 \`\`\`
 
 ---

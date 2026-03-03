@@ -55,7 +55,7 @@ export function Inspector({
     case "tools":
       return <InspectorTools makeRequest={makeRequest} enabled={hasTools} serverCapabilities={serverCapabilities} />;
     case "resources":
-      return <InspectorResources makeRequest={makeRequest} enabled={hasResources} />;
+      return <InspectorResources makeRequest={makeRequest} enabled={hasResources} serverCapabilities={serverCapabilities} />;
     case "prompts":
       return <InspectorPrompts makeRequest={makeRequest} enabled={hasPrompts} />;
     case "ping":
