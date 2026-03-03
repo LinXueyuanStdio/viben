@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   Store,
   Grid3X3,
@@ -37,45 +37,14 @@ import {
   type OfficialPackage,
 } from "@/hooks/use-official-registry";
 
-// Check if user prefers reduced motion
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 // Easing curves
 const easeOutExpo = [0.16, 1, 0.3, 1] as const;
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.06,
-      delayChildren: prefersReducedMotion ? 0 : 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: {
-    opacity: 0,
-    y: prefersReducedMotion ? 0 : 12,
-  },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: prefersReducedMotion ? 0 : 0.4,
-      ease: easeOutExpo,
-    },
-  },
-};
 
 type ViewMode = "grid" | "list";
 
 export function MarketplacePage() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [source, setSource] = useState<MarketplaceSource>("official");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -93,6 +62,33 @@ export function MarketplacePage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.06,
+        delayChildren: prefersReducedMotion ? 0 : 0.1,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: {
+      opacity: 0,
+      y: prefersReducedMotion ? 0 : 12,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.4,
+        ease: easeOutExpo,
+      },
+    },
+  };
 
   // Use the combined cloud MCP hook for community source
   const cloudMcp = useCloudMcp({
