@@ -10,4 +10,22 @@ export { InspectorTasks } from "./inspector-tasks";
 export { InspectorElicitations } from "./inspector-elicitations";
 export { InspectorAuth } from "./inspector-auth";
 export { InspectorMetadata } from "./inspector-metadata";
+export { InspectorApps } from "./inspector-apps";
 export { NotificationsPanel } from "./notifications-panel";
+export { HistoryPanel } from "./inspector-history";
+export type { HistoryEntry } from "./inspector-history";
+export { default as DynamicJsonForm } from "./dynamic-json-form";
+export type { JsonValue, JsonSchemaType, DynamicJsonFormRef } from "./dynamic-json-form";
+export { CompletionInput } from "./completion-input";
+export type { CompletionInputProps } from "./completion-input";
+export { ConfigManager } from "./config-manager";
+export type { InspectorConfig } from "./config-manager";
+export { TransportSelector, isConfigValid, createDefaultConfig, toMcpServerConfig, fromMcpServerConfig } from "./transport-selector";
+export type {
+  TransportType,
+  TransportConfig,
+  StdioTransportConfig,
+  SseTransportConfig,
+  StreamableHttpTransportConfig,
+  TransportConnectionStatus,
+} from "./transport-selector";

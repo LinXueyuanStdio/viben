@@ -20,6 +20,7 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 import { type ProjectType, type ExecutorType, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
+import { initDeveloper } from "../cli/commands/user";
 
 export type { ProjectType, ExecutorType } from "./types";
 
@@ -118,6 +119,93 @@ function sha256(content: string): string {
 }
 
 /**
+ * Directories to scan for template hashes
+ * Includes .viben and all executor config directories
+ */
+const TEMPLATE_DIRS = [".viben", ".claude", ".cursor", ".iflow", ".opencode", ".codex", ".kilo", ".kiro", ".gemini", ".antigravity"];
+
+/**
+ * Patterns to exclude from hash tracking
+ * Matches trellis behavior for consistency
+ */
+const EXCLUDE_FROM_HASH = [
+  ".template-hashes.json", // Hash file itself
+  ".version", // Version file
+  ".gitignore", // Git ignore files
+  ".developer", // Developer identity file
+  "workspace/", // Workspace files (user data)
+  "tasks/", // Task files (user data)
+  ".current-task", // Current task marker
+  "spec/frontend/", // User-filled spec files
+  "spec/backend/", // User-filled spec files
+  ".backup-", // Backup directories
+  "__pycache__", // Python cache
+  ".pyc", // Python bytecode
+  ".pyo", // Python optimized
+  ".DS_Store", // macOS files
+  ".git", // Git files
+];
+
+/**
+ * Check if a path should be excluded from hashing
+ */
+function shouldExclude(relativePath: string): boolean {
+  return EXCLUDE_FROM_HASH.some((pattern) => relativePath.includes(pattern));
+}
+
+/**
+ * Recursively collect all files in a directory for hashing
+ */
+function collectFilesForHash(
+  baseDir: string,
+  dir: string,
+  files: string[] = []
+): string[] {
+  const fullDir = join(baseDir, dir);
+  if (!fs.existsSync(fullDir)) {
+    return files;
+  }
+
+  const entries = fs.readdirSync(fullDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const relativePath = join(dir, entry.name);
+    if (shouldExclude(relativePath)) {
+      continue;
+    }
+
+    if (entry.isDirectory()) {
+      collectFilesForHash(baseDir, relativePath, files);
+    } else if (entry.isFile()) {
+      files.push(relativePath);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Initialize template hashes by scanning created files
+ */
+function initializeHashes(cwd: string): Record<string, string> {
+  const hashes: Record<string, string> = {};
+
+  for (const dir of TEMPLATE_DIRS) {
+    const files = collectFilesForHash(cwd, dir);
+    for (const relativePath of files) {
+      const fullPath = join(cwd, relativePath);
+      try {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        hashes[relativePath] = sha256(content);
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+  }
+
+  return hashes;
+}
+
+/**
  * Detect available Python command (python3 or python)
  */
 function getPythonCommand(): string {
@@ -195,8 +283,7 @@ async function copyTemplateDir(
 async function configureClaude(
   cwd: string,
   options: { force?: boolean; skipExisting?: boolean },
-  createdFiles: string[],
-  hashes: Record<string, string>
+  createdFiles: string[]
 ): Promise<void> {
   const claudeDir = join(cwd, ".claude");
   ensureDir(join(claudeDir, "agents"));
@@ -216,7 +303,6 @@ async function configureClaude(
     createdFiles,
     cwd
   );
-  hashes[".claude/settings.json"] = sha256(settingsContent);
 
   // Agents
   await copyTemplateDir(
@@ -445,6 +531,264 @@ async function configureAntigravity(
 }
 
 // =============================================================================
+// Bootstrap Task Creation
+// =============================================================================
+
+const BOOTSTRAP_TASK_NAME = "00-bootstrap-guidelines";
+
+/**
+ * Get bootstrap task PRD content based on project type
+ */
+function getBootstrapPrdContent(projectType: ProjectType): string {
+  const header = `# Bootstrap: Fill Project Development Guidelines
+
+## Purpose
+
+Welcome to Viben! This is your first task.
+
+AI agents use \`.viben/spec/\` to understand YOUR project's coding conventions.
+**Empty templates = AI writes generic code that doesn't match your project style.**
+
+Filling these guidelines is a one-time setup that pays off for every future AI session.
+
+---
+
+## Your Task
+
+Fill in the guideline files based on your **existing codebase**.
+`;
+
+  const backendSection = `
+
+### Backend Guidelines
+
+| File | What to Document |
+|------|------------------|
+| \`.viben/spec/backend/directory-structure.md\` | Where different file types go (routes, services, utils) |
+| \`.viben/spec/backend/database-guidelines.md\` | ORM, migrations, query patterns, naming conventions |
+| \`.viben/spec/backend/error-handling.md\` | How errors are caught, logged, and returned |
+| \`.viben/spec/backend/logging-guidelines.md\` | Log levels, format, what to log |
+| \`.viben/spec/backend/quality-guidelines.md\` | Code review standards, testing requirements |
+`;
+
+  const frontendSection = `
+
+### Frontend Guidelines
+
+| File | What to Document |
+|------|------------------|
+| \`.viben/spec/frontend/directory-structure.md\` | Component/page/hook organization |
+| \`.viben/spec/frontend/component-guidelines.md\` | Component patterns, props conventions |
+| \`.viben/spec/frontend/hook-guidelines.md\` | Custom hook naming, patterns |
+| \`.viben/spec/frontend/state-management.md\` | State library, patterns, what goes where |
+| \`.viben/spec/frontend/type-safety.md\` | TypeScript conventions, type organization |
+| \`.viben/spec/frontend/quality-guidelines.md\` | Linting, testing, accessibility |
+`;
+
+  const footer = `
+
+### Thinking Guides (Optional)
+
+The \`.viben/spec/guides/\` directory contains thinking guides that are already
+filled with general best practices. You can customize them for your project if needed.
+
+---
+
+## How to Fill Guidelines
+
+### Step 0: Import from Existing Specs (Recommended)
+
+Many projects already have coding conventions documented. **Check these first** before writing from scratch:
+
+| File / Directory | Tool |
+|------|------|
+| \`CLAUDE.md\` / \`CLAUDE.local.md\` | Claude Code |
+| \`AGENTS.md\` | Claude Code |
+| \`.cursorrules\` | Cursor |
+| \`.cursor/rules/*.mdc\` | Cursor (rules directory) |
+| \`.windsurfrules\` | Windsurf |
+| \`.clinerules\` | Cline |
+| \`.roomodes\` | Roo Code |
+| \`.github/copilot-instructions.md\` | GitHub Copilot |
+| \`.vscode/settings.json\` → \`github.copilot.chat.codeGeneration.instructions\` | VS Code Copilot |
+| \`CONVENTIONS.md\` / \`.aider.conf.yml\` | aider |
+| \`CONTRIBUTING.md\` | General project conventions |
+| \`.editorconfig\` | Editor formatting rules |
+
+If any of these exist, read them first and extract the relevant coding conventions into the corresponding \`.viben/spec/\` files. This saves significant effort compared to writing everything from scratch.
+
+### Step 1: Analyze the Codebase
+
+Ask AI to help discover patterns from actual code:
+
+- "Read all existing config files (CLAUDE.md, .cursorrules, etc.) and extract coding conventions into .viben/spec/"
+- "Analyze my codebase and document the patterns you see"
+- "Find error handling / component / API patterns and document them"
+
+### Step 2: Document Reality, Not Ideals
+
+Write what your codebase **actually does**, not what you wish it did.
+AI needs to match existing patterns, not introduce new ones.
+
+- **Look at existing code** - Find 2-3 examples of each pattern
+- **Include file paths** - Reference real files as examples
+- **List anti-patterns** - What does your team avoid?
+
+---
+
+## Completion Checklist
+
+- [ ] Guidelines filled for your project type
+- [ ] At least 2-3 real code examples in each guideline
+- [ ] Anti-patterns documented
+
+When done:
+
+\`\`\`bash
+viben task finish
+viben task archive 00-bootstrap-guidelines
+\`\`\`
+
+---
+
+## Why This Matters
+
+After completing this task:
+
+1. AI will write code that matches your project style
+2. Relevant \`/viben:before-*-dev\` commands will inject real context
+3. \`/viben:check-*\` commands will validate against your actual standards
+4. Future developers (human or AI) will onboard faster
+`;
+
+  let content = header;
+  if (projectType === "frontend") {
+    content += frontendSection;
+  } else if (projectType === "backend") {
+    content += backendSection;
+  } else {
+    // fullstack
+    content += backendSection;
+    content += frontendSection;
+  }
+  content += footer;
+
+  return content;
+}
+
+interface TaskJson {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  dev_type: string;
+  priority: string;
+  creator: string;
+  assignee: string;
+  createdAt: string;
+  completedAt: null;
+  commit: null;
+  subtasks: { name: string; status: string }[];
+  relatedFiles: string[];
+  notes: string;
+}
+
+/**
+ * Get bootstrap task JSON based on project type
+ */
+function getBootstrapTaskJson(
+  developer: string,
+  projectType: ProjectType
+): TaskJson {
+  const today = new Date().toISOString().split("T")[0];
+
+  let subtasks: { name: string; status: string }[];
+  let relatedFiles: string[];
+
+  if (projectType === "frontend") {
+    subtasks = [
+      { name: "Fill frontend guidelines", status: "pending" },
+      { name: "Add code examples", status: "pending" },
+    ];
+    relatedFiles = [".viben/spec/frontend/"];
+  } else if (projectType === "backend") {
+    subtasks = [
+      { name: "Fill backend guidelines", status: "pending" },
+      { name: "Add code examples", status: "pending" },
+    ];
+    relatedFiles = [".viben/spec/backend/"];
+  } else {
+    // fullstack
+    subtasks = [
+      { name: "Fill backend guidelines", status: "pending" },
+      { name: "Fill frontend guidelines", status: "pending" },
+      { name: "Add code examples", status: "pending" },
+    ];
+    relatedFiles = [".viben/spec/backend/", ".viben/spec/frontend/"];
+  }
+
+  return {
+    id: BOOTSTRAP_TASK_NAME,
+    name: "Bootstrap Guidelines",
+    description: "Fill in project development guidelines for AI agents",
+    status: "in_progress",
+    dev_type: "docs",
+    priority: "P1",
+    creator: developer,
+    assignee: developer,
+    createdAt: today,
+    completedAt: null,
+    commit: null,
+    subtasks,
+    relatedFiles,
+    notes: `First-time setup task created by viben team init (${projectType} project)`,
+  };
+}
+
+/**
+ * Create bootstrap task for first-time setup
+ */
+function createBootstrapTask(
+  cwd: string,
+  developer: string,
+  projectType: ProjectType,
+  createdFiles: string[]
+): boolean {
+  const taskDir = join(cwd, ".viben/tasks", BOOTSTRAP_TASK_NAME);
+  const taskRelativePath = `.viben/tasks/${BOOTSTRAP_TASK_NAME}`;
+
+  // Check if already exists
+  if (fs.existsSync(taskDir)) {
+    return true; // Already exists, not an error
+  }
+
+  try {
+    // Create task directory
+    fs.mkdirSync(taskDir, { recursive: true });
+
+    // Write task.json
+    const taskJson = getBootstrapTaskJson(developer, projectType);
+    const taskJsonContent = JSON.stringify(taskJson, null, 2);
+    fs.writeFileSync(join(taskDir, "task.json"), taskJsonContent, "utf-8");
+    createdFiles.push(`${taskRelativePath}/task.json`);
+
+    // Write prd.md
+    const prdContent = getBootstrapPrdContent(projectType);
+    fs.writeFileSync(join(taskDir, "prd.md"), prdContent, "utf-8");
+    createdFiles.push(`${taskRelativePath}/prd.md`);
+
+    // Set as current task
+    const currentTaskFile = join(cwd, ".viben/.current-task");
+    fs.writeFileSync(currentTaskFile, taskRelativePath, "utf-8");
+    createdFiles.push(".viben/.current-task");
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// =============================================================================
 // Main Init Function
 // =============================================================================
 
@@ -555,7 +899,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   const executors = options.executors || ["CURSOR", "CLAUDE_CODE"];
   const createdFiles: string[] = [];
   const warnings: string[] = [];
-  const hashes: Record<string, string> = {};
 
   // Validate developer name
   validateDeveloperName(options.developerName);
@@ -594,7 +937,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     createdFiles,
     targetDir
   );
-  hashes[".viben/workflow.md"] = sha256(workflowMd);
 
   // Copy worktree.yaml (multi-agent enabled by default)
   const worktreeYaml = readTemplate("viben/worktree.yaml");
@@ -605,7 +947,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     createdFiles,
     targetDir
   );
-  hashes[".viben/worktree.yaml"] = sha256(worktreeYaml);
 
   // Copy .gitignore
   const gitignore = readTemplate("viben/gitignore.txt");
@@ -657,17 +998,6 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     targetDir
   );
 
-  // Developer identity file
-  const now = new Date();
-  const developerContent = `name=${options.developerName}\ninitialized_at=${now.toISOString()}\n`;
-  await writeFileIfNeeded(
-    join(vibenDir, ".developer"),
-    developerContent,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
   // ===================
   // Configure selected executors
   // ===================
@@ -675,7 +1005,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   for (const executor of executors) {
     switch (executor) {
       case "CLAUDE_CODE":
-        await configureClaude(targetDir, writeOpts, createdFiles, hashes);
+        await configureClaude(targetDir, writeOpts, createdFiles);
         break;
       case "CURSOR":
         await configureCursor(targetDir, writeOpts, createdFiles);
@@ -720,30 +1050,38 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   );
 
   // ===================
-  // Create template hashes file
+  // Create template hashes file by scanning created files
   // ===================
+  const templateHashes = initializeHashes(targetDir);
   await writeFileIfNeeded(
     join(vibenDir, ".template-hashes.json"),
-    JSON.stringify(hashes, null, 2),
+    JSON.stringify(templateHashes, null, 2),
     writeOpts,
     createdFiles,
     targetDir
   );
 
   // ===================
-  // Initialize developer identity via Python script
+  // Initialize developer identity (TypeScript native implementation)
   // ===================
   try {
-    const pythonCmd = getPythonCommand();
-    const scriptPath = join(vibenDir, "scripts/init_developer.py");
-    if (fs.existsSync(scriptPath)) {
-      execSync(`${pythonCmd} "${scriptPath}" "${options.developerName}"`, {
-        cwd: targetDir,
-        stdio: "pipe",
-      });
+    const initResult = await initDeveloper(options.developerName, targetDir);
+    if (initResult.success) {
+      // Add created files to the list
+      for (const file of initResult.files) {
+        createdFiles.push(`.viben/${file}`);
+      }
+
+      // Create bootstrap task to guide user through filling guidelines
+      createBootstrapTask(
+        targetDir,
+        options.developerName,
+        projectType,
+        createdFiles
+      );
     }
   } catch {
-    // Silent failure - user can run init_developer.py manually
+    // Silent failure - user can run 'viben user init' manually
   }
 
   return {
@@ -771,7 +1109,6 @@ async function createSpecTemplates(
   const guidesFiles = [
     "index.md",
     "cross-layer-thinking-guide.md",
-    "cross-platform-thinking-guide.md",
     "code-reuse-thinking-guide.md",
   ];
 

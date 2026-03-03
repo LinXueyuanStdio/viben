@@ -19,6 +19,10 @@ import { registerSkillCommand } from "./skill";
 import { registerTelemetryCommand } from "./telemetry";
 import { registerTeamCommand } from "./team";
 import { registerSwarmCommand } from "./swarm";
+import { registerTaskCommand } from "./task";
+import { registerContextCommand } from "./context";
+import { registerUserCommand } from "./user";
+import { registerSessionCommand } from "./session";
 
 /**
  * Register all commands on the program
@@ -40,4 +44,8 @@ export function registerCommands(program: Command): void {
   registerTelemetryCommand(program);
   registerTeamCommand(program);
   registerSwarmCommand(program);
+  registerTaskCommand(program);
+  registerContextCommand(program);
+  registerUserCommand(program);
+  registerSessionCommand(program);
 }

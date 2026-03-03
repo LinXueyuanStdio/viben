@@ -208,6 +208,14 @@ export interface McpResource {
   mimeType?: string;
 }
 
+/** Resource template definition from MCP server */
+export interface McpResourceTemplate {
+  uriTemplate: string;
+  name?: string;
+  description?: string;
+  mimeType?: string;
+}
+
 /** Prompt definition from MCP server */
 export interface McpPrompt {
   name: string;

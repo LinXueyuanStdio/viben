@@ -124,7 +124,8 @@ interface UseMcpConnectionReturn {
   connectionStatus: InspectorConnectionStatus;
   serverCapabilities: McpServerCapabilities | null;
   connectionError: string | null;
-  connect: () => Promise<void>;
+  /** Connect to MCP server. Optional configOverride allows passing a fresh config (e.g., with updated auth token) */
+  connect: (configOverride?: McpServerConfig) => Promise<void>;
   disconnect: () => Promise<void>;
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
 }
@@ -208,17 +209,33 @@ export function useMcpConnection({
   }, [config?.timeout]);
 
   // Connect to MCP server
-  const connect = useCallback(async () => {
-    if (!enabled || !config) {
-      console.warn("Cannot connect: hook disabled or no config");
+  // Optional configOverride allows passing a fresh config (e.g., with updated auth token)
+  const connect = useCallback(async (configOverride?: McpServerConfig) => {
+    const effectiveConfig = configOverride || config;
+    console.log("[useMcpConnection] connect() called", {
+      hasConfigOverride: !!configOverride,
+      hasHookConfig: !!config,
+      hasEffectiveConfig: !!effectiveConfig,
+      enabled,
+    });
+
+    if (!enabled || !effectiveConfig) {
+      console.warn("[useMcpConnection] Cannot connect: hook disabled or no config", { enabled, effectiveConfig });
       return;
     }
+
+    console.log("[useMcpConnection] Effective config:", {
+      url: effectiveConfig.url,
+      transport: effectiveConfig.transport,
+      headers: effectiveConfig.headers ? Object.keys(effectiveConfig.headers) : [],
+      headerValues: effectiveConfig.headers,
+    });
 
     // Clear previous error
     setConnectionError(null);
 
     // STDIO not supported in browser
-    if (isStdioConfig(config)) {
+    if (isStdioConfig(effectiveConfig)) {
       const errorMsg = "STDIO transport is not supported in browser environment";
       console.warn(errorMsg);
       setConnectionError(errorMsg);
@@ -226,7 +243,7 @@ export function useMcpConnection({
       return;
     }
 
-    if (!isRemoteConfig(config)) {
+    if (!isRemoteConfig(effectiveConfig)) {
       const errorMsg = "Invalid config: missing url";
       console.warn(errorMsg);
       setConnectionError(errorMsg);
@@ -271,25 +288,33 @@ export function useMcpConnection({
 
       // Build headers from config
       const headers: Record<string, string> = {
-        ...config.headers,
+        ...effectiveConfig.headers,
       };
 
       // Add auth header if specified
-      if (config.auth && typeof config.auth === "string" && config.auth !== "oauth") {
+      if (effectiveConfig.auth && typeof effectiveConfig.auth === "string" && effectiveConfig.auth !== "oauth") {
         // Bearer token auth
-        headers["Authorization"] = config.auth.startsWith("Bearer ")
-          ? config.auth
-          : `Bearer ${config.auth}`;
+        headers["Authorization"] = effectiveConfig.auth.startsWith("Bearer ")
+          ? effectiveConfig.auth
+          : `Bearer ${effectiveConfig.auth}`;
       }
 
       // Determine transport type
-      const effectiveTransport = getEffectiveTransport(config);
+      const connTransport = getEffectiveTransport(effectiveConfig);
+
+      console.log("[useMcpConnection] Creating transport:", {
+        transportType: connTransport,
+        url: effectiveConfig.url,
+        headers: headers,
+        hasXMcpProxyAuth: headers["X-MCP-Proxy-Auth"] ? `${headers["X-MCP-Proxy-Auth"].slice(0, 20)}...` : "no",
+      });
 
       // Create transport based on type
       let transport: Transport;
-      const url = new URL(config.url);
+      const url = new URL(effectiveConfig.url);
 
-      if (effectiveTransport === "sse") {
+      if (connTransport === "sse") {
+        console.log("[useMcpConnection] Creating SSEClientTransport");
         transport = new SSEClientTransport(url, {
           requestInit: {
             headers,
@@ -297,13 +322,15 @@ export function useMcpConnection({
         });
       } else {
         // Both "http" and "streamable-http" use StreamableHTTPClientTransport
+        const finalHeaders = {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/event-stream",
+          ...headers,
+        };
+        console.log("[useMcpConnection] Creating StreamableHTTPClientTransport with headers:", finalHeaders);
         transport = new StreamableHTTPClientTransport(url, {
           requestInit: {
-            headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json, text/event-stream",
-              ...headers,
-            },
+            headers: finalHeaders,
           },
         });
       }
@@ -330,7 +357,7 @@ export function useMcpConnection({
       setServerCapabilities(mcpCapabilities);
       setConnectionStatus("connected");
 
-      console.log("Connected to MCP server:", config.url);
+      console.log("Connected to MCP server:", effectiveConfig.url);
       console.log("Server capabilities:", capabilities);
 
     } catch (error) {

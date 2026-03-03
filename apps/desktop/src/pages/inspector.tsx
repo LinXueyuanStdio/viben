@@ -23,10 +23,11 @@ import {
   Settings2,
   WrapText,
   AlignJustify,
+  AppWindow,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Inspector, NotificationsPanel } from "@/components/inspector";
+import { Inspector, NotificationsPanel, ConfigManager, type InspectorConfig } from "@/components/inspector";
 import {
   useMcpConnection,
   parseMcpConfig,
@@ -38,6 +39,7 @@ import {
   useGatewayInspector,
   buildGatewayInspectorUrl,
   buildGatewayInspectorHeaders,
+  type GatewayInspectorStatus,
 } from "@/hooks/use-gateway-inspector";
 import { useAppStore } from "@/stores";
 import { useTranslation } from "react-i18next";
@@ -100,51 +102,60 @@ export function InspectorPage() {
     }
   }, [configJson]);
 
-  // Build effective config for connection (with Gateway Inspector proxy if enabled)
-  const effectiveConfig = useMemo<McpServerConfig | null>(() => {
-    if (!parsedConfig) return null;
+  // Helper function to build effective config with given inspector status
+  const buildEffectiveConfig = useCallback(
+    (status: GatewayInspectorStatus | null): McpServerConfig | null => {
+      if (!parsedConfig) return null;
 
-    // If not using proxy, use original config
-    if (!useProxy || !inspectorStatus?.available) {
+      // If not using proxy, use original config
+      if (!useProxy || !status?.available) {
+        return parsedConfig;
+      }
+
+      // If using proxy, wrap the URL
+      if ("url" in parsedConfig && parsedConfig.url) {
+        const proxyUrl = status.proxyUrl;
+        const targetUrl = parsedConfig.url;
+        const originalTransport = parsedConfig.transport || "streamable-http";
+
+        const effectiveUrl = buildGatewayInspectorUrl(
+          proxyUrl,
+          targetUrl,
+          originalTransport as "stdio" | "sse" | "streamable-http"
+        );
+        const effectiveHeaders = {
+          ...parsedConfig.headers,
+          ...buildGatewayInspectorHeaders(status.authToken, parsedConfig.headers),
+        };
+
+        console.log("[Inspector] effectiveConfig:", {
+          proxyUrl,
+          targetUrl,
+          originalTransport,
+          effectiveUrl,
+          effectiveHeaders,
+          authToken: status.authToken ? "present" : "missing",
+        });
+
+        return {
+          ...parsedConfig,
+          // Connection to proxy is always streamable-http, regardless of target transport
+          transport: "streamable-http" as const,
+          url: effectiveUrl,
+          headers: effectiveHeaders,
+        };
+      }
+
       return parsedConfig;
-    }
+    },
+    [parsedConfig, useProxy]
+  );
 
-    // If using proxy, wrap the URL
-    if ("url" in parsedConfig && parsedConfig.url) {
-      const proxyUrl = inspectorStatus.proxyUrl;
-      const targetUrl = parsedConfig.url;
-      const originalTransport = parsedConfig.transport || "streamable-http";
-
-      const effectiveUrl = buildGatewayInspectorUrl(
-        proxyUrl,
-        targetUrl,
-        originalTransport as "stdio" | "sse" | "streamable-http"
-      );
-      const effectiveHeaders = {
-        ...parsedConfig.headers,
-        ...buildGatewayInspectorHeaders(inspectorStatus.authToken, parsedConfig.headers),
-      };
-
-      console.log("[Inspector] effectiveConfig:", {
-        proxyUrl,
-        targetUrl,
-        originalTransport,
-        effectiveUrl,
-        effectiveHeaders,
-        authToken: inspectorStatus.authToken ? "present" : "missing",
-      });
-
-      return {
-        ...parsedConfig,
-        // Connection to proxy is always streamable-http, regardless of target transport
-        transport: "streamable-http" as const,
-        url: effectiveUrl,
-        headers: effectiveHeaders,
-      };
-    }
-
-    return parsedConfig;
-  }, [parsedConfig, useProxy, inspectorStatus]);
+  // Build effective config for connection (with Gateway Inspector proxy if enabled)
+  const effectiveConfig = useMemo<McpServerConfig | null>(
+    () => buildEffectiveConfig(inspectorStatus),
+    [buildEffectiveConfig, inspectorStatus]
+  );
 
   // Check if config can connect
   const canConnect = useMemo(() => {
@@ -273,21 +284,62 @@ export function InspectorPage() {
   });
 
   const handleConnect = useCallback(async () => {
-    if (!canConnect) return;
+    console.log("[Inspector] handleConnect called", {
+      canConnect,
+      connectionStatus,
+      useProxy,
+      currentInspectorStatus: inspectorStatus,
+    });
+
+    if (!canConnect) {
+      console.log("[Inspector] Cannot connect - canConnect is false");
+      return;
+    }
 
     if (connectionStatus === "connected") {
+      console.log("[Inspector] Already connected, disconnecting first...");
       await disconnect();
     }
 
     setIsConnecting(true);
     try {
-      await connect();
+      // When using proxy, refresh status to get fresh auth token before connecting
+      // This handles the case where gateway was restarted and token changed
+      if (useProxy) {
+        console.log("[Inspector] Using proxy mode, refreshing status for fresh token...");
+        const freshStatus = await refreshInspectorStatus();
+        console.log("[Inspector] Fresh status received:", {
+          available: freshStatus?.available,
+          authToken: freshStatus?.authToken ? `${freshStatus.authToken.slice(0, 8)}...` : null,
+          authDisabled: freshStatus?.authDisabled,
+          proxyUrl: freshStatus?.proxyUrl,
+        });
+
+        // Build config with fresh status and pass it to connect
+        const freshConfig = buildEffectiveConfig(freshStatus);
+        console.log("[Inspector] Fresh config built:", {
+          url: freshConfig?.url,
+          transport: freshConfig?.transport,
+          headers: freshConfig?.headers ? Object.keys(freshConfig.headers) : [],
+          hasXMcpProxyAuth: freshConfig?.headers?.["X-MCP-Proxy-Auth"] ? "yes" : "no",
+        });
+
+        if (freshConfig) {
+          console.log("[Inspector] Connecting with fresh config...");
+          await connect(freshConfig);
+        } else {
+          console.error("[Inspector] Failed to build config with fresh status");
+        }
+      } else {
+        console.log("[Inspector] Direct mode (no proxy), connecting with effectiveConfig...");
+        await connect();
+      }
     } catch (error) {
-      console.error("Connection failed:", error);
+      console.error("[Inspector] Connection failed:", error);
     } finally {
       setIsConnecting(false);
     }
-  }, [canConnect, connectionStatus, connect, disconnect]);
+  }, [canConnect, connectionStatus, connect, disconnect, useProxy, refreshInspectorStatus, buildEffectiveConfig, inspectorStatus]);
 
   const handleDisconnect = useCallback(async () => {
     await disconnect();
@@ -331,6 +383,59 @@ export function InspectorPage() {
       // Not valid JSON yet, keep as-is
     }
     setConfigJson(value);
+  }, []);
+
+  // Handle config import from ConfigManager
+  const handleConfigImport = useCallback((importedConfig: InspectorConfig) => {
+    // Convert InspectorConfig to McpServerConfig JSON format
+    const mcpConfig: Record<string, unknown> = {};
+
+    // Set transport type
+    if (importedConfig.transport.type) {
+      mcpConfig.transport = importedConfig.transport.type;
+    }
+
+    // Handle remote config (url-based)
+    if (importedConfig.transport.url) {
+      mcpConfig.url = importedConfig.transport.url;
+    }
+
+    // Handle STDIO config
+    if (importedConfig.transport.command) {
+      mcpConfig.command = importedConfig.transport.command;
+      if (importedConfig.transport.args) {
+        mcpConfig.args = importedConfig.transport.args;
+      }
+      if (importedConfig.transport.env) {
+        mcpConfig.env = importedConfig.transport.env;
+      }
+      if (importedConfig.transport.cwd) {
+        mcpConfig.cwd = importedConfig.transport.cwd;
+      }
+    }
+
+    // Handle headers
+    if (importedConfig.transport.headers) {
+      mcpConfig.headers = importedConfig.transport.headers;
+    }
+
+    // Handle auth
+    if (importedConfig.auth?.token) {
+      mcpConfig.auth = importedConfig.auth.token;
+    }
+
+    // Handle timeout
+    if (importedConfig.transport.timeout) {
+      mcpConfig.timeout = importedConfig.transport.timeout;
+    }
+
+    // Update proxy setting
+    if (importedConfig.proxy?.enabled !== undefined) {
+      setUseProxy(importedConfig.proxy.enabled);
+    }
+
+    // Set the new config JSON
+    setConfigJson(JSON.stringify(mcpConfig, null, 2));
   }, []);
 
   const getConnectionStatusInfo = (status: InspectorConnectionStatus) => {
@@ -496,6 +601,14 @@ export function InspectorPage() {
               )}
             </div>
 
+            {/* Config Export/Import */}
+            <ConfigManager
+              config={parsedConfig}
+              configJson={configJson}
+              useProxy={useProxy}
+              onImport={handleConfigImport}
+            />
+
             {/* Config Examples - Collapsible */}
             <div className="text-xs text-muted-foreground">
               <button
@@ -645,6 +758,10 @@ export function InspectorPage() {
                   <Settings2 className="w-4 h-4 mr-2" />
                   {t("inspector.metadata")}
                 </TabsTrigger>
+                <TabsTrigger value="apps" disabled={!hasTools}>
+                  <AppWindow className="w-4 h-4 mr-2" />
+                  {t("inspector.apps", "Apps")}
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="tools" className="mt-0">
@@ -715,6 +832,13 @@ export function InspectorPage() {
                   makeRequest={makeRequest}
                   serverCapabilities={serverCapabilities}
                   activeTab="metadata"
+                />
+              </TabsContent>
+              <TabsContent value="apps" className="mt-0">
+                <Inspector
+                  makeRequest={makeRequest}
+                  serverCapabilities={serverCapabilities}
+                  activeTab="apps"
                 />
               </TabsContent>
             </Tabs>

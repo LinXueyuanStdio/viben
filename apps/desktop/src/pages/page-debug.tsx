@@ -63,6 +63,7 @@ export function PageDebugPage() {
       if (response.ok) {
         const data = await response.json();
         setSocketStatus(data.available && data.connected ? "connected" : "disconnected");
+        setIsChecking(false);
         return;
       }
     } catch {

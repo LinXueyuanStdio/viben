@@ -3,3 +3,4 @@
  */
 export * from "./output";
 export * from "./error-handler";
+export * from "./viben-workspace";

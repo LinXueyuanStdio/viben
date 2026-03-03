@@ -318,3 +318,17 @@ export type {
   BackgroundTaskStatus,
   UseBackgroundTasksReturn,
 } from "./use-background-tasks";
+
+// MCP Completion
+export {
+  useCompletion,
+  createCompletionHandler,
+} from "./use-completion";
+export type {
+  ResourceReference,
+  PromptReference,
+  CompletionRef,
+  CompletionHandler,
+  UseCompletionOptions,
+  UseCompletionReturn,
+} from "./use-completion";
