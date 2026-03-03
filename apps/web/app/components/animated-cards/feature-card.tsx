@@ -1,15 +1,32 @@
 'use client';
 
 import { useRef } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import {
+  CalendarDays,
+  CheckCircle2,
+  Layers,
+  LayoutGrid,
+  Monitor,
+  Users,
+} from 'lucide-react';
 import { useInView } from './use-in-view';
+
+type FeatureVariant = 'kanban' | 'calendar' | 'mcp' | 'agents' | 'desktop' | 'release';
 
 interface FeatureCardProps {
   title: string;
   desc: string;
-  icon: LucideIcon;
-  variant: 'kanban' | 'calendar' | 'mcp' | 'agents' | 'desktop' | 'release';
+  variant: FeatureVariant;
 }
+
+const iconMap = {
+  kanban: LayoutGrid,
+  calendar: CalendarDays,
+  mcp: Layers,
+  agents: Users,
+  desktop: Monitor,
+  release: CheckCircle2,
+};
 
 function KanbanSvg({ isInView }: { isInView: boolean }) {
   return (
@@ -267,10 +284,11 @@ const svgComponents = {
   release: ReleaseFlowSvg,
 };
 
-export function FeatureCard({ title, desc, icon: Icon, variant }: FeatureCardProps) {
+export function FeatureCard({ title, desc, variant }: FeatureCardProps) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref);
   const SvgComponent = svgComponents[variant];
+  const Icon = iconMap[variant];
 
   return (
     <article
