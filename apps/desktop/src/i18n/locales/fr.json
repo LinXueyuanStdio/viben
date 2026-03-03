@@ -72,6 +72,38 @@
     "hasErrors": "{{count}} serveur(s) avec des erreurs",
     "ariaLabel": "Serveurs MCP: {{running}} sur {{total}} en cours. Cliquez pour gérer."
   },
+  "gateway": {
+    "host": "Hôte",
+    "hostDescription": "Adresse hôte à laquelle le service passerelle est lié",
+    "portDescription": "Numéro de port sur lequel le service passerelle écoute (redémarrage requis)",
+    "connectivityTestDescription": "Vérifier l'état de connexion et les points d'accès disponibles du service passerelle"
+  },
+  "observability": {
+    "allRoutes": "Toutes les routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Exécution d'agent)",
+      "agents": "/api/agents (Gestion des agents)",
+      "workspaces": "/api/workspaces (Espaces de travail)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Chats de groupe)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Session",
+        "config": "Configuration",
+        "info": "Information",
+        "workspace": "Espace de travail",
+        "auth": "Authentification"
+      },
+      "sources": {
+        "builtin": "Intégré",
+        "workspace": "Espace de travail",
+        "skill": "Compétence"
+      }
+    }
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "setupRequired": "Configuration requise",
@@ -139,7 +171,33 @@
     "system": "Système",
     "language": "Langue",
     "storage": "Stockage",
-    "downloadPath": "Chemin de téléchargement"
+    "downloadPath": "Chemin de téléchargement",
+    "developer": {
+      "devtools": "Outils de développement",
+      "preferredIDE": "IDE préféré",
+      "preferredIDEDescription": "Viben ouvrira les projets dans cet éditeur",
+      "preferredTerminal": "Terminal préféré",
+      "preferredTerminalDescription": "Viben ouvrira les sessions de terminal ici",
+      "yoloMode": "Mode YOLO",
+      "yoloModeDescription": "Démarrer les exécuteurs avec le drapeau --dangerously-skip-permissions, en contournant toutes les invites de sécurité. À utiliser avec une extrême prudence.",
+      "yoloModeWarning": "Ce mode contourne le système de permissions. N'activez-le que si vous faites entièrement confiance au code exécuté.",
+      "debugLogs": "Débogage et journaux",
+      "openLogsFolder": "Ouvrir le dossier des journaux",
+      "openConfigFolder": "Ouvrir le dossier de configuration",
+      "copyDebugInfo": "Copier les infos de débogage",
+      "loadDebugInfo": "Charger les infos de débogage",
+      "systemInfo": "Informations système",
+      "paths": "Chemins",
+      "noRecentErrors": "Pas d'erreurs récentes",
+      "reportingIssues": "Signalement de problèmes",
+      "reportingIssuesDescription": "Lors du signalement de bugs, cliquez sur \"Copier les infos de débogage\" pour obtenir les informations système qui nous aident à diagnostiquer le problème.",
+      "os": "SE",
+      "osVersion": "Version",
+      "appVersion": "Version de l'app",
+      "arch": "Architecture",
+      "logs": "Journaux",
+      "config": "Configuration"
+    }
   },
   "about": {
     "title": "Viben",
@@ -883,6 +941,8 @@
     "noCommands": "Pas de commandes",
     "noCommandsDesc": "Aucun fichier de commande trouvé dans le dossier .claude/commands/.",
     "selectCommand": "Sélectionnez une commande à afficher",
-    "rootNamespace": "Racine"
+    "rootNamespace": "Racine",
+    "taskPromptWithDescription": "Aidez-moi à accomplir cette tâche :\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Aidez-moi à accomplir cette tâche : {{title}}"
   }
 }

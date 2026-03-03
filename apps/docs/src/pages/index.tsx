@@ -20,14 +20,14 @@ function HomepageHeader() {
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
+            to="/user/intro">
             Get Started
           </Link>
           <Link
             className="button button--secondary button--lg"
-            to="https://pypi.org/project/browse-mcp/"
+            to="https://github.com/LinXueyuanStdio/viben/releases"
             style={{marginLeft: '1rem'}}>
-            pip install browse-mcp
+            Download Desktop App
           </Link>
         </div>
       </div>
@@ -39,8 +39,8 @@ export default function Home(): ReactNode {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title={`${siteConfig.title} - MCP Content Search`}
-      description="Search, download, and read any content from extensible sources with MCP integration">
+      title={`${siteConfig.title} - Multi-Agent Workspace Manager`}
+      description="Unified management for AI assistants, MCP servers, and development tasks across Claude Code, Cursor, Codex and more">
       <HomepageHeader />
       <main>
         <HomepageFeatures />

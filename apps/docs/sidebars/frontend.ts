@@ -14,7 +14,6 @@ const sidebars: SidebarsConfig = {
       label: 'Kanban',
       collapsed: false,
       items: [
-        'kanban/architecture',
         'kanban/integration',
         'kanban/features',
         'kanban/phase3-advanced',

@@ -613,6 +613,18 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     setShowScrollButton(distanceFromBottom > 200);
   }, [isStreaming]);
 
+  // Scroll to bottom on initial load
+  const hasInitialScrolledRef = React.useRef(false);
+  React.useEffect(() => {
+    if (messages.length > 0 && !hasInitialScrolledRef.current) {
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "instant" });
+        hasInitialScrolledRef.current = true;
+      });
+    }
+  }, [messages.length]);
+
   // Auto-scroll to bottom when new messages arrive (only if user hasn't scrolled up)
   // Use autoScroll prop if provided, otherwise default to auto-scroll when streaming
   const shouldAutoScroll = autoScroll !== undefined ? autoScroll : isStreaming;
@@ -660,7 +672,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
   // NOTE: These hooks must be declared before any early returns to follow React's rules of hooks
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = React.useState<number | null>(null);
+  const [_containerWidth, setContainerWidth] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     const updateWidth = () => {
@@ -754,16 +766,10 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
     );
   }
 
-  // Style object for CSS variable
-  const containerStyle = maxMessageWidth
+  // Style object for CSS variable (used by child components for max-width constraint)
+  const contentStyle = maxMessageWidth
     ? { "--message-max-width": maxMessageWidth } as React.CSSProperties
     : undefined;
-
-  // Constrain content width to container width
-  const contentStyle: React.CSSProperties = {
-    ...containerStyle,
-    ...(containerWidth ? { width: containerWidth, maxWidth: containerWidth } : {}),
-  };
 
   return (
     <div ref={containerRef} className={cn("relative flex-1 w-full min-h-0 min-w-0 overflow-hidden", className)}>
@@ -773,7 +779,7 @@ export const MessageList = React.forwardRef<MessageListHandle, MessageListProps>
       >
         <div
           ref={contentRef}
-          className="space-y-4 p-4 pb-8 min-w-0 overflow-hidden box-border"
+          className="space-y-4 p-4 pb-8 min-w-0 overflow-hidden box-border w-full"
           style={contentStyle}
         >
           {groups.map((group, index) => {

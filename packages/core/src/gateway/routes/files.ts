@@ -59,7 +59,9 @@ interface ListQuery {
  * Query parameters for reading file
  */
 interface ReadQuery {
-  path: string;
+  path?: string;
+  workspace_path?: string;
+  file_path?: string;
   encoding?: string;
 }
 
@@ -275,6 +277,7 @@ export function registerFileRoutes(fastify: FastifyInstance): void {
   /**
    * Read file content
    * GET /api/files/content?path=...&encoding=utf-8
+   * Or: GET /api/files/content?workspace_path=...&file_path=...&encoding=utf-8
    */
   fastify.get(
     "/api/files/content",
@@ -282,16 +285,19 @@ export function registerFileRoutes(fastify: FastifyInstance): void {
       request: FastifyRequest<{ Querystring: ReadQuery }>,
       reply: FastifyReply
     ) => {
-      const { path: requestPath, encoding = "utf-8" } = request.query;
+      const { path: requestPath, workspace_path, file_path, encoding = "utf-8" } = request.query;
 
-      if (!requestPath) {
+      // Support both 'path' and 'workspace_path + file_path' formats
+      const resolvedPath = requestPath || file_path;
+
+      if (!resolvedPath) {
         reply.code(400);
-        return { error: "Path is required" };
+        return { error: "Path is required (use 'path' or 'file_path' parameter)" };
       }
 
       let filePath: string;
       try {
-        filePath = validateAndResolvePath(requestPath);
+        filePath = validateAndResolvePath(resolvedPath);
       } catch (e) {
         reply.code(400);
         return { error: e instanceof Error ? e.message : "Invalid path" };

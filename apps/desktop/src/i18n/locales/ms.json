@@ -139,7 +139,34 @@
     "system": "Sistem",
     "language": "Bahasa",
     "storage": "Storan",
-    "downloadPath": "Laluan Muat Turun"
+    "downloadPath": "Laluan Muat Turun",
+    "developerDescription": "Alat pembangun, tetapan nyahpepijat dan penyelesaian masalah",
+    "developer": {
+      "devtools": "Alat Pembangun",
+      "preferredIDE": "IDE Pilihan",
+      "preferredIDEDescription": "Viben akan membuka projek dalam editor ini",
+      "preferredTerminal": "Terminal Pilihan",
+      "preferredTerminalDescription": "Viben akan membuka sesi terminal di sini",
+      "yoloMode": "Mod YOLO",
+      "yoloModeDescription": "Mulakan executor dengan bendera --dangerously-skip-permissions, melangkaui semua gesaan keselamatan. Gunakan dengan sangat berhati-hati.",
+      "yoloModeWarning": "Mod ini melangkaui sistem kebenaran. Hanya aktifkan jika anda mempercayai sepenuhnya kod yang dilaksanakan.",
+      "debugLogs": "Nyahpepijat & Log",
+      "openLogsFolder": "Buka Folder Log",
+      "openConfigFolder": "Buka Folder Konfigurasi",
+      "copyDebugInfo": "Salin Maklumat Nyahpepijat",
+      "loadDebugInfo": "Muat Maklumat Nyahpepijat",
+      "systemInfo": "Maklumat Sistem",
+      "paths": "Laluan",
+      "noRecentErrors": "Tiada ralat terkini",
+      "reportingIssues": "Melaporkan Isu",
+      "reportingIssuesDescription": "Apabila melaporkan pepijat, klik \"Salin Maklumat Nyahpepijat\" untuk mendapatkan maklumat sistem yang membantu kami mendiagnosis masalah.",
+      "os": "Sistem Pengendalian",
+      "osVersion": "Versi",
+      "appVersion": "Versi Aplikasi",
+      "arch": "Seni Bina",
+      "logs": "Log",
+      "config": "Konfigurasi"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,9 +804,42 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "hostDescription": "Alamat hos yang diikat oleh perkhidmatan gateway",
+    "portDescription": "Nombor port yang didengari oleh perkhidmatan gateway (memerlukan mulakan semula)",
+    "connectivityTestDescription": "Semak status sambungan dan titik akhir yang tersedia perkhidmatan gateway"
+  },
+  "observability": {
+    "allRoutes": "Semua Laluan",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Pelaksanaan Ejen)",
+      "agents": "/api/agents (Pengurusan Ejen)",
+      "workspaces": "/api/workspaces (Ruang Kerja)",
+      "chat": "/api/chat (Sembang)",
+      "groupChats": "/api/group-chats (Sembang Kumpulan)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesi",
+        "config": "Konfigurasi",
+        "info": "Maklumat",
+        "workspace": "Ruang Kerja",
+        "auth": "Pengesahan"
+      },
+      "sources": {
+        "builtin": "Terbina Dalam",
+        "workspace": "Ruang Kerja",
+        "skill": "Kemahiran"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
+    "taskPromptWithDescription": "Sila bantu saya menyelesaikan tugas berikut:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Sila bantu saya menyelesaikan tugas berikut: {{title}}",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",
     "custom": "Custom",

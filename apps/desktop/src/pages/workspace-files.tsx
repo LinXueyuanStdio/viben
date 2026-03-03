@@ -202,8 +202,9 @@ function EditorTab({
   const Icon = () => getFileIcon(tab.file, "sm");
 
   return (
-    <button
-      type="button"
+    <div
+      role="tab"
+      tabIndex={0}
       className={cn(
         "group relative flex items-center gap-2 px-3 py-2 text-xs font-medium transition-all cursor-pointer",
         "border-b-2 -mb-[2px]",
@@ -212,6 +213,12 @@ function EditorTab({
           : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
       )}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <Icon />
       <span className="truncate max-w-24">{tab.file.name}</span>
@@ -228,7 +235,7 @@ function EditorTab({
       >
         <X className="h-3 w-3" />
       </button>
-    </button>
+    </div>
   );
 }
 

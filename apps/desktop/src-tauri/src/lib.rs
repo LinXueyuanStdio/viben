@@ -1,17 +1,8 @@
 mod commands;
 
-use commands::api_client::ApiClientState;
 use commands::auth::AuthState;
+use commands::common::ApiClientState;
 use commands::gateway::GatewayState;
-use commands::logs::LogsState;
-use commands::mcp::McpProcessState;
-use commands::mcp_proxy::McpProxyState;
-use commands::offline_cache::OfflineCacheState;
-use commands::official_registry::OfficialRegistryState;
-use commands::package_install::InstalledPackagesState;
-use commands::usage::UsageState;
-use commands::vite_preview::VitePreviewState;
-use commands::workspace_sync::WorkspaceSyncState;
 
 use tauri::{
     menu::{Menu, MenuItem},
@@ -55,22 +46,8 @@ async fn auto_start_gateway(state: &GatewayState) {
 
     let viben_path = viben_paths.into_iter().flatten().find(|p| p.exists());
 
-    // If no viben CLI, try standalone binary
-    let gateway_paths = [
-        dirs::home_dir()
-            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/release/viben-gateway")),
-        Some(std::path::PathBuf::from("/usr/local/bin/viben-gateway")),
-        dirs::home_dir().map(|h| h.join(".cargo/bin/viben-gateway")),
-        dirs::home_dir().map(|h| h.join(".viben/bin/viben-gateway")),
-        dirs::home_dir()
-            .map(|h| h.join("Documents/GitHub/LinXueyuanStdio/viben/crates/target/debug/viben-gateway")),
-    ];
-
-    let gateway_path = gateway_paths.into_iter().flatten().find(|p| p.exists());
-
-    // Build the command based on what we found
+    // Build the command using viben CLI
     let cmd_result = if let Some(viben) = viben_path {
-        // Use viben CLI
         eprintln!("[Gateway] Using viben CLI: {:?}", viben);
         let mut cmd = tokio::process::Command::new(&viben);
         cmd.arg("gateway")
@@ -82,20 +59,8 @@ async fn auto_start_gateway(state: &GatewayState) {
             .stderr(std::process::Stdio::null())
             .kill_on_drop(true);
         cmd.spawn()
-    } else if let Some(binary) = gateway_path {
-        // Use standalone binary
-        eprintln!("[Gateway] Using standalone binary: {:?}", binary);
-        let mut cmd = tokio::process::Command::new(&binary);
-        cmd.arg("--port")
-            .arg(config.port.to_string())
-            .arg("--host")
-            .arg(&config.host)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .kill_on_drop(true);
-        cmd.spawn()
     } else {
-        eprintln!("[Gateway] Neither viben CLI nor gateway binary found, skipping auto-start");
+        eprintln!("[Gateway] viben CLI not found, skipping auto-start");
         return;
     };
 
@@ -211,7 +176,7 @@ fn setup_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
@@ -219,8 +184,22 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .plugin(tauri_plugin_notification::init())
-        .setup(|app| {
+        .plugin(tauri_plugin_notification::init());
+
+    // MCP plugin for AI debugging - only in development builds
+    #[cfg(debug_assertions)]
+    {
+        eprintln!("[MCP] Enabling MCP plugin for AI debugging");
+        builder = builder.plugin(
+            tauri_plugin_mcp::init_with_config(
+                tauri_plugin_mcp::PluginConfig::new("viben-desktop".to_string())
+                    .start_socket_server(true)
+                    .socket_path(std::path::PathBuf::from("/tmp/viben-mcp.sock")),
+            ),
+        );
+    }
+
+    builder.setup(|app| {
             setup_tray(app)?;
 
             // Auto-start gateway in background
@@ -245,16 +224,30 @@ pub fn run() {
             }
 
             // Register deep link handler for OAuth callback
-            // URL format: viben://oauth?code=xxx
+            // URL format: viben://oauth?session=<base64url-encoded-json>
             let app_handle = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 let urls = event.urls();
                 for url in urls {
                     if url.scheme() == "viben" && url.host_str() == Some("oauth") {
-                        // Extract code from query parameters
-                        if let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v.to_string()) {
-                            // Emit event to frontend with the OAuth code
-                            let _ = app_handle.emit("oauth-callback", code);
+                        // Check for error first
+                        if let Some(error) = url.query_pairs().find(|(k, _)| k == "error").map(|(_, v)| v.to_string()) {
+                            // Emit error event to frontend
+                            let _ = app_handle.emit("oauth-error", error);
+
+                            // Focus main window
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.unminimize();
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
+                            continue;
+                        }
+
+                        // Extract session from query parameters (base64url encoded JSON)
+                        if let Some(session_b64) = url.query_pairs().find(|(k, _)| k == "session").map(|(_, v)| v.to_string()) {
+                            // Emit event to frontend with the session data
+                            let _ = app_handle.emit("oauth-callback", session_b64);
 
                             // Focus main window
                             if let Some(window) = app_handle.get_webview_window("main") {
@@ -271,202 +264,22 @@ pub fn run() {
         })
         .manage(ApiClientState::default())
         .manage(AuthState::default())
-        .manage(McpProcessState::default())
-        .manage(McpProxyState::default())
-        .manage(LogsState::default())
-        .manage(UsageState::default())
-        .manage(OfflineCacheState::default())
-        .manage(InstalledPackagesState::default())
-        .manage(WorkspaceSyncState::default())
-        .manage(OfficialRegistryState::default())
-        .manage(VitePreviewState::default())
         .manage(GatewayState::default())
         .invoke_handler(tauri::generate_handler![
-            // API Client commands
-            commands::api_client::api_request,
-            commands::api_client::get_api_base_url,
-            commands::api_client::set_api_base_url,
-            // Python commands
-            commands::python::detect_python,
-            commands::python::check_python_path,
-            commands::python::check_browse_mcp_installed,
-            commands::python::get_install_command,
-            commands::python::get_uv_install_command,
-            // MCP commands
-            commands::mcp::start_mcp_server,
-            commands::mcp::stop_mcp_server,
-            commands::mcp::get_mcp_status,
-            commands::mcp::test_mcp_connection,
-            commands::mcp::is_process_alive,
-            commands::mcp::check_port_status,
-            commands::mcp::check_mcp_server_on_port,
-            commands::mcp::kill_process,
-            // Agent commands
-            commands::agents::detect_agents,
-            commands::agents::read_agent_config,
-            commands::agents::write_agent_config,
-            commands::agents::configure_browse_mcp,
-            commands::agents::is_browse_mcp_configured,
-            // Logs commands
-            commands::logs::init_logs,
-            commands::logs::add_log,
-            commands::logs::get_logs,
-            commands::logs::clear_logs,
-            commands::logs::export_logs,
-            commands::logs::get_log_file_path_cmd,
-            commands::logs::start_log_session,
-            commands::logs::update_session_pid,
-            commands::logs::end_log_session,
-            commands::logs::get_log_sessions,
-            commands::logs::get_session_logs,
-            commands::logs::clear_session_logs,
-            commands::logs::cleanup_old_sessions,
-            commands::logs::export_session_logs,
-            commands::logs::get_logs_dir_path,
-            // API Keys commands (provider keys)
-            commands::api_keys::get_api_key_providers,
-            commands::api_keys::set_api_key,
-            commands::api_keys::get_api_key,
-            commands::api_keys::delete_api_key,
-            commands::api_keys::get_all_api_keys,
-            commands::api_keys::validate_api_key,
-            // Service API Keys commands
-            commands::service_keys::get_service_keys,
-            commands::service_keys::create_service_key,
-            commands::service_keys::delete_service_key,
-            commands::service_keys::validate_service_key,
-            commands::service_keys::update_service_key_usage,
-            commands::service_keys::get_service_key_by_id,
-            // Usage tracking commands
-            commands::usage::init_usage,
-            commands::usage::record_usage,
-            commands::usage::get_usage_stats,
-            commands::usage::get_api_key_usage,
-            commands::usage::get_server_usage,
-            commands::usage::get_source_usage,
-            // Marketplace commands
-            commands::marketplace::get_provider_index,
-            commands::marketplace::get_flat_sources,
-            commands::marketplace::clear_provider_cache,
-            // Cloud MCP commands
-            commands::cloud_mcp::list_cloud_mcp_packages,
-            commands::cloud_mcp::search_cloud_mcp_packages,
-            commands::cloud_mcp::get_cloud_mcp_package,
-            commands::cloud_mcp::get_cloud_mcp_categories,
-            // Cloud Skills commands
-            commands::cloud_skills::list_cloud_skill_packages,
-            commands::cloud_skills::search_cloud_skill_packages,
-            commands::cloud_skills::get_cloud_skill_package,
-            commands::cloud_skills::get_cloud_skill_categories,
-            // Installed sources commands (via browse-mcp-cli)
-            commands::marketplace::get_installed_sources,
-            commands::marketplace::show_installed_provider,
-            commands::marketplace::install_provider,
-            // API Logs commands
-            commands::api_logs::get_api_log_sessions,
-            commands::api_logs::get_api_logs,
-            commands::api_logs::get_api_log_summary,
-            commands::api_logs::clear_api_logs,
-            commands::api_logs::get_api_logs_dir_path,
-            commands::api_logs::open_api_logs_dir,
-            // Auth commands
+            // Auth commands (OAuth requires browser integration)
             commands::auth::login_with_credentials,
             commands::auth::login_with_github,
             commands::auth::handle_oauth_callback,
             commands::auth::logout,
             commands::auth::get_current_user,
             commands::auth::refresh_session,
-            // Offline cache commands
-            commands::offline_cache::get_cache_info,
-            commands::offline_cache::refresh_cache,
-            commands::offline_cache::clear_cache,
-            commands::offline_cache::get_cached_mcp_packages,
-            commands::offline_cache::get_cached_mcp_categories,
-            commands::offline_cache::get_cached_skill_packages,
-            commands::offline_cache::get_cached_skill_categories,
-            commands::offline_cache::set_cache_settings,
-            commands::offline_cache::get_cache_settings,
-            commands::offline_cache::is_offline,
-            commands::offline_cache::should_refresh_cache,
-            // Package installation commands
-            commands::package_install::install_cloud_mcp_package,
-            commands::package_install::install_cloud_skill_package,
-            commands::package_install::uninstall_package,
-            commands::package_install::get_installed_packages,
-            commands::package_install::update_package,
-            commands::package_install::is_package_installed,
-            commands::package_install::get_installed_package,
-            // Workspace sync commands
-            commands::workspace_sync::list_cloud_workspaces,
-            commands::workspace_sync::get_cloud_workspace,
-            commands::workspace_sync::sync_workspace,
-            commands::workspace_sync::push_local_config,
-            commands::workspace_sync::get_sync_status,
-            // Tray commands
+            // Tray commands (native system tray)
             commands::tray::update_tray_status,
             commands::tray::show_tray_popup,
             commands::tray::hide_tray_popup,
             commands::tray::show_main_window,
             commands::tray::get_tray_position,
-            // MCP Proxy commands
-            commands::mcp_proxy::start_mcp_proxy,
-            commands::mcp_proxy::stop_mcp_proxy,
-            commands::mcp_proxy::get_mcp_proxy_status,
-            commands::mcp_proxy::check_mcp_proxy_installed,
-            commands::mcp_proxy::install_mcp_proxy,
-            commands::mcp_proxy::get_port_process,
-            commands::mcp_proxy::kill_port_process,
-            // Workspace management commands
-            commands::workspace::list_workspaces,
-            commands::workspace::add_workspace,
-            commands::workspace::remove_workspace,
-            commands::workspace::get_workspace,
-            commands::workspace::set_active_workspace,
-            commands::workspace::get_active_workspace_id,
-            commands::workspace::update_workspace_accessed,
-            commands::workspace::detect_workspace_agents,
-            commands::workspace::get_workspace_mcp_servers,
-            commands::workspace::add_workspace_mcp_server,
-            commands::workspace::update_workspace_mcp_server,
-            commands::workspace::delete_workspace_mcp_server,
-            commands::workspace::get_workspace_skills,
-            commands::workspace::add_workspace_skill,
-            commands::workspace::delete_workspace_skill,
-            commands::workspace::get_skill_readme,
-            commands::workspace::list_skill_files,
-            commands::workspace::read_skill_file,
-commands::workspace::write_skill_file,
-            commands::workspace::read_config_file,
-            commands::workspace::write_config_file,
-            commands::workspace::get_workspace_agent_configs,
-            commands::workspace::read_agent_config_file,
-            commands::workspace::get_workspace_commands,
-            commands::workspace::read_command_file,
-            // Store sync commands
-            commands::store_sync::read_mcp_servers_file,
-            commands::store_sync::write_mcp_servers_file,
-            // Official registry commands
-            commands::official_registry::list_official_servers,
-            commands::official_registry::get_official_server,
-            commands::official_registry::get_official_server_versions,
-            commands::official_registry::clear_official_registry_cache,
-            commands::official_registry::invalidate_official_server_cache,
-            // Vite Preview commands
-            commands::vite_preview::check_node_available,
-            commands::vite_preview::start_vite_preview,
-            commands::vite_preview::stop_vite_preview,
-            commands::vite_preview::get_vite_preview_status,
-            commands::vite_preview::stop_all_vite_previews,
-            // Kanban comments and activities commands
-            commands::kanban_comments::get_kanban_comments,
-            commands::kanban_comments::add_kanban_comment,
-            commands::kanban_comments::update_kanban_comment,
-            commands::kanban_comments::delete_kanban_comment,
-            commands::kanban_comments::toggle_comment_reaction,
-            commands::kanban_comments::get_kanban_activities,
-            commands::kanban_comments::add_kanban_activity,
-            commands::kanban_comments::clear_kanban_task_data,
-            // Gateway commands
+            // Gateway commands (process management)
             commands::gateway::start_gateway,
             commands::gateway::stop_gateway,
             commands::gateway::get_gateway_status,
@@ -475,19 +288,9 @@ commands::workspace::write_skill_file,
             commands::gateway::set_gateway_config,
             commands::gateway::check_gateway_binary,
             commands::gateway::discover_gateway,
-            // Screenshot commands
+            // Screenshot commands (native screen capture)
             commands::screenshot::take_screenshot,
             commands::screenshot::take_screenshot_region,
-            // Filesystem commands
-            commands::filesystem::read_directory,
-            commands::filesystem::create_file,
-            commands::filesystem::create_directory,
-            commands::filesystem::rename_item,
-            commands::filesystem::delete_item,
-            commands::filesystem::copy_item,
-            commands::filesystem::move_item,
-            commands::filesystem::get_file_info,
-            commands::filesystem::read_file_content,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

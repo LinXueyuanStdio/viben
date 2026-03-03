@@ -139,7 +139,47 @@
     "system": "Системная",
     "language": "Язык",
     "storage": "Хранилище",
-    "downloadPath": "Путь загрузки"
+    "downloadPath": "Путь загрузки",
+    "developer": {
+      "os": "ОС",
+      "osVersion": "Версия",
+      "appVersion": "Версия приложения",
+      "arch": "Архитектура",
+      "logs": "Логи",
+      "config": "Конфигурация"
+    }
+  },
+  "gateway": {
+    "host": "Хост",
+    "hostDescription": "Адрес хоста, к которому привязан сервис шлюза",
+    "portDescription": "Номер порта, который прослушивает сервис шлюза (требуется перезапуск)",
+    "connectivityTestDescription": "Проверка состояния подключения и доступных конечных точек сервиса шлюза"
+  },
+  "observability": {
+    "allRoutes": "Все маршруты",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Выполнение агента)",
+      "agents": "/api/agents (Управление агентами)",
+      "workspaces": "/api/workspaces (Рабочие пространства)",
+      "chat": "/api/chat (Чат)",
+      "groupChats": "/api/group-chats (Групповые чаты)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Сессия",
+        "config": "Конфигурация",
+        "info": "Информация",
+        "workspace": "Рабочее пространство",
+        "auth": "Аутентификация"
+      },
+      "sources": {
+        "builtin": "Встроенный",
+        "workspace": "Рабочее пространство",
+        "skill": "Навык"
+      }
+    }
   },
   "about": {
     "title": "Viben",
@@ -783,6 +823,9 @@
     "noWorkspaces": "No workspaces yet",
     "global": "Global",
     "custom": "Custom",
+    "addDescription": "Добавить описание...",
+    "taskPromptWithDescription": "Пожалуйста, помогите мне с этой задачей:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Пожалуйста, помогите мне с этой задачей: {{title}}",
     "type": "Type",
     "agentsCount": "Agents",
     "created": "Created",

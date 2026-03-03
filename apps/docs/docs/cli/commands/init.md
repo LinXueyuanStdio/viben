@@ -1,36 +1,36 @@
 ---
 sidebar_position: 2
 title: "viben init"
-description: "Initialize a Viben workspace in the current directory"
+description: "在当前目录初始化 Viben 工作区"
 ---
 
 # viben init
 
-Initialize a Viben workspace in the current directory.
+在当前目录初始化 Viben 工作区。
 
-## Usage
+## 用法
 
 ```bash
 viben init [options]
 ```
 
-## Options
+## 选项
 
-| Option | Description |
-|--------|-------------|
-| `--from <template>` | Initialize from a template |
+| 选项 | 说明 |
+|------|------|
+| `--from <template>` | 从模板初始化 |
 
-## Examples
+## 示例
 
-### Basic Initialization
+### 基本初始化
 
-Create a new workspace with default configuration:
+创建默认配置的新工作区：
 
 ```bash
 viben init
 ```
 
-**Output (Human-readable):**
+**输出（人类可读）：**
 
 ```
 Initialized Viben workspace in /path/to/project
@@ -41,7 +41,7 @@ Next steps:
   viben skill install <name>  # Install skills
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 
 ```bash
 viben init --json
@@ -55,54 +55,54 @@ viben init --json
 }
 ```
 
-### Initialize from Template
+### 从模板初始化
 
-Create a workspace from a predefined template:
+从预定义模板创建工作区：
 
 ```bash
 viben init --from my-template
 ```
 
-## What It Creates
+## 创建的内容
 
-The `init` command creates the following structure:
+`init` 命令创建以下结构：
 
 ```
 <project>/
   .viben/
-    config.yaml       # Workspace configuration
+    config.yaml       # 工作区配置
 ```
 
-### Default config.yaml
+### 默认 config.yaml
 
 ```yaml
 version: 1
 
-# Workspace settings (override global)
+# 工作区设置（覆盖全局配置）
 settings:
-  # Inherited from global config
+  # 从全局配置继承
 
-# MCP servers for this workspace
+# 此工作区的 MCP 服务器
 mcp:
   enabled: []
   disabled: []
 
-# Skills for this workspace
+# 此工作区的技能
 skills:
   enabled: []
 ```
 
-## Behavior
+## 行为
 
-1. Checks if `.viben/` already exists
-2. If exists, prints a warning and exits
-3. Creates `.viben/` directory
-4. Creates `config.yaml` with default settings
-5. Prints next steps
+1. 检查 `.viben/` 是否已存在
+2. 如果存在，打印警告并退出
+3. 创建 `.viben/` 目录
+4. 创建带默认设置的 `config.yaml`
+5. 打印下一步操作
 
-## Error Handling
+## 错误处理
 
-### Workspace Already Exists
+### 工作区已存在
 
 ```bash
 viben init
@@ -112,7 +112,7 @@ viben init
 Error: Workspace already initialized at /path/to/project/.viben
 ```
 
-JSON output:
+JSON 输出：
 
 ```json
 {
@@ -124,7 +124,7 @@ JSON output:
 }
 ```
 
-### Permission Denied
+### 权限被拒绝
 
 ```json
 {
@@ -136,8 +136,9 @@ JSON output:
 }
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben workspace](./workspace) - Workspace operations
-- [viben config](./config) - Configuration management
-- [viben mcp](./mcp) - MCP server management
+- [viben workspace](./workspace) - 工作区操作
+- [viben config](./config) - 配置管理
+- [viben mcp](./mcp) - MCP 服务器管理
+- [viben team](./team) - 团队工作区初始化

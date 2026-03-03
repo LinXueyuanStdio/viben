@@ -127,9 +127,11 @@ export const JsonViewer = memo(function JsonViewer({
 export function JsonViewerFallback({
   data,
   className = "",
+  noDataText = "No data",
 }: {
   data: unknown;
   className?: string;
+  noDataText?: string;
 }) {
   const displayText =
     typeof data === "string"
@@ -141,7 +143,7 @@ export function JsonViewerFallback({
       className={`p-4 text-sm font-mono text-gray-300 whitespace-pre-wrap overflow-auto ${className}`}
       style={{ backgroundColor: "#1e1e1e" }}
     >
-      {displayText || <span className="text-gray-500 italic">No data</span>}
+      {displayText || <span className="text-gray-500 italic">{noDataText}</span>}
     </pre>
   );
 }

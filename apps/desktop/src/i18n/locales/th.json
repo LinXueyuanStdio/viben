@@ -139,7 +139,15 @@
     "system": "ระบบ",
     "language": "ภาษา",
     "storage": "พื้นที่เก็บข้อมูล",
-    "downloadPath": "พาธดาวน์โหลด"
+    "downloadPath": "พาธดาวน์โหลด",
+    "developer": {
+      "os": "ระบบปฏิบัติการ",
+      "osVersion": "เวอร์ชัน",
+      "appVersion": "เวอร์ชันแอป",
+      "arch": "สถาปัตยกรรม",
+      "logs": "บันทึก",
+      "config": "การตั้งค่า"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,9 +785,42 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "hostDescription": "ที่อยู่โฮสต์ที่บริการเกตเวย์เชื่อมต่อ",
+    "portDescription": "หมายเลขพอร์ตที่บริการเกตเวย์รับฟัง (ต้องรีสตาร์ท)",
+    "connectivityTestDescription": "ตรวจสอบสถานะการเชื่อมต่อและจุดปลายทางที่ใช้ได้ของบริการเกตเวย์"
+  },
+  "observability": {
+    "allRoutes": "เส้นทางทั้งหมด",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (การทำงานของเอเจนต์)",
+      "agents": "/api/agents (การจัดการเอเจนต์)",
+      "workspaces": "/api/workspaces (พื้นที่ทำงาน)",
+      "chat": "/api/chat (แชท)",
+      "groupChats": "/api/group-chats (แชทกลุ่ม)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "เซสชัน",
+        "config": "การกำหนดค่า",
+        "info": "ข้อมูล",
+        "workspace": "พื้นที่ทำงาน",
+        "auth": "การยืนยันตัวตน"
+      },
+      "sources": {
+        "builtin": "ในตัว",
+        "workspace": "พื้นที่ทำงาน",
+        "skill": "ทักษะ"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Add Workspace",
+    "taskPromptWithDescription": "กรุณาช่วยฉันทำงานต่อไปนี้:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "กรุณาช่วยฉันทำงานต่อไปนี้: {{title}}",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",
     "custom": "Custom",

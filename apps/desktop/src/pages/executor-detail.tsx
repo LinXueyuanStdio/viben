@@ -50,6 +50,7 @@ import {
   useAgentConversation,
 } from "@/hooks";
 import { getGatewayClient } from "@/lib/gateway";
+import { getExecutorIcon } from "@/lib/model-icons";
 import { MessageList, ChatInput, ExecutorCapabilities, type SlashCommand } from "@/components/chat";
 
 // ============================================================================
@@ -435,8 +436,8 @@ export function ExecutorDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <Avatar className="h-8 w-8">
-            <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
-              {executor.name.slice(0, 2).toUpperCase()}
+            <AvatarFallback className={cn(executorColor.bg, executorColor.text, "flex items-center justify-center")}>
+              {getExecutorIcon(executor.type, { size: 20 })}
             </AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
@@ -707,8 +708,8 @@ export function ExecutorDetailPage() {
           <div className="p-4 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarFallback className={cn(executorColor.bg, executorColor.text, "text-xs")}>
-                  {executor.name.slice(0, 2).toUpperCase()}
+                <AvatarFallback className={cn(executorColor.bg, executorColor.text, "flex items-center justify-center")}>
+                  {getExecutorIcon(executor.type, { size: 20 })}
                 </AvatarFallback>
               </Avatar>
               <div>

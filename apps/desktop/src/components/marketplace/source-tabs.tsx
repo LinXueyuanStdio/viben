@@ -1,4 +1,5 @@
 import * as React from "react";
+import { Globe, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -59,6 +60,7 @@ export const SourceTabs = React.memo(function SourceTabs({
           variant="pills"
           className="flex items-center gap-2"
         >
+          <Globe className="h-4 w-4" />
           <span>{t("marketplace.sourceOfficial")}</span>
           {officialCount !== undefined && !loading && (
             <Badge
@@ -74,6 +76,7 @@ export const SourceTabs = React.memo(function SourceTabs({
           variant="pills"
           className="flex items-center gap-2"
         >
+          <Users className="h-4 w-4" />
           <span>{t("marketplace.sourceCommunity")}</span>
           {communityCount !== undefined && !loading && (
             <Badge
@@ -105,10 +108,11 @@ export const SourceBadge = React.memo(function SourceBadge({
 
   return (
     <Badge
-      variant={source === "official" ? "default" : "outline"}
+      variant={source === "official" ? "default" : "secondary"}
       className={cn(
-        "text-[10px] px-1.5 py-0",
-        source === "official" && "bg-primary/90",
+        "text-[10px] px-1.5 py-0 shrink-0",
+        source === "official" && "bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 border-blue-500/20",
+        source === "community" && "bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 border-purple-500/20",
         className
       )}
     >

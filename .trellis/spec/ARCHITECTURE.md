@@ -1,7 +1,7 @@
 # Viben 项目架构报告
 
-> **版本**: 0.1.0
-> **更新日期**: 2026-02-07
+> **版本**: 0.2.0
+> **更新日期**: 2026-03-02
 > **项目描述**: Multi-agent workspace manager with kanban, calendar, timeline, and task management
 
 ---
@@ -13,10 +13,9 @@
 3. [项目结构](#3-项目结构)
 4. [应用分析](#4-应用分析)
 5. [共享包分析](#5-共享包分析)
-6. [Rust Crates](#6-rust-crates)
-7. [后端服务](#7-后端服务)
-8. [数据流与架构模式](#8-数据流与架构模式)
-9. [构建与部署](#9-构建与部署)
+6. [后端服务](#6-后端服务)
+7. [数据流与架构模式](#7-数据流与架构模式)
+8. [构建与部署](#8-构建与部署)
 
 ---
 
@@ -36,37 +35,43 @@
 ### 1.2 核心架构特点
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Viben 架构概览                            │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐  │
-│   │   Web   │     │ Desktop │     │   CLI   │     │  Docs   │  │
-│   │ (Next)  │     │ (Tauri) │     │  (Node) │     │(Docusr) │  │
-│   └────┬────┘     └────┬────┘     └────┬────┘     └─────────┘  │
-│        │               │               │                        │
-│        └───────────────┼───────────────┘                        │
-│                        │                                        │
-│              ┌─────────┴─────────┐                              │
-│              │   共享包层         │                              │
-│   ┌──────────┼──────────┬────────┼──────────┐                   │
-│   │          │          │        │          │                   │
-│   │  @viben  │  @viben  │ @viben │  @viben  │                   │
-│   │  /core   │  /ui     │ /kanban│ /api-cli │                   │
-│   │          │          │        │  ent     │                   │
-│   └──────────┴──────────┴────────┴──────────┘                   │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                    Rust Crates                          │   │
-│   │   viben-core (共享库)  │  viben-desktop (Tauri 后端)     │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│   ┌─────────────────────────────────────────────────────────┐   │
-│   │                  Python 后端服务                         │   │
-│   │   browse-mcp (学术搜索)  │  browse-mcp-proxy (代理)      │   │
-│   └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Viben 架构概览                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│   ┌─────────┐     ┌─────────┐     ┌─────────┐     ┌─────────┐          │
+│   │   Web   │     │ Desktop │     │   CLI   │     │  Docs   │          │
+│   │ (Next)  │     │ (Tauri) │     │  (Node) │     │(Docusr) │          │
+│   └────┬────┘     └────┬────┘     └────┬────┘     └─────────┘          │
+│        │               │               │                                │
+│        │               └───────┬───────┘                                │
+│        │                       │                                        │
+│        │            ┌──────────┴──────────┐                             │
+│        │            │   Viben Gateway     │                             │
+│        │            │   (Fastify :18790)  │                             │
+│        │            └──────────┬──────────┘                             │
+│        │                       │                                        │
+│        └───────────────────────┼────────────────────────────────────────│
+│                                │                                        │
+│              ┌─────────────────┴─────────────────┐                      │
+│              │          @viben/core              │                      │
+│   ┌──────────┼──────────┬────────────┬──────────┼──────────┐           │
+│   │          │          │            │          │          │           │
+│   │ Gateway  │ Services │ Executors  │ Configs  │  GitHub  │           │
+│   │ (40+API) │ (11 svc) │ (9 agents) │ (YAML)   │  (API)   │           │
+│   └──────────┴──────────┴────────────┴──────────┴──────────┘           │
+│                                                                         │
+│   ┌──────────┬──────────┬────────────┐                                  │
+│   │  @viben  │  @viben  │   @viben   │                                  │
+│   │   /ui    │  /kanban │ /api-client│                                  │
+│   └──────────┴──────────┴────────────┘                                  │
+│                                                                         │
+│   ┌─────────────────────────────────────────────────────────┐           │
+│   │                  Python 后端服务                         │           │
+│   │   browse-mcp (学术搜索)                                   │           │
+│   └─────────────────────────────────────────────────────────┘           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -133,7 +138,7 @@
 |------|------|------|
 | **FastMCP** | Python | MCP 服务器实现 |
 | **Poetry** | Python | 依赖管理 |
-| **Rust** | Rust | Tauri 后端, viben-core crate |
+| **Rust** | Rust | Tauri 后端 |
 
 ---
 
@@ -152,17 +157,13 @@ viben/
 ├── packages/                # 共享 TypeScript 包
 │   ├── api-client/          # API 客户端库
 │   ├── cli/                 # 命令行界面
-│   ├── core/                # 核心配置/智能体管理
+│   ├── core/                # 核心配置/智能体管理/Gateway
 │   ├── kanban/              # 看板组件库
 │   ├── ui/                  # 共享 UI 组件库
 │   └── vibe-kanban/         # 外部看板组件符号链接
 │
-├── crates/                  # Rust crates
-│   └── viben-core/          # Rust 核心库
-│
 ├── backend/                 # Python 后端服务
 │   ├── browse-mcp/          # 学术论文搜索 MCP 服务器
-│   ├── browse-mcp-proxy/    # MCP 代理服务
 │   └── plugins/             # 插件系统
 │
 ├── homebrew/                # Homebrew tap 支持
@@ -350,7 +351,7 @@ interface AppState {
 
 ### 5.1 @viben/core
 
-**定位**: 配置、智能体、Provider、Model 的共享核心库
+**定位**: 配置、智能体、Provider、Model、Gateway、Services 的共享核心库
 
 **导出模块**:
 ```typescript
@@ -371,20 +372,146 @@ export { McpManager, mcpManager }
 
 // Skills 管理
 export { SkillsManager, skillsManager }
+
+// Executors - AI 编程代理执行器
+export { createExecutor, EXECUTOR_TYPES, spawnChat }
+
+// Gateway - HTTP/WebSocket API 网关
+export { startGateway, registerRoutes }
+
+// Services - 后台服务管理
+export { ServiceManager, EventService, SessionStoreService, CronService }
 ```
 
 **目录结构**:
 ```
 packages/core/src/
 ├── agents/       # 智能体配置与管理
+├── channels/     # 消息通道管理
+├── cli/          # CLI 命令实现
 ├── config/       # 配置文件管理
+├── db/           # 数据库模型 (SQLite)
+├── executors/    # AI 编程代理执行器
+├── gateway/      # HTTP/WS API 网关
+├── group-chat/   # 群聊功能
 ├── mcp/          # MCP 服务器配置
-├── models/       # 模型定义
+├── models/       # 模型定义与发现
+├── notifications/# 通知系统
 ├── providers/    # Provider 配置
+├── services/     # 后台服务
 ├── skills/       # Skills 管理
+├── team/         # 团队功能
+├── telemetry/    # 遥测与日志
 ├── types/        # 共享类型定义
+├── workspace/    # 工作空间管理
 ├── browser.ts    # 浏览器安全导出
 └── index.ts      # 主导出
+```
+
+#### 5.1.1 Executors - AI 编程代理执行器
+
+支持多种 AI 编程代理的统一执行器接口：
+
+| 执行器 | CLI 工具 | 描述 |
+|--------|----------|------|
+| **CLAUDE_CODE** | `claude` | Claude Code CLI |
+| **AMP** | `amp` | Amp Code Agent |
+| **GEMINI** | `gemini` | Google Gemini CLI |
+| **CODEX** | `codex` | OpenAI Codex |
+| **OPENCODE** | `opencode` | Opencode CLI |
+| **CURSOR_AGENT** | `cursor` | Cursor Agent |
+| **QWEN_CODE** | `qwen` | Qwen Code |
+| **COPILOT** | `copilot` | GitHub Copilot |
+| **DROID** | `droid` | Droid Agent |
+
+```typescript
+// 创建执行器
+const executor = createExecutor("CLAUDE_CODE");
+const availability = executor.getAvailabilityInfo();
+
+// 支持非交互式聊天的执行器
+const CHAT_SUPPORTED_EXECUTORS = ["CLAUDE_CODE", "GEMINI", "CODEX"];
+```
+
+#### 5.1.2 Gateway - HTTP/WebSocket API 网关
+
+运行在端口 **18790** 的 Fastify 网关，提供 40+ API 路由：
+
+| 路由模块 | 端点前缀 | 功能 |
+|----------|----------|------|
+| **health** | `/health` | 健康检查 |
+| **agents** | `/api/agents` | 智能体 CRUD |
+| **sessions** | `/api/sessions` | 会话管理 |
+| **executors** | `/api/executors` | 执行器管理 |
+| **models** | `/api/models` | 模型配置 |
+| **providers** | `/api/providers` | Provider 配置 |
+| **channels** | `/api/channels` | 消息通道 |
+| **cron** | `/api/cron` | 定时任务 |
+| **mcp** | `/api/mcp` | MCP 服务器管理 |
+| **mcp-inspector** | `/api/mcp-inspector` | MCP 调试器 |
+| **workspaces** | `/api/workspaces` | 工作空间 |
+| **group-chats** | `/api/group-chats` | 群聊 |
+| **chat-list** | `/api/chat-list` | 聊天列表 |
+| **agent-run** | `/api/agent-run` | 智能体运行 (SSE) |
+| **agent-ws** | `/api/agent-ws` | 智能体 WebSocket |
+| **files** | `/api/files` | 文件操作 |
+| **filesystem** | `/api/filesystem` | 文件系统浏览 |
+| **terminal** | `/api/terminal` | 终端会话 |
+| **history** | `/api/history` | 历史记录 |
+| **telemetry** | `/api/telemetry` | 遥测数据 |
+| **sandbox** | `/api/sandbox` | 沙箱执行 |
+| **commands** | `/api/commands` | 命令执行 |
+| **python** | `/api/python` | Python 环境 |
+| **service-keys** | `/api/service-keys` | 服务密钥 |
+| **usage** | `/api/usage` | 使用统计 |
+| **installed-sources** | `/api/installed-sources` | 已安装源 |
+| **logs** | `/api/logs` | 日志查看 |
+| **marketplace** | `/api/marketplace` | 市场集成 |
+| **official-registry** | `/api/official-registry` | 官方注册表 |
+| **cache** | `/api/cache` | 缓存管理 |
+| **tunnel** | `/api/tunnel` | 隧道服务 |
+| **kanban-data** | `/api/kanban-data` | 看板数据 |
+| **packages** | `/api/packages` | 包管理 |
+| **github** | `/api/github` | GitHub 集成 |
+| **tasks** | `/api/tasks` | 任务管理 |
+| **events** | `/api/events` | 事件流 (SSE) |
+| **ws** | `/ws` | WebSocket |
+
+#### 5.1.3 Services - 后台服务
+
+| 服务 | 描述 |
+|------|------|
+| **EventService** | 事件广播与流 |
+| **SessionStoreService** | 文件式会话持久化 |
+| **CronService** | 定时任务管理 |
+| **ContainerService** | 进程派生与管理 |
+| **HistoryService** | 智能体历史管理 |
+| **MessageBus** | 通道消息路由 |
+| **ServiceManager** | 后台服务管理 (MCP、Gateway、Viben) |
+| **BackgroundTaskManager** | 后台任务管理 (观察者模式) |
+| **AgentService** | 智能体会话生命周期、计划审批 |
+| **SandboxService** | 隔离代码执行 (多 Provider) |
+| **GitHubService** | GitHub 集成 (认证、仓库、Issue、PR、Release) |
+
+#### 5.1.4 GitHub 集成
+
+新增的 GitHub 服务模块，支持：
+
+- **认证**: gh CLI / Personal Access Token (PAT)
+- **仓库管理**: 连接、配置、信息获取
+- **Issue 管理**: 列表、详情、评论、调查分析
+- **Pull Request**: 列表、创建、详情
+- **Release**: 列表、创建、资产管理
+- **Issue 导入**: 导入 Issue 为 Spec 文件
+
+配置文件存储在 `~/.viben/workspaces/{workspace_id}/github.yaml`
+
+```typescript
+interface GitHubConfig {
+  auth?: GitHubAuth;           // 认证信息
+  repository?: GitHubRepositoryConfig;  // 连接的仓库
+  preferences?: GitHubPreferences;      // 用户偏好
+}
 ```
 
 ---
@@ -463,41 +590,9 @@ const { packages: skills } = await client.skills.search('git');
 
 ---
 
-## 6. Rust Crates
+## 6. 后端服务
 
-### 6.1 viben-core (Rust)
-
-**定位**: CLI 和桌面应用共享的 Rust 核心库
-
-**模块**:
-```rust
-pub mod agents;     // 智能体管理
-pub mod config;     // 配置
-pub mod error;      // 错误类型
-pub mod models;     // 模型定义
-pub mod providers;  // Provider 配置
-```
-
-**依赖**: `serde`, `serde_yaml`, `tokio`, `dirs`, `chrono`, `uuid`, `thiserror`
-
----
-
-### 6.2 viben-desktop (Tauri)
-
-**定位**: 桌面应用的 Tauri 后端
-
-**功能**:
-- 托盘图标
-- Deep links
-- SQLite 数据库
-- 文件系统访问
-- Shell 命令
-
----
-
-## 7. 后端服务
-
-### 7.1 browse-mcp
+### 6.1 browse-mcp
 
 **定位**: 学术论文搜索 Python MCP 服务器
 
@@ -513,9 +608,9 @@ pub mod providers;  // Provider 配置
 
 ---
 
-## 8. 数据流与架构模式
+## 7. 数据流与架构模式
 
-### 8.1 包依赖关系图
+### 7.1 包依赖关系图
 
 ```
                     @viben/core
@@ -533,7 +628,7 @@ pub mod providers;  // Provider 配置
      @viben/web                 @viben/desktop
 ```
 
-### 8.2 数据流模式
+### 7.2 数据流模式
 
 **桌面应用数据流**:
 ```
@@ -551,7 +646,7 @@ pub mod providers;  // Provider 配置
           服务器响应 ←─────────────────────────────────┘
 ```
 
-### 8.3 状态管理模式
+### 7.3 状态管理模式
 
 **桌面应用 (Zustand + 持久化)**:
 ```typescript
@@ -578,7 +673,7 @@ const user = await db.query.users.findFirst({
 });
 ```
 
-### 8.4 API 模式
+### 7.4 API 模式
 
 **Web API 路由** (Next.js App Router):
 ```
@@ -598,22 +693,22 @@ commands::agents::read_agent_config
 commands::viben_agents::viben_list_agents
 ```
 
-### 8.5 核心架构模式
+### 7.5 核心架构模式
 
 | 模式 | 描述 |
 |------|------|
 | **Monorepo + Turborepo** | 共享包、并行构建、缓存 |
 | **混合应用架构** | Web (Next.js) + Desktop (Tauri + Vite) |
-| **共享核心库** | TypeScript (@viben/core) 和 Rust (viben-core) 保持一致性 |
+| **共享核心库** | TypeScript (@viben/core) 提供配置、Gateway、执行器等 |
 | **插件架构** | browse-mcp 使用 stevedore 实现可扩展搜索器 |
 | **离线优先桌面** | SQLite 本地存储 + 云同步 |
 | **组件库模式** | Radix 原语封装为 @viben/ui |
 
 ---
 
-## 9. 构建与部署
+## 8. 构建与部署
 
-### 9.1 构建命令
+### 8.1 构建命令
 
 ```bash
 # 全量构建
@@ -632,7 +727,7 @@ pnpm clean
 pnpm format
 ```
 
-### 9.2 应用特定命令
+### 8.2 应用特定命令
 
 **Web 应用**:
 ```bash
@@ -652,7 +747,7 @@ pnpm tauri dev    # Tauri 开发模式
 pnpm tauri build  # Tauri 生产构建
 ```
 
-### 9.3 发布流程
+### 8.3 发布流程
 
 - **Web**: Vercel 自动部署
 - **桌面**: GitHub Actions + Tauri 构建

@@ -1,6 +1,78 @@
 import { useCallback, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useAuthStore } from "@/stores/auth-store";
+import { toast } from "@/hooks/use-toast";
+
+// Global OAuth listener state - prevents multiple listeners from being registered
+let oauthListenerInitialized = false;
+
+/**
+ * Decode base64url string to UTF-8 text
+ * Handles UTF-8 characters properly (unlike atob which assumes Latin-1)
+ */
+function decodeBase64Url(base64url: string): string {
+  // Convert base64url to standard base64
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  // Pad with '=' if needed
+  const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+  // Decode base64 to binary string
+  const binary = atob(padded);
+  // Convert binary string to Uint8Array
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  // Decode UTF-8 bytes to string
+  return new TextDecoder('utf-8').decode(bytes);
+}
+
+/**
+ * Initialize OAuth listeners globally (called once on first useAuth mount)
+ * This ensures only one listener handles OAuth callbacks across all components
+ */
+function initializeOAuthListeners() {
+  if (oauthListenerInitialized) return;
+  oauthListenerInitialized = true;
+
+  // Register OAuth callback listener (lives for app lifetime)
+  listen<string>("oauth-callback", async (event) => {
+    const sessionBase64 = event.payload;
+    if (sessionBase64) {
+      try {
+        // Decode base64url to JSON (properly handles UTF-8)
+        const sessionJson = decodeBase64Url(sessionBase64);
+        const sessionData = JSON.parse(sessionJson);
+
+        // Set session directly from decoded data
+        await useAuthStore.getState().setSessionFromOAuth(sessionData);
+
+        // Show success toast
+        const { user } = useAuthStore.getState();
+        toast.success(i18n.t("toast.auth.loginSuccess"), {
+          description: i18n.t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
+        });
+      } catch (err) {
+        console.error("OAuth callback failed:", err);
+        toast.error(i18n.t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : i18n.t("toast.auth.oauthFailed"),
+        });
+      }
+    }
+  });
+
+  // Register OAuth error listener (lives for app lifetime)
+  listen<string>("oauth-error", async (event) => {
+    const error = event.payload;
+    console.error("OAuth error:", error);
+    useAuthStore.getState().setLoading(false);
+    toast.error(i18n.t("toast.auth.loginFailed"), {
+      description: `OAuth: ${error}`,
+    });
+  });
+}
 
 /**
  * Hook for authentication with auto-refresh support
@@ -9,6 +81,7 @@ import { useAuthStore } from "@/stores/auth-store";
  * - Auto-refresh of session before expiry
  * - Convenient access to auth state and methods
  * - Session initialization on mount
+ * - Toast notifications for auth events
  *
  * @example
  * ```tsx
@@ -29,6 +102,7 @@ import { useAuthStore } from "@/stores/auth-store";
  * ```
  */
 export function useAuth() {
+  const { t } = useTranslation();
   const store = useAuthStore();
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,30 +162,61 @@ export function useAuth() {
     };
   }, [store.user?.expiresAt, scheduleRefresh, clearRefreshTimeout]);
 
-  // Initialize auth state on mount
+  // Initialize auth state and OAuth listeners on mount
   useEffect(() => {
+    // Initialize OAuth listeners globally (only once across all components)
+    initializeOAuthListeners();
+    // Initialize auth state
     store.initializeAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Listen for OAuth callback from deep link (viben://oauth?code=xxx)
-  useEffect(() => {
-    const unlisten = listen<string>("oauth-callback", async (event) => {
-      const code = event.payload;
-      if (code) {
-        try {
-          await store.handleOAuthCallback(code);
-        } catch (err) {
-          console.error("OAuth callback failed:", err);
-        }
-      }
-    });
+  // Login with GitHub - opens browser
+  const loginWithGitHub = useCallback(async () => {
+    store.setLoading(true);
+    store.clearError();
 
-    return () => {
-      unlisten.then((fn) => fn());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    try {
+      const url = store.getGitHubOAuthUrl();
+      await openUrl(url);
+      toast.info(t("toast.auth.openingBrowser"), {
+        description: t("toast.auth.completeGitHubAuth"),
+      });
+      // Keep loading true - will be set to false by OAuth callback
+    } catch (err) {
+      store.setLoading(false);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      toast.error(t("toast.auth.cannotOpenBrowser"), {
+        description: errorMessage,
+      });
+      throw err;
+    }
+  }, [store, t]);
+
+  // Wrapped login with toast
+  const login = useCallback(
+    async (email: string, password: string) => {
+      try {
+        await store.login(email, password);
+        const { user } = useAuthStore.getState();
+        toast.success(t("toast.auth.loginSuccess"), {
+          description: t("toast.auth.welcomeBack", { name: user?.displayName || user?.username }),
+        });
+      } catch (err) {
+        toast.error(t("toast.auth.loginFailed"), {
+          description: err instanceof Error ? err.message : t("toast.auth.emailOrPasswordError"),
+        });
+        throw err;
+      }
+    },
+    [store, t]
+  );
+
+  // Wrapped logout with toast
+  const logout = useCallback(async () => {
+    await store.logout();
+    toast.info(i18n.t("toast.auth.loggedOut"));
+  }, [store]);
 
   return {
     /** Current user session */
@@ -122,17 +227,21 @@ export function useAuth() {
     isLoading: store.isLoading,
     /** Error message from last failed operation */
     error: store.error,
+    /** Whether initial auth check is complete */
+    isInitialized: store.isInitialized,
     /** Login with email and password */
-    login: store.login,
-    /** Initiate GitHub OAuth flow */
-    loginWithGitHub: store.loginWithGitHub,
+    login,
+    /** Initiate GitHub OAuth flow (opens browser) */
+    loginWithGitHub,
     /** Handle OAuth callback */
     handleOAuthCallback: store.handleOAuthCallback,
     /** Log out and clear session */
-    logout: store.logout,
+    logout,
     /** Refresh session manually */
     refreshSession: store.refreshSession,
     /** Clear error state */
     clearError: store.clearError,
+    /** Set loading state */
+    setLoading: store.setLoading,
   };
 }

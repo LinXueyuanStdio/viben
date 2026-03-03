@@ -139,7 +139,34 @@
     "system": "Sistema",
     "language": "Idioma",
     "storage": "Almacenamiento",
-    "downloadPath": "Ruta de descarga"
+    "downloadPath": "Ruta de descarga",
+    "developerDescription": "Herramientas de desarrollo, configuración de depuración y solución de problemas",
+    "developer": {
+      "devtools": "Herramientas de desarrollo",
+      "preferredIDE": "IDE preferido",
+      "preferredIDEDescription": "Viben abrirá los proyectos en este editor",
+      "preferredTerminal": "Terminal preferido",
+      "preferredTerminalDescription": "Viben abrirá las sesiones de terminal aquí",
+      "yoloMode": "Modo YOLO",
+      "yoloModeDescription": "Iniciar ejecutores con la bandera --dangerously-skip-permissions, omitiendo todas las indicaciones de seguridad. Use con extrema precaución.",
+      "yoloModeWarning": "Este modo omite el sistema de permisos. Solo habilítelo si confía completamente en el código que se está ejecutando.",
+      "debugLogs": "Depuración y registros",
+      "openLogsFolder": "Abrir carpeta de registros",
+      "openConfigFolder": "Abrir carpeta de configuración",
+      "copyDebugInfo": "Copiar información de depuración",
+      "loadDebugInfo": "Cargar información de depuración",
+      "systemInfo": "Información del sistema",
+      "paths": "Rutas",
+      "noRecentErrors": "Sin errores recientes",
+      "reportingIssues": "Reportar problemas",
+      "reportingIssuesDescription": "Al reportar errores, haga clic en \"Copiar información de depuración\" para obtener información del sistema que nos ayuda a diagnosticar el problema.",
+      "os": "SO",
+      "osVersion": "Versión",
+      "appVersion": "Versión de la app",
+      "arch": "Arquitectura",
+      "logs": "Registros",
+      "config": "Configuración"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,9 +804,44 @@
     "skillsAvailable": "{{count}} actualización(es) de habilidad(es) disponible(s)",
     "mixedAvailable": "{{mcpCount}} MCP y {{skillCount}} actualización(es) de habilidad(es)"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Dirección de host a la que está vinculado el servicio de gateway",
+    "portDescription": "Número de puerto en el que escucha el servicio de gateway (requiere reinicio)",
+    "connectivityTestDescription": "Verificar el estado de conexión y los endpoints disponibles del servicio de gateway"
+  },
+  "observability": {
+    "allRoutes": "Todas las rutas",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Ejecución de agente)",
+      "agents": "/api/agents (Gestión de agentes)",
+      "workspaces": "/api/workspaces (Espacios de trabajo)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Chats grupales)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesión",
+        "config": "Configuración",
+        "info": "Información",
+        "workspace": "Espacio de trabajo",
+        "auth": "Autenticación"
+      },
+      "sources": {
+        "builtin": "Integrado",
+        "workspace": "Espacio de trabajo",
+        "skill": "Habilidad"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Espacios de trabajo",
     "addWorkspace": "Añadir espacio de trabajo",
+    "addDescription": "Añadir un nuevo espacio de trabajo al proyecto",
+    "taskPromptWithDescription": "Por favor ayúdame con esta tarea:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Por favor ayúdame con esta tarea: {{title}}",
     "noWorkspaces": "Sin espacios de trabajo aún",
     "global": "Global",
     "custom": "Personalizado",

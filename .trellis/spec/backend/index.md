@@ -10,6 +10,19 @@ This directory contains guidelines for backend development. The backend is built
 
 **Important**: `packages/core` is the single boundary for all apps to access underlying capabilities. See [CLAUDE.md](../../../CLAUDE.md) for core architecture principles.
 
+## Architecture Note
+
+> **Important**: Viben has a dual-language architecture:
+
+| Component | Language | Purpose |
+|-----------|----------|---------|
+| `packages/core` | TypeScript | Gateway API, CLI, Agent system, MCP client |
+| `backend/browse-mcp` | Python | MCP server for academic search (arXiv, PubMed, etc.) |
+
+**This directory's guidelines focus on `packages/core` (TypeScript).**
+
+For Python MCP server development, see [Plugin Architecture](./architecture/plugin-architecture.md) which documents the stevedore-based plugin system in `backend/browse-mcp`.
+
 ---
 
 ## Guidelines Index
@@ -18,20 +31,20 @@ This directory contains guidelines for backend development. The backend is built
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Directory Structure](./directory-structure.md) | 模块组织与文件布局 | ✅ Complete |
-| [Plugin Architecture](./plugin-architecture.md) | 可插拔 Provider 系统 (stevedore) | ✅ Complete |
-| [Telemetry Guidelines](./telemetry-guidelines.md) | OpenTelemetry tracing, metrics, logging | ✅ Complete |
-| [API Module](./api-module.md) | API 模块设计与路由规范 | ✅ Complete |
-| [Quality](./quality.md) | 代码质量标准与审查指南 | ✅ Complete |
+| [Directory Structure](./core/directory-structure.md) | 模块组织与文件布局 | ✅ Complete |
+| [Plugin Architecture](./architecture/plugin-architecture.md) | Python MCP 可插拔 Provider 系统 (stevedore) | ✅ Complete |
+| [Telemetry Guidelines](./patterns/telemetry-guidelines.md) | OpenTelemetry tracing, metrics, logging | ✅ Complete |
+| [API Module](./core/api-module.md) | API 模块设计与路由规范 | ✅ Complete |
+| [Quality](./core/quality.md) | 代码质量标准与审查指南 | ✅ Complete |
 
 ### To Fill
 
 | Guide | Description | Status |
 |-------|-------------|--------|
-| [Database Guidelines](./database-guidelines.md) | ORM patterns, queries, migrations | 📝 To fill |
-| [Error Handling](./error-handling.md) | Error types, handling strategies | 📝 To fill |
-| [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | 📝 To fill |
-| [Logging Guidelines](./logging-guidelines.md) | Structured logging, log levels | 📝 To fill |
+| [Database Guidelines](./patterns/database-guidelines.md) | ORM patterns, queries, migrations | 📝 To fill |
+| [Error Handling](./patterns/error-handling.md) | Error types, handling strategies | 📝 To fill |
+| [Quality Guidelines](./core/quality-guidelines.md) | Code standards, forbidden patterns | 📝 To fill |
+| [Logging Guidelines](./patterns/logging-guidelines.md) | Structured logging, log levels | 📝 To fill |
 
 ---
 

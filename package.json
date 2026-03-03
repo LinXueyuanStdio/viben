@@ -10,6 +10,8 @@
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
     "desktop": "pnpm --filter @viben/desktop",
+    "desktop:dev": "pnpm --filter @viben/desktop tauri-dev",
+    "desktop:build": "pnpm --filter @viben/desktop tauri-build",
     "desktop:restart": "./scripts/restart-desktop.sh",
     "gateway:restart": "./scripts/restart-gateway.sh",
     "gateway:build": "./scripts/restart-gateway.sh --build",
@@ -24,6 +26,14 @@
     "typescript": "^5.7.0"
   },
   "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "react",
+        "react-dom"
+      ]
+    }
+  },
   "engines": {
     "node": ">=20.0.0"
   },

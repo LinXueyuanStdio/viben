@@ -139,7 +139,34 @@
     "system": "System",
     "language": "Språk",
     "storage": "Lagring",
-    "downloadPath": "Nedladdningssökväg"
+    "downloadPath": "Nedladdningssökväg",
+    "developerDescription": "Utvecklarverktyg, felsökningsinställningar och felsökning",
+    "developer": {
+      "devtools": "Utvecklarverktyg",
+      "preferredIDE": "Föredragen IDE",
+      "preferredIDEDescription": "Viben öppnar projekt i denna editor",
+      "preferredTerminal": "Föredragen terminal",
+      "preferredTerminalDescription": "Viben öppnar terminalsessioner här",
+      "yoloMode": "YOLO-läge",
+      "yoloModeDescription": "Starta executors med --dangerously-skip-permissions-flaggan, kringgå alla säkerhetspromptar. Använd med yttersta försiktighet.",
+      "yoloModeWarning": "Detta läge kringgår behörighetssystemet. Aktivera endast om du helt litar på koden som körs.",
+      "debugLogs": "Felsökning & Loggar",
+      "openLogsFolder": "Öppna loggmapp",
+      "openConfigFolder": "Öppna konfigurationsmapp",
+      "copyDebugInfo": "Kopiera felsökningsinfo",
+      "loadDebugInfo": "Ladda felsökningsinfo",
+      "systemInfo": "Systeminformation",
+      "paths": "Sökvägar",
+      "noRecentErrors": "Inga senaste fel",
+      "reportingIssues": "Rapportera problem",
+      "reportingIssuesDescription": "När du rapporterar buggar, klicka på \"Kopiera felsökningsinfo\" för att få systeminformation som hjälper oss diagnostisera problemet.",
+      "os": "Operativsystem",
+      "osVersion": "Version",
+      "appVersion": "Appversion",
+      "arch": "Arkitektur",
+      "logs": "Loggar",
+      "config": "Konfiguration"
+    }
   },
   "about": {
     "title": "Viben",
@@ -883,6 +910,39 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "taskPromptWithDescription": "Vänligen hjälp mig med denna uppgift:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Vänligen hjälp mig med denna uppgift: {{title}}"
+  },
+  "gateway": {
+    "hostDescription": "Värdadress som gateway-tjänsten är bunden till",
+    "portDescription": "Portnummer som gateway-tjänsten lyssnar på (kräver omstart)",
+    "connectivityTestDescription": "Kontrollera anslutningsstatus och tillgängliga slutpunkter för gateway-tjänsten"
+  },
+  "observability": {
+    "allRoutes": "Alla rutter",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agentkörning)",
+      "agents": "/api/agents (Agenthantering)",
+      "workspaces": "/api/workspaces (Arbetsytor)",
+      "chat": "/api/chat (Chatt)",
+      "groupChats": "/api/group-chats (Gruppchattar)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Session",
+        "config": "Konfiguration",
+        "info": "Information",
+        "workspace": "Arbetsyta",
+        "auth": "Autentisering"
+      },
+      "sources": {
+        "builtin": "Inbyggd",
+        "workspace": "Arbetsyta",
+        "skill": "Färdighet"
+      }
+    }
   }
 }

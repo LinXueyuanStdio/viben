@@ -34,7 +34,7 @@ jobs:
       is_draft: ${{ steps.get-version.outputs.is_draft }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get version
         id: get-version
@@ -80,10 +80,10 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -96,7 +96,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -159,7 +159,7 @@ jobs:
 
             - **macOS**: Download the `.dmg` file and drag Viben to Applications
               - ⚠️ First launch: Right-click the app → "Open" → "Open" (to bypass Gatekeeper)
-              - Or run: `xattr -cr /Applications/Viben.app`
+              - Or run: `xattr -cr /Applications/Viben.app` or `xattr -d com.apple.quarantine /Applications/Viben.app`
             - **Windows**: Download the `.msi` or `.exe` installer and run it
             - **Linux**: Download `.AppImage` (portable) or `.deb` (Debian/Ubuntu)
 
@@ -188,7 +188,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Publish draft release
         if: needs.prepare.outputs.is_draft == 'true'

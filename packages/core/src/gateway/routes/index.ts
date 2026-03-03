@@ -37,6 +37,11 @@ import { registerCacheRoutes } from "./cache";
 import { registerFilesystemRoutes } from "./filesystem";
 import { registerTunnelRoutes } from "./tunnel";
 import { registerKanbanDataRoutes } from "./kanban-data";
+import { registerPackagesRoutes } from "./packages";
+import { registerMcpInspectorRoutes } from "./mcp-inspector";
+import { registerQueueRoutes } from "./queue";
+import { registerGitHubRoutes } from "./github";
+import { registerTauriMcpRoutes } from "./tauri-mcp";
 
 /**
  * Register all routes
@@ -76,6 +81,11 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerFilesystemRoutes(fastify);
   registerTunnelRoutes(fastify);
   registerKanbanDataRoutes(fastify);
+  registerPackagesRoutes(fastify);
+  registerMcpInspectorRoutes(fastify);
+  registerQueueRoutes(fastify, state);
+  registerGitHubRoutes(fastify);
+  registerTauriMcpRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -113,6 +123,16 @@ export { registerOfficialRegistryRoutes } from "./official-registry";
 export { registerCacheRoutes } from "./cache";
 export { registerFilesystemRoutes } from "./filesystem";
 export { registerTunnelRoutes } from "./tunnel";
+export { registerPackagesRoutes } from "./packages";
+export type { InstalledPackage, InstalledPackagesResponse } from "./packages";
+export {
+  registerMcpInspectorRoutes,
+  getMcpInspectorSessionToken,
+  isMcpInspectorAuthDisabled,
+} from "./mcp-inspector";
+export { registerQueueRoutes } from "./queue";
+export { registerGitHubRoutes } from "./github";
+export { registerTauriMcpRoutes, DEFAULT_SOCKET_PATH as TAURI_MCP_SOCKET_PATH } from "./tauri-mcp";
 export type {
   SSEEventType,
   SSEMessage,

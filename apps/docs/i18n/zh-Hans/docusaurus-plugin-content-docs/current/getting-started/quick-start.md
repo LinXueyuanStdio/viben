@@ -1,22 +1,58 @@
 ---
 sidebar_position: 2
-title: "快速开始"
-description: "2 分钟内快速上手 Viben"
+title: "快速入门"
+description: "快速上手 Viben"
 ---
 
-# 快速开始
+# 快速入门
 
-2 分钟内让 Viben 与 Claude Desktop 协同工作。
+本指南帮助你快速上手使用 Viben。根据你的使用场景选择合适的方式。
 
-## 步骤 1：安装 Viben
+:::tip 核心概念
+开始之前，建议先了解 [核心概念](./concepts)，理解智能体与执行器的区别。
+:::
+
+## 方式一：使用桌面应用（推荐）
+
+桌面应用提供完整的图形界面，适合日常开发使用。
+
+### 第一步：下载安装
+
+1. 访问 [GitHub Releases](https://github.com/LinXueyuanStdio/viben/releases?q=desktop)
+2. 下载对应平台的安装包
+3. 安装并启动 Viben
+
+### 第二步：添加工作空间
+
+1. 点击侧边栏的 **+** 按钮
+2. 选择"打开现有文件夹"或"创建新文件夹"
+3. 按向导完成工作空间配置
+
+### 第三步：管理智能体
+
+1. 系统自动检测工作空间中的执行器 (Claude Code、Cursor 等)
+2. 创建自定义智能体或使用内置模板
+3. 为智能体配置 MCP 服务器和 Skills
+
+### 第四步：开始使用
+
+- 使用看板管理任务
+- 与智能体聊天
+- 配置 MCP 服务器
+
+## 方式二：使用 MCP 服务器
+
+如果你只需要 MCP 服务器功能：
+
+### 第一步：安装 MCP 服务器
 
 ```bash
 pip install browse-mcp
 ```
 
-## 步骤 2：配置 Claude Desktop
+### 第二步：配置 Claude Desktop
 
-打开您的 Claude Desktop 配置文件：
+打开 Claude Desktop 配置文件：
 
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
@@ -37,63 +73,78 @@ pip install browse-mcp
 }
 ```
 
-:::tip 最小配置
-这个最小配置启用了所有免费来源（arXiv、PubMed 等），无需任何 API 密钥。您可以稍后为高级来源添加 API 密钥。
-:::
-
-## 步骤 3：重启 Claude Desktop
+### 第三步：重启 Claude Desktop
 
 完全退出并重新打开 Claude Desktop，使配置生效。
 
-## 步骤 4：搜索您的第一篇论文
+### 第四步：搜索论文
 
 在 Claude Desktop 中，尝试询问：
 
 > "在 arXiv 上搜索关于大语言模型的最新论文"
 
-或者更具体一些：
+## 方式三：使用 CLI 工具
 
-> "查找 2023 年发表的关于 transformer 架构的论文"
+CLI 工具适合自动化脚本和高级用户。
 
-## 示例响应
+:::info CLI 文档
+完整的 CLI 命令参考请查看 [CLI 文档](/cli/)。
+:::
 
-Claude 将使用 `browse_search` 工具并返回如下结果：
+### 第一步：安装 CLI
 
-```
-Source: 'arxiv'
-Paper ID: '2303.08774'
-Title: GPT-4 Technical Report
-Authors: OpenAI
-Abstract: We report the development of GPT-4, a large-scale...
-Published Date: 2023-03-15
-URL: https://arxiv.org/abs/2303.08774
+```bash
+npm install -g viben
 ```
 
-## 尝试更多功能
+### 第二步：启动 Gateway
 
-### 下载论文
+```bash
+viben gateway start
+```
 
-> "下载 arXiv ID 为 2303.08774 的论文"
+Gateway 会在端口 18790 启动，提供 API 服务。
 
-### 阅读论文内容
+### 第三步：发现执行器
 
-> "从 arXiv 阅读论文 2303.08774 的内容"
+```bash
+# 列出可用的执行器
+viben executor list
 
-### 搜索多个来源
+# 检查执行器可用性
+viben executor show CLAUDE_CODE
+```
 
-> "在 PubMed 和 bioRxiv 上搜索关于 CRISPR 基因编辑的论文"
+### 第四步：管理智能体
 
-## 发生了什么？
+```bash
+# 列出智能体
+viben agent list
 
-当您要求 Claude 搜索论文时：
+# 从模板创建智能体
+viben agent create --from-template coding-assistant
 
-1. Claude 识别意图并调用 `browse_search` 工具
-2. Viben 查询指定的内容来源
-3. 结果以标准化格式返回
-4. Claude 将信息呈现给您
+# 查看智能体详情
+viben agent show <agent-name>
+```
+
+### 第五步：管理 MCP 服务器
+
+```bash
+# 列出 MCP 服务器
+viben mcp list
+
+# 添加 MCP 服务器
+viben mcp add
+```
+
+更多 CLI 用法请参考 [CLI 快速入门](/cli/quick-start)。
 
 ## 下一步
 
-- [客户端配置](./client-configuration) - 配置其他客户端（Cline、Zed）
-- [browse_search 工具](../mcp-server/tools/browse-search) - 了解高级搜索选项
-- [配置](../mcp-server/configuration) - 使用 API 密钥启用高级来源
+- [核心概念](./concepts) - 理解智能体、执行器、配置等核心概念
+- [客户端配置](./client-configuration) - 配置 Cline、Zed 等其他客户端
+- [桌面应用功能](../desktop/features.md) - 探索完整功能
+- [CLI 文档](/cli/) - 命令行工具参考
+- [browse_search 工具](../mcp/tools/browse-search.md) - 学习高级搜索选项
+- [MCP 配置](../mcp/configuration.md) - 配置 API 密钥启用付费数据源

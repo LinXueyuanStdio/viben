@@ -9,7 +9,8 @@ import { CronService } from "../services/cron";
 import { ContainerService } from "../services/container";
 import { HistoryService } from "../services/history";
 import { MessageBus } from "../services/message-bus";
-import { ChannelRouter, channelManager } from "../channels";
+import { ChannelRouter, ChannelRuntime, channelManager } from "../channels";
+import { TaskQueueManager } from "./queue";
 
 /**
  * Application state for the gateway
@@ -29,6 +30,10 @@ export interface AppState {
   messageBus: MessageBus;
   /** Channel router for routing messages to bound agents */
   channelRouter: ChannelRouter;
+  /** Channel runtime for managing polling clients */
+  channelRuntime: ChannelRuntime;
+  /** Task queue for concurrent agent execution control */
+  taskQueue: TaskQueueManager;
 }
 
 /**
@@ -50,6 +55,17 @@ export function createAppState(): AppState {
     responseTimeout: 120000, // 2 minutes timeout for agent responses
   });
 
+  // Create channel runtime for polling (receives messages from external channels)
+  const channelRuntime = new ChannelRuntime({
+    channelManager,
+    messageBus,
+    autoStart: true, // Auto-start enabled channels with agent bindings
+    pollingTimeout: 30,
+  });
+
+  // Create task queue manager
+  const taskQueue = new TaskQueueManager(events);
+
   return {
     events,
     sessionStore,
@@ -58,5 +74,7 @@ export function createAppState(): AppState {
     history,
     messageBus,
     channelRouter,
+    channelRuntime,
+    taskQueue,
   };
 }

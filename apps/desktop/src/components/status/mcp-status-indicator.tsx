@@ -58,21 +58,26 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
   // Calculate MCP server statistics
   const stats = React.useMemo(() => getStats(), [getStats, mcpServers, mcpServerStatuses]);
 
+  // Extract stable values for memo dependencies
+  const pythonValid = selectedPython?.is_valid ?? false;
+  const browseMcpInstalled = browseMcpInfo?.installed ?? false;
+  const browseMcpChecked = browseMcpInfo !== null;
+
   // Determine the current status phase
   const phase: StatusPhase = React.useMemo(() => {
     // Phase 1 & 2: Python check
     if (pythonLoading) {
       return "python_checking";
     }
-    if (!selectedPython?.is_valid) {
+    if (!pythonValid) {
       return "python_missing";
     }
 
     // Phase 3 & 4: Package check
-    if (browseMcpInfo === null) {
+    if (!browseMcpChecked) {
       return "package_checking";
     }
-    if (!browseMcpInfo?.installed) {
+    if (!browseMcpInstalled) {
       return "package_missing";
     }
 
@@ -97,7 +102,7 @@ export function McpStatusIndicator({ collapsed = false }: { collapsed?: boolean 
       return "server_partial";
     }
     return "server_inactive";
-  }, [pythonLoading, selectedPython, browseMcpInfo, stats, mcpServerStatuses]);
+  }, [pythonLoading, pythonValid, browseMcpChecked, browseMcpInstalled, stats, mcpServerStatuses]);
 
   // Determine variant based on phase
   const variant: StatusVariant = React.useMemo(() => {

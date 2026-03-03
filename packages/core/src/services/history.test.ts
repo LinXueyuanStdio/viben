@@ -1,8 +1,5 @@
 /**
  * History Service Tests
- *
- * Tests for the HistoryService following Rust patterns from
- * crates/viben-core/src/services/history.rs
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";

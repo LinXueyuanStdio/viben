@@ -99,9 +99,67 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     await app.register(corsPlugin.default, {
       origin: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+      allowedHeaders: [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        // MCP Inspector proxy headers
+        "X-MCP-Proxy-Auth",
+        "MCP-Session-Id",
+        "X-Custom-Auth-Header",
+        "X-Custom-Auth-Headers",
+        "Last-Event-Id",
+        // MCP SDK headers
+        "mcp-protocol-version",
+      ],
+      exposedHeaders: ["MCP-Session-Id", "mcp-protocol-version"],
       credentials: true,
     });
+  }
+
+  // Register Swagger for API documentation
+  try {
+    const swaggerPlugin = await import("@fastify/swagger");
+    const swaggerUiPlugin = await import("@fastify/swagger-ui");
+
+    await app.register(swaggerPlugin.default, {
+      openapi: {
+        info: {
+          title: "Viben Gateway API",
+          description: "API for AI agent orchestration and multi-agent workspace management",
+          version: "1.0.0",
+        },
+        servers: [{ url: `http://${host}:${port}` }],
+        tags: [
+          { name: "health", description: "Health check endpoints" },
+          { name: "agents", description: "Agent management" },
+          { name: "executors", description: "Executor discovery and management" },
+          { name: "sessions", description: "Session management" },
+          { name: "providers", description: "Provider management" },
+          { name: "models", description: "Model management" },
+          { name: "workspaces", description: "Workspace management" },
+          { name: "channels", description: "Channel management" },
+          { name: "cron", description: "Cron job management" },
+          { name: "tasks", description: "Task management" },
+          { name: "mcp", description: "MCP server management" },
+          { name: "kanban", description: "Kanban board management" },
+        ],
+      },
+    });
+
+    await app.register(swaggerUiPlugin.default, {
+      routePrefix: "/docs",
+      uiConfig: {
+        docExpansion: "list",
+        deepLinking: true,
+      },
+    });
+
+    logger?.info("Swagger API documentation registered at /docs");
+    console.log("[Gateway] Swagger API documentation available at /docs");
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to register Swagger plugin");
+    console.warn("[Gateway] Failed to register Swagger plugin:", e);
   }
 
   // Enable multipart file uploads
@@ -148,6 +206,33 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     console.warn("[Gateway] Failed to start channel router:", e);
   }
 
+  // Start channel runtime for long polling (receives messages from external channels)
+  try {
+    await state.channelRuntime.start();
+    const activePollers = state.channelRuntime.getActivePollers();
+    logger?.info({ count: activePollers.length }, "Channel runtime started");
+    console.log(`[Gateway] Channel runtime started (${activePollers.length} active poller(s))`);
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start channel runtime");
+    console.warn("[Gateway] Failed to start channel runtime:", e);
+  }
+
+  // Start task queue manager
+  try {
+    await state.taskQueue.start();
+    const queueStatus = state.taskQueue.getStatus();
+    logger?.info(
+      { pending: queueStatus.pending_count, running: queueStatus.running_count },
+      "Task queue manager started"
+    );
+    console.log(
+      `[Gateway] Task queue manager started (pending: ${queueStatus.pending_count}, running: ${queueStatus.running_count})`
+    );
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to start task queue manager");
+    console.warn("[Gateway] Failed to start task queue manager:", e);
+  }
+
   // Register Observable Gauge callbacks for metrics
   if (enableTelemetry) {
     registerGaugeCallbacks({
@@ -164,7 +249,10 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
     logger?.info("Shutting down gateway...");
     console.log("[Gateway] Shutting down...");
     state.channelRouter.stop();
+    await state.channelRuntime.stop();
     await state.cron.shutdown();
+    // Gracefully shutdown task queue (waits for running tasks)
+    await state.taskQueue.shutdown();
     state.container.killAllRunningProcesses();
     if (telemetry) {
       await telemetry.shutdown();
@@ -241,6 +329,8 @@ export async function runGateway(config: GatewayConfig = {}): Promise<void> {
     console.log("  GET  /api/sessions - List sessions");
     console.log("  GET  /api/cron - List cron jobs");
     console.log("  GET  /api/events - SSE event stream");
+    console.log("  POST /api/queue/enqueue - Enqueue agent task");
+    console.log("  GET  /api/queue/status - Queue status");
 
     if (enableTelemetry) {
       console.log(`[Gateway] Telemetry enabled, data stored in: ${telemetryDir}`);

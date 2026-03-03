@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --prod=false",
+  "installCommand": "pnpm install --filter @viben/web... --prod=false",
   "functions": {
     "app/api/packages/upload/route.ts": {
       "maxDuration": 300

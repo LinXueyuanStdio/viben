@@ -1,15 +1,16 @@
 /**
- * Python detection routes and system info
+ * Python detection routes, CLI tools detection, and system info
  *
- * Provides Python interpreter detection, package checking capabilities,
- * and system information for onboarding and environment setup.
+ * Provides Python interpreter detection, CLI tools detection (git, gh, claude),
+ * package checking capabilities, and system information for onboarding and
+ * environment setup.
  */
 import type { FastifyInstance } from "fastify";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { homedir, platform, arch, hostname, release, type } from "node:os";
 import { join } from "node:path";
-import { access, constants } from "node:fs/promises";
+import { access, constants, readdir, realpath } from "node:fs/promises";
 
 const execAsync = promisify(exec);
 
@@ -27,6 +28,59 @@ export interface PackageInfo {
   name: string;
   version: string | null;
   installed: boolean;
+}
+
+/**
+ * A single detected CLI tool path
+ */
+export interface CliToolPath {
+  path: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+}
+
+/**
+ * CLI tool detection result
+ */
+export interface CliToolInfo {
+  found: boolean;
+  path?: string;
+  version?: string;
+  source: "user-config" | "homebrew" | "nvm" | "pyenv" | "pip" | "npm" | "cargo" | "system-path" | "fallback";
+  message?: string;
+  /** All discovered paths for this tool */
+  alternatives?: CliToolPath[];
+}
+
+/**
+ * Supported CLI tools
+ */
+export type CliToolName =
+  | "python"  // Python interpreter
+  | "git"     // Version control
+  | "gh"      // GitHub CLI
+  | "claude"  // Claude Code CLI
+  | "codex"   // OpenAI Codex CLI
+  | "aider"   // Aider coding assistant
+  | "goose"   // Goose coding assistant
+  | "cline"   // Cline CLI
+  | "continue" // Continue dev CLI
+  | "cursor"; // Cursor CLI (if available)
+
+/**
+ * All CLI tools detection result
+ */
+export interface CliToolsInfo {
+  python: CliToolInfo;
+  git: CliToolInfo;
+  gh: CliToolInfo;
+  claude: CliToolInfo;
+  codex: CliToolInfo;
+  aider: CliToolInfo;
+  goose: CliToolInfo;
+  cline: CliToolInfo;
+  continue: CliToolInfo;
+  cursor: CliToolInfo;
 }
 
 // ============================================================================
@@ -165,6 +219,497 @@ async function detectPythonInterpreters(): Promise<PythonInfo[]> {
   return pythons;
 }
 
+// ============================================================================
+// CLI Tools Detection
+// ============================================================================
+
+/**
+ * Tool configuration for detection
+ */
+interface ToolConfig {
+  // Version command to run (default: --version)
+  versionArg?: string;
+  // Regex to extract version from output
+  versionRegex?: RegExp;
+  // Special detection method
+  detectMethod?: "python" | "npm-global" | "pip" | "cargo" | "standard";
+  // Additional candidate paths
+  extraPaths?: string[];
+}
+
+/**
+ * Tool configurations
+ */
+const TOOL_CONFIGS: Record<CliToolName, ToolConfig> = {
+  python: {
+    versionArg: "--version",
+    versionRegex: /Python\s+(\d+\.\d+\.\d+)/,
+    detectMethod: "python",
+  },
+  git: {
+    versionArg: "--version",
+    versionRegex: /git version (\d+\.\d+\.\d+)/,
+  },
+  gh: {
+    versionArg: "--version",
+    versionRegex: /gh version (\d+\.\d+\.\d+)/,
+  },
+  claude: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    detectMethod: "npm-global",
+  },
+  codex: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    detectMethod: "npm-global",
+  },
+  aider: {
+    versionArg: "--version",
+    versionRegex: /aider (\d+\.\d+\.\d+)|(\d+\.\d+\.\d+)/,
+    detectMethod: "pip",
+  },
+  goose: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    detectMethod: "pip",
+  },
+  cline: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    detectMethod: "npm-global",
+  },
+  continue: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+    detectMethod: "npm-global",
+  },
+  cursor: {
+    versionArg: "--version",
+    versionRegex: /(\d+\.\d+\.\d+)/,
+  },
+};
+
+/**
+ * Get CLI tool candidates based on platform
+ */
+function getCliToolCandidates(tool: CliToolName): string[] {
+  const candidates: string[] = [];
+  const home = homedir();
+  const config = TOOL_CONFIGS[tool];
+
+  // Add extra paths from config
+  if (config.extraPaths) {
+    candidates.push(...config.extraPaths);
+  }
+
+  if (process.platform === "darwin") {
+    // macOS: Homebrew paths (Apple Silicon and Intel)
+    candidates.push(
+      `/opt/homebrew/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+    );
+
+    // Python-specific paths
+    if (tool === "python") {
+      candidates.push(
+        "/usr/bin/python3",
+        "/opt/homebrew/bin/python3",
+        "/opt/homebrew/bin/python3.13",
+        "/opt/homebrew/bin/python3.12",
+        "/opt/homebrew/bin/python3.11",
+        "/opt/homebrew/bin/python3.10",
+        join(home, ".pyenv/shims/python3"),
+        join(home, ".pyenv/shims/python"),
+      );
+    }
+
+    // pip-installed tools
+    if (config.detectMethod === "pip") {
+      candidates.push(
+        join(home, ".local/bin", tool),
+        `/opt/homebrew/bin/${tool}`,
+        join(home, "Library/Python/3.11/bin", tool),
+        join(home, "Library/Python/3.12/bin", tool),
+      );
+    }
+
+    // npm-global tools
+    if (config.detectMethod === "npm-global") {
+      candidates.push(
+        join(home, ".npm-global/bin", tool),
+        `/opt/homebrew/bin/${tool}`,
+      );
+    }
+
+    // Standard paths
+    candidates.push(
+      `/usr/bin/${tool}`,
+      join(home, ".local/bin", tool),
+      join(home, "bin", tool),
+    );
+  } else if (process.platform === "win32") {
+    // Windows paths
+    const localAppData = process.env.LOCALAPPDATA || join(home, "AppData/Local");
+    const programFiles = process.env.ProgramFiles || "C:\\Program Files";
+    const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+
+    if (tool === "python") {
+      candidates.push(
+        join(localAppData, "Programs/Python/Python313/python.exe"),
+        join(localAppData, "Programs/Python/Python312/python.exe"),
+        join(localAppData, "Programs/Python/Python311/python.exe"),
+        join(localAppData, "Programs/Python/Python310/python.exe"),
+      );
+    } else if (tool === "git") {
+      candidates.push(
+        join(programFiles, "Git/cmd/git.exe"),
+        join(programFilesX86, "Git/cmd/git.exe"),
+        join(programFiles, "Git/bin/git.exe"),
+      );
+    } else if (tool === "gh") {
+      candidates.push(
+        join(programFiles, "GitHub CLI/gh.exe"),
+        join(programFilesX86, "GitHub CLI/gh.exe"),
+      );
+    } else if (config.detectMethod === "npm-global") {
+      candidates.push(
+        join(home, "AppData/Roaming/npm", `${tool}.cmd`),
+        join(home, ".local/bin", `${tool}.exe`),
+      );
+    } else if (config.detectMethod === "pip") {
+      candidates.push(
+        join(home, "AppData/Local/Programs/Python/Python312/Scripts", `${tool}.exe`),
+        join(home, "AppData/Local/Programs/Python/Python311/Scripts", `${tool}.exe`),
+      );
+    }
+  } else {
+    // Linux paths
+    candidates.push(
+      `/usr/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+      join(home, ".local/bin", tool),
+      join(home, "bin", tool),
+    );
+
+    if (tool === "python") {
+      candidates.push(
+        "/usr/bin/python3",
+        join(home, ".pyenv/shims/python3"),
+        join(home, ".pyenv/shims/python"),
+      );
+    }
+
+    if (config.detectMethod === "pip") {
+      candidates.push(join(home, ".local/bin", tool));
+    }
+
+    if (config.detectMethod === "npm-global") {
+      candidates.push(
+        join(home, ".npm-global/bin", tool),
+        join(home, ".nvm/versions/node/*/bin", tool),
+      );
+    }
+  }
+
+  return candidates;
+}
+
+/**
+ * Detect a CLI tool's version by running --version
+ */
+async function detectCliToolVersion(
+  toolPath: string,
+  tool: CliToolName,
+): Promise<{ version: string | null; valid: boolean }> {
+  const config = TOOL_CONFIGS[tool];
+  const versionArg = config.versionArg || "--version";
+
+  try {
+    const { stdout, stderr } = await execAsync(`"${toolPath}" ${versionArg}`, {
+      timeout: 5000,
+    });
+
+    const output = stdout.trim() || stderr.trim();
+    let version: string | null = null;
+
+    if (config.versionRegex) {
+      const match = output.match(config.versionRegex);
+      version = match ? (match[1] || match[2] || null) : null;
+    } else {
+      // Generic version extraction
+      const match = output.match(/(\d+\.\d+\.\d+)/);
+      version = match ? match[1] : null;
+    }
+
+    return { version, valid: true };
+  } catch {
+    return { version: null, valid: false };
+  }
+}
+
+/**
+ * Determine the source of a detected tool path
+ */
+function getToolSource(toolPath: string): CliToolInfo["source"] {
+  if (toolPath.includes("/opt/homebrew/") || toolPath.includes("/usr/local/Cellar/")) {
+    return "homebrew";
+  }
+  if (toolPath.includes(".nvm/versions/node")) {
+    return "nvm";
+  }
+  if (toolPath.includes(".pyenv/")) {
+    return "pyenv";
+  }
+  if (toolPath.includes("site-packages") || toolPath.includes("Scripts") || toolPath.includes("Library/Python")) {
+    return "pip";
+  }
+  if (toolPath.includes(".npm-global") || toolPath.includes("AppData/Roaming/npm")) {
+    return "npm";
+  }
+  if (toolPath.includes(".cargo/bin")) {
+    return "cargo";
+  }
+  if (toolPath.includes("/usr/bin/") || toolPath.includes("/usr/local/bin/")) {
+    return "system-path";
+  }
+  return "system-path";
+}
+
+/**
+ * Detect a single CLI tool and collect all valid paths
+ */
+async function detectCliTool(
+  tool: CliToolName,
+  userConfigPath?: string,
+): Promise<CliToolInfo> {
+  const home = homedir();
+  const config = TOOL_CONFIGS[tool];
+  const allPaths: CliToolPath[] = [];
+  const seenRealPaths = new Set<string>(); // Track resolved real paths to avoid symlink duplicates
+
+  // Helper to add a valid path (resolves symlinks for deduplication)
+  const addPath = async (path: string, version: string | undefined, source: CliToolPath["source"]) => {
+    // Normalize path
+    const normalizedPath = path.replace(/\/+$/, "");
+
+    // Resolve symlinks to get the real path for deduplication
+    let realPath: string;
+    try {
+      realPath = await realpath(normalizedPath);
+    } catch {
+      // If realpath fails, use the normalized path
+      realPath = normalizedPath;
+    }
+
+    // Check if we've already seen this real path
+    if (!seenRealPaths.has(realPath)) {
+      seenRealPaths.add(realPath);
+      allPaths.push({ path: normalizedPath, version, source });
+    }
+  };
+
+  // 1. Check user-configured path first
+  if (userConfigPath) {
+    const { version, valid } = await detectCliToolVersion(userConfigPath, tool);
+    if (valid) {
+      await addPath(userConfigPath, version || undefined, "user-config");
+    }
+  }
+
+  // 2. Check Homebrew paths (macOS)
+  if (process.platform === "darwin") {
+    const homebrewPaths = [
+      `/opt/homebrew/bin/${tool}`,
+      `/usr/local/bin/${tool}`,
+    ];
+
+    // Python-specific homebrew paths
+    if (tool === "python") {
+      homebrewPaths.push(
+        "/opt/homebrew/bin/python3",
+        "/opt/homebrew/bin/python3.13",
+        "/opt/homebrew/bin/python3.12",
+        "/opt/homebrew/bin/python3.11",
+        "/opt/homebrew/bin/python3.10",
+        "/usr/local/bin/python3",
+      );
+    }
+
+    for (const toolPath of homebrewPaths) {
+      if (await isExecutable(toolPath)) {
+        const { version, valid } = await detectCliToolVersion(toolPath, tool);
+        if (valid) {
+          await addPath(toolPath, version || undefined, "homebrew");
+        }
+      }
+    }
+  }
+
+  // 3. Try system PATH using 'which' (Unix) or 'where' (Windows)
+  const toolCmd = tool === "python" ? "python3" : tool;
+  try {
+    const whichCmd = process.platform === "win32" ? "where" : "which";
+    const { stdout } = await execAsync(`${whichCmd} ${toolCmd}`, { timeout: 5000 });
+    const toolPath = stdout.trim().split("\n")[0]; // Take first result
+
+    if (toolPath) {
+      const { version, valid } = await detectCliToolVersion(toolPath, tool);
+      if (valid) {
+        await addPath(toolPath, version || undefined, getToolSource(toolPath));
+      }
+    }
+  } catch {
+    // which/where failed, continue to other methods
+  }
+
+  // 4. Check NVM paths for npm-global tools (Unix only)
+  if (config.detectMethod === "npm-global" && process.platform !== "win32") {
+    const nvmVersionsDir = join(home, ".nvm/versions/node");
+    try {
+      const entries = await readdir(nvmVersionsDir, { withFileTypes: true });
+      // Sort by version (newest first)
+      const versionDirs = entries
+        .filter((e) => e.isDirectory() && /^v\d+\.\d+\.\d+$/.test(e.name))
+        .sort((a, b) => {
+          const vA = a.name.slice(1).split(".").map(Number);
+          const vB = b.name.slice(1).split(".").map(Number);
+          for (let i = 0; i < 3; i++) {
+            const diff = (vB[i] ?? 0) - (vA[i] ?? 0);
+            if (diff !== 0) return diff;
+          }
+          return 0;
+        });
+
+      for (const dir of versionDirs) {
+        const toolPathNvm = join(nvmVersionsDir, dir.name, "bin", tool);
+        if (await isExecutable(toolPathNvm)) {
+          const { version, valid } = await detectCliToolVersion(toolPathNvm, tool);
+          if (valid) {
+            await addPath(toolPathNvm, version || undefined, "nvm");
+          }
+        }
+      }
+    } catch {
+      // NVM directory not found or not readable
+    }
+  }
+
+  // 5. Check pyenv paths for python (Unix only)
+  if (tool === "python" && process.platform !== "win32") {
+    const pyenvPaths = [
+      join(home, ".pyenv/shims/python3"),
+      join(home, ".pyenv/shims/python"),
+    ];
+    for (const pyenvPath of pyenvPaths) {
+      if (await isExecutable(pyenvPath)) {
+        const { version, valid } = await detectCliToolVersion(pyenvPath, tool);
+        if (valid) {
+          await addPath(pyenvPath, version || undefined, "pyenv");
+        }
+      }
+    }
+  }
+
+  // 6. Check conda/anaconda paths for python (Unix only)
+  if (tool === "python" && process.platform !== "win32") {
+    const condaPaths = [
+      join(home, "anaconda3/bin/python3"),
+      join(home, "anaconda3/bin/python"),
+      join(home, "miniconda3/bin/python3"),
+      join(home, "miniconda3/bin/python"),
+      "/opt/anaconda3/bin/python3",
+      "/opt/miniconda3/bin/python3",
+    ];
+    for (const condaPath of condaPaths) {
+      if (await isExecutable(condaPath)) {
+        const { version, valid } = await detectCliToolVersion(condaPath, tool);
+        if (valid) {
+          await addPath(condaPath, version || undefined, "system-path");
+        }
+      }
+    }
+  }
+
+  // 7. Check platform-specific standard locations
+  const candidates = getCliToolCandidates(tool);
+  for (const toolPath of candidates) {
+    if (toolPath.includes("*")) continue; // Skip glob patterns
+    if (await isExecutable(toolPath)) {
+      const { version, valid } = await detectCliToolVersion(toolPath, tool);
+      if (valid) {
+        await addPath(toolPath, version || undefined, getToolSource(toolPath));
+      }
+    }
+  }
+
+  // 8. Check system paths
+  if (tool === "python") {
+    const systemPaths = ["/usr/bin/python3", "/usr/bin/python"];
+    for (const sysPath of systemPaths) {
+      if (await isExecutable(sysPath)) {
+        const { version, valid } = await detectCliToolVersion(sysPath, tool);
+        if (valid) {
+          await addPath(sysPath, version || undefined, "system-path");
+        }
+      }
+    }
+  }
+
+  // Return result with alternatives (excluding primary to avoid duplication)
+  if (allPaths.length > 0) {
+    const primary = allPaths[0];
+    // Only include alternatives that are different from the primary
+    const alternatives = allPaths.slice(1);
+    return {
+      found: true,
+      path: primary.path,
+      version: primary.version,
+      source: primary.source,
+      message: `Using ${tool}`,
+      alternatives: alternatives.length > 0 ? alternatives : undefined,
+    };
+  }
+
+  // Not found
+  return {
+    found: false,
+    source: "fallback",
+    message: `${tool} not found`,
+  };
+}
+
+/**
+ * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor)
+ */
+async function detectAllCliTools(config?: {
+  pythonPath?: string;
+  gitPath?: string;
+  ghPath?: string;
+  claudePath?: string;
+  codexPath?: string;
+  aiderPath?: string;
+  goosePath?: string;
+  clinePath?: string;
+  continuePath?: string;
+  cursorPath?: string;
+}): Promise<CliToolsInfo> {
+  const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor] = await Promise.all([
+    detectCliTool("python", config?.pythonPath),
+    detectCliTool("git", config?.gitPath),
+    detectCliTool("gh", config?.ghPath),
+    detectCliTool("claude", config?.claudePath),
+    detectCliTool("codex", config?.codexPath),
+    detectCliTool("aider", config?.aiderPath),
+    detectCliTool("goose", config?.goosePath),
+    detectCliTool("cline", config?.clinePath),
+    detectCliTool("continue", config?.continuePath),
+    detectCliTool("cursor", config?.cursorPath),
+  ]);
+
+  return { python, git, gh, claude, codex, aider, goose, cline, continue: continueInfo, cursor };
+}
+
 /**
  * Check if a package is installed in a Python environment
  */
@@ -172,27 +717,72 @@ async function checkPackageInstalled(
   pythonPath: string,
   packageName: string,
 ): Promise<PackageInfo> {
+  // Method 1: Try pip show
+  const pipCommand = `"${pythonPath}" -m pip show ${packageName}`;
+  console.log(`[Python] Checking package with pip: ${pipCommand}`);
+
   try {
-    const { stdout } = await execAsync(
-      `"${pythonPath}" -m pip show ${packageName}`,
-      { timeout: 10000 },
-    );
+    const { stdout, stderr } = await execAsync(pipCommand, { timeout: 10000 });
+    console.log(`[Python] pip show stdout: ${stdout.slice(0, 200)}`);
+    if (stderr) {
+      console.log(`[Python] pip show stderr: ${stderr.slice(0, 200)}`);
+    }
 
     // Parse version from pip show output
     const versionMatch = stdout.match(/^Version:\s*(.+)$/m);
     const version = versionMatch ? versionMatch[1].trim() : null;
 
+    console.log(`[Python] Package ${packageName} found via pip, version: ${version}`);
     return {
       name: packageName,
       version,
       installed: true,
     };
-  } catch {
-    return {
-      name: packageName,
-      version: null,
-      installed: false,
-    };
+  } catch (pipErr) {
+    const pipError = pipErr as { message?: string; stderr?: string };
+    console.log(`[Python] pip show failed: ${pipError.message || String(pipErr)}`);
+
+    // Method 2: Try importing the module directly (works for uv tool installs)
+    const moduleName = packageName.replace(/-/g, "_"); // browse-mcp -> browse_mcp
+    const importCommand = `"${pythonPath}" -c "import ${moduleName}; print(getattr(${moduleName}, '__version__', 'unknown'))"`;
+    console.log(`[Python] Trying import: ${importCommand}`);
+
+    try {
+      const { stdout: importStdout } = await execAsync(importCommand, { timeout: 10000 });
+      const version = importStdout.trim() || "unknown";
+      console.log(`[Python] Package ${packageName} found via import, version: ${version}`);
+      return {
+        name: packageName,
+        version: version === "unknown" ? null : version,
+        installed: true,
+      };
+    } catch (importErr) {
+      const importError = importErr as { message?: string; stderr?: string };
+      console.log(`[Python] import failed: ${importError.message || String(importErr)}`);
+
+      // Method 3: Try running the module directly (e.g., python -m browse_mcp --version)
+      const moduleCommand = `"${pythonPath}" -m ${moduleName} --version`;
+      console.log(`[Python] Trying module version: ${moduleCommand}`);
+
+      try {
+        const { stdout: modStdout } = await execAsync(moduleCommand, { timeout: 10000 });
+        const versionMatch = modStdout.match(/(\d+\.\d+\.\d+)/);
+        const version = versionMatch ? versionMatch[1] : "installed";
+        console.log(`[Python] Package ${packageName} found via module, version: ${version}`);
+        return {
+          name: packageName,
+          version,
+          installed: true,
+        };
+      } catch (modErr) {
+        console.log(`[Python] All methods failed, package not installed`);
+        return {
+          name: packageName,
+          version: null,
+          installed: false,
+        };
+      }
+    }
   }
 }
 
@@ -255,6 +845,70 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
       command: `${python_path} -m pip install ${package_name}`,
       uv_command: `uv tool install ${package_name}`,
     };
+  });
+
+  // ==========================================================================
+  // CLI Tools Detection Routes
+  // ==========================================================================
+
+  /**
+   * GET /api/cli-tools/detect
+   * Detect all CLI tools (python, git, gh, claude, codex, aider, goose, etc.)
+   */
+  fastify.get<{
+    Querystring: {
+      python_path?: string;
+      git_path?: string;
+      gh_path?: string;
+      claude_path?: string;
+      codex_path?: string;
+      aider_path?: string;
+      goose_path?: string;
+      cline_path?: string;
+      continue_path?: string;
+      cursor_path?: string;
+    };
+  }>("/api/cli-tools/detect", async (request) => {
+    const {
+      python_path,
+      git_path,
+      gh_path,
+      claude_path,
+      codex_path,
+      aider_path,
+      goose_path,
+      cline_path,
+      continue_path,
+      cursor_path,
+    } = request.query;
+    const tools = await detectAllCliTools({
+      pythonPath: python_path,
+      gitPath: git_path,
+      ghPath: gh_path,
+      claudePath: claude_path,
+      codexPath: codex_path,
+      aiderPath: aider_path,
+      goosePath: goose_path,
+      clinePath: cline_path,
+      continuePath: continue_path,
+      cursorPath: cursor_path,
+    });
+    return tools;
+  });
+
+  /**
+   * POST /api/cli-tools/check
+   * Check a specific CLI tool path
+   */
+  fastify.post<{
+    Body: {
+      tool: CliToolName;
+      path: string;
+    };
+  }>("/api/cli-tools/check", async (request) => {
+    const { tool, path } = request.body;
+    const result = await detectCliTool(tool, path);
+    return result;
   });
 
   // ==========================================================================

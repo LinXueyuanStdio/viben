@@ -139,7 +139,15 @@
     "system": "Sistema",
     "language": "Lingua",
     "storage": "Archiviazione",
-    "downloadPath": "Percorso download"
+    "downloadPath": "Percorso download",
+    "developer": {
+      "os": "SO",
+      "osVersion": "Versione",
+      "appVersion": "Versione app",
+      "arch": "Architettura",
+      "logs": "Log",
+      "config": "Configurazione"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,8 +785,43 @@
     "skillsAvailable": "{{count}} aggiornamento/i competenza/e disponibile/i",
     "mixedAvailable": "{{mcpCount}} MCP e {{skillCount}} aggiornamento/i competenza/e"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Indirizzo host a cui è associato il servizio gateway",
+    "portDescription": "Numero di porta su cui è in ascolto il servizio gateway (richiede riavvio)",
+    "connectivityTestDescription": "Verifica lo stato di connessione e gli endpoint disponibili del servizio gateway"
+  },
+  "observability": {
+    "allRoutes": "Tutte le route",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Esecuzione agente)",
+      "agents": "/api/agents (Gestione agenti)",
+      "workspaces": "/api/workspaces (Spazi di lavoro)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Chat di gruppo)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sessione",
+        "config": "Configurazione",
+        "info": "Informazione",
+        "workspace": "Spazio di lavoro",
+        "auth": "Autenticazione"
+      },
+      "sources": {
+        "builtin": "Integrato",
+        "workspace": "Spazio di lavoro",
+        "skill": "Competenza"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspace",
+    "addDescription": "Aggiungi descrizione...",
+    "taskPromptWithDescription": "Per favore aiutami con questo compito:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Per favore aiutami con questo compito: {{title}}",
     "addWorkspace": "Aggiungi workspace",
     "noWorkspaces": "Nessun workspace ancora",
     "global": "Globale",

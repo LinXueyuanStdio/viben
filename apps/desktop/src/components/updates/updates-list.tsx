@@ -65,7 +65,7 @@ interface UpdateItemProps {
 const UpdateItem = React.forwardRef<HTMLDivElement, UpdateItemProps>(
   ({ update, isUpdating, onUpdate }, ref) => {
     const { t } = useTranslation();
-    const Icon = update.packageType === "mcp" ? Package : Sparkles;
+    const Icon = update.package_type === "mcp" ? Package : Sparkles;
 
     return (
       <div
@@ -80,7 +80,7 @@ const UpdateItem = React.forwardRef<HTMLDivElement, UpdateItemProps>(
         <div
           className={cn(
             "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-            update.packageType === "mcp"
+            update.package_type === "mcp"
               ? "bg-blue-500/10 text-blue-500"
               : "bg-purple-500/10 text-purple-500"
           )}
@@ -93,23 +93,23 @@ const UpdateItem = React.forwardRef<HTMLDivElement, UpdateItemProps>(
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">{update.name}</span>
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {update.packageType.toUpperCase()}
+              {update.package_type.toUpperCase()}
             </Badge>
           </div>
 
           {/* Version info */}
           <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-            <span className="font-mono text-xs">{update.currentVersion}</span>
+            <span className="font-mono text-xs">{update.current_version}</span>
             <ArrowUpCircle className="h-3 w-3 text-amber-500" />
             <span className="font-mono text-xs text-amber-600 dark:text-amber-400">
-              {update.latestVersion}
+              {update.latest_version}
             </span>
           </div>
 
           {/* Release notes preview */}
-          {update.releaseNotes && (
+          {update.release_notes && (
             <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
-              {update.releaseNotes}
+              {update.release_notes}
             </p>
           )}
         </div>
@@ -263,13 +263,13 @@ const UpdatesList = React.forwardRef<HTMLDivElement, UpdatesListProps>(
               <div className="space-y-2">
                 {updates.map((update) => (
                   <UpdateItem
-                    key={`${update.packageType}-${update.packageId}`}
+                    key={`${update.package_type}-${update.package_id}`}
                     update={update}
                     isUpdating={
-                      updating && updatingPackageId === update.packageId
+                      updating && updatingPackageId === update.package_id
                     }
                     onUpdate={() =>
-                      onUpdatePackage?.(update.packageId, update.packageType)
+                      onUpdatePackage?.(update.package_id, update.package_type)
                     }
                   />
                 ))}

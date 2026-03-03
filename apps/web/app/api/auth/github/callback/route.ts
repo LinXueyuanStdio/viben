@@ -152,10 +152,40 @@ export async function GET(request: NextRequest) {
 
     // Check if this is a desktop client callback
     if (desktopRedirectUri?.startsWith('viben://')) {
-      // For desktop client, redirect to deep link with the code
-      // Desktop will exchange the code for tokens via its own API call
+      // For desktop client, generate JWT and redirect with session data
+      // This avoids the issue of OAuth code being single-use
+      const { encryptSession } = await import('@/lib/auth/jwe');
+
+      const desktopAccessToken = await encryptSession({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role as 'user' | 'developer' | 'admin',
+        avatarUrl: user.avatarUrl ?? undefined,
+      });
+
+      // Calculate expiration (7 days from now)
+      const expiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000;
+
+      // Build session data for desktop
+      const sessionData = {
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+        },
+        accessToken: desktopAccessToken,
+        refreshToken: null,
+        expiresAt,
+      };
+
+      // Encode session data as base64 URL-safe string
+      const sessionBase64 = Buffer.from(JSON.stringify(sessionData)).toString('base64url');
+
       const redirectUrl = new URL(desktopRedirectUri);
-      redirectUrl.searchParams.set('code', code!);
+      redirectUrl.searchParams.set('session', sessionBase64);
       return NextResponse.redirect(redirectUrl.toString());
     }
 

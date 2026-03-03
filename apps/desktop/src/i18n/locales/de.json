@@ -139,7 +139,34 @@
     "system": "System",
     "language": "Sprache",
     "storage": "Speicher",
-    "downloadPath": "Download-Pfad"
+    "downloadPath": "Download-Pfad",
+    "developerDescription": "Entwicklertools, Debug-Einstellungen und Fehlerbehebung",
+    "developer": {
+      "devtools": "Entwicklertools",
+      "preferredIDE": "Bevorzugte IDE",
+      "preferredIDEDescription": "Viben öffnet Projekte in diesem Editor",
+      "preferredTerminal": "Bevorzugtes Terminal",
+      "preferredTerminalDescription": "Viben öffnet Terminalsitzungen hier",
+      "yoloMode": "YOLO-Modus",
+      "yoloModeDescription": "Executoren mit --dangerously-skip-permissions-Flag starten und alle Sicherheitsabfragen umgehen. Mit äußerster Vorsicht verwenden.",
+      "yoloModeWarning": "Dieser Modus umgeht das Berechtigungssystem. Nur aktivieren, wenn Sie dem ausgeführten Code vollständig vertrauen.",
+      "debugLogs": "Debug & Protokolle",
+      "openLogsFolder": "Protokollordner öffnen",
+      "openConfigFolder": "Konfigurationsordner öffnen",
+      "copyDebugInfo": "Debug-Info kopieren",
+      "loadDebugInfo": "Debug-Info laden",
+      "systemInfo": "Systeminformationen",
+      "paths": "Pfade",
+      "noRecentErrors": "Keine kürzlichen Fehler",
+      "reportingIssues": "Probleme melden",
+      "reportingIssuesDescription": "Beim Melden von Fehlern klicken Sie auf \"Debug-Info kopieren\", um Systeminformationen zu erhalten, die uns bei der Diagnose helfen.",
+      "os": "Betriebssystem",
+      "osVersion": "Version",
+      "appVersion": "App-Version",
+      "arch": "Architektur",
+      "logs": "Protokolle",
+      "config": "Konfiguration"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,6 +804,38 @@
     "skillsAvailable": "{{count}} Skill-Update(s) verfügbar",
     "mixedAvailable": "{{mcpCount}} MCP- und {{skillCount}} Skill-Update(s)"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Host-Adresse, an die der Gateway-Dienst gebunden ist",
+    "portDescription": "Portnummer, auf der der Gateway-Dienst lauscht (Neustart erforderlich)",
+    "connectivityTestDescription": "Verbindungsstatus und verfügbare Endpunkte des Gateway-Dienstes prüfen"
+  },
+  "observability": {
+    "allRoutes": "Alle Routen",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agent-Ausführung)",
+      "agents": "/api/agents (Agent-Verwaltung)",
+      "workspaces": "/api/workspaces (Arbeitsbereiche)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Gruppenchats)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sitzung",
+        "config": "Konfiguration",
+        "info": "Information",
+        "workspace": "Arbeitsbereich",
+        "auth": "Authentifizierung"
+      },
+      "sources": {
+        "builtin": "Integriert",
+        "workspace": "Arbeitsbereich",
+        "skill": "Skill"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
     "addWorkspace": "Workspace hinzufügen",
@@ -883,6 +942,9 @@
     "noCommands": "Keine Befehle",
     "noCommandsDesc": "Keine Befehlsdateien im Ordner .claude/commands/ gefunden.",
     "selectCommand": "Befehl zum Anzeigen auswählen",
-    "rootNamespace": "Wurzel"
+    "rootNamespace": "Wurzel",
+    "addDescription": "Beschreibung hinzufügen...",
+    "taskPromptWithDescription": "Bitte helfen Sie mir bei folgender Aufgabe:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Bitte helfen Sie mir bei folgender Aufgabe: {{title}}"
   }
 }

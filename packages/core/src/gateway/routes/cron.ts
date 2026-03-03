@@ -43,7 +43,46 @@ function toSnakeCaseJob(job: CronJob) {
  */
 export function registerCronRoutes(fastify: FastifyInstance, state: AppState): void {
   // List all cron jobs
-  fastify.get("/api/cron", async () => {
+  fastify.get("/api/cron", {
+    schema: {
+      description: "List all cron jobs",
+      tags: ["cron"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            jobs: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  enabled: { type: "boolean" },
+                  job_type: { type: "string", enum: ["agent", "script", "message"] },
+                  message: { type: "string" },
+                  script: { type: "string" },
+                  cron: { type: "string", description: "Cron expression" },
+                  every: { type: "number", description: "Interval in milliseconds" },
+                  channel: { type: "string" },
+                  agent: { type: "string" },
+                  workspace_path: { type: "string" },
+                  notifications: { type: "object" },
+                  last_run: { type: "number" },
+                  last_status: { type: "string" },
+                  last_error: { type: "string" },
+                  last_output: { type: "string" },
+                  next_run: { type: "number" },
+                  created_at: { type: "number" },
+                  updated_at: { type: "number" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
     const span = tracer.startSpan(getSpanName("cron.list"));
     try {
       const jobs = await state.cron.listJobs();
@@ -63,7 +102,51 @@ export function registerCronRoutes(fastify: FastifyInstance, state: AppState): v
   });
 
   // Get a specific cron job
-  fastify.get<{ Params: { id: string } }>("/api/cron/:id", async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>("/api/cron/:id", {
+    schema: {
+      description: "Get a specific cron job by ID",
+      tags: ["cron"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Cron job ID" },
+        },
+        required: ["id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            enabled: { type: "boolean" },
+            job_type: { type: "string" },
+            message: { type: "string" },
+            script: { type: "string" },
+            cron: { type: "string" },
+            every: { type: "number" },
+            channel: { type: "string" },
+            agent: { type: "string" },
+            workspace_path: { type: "string" },
+            notifications: { type: "object" },
+            last_run: { type: "number" },
+            last_status: { type: "string" },
+            last_error: { type: "string" },
+            last_output: { type: "string" },
+            next_run: { type: "number" },
+            created_at: { type: "number" },
+            updated_at: { type: "number" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
     const { id } = request.params;
     const span = tracer.startSpan(getSpanName("cron.get"), {
       attributes: { "cron.job_id": id },

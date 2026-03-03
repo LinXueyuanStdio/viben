@@ -24,6 +24,7 @@ import {
   PromptDetailPage,
   CommandDetailPage,
   WorkspaceAgentsPage,
+  WorkspaceGitHubPage,
   HomeRedirect,
   OnboardingPage,
   PublishPage,
@@ -31,7 +32,7 @@ import {
   AnalyticsPage,
   DocumentsPage,
   ChatMonitorPage,
-  SnakeGamePage,
+  PageDebugPage,
 } from "@/pages";
 
 // Lazy load marketplace pages for code splitting
@@ -74,6 +75,7 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="data-sources" element={<ProvidersPage />} />
             <Route path="search-service" element={<SearchServicePage />} />
+            <Route path="page-debug" element={<PageDebugPage />} />
             <Route path="logs" element={<LogsPage />} />
             {/* Default redirect for /mcp-services */}
             <Route index element={<Navigate to="dashboard" replace />} />
@@ -109,14 +111,12 @@ function App() {
           {/* Observability routes */}
           <Route path="chat-monitor" element={<ChatMonitorPage />} />
 
-          {/* Games */}
-          <Route path="snake-game" element={<SnakeGamePage />} />
-
           {/* Documents, Settings and About */}
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="settings" element={<SettingsPage />}>
             <Route index element={null} />
             <Route path="general" element={null} />
+            <Route path="account" element={null} />
             <Route path="shortcuts" element={null} />
             <Route path="notifications" element={null} />
             <Route path="gateway" element={null} />
@@ -126,7 +126,9 @@ function App() {
             <Route path="agents" element={null} />
             <Route path="sandbox" element={null} />
             <Route path="environment" element={null} />
+            <Route path="terminalFonts" element={null} />
             <Route path="storage" element={null} />
+            <Route path="developer" element={null} />
             <Route path="about" element={null} />
           </Route>
           <Route path="about" element={<AboutPage />} />
@@ -152,6 +154,7 @@ function App() {
           <Route path="workspace/:workspaceId/files" element={<WorkspaceFilesPage />} />
           <Route path="workspace/:workspaceId/cron" element={<WorkspaceCronPage />} />
           <Route path="workspace/:workspaceId/agents" element={<WorkspaceAgentsPage />} />
+          <Route path="workspace/:workspaceId/github" element={<WorkspaceGitHubPage />} />
         </Route>
 
         {/* Tray popup - separate window without layout */}

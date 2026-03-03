@@ -291,7 +291,7 @@ export class SkillsManager {
    * Future: Fetch from marketplace API.
    */
   async listAvailableSkills(): Promise<AvailableSkill[]> {
-    // Mock data matching Rust implementation in crates/viben-core/src/services/skill.rs
+    // Mock data - Future: Fetch from marketplace API
     return [
       {
         name: "code-review",

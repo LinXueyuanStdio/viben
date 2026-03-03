@@ -1,62 +1,62 @@
 ---
 sidebar_position: 3
 title: "viben config"
-description: "Git-style configuration management for Viben"
+description: "Git 风格的配置管理"
 ---
 
 # viben config
 
-Configuration management following git config conventions.
+Git 风格的配置管理。
 
-## Usage
+## 用法
 
 ```bash
 viben config <subcommand> [options]
 ```
 
-## Subcommands
+## 子命令
 
-| Subcommand | Description |
-|------------|-------------|
-| `get <key>` | Get a configuration value |
-| `set <key> <value>` | Set a configuration value |
-| `list` | List all configuration values |
-| `edit` | Open configuration in editor |
-| `unset <key>` | Remove a configuration value |
+| 子命令 | 说明 |
+|--------|------|
+| `get <key>` | 获取配置值 |
+| `set <key> <value>` | 设置配置值 |
+| `list` | 列出所有配置 |
+| `edit` | 在编辑器中打开配置 |
+| `unset <key>` | 删除配置值 |
 
-## Key Format
+## Key 格式
 
-Configuration keys use dot notation:
+配置 key 使用点号分隔：
 
-- `settings.editor` - Editor setting
-- `settings.pager` - Pager setting
-- `mcp.enabled[0]` - First enabled MCP
-- `skills.enabled` - List of enabled skills
+- `settings.editor` - 编辑器设置
+- `settings.pager` - 分页器设置
+- `mcp.enabled[0]` - 第一个启用的 MCP
+- `skills.enabled` - 启用的技能列表
 
-## Commands
+## 命令
 
-### Get Configuration
+### 获取配置
 
-Retrieve a configuration value:
+获取配置值：
 
 ```bash
-# Get editor setting
+# 获取编辑器设置
 viben config get settings.editor
 
-# Get from global config
+# 从全局配置获取
 viben config get --global mcp.enabled
 
-# Get from workspace config
+# 从工作区配置获取
 viben config get --workspace settings.color
 ```
 
-**Output:**
+**输出：**
 
 ```
 code
 ```
 
-**JSON output:**
+**JSON 输出：**
 
 ```bash
 viben config get settings.editor --json
@@ -72,31 +72,31 @@ viben config get settings.editor --json
 }
 ```
 
-### Set Configuration
+### 设置配置
 
-Set a configuration value:
+设置配置值：
 
 ```bash
-# Set editor
+# 设置编辑器
 viben config set settings.editor vim
 
-# Set global pager
+# 设置全局分页器
 viben config set --global settings.pager less
 
-# Set workspace color mode
+# 设置工作区颜色模式
 viben config set --workspace settings.color auto
 
-# Set a list value
+# 设置列表值
 viben config set mcp.enabled '["filesystem", "git"]'
 ```
 
-**Output:**
+**输出：**
 
 ```
 Set settings.editor = vim
 ```
 
-**JSON output:**
+**JSON 输出：**
 
 ```json
 {
@@ -108,25 +108,25 @@ Set settings.editor = vim
 }
 ```
 
-### List Configuration
+### 列出配置
 
-List all configuration values:
+列出所有配置值：
 
 ```bash
-# List merged configuration
+# 列出合并后的配置
 viben config list
 
-# List global configuration only
+# 仅列出全局配置
 viben config list --global
 
-# List workspace configuration only
+# 仅列出工作区配置
 viben config list --workspace
 
-# Show configuration origin
+# 显示配置来源
 viben config list --show-origin
 ```
 
-**Output:**
+**输出：**
 
 ```
 settings.editor=code
@@ -137,7 +137,7 @@ mcp.disabled=["browser"]
 skills.enabled=["code-review", "commit"]
 ```
 
-**With `--show-origin`:**
+**使用 `--show-origin`：**
 
 ```
 global  settings.editor=code
@@ -146,7 +146,7 @@ local   settings.color=auto
 global  mcp.enabled=["filesystem", "git"]
 ```
 
-**JSON output:**
+**JSON 输出：**
 
 ```json
 {
@@ -170,42 +170,42 @@ global  mcp.enabled=["filesystem", "git"]
 }
 ```
 
-### Edit Configuration
+### 编辑配置
 
-Open configuration file in editor:
+在编辑器中打开配置文件：
 
 ```bash
-# Edit merged/default config
+# 编辑合并/默认配置
 viben config edit
 
-# Edit global config
+# 编辑全局配置
 viben config edit --global
 
-# Edit workspace config
+# 编辑工作区配置
 viben config edit --workspace
 ```
 
-This opens the configuration file in the editor specified by `settings.editor` or the `EDITOR` environment variable.
+会使用 `settings.editor` 或 `EDITOR` 环境变量指定的编辑器打开配置文件。
 
-### Unset Configuration
+### 删除配置
 
-Remove a configuration value:
+删除配置值：
 
 ```bash
-# Remove a key
+# 删除 key
 viben config unset settings.pager
 
-# Remove from global config
+# 从全局配置删除
 viben config unset --global mcp.disabled
 ```
 
-**Output:**
+**输出：**
 
 ```
 Removed settings.pager
 ```
 
-**JSON output:**
+**JSON 输出：**
 
 ```json
 {
@@ -217,40 +217,40 @@ Removed settings.pager
 }
 ```
 
-## Configuration Scope
+## 配置作用域
 
-Configuration is resolved in the following order (highest priority first):
+配置按以下优先级解析（从高到低）：
 
-1. Workspace config (`.viben/config.yaml`)
-2. Global config (`~/.viben/config.yaml`)
-3. Default values
+1. 工作区配置 (`.viben/config.yaml`)
+2. 全局配置 (`~/.viben/config.yaml`)
+3. 默认值
 
-### Examples
+### 示例
 
 ```bash
-# Set editor globally
+# 全局设置编辑器
 viben config set --global settings.editor vim
 
-# Override editor in workspace
+# 在工作区覆盖编辑器
 viben config set --workspace settings.editor code
 
-# Now workspace uses 'code', other workspaces use 'vim'
+# 现在此工作区使用 'code'，其他工作区使用 'vim'
 ```
 
-## Common Configuration Keys
+## 常用配置 Key
 
-| Key | Type | Description | Default |
-|-----|------|-------------|---------|
-| `settings.editor` | string | Text editor command | `code` |
-| `settings.pager` | string | Pager command | `less` |
-| `settings.color` | string | Color output mode | `auto` |
-| `mcp.enabled` | string[] | Enabled MCP servers | `[]` |
-| `mcp.disabled` | string[] | Disabled MCP servers | `[]` |
-| `skills.enabled` | string[] | Enabled skills | `[]` |
+| Key | 类型 | 说明 | 默认值 |
+|-----|------|------|--------|
+| `settings.editor` | string | 文本编辑器命令 | `code` |
+| `settings.pager` | string | 分页器命令 | `less` |
+| `settings.color` | string | 颜色输出模式 | `auto` |
+| `mcp.enabled` | string[] | 启用的 MCP 服务器 | `[]` |
+| `mcp.disabled` | string[] | 禁用的 MCP 服务器 | `[]` |
+| `skills.enabled` | string[] | 启用的技能 | `[]` |
 
-## Error Handling
+## 错误处理
 
-### Key Not Found
+### Key 未找到
 
 ```bash
 viben config get nonexistent.key
@@ -266,7 +266,7 @@ viben config get nonexistent.key
 }
 ```
 
-### Invalid Value
+### 无效的值
 
 ```bash
 viben config set settings.color invalid
@@ -282,8 +282,8 @@ viben config set settings.color invalid
 }
 ```
 
-## Related Commands
+## 相关命令
 
-- [viben init](./init) - Initialize workspace
-- [viben workspace](./workspace) - Workspace operations
-- [viben agent config](./agent) - Agent-specific configuration
+- [viben init](./init) - 初始化工作区
+- [viben workspace](./workspace) - 工作区操作
+- [viben agent config](./agent) - 智能体配置

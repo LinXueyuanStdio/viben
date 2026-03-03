@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Viben',
-  tagline: 'Search, Download, and Read Any Content via MCP Plugins',
+  tagline: 'Multi-Agent Workspace Manager for AI-Assisted Development',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -96,6 +96,23 @@ const config: Config = {
         editUrl: 'https://github.com/LinXueyuanStdio/viben/edit/main/apps/docs/',
       },
     ],
+    // Gateway API documentation (OpenAPI)
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'gateway-api',
+        docsPluginId: 'backend',
+        config: {
+          gateway: {
+            specPath: 'openapi/gateway-api.json',
+            outputDir: 'docs/backend/api',
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+            },
+          },
+        },
+      },
+    ],
     // Frontend developer documentation
     [
       '@docusaurus/plugin-content-docs',
@@ -142,7 +159,7 @@ const config: Config = {
     ],
   ],
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: ['@docusaurus/theme-mermaid', 'docusaurus-theme-openapi-docs'],
 
   themeConfig: {
     // Replace with your project's social card

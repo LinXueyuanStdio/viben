@@ -640,9 +640,9 @@ export function AgentDetailPanel({
                 <div className="py-2">
                   {agent.mcp_servers && agent.mcp_servers.length > 0 ? (
                     <div className="space-y-1">
-                      {agent.mcp_servers.map((server) => (
+                      {agent.mcp_servers.map((server, index) => (
                         <div
-                          key={server}
+                          key={server || `mcp-server-${index}`}
                           className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-md bg-muted/50"
                         >
                           <Server className="h-3 w-3 text-muted-foreground shrink-0" />

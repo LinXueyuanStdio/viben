@@ -1,3 +1,9 @@
+---
+sidebar_position: 2
+title: 聊天功能 PRD
+description: Desktop 聊天页面产品需求文档
+---
+
 # 聊天功能 PRD
 
 > 产品需求文档：Desktop 聊天页面

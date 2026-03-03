@@ -1,6 +1,13 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification } from "@/types";
+import type { CliToolsInfo } from "@/lib/gateway";
+
+/** Cached CLI tools detection result with timestamp */
+interface CliToolsCache {
+  data: CliToolsInfo | null;
+  timestamp: number;
+}
 
 // Provider definitions with all 18 sources
 // Note: enabled is removed - providers only track installation/API key status
@@ -139,6 +146,41 @@ interface AppState {
   setShortcut: (key: keyof AppState["shortcuts"], value: string) => void;
   setShowHideWindowScope: (scope: "all" | "chatRelated") => void;
   resetShortcuts: () => void;
+
+  // Developer Tools
+  preferredIDE: string;
+  setPreferredIDE: (ide: string) => void;
+  preferredTerminal: string;
+  setPreferredTerminal: (terminal: string) => void;
+  dangerouslySkipPermissions: boolean;
+  setDangerouslySkipPermissions: (enabled: boolean) => void;
+
+  // CLI Tool Paths (custom user-configured paths)
+  pythonPath: string;
+  setPythonPath: (path: string) => void;
+  gitPath: string;
+  setGitPath: (path: string) => void;
+  ghPath: string;
+  setGhPath: (path: string) => void;
+  claudePath: string;
+  setClaudePath: (path: string) => void;
+  codexPath: string;
+  setCodexPath: (path: string) => void;
+  aiderPath: string;
+  setAiderPath: (path: string) => void;
+  goosePath: string;
+  setGoosePath: (path: string) => void;
+  clinePath: string;
+  setClinePath: (path: string) => void;
+  continuePath: string;
+  setContinuePath: (path: string) => void;
+  cursorPath: string;
+  setCursorPath: (path: string) => void;
+
+  // CLI Tools Detection Cache
+  cliToolsCache: CliToolsCache;
+  setCliToolsCache: (data: CliToolsInfo) => void;
+  clearCliToolsCache: () => void;
 }
 
 // Generate unique ID
@@ -399,14 +441,51 @@ export const useAppStore = create<AppState>()(
           shortcuts: { ...DEFAULT_SHORTCUTS },
           showHideWindowScope: "all",
         }),
+
+      // Developer Tools
+      preferredIDE: "vscode",
+      setPreferredIDE: (ide) => set({ preferredIDE: ide }),
+      preferredTerminal: "system",
+      setPreferredTerminal: (terminal) => set({ preferredTerminal: terminal }),
+      dangerouslySkipPermissions: false,
+      setDangerouslySkipPermissions: (enabled) => set({ dangerouslySkipPermissions: enabled }),
+
+      // CLI Tool Paths
+      pythonPath: "",
+      setPythonPath: (path) => set({ pythonPath: path }),
+      gitPath: "",
+      setGitPath: (path) => set({ gitPath: path }),
+      ghPath: "",
+      setGhPath: (path) => set({ ghPath: path }),
+      claudePath: "",
+      setClaudePath: (path) => set({ claudePath: path }),
+      codexPath: "",
+      setCodexPath: (path) => set({ codexPath: path }),
+      aiderPath: "",
+      setAiderPath: (path) => set({ aiderPath: path }),
+      goosePath: "",
+      setGoosePath: (path) => set({ goosePath: path }),
+      clinePath: "",
+      setClinePath: (path) => set({ clinePath: path }),
+      continuePath: "",
+      setContinuePath: (path) => set({ continuePath: path }),
+      cursorPath: "",
+      setCursorPath: (path) => set({ cursorPath: path }),
+
+      // CLI Tools Detection Cache
+      cliToolsCache: { data: null, timestamp: 0 },
+      setCliToolsCache: (data) => set({ cliToolsCache: { data, timestamp: Date.now() } }),
+      clearCliToolsCache: () => set({ cliToolsCache: { data: null, timestamp: 0 } }),
     }),
     {
       name: "viben-storage",
+      // Note: mcpServers and mcpServerStatuses are NOT persisted to localStorage
+      // They are synced with Gateway's ~/.viben/mcp-servers.json via use-store-sync.ts
       partialize: (state) => ({
         selectedPython: state.selectedPython,
         providers: state.providers,
         apiKeys: state.apiKeys,
-        mcpServers: state.mcpServers,
+        // mcpServers: removed - synced with Gateway file
         agentAssignments: state.agentAssignments,
         mcpTransport: state.mcpTransport,
         mcpPort: state.mcpPort,
@@ -424,6 +503,20 @@ export const useAppStore = create<AppState>()(
         onboardingCompleted: state.onboardingCompleted,
         shortcuts: state.shortcuts,
         showHideWindowScope: state.showHideWindowScope,
+        preferredIDE: state.preferredIDE,
+        preferredTerminal: state.preferredTerminal,
+        dangerouslySkipPermissions: state.dangerouslySkipPermissions,
+        pythonPath: state.pythonPath,
+        gitPath: state.gitPath,
+        ghPath: state.ghPath,
+        claudePath: state.claudePath,
+        codexPath: state.codexPath,
+        aiderPath: state.aiderPath,
+        goosePath: state.goosePath,
+        clinePath: state.clinePath,
+        continuePath: state.continuePath,
+        cursorPath: state.cursorPath,
+        cliToolsCache: state.cliToolsCache,
       }),
     }
   )

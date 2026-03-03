@@ -150,6 +150,17 @@ export const ROUTE_NAMES: Record<string, string> = {
   // WebSocket
   "WS /ws": "WebSocket连接",
   "WS /api/ws": "API WebSocket连接",
+
+  // 任务队列
+  "POST /api/queue/enqueue": "入队任务",
+  "GET /api/queue/status": "获取队列状态",
+  "GET /api/queue/tasks": "获取队列任务列表",
+  "GET /api/queue/tasks/:id": "获取队列任务详情",
+  "GET /api/queue/tasks/:id/stream": "订阅任务输出(SSE)",
+  "DELETE /api/queue/tasks/:id": "取消/删除任务",
+  "PUT /api/queue/config": "更新队列配置",
+  "GET /api/queue/config": "获取队列配置",
+  "POST /api/queue/clear-history": "清除任务历史",
 };
 
 /**
@@ -245,6 +256,16 @@ export const SPAN_NAMES: Record<string, string> = {
   "channel.send_test": "发送测试消息",
   "channel.webhook": "处理Webhook",
   "channel.webhook.channel": "处理指定渠道Webhook",
+
+  // 任务队列相关
+  "queue.enqueue": "入队任务",
+  "queue.status": "获取队列状态",
+  "queue.tasks.list": "获取任务列表",
+  "queue.tasks.get": "获取任务详情",
+  "queue.tasks.delete": "取消/删除任务",
+  "queue.config.get": "获取队列配置",
+  "queue.config.update": "更新队列配置",
+  "queue.clear_history": "清除任务历史",
 };
 
 /**

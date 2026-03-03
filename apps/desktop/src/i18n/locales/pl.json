@@ -139,7 +139,34 @@
     "system": "Systemowy",
     "language": "Język",
     "storage": "Przechowywanie",
-    "downloadPath": "Ścieżka pobierania"
+    "downloadPath": "Ścieżka pobierania",
+    "developerDescription": "Narzędzia deweloperskie, ustawienia debugowania i rozwiązywanie problemów",
+    "developer": {
+      "devtools": "Narzędzia deweloperskie",
+      "preferredIDE": "Preferowany IDE",
+      "preferredIDEDescription": "Viben otworzy projekty w tym edytorze",
+      "preferredTerminal": "Preferowany terminal",
+      "preferredTerminalDescription": "Viben otworzy sesje terminala tutaj",
+      "yoloMode": "Tryb YOLO",
+      "yoloModeDescription": "Uruchom executory z flagą --dangerously-skip-permissions, pomijając wszystkie monity bezpieczeństwa. Używaj z najwyższą ostrożnością.",
+      "yoloModeWarning": "Ten tryb omija system uprawnień. Włączaj tylko jeśli w pełni ufasz wykonywanemu kodowi.",
+      "debugLogs": "Debug i Logi",
+      "openLogsFolder": "Otwórz folder logów",
+      "openConfigFolder": "Otwórz folder konfiguracji",
+      "copyDebugInfo": "Kopiuj informacje debugowania",
+      "loadDebugInfo": "Załaduj informacje debugowania",
+      "systemInfo": "Informacje o systemie",
+      "paths": "Ścieżki",
+      "noRecentErrors": "Brak ostatnich błędów",
+      "reportingIssues": "Zgłaszanie problemów",
+      "reportingIssuesDescription": "Podczas zgłaszania błędów kliknij \"Kopiuj informacje debugowania\", aby uzyskać informacje systemowe, które pomogą nam zdiagnozować problem.",
+      "os": "System operacyjny",
+      "osVersion": "Wersja",
+      "appVersion": "Wersja aplikacji",
+      "arch": "Architektura",
+      "logs": "Logi",
+      "config": "Konfiguracja"
+    }
   },
   "about": {
     "title": "Viben",
@@ -883,6 +910,41 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "addDescription": "Dodaj opis...",
+    "taskPromptWithDescription": "Proszę, pomóż mi z tym zadaniem:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Proszę, pomóż mi z tym zadaniem: {{title}}"
+  },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Adres hosta, do którego jest przywiązana usługa bramy",
+    "portDescription": "Numer portu, na którym nasłuchuje usługa bramy (wymaga ponownego uruchomienia)",
+    "connectivityTestDescription": "Sprawdź stan połączenia i dostępne punkty końcowe usługi bramy"
+  },
+  "observability": {
+    "allRoutes": "Wszystkie trasy",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Wykonanie agenta)",
+      "agents": "/api/agents (Zarządzanie agentami)",
+      "workspaces": "/api/workspaces (Przestrzenie robocze)",
+      "chat": "/api/chat (Czat)",
+      "groupChats": "/api/group-chats (Czaty grupowe)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sesja",
+        "config": "Konfiguracja",
+        "info": "Informacja",
+        "workspace": "Przestrzeń robocza",
+        "auth": "Uwierzytelnianie"
+      },
+      "sources": {
+        "builtin": "Wbudowany",
+        "workspace": "Przestrzeń robocza",
+        "skill": "Umiejętność"
+      }
+    }
   }
 }

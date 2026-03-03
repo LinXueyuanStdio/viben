@@ -1,3 +1,9 @@
+---
+sidebar_position: 6
+title: Phase 5 - UI 优化
+description: Kanban UI 优化规格
+---
+
 # Kanban Phase 5: UI Optimization
 
 ## Overview

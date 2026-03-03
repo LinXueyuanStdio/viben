@@ -62,6 +62,12 @@
     "setupComplete": "セットアップ完了",
     "setupRequired": "セットアップが必要"
   },
+  "gateway": {
+    "host": "ホスト",
+    "hostDescription": "ゲートウェイサービスがバインドするホストアドレス",
+    "portDescription": "ゲートウェイサービスがリッスンするポート番号（再起動後に有効）",
+    "connectivityTestDescription": "ゲートウェイサービスの接続状態と利用可能なエンドポイントを確認"
+  },
   "mcpStatus": {
     "count": "{{running}}/{{total}}",
     "loading": "...",
@@ -139,7 +145,34 @@
     "system": "システム",
     "language": "言語",
     "storage": "ストレージ",
-    "downloadPath": "ダウンロードパス"
+    "downloadPath": "ダウンロードパス",
+    "developerDescription": "開発者ツール、デバッグ設定、トラブルシューティング",
+    "developer": {
+      "devtools": "開発者ツール",
+      "preferredIDE": "優先IDE",
+      "preferredIDEDescription": "Vibenはこのエディタでプロジェクトを開きます",
+      "preferredTerminal": "優先ターミナル",
+      "preferredTerminalDescription": "Vibenはここでターミナルセッションを開きます",
+      "yoloMode": "YOLOモード",
+      "yoloModeDescription": "--dangerously-skip-permissionsフラグでエクゼキュータを起動し、すべての安全プロンプトをバイパスします。細心の注意を払ってください。",
+      "yoloModeWarning": "このモードは許可システムをバイパスします。実行されるコードを完全に信頼できる場合のみ有効にしてください。",
+      "debugLogs": "デバッグ＆ログ",
+      "openLogsFolder": "ログフォルダを開く",
+      "openConfigFolder": "設定フォルダを開く",
+      "copyDebugInfo": "デバッグ情報をコピー",
+      "loadDebugInfo": "デバッグ情報を読み込む",
+      "systemInfo": "システム情報",
+      "paths": "パス",
+      "noRecentErrors": "最近のエラーはありません",
+      "reportingIssues": "問題の報告",
+      "reportingIssuesDescription": "バグを報告する際は、「デバッグ情報をコピー」をクリックして、問題の診断に役立つシステム情報を取得してください。",
+      "os": "OS",
+      "osVersion": "バージョン",
+      "appVersion": "アプリバージョン",
+      "arch": "アーキテクチャ",
+      "logs": "ログ",
+      "config": "設定"
+    }
   },
   "about": {
     "title": "Viben",
@@ -883,6 +916,35 @@
     "noCommands": "コマンドなし",
     "noCommandsDesc": ".claude/commands/フォルダにコマンドファイルが見つかりません。",
     "selectCommand": "コマンドを選択して表示",
-    "rootNamespace": "ルート"
+    "rootNamespace": "ルート",
+    "addDescription": "説明を追加...",
+    "taskPromptWithDescription": "以下のタスクを手伝ってください：\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "以下のタスクを手伝ってください：{{title}}"
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "セッション",
+        "config": "設定",
+        "info": "情報",
+        "workspace": "ワークスペース",
+        "auth": "認証"
+      },
+      "sources": {
+        "builtin": "組み込み",
+        "workspace": "ワークスペース",
+        "skill": "スキル"
+      }
+    }
+  },
+  "observability": {
+    "allRoutes": "すべてのルート",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (エージェント実行)",
+      "agents": "/api/agents (エージェント管理)",
+      "workspaces": "/api/workspaces (ワークスペース)",
+      "chat": "/api/chat (チャット)",
+      "groupChats": "/api/group-chats (グループチャット)"
+    }
   }
 }

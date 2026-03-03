@@ -1,24 +1,24 @@
 ---
 sidebar_position: 2
-title: "Configuration"
-description: "Configure Viben sources, API keys, plugins, and settings"
+title: "MCP 配置"
+description: "配置 Viben MCP 服务器的数据源、API 密钥和设置"
 ---
 
-# Configuration
+# MCP 配置
 
-Viben can be configured using environment variables. This page covers all available configuration options for both core functionality and plugins.
+Viben MCP 服务器可以通过环境变量进行配置。本页涵盖所有可用的配置选项。
 
-## Environment Variables Overview
+## 环境变量概览
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BROWSE_MCP_DOWNLOAD_PATH` | Directory for downloaded content | `./downloads` |
-| `BROWSE_MCP_ENABLED_SOURCES` | Comma-separated list of enabled sources | All sources |
-| `BROWSE_MCP_DISABLED_SOURCES` | Comma-separated list of disabled sources | None |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `BROWSE_MCP_DOWNLOAD_PATH` | 下载内容的保存目录 | `./downloads` |
+| `BROWSE_MCP_ENABLED_SOURCES` | 启用的数据源（逗号分隔）| 全部 |
+| `BROWSE_MCP_DISABLED_SOURCES` | 禁用的数据源（逗号分隔）| 无 |
 
-## Download Path
+## 下载路径
 
-Set the directory where downloaded content is saved:
+设置下载内容的保存目录：
 
 ```json
 {
@@ -28,15 +28,15 @@ Set the directory where downloaded content is saved:
 }
 ```
 
-The directory is created automatically if it does not exist.
+如果目录不存在，会自动创建。
 
-## Source Control
+## 数据源控制
 
-Source control applies to all sources, including those from plugins.
+数据源控制适用于所有来源，包括插件提供的数据源。
 
-### Enable Specific Sources Only
+### 仅启用特定数据源
 
-Use `BROWSE_MCP_ENABLED_SOURCES` to enable only specific sources (whitelist):
+使用 `BROWSE_MCP_ENABLED_SOURCES` 创建白名单：
 
 ```json
 {
@@ -46,11 +46,11 @@ Use `BROWSE_MCP_ENABLED_SOURCES` to enable only specific sources (whitelist):
 }
 ```
 
-Only the listed sources will be available. This works for both built-in and plugin sources.
+只有列出的数据源可用。这对内置和插件数据源都有效。
 
-### Disable Specific Sources
+### 禁用特定数据源
 
-Use `BROWSE_MCP_DISABLED_SOURCES` to disable specific sources (blacklist):
+使用 `BROWSE_MCP_DISABLED_SOURCES` 创建黑名单：
 
 ```json
 {
@@ -60,16 +60,16 @@ Use `BROWSE_MCP_DISABLED_SOURCES` to disable specific sources (blacklist):
 }
 ```
 
-All sources except the listed ones will be available.
+除了列出的数据源外，其他所有数据源都可用。
 
-### Priority Rules
+### 优先级规则
 
-- If `BROWSE_MCP_ENABLED_SOURCES` is set, it takes precedence
-- If only `BROWSE_MCP_DISABLED_SOURCES` is set, all sources except listed ones are enabled
-- If neither is set, all sources are enabled by default
+- 如果设置了 `BROWSE_MCP_ENABLED_SOURCES`，它优先生效
+- 如果只设置了 `BROWSE_MCP_DISABLED_SOURCES`，除列出的外都启用
+- 如果都未设置，默认启用所有数据源
 
-:::tip Recommended Configuration
-For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources that require API keys:
+:::tip 推荐配置
+对于大多数用户，使用 `BROWSE_MCP_DISABLED_SOURCES` 禁用需要 API 密钥的付费数据源：
 
 ```json
 {
@@ -80,88 +80,88 @@ For most users, use `BROWSE_MCP_DISABLED_SOURCES` to disable premium sources tha
 ```
 :::
 
-## API Keys
+## API 密钥
 
-### Academic Source API Keys
+### 学术数据源 API 密钥
 
-| Variable | Service | How to Get |
-|----------|---------|------------|
-| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar | [Get API Key](https://www.semanticscholar.org/product/api) |
-| `CORE_API_KEY` | CORE | [Get API Key](https://core.ac.uk/services/api) |
-| `IEEE_API_KEY` | IEEE Xplore | [Get API Key](https://developer.ieee.org/) |
-| `SCOPUS_API_KEY` | Scopus | [Get API Key](https://dev.elsevier.com/) |
-| `SPRINGER_API_KEY` | Springer Link | [Get API Key](https://dev.springernature.com/) |
-| `SCIENCEDIRECT_API_KEY` | Science Direct | [Get API Key](https://dev.elsevier.com/) |
-| `WOS_API_KEY` | Web of Science | Requires institutional subscription |
+| 变量 | 服务 | 获取方式 |
+|------|------|----------|
+| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar | [获取 API 密钥](https://www.semanticscholar.org/product/api) |
+| `CORE_API_KEY` | CORE | [获取 API 密钥](https://core.ac.uk/services/api) |
+| `IEEE_API_KEY` | IEEE Xplore | [获取 API 密钥](https://developer.ieee.org/) |
+| `SCOPUS_API_KEY` | Scopus | [获取 API 密钥](https://dev.elsevier.com/) |
+| `SPRINGER_API_KEY` | Springer Link | [获取 API 密钥](https://dev.springernature.com/) |
+| `SCIENCEDIRECT_API_KEY` | ScienceDirect | [获取 API 密钥](https://dev.elsevier.com/) |
+| `WOS_API_KEY` | Web of Science | 需要机构订阅 |
 
-### Plugin API Keys (Social Media)
+### 插件 API 密钥（社交媒体）
 
-| Variable | Service | How to Get |
-|----------|---------|------------|
-| `GITHUB_TOKEN` | GitHub | [Personal Access Tokens](https://github.com/settings/tokens) |
-| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter Developer Portal](https://developer.twitter.com/) |
-| `ZHIHU_API_KEY` | Zhihu | Contact platform |
-| `XIAOHONGSHU_API_KEY` | Xiaohongshu | Contact platform |
+| 变量 | 服务 | 获取方式 |
+|------|------|----------|
+| `GITHUB_TOKEN` | GitHub | [个人访问令牌](https://github.com/settings/tokens) |
+| `TWITTER_BEARER_TOKEN` | Twitter/X | [Twitter 开发者平台](https://developer.twitter.com/) |
+| `ZHIHU_API_KEY` | 知乎 | 联系平台 |
+| `XIAOHONGSHU_API_KEY` | 小红书 | 联系平台 |
 
-### Free vs Premium Sources
+### 免费 vs 付费数据源
 
-**Free sources** (no API key required):
-- arxiv, pubmed, pmc, biorxiv, medrxiv
-- google_scholar, iacr, crossref, researchgate
-- github (with rate limits)
+**免费数据源**（无需 API 密钥）：
+- arxiv、pubmed、pmc、biorxiv、medrxiv
+- google_scholar、iacr、crossref、researchgate
+- github（有速率限制）
 
-**Free with optional API key** (higher rate limits with key):
-- `semantic` - Works without key, higher limits with `SEMANTIC_SCHOLAR_API_KEY`
-- `core` - Requires `CORE_API_KEY`
-- `github` - Works without key, higher limits with `GITHUB_TOKEN`
+**免费但可选 API 密钥**（有密钥可获得更高限制）：
+- `semantic` - 无密钥可用，有 `SEMANTIC_SCHOLAR_API_KEY` 限制更高
+- `core` - 需要 `CORE_API_KEY`
+- `github` - 无密钥 60 请求/小时，有密钥 5000 请求/小时
 
-**Premium sources** (API key required):
-- `ieee` - Requires `IEEE_API_KEY`
-- `scopus` - Requires `SCOPUS_API_KEY`
-- `springer` - Requires `SPRINGER_API_KEY`
-- `sciencedirect` - Requires `SCIENCEDIRECT_API_KEY`
-- `wos` - Requires `WOS_API_KEY` and institutional subscription
-- `twitter` - Requires `TWITTER_BEARER_TOKEN`
+**付费数据源**（需要 API 密钥）：
+- `ieee` - 需要 `IEEE_API_KEY`
+- `scopus` - 需要 `SCOPUS_API_KEY`
+- `springer` - 需要 `SPRINGER_API_KEY`
+- `sciencedirect` - 需要 `SCIENCEDIRECT_API_KEY`
+- `wos` - 需要 `WOS_API_KEY` 和机构订阅
+- `twitter` - 需要 `TWITTER_BEARER_TOKEN`
 
-## Available Source Names
+## 可用数据源名称
 
-### Built-in Academic Sources
+### 内置学术数据源
 
-| Source Name | Type | Description |
-|-------------|------|-------------|
-| `arxiv` | Free | Pre-print repository for physics, mathematics, CS |
-| `pubmed` | Free | Biomedical literature from MEDLINE |
-| `pmc` | Free | PubMed Central full-text archive |
-| `biorxiv` | Free | Pre-print server for biology |
-| `medrxiv` | Free | Pre-print server for health sciences |
-| `google_scholar` | Free | Google Scholar search |
-| `iacr` | Free | IACR cryptology pre-prints |
-| `semantic` | Free | Semantic Scholar (optional API key) |
-| `crossref` | Free | CrossRef DOI metadata |
-| `core` | Free | CORE open access (requires API key) |
-| `ieee` | Premium | IEEE Xplore digital library |
-| `scopus` | Premium | Elsevier Scopus database |
-| `springer` | Premium | Springer publications |
-| `sciencedirect` | Premium | Elsevier ScienceDirect |
-| `wos` | Premium | Web of Science |
-| `acm` | Premium | ACM Digital Library |
-| `jstor` | Premium | JSTOR archive |
-| `researchgate` | Free | ResearchGate social network |
+| 数据源名称 | 类型 | 说明 |
+|------------|------|------|
+| `arxiv` | 免费 | 物理、数学、计算机科学预印本 |
+| `pubmed` | 免费 | MEDLINE 生物医学文献 |
+| `pmc` | 免费 | PubMed Central 全文库 |
+| `biorxiv` | 免费 | 生物学预印本服务器 |
+| `medrxiv` | 免费 | 健康科学预印本服务器 |
+| `google_scholar` | 免费 | Google 学术搜索 |
+| `iacr` | 免费 | IACR 密码学预印本 |
+| `semantic` | 免费 | Semantic Scholar（可选 API 密钥）|
+| `crossref` | 免费 | CrossRef DOI 元数据 |
+| `core` | 免费 | CORE 开放获取（需要 API 密钥）|
+| `ieee` | 付费 | IEEE Xplore 数字图书馆 |
+| `scopus` | 付费 | Elsevier Scopus 数据库 |
+| `springer` | 付费 | Springer 出版物 |
+| `sciencedirect` | 付费 | Elsevier ScienceDirect |
+| `wos` | 付费 | Web of Science |
+| `acm` | 付费 | ACM 数字图书馆 |
+| `jstor` | 付费 | JSTOR 档案 |
+| `researchgate` | 免费 | ResearchGate 社交网络 |
 
-### Plugin Sources (Social Media)
+### 插件数据源（社交媒体）
 
-These sources require installing `browse-mcp-plugin-social-media`:
+这些数据源需要安装 `browse-mcp-plugin-social-media`：
 
-| Source Name | Type | Description |
-|-------------|------|-------------|
-| `github` | Free | GitHub repositories and code |
-| `twitter` | Premium | Twitter/X posts (requires API key) |
-| `zhihu` | Free | Zhihu Q&A articles (Chinese) |
-| `xiaohongshu` | Free | Xiaohongshu posts (Chinese) |
+| 数据源名称 | 类型 | 说明 |
+|------------|------|------|
+| `github` | 免费 | GitHub 仓库和代码 |
+| `twitter` | 付费 | Twitter/X 帖子（需要 API 密钥）|
+| `zhihu` | 免费 | 知乎问答文章 |
+| `xiaohongshu` | 免费 | 小红书帖子 |
 
-## Configuration Examples
+## 配置示例
 
-### Minimal (Free Sources Only)
+### 最小配置（仅免费数据源）
 
 ```json
 {
@@ -177,7 +177,7 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-### With Semantic Scholar API Key
+### 带 Semantic Scholar API 密钥
 
 ```json
 {
@@ -194,7 +194,7 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-### Academic + Social Media
+### 学术 + 社交媒体
 
 ```json
 {
@@ -212,31 +212,7 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-### Full Configuration (All Sources)
-
-```json
-{
-  "mcpServers": {
-    "browse-mcp": {
-      "command": "python",
-      "args": ["-m", "browse_mcp"],
-      "env": {
-        "SEMANTIC_SCHOLAR_API_KEY": "your-key",
-        "CORE_API_KEY": "your-key",
-        "IEEE_API_KEY": "your-key",
-        "SCOPUS_API_KEY": "your-key",
-        "SPRINGER_API_KEY": "your-key",
-        "SCIENCEDIRECT_API_KEY": "your-key",
-        "GITHUB_TOKEN": "ghp_your_token",
-        "TWITTER_BEARER_TOKEN": "your_bearer_token",
-        "BROWSE_MCP_DOWNLOAD_PATH": "./downloads"
-      }
-    }
-  }
-}
-```
-
-### Research-Focused (Medical/Biology)
+### 研究聚焦（医学/生物）
 
 ```json
 {
@@ -254,7 +230,7 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-### Computer Science Focused
+### 计算机科学聚焦
 
 ```json
 {
@@ -274,7 +250,7 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-### Social Media Only
+### 仅社交媒体
 
 ```json
 {
@@ -293,44 +269,44 @@ These sources require installing `browse-mcp-plugin-social-media`:
 }
 ```
 
-## Troubleshooting
+## 故障排除
 
-### Source Not Available
+### 数据源不可用
 
-If a source is not available:
+如果某个数据源不可用：
 
-1. Check if it is in `BROWSE_MCP_DISABLED_SOURCES`
-2. Check if `BROWSE_MCP_ENABLED_SOURCES` is set and includes the source
-3. For premium sources, verify the API key is set
-4. For plugin sources, verify the plugin is installed: `pip show browse-mcp-plugin-social-media`
+1. 检查是否在 `BROWSE_MCP_DISABLED_SOURCES` 中
+2. 检查 `BROWSE_MCP_ENABLED_SOURCES` 是否设置且包含该数据源
+3. 对于付费数据源，验证 API 密钥是否设置
+4. 对于插件数据源，验证插件是否安装：`pip show browse-mcp-plugin-social-media`
 
-### API Rate Limits
+### API 速率限制
 
-If you hit rate limits:
+如果遇到速率限制：
 
-- **Semantic Scholar**: Add `SEMANTIC_SCHOLAR_API_KEY` for higher limits
-- **CORE**: Get a free API key from [core.ac.uk](https://core.ac.uk/services/api)
-- **Google Scholar**: May be rate-limited; use other sources as alternatives
-- **GitHub**: Add `GITHUB_TOKEN` for 5000 requests/hour instead of 60
+- **Semantic Scholar**：添加 `SEMANTIC_SCHOLAR_API_KEY` 获得更高限制
+- **CORE**：从 [core.ac.uk](https://core.ac.uk/services/api) 获取免费 API 密钥
+- **Google Scholar**：可能被限流；使用其他数据源作为替代
+- **GitHub**：添加 `GITHUB_TOKEN` 从 60 请求/小时提升到 5000 请求/小时
 
-### Missing Downloads
+### 下载文件缺失
 
-If downloaded files are missing:
+如果下载的文件不见了：
 
-1. Check `BROWSE_MCP_DOWNLOAD_PATH` is writable
-2. Verify the directory exists or can be created
-3. Check for error messages in the response
+1. 检查 `BROWSE_MCP_DOWNLOAD_PATH` 是否可写
+2. 验证目录存在或可以创建
+3. 检查响应中的错误信息
 
-### Plugin Not Loading
+### 插件未加载
 
-If plugin sources are not available:
+如果插件数据源不可用：
 
-1. Verify plugin is installed: `pip list | grep browse-mcp`
-2. Check for load errors: `browse-mcp --debug`
-3. Verify entry points: `python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"`
+1. 验证插件已安装：`pip list | grep browse-mcp`
+2. 检查加载错误：`browse-mcp --debug`
+3. 验证入口点：`python -c "from stevedore import ExtensionManager; print([e.name for e in ExtensionManager('browse_mcp.searchers')])"`
 
-## Next Steps
+## 下一步
 
-- [Client Configuration](../getting-started/client-configuration) - Configure your MCP client
-- [browse_search Tool](./tools/browse-search) - Learn search parameters
-- [Plugin Configuration](../plugins/configuration) - Advanced plugin settings
+- [客户端配置](../getting-started/client-configuration) - 配置 MCP 客户端
+- [browse_search 工具](./tools/browse-search) - 学习搜索参数
+- [插件配置](../plugins/configuration) - 高级插件设置

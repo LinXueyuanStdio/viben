@@ -96,7 +96,45 @@ function toSnakeCaseChannel(channel: Channel): ChannelResponse {
  */
 export function registerChannelRoutes(fastify: FastifyInstance): void {
   // List all channels
-  fastify.get("/api/channels", async () => {
+  fastify.get("/api/channels", {
+    schema: {
+      description: "List all notification channels",
+      tags: ["channels"],
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            channels: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  channel_type: { type: "string", enum: ["telegram", "discord", "feishu", "whatsapp", "slack", "webhook"] },
+                  name: { type: "string" },
+                  config: { type: "object" },
+                  is_default: { type: "boolean" },
+                  enabled: { type: "boolean" },
+                  notification_mode: { type: "string", enum: ["none", "all", "errors", "success"] },
+                  agent_binding: {
+                    type: "object",
+                    properties: {
+                      binding_type: { type: "string" },
+                      id: { type: "string" },
+                      name: { type: "string" },
+                      workspace_path: { type: "string" },
+                    },
+                  },
+                  created_at: { type: "string", format: "date-time" },
+                  updated_at: { type: "string", format: "date-time" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }, async () => {
     const span = tracer.startSpan(getSpanName("channel.list"));
     try {
       const channels = await channelManager.listChannels();
@@ -115,7 +153,42 @@ export function registerChannelRoutes(fastify: FastifyInstance): void {
   });
 
   // Get a specific channel
-  fastify.get("/api/channels/:id", async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+  fastify.get("/api/channels/:id", {
+    schema: {
+      description: "Get a specific channel by ID",
+      tags: ["channels"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Channel ID" },
+        },
+        required: ["id"],
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            channel_type: { type: "string" },
+            name: { type: "string" },
+            config: { type: "object" },
+            is_default: { type: "boolean" },
+            enabled: { type: "boolean" },
+            notification_mode: { type: "string" },
+            agent_binding: { type: "object" },
+            created_at: { type: "string", format: "date-time" },
+            updated_at: { type: "string", format: "date-time" },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
     const { id } = request.params;
     const span = tracer.startSpan(getSpanName("channel.get"), {
       attributes: { "channel.id": id },

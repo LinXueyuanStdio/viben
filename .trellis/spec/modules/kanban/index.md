@@ -74,38 +74,38 @@ agent_execution:
 
 ### 核心模块
 
-| 文档 | 描述 | 优先级 |
-|------|------|--------|
-| [storage.md](./storage.md) | 文件存储系统设计 | P0 |
-| [project.md](./project.md) | 项目管理模块 | P1 |
-| [task.md](./task.md) | 任务管理模块 | P1 |
-| [workspace.md](./workspace.md) | 工作区 (Worktree) 管理 | P1 |
-| [session.md](./session.md) | 会话管理模块 | P1 |
+| 文档 | 描述 | 优先级 | 状态 |
+|------|------|--------|------|
+| [storage.md](./storage.md) | 文件存储系统设计 | P0 | ✅ 已规范 |
+| [project.md](./project.md) | 项目管理模块 | P1 | ✅ 已规范 |
+| [task.md](./task.md) | 任务管理模块 | P1 | ✅ 已规范 |
+| [workspace.md](./workspace.md) | 工作区 (Worktree) 管理 | P1 | ✅ 已规范 |
+| [session.md](./session.md) | 会话管理模块 | P1 | ✅ 已规范 |
 
 ### API 路由
 
-| 文档 | 描述 | 优先级 |
-|------|------|--------|
-| [api-projects.md](./api-projects.md) | 项目 API | P1 |
-| [api-tasks.md](./api-tasks.md) | 任务 API | P1 |
-| [api-workspaces.md](./api-workspaces.md) | 工作区 API | P2 |
-| [api-sessions.md](./api-sessions.md) | 会话 API | P2 |
+| 文档 | 描述 | 优先级 | 状态 |
+|------|------|--------|------|
+| api-projects.md | 项目 API | P1 | 📝 规划中 |
+| api-tasks.md | 任务 API | P1 | 📝 规划中 |
+| api-workspaces.md | 工作区 API | P2 | 📝 规划中 |
+| api-sessions.md | 会话 API | P2 | 📝 规划中 |
 
 ### 辅助模块
 
-| 文档 | 描述 | 优先级 |
-|------|------|--------|
-| [git-operations.md](./git-operations.md) | Git 操作封装 | P2 |
-| [search.md](./search.md) | 文件搜索 | P2 |
-| [tags.md](./tags.md) | 标签管理 | P3 |
-| [scratch.md](./scratch.md) | 草稿存储 | P3 |
-| [approvals.md](./approvals.md) | 审批工作流 | P3 |
+| 文档 | 描述 | 优先级 | 状态 |
+|------|------|--------|------|
+| [git-operations.md](./git-operations.md) | Git 操作封装 | P2 | ✅ 已规范 |
+| search.md | 文件搜索 | P2 | 📝 规划中 |
+| tags.md | 标签管理 | P3 | 📝 规划中 |
+| scratch.md | 草稿存储 | P3 | 📝 规划中 |
+| approvals.md | 审批工作流 | P3 | 📝 规划中 |
 
 ---
 
 ## 迁移来源
 
-详细的 vibe-kanban 端点分析见: [docs/kanban/README.md](/docs/kanban/README.md)
+vibe-kanban 端点分析参考已移至内部文档。
 
 ### 迁移优先级
 
@@ -189,6 +189,5 @@ packages/core
 
 ## Related Documents
 
-- [docs/kanban/README.md](/docs/kanban/README.md) - vibe-kanban 端点分析
 - [cli/agent.md](../cli/agent.md) - Agent 模块规范 (存储设计参考)
 - [workspace/kanban-integration.md](../workspace/kanban-integration.md) - Desktop 集成规划

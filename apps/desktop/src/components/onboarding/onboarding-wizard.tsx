@@ -1,17 +1,33 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Globe } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 import { OnboardingProgress, type OnboardingStep } from "./onboarding-progress";
 import { StepPython } from "./step-python";
 import { StepClaude } from "./step-claude";
 import { StepLogin } from "./step-login";
 import { VibenLogo } from "@/components/ui/viben-logo";
+import { LANGUAGES } from "@/i18n/languages";
+import { changeLanguage, getCurrentLanguage } from "@/i18n";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function OnboardingWizard() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { setOnboardingCompleted } = useAppStore();
+  const { setOnboardingCompleted, setLanguage } = useAppStore();
+  const currentLanguage = getCurrentLanguage();
+
+  const handleLanguageChange = async (langCode: string) => {
+    await changeLanguage(langCode);
+    setLanguage(langCode);
+  };
 
   const [currentStep, setCurrentStep] = React.useState<OnboardingStep>("python");
   const [completedSteps, setCompletedSteps] = React.useState<OnboardingStep[]>([]);
@@ -48,9 +64,27 @@ export function OnboardingWizard() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      {/* Header with logo */}
-      <header className="flex items-center justify-center border-b py-4">
+      {/* Header with logo and language switcher */}
+      <header className="flex items-center justify-between border-b px-4 py-4">
+        <div className="w-[140px]" /> {/* Spacer for centering logo */}
         <VibenLogo size="md" showText />
+        <div className="w-[140px] flex justify-end">
+          <Select value={currentLanguage} onValueChange={handleLanguageChange}>
+            <SelectTrigger className="w-[140px] h-8 text-sm">
+              <Globe className="h-4 w-4 mr-2 shrink-0" />
+              <SelectValue>
+                {LANGUAGES.find((l) => l.code === currentLanguage)?.nativeName || currentLanguage}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((lang) => (
+                <SelectItem key={lang.code} value={lang.code}>
+                  {lang.nativeName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       {/* Progress indicator */}

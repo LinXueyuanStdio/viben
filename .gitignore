@@ -106,6 +106,7 @@ eggs/
 lib/
 !apps/**/lib/
 !packages/**/src/lib/
+!packages/**/src/**/lib/
 lib64/
 parts/
 sdist/
@@ -277,8 +278,6 @@ Cargo.lock
 .viben/group-chats
 .viben/agents
 test
-crates/viben-agent-organization/scripts
-crates/viben-agent-organization/tests
 
 # Auto Claude data directory
 .auto-claude/

@@ -53,7 +53,45 @@ export type GatewayEvent =
   | { type: "channel_connection_status"; data: { channel_type: string; channel_name: string; connected: boolean; error?: string } }
   | { type: "channel_created"; data: { channel: unknown } }
   | { type: "channel_updated"; data: { channel: unknown } }
-  | { type: "channel_deleted"; data: { channel_id: string } };
+  | { type: "channel_deleted"; data: { channel_id: string } }
+  // Task queue events
+  | { type: "queue_task_queued"; data: { task: QueueTaskSummary } }
+  | { type: "queue_task_started"; data: { task: QueueTaskSummary } }
+  | { type: "queue_task_progress"; data: { task_id: string; progress: unknown } }
+  | { type: "queue_task_completed"; data: { task: QueueTaskSummary; duration?: number } }
+  | { type: "queue_task_failed"; data: { task: QueueTaskSummary; error?: string; duration?: number } }
+  | { type: "queue_task_cancelled"; data: { task: QueueTaskSummary } }
+  | { type: "queue_status_changed"; data: QueueStatusData }
+  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number } }
+  // GitHub auto-fix events
+  | { type: "github_autofix_task_created"; data: { task_id: string; workspace_path: string; issue_numbers: number[] } }
+  | { type: "github_autofix_task_status_changed"; data: { task_id: string; workspace_path: string; status: string; previous_status?: string } }
+  | { type: "github_autofix_task_progress"; data: { task_id: string; workspace_path: string; message: string; percent?: number } }
+  | { type: "github_autofix_task_log"; data: { task_id: string; workspace_path: string; level: "info" | "warn" | "error"; message: string } }
+  | { type: "github_autofix_task_completed"; data: { task_id: string; workspace_path: string; pr_number?: number; error?: string } }
+  | { type: "github_autofix_task_cancelled"; data: { task_id: string; workspace_path: string } };
+
+/**
+ * Queue task summary for events
+ * All fields use snake_case naming convention
+ */
+export interface QueueTaskSummary {
+  id: string;
+  status: string;
+  agent_id: string;
+  created_at: number;
+  position?: number;
+}
+
+/**
+ * Queue status data for events
+ */
+export interface QueueStatusData {
+  pending_count: number;
+  running_count: number;
+  max_concurrency: number;
+  tasks: QueueTaskSummary[];
+}
 
 /**
  * Cron job data for events
@@ -283,6 +321,88 @@ export class EventService {
     this.broadcast({
       type: "error",
       data: { message, code },
+    });
+  }
+
+  // GitHub Auto-Fix Events
+
+  /**
+   * Broadcast GitHub auto-fix task created event
+   */
+  githubAutofixTaskCreated(task_id: string, workspace_path: string, issue_numbers: number[]): void {
+    this.broadcast({
+      type: "github_autofix_task_created",
+      data: { task_id, workspace_path, issue_numbers },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task status changed event
+   */
+  githubAutofixTaskStatusChanged(
+    task_id: string,
+    workspace_path: string,
+    status: string,
+    previous_status?: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_status_changed",
+      data: { task_id, workspace_path, status, previous_status },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task progress event
+   */
+  githubAutofixTaskProgress(
+    task_id: string,
+    workspace_path: string,
+    message: string,
+    percent?: number
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_progress",
+      data: { task_id, workspace_path, message, percent },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task log event
+   */
+  githubAutofixTaskLog(
+    task_id: string,
+    workspace_path: string,
+    level: "info" | "warn" | "error",
+    message: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_log",
+      data: { task_id, workspace_path, level, message },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task completed event
+   */
+  githubAutofixTaskCompleted(
+    task_id: string,
+    workspace_path: string,
+    pr_number?: number,
+    error?: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_completed",
+      data: { task_id, workspace_path, pr_number, error },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task cancelled event
+   */
+  githubAutofixTaskCancelled(task_id: string, workspace_path: string): void {
+    this.broadcast({
+      type: "github_autofix_task_cancelled",
+      data: { task_id, workspace_path },
     });
   }
 }

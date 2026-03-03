@@ -20,7 +20,8 @@ const ScrollArea = React.forwardRef<
   >
     <ScrollAreaPrimitive.Viewport
       ref={viewportRef}
-      className="h-full w-full min-w-0 rounded-[inherit] [&>div]:!w-full [&>div]:!min-w-0"
+      className="h-full w-full min-w-0 rounded-[inherit] [&>div]:!block [&>div]:!w-full [&>div]:!min-w-0"
+      style={{ overflowAnchor: "auto" }}
     >
       {children}
     </ScrollAreaPrimitive.Viewport>

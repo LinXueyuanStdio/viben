@@ -71,6 +71,11 @@ function snakeToPascal(str: string): string {
  * Map gateway event type to channel name
  */
 function eventToChannel(eventType: string): string {
+  // Queue events
+  if (eventType.startsWith("queue")) {
+    return "queue";
+  }
+
   // Cron events
   if (eventType.startsWith("cron")) {
     return "cron";
@@ -135,6 +140,7 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
     try {
       const websocket = await import("@fastify/websocket");
       await instance.register(websocket.default);
+      console.log("[Gateway] WebSocket routes registered at /ws");
 
       instance.get("/ws", { websocket: true }, (socket) => {
         // Create a session span that covers the entire WebSocket connection lifetime
@@ -282,9 +288,10 @@ export function registerWebSocketRoutes(fastify: FastifyInstance, state: AppStat
           activeWsConnectionCount = Math.max(0, activeWsConnectionCount - 1);
         });
       });
-    } catch {
+    } catch (error) {
       // WebSocket plugin not available, skip WebSocket route registration
       console.warn("[Gateway] @fastify/websocket not available, WebSocket routes disabled");
+      console.warn("[Gateway] WebSocket registration error:", error instanceof Error ? error.message : error);
     }
   });
 }

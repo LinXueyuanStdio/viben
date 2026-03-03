@@ -400,7 +400,7 @@ export function SettingsSandboxPage() {
           {/* Codex */}
           {!isProviderAvailable("codex") && (
             <div className="space-y-1">
-              <p className="text-sm font-medium">Codex CLI</p>
+              <p className="text-sm font-medium">{t("sandbox.codexCli")}</p>
               <code className="block bg-muted rounded-lg px-3 py-2 text-xs font-mono">
                 npm install -g @openai/codex
               </code>
@@ -410,7 +410,7 @@ export function SettingsSandboxPage() {
           {/* Claude Sandbox */}
           {!isProviderAvailable("claude") && (
             <div className="space-y-1">
-              <p className="text-sm font-medium">Claude Sandbox Runtime</p>
+              <p className="text-sm font-medium">{t("sandbox.claudeSandboxRuntime")}</p>
               <code className="block bg-muted rounded-lg px-3 py-2 text-xs font-mono">
                 npm install -g @anthropic-ai/sandbox-runtime
               </code>

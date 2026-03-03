@@ -119,3 +119,5 @@ export {
   type SandboxConfig,
 } from "./sandbox";
 
+// GitHub service
+export * from "./github";

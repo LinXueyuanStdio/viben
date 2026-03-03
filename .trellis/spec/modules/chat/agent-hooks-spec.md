@@ -37,7 +37,7 @@
 └─────────────────────────────┼────────────────────────────────┘
                               │ HTTP
 ┌─────────────────────────────▼────────────────────────────────┐
-│                    Gateway (Rust Backend)                     │
+│                    Gateway (packages/core)                    │
 ├──────────────────────────────────────────────────────────────┤
 │  /api/chat-list    - 聚合列表 (Group Chats + Executors + Agents)│
 │  /api/agents       - Agent CRUD 操作                          │
@@ -359,7 +359,7 @@ export interface AgentTemplate {
 
 ### Phase 1: Backend API
 
-1. 在 `crates/viben-core/src/gateway/routes/agents.rs` 添加 CRUD handlers
+1. 在 `packages/core/src/gateway/routes/agents.ts` 添加 CRUD handlers
 2. 添加 `/api/agents/default` 端点
 3. 添加 `/api/agents/templates` 端点
 4. 编写测试
@@ -389,7 +389,7 @@ export interface AgentTemplate {
 
 | File | Change |
 |------|--------|
-| `crates/viben-core/src/gateway/routes/agents.rs` | 添加 CRUD handlers |
+| `packages/core/src/gateway/routes/agents.ts` | 添加 CRUD handlers |
 | `apps/desktop/src/lib/gateway.ts` | 添加 GatewayClient 方法 |
 | `apps/desktop/src/hooks/use-workspace-resources.ts` | 增强 useAgents, useChatList |
 | `apps/desktop/src/hooks/index.ts` | 更新导出 |

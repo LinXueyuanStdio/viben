@@ -1,0 +1,33 @@
+name: Welcome
+
+on:
+  pull_request_target:
+    types: [opened]
+  issues:
+    types: [opened]
+
+jobs:
+  welcome:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/first-interaction@v3
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          issue_message: |
+            👋 Thanks for opening your first issue!
+
+            Make sure you've provided all the requested info.
+
+            A maintainer will triage this soon!
+          pr_message: |
+            🎉 Thanks for your first PR!
+
+            A maintainer will review it soon. Please make sure:
+            - Your branch is synced with `main`
+            - CI checks pass
+            - You've followed our [contribution guide](https://github.com/LinXueyuanStdio/Viben/blob/main/CONTRIBUTING.md)
+
+            Welcome to the Viben community!

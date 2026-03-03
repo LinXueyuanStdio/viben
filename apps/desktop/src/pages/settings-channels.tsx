@@ -1692,7 +1692,7 @@ export function SettingsChannelsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium">{webhookChannel.name}</p>
-                    <p className="text-xs text-muted-foreground">Telegram Bot</p>
+                    <p className="text-xs text-muted-foreground">{t("channels.telegramBot")}</p>
                   </div>
                 </div>
 

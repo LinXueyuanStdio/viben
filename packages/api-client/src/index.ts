@@ -71,4 +71,11 @@ export type {
   ApiKey,
   ApiKeysResponse,
   CreateApiKeyResponse,
+  // Authentication
+  UserSession,
+  LoginCredentials,
+  AuthResponse,
+  TokenValidationResponse,
+  OAuthProvider,
+  OAuthUrlOptions,
 } from './types';

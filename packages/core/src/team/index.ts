@@ -4,7 +4,7 @@
  * This module implements the `viben team init` command that generates
  * a complete AI-assisted development workflow structure.
  *
- * Templates are read from crates/viben-agent-organization/src/templates/
+ * Templates are read from packages/core/templates/
  * which already have all necessary transformations applied.
  */
 

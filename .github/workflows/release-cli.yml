@@ -32,7 +32,7 @@ jobs:
       tag: ${{ steps.get-version.outputs.tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Get version
         id: get-version
@@ -59,7 +59,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Update version in package.json
         run: |
@@ -133,10 +133,10 @@ jobs:
       sha256: ${{ steps.get-sha256.outputs.sha256 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
@@ -147,8 +147,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build CLI package
-        run: pnpm --filter viben build
+      - name: Build CLI package and dependencies
+        run: pnpm --filter viben... build
 
       - name: Update version in package.json
         run: |
@@ -182,7 +182,7 @@ jobs:
     if: ${{ (github.event_name == 'push' || inputs.update_homebrew == true) && needs.publish-npm.outputs.sha256 != '' }}
     steps:
       - name: Checkout homebrew-viben
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: LinXueyuanStdio/homebrew-viben
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}

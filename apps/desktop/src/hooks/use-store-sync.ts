@@ -10,9 +10,9 @@ import type { McpServerInstance, McpServerStatusInfo } from "@/types";
 const STORE_SYNC_EVENT = "store-sync-update";
 
 /** Debounce time for mcpServers changes (more important, shorter delay) */
-const DEBOUNCE_SERVERS = 300;
+const DEBOUNCE_SERVERS = 500;
 /** Debounce time for mcpServerStatuses changes (less critical, longer delay) */
-const DEBOUNCE_STATUSES = 1000;
+const DEBOUNCE_STATUSES = 5000;
 
 interface StoreSyncPayload {
   /** Timestamp when the update was made */
@@ -25,6 +25,7 @@ interface StoreSyncPayload {
 
 /**
  * MCP Servers state persisted to file
+ * This is the source of truth stored in ~/.viben/mcp-servers.json
  */
 interface McpServersFileState {
   mcpServers: McpServerInstance[];
@@ -35,30 +36,29 @@ interface McpServersFileState {
 /** Cache of last written content to avoid unnecessary writes */
 let lastWrittenContent: string | null = null;
 
+/** Flag to prevent save during initial load */
+let isInitialLoading = true;
+
 /**
- * Read MCP servers state from file
+ * Read MCP servers state from Gateway file
+ * Gateway stores data in ~/.viben/mcp-servers.json
  */
 async function readServersFromFile(): Promise<McpServersFileState | null> {
   try {
     const gateway = getGatewayClient();
     const config = await gateway.readMcpServersFile();
-    if (!config || Object.keys(config.mcpServers).length === 0) return null;
 
-    // The gateway returns the raw config, we need to parse it into our state format
-    const state: McpServersFileState = {
-      mcpServers: [],
-      mcpServerStatuses: {},
-      lastUpdated: Date.now(),
-    };
+    // Check if config has our state format (mcpServers as array)
+    const parsed = config as unknown as { mcpServers?: McpServerInstance[] | Record<string, unknown> };
 
-    // If the config has our state format, use it directly
-    if (config.mcpServers && Array.isArray((config as unknown as McpServersFileState).mcpServers)) {
-      const parsed = config as unknown as McpServersFileState;
-      lastWrittenContent = JSON.stringify(parsed);
-      return parsed;
+    if (parsed.mcpServers && Array.isArray(parsed.mcpServers)) {
+      const state = config as unknown as McpServersFileState;
+      lastWrittenContent = JSON.stringify(state);
+      return state;
     }
 
-    return state;
+    // Empty or invalid format
+    return null;
   } catch (err) {
     console.debug("Failed to read servers file:", err);
     return null;
@@ -66,10 +66,15 @@ async function readServersFromFile(): Promise<McpServersFileState | null> {
 }
 
 /**
- * Write MCP servers state to file (with content comparison)
+ * Write MCP servers state to Gateway file (with content comparison)
  * Returns true if write was performed, false if skipped
  */
 async function writeServersToFile(state: McpServersFileState): Promise<boolean> {
+  // Don't write during initial loading
+  if (isInitialLoading) {
+    return false;
+  }
+
   try {
     const content = JSON.stringify(state, null, 2);
 
@@ -79,7 +84,8 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
     }
 
     const gateway = getGatewayClient();
-    await gateway.writeMcpServersFile({ mcpServers: state as unknown as Record<string, unknown> });
+    // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
+    await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
     lastWrittenContent = content;
     return true;
   } catch (err) {
@@ -89,14 +95,15 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
 }
 
 /**
- * Hook to synchronize Zustand store across different Tauri windows
- * using file-based persistence (~/.viben/viben_servers.json)
+ * Hook to synchronize Zustand store with Gateway's mcp-servers.json
+ *
+ * The Gateway file (~/.viben/mcp-servers.json) is the single source of truth.
  *
  * This hook:
- * 1. Persists MCP servers state to a JSON file
- * 2. Emits events when the store changes
- * 3. Listens for events from other windows
- * 4. Reloads store data from file when notified
+ * 1. Loads MCP servers state from Gateway file on mount (always)
+ * 2. Persists changes back to Gateway file
+ * 3. Emits events when the store changes for cross-window sync
+ * 4. Listens for events from other windows
  */
 export function useStoreSync(windowType: "main" | "tray" = "main") {
   const {
@@ -105,7 +112,37 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
   } = useAppStore();
 
   const lastSyncRef = useRef<number>(0);
-  const isInitialMount = useRef(true);
+  const hasLoadedFromFile = useRef(false);
+
+  /**
+   * Load state from Gateway file into store
+   */
+  const loadFromFile = useCallback(async () => {
+    try {
+      const fileState = await readServersFromFile();
+
+      if (fileState) {
+        // Update MCP servers
+        if (fileState.mcpServers && Array.isArray(fileState.mcpServers)) {
+          useAppStore.setState({ mcpServers: fileState.mcpServers });
+        }
+
+        // Update MCP server statuses
+        if (fileState.mcpServerStatuses) {
+          useAppStore.setState({ mcpServerStatuses: fileState.mcpServerStatuses });
+        }
+      }
+
+      hasLoadedFromFile.current = true;
+      // Allow saves after initial load is complete
+      setTimeout(() => {
+        isInitialLoading = false;
+      }, 100);
+    } catch (err) {
+      console.debug("Failed to load from file:", err);
+      isInitialLoading = false;
+    }
+  }, []);
 
   /**
    * Save current state to file and emit update event
@@ -141,40 +178,6 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     [windowType]
   );
 
-  /**
-   * Reload store data from file
-   */
-  const reloadFromFile = useCallback(async () => {
-    try {
-      const fileState = await readServersFromFile();
-      if (!fileState) return;
-
-      const store = useAppStore.getState();
-
-      // Update MCP servers if changed
-      if (fileState.mcpServers) {
-        const currentJson = JSON.stringify(store.mcpServers);
-        const newJson = JSON.stringify(fileState.mcpServers);
-
-        if (currentJson !== newJson) {
-          useAppStore.setState({ mcpServers: fileState.mcpServers });
-        }
-      }
-
-      // Update MCP server statuses if changed
-      if (fileState.mcpServerStatuses) {
-        const currentJson = JSON.stringify(store.mcpServerStatuses);
-        const newJson = JSON.stringify(fileState.mcpServerStatuses);
-
-        if (currentJson !== newJson) {
-          useAppStore.setState({ mcpServerStatuses: fileState.mcpServerStatuses });
-        }
-      }
-    } catch (err) {
-      console.debug("Failed to reload from file:", err);
-    }
-  }, []);
-
   const serversTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statusesTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -202,15 +205,15 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     }, DEBOUNCE_STATUSES);
   }, [saveAndEmit]);
 
-  // Watch for mcpServers changes
+  // Load initial state from Gateway file on mount (always)
   useEffect(() => {
-    // Skip initial mount to avoid unnecessary sync
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      // But do load initial state from file for tray window
-      if (windowType === "tray") {
-        reloadFromFile();
-      }
+    loadFromFile();
+  }, [loadFromFile]);
+
+  // Watch for mcpServers changes and save to file
+  useEffect(() => {
+    // Skip if we haven't loaded from file yet
+    if (!hasLoadedFromFile.current) {
       return;
     }
 
@@ -221,11 +224,14 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
         clearTimeout(serversTimeoutRef.current);
       }
     };
-  }, [mcpServers, debouncedSaveServers, windowType, reloadFromFile]);
+  }, [mcpServers, debouncedSaveServers]);
 
   // Watch for mcpServerStatuses changes (with longer debounce)
   useEffect(() => {
-    if (isInitialMount.current) return;
+    // Skip if we haven't loaded from file yet
+    if (!hasLoadedFromFile.current) {
+      return;
+    }
 
     debouncedSaveStatuses();
 
@@ -253,7 +259,7 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
           lastSyncRef.current = event.payload.timestamp;
 
           // Reload store from file
-          reloadFromFile();
+          loadFromFile();
         });
         unlistenFns.push(unlistenSync);
       } catch (err) {
@@ -266,40 +272,17 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
     return () => {
       unlistenFns.forEach((unlisten) => unlisten());
     };
-  }, [windowType, reloadFromFile]);
-
-  // Load initial state from file on mount
-  useEffect(() => {
-    // For main window, only load if mcpServers is empty (first launch)
-    // For tray window, always load to get latest state
-    const loadInitial = async () => {
-      const fileState = await readServersFromFile();
-      if (fileState) {
-        const store = useAppStore.getState();
-
-        if (windowType === "tray" || store.mcpServers.length === 0) {
-          if (fileState.mcpServers) {
-            useAppStore.setState({ mcpServers: fileState.mcpServers });
-          }
-          if (fileState.mcpServerStatuses) {
-            useAppStore.setState({ mcpServerStatuses: fileState.mcpServerStatuses });
-          }
-        }
-      }
-    };
-
-    loadInitial();
-  }, [windowType]);
+  }, [windowType, loadFromFile]);
 
   return {
     saveAndEmit,
-    reloadFromFile,
+    reloadFromFile: loadFromFile,
   };
 }
 
 /**
  * Hook specifically for the main window
- * Automatically syncs store changes to file and other windows
+ * Automatically syncs store changes to Gateway file and other windows
  */
 export function useMainWindowStoreSync() {
   return useStoreSync("main");

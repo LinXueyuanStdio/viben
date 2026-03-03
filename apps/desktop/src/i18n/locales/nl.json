@@ -139,7 +139,34 @@
     "system": "Systeem",
     "language": "Taal",
     "storage": "Opslag",
-    "downloadPath": "Downloadpad"
+    "downloadPath": "Downloadpad",
+    "developerDescription": "Ontwikkelaarstools, debug-instellingen en probleemoplossing",
+    "developer": {
+      "devtools": "Ontwikkelaarstools",
+      "preferredIDE": "Voorkeurs-IDE",
+      "preferredIDEDescription": "Viben opent projecten in deze editor",
+      "preferredTerminal": "Voorkeursterminal",
+      "preferredTerminalDescription": "Viben opent terminalsessies hier",
+      "yoloMode": "YOLO-modus",
+      "yoloModeDescription": "Start executors met de --dangerously-skip-permissions vlag, omzeil alle veiligheidsprompts. Gebruik met uiterste voorzichtigheid.",
+      "yoloModeWarning": "Deze modus omzeilt het machtigingensysteem. Schakel alleen in als u de uitgevoerde code volledig vertrouwt.",
+      "debugLogs": "Debug & Logs",
+      "openLogsFolder": "Open Logs-map",
+      "openConfigFolder": "Open Config-map",
+      "copyDebugInfo": "Kopieer Debug-info",
+      "loadDebugInfo": "Laad Debug-info",
+      "systemInfo": "Systeeminformatie",
+      "paths": "Paden",
+      "noRecentErrors": "Geen recente fouten",
+      "reportingIssues": "Problemen melden",
+      "reportingIssuesDescription": "Bij het melden van bugs, klik op \"Kopieer Debug-info\" om systeeminformatie te krijgen die ons helpt het probleem te diagnosticeren.",
+      "os": "Besturingssysteem",
+      "osVersion": "Versie",
+      "appVersion": "App-versie",
+      "arch": "Architectuur",
+      "logs": "Logs",
+      "config": "Configuratie"
+    }
   },
   "about": {
     "title": "Viben",
@@ -777,8 +804,43 @@
     "skillsAvailable": "{{count}} skill update(s) available",
     "mixedAvailable": "{{mcpCount}} MCP and {{skillCount}} skill update(s)"
   },
+  "gateway": {
+    "host": "Host",
+    "hostDescription": "Hostadres waaraan de gateway-service is gebonden",
+    "portDescription": "Poortnummer waarop de gateway-service luistert (herstart vereist)",
+    "connectivityTestDescription": "Controleer de verbindingsstatus en beschikbare eindpunten van de gateway-service"
+  },
+  "observability": {
+    "allRoutes": "Alle routes",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Agent-uitvoering)",
+      "agents": "/api/agents (Agentbeheer)",
+      "workspaces": "/api/workspaces (Werkruimtes)",
+      "chat": "/api/chat (Chat)",
+      "groupChats": "/api/group-chats (Groepschats)"
+    }
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Sessie",
+        "config": "Configuratie",
+        "info": "Informatie",
+        "workspace": "Werkruimte",
+        "auth": "Authenticatie"
+      },
+      "sources": {
+        "builtin": "Ingebouwd",
+        "workspace": "Werkruimte",
+        "skill": "Vaardigheid"
+      }
+    }
+  },
   "workspace": {
     "workspaces": "Workspaces",
+    "addDescription": "Beschrijving toevoegen...",
+    "taskPromptWithDescription": "Help me alstublieft met deze taak:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Help me alstublieft met deze taak: {{title}}",
     "addWorkspace": "Add Workspace",
     "noWorkspaces": "No workspaces yet",
     "global": "Global",

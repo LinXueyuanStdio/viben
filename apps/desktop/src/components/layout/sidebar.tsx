@@ -4,7 +4,6 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Settings,
   SearchCode,
-  LogIn,
   Store,
   Sparkles,
   Server,
@@ -22,7 +21,9 @@ import {
   ChevronDown,
   Plus,
   Check,
-  Loader2,
+  ListTodo,
+  Trash2,
+  Github,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,17 +40,38 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { McpStatusIndicator } from "@/components/status/mcp-status-indicator";
 import { GatewayStatusIndicator } from "@/components/status/gateway-status-indicator";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
-import { UserMenu } from "@/components/auth/user-menu";
-import { LoginDialog } from "@/components/auth/login-dialog";
 import { Button } from "@/components/ui/button";
 import { SidebarSection } from "./sidebar-section";
 import { SidebarIconButton } from "./sidebar-icon-button";
 import { useLocalWorkspaces } from "@/hooks/use-workspaces";
+import { AddWorkspaceModal } from "@/components/workspace";
+import { WorkspaceSettingsDialog } from "@/components/workspace/workspace-settings-dialog";
+import { CreateTaskDialog } from "@/components/workspace/kanban/create-task-dialog";
+import type { CreateTaskData } from "@/components/workspace/kanban/create-task-dialog";
+import { createTask } from "@/lib/vibe-kanban/api";
+import { useAgents } from "@/hooks/use-workspace-resources";
+import { useModels } from "@/hooks/use-models";
+import { useGitHubAuth, useGitHubRepository } from "@/hooks/use-github";
+import { toast } from "@/hooks/use-toast";
+import type { AgentInfo, WorkspaceModel } from "@/lib/gateway";
 
 interface NavItem {
   titleKey: string;
@@ -88,13 +110,21 @@ interface WorkspaceNavItem {
   icon: React.ElementType;
 }
 
-const workspaceNavItems: WorkspaceNavItem[] = [
+// Base workspace navigation items (always visible)
+const baseWorkspaceNavItems: WorkspaceNavItem[] = [
   { titleKey: "workspace.chat", path: "chat", icon: MessageSquare },
   { titleKey: "workspace.kanban", path: "kanban", icon: LayoutDashboard },
   { titleKey: "workspace.scheduledTasks", path: "cron", icon: Clock },
   { titleKey: "workspace.sections.agents", path: "agents", icon: Bot },
   { titleKey: "workspace.files", path: "files", icon: FolderOpen },
 ];
+
+// GitHub navigation item (shown only when integrated)
+const githubNavItem: WorkspaceNavItem = {
+  titleKey: "workspace.github",
+  path: "github",
+  icon: Github,
+};
 
 const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
 
@@ -106,11 +136,19 @@ export function Sidebar() {
   const {
     workspaces,
     activeWorkspaceId,
-    addWorkspace,
     selectWorkspace,
+    removeWorkspace,
   } = useLocalWorkspaces();
 
-  const [isAdding, setIsAdding] = useState(false);
+  // Add Workspace Modal state
+  const [isAddWorkspaceModalOpen, setIsAddWorkspaceModalOpen] = useState(false);
+
+  // Delete workspace confirmation state
+  const [workspaceToDelete, setWorkspaceToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Workspace settings dialog state
+  const [workspaceToConfig, setWorkspaceToConfig] = useState<string | null>(null);
 
   // Get active workspace
   const activeWorkspace = workspaces.find(ws => ws.id === activeWorkspaceId);
@@ -128,24 +166,92 @@ export function Sidebar() {
 
   const toggleCollapsed = () => setCollapsed((prev) => !prev);
 
-  const handleAddWorkspace = async () => {
-    setIsAdding(true);
-    try {
-      const workspace = await addWorkspace();
-      if (workspace) {
-        selectWorkspace(workspace.id);
-        navigate(`/workspace/${workspace.id}/chat`);
-      }
-    } catch {
-      // Error handled in hook
-    } finally {
-      setIsAdding(false);
+  // Create Task Dialog state
+  const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+
+  // Load agents and models for task creation
+  const { agents, loading: isLoadingAgents } = useAgents({ workspacePath: activeWorkspace?.path });
+  const { models, loading: isLoadingModels } = useModels();
+
+  // Check GitHub integration status
+  const githubAuth = useGitHubAuth(activeWorkspace?.path ?? null);
+  const githubRepo = useGitHubRepository(activeWorkspace?.path ?? null);
+  const isGitHubIntegrated = !!(githubAuth.status?.authenticated && githubRepo.repository);
+
+  // Build workspace nav items based on GitHub integration status
+  const workspaceNavItems = React.useMemo(() => {
+    if (isGitHubIntegrated) {
+      // Insert GitHub after agents, before files
+      const items = [...baseWorkspaceNavItems];
+      const filesIndex = items.findIndex(item => item.path === "files");
+      items.splice(filesIndex, 0, githubNavItem);
+      return items;
     }
+    return baseWorkspaceNavItems;
+  }, [isGitHubIntegrated]);
+
+  const handleAddWorkspace = () => {
+    setIsAddWorkspaceModalOpen(true);
   };
 
   const handleSelectWorkspace = (workspaceId: string) => {
     selectWorkspace(workspaceId);
     navigate(`/workspace/${workspaceId}/chat`);
+  };
+
+  const handleConfigureWorkspace = (workspaceId: string) => {
+    setWorkspaceToConfig(workspaceId);
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspaceToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await removeWorkspace(workspaceToDelete.id);
+      toast.success(t("workspace.deleteSuccess"));
+      // If deleting active workspace, navigate to home
+      if (workspaceToDelete.id === activeWorkspaceId) {
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Failed to delete workspace:", error);
+      toast.error(t("workspace.deleteFailed"));
+    } finally {
+      setIsDeleting(false);
+      setWorkspaceToDelete(null);
+    }
+  };
+
+  // Handle create task submission
+  const handleCreateTask = async (data: CreateTaskData) => {
+    if (!activeWorkspace) {
+      toast.error(t("sidebar.noWorkspaceSelected"));
+      return;
+    }
+
+    setIsCreatingTask(true);
+    try {
+      await createTask({
+        title: data.title,
+        description: data.description,
+        workspace_path: activeWorkspace.path,
+        agent_id: data.agentId,
+        model_id: data.modelId,
+        branch: data.branch,
+        auto_start: data.autoStart,
+        status: "todo",
+      });
+      toast.success(t("sidebar.taskCreated"));
+      // Navigate to kanban board to see the new task
+      navigate(`/workspace/${activeWorkspaceId}/kanban`);
+    } catch (error) {
+      console.error("Failed to create task:", error);
+      toast.error(t("sidebar.taskCreateFailed"));
+    } finally {
+      setIsCreatingTask(false);
+    }
   };
 
   return (
@@ -174,7 +280,9 @@ export function Sidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">
-                {activeWorkspace?.name || t("sidebar.expand")}
+                {activeWorkspace?.type === "global"
+                  ? t("workspace.global")
+                  : (activeWorkspace?.name || t("sidebar.expand"))}
               </TooltipContent>
             </Tooltip>
           ) : (
@@ -189,36 +297,60 @@ export function Sidebar() {
                     <span className="flex items-center gap-2 truncate">
                       <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
                       <span className="truncate text-sm font-medium">
-                        {activeWorkspace?.name || t("workspace.noWorkspaces")}
+                        {activeWorkspace?.type === "global"
+                          ? t("workspace.global")
+                          : (activeWorkspace?.name || t("workspace.noWorkspaces"))}
                       </span>
                     </span>
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
+                <DropdownMenuContent align="start" className="w-56">
                   {workspaces.map((ws) => (
-                    <DropdownMenuItem
-                      key={ws.id}
-                      onClick={() => handleSelectWorkspace(ws.id)}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="truncate">{ws.name}</span>
-                      {ws.id === activeWorkspaceId && (
-                        <Check className="h-4 w-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
+                    <DropdownMenuSub key={ws.id}>
+                      <DropdownMenuSubTrigger
+                        className="flex items-center justify-between"
+                        onClick={(e) => {
+                          // Only switch workspace on direct click, not on hover
+                          if (e.detail > 0) {
+                            handleSelectWorkspace(ws.id);
+                          }
+                        }}
+                      >
+                        <span className="flex items-center gap-2 truncate flex-1">
+                          <span className="truncate">
+                            {ws.type === "global" ? t("workspace.global") : ws.name}
+                          </span>
+                          {ws.id === activeWorkspaceId && (
+                            <Check className="h-3 w-3 text-primary shrink-0" />
+                          )}
+                        </span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="w-40">
+                        <DropdownMenuItem
+                          onClick={() => handleConfigureWorkspace(ws.id)}
+                        >
+                          <Settings className="h-4 w-4 mr-2" />
+                          {t("workspace.configure")}
+                        </DropdownMenuItem>
+                        {ws.type !== "global" && (
+                          <DropdownMenuItem
+                            onClick={() => setWorkspaceToDelete({ id: ws.id, name: ws.name })}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t("workspace.delete")}
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
                   ))}
                   {workspaces.length > 0 && <DropdownMenuSeparator />}
                   <DropdownMenuItem
                     onClick={handleAddWorkspace}
-                    disabled={isAdding}
                     className="text-primary"
                   >
-                    {isAdding ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
+                    <Plus className="h-4 w-4 mr-2" />
                     {t("workspace.addWorkspace")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -382,7 +514,7 @@ export function Sidebar() {
           )}
         </ScrollArea>
 
-        {/* Bottom Status & Auth */}
+        {/* Bottom Status & New Task */}
         {collapsed ? (
           // Collapsed: all items use grid centering
           <div className="pb-4 flex flex-col gap-1">
@@ -406,29 +538,24 @@ export function Sidebar() {
               item={{ titleKey: "nav.settings", href: "/settings", icon: Settings }}
               collapsed={collapsed}
             />
+            {/* New Task Button */}
             <div className="grid place-items-center w-full">
-              {isAuthenticated ? (
-                <UserMenu collapsed={collapsed} />
-              ) : (
-                <LoginDialog
-                  trigger={
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-10 w-10"
-                        >
-                          <LogIn className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="right">
-                        {t("auth.signIn")}
-                      </TooltipContent>
-                    </Tooltip>
-                  }
-                />
-              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10"
+                    onClick={() => setIsCreateTaskOpen(true)}
+                    disabled={!activeWorkspace}
+                  >
+                    <ListTodo className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  {t("sidebar.newTask")}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
         ) : (
@@ -447,22 +574,79 @@ export function Sidebar() {
                 collapsed={collapsed}
               />
             </div>
-            <div className="mt-2">
-              {isAuthenticated ? (
-                <UserMenu collapsed={collapsed} />
-              ) : (
-                <LoginDialog
-                  trigger={
-                    <Button variant="outline" className="w-full">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      {t("auth.signIn")}
-                    </Button>
-                  }
-                />
-              )}
+            {/* New Task Button */}
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setIsCreateTaskOpen(true)}
+                disabled={!activeWorkspace}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("sidebar.newTask")}
+              </Button>
             </div>
           </div>
         )}
+
+        {/* Create Task Dialog */}
+        <CreateTaskDialog
+          open={isCreateTaskOpen}
+          onOpenChange={setIsCreateTaskOpen}
+          onSubmit={handleCreateTask}
+          isSubmitting={isCreatingTask}
+          availableAgents={agents.map((a: AgentInfo) => ({
+            id: a.id,
+            name: a.name,
+            description: a.description,
+          }))}
+          availableModels={models.map((m: WorkspaceModel) => ({
+            id: m.id,
+            name: m.name,
+            provider: m.provider,
+          }))}
+          isLoadingOptions={isLoadingAgents || isLoadingModels}
+        />
+
+        {/* Add Workspace Modal */}
+        <AddWorkspaceModal
+          open={isAddWorkspaceModalOpen}
+          onOpenChange={setIsAddWorkspaceModalOpen}
+        />
+
+        {/* Delete Workspace Confirmation Dialog */}
+        <AlertDialog
+          open={!!workspaceToDelete}
+          onOpenChange={(open) => !open && setWorkspaceToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t("workspace.deleteConfirmTitle")}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("workspace.deleteConfirmDescription", { name: workspaceToDelete?.name })}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteWorkspace}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? t("common.deleting") : t("common.delete")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Workspace Settings Dialog */}
+        <WorkspaceSettingsDialog
+          open={!!workspaceToConfig}
+          onOpenChange={(open) => !open && setWorkspaceToConfig(null)}
+          workspaceId={workspaceToConfig}
+        />
       </aside>
     </TooltipProvider>
   );

@@ -34,6 +34,7 @@ import {
   LogOut,
   ChevronDown,
 } from 'lucide-react';
+import { VibenLogo } from '@/components/shared/viben-logo';
 import type { AdminPermission, UserRole } from '@/lib/types/admin';
 import { ROLE_PERMISSIONS, ADMIN_ROLES } from '@/lib/types/admin';
 
@@ -128,7 +129,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-6">
         <Link href="/" className="flex items-center gap-2">
-          <Package className="h-6 w-6 text-primary" />
+          <VibenLogo size={24} />
           <span className="font-serif text-xl font-semibold">Viben</span>
         </Link>
       </div>

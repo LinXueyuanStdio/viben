@@ -1,0 +1,1066 @@
+/**
+ * MCP Inspector Proxy routes
+ *
+ * Provides HTTP API for proxying connections to MCP servers.
+ * Supports stdio, sse, and streamable-http transport types.
+ *
+ * Based on: https://github.com/modelcontextprotocol/inspector
+ */
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
+import { parse as shellParseArgs } from "shell-quote";
+import { randomUUID, randomBytes, timingSafeEqual } from "node:crypto";
+import { spawn } from "node:child_process";
+
+// MCP SDK imports
+import {
+  SSEClientTransport,
+  SseError,
+} from "@modelcontextprotocol/sdk/client/sse.js";
+import {
+  StdioClientTransport,
+  getDefaultEnvironment,
+} from "@modelcontextprotocol/sdk/client/stdio.js";
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError,
+} from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
+import { isJSONRPCRequest } from "@modelcontextprotocol/sdk/types.js";
+import { whichSync } from "../../executors/utils";
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface InspectorConfig {
+  defaultEnvironment: Record<string, string>;
+  defaultCommand: string;
+  defaultArgs: string;
+  defaultTransport: string;
+  defaultServerUrl: string;
+}
+
+interface SessionInfo {
+  sessionId: string;
+  transportType: string;
+  createdAt: Date;
+  serverConnected: boolean;
+}
+
+// ============================================================================
+// State
+// ============================================================================
+
+// Web app transports by web app sessionId
+const webAppTransports = new Map<string, Transport>();
+// Server Transports by web app sessionId
+const serverTransports = new Map<string, Transport>();
+// For dynamic header updates
+const sessionHeaderHolders = new Map<string, { headers: Record<string, string> }>();
+// Session metadata
+const sessionMetadata = new Map<string, SessionInfo>();
+
+// Auth token - use env var or generate
+const sessionToken =
+  process.env.MCP_PROXY_AUTH_TOKEN || randomBytes(32).toString("hex");
+const authDisabled = !!process.env.DANGEROUSLY_OMIT_AUTH;
+
+// Default environment for stdio transport
+const defaultEnvironment: Record<string, string> = {
+  ...getDefaultEnvironment(),
+  ...(process.env.MCP_ENV_VARS ? JSON.parse(process.env.MCP_ENV_VARS) : {}),
+};
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Error handlers for proxy connections
+ */
+function onClientError(error: Error) {
+  console.error("[MCP Inspector] Error from inspector client:", error);
+}
+
+function onServerError(error: Error) {
+  const errorCause = (error as any)?.cause;
+  if (errorCause && JSON.stringify(errorCause).includes("ECONNREFUSED")) {
+    console.error("[MCP Inspector] Connection refused. Is the MCP server running?");
+  } else if (error.message && error.message.includes("404")) {
+    console.error("[MCP Inspector] Error accessing endpoint (HTTP 404)");
+  } else {
+    console.error("[MCP Inspector] Error from MCP server:", error);
+  }
+}
+
+/**
+ * Bidirectional message proxy between client and server
+ */
+function mcpProxy({
+  transportToClient,
+  transportToServer,
+}: {
+  transportToClient: Transport;
+  transportToServer: Transport;
+}) {
+  let transportToClientClosed = false;
+  let transportToServerClosed = false;
+  let reportedServerSession = false;
+
+  transportToClient.onmessage = (message) => {
+    console.log("[MCP Inspector] Client -> Server message:", JSON.stringify(message).slice(0, 200));
+    transportToServer.send(message).catch((error) => {
+      console.error("[MCP Inspector] Error sending to server:", error);
+      // Send error response back to client if it was a request (has id) and connection is still open
+      if (isJSONRPCRequest(message) && !transportToClientClosed) {
+        const errorCause = (error as any)?.cause;
+        const errorResponse = {
+          jsonrpc: "2.0" as const,
+          id: message.id,
+          error: {
+            code: -32001,
+            message: errorCause
+              ? `${error.message} (cause: ${errorCause})`
+              : error.message,
+            data: error,
+          },
+        };
+        transportToClient.send(errorResponse).catch(onClientError);
+      }
+    });
+  };
+
+  transportToServer.onmessage = (message) => {
+    console.log("[MCP Inspector] Server -> Client message:", JSON.stringify(message).slice(0, 200));
+    if (!reportedServerSession) {
+      if (transportToServer.sessionId) {
+        // Can only report for StreamableHttp
+        console.log(
+          "[MCP Inspector] Proxy <-> Server sessionId: " + transportToServer.sessionId
+        );
+      }
+      reportedServerSession = true;
+    }
+    transportToClient.send(message).catch(onClientError);
+  };
+
+  transportToClient.onclose = () => {
+    if (transportToServerClosed) {
+      return;
+    }
+    transportToClientClosed = true;
+    transportToServer.close().catch(onServerError);
+  };
+
+  transportToServer.onclose = () => {
+    if (transportToClientClosed) {
+      return;
+    }
+    transportToServerClosed = true;
+    transportToClient.close().catch(onClientError);
+  };
+
+  transportToClient.onerror = onClientError;
+  transportToServer.onerror = onServerError;
+}
+
+/**
+ * Detect 401 Unauthorized errors from various transport types
+ */
+function is401Error(error: unknown): boolean {
+  if (error instanceof SseError && error.code === 401) return true;
+  if (error instanceof StreamableHTTPError && error.code === 401) return true;
+  if (
+    error instanceof Error &&
+    (error.message.includes("HTTP 401") || error.message.includes("(401)"))
+  )
+    return true;
+  return false;
+}
+
+/**
+ * Get HTTP headers to forward to MCP server
+ */
+function getHttpHeaders(request: FastifyRequest): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  // Iterate over all headers in the request
+  for (const key in request.headers) {
+    const lowerKey = key.toLowerCase();
+
+    // Check if the header is one we want to forward
+    if (
+      lowerKey.startsWith("mcp-") ||
+      lowerKey === "authorization" ||
+      lowerKey === "last-event-id"
+    ) {
+      // Exclude the proxy's own authentication header and the Client <-> Proxy session ID header
+      if (lowerKey !== "x-mcp-proxy-auth" && lowerKey !== "mcp-session-id") {
+        const value = request.headers[key];
+
+        if (typeof value === "string") {
+          headers[key] = value;
+        } else if (Array.isArray(value)) {
+          const lastValue = value.at(-1);
+          if (lastValue !== undefined) {
+            headers[key] = lastValue;
+          }
+        }
+      }
+    }
+  }
+
+  // Handle the custom auth header separately
+  const customAuthHeaderName = request.headers["x-custom-auth-header"];
+  if (typeof customAuthHeaderName === "string") {
+    const lowerCaseHeaderName = customAuthHeaderName.toLowerCase();
+    const value = request.headers[lowerCaseHeaderName];
+
+    if (typeof value === "string") {
+      headers[customAuthHeaderName] = value;
+    } else if (Array.isArray(value)) {
+      const lastValue = value.at(-1);
+      if (lastValue !== undefined) {
+        headers[customAuthHeaderName] = lastValue;
+      }
+    }
+  }
+
+  // Handle multiple custom headers (new approach)
+  if (request.headers["x-custom-auth-headers"] !== undefined) {
+    try {
+      const customHeaderNames = JSON.parse(
+        request.headers["x-custom-auth-headers"] as string
+      ) as string[];
+      if (Array.isArray(customHeaderNames)) {
+        customHeaderNames.forEach((headerName) => {
+          const lowerCaseHeaderName = headerName.toLowerCase();
+          if (request.headers[lowerCaseHeaderName] !== undefined) {
+            const value = request.headers[lowerCaseHeaderName];
+            headers[headerName] = Array.isArray(value)
+              ? value[value.length - 1]!
+              : (value as string);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("[MCP Inspector] Failed to parse x-custom-auth-headers:", error);
+    }
+  }
+  return headers;
+}
+
+/**
+ * Updates a headers object in-place, preserving the original Accept header
+ */
+function updateHeadersInPlace(
+  currentHeaders: Record<string, string>,
+  newHeaders: Record<string, string>
+) {
+  // Preserve the Accept header
+  const accept = currentHeaders["Accept"];
+
+  // Clear the old headers and apply the new ones
+  Object.keys(currentHeaders).forEach((key) => delete currentHeaders[key]);
+  Object.assign(currentHeaders, newHeaders);
+
+  // Restore the Accept header
+  if (accept) {
+    currentHeaders["Accept"] = accept;
+  }
+}
+
+/**
+ * Creates a `fetch` function that merges dynamic session headers
+ */
+function createCustomFetch(headerHolder: { headers: Record<string, string> }) {
+  return async (
+    input: string | URL | Request,
+    init?: RequestInit
+  ): Promise<Response> => {
+    // Determine the headers from the original request/init
+    const originalHeaders =
+      input instanceof Request ? input.headers : init?.headers;
+
+    // Start with our dynamic session headers
+    const finalHeaders = new Headers(headerHolder.headers);
+
+    // Merge the SDK's request-specific headers
+    new Headers(originalHeaders).forEach((value, key) => {
+      finalHeaders.set(key, value);
+    });
+
+    // Convert Headers to a plain object
+    const headersObject: Record<string, string> = {};
+    finalHeaders.forEach((value, key) => {
+      headersObject[key] = value;
+    });
+
+    const response = await fetch(input, { ...init, headers: headersObject });
+    return response;
+  };
+}
+
+/**
+ * Find actual executable path
+ */
+function findActualExecutable(
+  command: string,
+  args: string[]
+): { cmd: string; args: string[] } {
+  // Handle npx specially
+  if (command === "npx") {
+    const npxPath = whichSync("npx");
+    return { cmd: npxPath || command, args };
+  }
+
+  // Handle node/bun/deno etc.
+  const resolved = whichSync(command);
+  return { cmd: resolved || command, args };
+}
+
+/**
+ * Create transport based on query parameters
+ */
+async function createTransport(
+  request: FastifyRequest<{
+    Querystring: {
+      transportType?: string;
+      command?: string;
+      args?: string;
+      env?: string;
+      url?: string;
+    };
+  }>
+): Promise<{
+  transport: Transport;
+  headerHolder?: { headers: Record<string, string> };
+}> {
+  const query = request.query;
+  console.log("[MCP Inspector] Query parameters:", JSON.stringify(query));
+
+  const transportType = query.transportType;
+
+  if (transportType === "stdio") {
+    const command = (query.command || "").trim();
+    const origArgs = shellParseArgs(query.args || "") as string[];
+    const queryEnv = query.env ? JSON.parse(query.env) : {};
+    const env = { ...defaultEnvironment, ...process.env, ...queryEnv };
+
+    const { cmd, args } = findActualExecutable(command, origArgs);
+
+    console.log(`[MCP Inspector] STDIO transport: command=${cmd}, args=${args}`);
+
+    const transport = new StdioClientTransport({
+      command: cmd,
+      args,
+      env,
+      stderr: "pipe",
+    });
+
+    await transport.start();
+    return { transport };
+  } else if (transportType === "sse") {
+    const url = query.url || "";
+
+    const headers = getHttpHeaders(request);
+    headers["Accept"] = "text/event-stream";
+    const headerHolder = { headers };
+
+    console.log(
+      `[MCP Inspector] SSE transport: url=${url}, headers=${JSON.stringify(headers)}`
+    );
+
+    const transport = new SSEClientTransport(new URL(url), {
+      eventSourceInit: {
+        fetch: createCustomFetch(headerHolder),
+      },
+      requestInit: {
+        headers: headerHolder.headers,
+      },
+    });
+    await transport.start();
+    return { transport, headerHolder };
+  } else if (transportType === "streamable-http") {
+    const headers = getHttpHeaders(request);
+    headers["Accept"] = "text/event-stream, application/json";
+    const headerHolder = { headers };
+
+    console.log(
+      `[MCP Inspector] StreamableHttp transport: url=${query.url}, headers=${JSON.stringify(headers)}`
+    );
+
+    const transport = new StreamableHTTPClientTransport(
+      new URL(query.url || ""),
+      {
+        fetch: createCustomFetch(headerHolder),
+      }
+    );
+    await transport.start();
+    return { transport, headerHolder };
+  } else {
+    console.error(`[MCP Inspector] Invalid transport type: ${transportType}`);
+    throw new Error("Invalid transport type specified");
+  }
+}
+
+/**
+ * Set CORS headers on raw response
+ * Required when using request.raw/reply.raw which bypass Fastify's CORS middleware
+ */
+function setCorsHeaders(request: FastifyRequest, reply: FastifyReply): void {
+  const origin = request.headers.origin || "*";
+  reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+  reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, Accept, X-MCP-Proxy-Auth, MCP-Session-Id, X-Custom-Auth-Header, X-Custom-Auth-Headers, Last-Event-Id, mcp-protocol-version"
+  );
+  reply.raw.setHeader("Access-Control-Expose-Headers", "MCP-Session-Id, mcp-protocol-version");
+  reply.raw.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+  );
+}
+
+/**
+ * Authentication middleware
+ */
+function checkAuth(request: FastifyRequest, reply: FastifyReply): boolean {
+  if (authDisabled) {
+    return true;
+  }
+
+  const authHeader = request.headers["x-mcp-proxy-auth"];
+  const authHeaderValue = Array.isArray(authHeader) ? authHeader[0] : authHeader;
+
+  if (!authHeaderValue || !authHeaderValue.startsWith("Bearer ")) {
+    reply.code(401).send({
+      error: "Unauthorized",
+      message:
+        "Authentication required. Use the session token shown in the console when starting the server.",
+    });
+    return false;
+  }
+
+  const providedToken = authHeaderValue.substring(7); // Remove 'Bearer ' prefix
+  const expectedToken = sessionToken;
+
+  // Convert to buffers for timing-safe comparison
+  const providedBuffer = Buffer.from(providedToken);
+  const expectedBuffer = Buffer.from(expectedToken);
+
+  // Check length first to prevent timing attacks
+  if (providedBuffer.length !== expectedBuffer.length) {
+    reply.code(401).send({
+      error: "Unauthorized",
+      message: "Invalid authentication token.",
+    });
+    return false;
+  }
+
+  // Perform timing-safe comparison
+  if (!timingSafeEqual(providedBuffer, expectedBuffer)) {
+    reply.code(401).send({
+      error: "Unauthorized",
+      message: "Invalid authentication token.",
+    });
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get session token (for development/testing)
+ */
+export function getMcpInspectorSessionToken(): string {
+  return sessionToken;
+}
+
+/**
+ * Check if auth is disabled
+ */
+export function isMcpInspectorAuthDisabled(): boolean {
+  return authDisabled;
+}
+
+// ============================================================================
+// Route Registration
+// ============================================================================
+
+/**
+ * Register MCP Inspector Proxy routes
+ */
+export function registerMcpInspectorRoutes(fastify: FastifyInstance): void {
+  // Log startup info
+  console.log("[MCP Inspector] Registering routes...");
+  if (!authDisabled) {
+    console.log(`[MCP Inspector] Session token: ${sessionToken}`);
+    console.log(
+      "[MCP Inspector] Use this token in x-mcp-proxy-auth header or set DANGEROUSLY_OMIT_AUTH=true to disable auth"
+    );
+  } else {
+    console.log(
+      "[MCP Inspector] WARNING: Authentication is disabled. This is not recommended."
+    );
+  }
+
+  // Custom content type parser for MCP Inspector routes
+  // Parse JSON and pass the parsed object to handleRequest (like Express does)
+  fastify.addContentTypeParser(
+    "application/json",
+    { parseAs: "buffer" },
+    (_request, payload, done) => {
+      try {
+        const parsed = JSON.parse(payload.toString("utf-8"));
+        done(null, parsed);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    }
+  );
+
+  // ========================================================================
+  // Health & Config
+  // ========================================================================
+
+  /**
+   * Health check
+   * GET /api/mcp/inspector/health
+   */
+  fastify.get("/api/mcp/inspector/health", async () => {
+    return {
+      status: "ok",
+      sessions: webAppTransports.size,
+    };
+  });
+
+  /**
+   * Configuration
+   * GET /api/mcp/inspector/config
+   */
+  fastify.get("/api/mcp/inspector/config", async (request, reply) => {
+    if (!checkAuth(request, reply)) return;
+
+    return {
+      defaultEnvironment,
+      defaultCommand: "",
+      defaultArgs: "",
+      defaultTransport: "",
+      defaultServerUrl: "",
+      authRequired: !authDisabled,
+    } satisfies InspectorConfig & { authRequired: boolean };
+  });
+
+  /**
+   * Get session token (dev only)
+   * GET /api/mcp/inspector/token
+   */
+  fastify.get("/api/mcp/inspector/token", async () => {
+    if (authDisabled) {
+      return { token: null, authDisabled: true };
+    }
+    return { token: sessionToken, authDisabled: false };
+  });
+
+  // ========================================================================
+  // Session Management
+  // ========================================================================
+
+  /**
+   * List active sessions
+   * GET /api/mcp/inspector/sessions
+   */
+  fastify.get("/api/mcp/inspector/sessions", async (request, reply) => {
+    if (!checkAuth(request, reply)) return;
+
+    const sessions: SessionInfo[] = [];
+    for (const [sessionId, metadata] of sessionMetadata) {
+      sessions.push(metadata);
+    }
+
+    return {
+      sessions,
+      total: sessions.length,
+    };
+  });
+
+  /**
+   * Close a session
+   * DELETE /api/mcp/inspector/sessions/:sessionId
+   */
+  fastify.delete<{ Params: { sessionId: string } }>(
+    "/api/mcp/inspector/sessions/:sessionId",
+    async (request, reply) => {
+      if (!checkAuth(request, reply)) return;
+
+      const { sessionId } = request.params;
+
+      const webTransport = webAppTransports.get(sessionId);
+      const serverTransport = serverTransports.get(sessionId);
+
+      if (!webTransport && !serverTransport) {
+        reply.code(404);
+        return { error: "Session not found" };
+      }
+
+      try {
+        if (serverTransport) {
+          await serverTransport.close();
+        }
+        if (webTransport) {
+          await webTransport.close();
+        }
+
+        webAppTransports.delete(sessionId);
+        serverTransports.delete(sessionId);
+        sessionHeaderHolders.delete(sessionId);
+        sessionMetadata.delete(sessionId);
+
+        return { deleted: sessionId };
+      } catch (e) {
+        reply.code(500);
+        return { error: e instanceof Error ? e.message : "Failed to close session" };
+      }
+    }
+  );
+
+  // ========================================================================
+  // StreamableHTTP Transport Proxy (/mcp)
+  // ========================================================================
+
+  /**
+   * StreamableHTTP GET - Handle SSE stream for existing session
+   * GET /api/mcp/inspector/mcp
+   */
+  fastify.get<{
+    Querystring: {
+      transportType?: string;
+      command?: string;
+      args?: string;
+      env?: string;
+      url?: string;
+    };
+  }>("/api/mcp/inspector/mcp", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    const sessionId = request.headers["mcp-session-id"] as string;
+    console.log(`[MCP Inspector] Received GET message for sessionId ${sessionId}`);
+
+    const headerHolder = sessionHeaderHolders.get(sessionId);
+    if (headerHolder) {
+      updateHeadersInPlace(
+        headerHolder.headers as Record<string, string>,
+        getHttpHeaders(request)
+      );
+    }
+
+    try {
+      const transport = webAppTransports.get(sessionId) as StreamableHTTPServerTransport;
+      if (!transport) {
+        reply.code(404);
+        return { error: "Session not found" };
+      }
+
+      // Handle as raw HTTP for SSE streaming
+      await transport.handleRequest(request.raw, reply.raw);
+    } catch (error) {
+      console.error("[MCP Inspector] Error in GET /mcp route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  /**
+   * StreamableHTTP POST - Initialize new session or send message to existing
+   * POST /api/mcp/inspector/mcp
+   */
+  fastify.post<{
+    Querystring: {
+      transportType?: string;
+      command?: string;
+      args?: string;
+      env?: string;
+      url?: string;
+    };
+  }>("/api/mcp/inspector/mcp", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    const sessionId = request.headers["mcp-session-id"] as string | undefined;
+
+    if (sessionId) {
+      // Existing session
+      console.log(`[MCP Inspector] Received POST message for sessionId ${sessionId}`);
+      const headerHolder = sessionHeaderHolders.get(sessionId);
+      if (headerHolder) {
+        updateHeadersInPlace(
+          headerHolder.headers as Record<string, string>,
+          getHttpHeaders(request)
+        );
+      }
+
+      try {
+        const transport = webAppTransports.get(sessionId) as StreamableHTTPServerTransport;
+        if (!transport) {
+          reply.code(404);
+          return { error: "Transport not found for sessionId " + sessionId };
+        }
+
+        // Pass body to handleRequest (like Express version)
+        await transport.handleRequest(request.raw, reply.raw, request.body);
+      } catch (error) {
+        console.error("[MCP Inspector] Error in POST /mcp route:", error);
+        reply.code(500);
+        return { error: error instanceof Error ? error.message : "Internal error" };
+      }
+    } else {
+      // New connection
+      console.log("[MCP Inspector] New StreamableHttp connection request");
+      try {
+        const { transport: serverTransport, headerHolder } = await createTransport(request);
+
+        const webAppTransport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: randomUUID,
+          onsessioninitialized: (newSessionId) => {
+            webAppTransports.set(newSessionId, webAppTransport);
+            serverTransports.set(newSessionId, serverTransport);
+            if (headerHolder) {
+              sessionHeaderHolders.set(newSessionId, headerHolder);
+            }
+            sessionMetadata.set(newSessionId, {
+              sessionId: newSessionId,
+              transportType: "streamable-http",
+              createdAt: new Date(),
+              serverConnected: true,
+            });
+            console.log("[MCP Inspector] Client <-> Proxy sessionId: " + newSessionId);
+          },
+          onsessionclosed: (closedSessionId) => {
+            webAppTransports.delete(closedSessionId);
+            serverTransports.delete(closedSessionId);
+            sessionHeaderHolders.delete(closedSessionId);
+            sessionMetadata.delete(closedSessionId);
+          },
+        });
+        console.log("[MCP Inspector] Created StreamableHttp client transport");
+
+        await webAppTransport.start();
+
+        mcpProxy({
+          transportToClient: webAppTransport,
+          transportToServer: serverTransport,
+        });
+
+        // Pass body to handleRequest (like Express version)
+        await webAppTransport.handleRequest(request.raw, reply.raw, request.body);
+      } catch (error) {
+        if (is401Error(error)) {
+          console.error(
+            "[MCP Inspector] Received 401 Unauthorized from MCP server:",
+            error instanceof Error ? error.message : error
+          );
+          reply.code(401);
+          return { error: "Unauthorized from MCP server" };
+        }
+        console.error("[MCP Inspector] Error in POST /mcp route:", error);
+        reply.code(500);
+        return { error: error instanceof Error ? error.message : "Internal error" };
+      }
+    }
+  });
+
+  /**
+   * StreamableHTTP DELETE - Terminate session
+   * DELETE /api/mcp/inspector/mcp
+   */
+  fastify.delete("/api/mcp/inspector/mcp", async (request, reply) => {
+    if (!checkAuth(request, reply)) return;
+
+    const sessionId = request.headers["mcp-session-id"] as string | undefined;
+    console.log(`[MCP Inspector] Received DELETE message for sessionId ${sessionId}`);
+
+    if (sessionId) {
+      try {
+        const serverTransport = serverTransports.get(sessionId) as StreamableHTTPClientTransport;
+        if (!serverTransport) {
+          reply.code(404);
+          return { error: "Transport not found for sessionId " + sessionId };
+        }
+
+        await serverTransport.terminateSession();
+        await serverTransport.close();
+        webAppTransports.delete(sessionId);
+        serverTransports.delete(sessionId);
+        sessionHeaderHolders.delete(sessionId);
+        sessionMetadata.delete(sessionId);
+        console.log(`[MCP Inspector] Transports removed for sessionId ${sessionId}`);
+
+        reply.code(200);
+        return { deleted: sessionId };
+      } catch (error) {
+        console.error("[MCP Inspector] Error in DELETE /mcp route:", error);
+        reply.code(500);
+        return { error: error instanceof Error ? error.message : "Internal error" };
+      }
+    }
+
+    reply.code(400);
+    return { error: "mcp-session-id header required" };
+  });
+
+  // ========================================================================
+  // STDIO Transport Proxy (/stdio)
+  // ========================================================================
+
+  /**
+   * STDIO transport - SSE endpoint
+   * GET /api/mcp/inspector/stdio
+   */
+  fastify.get<{
+    Querystring: {
+      transportType?: string;
+      command?: string;
+      args?: string;
+      env?: string;
+      proxyFullAddress?: string;
+    };
+  }>("/api/mcp/inspector/stdio", async (request, reply) => {
+    // Set CORS headers for raw response handling (SSE)
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    try {
+      console.log("[MCP Inspector] New STDIO connection request");
+      const { transport: serverTransport } = await createTransport(request);
+
+      const proxyFullAddress = request.query.proxyFullAddress || "";
+      const prefix = proxyFullAddress || "";
+      const endpoint = `${prefix}/api/mcp/inspector/message`;
+
+      const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
+      webAppTransports.set(webAppTransport.sessionId, webAppTransport);
+      console.log("[MCP Inspector] Created client transport");
+
+      serverTransports.set(webAppTransport.sessionId, serverTransport);
+      sessionMetadata.set(webAppTransport.sessionId, {
+        sessionId: webAppTransport.sessionId,
+        transportType: "stdio",
+        createdAt: new Date(),
+        serverConnected: true,
+      });
+      console.log("[MCP Inspector] Created server transport");
+
+      await webAppTransport.start();
+
+      // Handle stderr from STDIO transport
+      const stdioTransport = serverTransport as StdioClientTransport;
+      if (stdioTransport.stderr) {
+        stdioTransport.stderr.on("data", (chunk: Buffer) => {
+          const message = chunk.toString().trim();
+          const ucMsg = message.toUpperCase();
+
+          if (message.includes("MODULE_NOT_FOUND")) {
+            // Server command not found, remove transports
+            webAppTransport.send({
+              jsonrpc: "2.0",
+              method: "notifications/message",
+              params: {
+                level: "emergency",
+                logger: "proxy",
+                data: {
+                  message: "Command not found, transports removed",
+                },
+              },
+            });
+            webAppTransport.close();
+            serverTransport.close();
+            webAppTransports.delete(webAppTransport.sessionId);
+            serverTransports.delete(webAppTransport.sessionId);
+            sessionHeaderHolders.delete(webAppTransport.sessionId);
+            sessionMetadata.delete(webAppTransport.sessionId);
+            console.error("[MCP Inspector] Command not found, transports removed");
+          } else {
+            // Determine log level based on content
+            let level: string;
+            if (ucMsg.includes("DEBUG")) {
+              level = "debug";
+            } else if (ucMsg.includes("INFO")) {
+              level = "info";
+            } else if (ucMsg.includes("NOTICE")) {
+              level = "notice";
+            } else if (ucMsg.includes("WARN")) {
+              level = "warning";
+            } else if (ucMsg.includes("ERROR")) {
+              level = "error";
+            } else if (ucMsg.includes("CRITICAL")) {
+              level = "critical";
+            } else if (ucMsg.includes("ALERT")) {
+              level = "alert";
+            } else if (ucMsg.includes("EMERGENCY") || ucMsg.includes("SIG")) {
+              level = "emergency";
+            } else {
+              level = "info";
+            }
+
+            webAppTransport.send({
+              jsonrpc: "2.0",
+              method: "notifications/message",
+              params: {
+                level,
+                logger: "stdio",
+                data: { message },
+              },
+            });
+          }
+        });
+      }
+
+      mcpProxy({
+        transportToClient: webAppTransport,
+        transportToServer: serverTransport,
+      });
+
+      // Keep connection open - SSE will handle the response
+    } catch (error) {
+      if (is401Error(error)) {
+        console.error("[MCP Inspector] Received 401 Unauthorized from MCP server");
+        reply.code(401);
+        return { error: "Unauthorized from MCP server" };
+      }
+      console.error("[MCP Inspector] Error in /stdio route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  // ========================================================================
+  // SSE Transport Proxy (/sse)
+  // ========================================================================
+
+  /**
+   * SSE transport - SSE endpoint
+   * GET /api/mcp/inspector/sse
+   */
+  fastify.get<{
+    Querystring: {
+      transportType?: string;
+      url?: string;
+      proxyFullAddress?: string;
+    };
+  }>("/api/mcp/inspector/sse", async (request, reply) => {
+    // Set CORS headers for raw response handling (SSE)
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    try {
+      console.log(
+        "[MCP Inspector] New SSE connection request. NOTE: The SSE transport is deprecated and has been replaced by StreamableHttp"
+      );
+      const { transport: serverTransport, headerHolder } = await createTransport(request);
+
+      const proxyFullAddress = request.query.proxyFullAddress || "";
+      const prefix = proxyFullAddress || "";
+      const endpoint = `${prefix}/api/mcp/inspector/message`;
+
+      const webAppTransport = new SSEServerTransport(endpoint, reply.raw);
+      webAppTransports.set(webAppTransport.sessionId, webAppTransport);
+      console.log("[MCP Inspector] Created client transport");
+
+      serverTransports.set(webAppTransport.sessionId, serverTransport);
+      if (headerHolder) {
+        sessionHeaderHolders.set(webAppTransport.sessionId, headerHolder);
+      }
+      sessionMetadata.set(webAppTransport.sessionId, {
+        sessionId: webAppTransport.sessionId,
+        transportType: "sse",
+        createdAt: new Date(),
+        serverConnected: true,
+      });
+      console.log("[MCP Inspector] Created server transport");
+
+      await webAppTransport.start();
+
+      mcpProxy({
+        transportToClient: webAppTransport,
+        transportToServer: serverTransport,
+      });
+
+      // Keep connection open - SSE will handle the response
+    } catch (error) {
+      if (is401Error(error)) {
+        console.error("[MCP Inspector] Received 401 Unauthorized from MCP server");
+        reply.code(401);
+        return { error: "Unauthorized from MCP server" };
+      } else if (error instanceof SseError && error.code === 404) {
+        console.error("[MCP Inspector] Received 404 from MCP server. Does it support SSE?");
+        reply.code(404);
+        return { error: "MCP server does not support SSE" };
+      } else if (JSON.stringify(error).includes("ECONNREFUSED")) {
+        console.error("[MCP Inspector] Connection refused. Is the MCP server running?");
+        reply.code(500);
+        return { error: "Connection refused" };
+      }
+      console.error("[MCP Inspector] Error in /sse route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+
+  // ========================================================================
+  // Message Endpoint (/message)
+  // ========================================================================
+
+  /**
+   * Message endpoint for SSE/STDIO transports
+   * POST /api/mcp/inspector/message
+   */
+  fastify.post<{
+    Querystring: { sessionId?: string };
+  }>("/api/mcp/inspector/message", async (request, reply) => {
+    // Set CORS headers for raw response handling
+    setCorsHeaders(request, reply);
+
+    if (!checkAuth(request, reply)) return;
+
+    try {
+      const sessionId = request.query.sessionId;
+      console.log(`[MCP Inspector] Received POST message for sessionId ${sessionId}`);
+
+      if (!sessionId) {
+        reply.code(400);
+        return { error: "sessionId query parameter required" };
+      }
+
+      const headerHolder = sessionHeaderHolders.get(sessionId);
+      if (headerHolder) {
+        updateHeadersInPlace(
+          headerHolder.headers as Record<string, string>,
+          getHttpHeaders(request)
+        );
+      }
+
+      const transport = webAppTransports.get(sessionId) as SSEServerTransport;
+      if (!transport) {
+        reply.code(404);
+        return { error: "Session not found" };
+      }
+
+      await transport.handlePostMessage(request.raw, reply.raw);
+    } catch (error) {
+      console.error("[MCP Inspector] Error in /message route:", error);
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Internal error" };
+    }
+  });
+}

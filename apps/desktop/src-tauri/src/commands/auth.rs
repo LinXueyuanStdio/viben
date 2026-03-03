@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::sync::Mutex;
 use tauri::{AppHandle, State};
 
-use super::api_client::ApiClientState;
+use super::common::ApiClientState;
 
 /// User session data returned from authentication
 #[derive(Debug, Clone, Serialize, Deserialize)]

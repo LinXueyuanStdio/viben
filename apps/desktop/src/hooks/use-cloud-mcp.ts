@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { invoke } from "@tauri-apps/api/core";
+import { getClient } from "@/lib/viben";
 
 // ============================================================================
 // Types
@@ -33,7 +33,7 @@ export interface CloudMcpPackage {
   ratingAvg: number;
   author: CloudPackageAuthor | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt: string | undefined;
 }
 
 /**
@@ -155,17 +155,39 @@ export function useCloudMcpPackages(
     setError(null);
 
     try {
-      const response = await invoke<CloudMcpListResponse>(
-        "list_cloud_mcp_packages",
-        {
-          page,
-          limit,
-          category: category ?? null,
-          sort: sort ?? null,
-        }
-      );
+      const client = getClient();
+      const response = await client.mcp.list({
+        page,
+        limit,
+        category: category ?? undefined,
+        sort: sort ?? undefined,
+      });
 
-      setPackages(response.data);
+      // Map response to CloudMcpPackage format
+      const mappedPackages: CloudMcpPackage[] = response.data.map((pkg) => ({
+        id: pkg.id,
+        name: pkg.name,
+        slug: pkg.slug,
+        version: pkg.version,
+        description: pkg.description,
+        category: pkg.category ?? null,
+        transport: (pkg.transport as "stdio" | "sse") ?? "stdio",
+        tags: pkg.tags ?? null,
+        repositoryUrl: pkg.repositoryUrl ?? null,
+        favoritesCount: pkg.favoritesCount ?? 0,
+        downloadsCount: pkg.downloadsCount ?? 0,
+        ratingAvg: pkg.ratingAvg ?? 0,
+        author: pkg.author ? {
+          id: pkg.author.id,
+          username: pkg.author.username,
+          displayName: pkg.author.displayName ?? pkg.author.username,
+          avatarUrl: pkg.author.avatarUrl ?? null,
+        } : null,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt,
+      }));
+
+      setPackages(mappedPackages);
       setPagination(response.pagination);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -226,16 +248,37 @@ export function useCloudMcpSearch(
       setError(null);
 
       try {
-        const response = await invoke<CloudMcpListResponse>(
-          "search_cloud_mcp_packages",
-          {
-            query,
-            page: 1,
-            limit,
-          }
-        );
+        const client = getClient();
+        const response = await client.mcp.search(query, {
+          page: 1,
+          limit,
+        });
 
-        setResults(response.data);
+        // Map response to CloudMcpPackage format
+        const mappedResults: CloudMcpPackage[] = response.data.map((pkg) => ({
+          id: pkg.id,
+          name: pkg.name,
+          slug: pkg.slug,
+          version: pkg.version,
+          description: pkg.description,
+          category: pkg.category ?? null,
+          transport: (pkg.transport as "stdio" | "sse") ?? "stdio",
+          tags: pkg.tags ?? null,
+          repositoryUrl: pkg.repositoryUrl ?? null,
+          favoritesCount: pkg.favoritesCount ?? 0,
+          downloadsCount: pkg.downloadsCount ?? 0,
+          ratingAvg: pkg.ratingAvg ?? 0,
+          author: pkg.author ? {
+            id: pkg.author.id,
+            username: pkg.author.username,
+            displayName: pkg.author.displayName ?? pkg.author.username,
+            avatarUrl: pkg.author.avatarUrl ?? null,
+          } : null,
+          createdAt: pkg.createdAt,
+          updatedAt: pkg.updatedAt,
+        }));
+
+        setResults(mappedResults);
         setPagination(response.pagination);
       } catch (err) {
         // Ignore abort errors
@@ -335,9 +378,33 @@ export function useCloudMcpPackage(
     setError(null);
 
     try {
-      const result = await invoke<CloudMcpPackage>("get_cloud_mcp_package", {
-        id,
-      });
+      const client = getClient();
+      const response = await client.mcp.get(id);
+      const pkg = response.package;
+
+      // Map to CloudMcpPackage format
+      const result: CloudMcpPackage = {
+        id: pkg.id,
+        name: pkg.name,
+        slug: pkg.slug,
+        version: pkg.version,
+        description: pkg.description,
+        category: pkg.category ?? null,
+        transport: (pkg.transport as "stdio" | "sse") ?? "stdio",
+        tags: pkg.tags ?? null,
+        repositoryUrl: pkg.repositoryUrl ?? null,
+        favoritesCount: pkg.favoritesCount ?? 0,
+        downloadsCount: pkg.downloadsCount ?? 0,
+        ratingAvg: pkg.ratingAvg ?? 0,
+        author: pkg.author ? {
+          id: pkg.author.id,
+          username: pkg.author.username,
+          displayName: pkg.author.displayName ?? pkg.author.username,
+          avatarUrl: pkg.author.avatarUrl ?? null,
+        } : null,
+        createdAt: pkg.createdAt,
+        updatedAt: pkg.updatedAt,
+      };
 
       // Store in cache (limit cache size to 50 items)
       if (cacheRef.current.size >= 50) {
@@ -392,10 +459,15 @@ export function useCloudMcpCategories(): UseCloudMcpCategoriesReturn {
     setError(null);
 
     try {
-      const result = await invoke<CloudMcpCategory[]>(
-        "get_cloud_mcp_categories"
-      );
-      setCategories(result);
+      // Categories API not available in VibenClient yet
+      // For now, return some default categories
+      const defaultCategories: CloudMcpCategory[] = [
+        { id: "data", name: "Data & Storage", description: "Database and storage tools", packageCount: null },
+        { id: "dev", name: "Development", description: "Development tools", packageCount: null },
+        { id: "ai", name: "AI & ML", description: "AI and machine learning tools", packageCount: null },
+        { id: "utility", name: "Utility", description: "General utility tools", packageCount: null },
+      ];
+      setCategories(defaultCategories);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setError(message);

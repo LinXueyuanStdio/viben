@@ -115,6 +115,22 @@
     "fri": "Cum",
     "dateRequests": "{{date}}: {{count}} istek"
   },
+  "gateway": {
+    "host": "Ana Bilgisayar",
+    "hostDescription": "Gateway hizmetinin bağlı olduğu ana bilgisayar adresi",
+    "portDescription": "Gateway hizmetinin dinlediği port numarası (yeniden başlatma gerekir)",
+    "connectivityTestDescription": "Gateway hizmetinin bağlantı durumunu ve kullanılabilir uç noktaları kontrol edin"
+  },
+  "observability": {
+    "allRoutes": "Tüm Rotalar",
+    "routeFilters": {
+      "agentRun": "/api/agent/run (Ajan Çalıştırma)",
+      "agents": "/api/agents (Ajan Yönetimi)",
+      "workspaces": "/api/workspaces (Çalışma Alanları)",
+      "chat": "/api/chat (Sohbet)",
+      "groupChats": "/api/group-chats (Grup Sohbetleri)"
+    }
+  },
   "settings": {
     "title": "Ayarlar",
     "pythonEnvironment": "Python Ortamı",
@@ -139,7 +155,34 @@
     "system": "Sistem",
     "language": "Dil",
     "storage": "Depolama",
-    "downloadPath": "İndirme Yolu"
+    "downloadPath": "İndirme Yolu",
+    "developerDescription": "Geliştirici araçları, hata ayıklama ayarları ve sorun giderme",
+    "developer": {
+      "devtools": "Geliştirici Araçları",
+      "preferredIDE": "Tercih Edilen IDE",
+      "preferredIDEDescription": "Viben projeleri bu düzenleyicide açacak",
+      "preferredTerminal": "Tercih Edilen Terminal",
+      "preferredTerminalDescription": "Viben terminal oturumlarını burada açacak",
+      "yoloMode": "YOLO Modu",
+      "yoloModeDescription": "Executorları --dangerously-skip-permissions bayrağıyla başlat, tüm güvenlik istemlerini atla. Aşırı dikkatli kullanın.",
+      "yoloModeWarning": "Bu mod izin sistemini atlar. Yalnızca çalıştırılan koda tam güveniyorsanız etkinleştirin.",
+      "debugLogs": "Hata Ayıklama ve Loglar",
+      "openLogsFolder": "Log Klasörünü Aç",
+      "openConfigFolder": "Yapılandırma Klasörünü Aç",
+      "copyDebugInfo": "Hata Ayıklama Bilgisini Kopyala",
+      "loadDebugInfo": "Hata Ayıklama Bilgisini Yükle",
+      "systemInfo": "Sistem Bilgisi",
+      "paths": "Yollar",
+      "noRecentErrors": "Son hata yok",
+      "reportingIssues": "Sorun Bildirme",
+      "reportingIssuesDescription": "Hata bildirirken, sorunu teşhis etmemize yardımcı olacak sistem bilgilerini almak için \"Hata Ayıklama Bilgisini Kopyala\"ya tıklayın.",
+      "os": "İşletim Sistemi",
+      "osVersion": "Sürüm",
+      "appVersion": "Uygulama Sürümü",
+      "arch": "Mimari",
+      "logs": "Loglar",
+      "config": "Yapılandırma"
+    }
   },
   "about": {
     "title": "Viben",
@@ -290,6 +333,22 @@
     "settings": "Settings",
     "signInRequired": "Sign In Required",
     "signInRequiredDescription": "Please sign in to access this feature. Your data will be synced across devices."
+  },
+  "chat": {
+    "slashCommands": {
+      "categories": {
+        "session": "Oturum",
+        "config": "Yapılandırma",
+        "info": "Bilgi",
+        "workspace": "Çalışma Alanı",
+        "auth": "Kimlik Doğrulama"
+      },
+      "sources": {
+        "builtin": "Yerleşik",
+        "workspace": "Çalışma Alanı",
+        "skill": "Beceri"
+      }
+    }
   },
   "inspector": {
     "title": "MCP Inspector",
@@ -883,6 +942,9 @@
     "noCommands": "No Commands",
     "noCommandsDesc": "No command files found in .claude/commands/ folder.",
     "selectCommand": "Select a command to view",
-    "rootNamespace": "Root"
+    "rootNamespace": "Root",
+    "addDescription": "Açıklama ekle...",
+    "taskPromptWithDescription": "Lütfen bu görevde bana yardım edin:\n\n**{{title}}**\n\n{{description}}",
+    "taskPromptWithoutDescription": "Lütfen bu görevde bana yardım edin: {{title}}"
   }
 }
