@@ -1827,8 +1827,14 @@
         "noIssues": "No issues found",
         "import": "Import",
         "analyze": "Analyze",
+        "search": "Search issues...",
         "openedBy": "Opened by {{user}} on {{date}}",
         "comments": "comments",
+        "details": "Details",
+        "aiAnalysis": "AI Analysis",
+        "agentChat": "Agent",
+        "runAnalysis": "Analyze",
+        "startAutoFix": "Auto Fix",
         "investigationTitle": "Issue Analysis",
         "investigationDescription": "AI analysis of the issue with implementation suggestions",
         "analyzing": "Analyzing issue...",
@@ -1837,6 +1843,64 @@
         "affectedAreas": "Affected Areas",
         "implementationHints": "Implementation Hints",
         "specSaved": "Spec file saved to workspace"
+      },
+      "analysis": {
+        "summary": "Summary",
+        "requirements": "Requirements",
+        "acceptanceCriteria": "Acceptance Criteria",
+        "suggestedLabels": "Suggested Labels",
+        "risks": "Risks",
+        "type": {
+          "bug": "Bug",
+          "feature": "Feature",
+          "enhancement": "Enhancement",
+          "docs": "Documentation",
+          "refactor": "Refactor"
+        },
+        "complexity": {
+          "trivial": "Trivial",
+          "low": "Low",
+          "medium": "Medium",
+          "high": "High",
+          "critical": "Critical"
+        }
+      },
+      "autoFix": {
+        "queue": "Auto-Fix Queue",
+        "running": "running",
+        "awaitingApproval": "awaiting approval",
+        "noTasks": "No tasks in queue",
+        "issues": "issues",
+        "approve": "Approve",
+        "prCreated": "Pull request created",
+        "status": {
+          "queued": "Queued",
+          "analyzing": "Analyzing",
+          "planning": "Planning",
+          "executing": "Executing",
+          "testing": "Testing",
+          "awaiting_approval": "Awaiting Approval",
+          "creating_pr": "Creating PR",
+          "completed": "Completed",
+          "failed": "Failed",
+          "cancelled": "Cancelled"
+        }
+      },
+      "batchWizard": {
+        "title": "Batch Issue Processing",
+        "description": "Analyze and process multiple issues at once",
+        "stepSelect": "Select",
+        "stepAnalyze": "Analyze",
+        "stepReview": "Review",
+        "stepExecute": "Execute",
+        "analyzing": "Analyzing issues...",
+        "reviewDescription": "Review the analysis results before starting auto-fix",
+        "analyzeSelected": "Analyze Selected",
+        "startAutoFix": "Start Auto-Fix",
+        "executing": "Starting auto-fix tasks...",
+        "done": "Tasks started successfully!",
+        "doneDescription": "Monitor progress in the queue panel below",
+        "failed": "Failed to start tasks"
       },
       "prs": {
         "open": "Open",

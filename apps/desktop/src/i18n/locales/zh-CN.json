@@ -1829,8 +1829,14 @@
         "noIssues": "没有找到 Issue",
         "import": "导入",
         "analyze": "分析",
+        "search": "搜索 Issue...",
         "openedBy": "由 {{user}} 于 {{date}} 创建",
         "comments": "条评论",
+        "details": "详情",
+        "aiAnalysis": "AI 分析",
+        "agentChat": "智能体",
+        "runAnalysis": "分析",
+        "startAutoFix": "自动修复",
         "investigationTitle": "Issue 分析",
         "investigationDescription": "AI 分析 Issue 并提供实现建议",
         "analyzing": "正在分析 Issue...",
@@ -1839,6 +1845,64 @@
         "affectedAreas": "影响范围",
         "implementationHints": "实现建议",
         "specSaved": "Spec 文件已保存到工作区"
+      },
+      "analysis": {
+        "summary": "摘要",
+        "requirements": "需求",
+        "acceptanceCriteria": "验收标准",
+        "suggestedLabels": "建议标签",
+        "risks": "风险",
+        "type": {
+          "bug": "Bug",
+          "feature": "新功能",
+          "enhancement": "增强",
+          "docs": "文档",
+          "refactor": "重构"
+        },
+        "complexity": {
+          "trivial": "简单",
+          "low": "低",
+          "medium": "中",
+          "high": "高",
+          "critical": "关键"
+        }
+      },
+      "autoFix": {
+        "queue": "自动修复队列",
+        "running": "运行中",
+        "awaitingApproval": "等待批准",
+        "noTasks": "队列中没有任务",
+        "issues": "个 Issue",
+        "approve": "批准",
+        "prCreated": "Pull Request 已创建",
+        "status": {
+          "queued": "排队中",
+          "analyzing": "分析中",
+          "planning": "规划中",
+          "executing": "执行中",
+          "testing": "测试中",
+          "awaiting_approval": "等待批准",
+          "creating_pr": "创建 PR 中",
+          "completed": "已完成",
+          "failed": "失败",
+          "cancelled": "已取消"
+        }
+      },
+      "batchWizard": {
+        "title": "批量处理 Issue",
+        "description": "一次性分析和处理多个 Issue",
+        "stepSelect": "选择",
+        "stepAnalyze": "分析",
+        "stepReview": "审核",
+        "stepExecute": "执行",
+        "analyzing": "正在分析 Issue...",
+        "reviewDescription": "在开始自动修复之前审核分析结果",
+        "analyzeSelected": "分析选中项",
+        "startAutoFix": "开始自动修复",
+        "executing": "正在启动自动修复任务...",
+        "done": "任务已成功启动！",
+        "doneDescription": "在下方队列面板中监控进度",
+        "failed": "启动任务失败"
       },
       "prs": {
         "open": "开放",
