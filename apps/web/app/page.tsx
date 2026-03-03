@@ -2,14 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRight,
-  CalendarDays,
-  CheckCircle2,
   ChevronRight,
   Github,
-  Layers,
-  LayoutGrid,
-  Monitor,
-  Users,
 } from 'lucide-react';
 import { DemoTabs } from './components/demo-tabs';
 import { ChallengeCard } from './components/animated-cards/challenge-card';
@@ -43,12 +37,12 @@ const LIFECYCLE = [
 ] as const;
 
 const FEATURES = [
-  { icon: LayoutGrid, title: '看板视图', desc: '拖拽管理任务优先级与状态。', variant: 'kanban' as const },
-  { icon: CalendarDays, title: '日历规划', desc: '用时间轴安排自动化节点与截止日期。', variant: 'calendar' as const },
-  { icon: Layers, title: 'MCP 集成', desc: '兼容 Claude、Cursor、Cline 等 MCP 生态。', variant: 'mcp' as const },
-  { icon: Users, title: '多智能体协作', desc: '支持多角色智能体并行执行与协同审查。', variant: 'agents' as const },
-  { icon: Monitor, title: '桌面工作台', desc: '统一管理工作区、配置与执行监控。', variant: 'desktop' as const },
-  { icon: CheckCircle2, title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。', variant: 'release' as const },
+  { title: '看板视图', desc: '拖拽管理任务优先级与状态。', variant: 'kanban' as const },
+  { title: '日历规划', desc: '用时间轴安排自动化节点与截止日期。', variant: 'calendar' as const },
+  { title: 'MCP 集成', desc: '兼容 Claude、Cursor、Cline 等 MCP 生态。', variant: 'mcp' as const },
+  { title: '多智能体协作', desc: '支持多角色智能体并行执行与协同审查。', variant: 'agents' as const },
+  { title: '桌面工作台', desc: '统一管理工作区、配置与执行监控。', variant: 'desktop' as const },
+  { title: '可控发布流', desc: '从计划到发布形成闭环，降低上线风险。', variant: 'release' as const },
 ] as const;
 
 const SUPPORTED_AGENTS = ['Claude Desktop', 'Claude Code', 'Cursor', 'Windsurf', 'Cline', 'Gemini CLI'] as const;
@@ -174,8 +168,8 @@ export default function HomePage() {
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon, title, desc, variant }) => (
-              <FeatureCard key={title} icon={icon} title={title} desc={desc} variant={variant} />
+            {FEATURES.map(({ title, desc, variant }) => (
+              <FeatureCard key={title} title={title} desc={desc} variant={variant} />
             ))}
           </div>
         </div>
