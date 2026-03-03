@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Wrench,
   Play,
@@ -17,14 +17,23 @@ import {
   Code2,
   FileJson,
   AlertCircle,
+  Plus,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 import type { McpTool } from "@/types";
+import DynamicJsonForm, {
+  type DynamicJsonFormRef,
+  type JsonValue,
+  type JsonSchemaType,
+  generateDefaultValue,
+} from "./dynamic-json-form";
+import { cn } from "@/lib/utils";
 
 interface InspectorToolsProps {
   makeRequest: <T = unknown>(method: string, params?: Record<string, unknown>) => Promise<T>;
@@ -42,29 +51,112 @@ interface ToolExecution {
   duration?: number;
 }
 
-interface ArgumentInput {
+interface ToolAnnotations {
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}
+
+interface ExtendedMcpTool extends McpTool {
+  annotations?: ToolAnnotations;
+  outputSchema?: JsonSchemaType;
+  _meta?: Record<string, unknown>;
+}
+
+interface MetadataEntry {
+  id: string;
   key: string;
   value: string;
-  type: string;
-  required: boolean;
-  description?: string;
+}
+
+// Annotation badges component
+function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
+  // MCP spec defaults: readOnlyHint=false, destructiveHint=true, idempotentHint=false, openWorldHint=true
+  const getValueAndImplied = (
+    value: boolean | undefined,
+    defaultValue: boolean
+  ): { value: boolean; implied: boolean } => ({
+    value: value ?? defaultValue,
+    implied: value === undefined,
+  });
+
+  const readOnly = getValueAndImplied(annotations?.readOnlyHint, false);
+  const destructive = getValueAndImplied(annotations?.destructiveHint, true);
+  const idempotent = getValueAndImplied(annotations?.idempotentHint, false);
+  const openWorld = getValueAndImplied(annotations?.openWorldHint, true);
+
+  const badges = [
+    {
+      label: "Read-only",
+      value: readOnly.value,
+      implied: readOnly.implied,
+      description: "Tool does not modify its environment",
+    },
+    {
+      label: "Destructive",
+      value: destructive.value,
+      implied: destructive.implied,
+      description: "Tool may perform destructive updates",
+    },
+    {
+      label: "Idempotent",
+      value: idempotent.value,
+      implied: idempotent.implied,
+      description: "Calling repeatedly has no additional effect",
+    },
+    {
+      label: "Open-world",
+      value: openWorld.value,
+      implied: openWorld.implied,
+      description: "Tool may interact with external entities",
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {badges.map(({ label, value, implied, description }) => (
+        <span
+          key={label}
+          title={`${description}\n\nValue: ${value ? "Yes" : "No"} (${implied ? "implied default" : "explicitly set"})`}
+          className={cn(
+            "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border",
+            value
+              ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30"
+              : "bg-muted text-muted-foreground border-border",
+            implied && "border-dashed opacity-70"
+          )}
+        >
+          {value ? "✓" : "✗"} {label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsProps) {
   const { t } = useTranslation();
-  const [tools, setTools] = useState<McpTool[]>([]);
+  const [tools, setTools] = useState<ExtendedMcpTool[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedTool, setSelectedTool] = useState<McpTool | null>(null);
-  const [argumentInputs, setArgumentInputs] = useState<ArgumentInput[]>([]);
+  const [selectedTool, setSelectedTool] = useState<ExtendedMcpTool | null>(null);
   const [executions, setExecutions] = useState<ToolExecution[]>([]);
   const [executing, setExecuting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expandedExecutions, setExpandedExecutions] = useState<Set<string>>(new Set());
   const [showSchema, setShowSchema] = useState(false);
+  const [showOutputSchema, setShowOutputSchema] = useState(false);
+  const [showMeta, setShowMeta] = useState(false);
   const [inputMode, setInputMode] = useState<"form" | "json">("form");
-  const [jsonInput, setJsonInput] = useState("");
+
+  // Form state
+  const [formValues, setFormValues] = useState<Record<string, JsonValue>>({});
+  const [jsonInput, setJsonInput] = useState("{}");
   const [jsonError, setJsonError] = useState<string | null>(null);
+  const formRefs = useRef<Record<string, DynamicJsonFormRef | null>>({});
+
+  // Metadata entries for custom _meta
+  const [metadataEntries, setMetadataEntries] = useState<MetadataEntry[]>([]);
 
   // Filter tools by search query
   const filteredTools = useMemo(() => {
@@ -81,7 +173,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     if (!enabled) return;
     setLoading(true);
     try {
-      const response = await makeRequest<{ tools: McpTool[] }>("tools/list", {});
+      const response = await makeRequest<{ tools: ExtendedMcpTool[] }>("tools/list", {});
       setTools(response.tools || []);
       if (response.tools && response.tools.length > 0 && !selectedTool) {
         setSelectedTool(response.tools[0]);
@@ -101,127 +193,55 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     setSearchQuery("");
   };
 
+  // Initialize form values when tool changes
   useEffect(() => {
     if (!selectedTool) {
-      setArgumentInputs([]);
+      setFormValues({});
       setJsonInput("{}");
       setJsonError(null);
+      setMetadataEntries([]);
       return;
     }
 
-    const properties = (selectedTool.inputSchema?.properties as Record<string, Record<string, unknown>>) || {};
-    const required = (selectedTool.inputSchema?.required as string[]) || [];
+    const properties = (selectedTool.inputSchema?.properties as Record<string, JsonSchemaType>) || {};
+    const initialValues: Record<string, JsonValue> = {};
 
-    const inputs: ArgumentInput[] = Object.entries(properties).map(([key, schema]) => {
-      let defaultValue = "";
-      let type = "text";
+    for (const [key, schema] of Object.entries(properties)) {
+      initialValues[key] = generateDefaultValue(schema);
+    }
 
-      if (schema.type === "string") {
-        defaultValue = (schema.default as string) || (schema.example as string) || "";
-        type = "text";
-      } else if (schema.type === "number" || schema.type === "integer") {
-        defaultValue = schema.default?.toString() || schema.example?.toString() || "";
-        type = "number";
-      } else if (schema.type === "boolean") {
-        defaultValue = schema.default?.toString() || "false";
-        type = "boolean";
-      } else if (schema.type === "array" || schema.type === "object") {
-        defaultValue = JSON.stringify(
-          schema.default || schema.example || (schema.type === "array" ? [] : {}),
-          null,
-          2
-        );
-        type = "json";
-      } else {
-        defaultValue = JSON.stringify(schema.default || schema.example || null, null, 2);
-        type = "json";
-      }
-
-      return { key, value: defaultValue, type, required: required.includes(key), description: schema.description as string | undefined };
-    });
-
-    setArgumentInputs(inputs);
-
-    // Initialize JSON input with default values
-    const defaultArgs: Record<string, unknown> = {};
-    inputs.forEach((input) => {
-      if (input.type === "json") {
-        try {
-          defaultArgs[input.key] = JSON.parse(input.value);
-        } catch {
-          defaultArgs[input.key] = input.value;
-        }
-      } else if (input.type === "number") {
-        defaultArgs[input.key] = input.value ? parseFloat(input.value) : 0;
-      } else if (input.type === "boolean") {
-        defaultArgs[input.key] = input.value === "true";
-      } else {
-        defaultArgs[input.key] = input.value;
-      }
-    });
-    setJsonInput(JSON.stringify(defaultArgs, null, 2));
+    setFormValues(initialValues);
+    setJsonInput(JSON.stringify(initialValues, null, 2));
     setJsonError(null);
+    setMetadataEntries([]);
+    formRefs.current = {};
   }, [selectedTool]);
 
-  // Validate JSON input and provide error feedback
-  const validateJsonInput = useCallback((value: string): { valid: boolean; error?: string; parsed?: Record<string, unknown> } => {
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-        return { valid: false, error: t("inspector.jsonMustBeObject", "JSON must be an object") };
-      }
-
-      // Validate against schema if available
-      if (selectedTool?.inputSchema) {
-        const properties = (selectedTool.inputSchema.properties as Record<string, Record<string, unknown>>) || {};
-        const required = (selectedTool.inputSchema.required as string[]) || [];
-
-        // Check required fields
-        for (const field of required) {
-          if (!(field in parsed)) {
-            return { valid: false, error: t("inspector.missingRequired", "Missing required field: {{field}}").replace("{{field}}", field) };
-          }
+  // Validate JSON input
+  const validateJsonInput = useCallback(
+    (value: string): { valid: boolean; error?: string; parsed?: Record<string, unknown> } => {
+      try {
+        const parsed = JSON.parse(value);
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          return { valid: false, error: t("inspector.jsonMustBeObject", "JSON must be an object") };
         }
-
-        // Type check each field
-        for (const [key, value] of Object.entries(parsed)) {
-          if (key in properties) {
-            const schema = properties[key];
-            const expectedType = schema.type as string;
-
-            if (expectedType === "string" && typeof value !== "string") {
-              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
-            }
-            if ((expectedType === "number" || expectedType === "integer") && typeof value !== "number") {
-              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
-            }
-            if (expectedType === "boolean" && typeof value !== "boolean") {
-              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
-            }
-            if (expectedType === "array" && !Array.isArray(value)) {
-              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
-            }
-            if (expectedType === "object" && (typeof value !== "object" || value === null || Array.isArray(value))) {
-              return { valid: false, error: t("inspector.fieldTypeMismatch", "Field '{{field}}' should be {{type}}").replace("{{field}}", key).replace("{{type}}", expectedType) };
-            }
-          }
-        }
+        return { valid: true, parsed };
+      } catch (e) {
+        return { valid: false, error: (e as Error).message };
       }
+    },
+    [t]
+  );
 
-      return { valid: true, parsed };
-    } catch (e) {
-      return { valid: false, error: (e as Error).message };
-    }
-  }, [selectedTool, t]);
+  const handleJsonInputChange = useCallback(
+    (value: string) => {
+      setJsonInput(value);
+      const validation = validateJsonInput(value);
+      setJsonError(validation.valid ? null : validation.error || null);
+    },
+    [validateJsonInput]
+  );
 
-  // Handle JSON input change with validation
-  const handleJsonInputChange = useCallback((value: string) => {
-    setJsonInput(value);
-    const validation = validateJsonInput(value);
-    setJsonError(validation.valid ? null : validation.error || null);
-  }, [validateJsonInput]);
-
-  // Format JSON input
   const formatJsonInput = useCallback(() => {
     try {
       const parsed = JSON.parse(jsonInput);
@@ -232,13 +252,19 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     }
   }, [jsonInput]);
 
+  // Check for validation errors in dynamic forms
+  const checkValidationErrors = (): boolean => {
+    return Object.values(formRefs.current).some(
+      (ref) => ref && ref.hasJsonError()
+    );
+  };
+
   const executeTool = async () => {
     if (!selectedTool) return;
 
     let argumentsObj: Record<string, unknown> = {};
 
     if (inputMode === "json") {
-      // Use JSON input
       const validation = validateJsonInput(jsonInput);
       if (!validation.valid) {
         setJsonError(validation.error || "Invalid JSON");
@@ -246,22 +272,29 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       }
       argumentsObj = validation.parsed || {};
     } else {
-      // Use form inputs
-      for (const input of argumentInputs) {
-        try {
-          if (input.type === "number") {
-            argumentsObj[input.key] = input.value ? parseFloat(input.value) : 0;
-          } else if (input.type === "boolean") {
-            argumentsObj[input.key] = input.value === "true";
-          } else if (input.type === "json") {
-            argumentsObj[input.key] = input.value ? JSON.parse(input.value) : null;
-          } else {
-            argumentsObj[input.key] = input.value;
+      // Validate all form refs
+      for (const ref of Object.values(formRefs.current)) {
+        if (ref) {
+          const validation = ref.validateJson();
+          if (!validation.isValid) {
+            return;
           }
-        } catch {
-          console.error(`Invalid JSON for parameter: ${input.key}`);
-          return;
         }
+      }
+
+      if (checkValidationErrors()) {
+        return;
+      }
+
+      argumentsObj = { ...formValues } as Record<string, unknown>;
+    }
+
+    // Build metadata from entries
+    const metadata: Record<string, unknown> = {};
+    for (const entry of metadataEntries) {
+      const key = entry.key.trim();
+      if (key) {
+        metadata[key] = entry.value;
       }
     }
 
@@ -281,10 +314,22 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     setExpandedExecutions((prev) => new Set([...prev, executionId]));
 
     try {
-      const response = await makeRequest("tools/call", { name: selectedTool.name, arguments: argumentsObj });
+      const callParams: Record<string, unknown> = {
+        name: selectedTool.name,
+        arguments: argumentsObj,
+      };
+
+      // Add metadata if any
+      if (Object.keys(metadata).length > 0) {
+        callParams._meta = metadata;
+      }
+
+      const response = await makeRequest("tools/call", callParams);
       const duration = Date.now() - startTime;
       setExecutions((prev) =>
-        prev.map((exec) => (exec.id === executionId ? { ...exec, status: "success", result: response, duration } : exec))
+        prev.map((exec) =>
+          exec.id === executionId ? { ...exec, status: "success", result: response, duration } : exec
+        )
       );
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -300,15 +345,16 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     }
   };
 
-  const updateArgumentValue = (key: string, value: string) => {
-    setArgumentInputs((prev) => prev.map((input) => (input.key === key ? { ...input, value } : input)));
-  };
-
   const copyResult = async (execution: ToolExecution) => {
     const text = JSON.stringify(execution.result || execution.error, null, 2);
     await navigator.clipboard.writeText(text);
     setCopiedId(execution.id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const copyInput = async () => {
+    const text = inputMode === "json" ? jsonInput : JSON.stringify(formValues, null, 2);
+    await navigator.clipboard.writeText(text);
   };
 
   const toggleExecution = (id: string) => {
@@ -340,6 +386,23 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
     }
   };
 
+  const addMetadataEntry = () => {
+    setMetadataEntries((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), key: "", value: "" },
+    ]);
+  };
+
+  const removeMetadataEntry = (id: string) => {
+    setMetadataEntries((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  const updateMetadataEntry = (id: string, field: "key" | "value", value: string) => {
+    setMetadataEntries((prev) =>
+      prev.map((e) => (e.id === id ? { ...e, [field]: value } : e))
+    );
+  };
+
   if (!enabled) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center">
@@ -359,7 +422,9 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
           <div className="flex items-center gap-2">
             <Wrench className="h-4 w-4 text-blue-500" />
             <span className="text-sm font-medium">{t("inspector.tools")}</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs">{tools.length}</Badge>
+            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+              {tools.length}
+            </Badge>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={clearAll} disabled={tools.length === 0}>
@@ -394,9 +459,7 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
               </Button>
             </div>
           ) : filteredTools.length === 0 ? (
-            <div className="text-center p-4 text-xs text-muted-foreground">
-              {t("inspector.noToolsFound")}
-            </div>
+            <div className="text-center p-4 text-xs text-muted-foreground">{t("inspector.noToolsFound")}</div>
           ) : (
             filteredTools.map((tool) => (
               <div
@@ -419,162 +482,277 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
       </div>
 
       {/* Middle Panel - Tool Details & Arguments */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {selectedTool ? (
-          <>
+          <div className="flex-1 overflow-auto">
             {/* Tool Header */}
             <div className="mb-4">
               <h3 className="font-mono text-base font-semibold">{selectedTool.name}</h3>
               {selectedTool.description && (
                 <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedTool.description}</p>
               )}
+
+              {/* Annotation Badges */}
+              {selectedTool.annotations && (
+                <div className="mt-2">
+                  <AnnotationBadges annotations={selectedTool.annotations} />
+                </div>
+              )}
             </div>
 
             {/* Schema Collapsible */}
-            <div className="mb-4">
+            <div className="mb-4 space-y-2">
+              {/* Input Schema */}
               <button
                 type="button"
                 onClick={() => setShowSchema(!showSchema)}
                 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
-                {showSchema ? (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronRight className="h-3.5 w-3.5" />
-                )}
+                {showSchema ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                 <FileJson className="h-3.5 w-3.5" />
-                {t("inspector.viewSchema", "View Schema")}
+                {t("inspector.viewSchema", "Input Schema")}
               </button>
               {showSchema && selectedTool.inputSchema && (
-                <pre className="mt-2 p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-64">
+                <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
                   {JSON.stringify(selectedTool.inputSchema, null, 2)}
                 </pre>
               )}
+
+              {/* Output Schema */}
+              {selectedTool.outputSchema && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowOutputSchema(!showOutputSchema)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showOutputSchema ? (
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    )}
+                    <FileJson className="h-3.5 w-3.5" />
+                    {t("inspector.outputSchema", "Output Schema")}
+                  </button>
+                  {showOutputSchema && (
+                    <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
+                      {JSON.stringify(selectedTool.outputSchema, null, 2)}
+                    </pre>
+                  )}
+                </>
+              )}
+
+              {/* Tool Meta */}
+              {selectedTool._meta && Object.keys(selectedTool._meta).length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowMeta(!showMeta)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showMeta ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    <FileJson className="h-3.5 w-3.5" />
+                    {t("inspector.toolMeta", "Tool Meta")}
+                  </button>
+                  {showMeta && (
+                    <pre className="p-3 rounded-md bg-muted/50 border border-border text-xs font-mono overflow-x-auto max-h-48">
+                      {JSON.stringify(selectedTool._meta, null, 2)}
+                    </pre>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Arguments with Tabs for Form/JSON input */}
-            <div className="flex-1 overflow-auto">
-              <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "form" | "json")} className="w-full">
-                <TabsList className="mb-3 h-8">
-                  <TabsTrigger value="form" className="text-xs h-7 px-3">
-                    <Wrench className="h-3 w-3 mr-1.5" />
-                    {t("inspector.formInput", "Form")}
-                  </TabsTrigger>
-                  <TabsTrigger value="json" className="text-xs h-7 px-3">
-                    <Code2 className="h-3 w-3 mr-1.5" />
-                    {t("inspector.jsonInput", "JSON")}
-                  </TabsTrigger>
-                </TabsList>
+            {/* Arguments with Tabs */}
+            <Tabs value={inputMode} onValueChange={(v) => setInputMode(v as "form" | "json")} className="w-full">
+              <TabsList className="mb-3 h-8">
+                <TabsTrigger value="form" className="text-xs h-7 px-3">
+                  <Wrench className="h-3 w-3 mr-1.5" />
+                  {t("inspector.formInput", "Form")}
+                </TabsTrigger>
+                <TabsTrigger value="json" className="text-xs h-7 px-3">
+                  <Code2 className="h-3 w-3 mr-1.5" />
+                  {t("inspector.jsonInput", "JSON")}
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="form" className="mt-0">
-                  {argumentInputs.length > 0 ? (
-                    <div className="space-y-4">
-                      {argumentInputs.map((input) => (
-                        <div key={input.key} className="space-y-1.5">
-                          <label className="flex items-center gap-1.5 text-sm font-medium">
-                            {input.key}
-                            {input.required && <span className="text-red-500">*</span>}
-                            <Badge variant="outline" className="h-4 px-1 text-[10px] font-normal">
-                              {input.type}
-                            </Badge>
-                          </label>
-                          {input.description && (
-                            <p className="text-xs text-muted-foreground whitespace-pre-wrap">{input.description}</p>
-                          )}
-                          {input.type === "json" ? (
-                            <Textarea
-                              value={input.value}
-                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                              placeholder={`Enter ${input.type} value...`}
-                              className="font-mono text-xs min-h-[80px]"
+              <TabsContent value="form" className="mt-0">
+                <div className="space-y-4">
+                  {/* Dynamic form fields */}
+                  {selectedTool.inputSchema?.properties &&
+                  Object.keys(selectedTool.inputSchema.properties).length > 0 ? (
+                    Object.entries(selectedTool.inputSchema.properties as Record<string, JsonSchemaType>).map(
+                      ([key, schema]) => {
+                        const required = (selectedTool.inputSchema?.required as string[])?.includes(key) ?? false;
+                        return (
+                          <div key={key} className="space-y-1.5">
+                            <Label className="flex items-center gap-1.5 text-sm font-medium">
+                              {schema.title ?? key}
+                              {required && <span className="text-red-500">*</span>}
+                            </Label>
+                            {schema.description && (
+                              <p className="text-xs text-muted-foreground">{schema.description}</p>
+                            )}
+                            <DynamicJsonForm
+                              ref={(ref) => {
+                                formRefs.current[key] = ref;
+                              }}
+                              schema={schema}
+                              value={formValues[key] ?? generateDefaultValue(schema)}
+                              onChange={(newValue) => {
+                                setFormValues((prev) => ({ ...prev, [key]: newValue }));
+                              }}
                             />
-                          ) : input.type === "boolean" ? (
-                            <select
-                              value={input.value}
-                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors"
-                            >
-                              <option value="true">{t("inspector.boolTrue", "true")}</option>
-                              <option value="false">{t("inspector.boolFalse", "false")}</option>
-                            </select>
-                          ) : (
-                            <Input
-                              type={input.type === "number" ? "number" : "text"}
-                              value={input.value}
-                              onChange={(e) => updateArgumentValue(input.key, e.target.value)}
-                              placeholder={`Enter ${input.type} value...`}
-                              className={input.type === "text" ? "font-mono" : ""}
-                            />
-                          )}
-                        </div>
-                      ))}
-
-                      {/* Execute Button - after form inputs */}
-                      <Button onClick={executeTool} disabled={executing} className="w-full mt-4">
-                        {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                        {executing ? t("inspector.calling") : t("inspector.callTool")}
-                      </Button>
-                    </div>
+                          </div>
+                        );
+                      }
+                    )
                   ) : (
-                    <div className="space-y-4">
-                      <div className="text-sm text-muted-foreground">{t("inspector.noArguments")}</div>
-                      {/* Execute Button - for tools with no arguments */}
-                      <Button onClick={executeTool} disabled={executing} className="w-full">
-                        {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                        {executing ? t("inspector.calling") : t("inspector.callTool")}
-                      </Button>
-                    </div>
+                    <div className="text-sm text-muted-foreground">{t("inspector.noArguments")}</div>
                   )}
-                </TabsContent>
 
-                <TabsContent value="json" className="mt-0">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {t("inspector.jsonArguments", "JSON Arguments")}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-xs"
-                        onClick={formatJsonInput}
-                      >
-                        {t("inspector.format", "Format")}
+                  {/* Metadata section */}
+                  <div className="border-t border-border pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-medium">{t("inspector.toolMetadata", "Tool Metadata")}</Label>
+                      <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addMetadataEntry}>
+                        <Plus className="h-3 w-3 mr-1" />
+                        {t("inspector.addPair", "Add")}
                       </Button>
                     </div>
+                    {metadataEntries.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {metadataEntries.map((entry) => (
+                          <div key={entry.id} className="flex items-center gap-2">
+                            <Input
+                              value={entry.key}
+                              onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
+                              placeholder="Key"
+                              className="h-8 text-xs flex-1"
+                            />
+                            <Input
+                              value={entry.value}
+                              onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
+                              placeholder="Value"
+                              className="h-8 text-xs flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => removeMetadataEntry(entry.id)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
-                    <div className="relative">
-                      <Textarea
-                        value={jsonInput}
-                        onChange={(e) => handleJsonInputChange(e.target.value)}
-                        placeholder='{"key": "value"}'
-                        className={`font-mono text-xs min-h-[200px] ${
-                          jsonError ? "border-red-500 focus:ring-red-500" : ""
-                        }`}
-                        spellCheck={false}
-                      />
-                      {jsonError && (
-                        <div className="flex items-start gap-2 mt-2 p-2 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs">
-                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                          <span className="break-all">{jsonError}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Execute Button - after JSON input */}
-                    <Button
-                      onClick={executeTool}
-                      disabled={executing || !!jsonError}
-                      className="w-full"
-                    >
+                  {/* Action buttons */}
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={executeTool} disabled={executing} className="flex-1">
                       {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
                       {executing ? t("inspector.calling") : t("inspector.callTool")}
                     </Button>
+                    <Button variant="outline" onClick={copyInput}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      {t("inspector.copyInput", "Copy")}
+                    </Button>
                   </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="json" className="mt-0">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {t("inspector.jsonArguments", "JSON Arguments")}
+                    </span>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={formatJsonInput}>
+                      {t("inspector.format", "Format")}
+                    </Button>
+                  </div>
+
+                  <div className="relative">
+                    <textarea
+                      value={jsonInput}
+                      onChange={(e) => handleJsonInputChange(e.target.value)}
+                      placeholder='{"key": "value"}'
+                      className={cn(
+                        "w-full font-mono text-xs min-h-[200px] p-3 rounded-md border resize-none bg-muted/50",
+                        "focus:outline-none focus:ring-2 focus:ring-ring",
+                        jsonError ? "border-red-500 focus:ring-red-500" : "border-input"
+                      )}
+                      spellCheck={false}
+                    />
+                    {jsonError && (
+                      <div className="flex items-start gap-2 mt-2 p-2 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-xs">
+                        <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                        <span className="break-all">{jsonError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Metadata section */}
+                  <div className="border-t border-border pt-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-medium">{t("inspector.toolMetadata", "Tool Metadata")}</Label>
+                      <Button variant="outline" size="sm" className="h-6 text-xs" onClick={addMetadataEntry}>
+                        <Plus className="h-3 w-3 mr-1" />
+                        {t("inspector.addPair", "Add")}
+                      </Button>
+                    </div>
+                    {metadataEntries.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">{t("inspector.noMetadata", "No metadata")}</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {metadataEntries.map((entry) => (
+                          <div key={entry.id} className="flex items-center gap-2">
+                            <Input
+                              value={entry.key}
+                              onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
+                              placeholder="Key"
+                              className="h-8 text-xs flex-1"
+                            />
+                            <Input
+                              value={entry.value}
+                              onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
+                              placeholder="Value"
+                              className="h-8 text-xs flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => removeMetadataEntry(entry.id)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-2">
+                    <Button onClick={executeTool} disabled={executing || !!jsonError} className="flex-1">
+                      {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                      {executing ? t("inspector.calling") : t("inspector.callTool")}
+                    </Button>
+                    <Button variant="outline" onClick={copyInput}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      {t("inspector.copyInput", "Copy")}
+                    </Button>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <Wrench className="h-10 w-10 text-muted-foreground/30 mb-3" />
@@ -589,7 +767,9 @@ export function InspectorTools({ makeRequest, enabled = true }: InspectorToolsPr
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">{t("inspector.executionHistory")}</span>
-            <Badge variant="secondary" className="h-5 px-1.5 text-xs">{executions.length}</Badge>
+            <Badge variant="secondary" className="h-5 px-1.5 text-xs">
+              {executions.length}
+            </Badge>
           </div>
           {executions.length > 0 && (
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setExecutions([])}>
