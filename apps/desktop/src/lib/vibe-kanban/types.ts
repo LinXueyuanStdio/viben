@@ -20,9 +20,6 @@ export type TaskStatus =
   | "pr_created"    // PR已创建 - PR has been created
   | "error";        // 错误 - Error state
 
-// Legacy status aliases for backward compatibility
-export type LegacyTaskStatus = "todo" | "inprogress" | "inreview" | "done" | "cancelled";
-
 /**
  * Reason for entering human_review status
  */
@@ -324,19 +321,26 @@ export const COLUMN_LABELS: Record<KanbanColumnId, string> = {
 };
 
 // ==========================================
-// Legacy Compatibility
+// Status Utilities
 // ==========================================
 
 /**
- * Map legacy status to new status
+ * All valid task statuses
  */
-export function mapLegacyStatus(status: string): TaskStatus {
-  const mapping: Record<string, TaskStatus> = {
-    todo: "backlog",
-    inprogress: "in_progress",
-    inreview: "ai_review",
-    done: "done",
-    cancelled: "error",
-  };
-  return mapping[status] || (status as TaskStatus);
+export const VALID_TASK_STATUSES: TaskStatus[] = [
+  "backlog",
+  "queue",
+  "in_progress",
+  "ai_review",
+  "human_review",
+  "done",
+  "pr_created",
+  "error",
+];
+
+/**
+ * Check if a status is valid
+ */
+export function isValidTaskStatus(status: string): status is TaskStatus {
+  return VALID_TASK_STATUSES.includes(status as TaskStatus);
 }

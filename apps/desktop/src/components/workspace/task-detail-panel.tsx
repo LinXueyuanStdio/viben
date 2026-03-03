@@ -1262,7 +1262,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
         <TabsContent value="logs" className="flex-1 min-h-0">
           <TaskLogsTab
             taskId={task.id}
-            logs={specsData.logs ?? task.logs}
+            logs={
+              specsData.logs
+                ? { taskId: task.id, phases: specsData.logs.phases }
+                : task.logs
+            }
             isLoading={specsData.isLoading}
             error={specsData.error}
             autoScroll={true}

@@ -7,6 +7,7 @@ export {
   type CreateTaskDialogProps,
   type CreateTaskData,
 } from "./create-task-dialog";
+export { QueueSettingsModal } from "./queue-settings-modal";
 
 // Hooks
 export {

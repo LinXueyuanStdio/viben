@@ -2152,10 +2152,14 @@
     "scheduledTasksDescription": "Manage scheduled tasks and automation",
     "addTask": "Add Task",
     "kanbanStatus": {
-      "todo": "To Do",
-      "inProgress": "In Progress",
-      "review": "Review",
-      "done": "Done"
+      "backlog": "Backlog",
+      "queue": "Queue",
+      "in_progress": "In Progress",
+      "ai_review": "AI Review",
+      "human_review": "Human Review",
+      "done": "Done",
+      "pr_created": "PR Created",
+      "error": "Error"
     },
     "taskDetail": "Details",
     "taskName": "Task Name",

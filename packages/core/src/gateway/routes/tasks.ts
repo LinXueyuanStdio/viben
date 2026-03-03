@@ -17,45 +17,25 @@
 import type { FastifyInstance } from "fastify";
 import {
   taskService,
-  toKanbanStatus,
   type UnifiedTask,
   type TaskStatus,
   type SubtaskInfo,
+  type TaskSpecsData,
 } from "../../services/task-service";
 import { sessionStoreService } from "../../services/session-store";
 import type { AppState } from "../state";
 import type { Task, TaskStatus as DbTaskStatus } from "../../db/types";
 
 /**
- * Convert TaskStatus to db TaskStatus for events
- */
-function toDbStatus(status: TaskStatus): DbTaskStatus {
-  switch (status) {
-    case "in_progress":
-    case "ai_review":
-    case "queue":
-      return "inprogress";
-    case "done":
-    case "pr_created":
-      return "done";
-    case "error":
-    case "human_review":
-      return "inreview";
-    case "backlog":
-    default:
-      return "todo";
-  }
-}
-
-/**
  * Convert UnifiedTask to db Task for events
+ * Now uses unified status directly since DbTaskStatus is the same
  */
 function toDbTask(task: UnifiedTask): Task {
   return {
     id: task.id,
     title: task.title || task.prompt?.slice(0, 50) || "Untitled",
     description: task.description || task.prompt,
-    status: toDbStatus(task.status),
+    status: task.status as DbTaskStatus,
     agentId: task.agent,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt || task.createdAt,
@@ -86,15 +66,15 @@ function parseSubtasksDetail(task: UnifiedTask): SubtaskInfo[] | null {
 
 /**
  * Transform task to snake_case response format (for API responses)
+ * Uses unified status (backlog, queue, in_progress, etc.)
  */
 function toSnakeCaseTask(task: UnifiedTask) {
-  const kanbanStatus = toKanbanStatus(task.status);
   return {
     id: task.id,
     name: task.name,
     title: task.title || task.prompt?.slice(0, 100) || "Untitled",
     description: task.description || task.prompt || null,
-    status: kanbanStatus,
+    status: task.status,
     // Status details
     review_reason: task.reviewReason ?? null,
     current_phase: task.current_phase ?? 0,
@@ -121,9 +101,9 @@ function toSnakeCaseTask(task: UnifiedTask) {
     cost: task.cost ?? null,
     duration: task.duration ?? null,
     favorite: task.favorite ?? false,
-    // Kanban attempt status
-    has_in_progress_attempt: task.hasInProgressAttempt ?? kanbanStatus === "inprogress",
-    last_attempt_failed: task.lastAttemptFailed ?? kanbanStatus === "inreview",
+    // Kanban attempt status - use unified status for inference
+    has_in_progress_attempt: task.hasInProgressAttempt ?? task.status === "in_progress",
+    last_attempt_failed: task.lastAttemptFailed ?? task.status === "error",
     executor: task.executor || "Agent",
     // Subtask visualization
     subtasks_detail: parseSubtasksDetail(task),
@@ -233,7 +213,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
                   name: { type: "string" },
                   title: { type: "string" },
                   description: { type: "string" },
-                  status: { type: "string", enum: ["todo", "inprogress", "inreview", "done", "cancelled"] },
+                  status: { type: "string", enum: ["backlog", "queue", "in_progress", "ai_review", "human_review", "done", "pr_created", "error"] },
                   workspace_path: { type: "string" },
                   agent_id: { type: "string" },
                   session_id: { type: "string" },
@@ -606,6 +586,137 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     } catch (error) {
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Failed to get messages" };
+    }
+  });
+
+  // Get task specs data (PRD, subtasks, logs, files)
+  fastify.get<{
+    Params: { id: string };
+    Querystring: { workspace_path?: string };
+  }>("/api/tasks/:id/specs", {
+    schema: {
+      description: "Get task specs data (PRD, subtasks, logs, files)",
+      tags: ["tasks"],
+      params: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "Task ID" },
+        },
+        required: ["id"],
+      },
+      querystring: {
+        type: "object",
+        properties: {
+          workspace_path: { type: "string", description: "Workspace path" },
+        },
+      },
+      response: {
+        200: {
+          type: "object",
+          properties: {
+            prd_content: { type: "string", nullable: true },
+            prd_path: { type: "string", nullable: true },
+            subtasks: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  status: { type: "string", enum: ["pending", "in_progress", "completed", "failed"] },
+                  files: { type: "array", items: { type: "string" } },
+                  order: { type: "number" },
+                },
+              },
+            },
+            logs: {
+              type: "object",
+              nullable: true,
+              properties: {
+                phases: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      name: { type: "string" },
+                      status: { type: "string", enum: ["pending", "running", "complete", "failed"] },
+                      entries: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            id: { type: "string" },
+                            type: { type: "string" },
+                            message: { type: "string" },
+                            timestamp: { type: "string" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  path: { type: "string" },
+                  name: { type: "string" },
+                  type: { type: "string", enum: ["file", "directory"] },
+                  extension: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        404: {
+          type: "object",
+          properties: {
+            error: { type: "string" },
+          },
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const { id } = request.params;
+    const { workspace_path } = request.query;
+
+    // Find task directory
+    let taskDir: string | null = null;
+    let workspacePath = workspace_path;
+
+    // Check cache first
+    const cached = taskDirCache.get(id);
+    if (cached) {
+      taskDir = cached.taskDir;
+      workspacePath = cached.workspacePath;
+    } else if (workspace_path) {
+      taskDir = await taskService.findTaskById(workspace_path, id);
+    }
+
+    if (!taskDir) {
+      reply.code(404);
+      return { error: `Task not found: ${id}. Provide workspace_path parameter.` };
+    }
+
+    try {
+      const specsData = await taskService.getTaskSpecsData(taskDir);
+
+      // Convert to snake_case for API response
+      return {
+        prd_content: specsData.prdContent,
+        prd_path: specsData.prdPath,
+        subtasks: specsData.subtasks,
+        logs: specsData.logs,
+        files: specsData.files,
+      };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : "Failed to get task specs" };
     }
   });
 }

@@ -98,7 +98,7 @@ export const useKanbanQueueStore = create<KanbanQueueState>()(
  * Hook to get queue store for a specific workspace
  * Uses a separate storage key per workspace
  */
-export function useWorkspaceKanbanQueue(workspacePath: string | undefined) {
+export function useWorkspaceKanbanQueue(_workspacePath: string | undefined) {
   // For now, use the global store
   // TODO: Implement per-workspace storage if needed
   const store = useKanbanQueueStore();

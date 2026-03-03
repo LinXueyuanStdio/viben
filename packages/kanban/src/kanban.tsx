@@ -97,8 +97,10 @@ export type KanbanCardProps = Pick<Feature, "id" | "name"> & {
   showMoreMenu?: boolean;
   /** Callback when more menu is clicked */
   onMoreClick?: (e: React.MouseEvent) => void;
-  /** Render prop for more menu content (dropdown menu) */
-  renderMoreMenu?: () => React.ReactNode;
+  /** Render prop for more menu content (dropdown menu). Receives onOpenChange callback to notify when menu opens/closes */
+  renderMoreMenu?: (onOpenChange?: (open: boolean) => void) => React.ReactNode;
+  /** Callback when menu open state changes */
+  onMenuOpenChange?: (open: boolean) => void;
 };
 
 export const KanbanCard = ({
@@ -118,8 +120,16 @@ export const KanbanCard = ({
   showMoreMenu = false,
   onMoreClick,
   renderMoreMenu,
+  onMenuOpenChange,
 }: KanbanCardProps) => {
   const localRef = useRef<HTMLDivElement | null>(null);
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+
+  // Notify parent when menu open state changes
+  const handleMenuOpenChange = React.useCallback((open: boolean) => {
+    setIsMenuOpen(open);
+    onMenuOpenChange?.(open);
+  }, [onMenuOpenChange]);
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id,
@@ -177,19 +187,20 @@ export const KanbanCard = ({
     >
       {/* Content wrapper - invisible when dragging to show placeholder */}
       <div className={cn("contents", isDragging && "[&>*]:invisible")}>
-        {/* More menu button - top right corner, visible on hover */}
+        {/* More menu button - top right corner, visible on hover or when menu is open */}
         {showMoreMenu && (
           renderMoreMenu ? (
             <div
               className={cn(
-                "absolute top-2 right-2",
-                "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+                "absolute top-2 right-2 z-10",
+                // Stay visible when menu is open, otherwise show on hover
+                isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100",
                 "transition-all duration-150"
               )}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             >
-              {renderMoreMenu()}
+              {renderMoreMenu(handleMenuOpenChange)}
             </div>
           ) : (
             <Button

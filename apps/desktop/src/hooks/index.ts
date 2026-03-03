@@ -346,3 +346,10 @@ export type {
   ImplementationSubtask,
   ImplementationPlan,
 } from "./use-task-specs-data";
+
+// Stuck Detection
+export { useStuckDetection, formatStuckDuration } from "./use-stuck-detection";
+export type {
+  UseStuckDetectionOptions,
+  UseStuckDetectionReturn,
+} from "./use-stuck-detection";

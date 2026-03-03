@@ -160,8 +160,23 @@ export interface DiscoverModelsResponse {
   total: number;
 }
 
+/** Provider model with enabled status */
+export interface ProviderModelResponse {
+  id: string;
+  name: string;
+  provider: string;
+  description?: string;
+  enabled: boolean;
+  is_known: boolean;
+  context_window?: number;
+  max_output_tokens?: number;
+  input_price?: number;
+  output_price?: number;
+}
+
 /** Response for provider enabled models */
 export interface ProviderEnabledModelsResponse {
   provider_id: string;
-  enabled_models: string[];
+  models: ProviderModelResponse[];
+  total: number;
 }

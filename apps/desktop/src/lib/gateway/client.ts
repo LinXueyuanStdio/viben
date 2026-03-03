@@ -298,6 +298,9 @@ import {
   setPreferredTerminal,
   getNotificationPreferences,
   updateNotificationPreferences,
+
+  // Tasks module
+  getTaskSpecsData,
 } from "./modules";
 
 // Import types
@@ -425,6 +428,9 @@ import type {
   DeveloperPreferences,
   GatewayNotificationPreferences,
 } from "./types";
+
+// Import Tasks module types
+import type { TaskSpecsDataResponse } from "./modules/tasks";
 
 // ============================================================================
 // GatewayClient Class
@@ -903,6 +909,34 @@ export class GatewayClient {
   async deleteAgent(agentId: string, options?: { workspacePath?: string }): Promise<void> {
     return deleteAgent(this.baseUrl, agentId, options);
   }
+
+  // --------------------------------------------------------------------------
+  // Deprecated Agent Aliases (for backward compatibility)
+  // --------------------------------------------------------------------------
+
+  /**
+   * Create Viben agent
+   * @deprecated Use {@link createAgent} instead
+   */
+  createVibenAgent = this.createAgent.bind(this);
+
+  /**
+   * Get Viben agent
+   * @deprecated Use {@link getAgent} instead
+   */
+  getVibenAgent = this.getAgent.bind(this);
+
+  /**
+   * Update Viben agent
+   * @deprecated Use {@link updateAgent} instead
+   */
+  updateVibenAgent = this.updateAgent.bind(this);
+
+  /**
+   * Delete Viben agent
+   * @deprecated Use {@link deleteAgent} instead
+   */
+  deleteVibenAgent = this.deleteAgent.bind(this);
 
   /**
    * Get default agent
@@ -2745,5 +2779,19 @@ export class GatewayClient {
     prefs: Partial<GatewayNotificationPreferences>
   ): Promise<GatewayNotificationPreferences> {
     return updateNotificationPreferences(this.baseUrl, prefs);
+  }
+
+  // ==========================================================================
+  // Task Module Methods
+  // ==========================================================================
+
+  /**
+   * Get task specs data (PRD, subtasks, logs, files)
+   */
+  async getTaskSpecsData(
+    taskId: string,
+    workspacePath: string
+  ): Promise<TaskSpecsDataResponse> {
+    return getTaskSpecsData(this.baseUrl, taskId, workspacePath);
   }
 }
