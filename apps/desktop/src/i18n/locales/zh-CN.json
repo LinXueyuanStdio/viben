@@ -1666,7 +1666,15 @@
     "pageOf": "第 {{page}} 页，共 {{total}} 页",
     "showingPackages": "显示 {{count}} 个包",
     "packagesCount": "{{count}} 个技能包",
-    "searchResults": "\"{{query}}\" 的 {{count}} 个结果"
+    "searchResults": "\"{{query}}\" 的 {{count}} 个结果",
+    "installSuccess": "技能安装成功",
+    "installSuccessDescription": "{{name}} v{{version}} 现已可用",
+    "installError": "技能安装失败",
+    "installErrorUnknown": "发生未知错误",
+    "installErrorDuplicate": "{{name}} 已经安装",
+    "installErrorCorrupt": "技能包已损坏或无效",
+    "installErrorNetwork": "网络错误 - 请检查网络连接后重试",
+    "installErrorPermission": "权限被拒绝 - 请检查文件系统权限"
   },
   "marketplace": {
     "title": "MCP 市场",

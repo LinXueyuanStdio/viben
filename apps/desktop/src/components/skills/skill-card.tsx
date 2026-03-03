@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import type { CloudSkillPackage } from "@/hooks/use-cloud-skills";
@@ -57,6 +58,7 @@ interface SkillCardProps {
   onViewDetails: (skill: CloudSkillPackage) => void;
   isInstalled?: boolean;
   isInstalling?: boolean;
+  installProgress?: number;
   onInstall?: (skill: CloudSkillPackage) => void;
 }
 
@@ -69,6 +71,7 @@ export const SkillCard = React.memo(function SkillCard({
   onViewDetails,
   isInstalled = false,
   isInstalling = false,
+  installProgress = 0,
   onInstall,
 }: SkillCardProps) {
   const { t } = useTranslation();
@@ -201,6 +204,21 @@ export const SkillCard = React.memo(function SkillCard({
               +{skill.tags.length - 3}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Install Progress */}
+      {isInstalling && (
+        <div className="mb-3 space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">
+              {t("skillsMarket.installing")}
+            </span>
+            <span className="text-muted-foreground font-mono">
+              {installProgress}%
+            </span>
+          </div>
+          <Progress value={installProgress} className="h-1.5" />
         </div>
       )}
 

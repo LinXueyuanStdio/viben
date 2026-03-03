@@ -32,6 +32,7 @@ import type {
   AvailableSkill,
   AgentSkillConfig,
 } from "./types";
+import { extractZipToDirectory, parseSkillMetadataFromContent } from "./extract";
 
 export * from "./types";
 
@@ -68,7 +69,7 @@ export class SkillsManager {
    * - "custom": Install to specified customPath
    */
   async installSkill(options: InstallSkillOptions): Promise<InstallSkillResult> {
-    const { name, target, agentId, customPath, force, sourcePath, version } = options;
+    const { name, target, agentId, customPath, force, sourcePath, zipPath, onProgress, version, conflictResolution } = options;
 
     // Parse name@version if present
     const { skillName, skillVersion } = this.parseSkillName(name, version);
@@ -96,8 +97,68 @@ export class SkillsManager {
     // Create skill directory
     await mkdir(skillDir, { recursive: true });
 
-    // If sourcePath provided, copy from local
-    if (sourcePath) {
+    // Install from appropriate source
+    if (zipPath) {
+      // Extract from zip file
+      const extractResult = await extractZipToDirectory({
+        zipPath,
+        targetDir: skillDir,
+        onProgress,
+        overwrite: force,
+        validate: true,
+        conflictResolution,
+      });
+
+      // Use skill name from extracted SKILL.md if available
+      const extractedSkillName = extractResult.skillName || skillName;
+
+      // Log conflicts if any occurred
+      if (extractResult.conflicts && extractResult.conflicts.length > 0) {
+        const overwrittenCount = extractResult.conflicts.filter((c) => c.overwritten).length;
+        const skippedCount = extractResult.skippedCount || 0;
+
+        if (overwrittenCount > 0) {
+          // Add warning about overwritten files
+          if (!extractResult.warnings) {
+            extractResult.warnings = [];
+          }
+          extractResult.warnings.push(`${overwrittenCount} file(s) were overwritten during extraction`);
+        }
+
+        if (skippedCount > 0) {
+          // Add warning about skipped files
+          if (!extractResult.warnings) {
+            extractResult.warnings = [];
+          }
+          extractResult.warnings.push(`${skippedCount} file(s) were skipped due to conflicts`);
+        }
+      }
+
+      // Update installed.yaml tracking
+      await this.addToInstalledList(targetDir, {
+        name: extractedSkillName,
+        version: skillVersion || "1.0.0",
+        path: skillDir,
+        source: "marketplace",
+        installedAt: new Date().toISOString(),
+      });
+
+      // Build success message with warnings if any
+      let message = `Skill "${extractedSkillName}" installed successfully to ${target}`;
+      if (extractResult.warnings && extractResult.warnings.length > 0) {
+        message += ` (with ${extractResult.warnings.length} warning(s))`;
+      }
+
+      return {
+        success: true,
+        name: extractedSkillName,
+        version: skillVersion || "1.0.0",
+        path: skillDir,
+        target,
+        message,
+      };
+    } else if (sourcePath) {
+      // Copy from local directory
       await this.copySkillFromLocal(sourcePath, skillDir);
     } else {
       // Create a basic SKILL.md for now (marketplace download would go here)
@@ -630,59 +691,10 @@ This skill was installed from the marketplace.
 
   /**
    * Parse YAML frontmatter from SKILL.md
+   * Uses the shared parseSkillMetadataFromContent utility for consistency
    */
   private parseSkillFrontmatter(content: string): SkillMetadata | null {
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!match) {
-      return null;
-    }
-
-    try {
-      // Simple YAML parsing for frontmatter
-      const frontmatter = match[1];
-      const metadata: SkillMetadata = { name: "" };
-      const arrayFields: Record<string, string[]> = {};
-      let currentArrayField: string | null = null;
-
-      for (const line of frontmatter.split("\n")) {
-        // Handle array continuation
-        if (currentArrayField && line.trim().startsWith("-")) {
-          const value = line.trim().slice(1).trim();
-          if (value) {
-            arrayFields[currentArrayField].push(value);
-          }
-          continue;
-        }
-        currentArrayField = null;
-
-        const [key, ...valueParts] = line.split(":");
-        const value = valueParts.join(":").trim();
-
-        if (key && value) {
-          const cleanKey = key.trim();
-          if (cleanKey === "name") metadata.name = value;
-          else if (cleanKey === "description") metadata.description = value;
-          else if (cleanKey === "version") metadata.version = value;
-          else if (cleanKey === "author") metadata.author = value;
-        } else if (key && !value) {
-          // Could be start of an array field
-          const cleanKey = key.trim();
-          if (["tags", "triggers", "tools"].includes(cleanKey)) {
-            currentArrayField = cleanKey;
-            arrayFields[cleanKey] = [];
-          }
-        }
-      }
-
-      // Add array fields to metadata
-      if (arrayFields.tags) metadata.tags = arrayFields.tags;
-      if (arrayFields.triggers) metadata.triggers = arrayFields.triggers;
-      if (arrayFields.tools) metadata.tools = arrayFields.tools;
-
-      return metadata.name ? metadata : null;
-    } catch {
-      return null;
-    }
+    return parseSkillMetadataFromContent(content);
   }
 }
 
