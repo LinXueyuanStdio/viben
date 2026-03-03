@@ -27,8 +27,10 @@ viben swarm start <task> [options]
 **选项**:
 | 选项 | 说明 |
 |------|------|
-| `--executor <executor>` | 指定执行器 (claude-code, cursor, gemini 等)，默认 claude-code |
+| `--executor <executor>` | 指定执行器 (CLAUDE_CODE, CURSOR, GEMINI_CLI 等)，默认 CLAUDE_CODE |
 | `--detach` | 后台运行，不阻塞终端 |
+| `--resume` | 恢复智能体 session（使用保存的 session-id） |
+| `--session <id>` | 指定 session-id 恢复（需配合 --resume） |
 
 **前置条件**:
 - `task.json` 必须存在且设置了 `branch` 字段
@@ -45,8 +47,12 @@ viben swarm start <task> [options]
 **示例**:
 ```bash
 viben swarm start add-user-auth
-viben swarm start add-user-auth --executor cursor
+viben swarm start add-user-auth --executor CURSOR
 viben swarm start add-user-auth --detach
+
+# 恢复已停止的智能体
+viben swarm start add-user-auth --resume
+viben swarm start add-user-auth --resume --session abc123-def456
 ```
 
 **输出**:
@@ -89,17 +95,21 @@ To resume:  claude --resume abc123-def456
 
 ```bash
 viben swarm stop <task> [--force]
+viben swarm stop --all [--force]
 ```
 
 **选项**:
 | 选项 | 说明 |
 |------|------|
 | `--force` | 强制终止 (SIGKILL) |
+| `--all` | 停止所有运行中的智能体 |
 
 **示例**:
 ```bash
-viben swarm stop add-user-auth
-viben swarm stop add-user-auth --force
+viben swarm stop add-user-auth           # 停止指定智能体 (SIGTERM)
+viben swarm stop add-user-auth --force   # 强制终止 (SIGKILL)
+viben swarm stop --all                   # 停止所有智能体
+viben swarm stop --all --force           # 强制停止所有
 ```
 
 ---
@@ -138,6 +148,67 @@ File: .viben/agents/registry.json
     }
   ]
 }
+```
+
+---
+
+## 查看状态
+
+### `viben swarm status`
+
+查看智能体状态。
+
+```bash
+# 查看所有智能体状态
+viben swarm status                       # 显示所有智能体摘要
+viben swarm status --running             # 只显示运行中
+viben swarm status --stopped             # 只显示已停止
+viben swarm status --json                # JSON 输出
+
+# 查看特定智能体状态
+viben swarm status <task>                # 显示特定智能体
+viben swarm status <task> --detail       # 详细状态
+viben swarm status <task> --watch        # 实时监控日志
+viben swarm status <task> --log          # 显示最近日志条目
+```
+
+**选项**:
+| 选项 | 说明 |
+|------|------|
+| `--running` | 只显示运行中的智能体 |
+| `--stopped` | 只显示已停止的智能体 |
+| `--json` | JSON 格式输出 |
+| `--detail` | 显示详细状态 |
+| `--watch` | 实时监控智能体日志 |
+| `--log` | 显示最近日志条目 |
+
+**摘要输出**:
+```
+=== Swarm Status ===
+Agents: 2 running / 3 registered
+
+Running:
+  ▶ add-user-auth [CLAUDE_CODE]
+    Phase:    implement (1/4)
+    Elapsed:  5m 32s
+    Branch:   feature/user-auth
+    Modified: 3 file(s)
+    Activity: Edit
+    PID:      12345
+
+Stopped:
+  ○ fix-login-bug [CLAUDE_CODE]
+    Status:   in_progress
+    "正在分析登录逻辑..."
+    Resume:   viben swarm start fix-login-bug --resume
+```
+
+**示例**:
+```bash
+viben swarm status
+viben swarm status --running
+viben swarm status add-user-auth --detail
+viben swarm status add-user-auth --watch
 ```
 
 ---
@@ -336,6 +407,8 @@ post_create:
 - [ ] `viben swarm start` 创建 worktree 并启动智能体
 - [ ] 支持 `--executor` 选择不同执行器
 - [ ] 支持 `--detach` 后台运行
+- [ ] 支持 `--resume` 恢复智能体 session
+- [ ] 支持 `--session <id>` 指定 session-id
 - [ ] 正确复制环境文件
 - [ ] 正确执行 post_create hooks
 - [ ] 注册 agent 到 registry
@@ -343,6 +416,14 @@ post_create:
 ### 停止智能体
 - [ ] `viben swarm stop` 正常停止智能体
 - [ ] 支持 `--force` 强制终止
+- [ ] 支持 `--all` 停止所有智能体
+
+### 状态监控
+- [ ] `viben swarm status` 显示所有智能体摘要
+- [ ] `viben swarm status <task>` 显示特定智能体
+- [ ] 支持 `--running/--stopped` 过滤
+- [ ] 支持 `--detail/--watch/--log` 详细监控
+- [ ] 支持 `--json` 输出
 
 ### 注册表
 - [ ] `viben swarm registry` 显示所有注册的智能体
