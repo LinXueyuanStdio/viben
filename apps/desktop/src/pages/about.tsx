@@ -3,33 +3,9 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { VibenLogo } from "@/components/ui/viben-logo";
-
-// Animation variants for staggered entrance
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.05,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.3,
-      ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ease-out-expo
-    },
-  },
-};
 
 export function AboutPage() {
   const { t } = useTranslation();
@@ -37,6 +13,31 @@ export function AboutPage() {
   const updateAvailable = false;
   const { selectedPython, browseMcpInfo } = usePython();
   const { setupBannerDismissed, setSetupBannerDismissed } = useAppStore();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Animation variants for staggered entrance
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: prefersReducedMotion ? 0 : 0.1,
+        delayChildren: prefersReducedMotion ? 0 : 0.05,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: prefersReducedMotion ? 0 : 0.3,
+        ease: [0.16, 1, 0.3, 1] as [number, number, number, number], // ease-out-expo
+      },
+    },
+  };
 
   // Setup status
   const pythonValid = selectedPython?.is_valid ?? false;
