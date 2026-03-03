@@ -8,52 +8,445 @@
  *
  * Generated structure:
  * - .viben/ - Workflow files, scripts, specs, and workspace
- * - .claude/ - Claude Code agents, commands, hooks, and settings
- * - .cursor/ - Cursor IDE commands (optional)
+ * - .claude/ - Claude Code agents, commands, hooks, and settings (if selected)
+ * - .cursor/ - Cursor IDE commands (if selected)
+ * - Other executors as selected
  * - AGENTS.md - Root instructions file
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { mkdir, writeFile, chmod, copyFile } from "node:fs/promises";
+import * as fs from "node:fs";
+import { mkdir, writeFile, chmod, readdir, stat } from "node:fs/promises";
 import { join, dirname, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
+import { type ProjectType, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
+
+export type { ProjectType } from "./types";
+
+// =============================================================================
+// Template Path Helpers
+// =============================================================================
 
 /**
  * Get the templates directory path.
  * Templates are located in packages/core/templates/.
  */
 function getTemplatesDir(): string {
-  // In development: __dirname is packages/core/src/team
-  // In production (dist): __dirname is packages/core/dist/team
-  // Templates are at packages/core/templates/
   const currentDir = dirname(fileURLToPath(import.meta.url));
 
   // Check if we're in dist (production) or src (development)
   if (currentDir.includes("/dist/")) {
-    // Production: packages/core/dist/team -> packages/core/templates
     return resolve(currentDir, "../../templates");
   } else {
-    // Development: packages/core/src/team -> packages/core/templates
     return resolve(currentDir, "../../templates");
   }
 }
 
 /**
- * Read a template file from the Rust crate templates directory
+ * Get the path to a specific template directory
+ */
+function getTemplatePath(name: string): string {
+  const templatePath = join(getTemplatesDir(), name);
+  if (fs.existsSync(templatePath)) {
+    return templatePath;
+  }
+  throw new Error(`Could not find ${name} templates directory`);
+}
+
+/**
+ * Read a template file
  */
 function readTemplate(relativePath: string): string {
   const templatesDir = getTemplatesDir();
   const fullPath = join(templatesDir, relativePath);
-  if (!existsSync(fullPath)) {
+  if (!fs.existsSync(fullPath)) {
     throw new Error(`Template not found: ${relativePath}`);
   }
-  return readFileSync(fullPath, "utf-8");
+  return fs.readFileSync(fullPath, "utf-8");
+}
+
+// =============================================================================
+// File Writing Helpers
+// =============================================================================
+
+/**
+ * Ensure a directory exists
+ */
+function ensureDir(dirPath: string): void {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
 }
 
 /**
- * Project type for initialization
+ * Write a file if it doesn't exist or force mode is enabled
  */
-export type ProjectType = "frontend" | "backend" | "fullstack";
+async function writeFileIfNeeded(
+  filePath: string,
+  content: string,
+  options: { force?: boolean; skipExisting?: boolean; executable?: boolean },
+  createdFiles: string[],
+  baseDir: string
+): Promise<void> {
+  if (fs.existsSync(filePath)) {
+    if (options.skipExisting) {
+      return;
+    }
+    if (!options.force) {
+      throw new Error(`File already exists: ${filePath}`);
+    }
+  }
+
+  // Ensure parent directory exists
+  const parentDir = dirname(filePath);
+  await mkdir(parentDir, { recursive: true });
+
+  await writeFile(filePath, content, "utf-8");
+
+  if (options.executable) {
+    await chmod(filePath, 0o755);
+  }
+
+  createdFiles.push(filePath.replace(baseDir + "/", ""));
+}
+
+/**
+ * Calculate SHA256 hash of content
+ */
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+/**
+ * Detect available Python command (python3 or python)
+ */
+function getPythonCommand(): string {
+  try {
+    execSync("python3 --version", { stdio: "pipe" });
+    return "python3";
+  } catch {
+    try {
+      execSync("python --version", { stdio: "pipe" });
+      return "python";
+    } catch {
+      return "python3";
+    }
+  }
+}
+
+// =============================================================================
+// Directory Copy Helper
+// =============================================================================
+
+/**
+ * Recursively copy a directory from templates to target
+ */
+async function copyTemplateDir(
+  srcRelativePath: string,
+  destPath: string,
+  options: { force?: boolean; skipExisting?: boolean; executable?: boolean },
+  createdFiles: string[],
+  baseDir: string
+): Promise<void> {
+  const srcPath = join(getTemplatesDir(), srcRelativePath);
+
+  if (!fs.existsSync(srcPath)) {
+    throw new Error(`Template directory not found: ${srcRelativePath}`);
+  }
+
+  ensureDir(destPath);
+
+  const entries = await readdir(srcPath);
+  for (const entry of entries) {
+    const srcEntryPath = join(srcPath, entry);
+    const destEntryPath = join(destPath, entry);
+    const entryStat = await stat(srcEntryPath);
+
+    if (entryStat.isDirectory()) {
+      await copyTemplateDir(
+        join(srcRelativePath, entry),
+        destEntryPath,
+        options,
+        createdFiles,
+        baseDir
+      );
+    } else {
+      const content = fs.readFileSync(srcEntryPath, "utf-8");
+      const isExecutable =
+        options.executable && (entry.endsWith(".sh") || entry.endsWith(".py"));
+      await writeFileIfNeeded(
+        destEntryPath,
+        content,
+        { ...options, executable: isExecutable },
+        createdFiles,
+        baseDir
+      );
+    }
+  }
+}
+
+// =============================================================================
+// Executor Configurators
+// =============================================================================
+
+/**
+ * Configure Claude Code
+ */
+async function configureClaude(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[],
+  hashes: Record<string, string>
+): Promise<void> {
+  const claudeDir = join(cwd, ".claude");
+  ensureDir(join(claudeDir, "agents"));
+  ensureDir(join(claudeDir, "commands/viben"));
+  ensureDir(join(claudeDir, "hooks"));
+
+  // Settings
+  const pythonCmd = getPythonCommand();
+  const settingsContent = readTemplate("claude/settings.json").replace(
+    /\{\{PYTHON_CMD\}\}/g,
+    pythonCmd
+  );
+  await writeFileIfNeeded(
+    join(claudeDir, "settings.json"),
+    settingsContent,
+    options,
+    createdFiles,
+    cwd
+  );
+  hashes[".claude/settings.json"] = sha256(settingsContent);
+
+  // Agents
+  await copyTemplateDir(
+    "claude/agents",
+    join(claudeDir, "agents"),
+    options,
+    createdFiles,
+    cwd
+  );
+
+  // Commands
+  await copyTemplateDir(
+    "claude/commands/viben",
+    join(claudeDir, "commands/viben"),
+    options,
+    createdFiles,
+    cwd
+  );
+
+  // Hooks
+  await copyTemplateDir(
+    "claude/hooks",
+    join(claudeDir, "hooks"),
+    { ...options, executable: true },
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Cursor
+ */
+async function configureCursor(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const cursorDir = join(cwd, ".cursor");
+  ensureDir(join(cursorDir, "commands"));
+
+  await copyTemplateDir(
+    "cursor/commands",
+    join(cursorDir, "commands"),
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure iFlow
+ */
+async function configureIflow(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const iflowDir = join(cwd, ".iflow");
+  ensureDir(join(iflowDir, "agents"));
+  ensureDir(join(iflowDir, "commands/viben"));
+  ensureDir(join(iflowDir, "hooks"));
+
+  // Settings
+  const pythonCmd = getPythonCommand();
+  const settingsContent = readTemplate("iflow/settings.json").replace(
+    /\{\{PYTHON_CMD\}\}/g,
+    pythonCmd
+  );
+  await writeFileIfNeeded(
+    join(iflowDir, "settings.json"),
+    settingsContent,
+    options,
+    createdFiles,
+    cwd
+  );
+
+  await copyTemplateDir(
+    "iflow/agents",
+    join(iflowDir, "agents"),
+    options,
+    createdFiles,
+    cwd
+  );
+
+  await copyTemplateDir(
+    "iflow/commands/viben",
+    join(iflowDir, "commands/viben"),
+    options,
+    createdFiles,
+    cwd
+  );
+
+  await copyTemplateDir(
+    "iflow/hooks",
+    join(iflowDir, "hooks"),
+    { ...options, executable: true },
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure OpenCode
+ */
+async function configureOpencode(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const opencodeDir = join(cwd, ".opencode");
+  ensureDir(join(opencodeDir, "agents"));
+  ensureDir(join(opencodeDir, "commands/viben"));
+
+  await copyTemplateDir(
+    "opencode/agents",
+    join(opencodeDir, "agents"),
+    options,
+    createdFiles,
+    cwd
+  );
+
+  await copyTemplateDir(
+    "opencode/commands/viben",
+    join(opencodeDir, "commands/viben"),
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Codex
+ */
+async function configureCodex(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const codexDir = join(cwd, ".agents/skills");
+
+  await copyTemplateDir(
+    "codex/skills",
+    codexDir,
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Kilo
+ */
+async function configureKilo(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const kiloDir = join(cwd, ".kilocode");
+  ensureDir(join(kiloDir, "commands/viben"));
+
+  await copyTemplateDir(
+    "kilo/commands/viben",
+    join(kiloDir, "commands/viben"),
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Kiro
+ */
+async function configureKiro(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const kiroDir = join(cwd, ".kiro/skills");
+
+  await copyTemplateDir(
+    "kiro/skills",
+    kiroDir,
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Gemini
+ */
+async function configureGemini(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const geminiDir = join(cwd, ".gemini");
+  ensureDir(join(geminiDir, "commands/viben"));
+
+  await copyTemplateDir(
+    "gemini/commands/viben",
+    join(geminiDir, "commands/viben"),
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+/**
+ * Configure Antigravity
+ */
+async function configureAntigravity(
+  cwd: string,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const antigravityDir = join(cwd, ".agent/workflows");
+
+  await copyTemplateDir(
+    "antigravity/workflows",
+    antigravityDir,
+    options,
+    createdFiles,
+    cwd
+  );
+}
+
+// =============================================================================
+// Main Init Function
+// =============================================================================
 
 /**
  * Options for team initialization
@@ -69,10 +462,8 @@ export interface InitOptions {
   force?: boolean;
   /** Skip existing files without error */
   skipExisting?: boolean;
-  /** Include Cursor configuration */
-  includeCursor?: boolean;
-  /** Include Codex support (reserved for future) */
-  includeCodex?: boolean;
+  /** Executors to configure (default: CURSOR, CLAUDE_CODE) */
+  executors?: string[];
 }
 
 /**
@@ -111,80 +502,68 @@ function validateDeveloperName(name: string): void {
 }
 
 /**
- * Calculate SHA256 hash of content
+ * Detect project type based on files in the directory
  */
-function sha256(content: string): string {
-  return createHash("sha256").update(content).digest("hex");
-}
+function detectProjectType(cwd: string): ProjectType {
+  const hasPackageJson = fs.existsSync(join(cwd, "package.json"));
+  const hasGoMod = fs.existsSync(join(cwd, "go.mod"));
+  const hasCargoToml = fs.existsSync(join(cwd, "Cargo.toml"));
+  const hasPyprojectToml = fs.existsSync(join(cwd, "pyproject.toml"));
+  const hasRequirementsTxt = fs.existsSync(join(cwd, "requirements.txt"));
 
-/**
- * Write a file if it doesn't exist or force mode is enabled
- */
-async function writeFileIfNeeded(
-  filePath: string,
-  content: string,
-  options: { force?: boolean; skipExisting?: boolean },
-  createdFiles: string[],
-  baseDir: string
-): Promise<void> {
-  if (existsSync(filePath)) {
-    if (options.skipExisting) {
-      return;
-    }
-    if (!options.force) {
-      throw new Error(`File already exists: ${filePath}`);
+  const hasBackend = hasGoMod || hasCargoToml || hasPyprojectToml || hasRequirementsTxt;
+
+  if (hasPackageJson) {
+    // Check if it's frontend-only or fullstack
+    try {
+      const pkg = JSON.parse(fs.readFileSync(join(cwd, "package.json"), "utf-8"));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+
+      const hasFrontendFramework =
+        deps.react || deps.vue || deps.angular || deps.svelte || deps.next;
+      const hasBackendFramework =
+        deps.express || deps.fastify || deps.koa || deps.nestjs;
+
+      if (hasFrontendFramework && !hasBackendFramework && !hasBackend) {
+        return "frontend";
+      }
+      if (hasBackendFramework || hasBackend) {
+        return "fullstack";
+      }
+      return "frontend";
+    } catch {
+      return "fullstack";
     }
   }
 
-  // Ensure parent directory exists
-  const parentDir = dirname(filePath);
-  await mkdir(parentDir, { recursive: true });
+  if (hasBackend) {
+    return "backend";
+  }
 
-  await writeFile(filePath, content, "utf-8");
-  createdFiles.push(filePath.replace(baseDir + "/", ""));
-}
-
-/**
- * Write a file and make it executable
- */
-async function writeExecutable(
-  filePath: string,
-  content: string,
-  options: { force?: boolean; skipExisting?: boolean },
-  createdFiles: string[],
-  baseDir: string
-): Promise<void> {
-  await writeFileIfNeeded(filePath, content, options, createdFiles, baseDir);
-  await chmod(filePath, 0o755);
+  return "fullstack";
 }
 
 /**
  * Initialize a Viben team workspace.
- *
- * Creates:
- * - .viben/ - Workflow files, scripts, specs, workspace
- * - .claude/ - Claude Code configuration
- * - .cursor/ - Cursor configuration (optional)
- * - AGENTS.md - Root instructions file
  *
  * @param options - Initialization options
  * @returns Initialization result
  */
 export async function initTeam(options: InitOptions): Promise<InitResult> {
   const targetDir = options.targetDir || process.cwd();
-  const projectType = options.projectType || "fullstack";
+  const projectType = options.projectType || detectProjectType(targetDir);
+  const executors = options.executors || ["CURSOR", "CLAUDE_CODE"];
   const createdFiles: string[] = [];
   const warnings: string[] = [];
+  const hashes: Record<string, string> = {};
 
   // Validate developer name
   validateDeveloperName(options.developerName);
 
   const vibenDir = join(targetDir, ".viben");
-  const claudeDir = join(targetDir, ".claude");
-  const cursorDir = join(targetDir, ".cursor");
 
   // Check for existing .viben directory
-  if (existsSync(vibenDir) && !options.force && !options.skipExisting) {
+  if (fs.existsSync(vibenDir) && !options.force && !options.skipExisting) {
     throw new Error(`Directory already exists: ${vibenDir}`);
   }
 
@@ -193,23 +572,20 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     skipExisting: options.skipExisting,
   };
 
-  // Template hashes for tracking
-  const hashes: Record<string, string> = {};
-
   // ===================
-  // Create .viben directory structure
+  // Create .viben workflow structure
   // ===================
-  await mkdir(join(vibenDir, "scripts/common"), { recursive: true });
-  await mkdir(join(vibenDir, "scripts/multi-agent"), { recursive: true });
-  await mkdir(join(vibenDir, "workspace", options.developerName), {
-    recursive: true,
-  });
-  await mkdir(join(vibenDir, "tasks/archive"), { recursive: true });
-  await mkdir(join(vibenDir, "spec/backend"), { recursive: true });
-  await mkdir(join(vibenDir, "spec/frontend"), { recursive: true });
-  await mkdir(join(vibenDir, "spec/guides"), { recursive: true });
 
-  // Root files from viben/ templates
+  // Copy scripts directory
+  await copyTemplateDir(
+    "viben/scripts",
+    join(vibenDir, "scripts"),
+    { ...writeOpts, executable: true },
+    createdFiles,
+    targetDir
+  );
+
+  // Copy workflow.md
   const workflowMd = readTemplate("viben/workflow.md");
   await writeFileIfNeeded(
     join(vibenDir, "workflow.md"),
@@ -220,6 +596,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   );
   hashes[".viben/workflow.md"] = sha256(workflowMd);
 
+  // Copy worktree.yaml (multi-agent enabled by default)
   const worktreeYaml = readTemplate("viben/worktree.yaml");
   await writeFileIfNeeded(
     join(vibenDir, "worktree.yaml"),
@@ -230,6 +607,7 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   );
   hashes[".viben/worktree.yaml"] = sha256(worktreeYaml);
 
+  // Copy .gitignore
   const gitignore = readTemplate("viben/gitignore.txt");
   await writeFileIfNeeded(
     join(vibenDir, ".gitignore"),
@@ -239,34 +617,41 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
     targetDir
   );
 
+  // Create workspace directory with index
+  ensureDir(join(vibenDir, "workspace"));
+  const workspaceIndex = readTemplate("markdown/workspace-index.md");
+  await writeFileIfNeeded(
+    join(vibenDir, "workspace/index.md"),
+    workspaceIndex,
+    writeOpts,
+    createdFiles,
+    targetDir
+  );
+
+  // Create tasks directory
+  ensureDir(join(vibenDir, "tasks"));
+
+  // Create spec templates based on project type
+  await createSpecTemplates(targetDir, projectType, writeOpts, createdFiles);
+
   // Add .viben/worktrees to root .gitignore
   const rootGitignorePath = join(targetDir, ".gitignore");
   const worktreesIgnoreEntry = ".viben/worktrees";
-  if (existsSync(rootGitignorePath)) {
-    const rootGitignoreContent = readFileSync(rootGitignorePath, "utf-8");
+  if (fs.existsSync(rootGitignorePath)) {
+    const rootGitignoreContent = fs.readFileSync(rootGitignorePath, "utf-8");
     if (!rootGitignoreContent.includes(worktreesIgnoreEntry)) {
       const newContent = rootGitignoreContent.endsWith("\n")
         ? `${rootGitignoreContent}\n# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`
         : `${rootGitignoreContent}\n\n# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`;
-      await writeFile(rootGitignorePath, newContent, "utf-8");
+      fs.writeFileSync(rootGitignorePath, newContent, "utf-8");
       warnings.push(`Added ${worktreesIgnoreEntry} to root .gitignore`);
     }
-  } else {
-    // Create root .gitignore with worktrees entry
-    const newGitignore = `# Viben worktrees (git worktrees for multi-agent workflows)\n${worktreesIgnoreEntry}\n`;
-    await writeFileIfNeeded(
-      rootGitignorePath,
-      newGitignore,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
   }
 
-  const version = "1.0.0";
+  // Version file
   await writeFileIfNeeded(
     join(vibenDir, ".version"),
-    version,
+    "1.0.0",
     writeOpts,
     createdFiles,
     targetDir
@@ -284,433 +669,41 @@ export async function initTeam(options: InitOptions): Promise<InitResult> {
   );
 
   // ===================
-  // Scripts - Main
+  // Configure selected executors
   // ===================
-  const mainScripts = [
-    "task.sh",
-    "init-developer.sh",
-    "get-developer.sh",
-    "get-context.sh",
-    "add-session.sh",
-    "create-bootstrap.sh",
-  ];
 
-  for (const script of mainScripts) {
-    const content = readTemplate(`viben/scripts/${script}`);
-    await writeExecutable(
-      join(vibenDir, "scripts", script),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.viben/scripts/${script}`] = sha256(content);
-  }
-
-  // Scripts - Common
-  const commonScripts = [
-    "paths.sh",
-    "developer.sh",
-    "git-context.sh",
-    "worktree.sh",
-    "task-queue.sh",
-    "task-utils.sh",
-    "phase.sh",
-    "registry.sh",
-  ];
-
-  for (const script of commonScripts) {
-    const content = readTemplate(`viben/scripts/common/${script}`);
-    await writeExecutable(
-      join(vibenDir, "scripts/common", script),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.viben/scripts/common/${script}`] = sha256(content);
-  }
-
-  // Scripts - Multi-agent
-  const multiAgentScripts = [
-    "start.sh",
-    "cleanup.sh",
-    "status.sh",
-    "create-pr.sh",
-    "plan.sh",
-  ];
-
-  for (const script of multiAgentScripts) {
-    const content = readTemplate(`viben/scripts/multi_agent/${script}`);
-    await writeExecutable(
-      join(vibenDir, "scripts/multi-agent", script),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.viben/scripts/multi-agent/${script}`] = sha256(content);
-  }
-
-  // ===================
-  // Spec files
-  // ===================
-  // Guides (always created)
-  const guidesFiles = [
-    "index.md",
-    "cross-layer-thinking-guide.md",
-    "code-reuse-thinking-guide.md",
-  ];
-
-  for (const file of guidesFiles) {
-    const content = readTemplate(`viben/spec/guides/${file}`);
-    await writeFileIfNeeded(
-      join(vibenDir, "spec/guides", file),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.viben/spec/guides/${file}`] = sha256(content);
-  }
-
-  // Backend specs (if backend or fullstack)
-  if (projectType === "backend" || projectType === "fullstack") {
-    const backendFiles = [
-      "index.md",
-      "directory-structure.md",
-      "database-guidelines.md",
-      "logging-guidelines.md",
-      "quality-guidelines.md",
-      "error-handling.md",
-    ];
-
-    for (const file of backendFiles) {
-      const content = readTemplate(`viben/spec/backend/${file}`);
-      await writeFileIfNeeded(
-        join(vibenDir, "spec/backend", file),
-        content,
-        writeOpts,
-        createdFiles,
-        targetDir
-      );
-    }
-  }
-
-  // Frontend specs (if frontend or fullstack)
-  if (projectType === "frontend" || projectType === "fullstack") {
-    const frontendFiles = [
-      "index.md",
-      "directory-structure.md",
-      "type-safety.md",
-      "hook-guidelines.md",
-      "component-guidelines.md",
-      "quality-guidelines.md",
-      "state-management.md",
-    ];
-
-    for (const file of frontendFiles) {
-      const content = readTemplate(`viben/spec/frontend/${file}`);
-      await writeFileIfNeeded(
-        join(vibenDir, "spec/frontend", file),
-        content,
-        writeOpts,
-        createdFiles,
-        targetDir
-      );
-    }
-  }
-
-  // ===================
-  // Workspace files
-  // ===================
-  const workspaceIndex = readTemplate("markdown/workspace-index.md");
-  await writeFileIfNeeded(
-    join(vibenDir, "workspace/index.md"),
-    workspaceIndex,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  // Developer-specific files
-  const today = now.toISOString().split("T")[0];
-  const developerIndex = `# ${options.developerName} Workspace
-
-> Personal workspace for AI Agent sessions
-
----
-
-## Quick Stats
-
-<!-- @@@auto:stats -->
-| Metric | Value |
-|--------|-------|
-| Total Sessions | 0 |
-| Last Active | ${today} |
-| Current Journal | journal-1.md |
-<!-- @@@/auto:stats -->
-
----
-
-## Session History
-
-<!-- @@@auto:history -->
-| # | Date | Title | Commits |
-|---|------|-------|---------|
-<!-- @@@/auto:history -->
-
----
-
-## Active Work
-
-(None currently)
-
----
-
-## Notes
-
-(Add any personal notes here)
-`;
-
-  await writeFileIfNeeded(
-    join(vibenDir, "workspace", options.developerName, "index.md"),
-    developerIndex,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  const journalContent = `# Journal 1
-
-> Session records for ${options.developerName}
-
----
-
-## Session 1: Workspace Initialized
-
-**Date**: ${today}
-
-### Summary
-
-Initialized Viben Agent Organization workspace.
-
-### Status
-
-[OK] **Completed**
-`;
-
-  await writeFileIfNeeded(
-    join(vibenDir, "workspace", options.developerName, "journal-1.md"),
-    journalContent,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  // ===================
-  // Bootstrap task
-  // ===================
-  const taskDir = join(vibenDir, "tasks/00-bootstrap-guidelines");
-  await mkdir(taskDir, { recursive: true });
-
-  const taskJson = JSON.stringify(
-    {
-      title: "Bootstrap Project Guidelines",
-      slug: "bootstrap-guidelines",
-      status: "pending",
-      priority: "P1",
-      assignee: options.developerName,
-      branch: null,
-      scope: null,
-      created_at: now.toISOString(),
-      dev_type: projectType,
-    },
-    null,
-    2
-  );
-
-  await writeFileIfNeeded(
-    join(taskDir, "task.json"),
-    taskJson,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  const prdContent = `# Bootstrap Project Guidelines
-
-## Objective
-
-Fill in the placeholder guidelines in \`.viben/spec/\` with project-specific information.
-
-## Tasks
-
-1. **Backend Guidelines** (if applicable)
-   - [ ] Update \`spec/backend/directory-structure.md\` with your project's structure
-   - [ ] Update \`spec/backend/database-guidelines.md\` with your database conventions
-   - [ ] Update \`spec/backend/error-handling.md\` with your error patterns
-   - [ ] Update \`spec/backend/logging-guidelines.md\` with your logging setup
-   - [ ] Update \`spec/backend/quality-guidelines.md\` with your quality standards
-
-2. **Frontend Guidelines** (if applicable)
-   - [ ] Update \`spec/frontend/directory-structure.md\` with your project's structure
-   - [ ] Update \`spec/frontend/component-guidelines.md\` with your component patterns
-   - [ ] Update \`spec/frontend/state-management.md\` with your state approach
-   - [ ] Update \`spec/frontend/type-safety.md\` with your TypeScript conventions
-   - [ ] Update \`spec/frontend/hook-guidelines.md\` with your custom hooks
-   - [ ] Update \`spec/frontend/quality-guidelines.md\` with your quality standards
-
-3. **Review Guides**
-   - [ ] Read \`spec/guides/cross-layer-thinking-guide.md\`
-   - [ ] Read \`spec/guides/code-reuse-thinking-guide.md\`
-
-## Acceptance Criteria
-
-- [ ] All placeholder text replaced with project-specific content
-- [ ] Guidelines reflect actual project conventions
-- [ ] Team members can follow guidelines without ambiguity
-`;
-
-  await writeFileIfNeeded(
-    join(taskDir, "prd.md"),
-    prdContent,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  // Set current task
-  await writeFileIfNeeded(
-    join(vibenDir, ".current-task"),
-    ".viben/tasks/00-bootstrap-guidelines",
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-
-  // ===================
-  // Create .claude directory structure
-  // ===================
-  await mkdir(join(claudeDir, "agents"), { recursive: true });
-  await mkdir(join(claudeDir, "commands/viben"), { recursive: true });
-  await mkdir(join(claudeDir, "hooks"), { recursive: true });
-
-  // settings.json
-  const settingsJson = readTemplate("claude/settings.json");
-  await writeFileIfNeeded(
-    join(claudeDir, "settings.json"),
-    settingsJson,
-    writeOpts,
-    createdFiles,
-    targetDir
-  );
-  hashes[".claude/settings.json"] = sha256(settingsJson);
-
-  // Agents
-  const agents = [
-    "check.md",
-    "debug.md",
-    "dispatch.md",
-    "implement.md",
-    "plan.md",
-    "research.md",
-  ];
-
-  for (const agent of agents) {
-    const content = readTemplate(`claude/agents/${agent}`);
-    await writeFileIfNeeded(
-      join(claudeDir, "agents", agent),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.claude/agents/${agent}`] = sha256(content);
-  }
-
-  // Commands
-  const commands = [
-    "before-backend-dev.md",
-    "before-frontend-dev.md",
-    "break-loop.md",
-    "check-backend.md",
-    "check-cross-layer.md",
-    "check-frontend.md",
-    "create-command.md",
-    "finish-work.md",
-    "integrate-skill.md",
-    "onboard.md",
-    "parallel.md",
-    "record-session.md",
-    "start.md",
-    "update-spec.md",
-  ];
-
-  for (const cmd of commands) {
-    const content = readTemplate(`claude/commands/${cmd}`);
-    await writeFileIfNeeded(
-      join(claudeDir, "commands/viben", cmd),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.claude/commands/viben/${cmd}`] = sha256(content);
-  }
-
-  // Hooks
-  const hooks = [
-    "inject-subagent-context.py",
-    "ralph-loop.py",
-    "session-start.py",
-  ];
-
-  for (const hook of hooks) {
-    const content = readTemplate(`claude/hooks/${hook}`);
-    await writeExecutable(
-      join(claudeDir, "hooks", hook),
-      content,
-      writeOpts,
-      createdFiles,
-      targetDir
-    );
-    hashes[`.claude/hooks/${hook}`] = sha256(content);
-  }
-
-  // ===================
-  // Create .cursor directory (optional)
-  // ===================
-  if (options.includeCursor !== false) {
-    await mkdir(join(cursorDir, "commands"), { recursive: true });
-
-    // Cursor commands - note: not all claude commands have cursor equivalents
-    // Cursor uses viben- prefix in filenames
-    const cursorCommands = [
-      "before-backend-dev.md",
-      "before-frontend-dev.md",
-      "break-loop.md",
-      "check-backend.md",
-      "check-cross-layer.md",
-      "check-frontend.md",
-      "create-command.md",
-      "finish-work.md",
-      "integrate-skill.md",
-      "onboard.md",
-      "record-session.md",
-      "start.md",
-      "update-spec.md",
-    ];
-
-    for (const cmd of cursorCommands) {
-      const content = readTemplate(`cursor/commands/viben-${cmd}`);
-      await writeFileIfNeeded(
-        join(cursorDir, "commands", `viben-${cmd}`),
-        content,
-        writeOpts,
-        createdFiles,
-        targetDir
-      );
+  for (const executor of executors) {
+    switch (executor) {
+      case "CLAUDE_CODE":
+        await configureClaude(targetDir, writeOpts, createdFiles, hashes);
+        break;
+      case "CURSOR":
+        await configureCursor(targetDir, writeOpts, createdFiles);
+        break;
+      case "IFLOW":
+        await configureIflow(targetDir, writeOpts, createdFiles);
+        break;
+      case "OPENCODE":
+        await configureOpencode(targetDir, writeOpts, createdFiles);
+        break;
+      case "CODEX":
+        await configureCodex(targetDir, writeOpts, createdFiles);
+        break;
+      case "KILO":
+        await configureKilo(targetDir, writeOpts, createdFiles);
+        break;
+      case "KIRO":
+        await configureKiro(targetDir, writeOpts, createdFiles);
+        break;
+      case "GEMINI_CLI":
+        await configureGemini(targetDir, writeOpts, createdFiles);
+        break;
+      case "ANTIGRAVITY":
+        await configureAntigravity(targetDir, writeOpts, createdFiles);
+        break;
+      // Other executors not yet implemented - skip silently
+      default:
+        break;
     }
   }
 
@@ -737,10 +730,108 @@ Fill in the placeholder guidelines in \`.viben/spec/\` with project-specific inf
     targetDir
   );
 
+  // ===================
+  // Initialize developer identity via Python script
+  // ===================
+  try {
+    const pythonCmd = getPythonCommand();
+    const scriptPath = join(vibenDir, "scripts/init_developer.py");
+    if (fs.existsSync(scriptPath)) {
+      execSync(`${pythonCmd} "${scriptPath}" "${options.developerName}"`, {
+        cwd: targetDir,
+        stdio: "pipe",
+      });
+    }
+  } catch {
+    // Silent failure - user can run init_developer.py manually
+  }
+
   return {
     success: true,
     path: targetDir,
     files: createdFiles,
     warnings: warnings.length > 0 ? warnings : undefined,
   };
+}
+
+/**
+ * Create spec templates based on project type
+ */
+async function createSpecTemplates(
+  cwd: string,
+  projectType: ProjectType,
+  options: { force?: boolean; skipExisting?: boolean },
+  createdFiles: string[]
+): Promise<void> {
+  const specDir = join(cwd, ".viben/spec");
+  ensureDir(specDir);
+
+  // Guides - always created
+  ensureDir(join(specDir, "guides"));
+  const guidesFiles = [
+    "index.md",
+    "cross-layer-thinking-guide.md",
+    "cross-platform-thinking-guide.md",
+    "code-reuse-thinking-guide.md",
+  ];
+
+  for (const file of guidesFiles) {
+    const content = readTemplate(`viben/spec/guides/${file}`);
+    await writeFileIfNeeded(
+      join(specDir, "guides", file),
+      content,
+      options,
+      createdFiles,
+      cwd
+    );
+  }
+
+  // Backend specs (if backend or fullstack)
+  if (projectType === "backend" || projectType === "fullstack") {
+    ensureDir(join(specDir, "backend"));
+    const backendFiles = [
+      "index.md",
+      "directory-structure.md",
+      "database-guidelines.md",
+      "logging-guidelines.md",
+      "quality-guidelines.md",
+      "error-handling.md",
+    ];
+
+    for (const file of backendFiles) {
+      const content = readTemplate(`viben/spec/backend/${file}`);
+      await writeFileIfNeeded(
+        join(specDir, "backend", file),
+        content,
+        options,
+        createdFiles,
+        cwd
+      );
+    }
+  }
+
+  // Frontend specs (if frontend or fullstack)
+  if (projectType === "frontend" || projectType === "fullstack") {
+    ensureDir(join(specDir, "frontend"));
+    const frontendFiles = [
+      "index.md",
+      "directory-structure.md",
+      "type-safety.md",
+      "hook-guidelines.md",
+      "component-guidelines.md",
+      "quality-guidelines.md",
+      "state-management.md",
+    ];
+
+    for (const file of frontendFiles) {
+      const content = readTemplate(`viben/spec/frontend/${file}`);
+      await writeFileIfNeeded(
+        join(specDir, "frontend", file),
+        content,
+        options,
+        createdFiles,
+        cwd
+      );
+    }
+  }
 }

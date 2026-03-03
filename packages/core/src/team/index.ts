@@ -8,4 +8,7 @@
  * which already have all necessary transformations applied.
  */
 
-export { initTeam, type InitOptions, type InitResult, type ProjectType } from "./init";
+export { initTeam, type InitOptions, type InitResult } from "./init";
+export { type ProjectType, type ExecutorTemplateConfig, EXECUTOR_TEMPLATE_CONFIGS } from "./types";
+// Re-export ExecutorType from main types for convenience
+export type { ExecutorType } from "../types";

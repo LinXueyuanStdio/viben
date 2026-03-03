@@ -46,22 +46,22 @@ describe("initTeam", () => {
     expect(existsSync(join(testDir, ".claude/hooks/session-start.py"))).toBe(true);
   });
 
-  it("should create .cursor directory when includeCursor is true", async () => {
+  it("should create .cursor directory when CURSOR executor is included", async () => {
     const result = await initTeam({
       targetDir: testDir,
       developerName: "test-dev",
-      includeCursor: true,
+      executors: ["CURSOR", "CLAUDE_CODE"],
     });
 
     expect(result.success).toBe(true);
     expect(existsSync(join(testDir, ".cursor/commands/viben-start.md"))).toBe(true);
   });
 
-  it("should not create .cursor directory when includeCursor is false", async () => {
+  it("should not create .cursor directory when CURSOR executor is not included", async () => {
     const result = await initTeam({
       targetDir: testDir,
       developerName: "test-dev",
-      includeCursor: false,
+      executors: ["CLAUDE_CODE"],
     });
 
     expect(result.success).toBe(true);
@@ -208,7 +208,7 @@ describe("initTeam", () => {
       targetDir: testDir,
       developerName: "test-dev",
       projectType: "fullstack",
-      includeCursor: true,
+      executors: ["CURSOR", "CLAUDE_CODE"],
     });
 
     expect(result.files.length).toBeGreaterThan(50);

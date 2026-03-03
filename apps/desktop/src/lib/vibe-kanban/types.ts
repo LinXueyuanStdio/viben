@@ -24,6 +24,9 @@ export interface Task {
   cost?: number;
   duration?: number;
   favorite?: boolean;
+  // GitHub integration
+  github_issue_number?: number;
+  github_issue_url?: string;
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -47,6 +50,9 @@ export interface CreateTaskRequest {
   agent_id?: string;
   task_index?: number;
   executor?: string;
+  // GitHub integration
+  github_issue_number?: number;
+  github_issue_url?: string;
   // Legacy kanban fields
   model_id?: string;
   branch?: string;

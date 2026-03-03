@@ -46,9 +46,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useLocalWorkspaces } from "@/hooks";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
 import { cn } from "@/lib/utils";
-import { IssueDetail } from "@/components/workspace/github/issue-detail";
+import { IssueDetailModal } from "@/components/workspace/github/issue-detail-modal";
 import type { Workspace } from "@/types";
-import type { GitHubIssue, GitHubPullRequest, GitHubRelease, GitHubIssueInvestigation } from "@/lib/github-client";
+import type { GitHubIssue, GitHubPullRequest, GitHubRelease } from "@/lib/github-client";
 
 // ============================================================================
 // Props
@@ -277,7 +277,6 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
     setStateFilter,
     refresh,
     loadMore,
-    investigateIssue,
   } = useGitHubIssues(workspacePath);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -295,10 +294,6 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
 
   const openCount = issues.filter((i) => i.state === "open").length;
   const closedCount = issues.filter((i) => i.state === "closed").length;
-
-  const handleAnalyze = async (issueNumber: number, saveSpec?: boolean): Promise<GitHubIssueInvestigation | null> => {
-    return investigateIssue(issueNumber, saveSpec);
-  };
 
   return (
     <div className="space-y-4">
@@ -389,7 +384,6 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
         workspacePath={workspacePath}
         open={!!selectedIssue}
         onOpenChange={(open) => !open && setSelectedIssue(null)}
-        onAnalyze={handleAnalyze}
       />
     </div>
   );
@@ -917,39 +911,6 @@ function ReleaseCard({ release, isLatest }: { release: GitHubRelease; isLatest: 
         </div>
       )}
     </div>
-  );
-}
-
-// ============================================================================
-// Issue Detail Modal - Wraps IssueDetail in a Dialog
-// ============================================================================
-
-function IssueDetailModal({
-  issue,
-  workspacePath,
-  open,
-  onOpenChange,
-  onAnalyze,
-}: {
-  issue: GitHubIssue | null;
-  workspacePath: string;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onAnalyze: (issueNumber: number, saveSpec?: boolean) => Promise<GitHubIssueInvestigation | null>;
-}) {
-  if (!issue) return null;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden">
-        <IssueDetail
-          issue={issue}
-          workspacePath={workspacePath}
-          onClose={() => onOpenChange(false)}
-          onAnalyze={onAnalyze}
-        />
-      </DialogContent>
-    </Dialog>
   );
 }
 

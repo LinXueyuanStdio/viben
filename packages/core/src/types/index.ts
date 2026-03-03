@@ -8,8 +8,15 @@
 
 /**
  * Supported executor types for AI coding agents
+ *
+ * These are the canonical executor IDs used throughout the system.
+ * Some executors have both runtime support (can be spawned) and template support (for team init).
+ *
+ * Runtime executors: CLAUDE_CODE, AMP, GEMINI, CODEX, OPENCODE, CURSOR_AGENT, QWEN_CODE, COPILOT, DROID
+ * Template-only executors: CURSOR, IFLOW, KILO, KIRO, ANTIGRAVITY, WINDSURF, AIDER, CONTINUE
  */
 export type ExecutorType =
+  // Runtime executors (can be spawned and executed)
   | "CLAUDE_CODE"
   | "AMP"
   | "GEMINI"
@@ -18,7 +25,16 @@ export type ExecutorType =
   | "CURSOR_AGENT"
   | "QWEN_CODE"
   | "COPILOT"
-  | "DROID";
+  | "DROID"
+  // Template-only executors (for team init configuration)
+  | "CURSOR"
+  | "IFLOW"
+  | "KILO"
+  | "KIRO"
+  | "ANTIGRAVITY"
+  | "WINDSURF"
+  | "AIDER"
+  | "CONTINUE";
 
 /**
  * Agent type metadata for UI display
