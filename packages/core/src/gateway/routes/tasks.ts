@@ -20,6 +20,7 @@ import {
   toKanbanStatus,
   type UnifiedTask,
   type TaskStatus,
+  type SubtaskInfo,
 } from "../../services/task-service";
 import { sessionStoreService } from "../../services/session-store";
 import type { AppState } from "../state";
@@ -59,6 +60,28 @@ function toDbTask(task: UnifiedTask): Task {
     createdAt: task.createdAt,
     updatedAt: task.updatedAt || task.createdAt,
   };
+}
+
+/**
+ * Parse subtasks into structured format
+ * If subtaskDetails exists, use it; otherwise parse from subtasks string array
+ */
+function parseSubtasksDetail(task: UnifiedTask): SubtaskInfo[] | null {
+  // Prefer structured subtaskDetails if available
+  if (task.subtaskDetails && task.subtaskDetails.length > 0) {
+    return task.subtaskDetails;
+  }
+
+  // Parse from legacy subtasks string array if available
+  if (task.subtasks && task.subtasks.length > 0) {
+    return task.subtasks.map((name, index) => ({
+      id: `subtask_${index}`,
+      name,
+      status: "pending" as const,
+    }));
+  }
+
+  return null;
 }
 
 /**
@@ -102,6 +125,9 @@ function toSnakeCaseTask(task: UnifiedTask) {
     has_in_progress_attempt: task.hasInProgressAttempt ?? kanbanStatus === "inprogress",
     last_attempt_failed: task.lastAttemptFailed ?? kanbanStatus === "inreview",
     executor: task.executor || "Agent",
+    // Subtask visualization
+    subtasks_detail: parseSubtasksDetail(task),
+    execution_progress: task.executionProgress ?? null,
     // Timestamps
     created_at: task.createdAt,
     updated_at: task.updatedAt ?? task.createdAt,

@@ -60,6 +60,7 @@ import {
   setDefaultAgent,
   listAgentTemplates,
   getAgentTemplate,
+  createAgentTemplate,
   createAgentFromTemplate,
 
   // Models module
@@ -937,6 +938,16 @@ export class GatewayClient {
    */
   async getAgentTemplate(templateId: string): Promise<AgentTemplate | null> {
     return getAgentTemplate(this.baseUrl, templateId);
+  }
+
+  /**
+   * Create agent template from an existing agent
+   */
+  async createAgentTemplate(
+    agentId: string,
+    templateId: string
+  ): Promise<AgentTemplate> {
+    return createAgentTemplate(this.baseUrl, agentId, templateId);
   }
 
   /**

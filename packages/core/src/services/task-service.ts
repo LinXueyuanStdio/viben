@@ -45,6 +45,31 @@ export type ReviewReason =
 export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
 
 /**
+ * Structured subtask information
+ */
+export interface SubtaskInfo {
+  id: string;
+  name: string;
+  title?: string;
+  status: SubtaskStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Execution phase for running tasks
+ */
+export type ExecutionPhase = "planning" | "coding" | "qa_review" | "qa_fixing" | "complete";
+
+/**
+ * Execution progress tracking
+ */
+export interface ExecutionProgress {
+  phase: ExecutionPhase;
+  phaseProgress?: number; // 0-100
+}
+
+/**
  * Unified Task interface - combines CLI and Gateway task schemas
  */
 export interface UnifiedTask {
@@ -95,8 +120,12 @@ export interface UnifiedTask {
   pr_url?: string;
 
   // === Context (CLI) ===
-  /** Subtask names */
+  /** Subtask names (legacy string array) */
   subtasks?: string[];
+  /** Structured subtask details */
+  subtaskDetails?: SubtaskInfo[];
+  /** Execution progress tracking */
+  executionProgress?: ExecutionProgress;
   /** Related file paths */
   relatedFiles?: string[];
   /** Free-form notes */

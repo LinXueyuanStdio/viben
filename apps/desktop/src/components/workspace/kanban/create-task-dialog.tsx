@@ -132,16 +132,22 @@ export function CreateTaskDialog({
   const handleSubmit = useCallback(async () => {
     if (!title.trim()) return;
 
-    await onSubmit({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      agentId,
-      modelId,
-      branch,
-      autoStart,
-    });
+    try {
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        agentId,
+        modelId,
+        branch,
+        autoStart,
+      });
 
-    handleOpenChange(false);
+      // Only close dialog on success
+      handleOpenChange(false);
+    } catch (error) {
+      // Error handling is done by the parent component via mutation state
+      console.error("Failed to create task:", error);
+    }
   }, [title, description, agentId, modelId, branch, autoStart, onSubmit, handleOpenChange]);
 
   // Handle keyboard shortcuts

@@ -294,6 +294,34 @@ export async function getAgentTemplate(
 }
 
 /**
+ * Create agent template from an existing agent
+ */
+export async function createAgentTemplate(
+  baseUrl: string,
+  agentId: string,
+  templateId: string
+): Promise<AgentTemplate> {
+  const response = await fetch(`${baseUrl}/api/agents/templates`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({ agent_id: agentId, template_id: templateId }),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to create template: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}
+
+/**
  * Create agent from template
  */
 export async function createAgentFromTemplate(

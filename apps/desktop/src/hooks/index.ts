@@ -338,3 +338,11 @@ export type {
   UseCompletionOptions,
   UseCompletionReturn,
 } from "./use-completion";
+
+// Task Specs Data
+export { useTaskSpecsData } from "./use-task-specs-data";
+export type {
+  TaskSpecsData,
+  ImplementationSubtask,
+  ImplementationPlan,
+} from "./use-task-specs-data";

@@ -45,6 +45,8 @@ export interface SSESdkSessionEvent {
 export interface SSETextEvent {
   type: "text";
   content: string;
+  /** Whether this is a partial/streaming text update */
+  partial?: boolean;
 }
 
 /** Tool use event */
@@ -72,7 +74,7 @@ export interface SSEPlanEvent {
     steps: Array<{
       id: string;
       description: string;
-      status: "pending" | "in_progress" | "completed" | "failed";
+      status: "pending" | "in_progress" | "completed" | "failed" | "cancelled";
     }>;
     notes?: string;
   };
@@ -102,11 +104,15 @@ export interface SSEResultEvent {
 export interface SSEErrorEvent {
   type: "error";
   message: string;
+  /** Error code for programmatic handling */
+  code?: string;
 }
 
 /** Done event */
 export interface SSEDoneEvent {
   type: "done";
+  /** Session ID that completed */
+  sessionId?: string;
 }
 
 /** Union type of all SSE message events */
