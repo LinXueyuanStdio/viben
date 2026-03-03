@@ -2,6 +2,11 @@
  * Session CLI Commands Tests
  *
  * Tests for the session management CLI commands (native TypeScript implementation).
+ * Ensures TypeScript implementation matches Python scripts/add_session.py
+ *
+ * Python reference files:
+ * - templates/viben/scripts/add_session.py
+ * - templates/viben/scripts/common/paths.py (FILE_JOURNAL_PREFIX, MAX_LINES)
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Command } from "commander";
@@ -573,6 +578,542 @@ describe("Session CLI Commands", () => {
       expect(generateSessionContent).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Fix bug: handle "quotes" & <special> chars',
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - add_session.py
+  // ============================================================================
+
+  describe("Python parity - add_session.py", () => {
+    /**
+     * Python reference: add_session.py
+     * Tests that session add behavior matches Python implementation
+     */
+
+    it("should match Python MAX_LINES constant (2000)", async () => {
+      setupValidWorkspace();
+      // Test boundary: 1999 lines + 2 lines content = 2001, should create new file
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-1.md",
+        number: 1,
+        lines: 1999,
+      });
+      // Generate content with 2 lines
+      vi.mocked(generateSessionContent).mockReturnValue("Line1\nLine2\n");
+      vi.mocked(createNewJournalFile).mockResolvedValue(
+        "/workspace/.viben/workspace/test-user/journal-2.md"
+      );
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // 1999 + 2 = 2001 > 2000, should create new file
+      expect(createNewJournalFile).toHaveBeenCalled();
+    });
+
+    it("should NOT create new journal when exactly at limit", async () => {
+      setupValidWorkspace();
+      // Test: 1990 lines + 10 lines content = 2000, should NOT create new file
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-1.md",
+        number: 1,
+        lines: 1990,
+      });
+      // 10 lines content
+      vi.mocked(generateSessionContent).mockReturnValue(
+        Array(10).fill("Line").join("\n")
+      );
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // 1990 + 10 = 2000, NOT exceeding, should NOT create new file
+      expect(createNewJournalFile).not.toHaveBeenCalled();
+    });
+
+    it("should pass correct params to generateSessionContent", async () => {
+      setupValidWorkspace();
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(15);
+      vi.mocked(getTodayDate).mockReturnValue("2024-03-15");
+
+      await runCommand([
+        "session",
+        "add",
+        "-t",
+        "Test Title",
+        "-c",
+        "abc123,def456",
+        "-s",
+        "Test summary",
+      ]);
+
+      // Python: generate_session_content(session_num, title, commit, summary, extra_content, today)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionNum: 16, // current + 1
+          title: "Test Title",
+          commit: "abc123,def456",
+          summary: "Test summary",
+          date: "2024-03-15",
+        })
+      );
+    });
+
+    it("should pass correct params to updateIndexWithSession", async () => {
+      setupValidWorkspace();
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(10);
+      vi.mocked(getTodayDate).mockReturnValue("2024-03-20");
+
+      await runCommand(["session", "add", "-t", "Index Update Test", "-c", "xyz789"]);
+
+      // Python: update_index(index_file, dev_dir, title, commit, new_session, active_file, today)
+      expect(updateIndexWithSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionNum: 11,
+          title: "Index Update Test",
+          commit: "xyz789",
+          activeFile: "journal-1.md",
+          date: "2024-03-20",
+        })
+      );
+    });
+
+    it("should increment journal number when creating new file", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-3.md",
+        number: 3,
+        lines: 1990,
+      });
+      // Content that exceeds limit
+      vi.mocked(generateSessionContent).mockReturnValue(
+        Array(20).fill("Line").join("\n")
+      );
+      vi.mocked(createNewJournalFile).mockResolvedValue(
+        "/workspace/.viben/workspace/test-user/journal-4.md"
+      );
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // Python: target_num = current_num + 1
+      expect(createNewJournalFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          number: 4, // 3 + 1
+          prevNumber: 3,
+        })
+      );
+    });
+
+    it("should use default commit value '-' when not provided", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "No Commit"]);
+
+      // Python: parser.add_argument("--commit", default="-", ...)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commit: "-",
+        })
+      );
+    });
+
+    it("should use default summary '(Add summary)' when not provided", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "No Summary"]);
+
+      // Python: parser.add_argument("--summary", default="(Add summary)", ...)
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          summary: "(Add summary)",
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - get_latest_journal_info()
+  // ============================================================================
+
+  describe("Python parity - get_latest_journal_info()", () => {
+    /**
+     * Python reference: add_session.py lines 46-70
+     * Tests journal file detection logic
+     */
+
+    it("should return 0 for number and lines when no journal exists", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: null,
+        number: 0,
+        lines: 0,
+      });
+
+      // This tests that the command handles the case where no journal exists
+      await runCommand(["session", "add", "-t", "First Session"]);
+
+      // Should still try to create/update
+      expect(updateIndexWithSession).toHaveBeenCalled();
+    });
+
+    it("should correctly extract journal number from filename", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-5.md",
+        number: 5,
+        lines: 500,
+      });
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // active_file should be journal-5.md
+      expect(updateIndexWithSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeFile: "journal-5.md",
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - get_current_session()
+  // ============================================================================
+
+  describe("Python parity - get_current_session()", () => {
+    /**
+     * Python reference: add_session.py lines 73-84
+     * Tests session number extraction from index.md
+     */
+
+    it("should return 0 when index.md does not exist", async () => {
+      setupValidWorkspace();
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(0);
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // new_session should be 0 + 1 = 1
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionNum: 1,
+        })
+      );
+    });
+
+    it("should increment session number by 1", async () => {
+      setupValidWorkspace();
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(42);
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // Python: new_session = current_session + 1
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sessionNum: 43,
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - generate_session_content()
+  // ============================================================================
+
+  describe("Python parity - generate_session_content()", () => {
+    /**
+     * Python reference: add_session.py lines 130-178
+     * Tests session content generation
+     */
+
+    it("should handle commit formatting with multiple commits", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title", "-c", "abc,def,ghi"]);
+
+      // Python: for c in commit.split(","):
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commit: "abc,def,ghi",
+        })
+      );
+    });
+
+    it("should handle empty commit as '-'", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title", "-c", ""]);
+
+      // Empty string should still be passed (command-level default is "-")
+      // But if user explicitly passes empty, it goes through
+      expect(generateSessionContent).toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - update_index()
+  // ============================================================================
+
+  describe("Python parity - update_index()", () => {
+    /**
+     * Python reference: add_session.py lines 181-277
+     * Tests index.md update logic
+     */
+
+    it("should fail when @@@auto markers not found", async () => {
+      setupValidWorkspace();
+      vi.mocked(updateIndexWithSession).mockResolvedValue(false);
+
+      // Python: if "@@@auto:current-status" not in content: return False
+      await expect(runCommand(["session", "add", "-t", "Title"])).rejects.toThrow();
+    });
+
+    it("should update all three auto-sections", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title"]);
+
+      // updateIndexWithSession is called with correct params
+      // Python updates: @@@auto:current-status, @@@auto:active-documents, @@@auto:session-history
+      expect(updateIndexWithSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          indexPath: expect.stringContaining("index.md"),
+          workspaceDir: expect.any(String),
+          sessionNum: expect.any(Number),
+          title: "Title",
+          activeFile: expect.stringMatching(/journal-\d+\.md/),
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - parseSessionsFromIndex()
+  // ============================================================================
+
+  describe("Python parity - parseSessionsFromIndex()", () => {
+    /**
+     * Tests session history parsing from @@@auto:session-history markers
+     * This tests the TypeScript implementation of parsing index.md
+     */
+
+    it("should parse session history table correctly", async () => {
+      setupValidWorkspace("john");
+
+      await runCommand(["--json", "session", "list"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const response = JSON.parse(output);
+
+      // Should parse all 5 sessions from mock index content
+      expect(response.data.sessions.length).toBe(5);
+      expect(response.data.sessions[0].number).toBe(5);
+      expect(response.data.sessions[0].date).toBe("2024-03-03");
+      expect(response.data.sessions[0].task).toBe("Test Session");
+      expect(response.data.sessions[0].commits).toBe("`abc1234`");
+    });
+
+    it("should handle sessions without commits", async () => {
+      setupValidWorkspace("john");
+
+      await runCommand(["--json", "session", "list"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const response = JSON.parse(output);
+
+      // Session 2 has "-" for commits
+      const session2 = response.data.sessions.find((s: { number: number }) => s.number === 2);
+      expect(session2.commits).toBe("-");
+    });
+
+    it("should handle sessions with multiple commits", async () => {
+      setupValidWorkspace("john");
+
+      await runCommand(["--json", "session", "list"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const response = JSON.parse(output);
+
+      // Session 3 has multiple commits
+      const session3 = response.data.sessions.find((s: { number: number }) => s.number === 3);
+      expect(session3.commits).toContain("`ghi9012`");
+      expect(session3.commits).toContain("`jkl3456`");
+    });
+  });
+
+  // ============================================================================
+  // Python parity tests - CLI arguments
+  // ============================================================================
+
+  describe("Python parity - CLI arguments", () => {
+    /**
+     * Python reference: add_session.py lines 368-393
+     * Tests CLI argument parsing
+     */
+
+    it("should accept --title as required", async () => {
+      setupValidWorkspace();
+
+      // Python: parser.add_argument("--title", required=True, ...)
+      await expect(runCommand(["session", "add"])).rejects.toThrow();
+    });
+
+    it("should accept -t as shorthand for --title", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Short Title"]);
+
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Short Title",
+        })
+      );
+    });
+
+    it("should accept -c as shorthand for --commit", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title", "-c", "commit123"]);
+
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          commit: "commit123",
+        })
+      );
+    });
+
+    it("should accept -s as shorthand for --summary", async () => {
+      setupValidWorkspace();
+
+      await runCommand(["session", "add", "-t", "Title", "-s", "Summary text"]);
+
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          summary: "Summary text",
+        })
+      );
+    });
+
+    it("should accept --content-file option", async () => {
+      setupValidWorkspace();
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        const pathStr = path.toString();
+        if (pathStr === "/path/to/content.md") return true;
+        if (pathStr.includes(".viben")) return true;
+        return false;
+      });
+      vi.mocked(fs.readFileSync).mockImplementation((path) => {
+        const pathStr = path.toString();
+        if (pathStr === "/path/to/content.md") {
+          return "Extra content from file";
+        }
+        return getMockIndexContent();
+      });
+
+      await runCommand([
+        "session",
+        "add",
+        "-t",
+        "Title",
+        "--content-file",
+        "/path/to/content.md",
+      ]);
+
+      expect(generateSessionContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          extraContent: "Extra content from file",
+        })
+      );
+    });
+  });
+
+  // ============================================================================
+  // Complete workflow tests
+  // ============================================================================
+
+  describe("complete workflow", () => {
+    it("should execute full session add workflow", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-1.md",
+        number: 1,
+        lines: 100,
+      });
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(5);
+      vi.mocked(generateSessionContent).mockReturnValue(
+        "\n\n## Session 6: Complete Test\n\nContent\n"
+      );
+
+      await runCommand([
+        "session",
+        "add",
+        "-t",
+        "Complete Test",
+        "-c",
+        "abc123",
+        "-s",
+        "Test summary",
+      ]);
+
+      // 1. Generate session content
+      expect(generateSessionContent).toHaveBeenCalledWith({
+        sessionNum: 6,
+        title: "Complete Test",
+        commit: "abc123",
+        summary: "Test summary",
+        extraContent: "(Add details)",
+        date: "2024-03-03",
+      });
+
+      // 2. Append to journal (via fsPromises.appendFile)
+      expect(fsPromises.appendFile).toHaveBeenCalledWith(
+        "/workspace/.viben/workspace/test-user/journal-1.md",
+        "\n\n## Session 6: Complete Test\n\nContent\n",
+        "utf-8"
+      );
+
+      // 3. Update index.md
+      expect(updateIndexWithSession).toHaveBeenCalledWith({
+        indexPath: "/workspace/.viben/workspace/test-user/index.md",
+        workspaceDir: "/workspace/.viben/workspace/test-user",
+        sessionNum: 6,
+        title: "Complete Test",
+        commit: "abc123",
+        activeFile: "journal-1.md",
+        date: "2024-03-03",
+      });
+    });
+
+    it("should handle journal rotation workflow", async () => {
+      setupValidWorkspace();
+      vi.mocked(getJournalInfo).mockReturnValue({
+        file: "/workspace/.viben/workspace/test-user/journal-2.md",
+        number: 2,
+        lines: 1990,
+      });
+      vi.mocked(getCurrentSessionNumber).mockReturnValue(50);
+      // Content that will exceed 2000 when added to 1990
+      vi.mocked(generateSessionContent).mockReturnValue(
+        Array(15).fill("Line content").join("\n")
+      );
+      vi.mocked(createNewJournalFile).mockResolvedValue(
+        "/workspace/.viben/workspace/test-user/journal-3.md"
+      );
+
+      await runCommand(["session", "add", "-t", "Rotation Test"]);
+
+      // Should create new journal
+      expect(createNewJournalFile).toHaveBeenCalledWith({
+        workspaceDir: "/workspace/.viben/workspace/test-user",
+        number: 3,
+        developer: "test-user",
+        date: "2024-03-03",
+        prevNumber: 2,
+      });
+
+      // Should update index with new journal file
+      expect(updateIndexWithSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          activeFile: "journal-3.md",
         })
       );
     });

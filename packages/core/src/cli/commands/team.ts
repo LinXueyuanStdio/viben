@@ -58,14 +58,16 @@ export function registerTeamCommand(program: Command): void {
     .option("-u, --user <name>", "Developer name (auto-detected from git if not provided)")
     .option("-f, --force", "Force overwrite existing files")
     .option("-s, --skip-existing", "Skip existing files without error")
-    // Executor selection
-    .option("--executor <type>", "AI executor to configure (can be specified multiple times)")
+    // Executor selection (can be used multiple times)
+    .option("-e, --executor <type>", "AI executor to configure (can be used multiple times)", (value: string, previous: string[]) => {
+      return previous.concat([value]);
+    }, [] as string[])
     .action(async (targetDir: string, options: {
       yes?: boolean;
       user?: string;
       force?: boolean;
       skipExisting?: boolean;
-      executor?: string;
+      executor: string[];
     }) => {
       const ctx: OutputContext = {
         json: program.opts().json ?? false,
@@ -120,17 +122,19 @@ export function registerTeamCommand(program: Command): void {
         // Determine which executors to configure
         let executors: ExecutorType[] = [];
 
-        // Check --executor flag
-        if (options.executor) {
-          const executorKey = options.executor.toUpperCase() as ExecutorType;
+        // Process --executor flags
+        for (const exec of options.executor) {
+          const executorKey = exec.toUpperCase() as ExecutorType;
           if (VALID_EXECUTORS.includes(executorKey)) {
-            executors.push(executorKey);
+            if (!executors.includes(executorKey)) {
+              executors.push(executorKey);
+            }
           } else {
             output(
               ctx,
-              errorResponse("INVALID_EXECUTOR", `Invalid executor: ${options.executor}`),
+              errorResponse("INVALID_EXECUTOR", `Invalid executor: ${exec}`),
               () => {
-                console.log(chalk.red(`Error: Invalid executor "${options.executor}".`));
+                console.log(chalk.red(`Error: Invalid executor "${exec}".`));
                 console.log();
                 console.log("Valid executors:");
                 console.log(chalk.gray(`  ${VALID_EXECUTORS.join(", ")}`));
@@ -145,7 +149,7 @@ export function registerTeamCommand(program: Command): void {
           executors = ["CURSOR", "CLAUDE_CODE"];
         }
 
-        // Deduplicate
+        // Deduplicate (preserving order)
         const uniqueExecutors = [...new Set(executors)];
 
         if (!ctx.quiet) {
@@ -198,7 +202,7 @@ export function registerTeamCommand(program: Command): void {
             console.log();
             console.log("Next steps:");
             console.log(chalk.cyan("  1. Review and customize .viben/spec/ guidelines"));
-            console.log(chalk.cyan("  2. Run python3 ./.viben/scripts/get_context.py to verify setup"));
+            console.log(chalk.cyan("  2. Run `viben context` to verify setup"));
             console.log(chalk.cyan("  3. Start developing with AI assistance!"));
           }
         );

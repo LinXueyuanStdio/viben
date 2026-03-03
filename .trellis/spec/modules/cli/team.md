@@ -62,31 +62,34 @@
 # Team Workspace 初始化
 # ============================================================
 
-# 初始化团队工作区
-viben team init --developer <name>
-viben team init --developer john-doe
+# 基本用法 (使用默认 executors: CURSOR + CLAUDE_CODE)
+viben team init --user <name>
+viben team init --user john-doe
 
-# 指定项目类型
-viben team init --developer <name> --project-type <type>
-viben team init --developer john-doe --project-type frontend
-viben team init --developer john-doe --project-type backend
-viben team init --developer john-doe --project-type fullstack  # 默认
+# 指定单个 executor
+viben team init --user <name> --executor CLAUDE_CODE
+viben team init --user john-doe --executor CURSOR
+
+# 指定多个 executors (可重复使用 --executor)
+viben team init --user <name> --executor CLAUDE_CODE --executor CURSOR
+viben team init --user john-doe -e CLAUDE_CODE -e GEMINI -e CURSOR
 
 # 指定目标目录
-viben team init --developer <name> --target <path>
-viben team init --developer john-doe --target /path/to/project
+viben team init --user <name> <target-dir>
+viben team init --user john-doe ./my-project
+
+# 非交互模式
+viben team init --user <name> -y
+viben team init --user john-doe --yes
 
 # 强制覆盖现有文件
-viben team init --developer <name> --force
+viben team init --user <name> --force
 
 # 跳过已存在的文件
-viben team init --developer <name> --skip-existing
-
-# 不包含 Cursor 配置
-viben team init --developer <name> --no-cursor
+viben team init --user <name> --skip-existing
 
 # JSON 输出
-viben team init --developer <name> --json
+viben team init --user <name> --json
 ```
 
 ---
@@ -95,13 +98,27 @@ viben team init --developer <name> --json
 
 | 参数 | 必需 | 默认值 | 说明 |
 |------|------|--------|------|
-| `--developer, -d` | ✓ | - | 开发者名称，小写字母数字加连字符 |
-| `--project-type, -t` | - | `fullstack` | 项目类型: frontend, backend, fullstack |
-| `--target` | - | `cwd` | 目标目录路径 |
+| `--user, -u` | ✓ | git user.name | 开发者名称 |
+| `--executor, -e` | - | `CURSOR,CLAUDE_CODE` | AI executor 类型 (可重复使用) |
+| `[target-dir]` | - | `.` (当前目录) | 目标目录路径 |
+| `--yes, -y` | - | `false` | 非交互模式，使用默认值 |
 | `--force, -f` | - | `false` | 强制覆盖现有文件 |
-| `--skip-existing` | - | `false` | 跳过已存在的文件 |
-| `--no-cursor` | - | `false` | 不创建 .cursor 目录 |
+| `--skip-existing, -s` | - | `false` | 跳过已存在的文件 |
 | `--json` | - | `false` | JSON 格式输出 |
+
+### 支持的 Executors
+
+| Executor | 说明 | 配置目录 |
+|----------|------|----------|
+| `CLAUDE_CODE` | Claude Code (Anthropic) | `.claude/` |
+| `CURSOR` | Cursor IDE | `.cursor/` |
+| `GEMINI` | Gemini CLI (Google) | `.gemini/` |
+| `CODEX` | Codex CLI (OpenAI) | `.agents/skills/` |
+| `OPENCODE` | OpenCode | `.opencode/` |
+| `IFLOW` | iFlow CLI | `.iflow/` |
+| `KILO` | Kilo CLI | `.kilocode/` |
+| `KIRO` | Kiro Code | `.kiro/skills/` |
+| `ANTIGRAVITY` | Antigravity | `.agent/workflows/` |
 
 ---
 
@@ -257,60 +274,83 @@ viben team init --developer <name> --json
 
 ## 输出示例
 
-**`viben team init --developer john-doe` (Human)**:
+**`viben team init --user john-doe` (Human)**:
 ```
-✓ Initialized Viben team workspace
+Initializing Viben team workspace...
+  Target: /path/to/project
+  Developer: john-doe
+  Executors: CURSOR, CLAUDE_CODE
 
-Created directories:
-  .viben/           Team workflow and specs
-  .claude/          Claude Code configuration
-  .cursor/          Cursor IDE commands
-  AGENTS.md         Root agent instructions
+✓ Workspace initialized successfully!
 
-Developer: john-doe
-Project type: fullstack
+Created 97 files:
+  .viben/     - Workflow files, scripts, specs
+  .claude     - Claude Code configuration
+  .cursor     - Cursor configuration
+  AGENTS.md   - Root instructions file
 
 Next steps:
-  1. Review .viben/tasks/00-bootstrap-guidelines/prd.md
-  2. Fill in project-specific specs in .viben/spec/
-  3. Run /viben:start to begin your first session
+  1. Review and customize .viben/spec/ guidelines
+  2. Run python3 ./.viben/scripts/get_context.py to verify setup
+  3. Start developing with AI assistance!
 ```
 
-**`viben team init --developer john-doe --json`**:
+**`viben team init --user john-doe --executor CLAUDE_CODE` (单个 executor)**:
+```
+Initializing Viben team workspace...
+  Target: /path/to/project
+  Developer: john-doe
+  Executors: CLAUDE_CODE
+
+✓ Workspace initialized successfully!
+
+Created 54 files:
+  .viben/     - Workflow files, scripts, specs
+  .claude     - Claude Code configuration
+  AGENTS.md   - Root instructions file
+```
+
+**`viben team init --user john-doe --json`**:
 ```json
 {
   "success": true,
-  "path": "/path/to/project",
-  "files": [
-    ".viben/workflow.md",
-    ".viben/worktree.yaml",
-    ".viben/.gitignore",
-    ".viben/.version",
-    ".viben/.developer",
-    ".viben/scripts/task.sh",
-    ".claude/settings.json",
-    ".claude/agents/check.md",
-    "AGENTS.md"
-  ],
-  "warnings": []
+  "data": {
+    "path": "/path/to/project",
+    "files": [
+      ".viben/workflow.md",
+      ".viben/worktree.yaml",
+      ".viben/.gitignore",
+      ".viben/.version",
+      ".viben/.developer",
+      ".viben/scripts/task.py",
+      ".claude/settings.json",
+      ".claude/agents/check.md",
+      "AGENTS.md"
+    ],
+    "count": 97,
+    "warnings": []
+  }
 }
 ```
 
-**错误: 目录已存在**:
+**错误: 无效的 executor**:
 ```
-Error: Directory already exists: /path/to/project/.viben
+Error: Invalid executor "INVALID".
 
-Use --force to overwrite or --skip-existing to skip
+Valid executors:
+  CLAUDE_CODE, CURSOR, GEMINI, CODEX, OPENCODE, IFLOW, KILO, KIRO, ANTIGRAVITY
 ```
 
-**错误: 无效的开发者名称**:
+**错误: 缺少开发者名称**:
 ```
-Error: Invalid developer name "John-Doe"
+Error: Developer name is required.
 
-Developer name must be lowercase alphanumeric with hyphens,
-not starting or ending with hyphen.
+Usage:
+  viben team init --user <name> [target-dir]
+  viben team init -y --user <name>  # Non-interactive mode
 
-Valid examples: john, john-doe, dev123
+Example:
+  viben team init --user john-doe ./my-project
 ```
 
 ---
@@ -341,49 +381,47 @@ Valid examples: john, john-doe, dev123
 ## Acceptance Criteria
 
 ### 基本初始化
-- [ ] `viben team init --developer <name>` 创建完整工作区
-- [ ] 必须提供 `--developer` 参数
-- [ ] 验证 developer name 格式 (小写字母数字+连字符)
-- [ ] 默认项目类型为 `fullstack`
+- [x] `viben team init --user <name>` 创建完整工作区
+- [x] 必须提供 `--user` 参数 (或从 git config user.name 自动检测)
+- [x] 默认 executors 为 `CURSOR` + `CLAUDE_CODE`
+
+### Executor 选择
+- [x] `--executor <type>` 指定单个 executor
+- [x] `--executor` 可重复使用，指定多个 executors
+- [x] 支持 9 种 executors: CLAUDE_CODE, CURSOR, GEMINI, CODEX, OPENCODE, IFLOW, KILO, KIRO, ANTIGRAVITY
+- [x] 无效 executor 报错并列出有效选项
 
 ### 目录结构
-- [ ] 创建 `.viben/` 目录及所有子目录
-- [ ] 创建 `.claude/` 目录及所有子目录
-- [ ] 创建 `.cursor/` 目录 (除非 `--no-cursor`)
-- [ ] 创建 `AGENTS.md` 根文件
-
-### 项目类型
-- [ ] `--project-type frontend` 只创建前端规范
-- [ ] `--project-type backend` 只创建后端规范
-- [ ] `--project-type fullstack` 创建两者
-- [ ] `guides/` 目录始终创建
+- [x] 创建 `.viben/` 目录及所有子目录
+- [x] 根据选择的 executors 创建对应配置目录
+- [x] 创建 `AGENTS.md` 根文件
 
 ### 文件处理
-- [ ] 默认情况下，目录已存在时报错
-- [ ] `--force` 覆盖所有现有文件
-- [ ] `--skip-existing` 跳过已存在的文件
-- [ ] 脚本文件设置可执行权限 (0755)
+- [x] 默认情况下，目录已存在时报错
+- [x] `--force` 覆盖所有现有文件
+- [x] `--skip-existing` 跳过已存在的文件
+- [x] 脚本文件设置可执行权限 (0755)
 
 ### 开发者工作区
-- [ ] 创建 `.viben/workspace/<developer>/index.md`
-- [ ] 创建 `.viben/workspace/<developer>/journal-1.md`
-- [ ] `.viben/.developer` 包含 name 和 initialized_at
+- [x] 创建 `.viben/workspace/<developer>/index.md`
+- [x] 创建 `.viben/workspace/<developer>/journal-1.md`
+- [x] `.viben/.developer` 包含 name 和 initialized_at
 
 ### 初始任务
-- [ ] 创建 `.viben/tasks/00-bootstrap-guidelines/`
-- [ ] 包含 `task.json` 和 `prd.md`
-- [ ] `.viben/.current-task` 指向该任务
+- [x] 创建 `.viben/tasks/00-bootstrap-guidelines/`
+- [x] 包含 `task.json` 和 `prd.md`
+- [x] `.viben/.current-task` 指向该任务
 
 ### 模板哈希
-- [ ] 创建 `.viben/.template-hashes.json`
-- [ ] 包含所有模板文件的 SHA256 哈希
-- [ ] 哈希为 64 字符十六进制字符串
+- [x] 创建 `.viben/.template-hashes.json`
+- [x] 包含所有模板文件的 SHA256 哈希
+- [x] 哈希为 64 字符十六进制字符串
 
 ### 输出格式
-- [ ] 默认输出人类可读格式
-- [ ] `--json` 输出 JSON 格式
-- [ ] 返回创建的文件列表
-- [ ] 返回警告信息 (如有)
+- [x] 默认输出人类可读格式
+- [x] `--json` 输出 JSON 格式
+- [x] 返回创建的文件列表
+- [x] 返回警告信息 (如有)
 
 ---
 

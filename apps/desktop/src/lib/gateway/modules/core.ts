@@ -9,14 +9,20 @@
 
 /**
  * Parse error message from response
+ * Handles nested error objects and provides JSON fallback for debugging
  */
 export async function parseErrorMessage(response: Response): Promise<string> {
+  let errorMessage = response.statusText;
   try {
-    const json = await response.json();
-    return json.error || json.message || response.statusText;
+    const errorBody = await response.json();
+    errorMessage =
+      errorBody?.error?.message ||
+      errorBody?.message ||
+      JSON.stringify(errorBody);
   } catch {
-    return response.statusText;
+    // Keep statusText as fallback
   }
+  return errorMessage;
 }
 
 // ============================================================================

@@ -18,3 +18,14 @@ export { default as DynamicJsonForm } from "./dynamic-json-form";
 export type { JsonValue, JsonSchemaType, DynamicJsonFormRef } from "./dynamic-json-form";
 export { CompletionInput } from "./completion-input";
 export type { CompletionInputProps } from "./completion-input";
+export { ConfigManager } from "./config-manager";
+export type { InspectorConfig } from "./config-manager";
+export { TransportSelector, isConfigValid, createDefaultConfig, toMcpServerConfig, fromMcpServerConfig } from "./transport-selector";
+export type {
+  TransportType,
+  TransportConfig,
+  StdioTransportConfig,
+  SseTransportConfig,
+  StreamableHttpTransportConfig,
+  TransportConnectionStatus,
+} from "./transport-selector";
