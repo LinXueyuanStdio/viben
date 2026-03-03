@@ -150,6 +150,175 @@ pnpm tauri-dev
 pnpm desktop:restart
 ```
 
+## 故障排除
+
+### 端口 1420 被占用
+
+**问题**: 启动开发服务器时提示端口 1420 已被占用。
+
+**原因**: Vite 开发服务器使用端口 1420，如果上次运行的进程没有正确关闭，端口会保持占用状态。
+
+**解决方案**:
+
+1. **使用重启脚本（推荐）**:
+   ```bash
+   pnpm desktop:restart
+   ```
+
+   脚本会自动执行以下操作：
+   - 杀死端口 1420 上的所有进程
+   - 清理 Tauri、Vite 和 viben-desktop 相关进程
+   - 验证端口已释放
+   - 重新启动开发服务器
+
+2. **手动释放端口**:
+   ```bash
+   # macOS / Linux
+   lsof -ti:1420 | xargs kill -9
+
+   # Windows (PowerShell)
+   netstat -ano | findstr :1420
+   taskkill /PID <PID> /F
+   ```
+
+3. **验证端口状态**:
+   ```bash
+   # macOS / Linux
+   lsof -i:1420
+
+   # Windows (PowerShell)
+   netstat -ano | findstr :1420
+   ```
+
+### 应用挂起或无响应
+
+**问题**: 应用界面卡死、无法交互或关闭。
+
+**可能原因**:
+- Rust 后端进程阻塞
+- Vite HMR (热模块替换) 连接中断
+- 进程间通信异常
+- 资源泄漏或内存不足
+
+**解决方案**:
+
+1. **强制重启应用**:
+   ```bash
+   pnpm desktop:restart
+   ```
+
+2. **手动清理进程**:
+   ```bash
+   # macOS / Linux
+   pkill -9 -f "tauri"
+   pkill -9 -f "vite"
+   pkill -9 -f "viben-desktop"
+
+   # Windows (PowerShell)
+   taskkill /IM "viben-desktop.exe" /F
+   taskkill /IM "tauri.exe" /F
+   ```
+
+3. **检查进程状态**:
+   ```bash
+   # macOS / Linux
+   ps aux | grep -E "tauri|vite|viben-desktop"
+
+   # Windows (PowerShell)
+   Get-Process | Where-Object {$_.Name -like "*tauri*" -or $_.Name -like "*vite*" -or $_.Name -like "*viben-desktop*"}
+   ```
+
+### 重启流程说明
+
+`pnpm desktop:restart` 脚本会按照以下流程执行：
+
+1. **清理端口**: 杀死占用端口 1420 的进程
+2. **清理 Tauri 进程**: 终止所有 Tauri 相关进程
+3. **清理 Vite 进程**: 终止所有 Vite 相关进程
+4. **清理应用进程**: 终止所有 viben-desktop 进程
+5. **等待终止**: 等待 2 秒确保进程完全终止
+6. **验证端口**: 确认端口 1420 已释放
+7. **启动开发服务器**: 执行 `pnpm tauri dev`
+
+脚本位置: `scripts/restart-desktop.sh`
+
+### 开发服务器启动失败
+
+**问题**: `pnpm desktop:dev` 或 `pnpm tauri-dev` 启动失败。
+
+**常见原因和解决方案**:
+
+1. **Rust 工具链未安装或版本过旧**:
+   ```bash
+   # 检查 Rust 版本
+   rustc --version
+   cargo --version
+
+   # 更新 Rust
+   rustup update stable
+   ```
+
+2. **依赖未安装或版本不匹配**:
+   ```bash
+   # 重新安装依赖
+   pnpm install
+
+   # 清理并重新安装
+   rm -rf node_modules pnpm-lock.yaml
+   pnpm install
+   ```
+
+3. **Tauri 配置错误**:
+   - 检查 `src-tauri/tauri.conf.json` 配置
+   - 确认 `devUrl` 设置为 `http://localhost:1420`
+
+4. **系统依赖缺失** (Linux):
+   ```bash
+   sudo apt update
+   sudo apt install libwebkit2gtk-4.1-dev \
+     build-essential \
+     curl \
+     wget \
+     file \
+     libssl-dev \
+     libayatana-appindicator3-dev \
+     librsvg2-dev
+   ```
+
+### 热更新 (HMR) 不工作
+
+**问题**: 修改代码后，浏览器或应用未自动刷新。
+
+**解决方案**:
+
+1. **检查 Vite 服务器状态**:
+   - 确认终端中是否有错误信息
+   - 查看是否有编译错误
+
+2. **重启开发服务器**:
+   ```bash
+   pnpm desktop:restart
+   ```
+
+3. **清理缓存**:
+   ```bash
+   # 清理 Vite 缓存
+   rm -rf apps/desktop/.vite
+   rm -rf apps/desktop/node_modules/.vite
+   ```
+
+### 获取更多帮助
+
+如果以上方法无法解决问题，请：
+
+1. 查看开发服务器输出的错误信息
+2. 检查 Tauri 日志: `src-tauri/target/debug/` 或 `src-tauri/target/release/`
+3. 提交 Issue 到项目仓库，附带：
+   - 错误信息截图或日志
+   - 操作系统和版本
+   - Node.js、Rust 版本信息
+   - 复现步骤
+
 ## 构建
 
 ### 构建前端
