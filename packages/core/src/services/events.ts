@@ -62,7 +62,14 @@ export type GatewayEvent =
   | { type: "queue_task_failed"; data: { task: QueueTaskSummary; error?: string; duration?: number } }
   | { type: "queue_task_cancelled"; data: { task: QueueTaskSummary } }
   | { type: "queue_status_changed"; data: QueueStatusData }
-  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number } };
+  | { type: "queue_restored"; data: { pending_count: number; running_recovered: number } }
+  // GitHub auto-fix events
+  | { type: "github_autofix_task_created"; data: { task_id: string; workspace_path: string; issue_numbers: number[] } }
+  | { type: "github_autofix_task_status_changed"; data: { task_id: string; workspace_path: string; status: string; previous_status?: string } }
+  | { type: "github_autofix_task_progress"; data: { task_id: string; workspace_path: string; message: string; percent?: number } }
+  | { type: "github_autofix_task_log"; data: { task_id: string; workspace_path: string; level: "info" | "warn" | "error"; message: string } }
+  | { type: "github_autofix_task_completed"; data: { task_id: string; workspace_path: string; pr_number?: number; error?: string } }
+  | { type: "github_autofix_task_cancelled"; data: { task_id: string; workspace_path: string } };
 
 /**
  * Queue task summary for events
@@ -314,6 +321,88 @@ export class EventService {
     this.broadcast({
       type: "error",
       data: { message, code },
+    });
+  }
+
+  // GitHub Auto-Fix Events
+
+  /**
+   * Broadcast GitHub auto-fix task created event
+   */
+  githubAutofixTaskCreated(task_id: string, workspace_path: string, issue_numbers: number[]): void {
+    this.broadcast({
+      type: "github_autofix_task_created",
+      data: { task_id, workspace_path, issue_numbers },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task status changed event
+   */
+  githubAutofixTaskStatusChanged(
+    task_id: string,
+    workspace_path: string,
+    status: string,
+    previous_status?: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_status_changed",
+      data: { task_id, workspace_path, status, previous_status },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task progress event
+   */
+  githubAutofixTaskProgress(
+    task_id: string,
+    workspace_path: string,
+    message: string,
+    percent?: number
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_progress",
+      data: { task_id, workspace_path, message, percent },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task log event
+   */
+  githubAutofixTaskLog(
+    task_id: string,
+    workspace_path: string,
+    level: "info" | "warn" | "error",
+    message: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_log",
+      data: { task_id, workspace_path, level, message },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task completed event
+   */
+  githubAutofixTaskCompleted(
+    task_id: string,
+    workspace_path: string,
+    pr_number?: number,
+    error?: string
+  ): void {
+    this.broadcast({
+      type: "github_autofix_task_completed",
+      data: { task_id, workspace_path, pr_number, error },
+    });
+  }
+
+  /**
+   * Broadcast GitHub auto-fix task cancelled event
+   */
+  githubAutofixTaskCancelled(task_id: string, workspace_path: string): void {
+    this.broadcast({
+      type: "github_autofix_task_cancelled",
+      data: { task_id, workspace_path },
     });
   }
 }

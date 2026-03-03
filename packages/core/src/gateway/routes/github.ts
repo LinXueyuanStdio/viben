@@ -7,10 +7,91 @@
  * - Issues
  * - Pull requests
  * - Releases
+ * - Auto-fix tasks
+ * - Issue analysis
+ * - Issue clustering
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import * as github from "../../services/github";
+import * as autofix from "../../github";
+import { eventService } from "../../services/events";
+
+// Track workspaces with event listeners already set up to avoid duplicate registration
+const eventListenersSetup = new Set<string>();
+
+/**
+ * Convert a GitHubIssue to GHIssue format used by autofix module
+ */
+function convertToGHIssue(issue: GitHubIssue): autofix.GHIssue {
+  return {
+    number: issue.number,
+    title: issue.title,
+    body: issue.body ?? "",
+    state: issue.state === "open" ? "OPEN" : "CLOSED",
+    labels: issue.labels.map((l) => ({ name: l.name })),
+    assignees: issue.assignees.map((a) => ({ login: a.login })),
+    author: { login: issue.user.login },
+    createdAt: issue.created_at,
+    updatedAt: issue.updated_at,
+    url: issue.html_url,
+    comments: { totalCount: issue.comments },
+  };
+}
+
+/**
+ * Fetch multiple issues in parallel and convert to GHIssue format
+ */
+async function fetchIssuesAsGHIssues(
+  workspacePath: string,
+  issueNumbers: number[]
+): Promise<autofix.GHIssue[]> {
+  const issuePromises = issueNumbers.map((num) =>
+    github.getIssue(workspacePath, num).then(convertToGHIssue)
+  );
+  return Promise.all(issuePromises);
+}
+
+/**
+ * Setup event forwarding for a task queue (idempotent)
+ * Only sets up listeners once per workspace to prevent memory leaks
+ */
+function setupTaskQueueEventForwarding(
+  queue: autofix.AutoFixTaskQueue,
+  workspacePath: string
+): void {
+  if (eventListenersSetup.has(workspacePath)) {
+    return;
+  }
+
+  queue.on("status_change", (event) => {
+    eventService.githubAutofixTaskStatusChanged(
+      event.task_id,
+      workspacePath,
+      event.status
+    );
+  });
+
+  queue.on("progress", (event) => {
+    eventService.githubAutofixTaskProgress(
+      event.task_id,
+      workspacePath,
+      event.message,
+      event.percent
+    );
+  });
+
+  queue.on("log", (event) => {
+    eventService.githubAutofixTaskLog(
+      event.task_id,
+      workspacePath,
+      event.level,
+      event.message
+    );
+  });
+
+  eventListenersSetup.add(workspacePath);
+}
 import type {
   GitHubAuthStatusResponse,
   GitHubUser,
@@ -70,6 +151,31 @@ interface ImportIssuesBody {
 
 interface IssueParams {
   number: string;
+}
+
+interface TaskParams {
+  task_id: string;
+}
+
+interface CreateAutoFixTaskBody {
+  issue_numbers: number[];
+  require_approval?: boolean;
+  base_branch?: string;
+}
+
+interface AnalyzeIssueBody {
+  use_ai?: boolean;
+}
+
+interface ClusterIssuesBody {
+  issue_numbers: number[];
+  similarity_threshold?: number;
+  max_cluster_size?: number;
+}
+
+interface TriageIssuesBody {
+  issue_numbers: number[];
+  use_ai?: boolean;
 }
 
 // ============================================================================
@@ -640,6 +746,448 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
     } catch (error) {
       reply.code(400).send({
         error: error instanceof Error ? error.message : "Failed to generate release notes",
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Auto-Fix Configuration Routes
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /api/github/autofix/config
+   * Get auto-fix configuration
+   */
+  fastify.get<{
+    Querystring: WorkspacePathQuery;
+    Reply: autofix.GitHubAutoFixConfig | { error: string };
+  }>("/api/github/autofix/config", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    try {
+      const config = await autofix.loadGitHubConfig(workspacePath);
+      return config;
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to load config",
+      });
+    }
+  });
+
+  /**
+   * PUT /api/github/autofix/config
+   * Update auto-fix configuration
+   */
+  fastify.put<{
+    Querystring: WorkspacePathQuery;
+    Body: Partial<autofix.GitHubAutoFixConfig>;
+    Reply: { success: boolean } | { error: string };
+  }>("/api/github/autofix/config", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    try {
+      await autofix.saveGitHubConfig(request.body, workspacePath);
+      return { success: true };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to save config",
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Auto-Fix Task Routes
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /api/github/autofix/tasks
+   * List auto-fix tasks
+   */
+  fastify.get<{
+    Querystring: WorkspacePathQuery & { status?: string };
+    Reply: { tasks: autofix.AutoFixTask[] } | { error: string };
+  }>("/api/github/autofix/tasks", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+      const tasks = await queue.listTasks();
+      return { tasks };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to list tasks",
+      });
+    }
+  });
+
+  /**
+   * POST /api/github/autofix/tasks
+   * Create a new auto-fix task
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Body: CreateAutoFixTaskBody;
+    Reply: { task_id: string } | { error: string; code?: string };
+  }>("/api/github/autofix/tasks", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { issue_numbers, require_approval, base_branch } = request.body;
+    if (!issue_numbers || !Array.isArray(issue_numbers) || issue_numbers.length === 0) {
+      return reply.code(400).send({ error: "issue_numbers array is required" });
+    }
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+
+      // Set up event forwarding (idempotent - only sets up once per workspace)
+      setupTaskQueueEventForwarding(queue, workspacePath);
+
+      const taskId = await queue.enqueue({
+        issue_numbers,
+        require_approval,
+        base_branch,
+      });
+
+      // Emit task created event
+      eventService.githubAutofixTaskCreated(taskId, workspacePath, issue_numbers);
+
+      return { task_id: taskId };
+    } catch (error) {
+      if (autofix.isGitHubError(error)) {
+        return reply.code(400).send({
+          error: error.message,
+          code: error.code,
+        });
+      }
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to create task",
+      });
+    }
+  });
+
+  /**
+   * GET /api/github/autofix/tasks/:task_id
+   * Get a specific auto-fix task
+   */
+  fastify.get<{
+    Querystring: WorkspacePathQuery;
+    Params: TaskParams;
+    Reply: { task: autofix.AutoFixTask } | { error: string };
+  }>("/api/github/autofix/tasks/:task_id", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { task_id } = request.params;
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+      const task = await queue.getTask(task_id);
+
+      if (!task) {
+        return reply.code(404).send({ error: "Task not found" });
+      }
+
+      return { task };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to get task",
+      });
+    }
+  });
+
+  /**
+   * POST /api/github/autofix/tasks/:task_id/cancel
+   * Cancel an auto-fix task
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Params: TaskParams;
+    Reply: { success: boolean } | { error: string };
+  }>("/api/github/autofix/tasks/:task_id/cancel", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { task_id } = request.params;
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+      await queue.cancel(task_id);
+
+      // Emit cancelled event
+      eventService.githubAutofixTaskCancelled(task_id, workspacePath);
+
+      return { success: true };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to cancel task",
+      });
+    }
+  });
+
+  /**
+   * POST /api/github/autofix/tasks/:task_id/approve
+   * Approve an auto-fix task awaiting approval
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Params: TaskParams;
+    Reply: { success: boolean } | { error: string };
+  }>("/api/github/autofix/tasks/:task_id/approve", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { task_id } = request.params;
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+      await queue.approve(task_id);
+      return { success: true };
+    } catch (error) {
+      if (autofix.isGitHubError(error)) {
+        return reply.code(400).send({ error: error.message });
+      }
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to approve task",
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/github/autofix/tasks/:task_id
+   * Delete a completed auto-fix task
+   */
+  fastify.delete<{
+    Querystring: WorkspacePathQuery;
+    Params: TaskParams;
+    Reply: { success: boolean } | { error: string };
+  }>("/api/github/autofix/tasks/:task_id", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { task_id } = request.params;
+
+    try {
+      const queue = autofix.getTaskQueue(workspacePath);
+      await queue.initialize();
+      const deleted = await queue.deleteTask(task_id);
+
+      if (!deleted) {
+        return reply.code(404).send({ error: "Task not found" });
+      }
+
+      return { success: true };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to delete task",
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Issue Analysis Routes
+  // ---------------------------------------------------------------------------
+
+  /**
+   * POST /api/github/issues/:number/analyze
+   * Analyze a single issue
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Params: IssueParams;
+    Body: AnalyzeIssueBody;
+    Reply: { analysis: autofix.IssueAnalysis } | { error: string };
+  }>("/api/github/issues/:number/analyze", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const issueNumber = parseInt(request.params.number, 10);
+    if (isNaN(issueNumber)) {
+      return reply.code(400).send({ error: "Invalid issue number" });
+    }
+
+    const { use_ai } = request.body ?? {};
+
+    try {
+      // Fetch issue details using existing service
+      const issue = await github.getIssue(workspacePath, issueNumber);
+      const commentsResult = await github.getIssueComments(workspacePath, issueNumber);
+      const comments = commentsResult.items;
+
+      // Convert to GHIssue format (gh-client uses different case conventions)
+      const ghIssue: autofix.GHIssue = {
+        number: issue.number,
+        title: issue.title,
+        body: issue.body ?? "",
+        state: issue.state === "open" ? "OPEN" : "CLOSED",
+        labels: issue.labels.map((l) => ({
+          name: l.name,
+        })),
+        assignees: issue.assignees.map((a) => ({
+          login: a.login,
+        })),
+        author: {
+          login: issue.user.login,
+        },
+        createdAt: issue.created_at,
+        updatedAt: issue.updated_at,
+        url: issue.html_url,
+        comments: {
+          totalCount: issue.comments,
+        },
+      };
+
+      // Convert comments
+      const convertedComments: autofix.GHComment[] = comments.map((c) => ({
+        id: String(c.id),
+        body: c.body,
+        author: {
+          login: c.user.login,
+        },
+        createdAt: c.created_at,
+        updatedAt: c.updated_at,
+      }));
+
+      // Analyze
+      const analysis = await autofix.analyzeIssue(ghIssue, convertedComments, {
+        useAI: use_ai,
+      });
+
+      return { analysis };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to analyze issue",
+      });
+    }
+  });
+
+  /**
+   * POST /api/github/issues/triage
+   * Triage multiple issues
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Body: TriageIssuesBody;
+    Reply: { results: autofix.BatchTriageResult } | { error: string };
+  }>("/api/github/issues/triage", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { issue_numbers, use_ai } = request.body;
+    if (!issue_numbers || !Array.isArray(issue_numbers) || issue_numbers.length === 0) {
+      return reply.code(400).send({ error: "issue_numbers array is required" });
+    }
+
+    try {
+      // Fetch all issues in parallel
+      const issues = await fetchIssuesAsGHIssues(workspacePath, issue_numbers);
+
+      // Triage
+      let results: autofix.BatchTriageResult;
+      if (use_ai) {
+        const config = await autofix.loadGitHubConfig(workspacePath);
+        results = await autofix.triageIssuesWithAI(issues, config.model);
+      } else {
+        results = autofix.triageIssues(issues);
+      }
+
+      return { results };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to triage issues",
+      });
+    }
+  });
+
+  /**
+   * POST /api/github/issues/cluster
+   * Cluster issues by semantic similarity
+   */
+  fastify.post<{
+    Querystring: WorkspacePathQuery;
+    Body: ClusterIssuesBody;
+    Reply: { result: autofix.ClusteringResult } | { error: string };
+  }>("/api/github/issues/cluster", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const { issue_numbers, similarity_threshold, max_cluster_size } = request.body;
+    if (!issue_numbers || !Array.isArray(issue_numbers) || issue_numbers.length === 0) {
+      return reply.code(400).send({ error: "issue_numbers array is required" });
+    }
+
+    try {
+      // Fetch all issues in parallel
+      const issues = await fetchIssuesAsGHIssues(workspacePath, issue_numbers);
+
+      // Cluster
+      const result = autofix.clusterIssues(issues, {
+        similarityThreshold: similarity_threshold,
+        maxClusterSize: max_cluster_size,
+      });
+
+      return { result };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to cluster issues",
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Worktree Management Routes
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /api/github/autofix/worktrees
+   * List all worktrees
+   */
+  fastify.get<{
+    Querystring: WorkspacePathQuery;
+    Reply: { worktrees: autofix.WorktreeInfo[] } | { error: string };
+  }>("/api/github/autofix/worktrees", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    try {
+      const config = await autofix.loadGitHubConfig(workspacePath);
+      const manager = autofix.createWorktreeManager(workspacePath, config);
+      const worktrees = await manager.list();
+      return { worktrees };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to list worktrees",
+      });
+    }
+  });
+
+  /**
+   * DELETE /api/github/autofix/worktrees
+   * Clean up all auto-fix worktrees
+   */
+  fastify.delete<{
+    Querystring: WorkspacePathQuery;
+    Reply: { cleaned: number } | { error: string };
+  }>("/api/github/autofix/worktrees", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    try {
+      const config = await autofix.loadGitHubConfig(workspacePath);
+      const manager = autofix.createWorktreeManager(workspacePath, config);
+      const cleaned = await manager.cleanup();
+      return { cleaned };
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to clean up worktrees",
       });
     }
   });
