@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -13,28 +14,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react';
-
-function VibenLogo({ size = 32 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#d97706" />
-          <stop offset="100%" stopColor="#f59e0b" />
-        </linearGradient>
-      </defs>
-      <rect x="15" y="20" width="50" height="65" rx="3" fill="url(#logo-grad)" />
-      <rect x="20" y="25" width="40" height="55" rx="2" fill="white" />
-      <rect x="25" y="32" width="30" height="3" rx="1" fill="#fcd34d" />
-      <rect x="25" y="40" width="25" height="3" rx="1" fill="#fcd34d" />
-      <rect x="25" y="48" width="28" height="3" rx="1" fill="#fcd34d" />
-      <rect x="25" y="56" width="22" height="3" rx="1" fill="#fcd34d" />
-      <circle cx="65" cy="55" r="20" fill="none" stroke="url(#logo-grad)" strokeWidth="6" />
-      <line x1="78" y1="68" x2="92" y2="82" stroke="url(#logo-grad)" strokeWidth="6" strokeLinecap="round" />
-      <circle cx="65" cy="55" r="12" fill="#fef3c7" opacity="0.5" />
-    </svg>
-  );
-}
+import { DemoTabs } from './components/demo-tabs';
 
 const CHALLENGES = [
   {
@@ -89,7 +69,7 @@ function Nav() {
     <header className="sticky top-0 z-50 border-b border-amber-400/10 bg-[#0b0b10]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5 text-zinc-100 transition-opacity hover:opacity-90">
-          <VibenLogo size={28} />
+          <Image src="/viben.svg" alt="Viben Logo" width={28} height={28} className="rounded-md" priority />
           <span className="text-lg font-bold tracking-tight">Viben</span>
         </Link>
         <div className="flex items-center gap-1 text-sm">
@@ -145,6 +125,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <DemoTabs />
 
       <section className="py-20">
         <div className="mx-auto max-w-6xl px-6">
