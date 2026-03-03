@@ -365,6 +365,96 @@ if (executorSupportsChat("CLAUDE_CODE")) {
 }
 ```
 
+#### 执行器可用性检测
+
+每个执行器都提供 `getAvailabilityInfo()` 方法来检测其安装和登录状态。该方法返回 `AvailabilityInfo` 对象,包含以下信息：
+
+```typescript
+interface AvailabilityInfo {
+  status: AvailabilityStatus;    // 可用性状态
+  lastAuthTimestamp?: number;    // 最后认证时间戳(仅 LOGIN_DETECTED)
+  path?: string;                 // 可执行文件路径(如果找到)
+}
+
+type AvailabilityStatus =
+  | "LOGIN_DETECTED"      // 已检测到登录(已认证)
+  | "INSTALLATION_FOUND"  // 仅检测到安装(未认证)
+  | "NOT_FOUND";          // 未找到安装
+```
+
+**三种状态说明**：
+
+1. **`LOGIN_DETECTED`** - 已检测到登录
+   - 执行器已安装且用户已完成认证
+   - 可以直接使用执行器的所有功能
+   - 包含 `lastAuthTimestamp` 和 `path` 信息
+
+2. **`INSTALLATION_FOUND`** - 仅检测到安装
+   - 执行器已安装但用户尚未登录
+   - 需要用户完成认证流程后才能使用
+   - 包含 `path` 信息,但没有 `lastAuthTimestamp`
+
+3. **`NOT_FOUND`** - 未找到安装
+   - 系统中未安装该执行器
+   - 需要用户先安装执行器
+
+**检测逻辑示例** (以 Claude Code 为例)：
+
+```typescript
+getAvailabilityInfo(): AvailabilityInfo {
+  const authFile = join(homedir(), ".claude.json");
+  const execPath = whichSync("claude");
+
+  // 1. 检查认证文件存在 → LOGIN_DETECTED
+  if (existsSync(authFile)) {
+    return {
+      status: "LOGIN_DETECTED",
+      lastAuthTimestamp: Date.now(),
+      path: execPath ?? undefined,
+    };
+  }
+
+  // 2. 检查可执行文件存在 → INSTALLATION_FOUND
+  if (execPath) {
+    return {
+      status: "INSTALLATION_FOUND",
+      path: execPath,
+    };
+  }
+
+  // 3. 都不存在 → NOT_FOUND
+  return { status: "NOT_FOUND" };
+}
+```
+
+**使用示例**：
+
+```typescript
+import { createExecutor } from "@viben/core";
+
+const executor = createExecutor("CLAUDE_CODE");
+const availability = executor.getAvailabilityInfo();
+
+switch (availability.status) {
+  case "LOGIN_DETECTED":
+    console.log("✅ Claude Code 已就绪,可以使用");
+    console.log(`路径: ${availability.path}`);
+    console.log(`认证时间: ${new Date(availability.lastAuthTimestamp!)}`);
+    break;
+
+  case "INSTALLATION_FOUND":
+    console.log("⚠️ Claude Code 已安装但未登录");
+    console.log(`路径: ${availability.path}`);
+    console.log("请运行 'claude login' 完成认证");
+    break;
+
+  case "NOT_FOUND":
+    console.log("❌ 未找到 Claude Code");
+    console.log("请访问 https://claude.ai 安装 Claude Code");
+    break;
+}
+```
+
 #### Chat 模式使用示例
 
 Chat 模式支持两种数据格式：`text` (纯文本) 和 `stream-json` (JSON 流)。
