@@ -8,7 +8,7 @@
 #-------------------------------------------------------------------------------
 
 # Worktree storage directory (relative to project root)
-worktree_dir: .viben/worktrees
+worktree_dir: ../viben-worktrees
 
 #-------------------------------------------------------------------------------
 # Files to Copy

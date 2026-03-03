@@ -6,7 +6,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.py\"",
+            "command": "{{PYTHON_CMD}} .claude/hooks/session-start.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_CMD}} .claude/hooks/session-start.py",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "{{PYTHON_CMD}} .claude/hooks/session-start.py",
             "timeout": 10
           }
         ]
@@ -18,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/inject-subagent-context.py\"",
+            "command": "{{PYTHON_CMD}} .claude/hooks/inject-subagent-context.py",
             "timeout": 30
           }
         ]
@@ -30,7 +50,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/ralph-loop.py\"",
+            "command": "{{PYTHON_CMD}} .claude/hooks/ralph-loop.py",
             "timeout": 10
           }
         ]

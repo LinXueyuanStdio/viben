@@ -93,12 +93,12 @@ See `examples/skills/<skill-name>/`
 .viben/spec/{target}/
 |-- doc.md                      # Add skill-related section
 |-- index.md                    # Update index
-\-- examples/
-    \-- skills/
-        \-- <skill-name>/
++-- examples/
+    +-- skills/
+        +-- <skill-name>/
             |-- README.md               # Example documentation
             |-- example-1.ts.template   # Code example (use .template suffix)
-            \-- example-2.tsx.template
+            +-- example-2.tsx.template
 ```
 
 **File naming conventions**:
@@ -189,13 +189,13 @@ If this skill is frequently used, create a shortcut command:
 .viben/spec/backend/
 |-- doc.md                           # Add MCP section
 |-- index.md                         # Add index entry
-\-- examples/
-    \-- skills/
-        \-- mcp-builder/
++-- examples/
+    +-- skills/
+        +-- mcp-builder/
             |-- README.md
             |-- server.ts.template
             |-- tools.ts.template
-            \-- types.ts.template
+            +-- types.ts.template
 ```
 
 ### New Section in doc.md

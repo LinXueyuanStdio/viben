@@ -9,6 +9,7 @@
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean && rm -rf node_modules",
+    "code-stats": "python scripts/code-stats.py",
     "desktop": "pnpm --filter @viben/desktop",
     "desktop:dev": "pnpm --filter @viben/desktop tauri-dev",
     "desktop:build": "pnpm --filter @viben/desktop tauri-build",

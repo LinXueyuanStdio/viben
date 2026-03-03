@@ -10,7 +10,6 @@
 # Agent runtime files
 .agents/
 .agent-log
-.agent-runner.sh
 .session-id
 
 # Task directory runtime files
@@ -24,3 +23,7 @@
 
 # Conflict resolution temp files
 *.new
+
+# Python cache
+**/__pycache__/
+**/*.pyc
