@@ -432,3 +432,6 @@ export interface ModelsConfig {
   fallbacks: string[];
   configs: Record<string, ModelConfig>;
 }
+
+// GitHub Types
+export * from "./github";

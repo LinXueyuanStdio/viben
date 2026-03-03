@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
-import { useWorkspaceStore } from "@/stores";
+import { useWorkspaceStore, useAppStore } from "@/stores";
 import type { Workspace } from "@/types";
 
 export type GatewayStatus = "connected" | "disconnected" | "connecting" | "error";
@@ -76,6 +76,15 @@ async function loadWorkspacesOnConnect() {
   }
 }
 
+// Load developer preferences from config when gateway connects
+async function loadPreferencesOnConnect() {
+  try {
+    await useAppStore.getState().loadDeveloperPreferences();
+  } catch (err) {
+    console.error("Failed to load developer preferences on gateway connect:", err);
+  }
+}
+
 // Ping the gateway and update global state
 async function pingGateway(): Promise<boolean> {
   const client = getGatewayClient();
@@ -88,9 +97,10 @@ async function pingGateway(): Promise<boolean> {
       globalLastConnected = Date.now();
       globalError = null;
 
-      // Load workspaces on first connect or reconnect
+      // Load data on first connect or reconnect
       if (!wasConnected) {
         loadWorkspacesOnConnect();
+        loadPreferencesOnConnect();
       }
     } else {
       globalStatus = "disconnected";

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { PythonInfo, Provider, McpServerInstance, McpServerStatus, McpServerStatusInfo, ServiceApiKey, AgentMcpAssignment, InspectorConnectionStatus, InspectorNotification } from "@/types";
 import type { CliToolsInfo } from "@/lib/gateway";
+import { getGatewayClient } from "@/lib/gateway";
 
 /** Cached CLI tools detection result with timestamp */
 interface CliToolsCache {
@@ -147,13 +148,15 @@ interface AppState {
   setShowHideWindowScope: (scope: "all" | "chatRelated") => void;
   resetShortcuts: () => void;
 
-  // Developer Tools
+  // Developer Tools (synced to ~/.viben/config.yaml via Gateway)
   preferredIDE: string;
   setPreferredIDE: (ide: string) => void;
   preferredTerminal: string;
   setPreferredTerminal: (terminal: string) => void;
   dangerouslySkipPermissions: boolean;
   setDangerouslySkipPermissions: (enabled: boolean) => void;
+  /** Load developer preferences from Gateway config file */
+  loadDeveloperPreferences: () => Promise<void>;
 
   // CLI Tool Paths (custom user-configured paths)
   pythonPath: string;
@@ -442,13 +445,45 @@ export const useAppStore = create<AppState>()(
           showHideWindowScope: "all",
         }),
 
-      // Developer Tools
+      // Developer Tools (synced to ~/.viben/config.yaml via Gateway)
       preferredIDE: "vscode",
-      setPreferredIDE: (ide) => set({ preferredIDE: ide }),
+      setPreferredIDE: (ide) => {
+        set({ preferredIDE: ide });
+        // Sync to Gateway in background
+        getGatewayClient().setPreferredIDE(ide).catch((err) => {
+          console.error("Failed to sync preferred IDE to config:", err);
+        });
+      },
       preferredTerminal: "system",
-      setPreferredTerminal: (terminal) => set({ preferredTerminal: terminal }),
+      setPreferredTerminal: (terminal) => {
+        set({ preferredTerminal: terminal });
+        // Sync to Gateway in background
+        getGatewayClient().setPreferredTerminal(terminal).catch((err) => {
+          console.error("Failed to sync preferred terminal to config:", err);
+        });
+      },
       dangerouslySkipPermissions: false,
-      setDangerouslySkipPermissions: (enabled) => set({ dangerouslySkipPermissions: enabled }),
+      setDangerouslySkipPermissions: (enabled) => {
+        set({ dangerouslySkipPermissions: enabled });
+        // Sync to Gateway in background
+        getGatewayClient().updateDeveloperPreferences({ dangerously_skip_permissions: enabled }).catch((err) => {
+          console.error("Failed to sync dangerously_skip_permissions to config:", err);
+        });
+      },
+      loadDeveloperPreferences: async () => {
+        try {
+          const client = getGatewayClient();
+          const prefs = await client.getDeveloperPreferences();
+          // Update store with values from config file (without triggering sync back)
+          set({
+            ...(prefs.preferred_ide && { preferredIDE: prefs.preferred_ide }),
+            ...(prefs.preferred_terminal && { preferredTerminal: prefs.preferred_terminal }),
+            ...(prefs.dangerously_skip_permissions !== undefined && { dangerouslySkipPermissions: prefs.dangerously_skip_permissions }),
+          });
+        } catch (err) {
+          console.error("Failed to load developer preferences from config:", err);
+        }
+      },
 
       // CLI Tool Paths
       pythonPath: "",

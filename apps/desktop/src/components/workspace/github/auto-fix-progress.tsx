@@ -102,7 +102,7 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
           )}
         />
         <span className="text-sm text-muted-foreground">
-          {task.progressMessage || t(`workspaceSettings.github.autoFix.status.${task.status}`, task.status)}
+          {task.progress_message || t(`workspaceSettings.github.autoFix.status.${task.status}`, task.status)}
         </span>
         {isActive && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
       </div>
@@ -136,7 +136,7 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
         <div className="space-y-1">
           <Progress value={progress} className="h-2" />
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{task.progressMessage || "Processing..."}</span>
+            <span>{task.progress_message || "Processing..."}</span>
             <span>{progress}%</span>
           </div>
         </div>
@@ -151,19 +151,19 @@ export function AutoFixProgress({ task, compact = false }: AutoFixProgressProps)
       )}
 
       {/* Success info */}
-      {task.status === "completed" && task.prNumber && (
+      {task.status === "completed" && task.pr_number && (
         <div className="flex items-center gap-2 text-sm text-green-600 bg-green-500/10 p-3 rounded-lg">
           <GitPullRequest className="h-4 w-4" />
           <span>
-            {t("workspaceSettings.github.autoFix.prCreated", "Pull request created")}: #{task.prNumber}
+            {t("workspaceSettings.github.autoFix.prCreated", "Pull request created")}: #{task.pr_number}
           </span>
         </div>
       )}
 
       {/* Branch info */}
-      {task.branchName && (
+      {task.branch_name && (
         <div className="text-xs text-muted-foreground font-mono">
-          Branch: {task.branchName}
+          Branch: {task.branch_name}
         </div>
       )}
     </div>

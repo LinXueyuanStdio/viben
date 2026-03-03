@@ -11,6 +11,8 @@ import { promisify } from "node:util";
 import { homedir, platform, arch, hostname, release, type } from "node:os";
 import { join } from "node:path";
 import { access, constants, readdir, realpath } from "node:fs/promises";
+import { getConfigPath } from "../../config/paths";
+import { readYaml, writeYaml } from "../../config/yaml";
 
 const execAsync = promisify(exec);
 
@@ -50,6 +52,8 @@ export interface CliToolInfo {
   message?: string;
   /** All discovered paths for this tool */
   alternatives?: CliToolPath[];
+  /** User's selected path from config file */
+  selectedPath?: string;
 }
 
 /**
@@ -81,6 +85,45 @@ export interface CliToolsInfo {
   cline: CliToolInfo;
   continue: CliToolInfo;
   cursor: CliToolInfo;
+}
+
+/**
+ * CLI tools selected paths stored in config.yaml under cli_tools key
+ */
+export interface CliToolsConfig {
+  python?: string;
+  git?: string;
+  gh?: string;
+  claude?: string;
+  codex?: string;
+  aider?: string;
+  goose?: string;
+  cline?: string;
+  continue?: string;
+  cursor?: string;
+}
+
+// ============================================================================
+// Config File Operations
+// ============================================================================
+
+/**
+ * Read CLI tools selected paths from ~/.viben/config.yaml
+ */
+async function readCliToolsConfig(): Promise<CliToolsConfig> {
+  const configPath = getConfigPath();
+  const config = await readYaml<Record<string, unknown>>(configPath);
+  return (config?.cli_tools as CliToolsConfig) || {};
+}
+
+/**
+ * Write CLI tools selected paths to ~/.viben/config.yaml
+ */
+async function writeCliToolsConfig(cliTools: CliToolsConfig): Promise<void> {
+  const configPath = getConfigPath();
+  const config = await readYaml<Record<string, unknown>>(configPath) || {};
+  config.cli_tools = cliTools;
+  await writeYaml(configPath, config);
 }
 
 // ============================================================================
@@ -681,6 +724,7 @@ async function detectCliTool(
 
 /**
  * Detect all CLI tools (git, gh, claude, python, codex, aider, goose, cline, continue, cursor)
+ * Also reads selected paths from ~/.viben/config.yaml
  */
 async function detectAllCliTools(config?: {
   pythonPath?: string;
@@ -694,6 +738,9 @@ async function detectAllCliTools(config?: {
   continuePath?: string;
   cursorPath?: string;
 }): Promise<CliToolsInfo> {
+  // Read selected paths from config file
+  const selectedPaths = await readCliToolsConfig();
+
   const [python, git, gh, claude, codex, aider, goose, cline, continueInfo, cursor] = await Promise.all([
     detectCliTool("python", config?.pythonPath),
     detectCliTool("git", config?.gitPath),
@@ -707,7 +754,19 @@ async function detectAllCliTools(config?: {
     detectCliTool("cursor", config?.cursorPath),
   ]);
 
-  return { python, git, gh, claude, codex, aider, goose, cline, continue: continueInfo, cursor };
+  // Add selected paths from config
+  return {
+    python: { ...python, selectedPath: selectedPaths.python },
+    git: { ...git, selectedPath: selectedPaths.git },
+    gh: { ...gh, selectedPath: selectedPaths.gh },
+    claude: { ...claude, selectedPath: selectedPaths.claude },
+    codex: { ...codex, selectedPath: selectedPaths.codex },
+    aider: { ...aider, selectedPath: selectedPaths.aider },
+    goose: { ...goose, selectedPath: selectedPaths.goose },
+    cline: { ...cline, selectedPath: selectedPaths.cline },
+    continue: { ...continueInfo, selectedPath: selectedPaths.continue },
+    cursor: { ...cursor, selectedPath: selectedPaths.cursor },
+  };
 }
 
 /**
@@ -909,6 +968,48 @@ export function registerPythonRoutes(fastify: FastifyInstance): void {
     const { tool, path } = request.body;
     const result = await detectCliTool(tool, path);
     return result;
+  });
+
+  /**
+   * GET /api/cli-tools/config
+   * Get CLI tools selected paths from config file
+   */
+  fastify.get("/api/cli-tools/config", async () => {
+    const config = await readCliToolsConfig();
+    return config;
+  });
+
+  /**
+   * POST /api/cli-tools/config
+   * Save CLI tools selected paths to config file
+   */
+  fastify.post<{
+    Body: CliToolsConfig;
+  }>("/api/cli-tools/config", async (request) => {
+    const config = request.body;
+    await writeCliToolsConfig(config);
+    return { success: true };
+  });
+
+  /**
+   * PATCH /api/cli-tools/config
+   * Update a single CLI tool selected path
+   */
+  fastify.patch<{
+    Body: {
+      tool: CliToolName;
+      path: string | null;
+    };
+  }>("/api/cli-tools/config", async (request) => {
+    const { tool, path } = request.body;
+    const config = await readCliToolsConfig();
+    if (path === null) {
+      delete config[tool];
+    } else {
+      config[tool] = path;
+    }
+    await writeCliToolsConfig(config);
+    return { success: true };
   });
 
   // ==========================================================================

@@ -42,6 +42,7 @@ import { registerMcpInspectorRoutes } from "./mcp-inspector";
 import { registerQueueRoutes } from "./queue";
 import { registerGitHubRoutes } from "./github";
 import { registerTauriMcpRoutes } from "./tauri-mcp";
+import { registerPreferencesRoutes } from "./preferences";
 
 /**
  * Register all routes
@@ -86,6 +87,7 @@ export function registerRoutes(fastify: FastifyInstance, state: AppState): void 
   registerQueueRoutes(fastify, state);
   registerGitHubRoutes(fastify);
   registerTauriMcpRoutes(fastify);
+  registerPreferencesRoutes(fastify);
 }
 
 // Re-export individual route registrations
@@ -133,6 +135,8 @@ export {
 export { registerQueueRoutes } from "./queue";
 export { registerGitHubRoutes } from "./github";
 export { registerTauriMcpRoutes, DEFAULT_SOCKET_PATH as TAURI_MCP_SOCKET_PATH } from "./tauri-mcp";
+export { registerPreferencesRoutes } from "./preferences";
+export type { DeveloperPreferences, PreferencesResponse } from "./preferences";
 export type {
   SSEEventType,
   SSEMessage,

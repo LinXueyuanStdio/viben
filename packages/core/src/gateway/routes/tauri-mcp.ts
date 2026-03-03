@@ -295,6 +295,10 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
   /**
    * SSE endpoint for MCP communication
    * GET /api/mcp/tauri/sse
+   *
+   * This implements the MCP SSE transport protocol:
+   * - GET establishes SSE connection for receiving server events
+   * - Sends 'endpoint' event with URL for posting messages
    */
   fastify.get("/api/mcp/tauri/sse", async (request, reply) => {
     // Set SSE headers
@@ -332,9 +336,11 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
       // Store session
       sseSessions.set(sessionId, { id: sessionId, reply, client });
 
-      // Send connected event
-      reply.raw.write(`event: open\n`);
-      reply.raw.write(`data: ${JSON.stringify({ sessionId })}\n\n`);
+      // Send 'endpoint' event with the URL for posting messages (MCP SSE protocol)
+      // Use a dedicated message endpoint like the MCP SDK expects
+      const messagesEndpoint = `/api/mcp/tauri/message?sessionId=${sessionId}`;
+      reply.raw.write(`event: endpoint\n`);
+      reply.raw.write(`data: ${messagesEndpoint}\n\n`);
 
       // Forward notifications from tauri-mcp to SSE
       client.on("notification", (message: McpMessage) => {
@@ -370,12 +376,147 @@ export function registerTauriMcpRoutes(fastify: FastifyInstance): void {
     }
   });
 
+  /**
+   * SSE POST endpoint for sending messages
+   * POST /api/mcp/tauri/sse
+   *
+   * This handles the POST side of the MCP SSE transport protocol.
+   * Messages are sent here and responses come back via SSE.
+   */
+  fastify.post<{
+    Querystring: { sessionId?: string };
+    Body: McpMessage;
+  }>("/api/mcp/tauri/sse", async (request, reply) => {
+    // CORS headers
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    reply.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept, Mcp-Session-Id"
+    );
+
+    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const message = request.body;
+
+    if (!sessionId) {
+      reply.code(400);
+      return { error: "sessionId query parameter or Mcp-Session-Id header required" };
+    }
+
+    if (!message || !message.jsonrpc) {
+      reply.code(400);
+      return { error: "Invalid JSON-RPC message" };
+    }
+
+    const session = sseSessions.get(sessionId);
+    if (!session) {
+      reply.code(404);
+      return { error: "Session not found" };
+    }
+
+    try {
+      // Send message to tauri-mcp and get response
+      const response = await session.client.send(message);
+
+      // Send response back via SSE stream
+      if (session.reply.raw.writable) {
+        session.reply.raw.write(`event: message\n`);
+        session.reply.raw.write(`data: ${JSON.stringify(response)}\n\n`);
+      }
+
+      // Also return as HTTP response for clients that expect it
+      reply.code(202); // Accepted
+      return { accepted: true };
+    } catch (err) {
+      reply.code(500);
+      return {
+        jsonrpc: "2.0",
+        id: message.id,
+        error: {
+          code: -32000,
+          message: err instanceof Error ? err.message : "Internal error",
+        },
+      };
+    }
+  });
+
   // ========================================================================
-  // Message Endpoint
+  // Message Endpoint (for SSE transport)
   // ========================================================================
 
   /**
-   * Send message to MCP server
+   * SSE Message endpoint - receives messages from SSE clients
+   * POST /api/mcp/tauri/message
+   *
+   * This is the endpoint that SSE clients POST to (as specified in the 'endpoint' event).
+   * The sessionId is passed as a query parameter.
+   */
+  fastify.post<{
+    Querystring: { sessionId?: string };
+    Body: McpMessage;
+  }>("/api/mcp/tauri/message", async (request, reply) => {
+    // CORS headers
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    reply.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Accept, Mcp-Session-Id"
+    );
+
+    const sessionId = request.query.sessionId || request.headers["mcp-session-id"] as string;
+    const message = request.body;
+
+    console.log(`[tauri-mcp] POST /message sessionId=${sessionId}, message=${JSON.stringify(message).slice(0, 100)}`);
+
+    if (!sessionId) {
+      reply.code(400);
+      return { error: "sessionId query parameter required" };
+    }
+
+    if (!message || !message.jsonrpc) {
+      reply.code(400);
+      return { error: "Invalid JSON-RPC message" };
+    }
+
+    const session = sseSessions.get(sessionId);
+    if (!session) {
+      reply.code(404);
+      return { error: `Session ${sessionId} not found` };
+    }
+
+    try {
+      // Send message to tauri-mcp and get response
+      const response = await session.client.send(message);
+
+      // Send response back via SSE stream
+      if (session.reply.raw.writable) {
+        session.reply.raw.write(`event: message\n`);
+        session.reply.raw.write(`data: ${JSON.stringify(response)}\n\n`);
+      }
+
+      // Return accepted status
+      reply.code(202);
+      return { accepted: true };
+    } catch (err) {
+      console.error(`[tauri-mcp] Error handling message:`, err);
+      reply.code(500);
+      return {
+        jsonrpc: "2.0",
+        id: message.id,
+        error: {
+          code: -32000,
+          message: err instanceof Error ? err.message : "Internal error",
+        },
+      };
+    }
+  });
+
+  // ========================================================================
+  // Legacy Message Endpoint
+  // ========================================================================
+
+  /**
+   * Send message to MCP server (legacy endpoint)
    * POST /api/mcp/tauri/messages
    */
   fastify.post<{

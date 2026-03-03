@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { PageWrapper } from "@/components/layout";
 import { WorkspaceHeader } from "@/components/workspace";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -45,8 +46,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useLocalWorkspaces } from "@/hooks";
 import { useGitHubAuth, useGitHubRepository, useGitHubIssues, useGitHubPRs, useGitHubReleases } from "@/hooks/use-github";
 import { cn } from "@/lib/utils";
+import { IssueDetail } from "@/components/workspace/github/issue-detail";
 import type { Workspace } from "@/types";
-import type { GitHubIssue, GitHubPullRequest, GitHubRelease } from "@/lib/github-client";
+import type { GitHubIssue, GitHubPullRequest, GitHubRelease, GitHubIssueInvestigation } from "@/lib/github-client";
 
 // ============================================================================
 // Props
@@ -261,7 +263,7 @@ export function WorkspaceGitHubPage({
 }
 
 // ============================================================================
-// Issues Tab - GitHub Style
+// Issues Tab - GitHub Style with Detail Modal
 // ============================================================================
 
 function IssuesTab({ workspacePath }: { workspacePath: string }) {
@@ -275,9 +277,11 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
     setStateFilter,
     refresh,
     loadMore,
+    investigateIssue,
   } = useGitHubIssues(workspacePath);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
 
   const filteredIssues = useMemo(() => {
     if (!searchQuery.trim()) return issues;
@@ -291,6 +295,10 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
 
   const openCount = issues.filter((i) => i.state === "open").length;
   const closedCount = issues.filter((i) => i.state === "closed").length;
+
+  const handleAnalyze = async (issueNumber: number, saveSpec?: boolean): Promise<GitHubIssueInvestigation | null> => {
+    return investigateIssue(issueNumber, saveSpec);
+  };
 
   return (
     <div className="space-y-4">
@@ -350,7 +358,11 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
         ) : (
           <div className="divide-y">
             {filteredIssues.map((issue) => (
-              <IssueRow key={issue.id} issue={issue} />
+              <IssueRow
+                key={issue.id}
+                issue={issue}
+                onSelect={() => setSelectedIssue(issue)}
+              />
             ))}
           </div>
         )}
@@ -370,11 +382,20 @@ function IssuesTab({ workspacePath }: { workspacePath: string }) {
           </button>
         )}
       </div>
+
+      {/* Issue Detail Modal */}
+      <IssueDetailModal
+        issue={selectedIssue}
+        workspacePath={workspacePath}
+        open={!!selectedIssue}
+        onOpenChange={(open) => !open && setSelectedIssue(null)}
+        onAnalyze={handleAnalyze}
+      />
     </div>
   );
 }
 
-function IssueRow({ issue }: { issue: GitHubIssue }) {
+function IssueRow({ issue, onSelect }: { issue: GitHubIssue; onSelect?: () => void }) {
   const { t } = useTranslation();
 
   const formatRelativeTime = (dateString: string) => {
@@ -391,7 +412,10 @@ function IssueRow({ issue }: { issue: GitHubIssue }) {
   };
 
   return (
-    <div className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors">
+    <div
+      className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+      onClick={onSelect}
+    >
       {issue.state === "open" ? (
         <CircleDot className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />
       ) : (
@@ -399,16 +423,11 @@ function IssueRow({ issue }: { issue: GitHubIssue }) {
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-start gap-2">
-          <a
-            href={issue.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-sm hover:text-primary transition-colors"
-          >
+        <div className="flex items-start gap-2 flex-wrap">
+          <span className="font-semibold text-sm">
             {issue.title}
-          </a>
-          {issue.labels.map((label) => (
+          </span>
+          {issue.labels.slice(0, 3).map((label) => (
             <Badge
               key={label.id}
               className="text-xs px-1.5 py-0 font-medium shrink-0"
@@ -463,6 +482,16 @@ function IssueRow({ issue }: { issue: GitHubIssue }) {
             {issue.comments}
           </span>
         )}
+
+        <a
+          href={issue.html_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground p-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       </div>
     </div>
   );
@@ -486,6 +515,7 @@ function PRsTab({ workspacePath }: { workspacePath: string }) {
   } = useGitHubPRs(workspacePath);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPR, setSelectedPR] = useState<GitHubPullRequest | null>(null);
 
   const filteredPRs = useMemo(() => {
     if (!searchQuery.trim()) return prs;
@@ -558,7 +588,7 @@ function PRsTab({ workspacePath }: { workspacePath: string }) {
         ) : (
           <div className="divide-y">
             {filteredPRs.map((pr) => (
-              <PRRow key={pr.id} pr={pr} />
+              <PRRow key={pr.id} pr={pr} onSelect={() => setSelectedPR(pr)} />
             ))}
           </div>
         )}
@@ -578,11 +608,18 @@ function PRsTab({ workspacePath }: { workspacePath: string }) {
           </button>
         )}
       </div>
+
+      {/* PR Detail Modal */}
+      <PRDetailModal
+        pr={selectedPR}
+        open={!!selectedPR}
+        onOpenChange={(open) => !open && setSelectedPR(null)}
+      />
     </div>
   );
 }
 
-function PRRow({ pr }: { pr: GitHubPullRequest }) {
+function PRRow({ pr, onSelect }: { pr: GitHubPullRequest; onSelect?: () => void }) {
   const { t } = useTranslation();
 
   const formatRelativeTime = (dateString: string) => {
@@ -612,25 +649,23 @@ function PRRow({ pr }: { pr: GitHubPullRequest }) {
   };
 
   return (
-    <div className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors">
+    <div
+      className="flex items-start gap-3 p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+      onClick={onSelect}
+    >
       {getStatusIcon()}
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-start gap-2">
-          <a
-            href={pr.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-sm hover:text-primary transition-colors"
-          >
+        <div className="flex items-start gap-2 flex-wrap">
+          <span className="font-semibold text-sm">
             {pr.title}
-          </a>
+          </span>
           {pr.draft && (
             <Badge variant="secondary" className="text-xs shrink-0">
               {t("workspaceSettings.github.prs.draft")}
             </Badge>
           )}
-          {pr.labels?.map((label) => (
+          {pr.labels?.slice(0, 3).map((label) => (
             <Badge
               key={label.id}
               className="text-xs px-1.5 py-0 font-medium shrink-0"
@@ -698,6 +733,16 @@ function PRRow({ pr }: { pr: GitHubPullRequest }) {
             {pr.comments}
           </span>
         )}
+
+        <a
+          href={pr.html_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-muted-foreground hover:text-foreground p-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       </div>
     </div>
   );
@@ -872,5 +917,217 @@ function ReleaseCard({ release, isLatest }: { release: GitHubRelease; isLatest: 
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// Issue Detail Modal - Wraps IssueDetail in a Dialog
+// ============================================================================
+
+function IssueDetailModal({
+  issue,
+  workspacePath,
+  open,
+  onOpenChange,
+  onAnalyze,
+}: {
+  issue: GitHubIssue | null;
+  workspacePath: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAnalyze: (issueNumber: number, saveSpec?: boolean) => Promise<GitHubIssueInvestigation | null>;
+}) {
+  if (!issue) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden">
+        <IssueDetail
+          issue={issue}
+          workspacePath={workspacePath}
+          onClose={() => onOpenChange(false)}
+          onAnalyze={onAnalyze}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
+// PR Detail Modal - Shows PR details in a Dialog
+// ============================================================================
+
+function PRDetailModal({
+  pr,
+  open,
+  onOpenChange,
+}: {
+  pr: GitHubPullRequest | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { t } = useTranslation();
+
+  if (!pr) return null;
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getStatusBadge = () => {
+    if (pr.merged) {
+      return (
+        <Badge className="bg-purple-600 text-white">
+          <GitMerge className="h-3 w-3 mr-1" />
+          {t("workspaceSettings.github.prs.merged", "Merged")}
+        </Badge>
+      );
+    }
+    if (pr.state === "closed") {
+      return (
+        <Badge variant="destructive">
+          <CircleX className="h-3 w-3 mr-1" />
+          {t("workspaceSettings.github.prs.closed")}
+        </Badge>
+      );
+    }
+    if (pr.draft) {
+      return (
+        <Badge variant="secondary">
+          <GitPullRequest className="h-3 w-3 mr-1" />
+          {t("workspaceSettings.github.prs.draft")}
+        </Badge>
+      );
+    }
+    return (
+      <Badge className="bg-green-600 text-white">
+        <GitPullRequest className="h-3 w-3 mr-1" />
+        {t("workspaceSettings.github.prs.open")}
+      </Badge>
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex-shrink-0 p-6 pb-4 border-b">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-2">
+                {getStatusBadge()}
+                {pr.labels?.slice(0, 5).map((label) => (
+                  <Badge
+                    key={label.id}
+                    className="text-xs px-1.5 py-0 font-medium"
+                    style={{
+                      backgroundColor: `#${label.color}20`,
+                      color: `#${label.color}`,
+                      border: `1px solid #${label.color}40`,
+                    }}
+                  >
+                    {label.name}
+                  </Badge>
+                ))}
+              </div>
+              <h2 className="text-xl font-semibold">{pr.title}</h2>
+              <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
+                <span>#{pr.number}</span>
+                <span>·</span>
+                <span className="flex items-center gap-1">
+                  <Avatar className="h-4 w-4">
+                    <AvatarImage src={pr.user.avatar_url} />
+                    <AvatarFallback className="text-xs">{pr.user.login[0]}</AvatarFallback>
+                  </Avatar>
+                  {pr.user.login}
+                </span>
+                <span>·</span>
+                <span>{formatDate(pr.created_at)}</span>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <a href={pr.html_url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {t("workspaceSettings.github.viewOnGitHub")}
+              </a>
+            </Button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-auto p-6">
+          {/* Branch info */}
+          <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg mb-4 font-mono text-sm">
+            <GitPullRequest className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{pr.head.ref}</span>
+            <span className="text-muted-foreground">→</span>
+            <span>{pr.base.ref}</span>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-6 mb-6">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-green-600">
+                <Plus className="h-4 w-4" />
+                <span className="font-medium">{pr.additions?.toLocaleString() ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1 text-red-600">
+                <Minus className="h-4 w-4" />
+                <span className="font-medium">{pr.deletions?.toLocaleString() ?? 0}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <FileCode className="h-4 w-4" />
+              <span>{pr.changed_files ?? 0} {t("workspaceSettings.github.prs.files")}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <MessageSquare className="h-4 w-4" />
+              <span>{pr.comments ?? 0} {t("workspaceSettings.github.prs.comments", "comments")}</span>
+            </div>
+          </div>
+
+          {/* Assignees */}
+          {pr.assignees && pr.assignees.length > 0 && (
+            <div className="mb-4">
+              <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                {t("workspaceSettings.github.issues.assignees")}
+              </h4>
+              <div className="flex items-center gap-2 flex-wrap">
+                {pr.assignees.map((assignee) => (
+                  <div key={assignee.id} className="flex items-center gap-1.5 px-2 py-1 bg-muted rounded-full">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={assignee.avatar_url} />
+                      <AvatarFallback className="text-xs">{assignee.login[0]}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm">{assignee.login}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Body */}
+          {pr.body && (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <pre className="whitespace-pre-wrap text-sm bg-muted/30 p-4 rounded-lg border">
+                {pr.body}
+              </pre>
+            </div>
+          )}
+
+          {!pr.body && (
+            <p className="text-sm text-muted-foreground italic">
+              {t("workspaceSettings.github.prs.noDescription", "No description provided.")}
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

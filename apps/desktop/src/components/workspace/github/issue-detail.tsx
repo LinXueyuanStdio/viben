@@ -7,6 +7,8 @@
 
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   X,
   ExternalLink,
@@ -21,6 +23,7 @@ import {
   Loader2,
   Play,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,22 +32,197 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useGitHubStore } from "@/stores/github-store";
+import { useGitHubComments } from "@/hooks/use-github";
 import { IssueAnalysisCard } from "./issue-analysis-card";
 import { InvestigationDialog } from "./investigation-dialog";
-import type { GitHubIssue, GitHubIssueInvestigation } from "@/lib/github-client";
+import type { GitHubIssue, GitHubComment, GitHubIssueInvestigation } from "@/lib/github-client";
+
+/**
+ * Markdown components for rendering GitHub content
+ */
+const markdownComponents = {
+  // Code blocks
+  pre: ({ children, ...props }: React.HTMLAttributes<HTMLPreElement>) => (
+    <pre
+      className="bg-muted max-w-full overflow-x-auto rounded-lg p-4 my-2"
+      {...props}
+    >
+      {children}
+    </pre>
+  ),
+  // Inline code
+  code: ({
+    className,
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLElement> & { className?: string }) => {
+    const isInline = !className;
+    if (isInline) {
+      return (
+        <code
+          className="bg-muted rounded px-1.5 py-0.5 text-sm font-mono"
+          {...props}
+        >
+          {children}
+        </code>
+      );
+    }
+    return (
+      <code className={className} {...props}>
+        {children}
+      </code>
+    );
+  },
+  // Links - open in external browser
+  a: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a
+      href={href}
+      onClick={async (e) => {
+        e.preventDefault();
+        if (href) {
+          try {
+            const { open } = await import("@tauri-apps/plugin-shell");
+            await open(href);
+          } catch {
+            window.open(href, "_blank");
+          }
+        }
+      }}
+      className="text-primary cursor-pointer hover:underline"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  // Tables
+  table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => (
+    <div className="overflow-x-auto my-2">
+      <table className="border-border border-collapse border w-full" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) => (
+    <th
+      className="border-border bg-muted border px-3 py-2 text-left text-sm font-semibold"
+      {...props}
+    >
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) => (
+    <td className="border-border border px-3 py-2 text-sm" {...props}>
+      {children}
+    </td>
+  ),
+  // Paragraphs
+  p: ({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) => (
+    <p className="my-2 leading-relaxed" {...props}>
+      {children}
+    </p>
+  ),
+  // Headers
+  h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h1 className="text-xl font-bold mt-4 mb-2" {...props}>
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h2 className="text-lg font-semibold mt-3 mb-2" {...props}>
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
+    <h3 className="text-base font-semibold mt-2 mb-1" {...props}>
+      {children}
+    </h3>
+  ),
+  // Lists
+  ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
+    <ul className="list-disc ml-4 my-2 space-y-1" {...props}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }: React.HTMLAttributes<HTMLOListElement>) => (
+    <ol className="list-decimal ml-4 my-2 space-y-1" {...props}>
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }: React.LiHTMLAttributes<HTMLLIElement>) => (
+    <li className="text-sm" {...props}>
+      {children}
+    </li>
+  ),
+  // Blockquote
+  blockquote: ({
+    children,
+    ...props
+  }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
+    <blockquote
+      className="border-l-4 border-primary/30 pl-4 my-2 italic text-muted-foreground"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+  // Horizontal rule
+  hr: ({ ...props }: React.HTMLAttributes<HTMLHRElement>) => (
+    <hr className="my-4 border-border" {...props} />
+  ),
+  // Images
+  img: ({ alt, src, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <img
+      alt={alt}
+      src={src}
+      className="max-w-full h-auto rounded-lg my-2"
+      {...props}
+    />
+  ),
+};
+
+/**
+ * Comment item component
+ */
+function CommentItem({ comment, formatDateTime }: { comment: GitHubComment; formatDateTime: (date: string) => string }) {
+  return (
+    <div className="border border-border rounded-lg p-4 mb-3">
+      <div className="flex items-center gap-2 mb-3">
+        <Avatar className="h-6 w-6">
+          <AvatarImage src={comment.user.avatar_url} alt={comment.user.login} />
+          <AvatarFallback>{comment.user.login[0].toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <span className="font-medium text-sm">{comment.user.login}</span>
+        <span className="text-xs text-muted-foreground">
+          {formatDateTime(comment.created_at)}
+        </span>
+      </div>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {comment.body}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
 
 interface IssueDetailProps {
   issue: GitHubIssue;
   workspacePath: string;
   onClose: () => void;
   onAnalyze: (issueNumber: number, saveSpec?: boolean) => Promise<GitHubIssueInvestigation | null>;
+  onStartAutoFix?: (issueNumber: number) => Promise<void>;
 }
 
 export function IssueDetail({
   issue,
-  workspacePath: _workspacePath,
+  workspacePath,
   onClose,
   onAnalyze,
+  onStartAutoFix,
 }: IssueDetailProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("details");
@@ -58,6 +236,16 @@ export function IssueDetail({
     analysisLoading,
     setAnalysisLoading,
   } = useGitHubStore();
+
+  // Fetch comments when viewing the comments tab
+  const {
+    comments,
+    loading: commentsLoading,
+    error: commentsError,
+    hasMore: commentsHasMore,
+    refresh: refreshComments,
+    loadMore: loadMoreComments,
+  } = useGitHubComments(workspacePath, issue.number);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -119,10 +307,11 @@ export function IssueDetail({
     }
   }, [issue.number, onAnalyze, setAnalysisLoading, setCurrentAnalysis]);
 
-  const handleStartAutoFix = useCallback(() => {
-    // TODO: Implement auto-fix start
-    console.log("Start auto-fix for issue:", issue.number);
-  }, [issue.number]);
+  const handleStartAutoFix = useCallback(async () => {
+    if (onStartAutoFix) {
+      await onStartAutoFix(issue.number);
+    }
+  }, [issue.number, onStartAutoFix]);
 
   return (
     <div className="flex flex-col h-full">
@@ -277,10 +466,9 @@ export function IssueDetail({
                 </h4>
                 {issue.body ? (
                   <div className="prose prose-sm dark:prose-invert max-w-none">
-                    {/* TODO: Render Markdown properly */}
-                    <pre className="whitespace-pre-wrap text-sm bg-muted/50 p-4 rounded-lg">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                       {issue.body}
-                    </pre>
+                    </ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">
@@ -342,15 +530,65 @@ export function IssueDetail({
         <TabsContent value="comments" className="flex-1 min-h-0">
           <ScrollArea className="h-full">
             <div className="p-4">
-              {issue.comments > 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  {/* TODO: Load and display comments */}
-                  {issue.comments} {t("workspaceSettings.github.issues.comments")} - Loading comments coming soon...
-                </p>
-              ) : (
+              {/* Loading state */}
+              {commentsLoading && comments.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("workspaceSettings.github.issues.loadingComments", "Loading comments...")}
+                  </p>
+                </div>
+              )}
+
+              {/* Error state */}
+              {commentsError && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <p className="text-sm text-destructive mb-4">
+                    {commentsError}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={refreshComments}>
+                    {t("common.retry", "Retry")}
+                  </Button>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!commentsLoading && !commentsError && comments.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-8">
-                  No comments yet.
+                  {t("workspaceSettings.github.issues.noComments", "No comments yet.")}
                 </p>
+              )}
+
+              {/* Comments list */}
+              {comments.length > 0 && (
+                <div>
+                  {comments.map((comment) => (
+                    <CommentItem
+                      key={comment.id}
+                      comment={comment}
+                      formatDateTime={formatDateTime}
+                    />
+                  ))}
+
+                  {/* Load more button */}
+                  {commentsHasMore && (
+                    <div className="flex justify-center mt-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={loadMoreComments}
+                        disabled={commentsLoading}
+                      >
+                        {commentsLoading ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 mr-2" />
+                        )}
+                        {t("common.loadMore", "Load More")}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </ScrollArea>

@@ -77,7 +77,9 @@ import { Input } from "@/components/ui/input";
 import * as React from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut } from "lucide-react";
+import { LogOut, Apple, Rocket, Cat, Boxes, Wrench, SquareTerminal } from "lucide-react";
+import Cursor from "@lobehub/icons/es/Cursor";
+import Windsurf from "@lobehub/icons/es/Windsurf";
 
 // Settings section type
 type SettingsSection = "general" | "account" | "shortcuts" | "notifications" | "gateway" | "channels" | "executors" | "model" | "agents" | "sandbox" | "environment" | "terminalFonts" | "storage" | "developer" | "about";
@@ -2005,35 +2007,95 @@ function StorageSection() {
  * Developer Section
  * -------------------------------------------------------------------------- */
 
-// IDE display names
-const IDE_NAMES: Record<string, string> = {
-  vscode: "Visual Studio Code",
-  cursor: "Cursor",
-  zed: "Zed",
-  windsurf: "Windsurf",
-  sublime: "Sublime Text",
-  vim: "Vim",
-  neovim: "Neovim",
-  emacs: "Emacs",
-  intellij: "IntelliJ IDEA",
-  webstorm: "WebStorm",
-  pycharm: "PyCharm",
-  xcode: "Xcode",
-  custom: "Custom...",
+// IDE icon renderer - returns icon component for given IDE key
+function getIDEIcon(id: string): React.ReactNode {
+  switch (id) {
+    case "vscode":
+      return <Code className="h-3.5 w-3.5 text-[#007ACC]" />;
+    case "cursor":
+      return <Cursor size={14} />;
+    case "zed":
+      return <Zap className="h-3.5 w-3.5 text-[#084CCF]" />;
+    case "windsurf":
+      return <Windsurf size={14} />;
+    case "sublime":
+      return <FileText className="h-3.5 w-3.5 text-[#FF9800]" />;
+    case "vim":
+      return <span className="text-[11px] font-bold text-[#019833]">Vi</span>;
+    case "neovim":
+      return <span className="text-[11px] font-bold text-[#57A143]">Nv</span>;
+    case "emacs":
+      return <span className="text-[11px] font-bold text-[#7F5AB6]">Em</span>;
+    case "intellij":
+      return <Boxes className="h-3.5 w-3.5 text-[#FE315D]" />;
+    case "webstorm":
+      return <Boxes className="h-3.5 w-3.5 text-[#07C3F2]" />;
+    case "pycharm":
+      return <Boxes className="h-3.5 w-3.5 text-[#21D789]" />;
+    case "xcode":
+      return <Wrench className="h-3.5 w-3.5 text-[#147EFB]" />;
+    case "custom":
+      return <Code className="h-3.5 w-3.5 text-muted-foreground" />;
+    default:
+      return <Code className="h-3.5 w-3.5" />;
+  }
+}
+
+const IDE_OPTIONS: Record<string, { name: string }> = {
+  vscode: { name: "Visual Studio Code" },
+  cursor: { name: "Cursor" },
+  zed: { name: "Zed" },
+  windsurf: { name: "Windsurf" },
+  sublime: { name: "Sublime Text" },
+  vim: { name: "Vim" },
+  neovim: { name: "Neovim" },
+  emacs: { name: "Emacs" },
+  intellij: { name: "IntelliJ IDEA" },
+  webstorm: { name: "WebStorm" },
+  pycharm: { name: "PyCharm" },
+  xcode: { name: "Xcode" },
+  custom: { name: "Custom..." },
 };
 
-// Terminal display names
-const TERMINAL_NAMES: Record<string, string> = {
-  system: "System Terminal",
-  iterm2: "iTerm2",
-  warp: "Warp",
-  alacritty: "Alacritty",
-  kitty: "Kitty",
-  hyper: "Hyper",
-  ghostty: "Ghostty",
-  wezterm: "WezTerm",
-  terminal: "Terminal.app",
-  custom: "Custom...",
+// Terminal icon renderer - returns icon component for given terminal key
+function getTerminalIcon(id: string): React.ReactNode {
+  switch (id) {
+    case "system":
+      return <Terminal className="h-3.5 w-3.5" />;
+    case "iterm2":
+      return <span className="text-[11px] font-bold text-[#000000] dark:text-white">iT</span>;
+    case "warp":
+      return <Rocket className="h-3.5 w-3.5 text-[#01A4FF]" />;
+    case "alacritty":
+      return <SquareTerminal className="h-3.5 w-3.5 text-[#F46D01]" />;
+    case "kitty":
+      return <Cat className="h-3.5 w-3.5 text-muted-foreground" />;
+    case "hyper":
+      return <span className="text-[11px] font-bold">H_</span>;
+    case "ghostty":
+      return <span className="text-[11px]">👻</span>;
+    case "wezterm":
+      return <span className="text-[11px] font-bold text-[#4E49EE]">Wz</span>;
+    case "terminal":
+      return <Apple className="h-3.5 w-3.5" />;
+    case "custom":
+      return <Terminal className="h-3.5 w-3.5 text-muted-foreground" />;
+    default:
+      return <Terminal className="h-3.5 w-3.5" />;
+  }
+}
+
+const TERMINAL_OPTIONS: Record<string, { name: string }> = {
+  system: { name: "System Terminal" },
+  iterm2: { name: "iTerm2" },
+  warp: { name: "Warp" },
+  alacritty: { name: "Alacritty" },
+  kitty: { name: "Kitty" },
+  hyper: { name: "Hyper" },
+  ghostty: { name: "Ghostty" },
+  wezterm: { name: "WezTerm" },
+  terminal: { name: "Terminal.app" },
+  custom: { name: "Custom..." },
 };
 
 interface DebugInfo {
@@ -2159,17 +2221,20 @@ Config Path: ${info.configPath}
           description={t("settings.developer.preferredIDEDescription")}
         >
           <Select value={preferredIDE || "vscode"} onValueChange={setPreferredIDE}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue>
-                {IDE_NAMES[preferredIDE || "vscode"] || preferredIDE}
+                <div className="flex items-center gap-2">
+                  {getIDEIcon(preferredIDE || "vscode")}
+                  <span>{IDE_OPTIONS[preferredIDE || "vscode"]?.name || preferredIDE}</span>
+                </div>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(IDE_NAMES).map(([id, name]) => (
+              {Object.entries(IDE_OPTIONS).map(([id, config]) => (
                 <SelectItem key={id} value={id}>
                   <div className="flex items-center gap-2">
-                    <Code className="h-3 w-3" />
-                    <span>{name}</span>
+                    {getIDEIcon(id)}
+                    <span>{config.name}</span>
                   </div>
                 </SelectItem>
               ))}
@@ -2182,17 +2247,20 @@ Config Path: ${info.configPath}
           description={t("settings.developer.preferredTerminalDescription")}
         >
           <Select value={preferredTerminal || "system"} onValueChange={setPreferredTerminal}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue>
-                {TERMINAL_NAMES[preferredTerminal || "system"] || preferredTerminal}
+                <div className="flex items-center gap-2">
+                  {getTerminalIcon(preferredTerminal || "system")}
+                  <span>{TERMINAL_OPTIONS[preferredTerminal || "system"]?.name || preferredTerminal}</span>
+                </div>
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(TERMINAL_NAMES).map(([id, name]) => (
+              {Object.entries(TERMINAL_OPTIONS).map(([id, config]) => (
                 <SelectItem key={id} value={id}>
                   <div className="flex items-center gap-2">
-                    <Terminal className="h-3 w-3" />
-                    <span>{name}</span>
+                    {getTerminalIcon(id)}
+                    <span>{config.name}</span>
                   </div>
                 </SelectItem>
               ))}

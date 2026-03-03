@@ -94,24 +94,24 @@ function AutoFixQueueItem({
           {/* Issue numbers */}
           <div className="flex items-center gap-2 mb-1">
             <span className="font-medium text-sm">
-              {task.issueNumbers.length === 1 ? (
-                <>Issue #{task.issueNumbers[0]}</>
+              {task.issue_numbers.length === 1 ? (
+                <>Issue #{task.issue_numbers[0]}</>
               ) : (
                 <>
-                  {task.issueNumbers.length} {t("workspaceSettings.github.autoFix.issues", "issues")}
+                  {task.issue_numbers.length} {t("workspaceSettings.github.autoFix.issues", "issues")}
                 </>
               )}
             </span>
-            {task.issueNumbers.length > 1 && (
+            {task.issue_numbers.length > 1 && (
               <div className="flex gap-1">
-                {task.issueNumbers.slice(0, 3).map((num) => (
+                {task.issue_numbers.slice(0, 3).map((num) => (
                   <Badge key={num} variant="secondary" className="text-xs px-1.5">
                     #{num}
                   </Badge>
                 ))}
-                {task.issueNumbers.length > 3 && (
+                {task.issue_numbers.length > 3 && (
                   <Badge variant="secondary" className="text-xs px-1.5">
-                    +{task.issueNumbers.length - 3}
+                    +{task.issue_numbers.length - 3}
                   </Badge>
                 )}
               </div>
@@ -122,11 +122,11 @@ function AutoFixQueueItem({
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {t("common.created")}: {formatTime(task.createdAt)}
+              {t("common.created")}: {formatTime(task.created_at)}
             </span>
-            {task.updatedAt !== task.createdAt && (
+            {task.updated_at !== task.created_at && (
               <span>
-                {t("common.updated")}: {formatTime(task.updatedAt)}
+                {t("common.updated")}: {formatTime(task.updated_at)}
               </span>
             )}
           </div>
@@ -168,9 +168,9 @@ function AutoFixQueueItem({
             </Button>
           )}
 
-          {task.prNumber && (
+          {task.pr_number && (
             <a
-              href={`https://github.com/${task.workspacePath}/pull/${task.prNumber}`}
+              href={`https://github.com/${task.workspace_path}/pull/${task.pr_number}`}
               target="_blank"
               rel="noopener noreferrer"
             >

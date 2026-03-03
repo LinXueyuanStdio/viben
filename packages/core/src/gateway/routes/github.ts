@@ -98,6 +98,7 @@ import type {
   GitHubRepository,
   GitHubRepositoryConfig,
   GitHubIssue,
+  GitHubComment,
   GitHubPullRequest,
   GitHubRelease,
   GitHubPaginatedResponse,
@@ -478,6 +479,36 @@ export function registerGitHubRoutes(fastify: FastifyInstance): void {
     } catch (error) {
       reply.code(404).send({
         error: error instanceof Error ? error.message : "Issue not found",
+      });
+    }
+  });
+
+  /**
+   * GET /api/github/issues/:number/comments
+   * Get comments for an issue
+   */
+  fastify.get<{
+    Querystring: WorkspacePathQuery & { page?: string; per_page?: string };
+    Params: IssueParams;
+    Reply: GitHubPaginatedResponse<GitHubComment> | { error: string };
+  }>("/api/github/issues/:number/comments", async (request, reply) => {
+    const workspacePath = requireWorkspacePath(request, reply);
+    if (!workspacePath) return;
+
+    const issueNumber = parseInt(request.params.number, 10);
+    if (isNaN(issueNumber)) {
+      return reply.code(400).send({ error: "Invalid issue number" });
+    }
+
+    const page = parseInt(request.query.page || "1", 10);
+    const perPage = parseInt(request.query.per_page || "30", 10);
+
+    try {
+      const comments = await github.getIssueComments(workspacePath, issueNumber, page, perPage);
+      return comments;
+    } catch (error) {
+      reply.code(500).send({
+        error: error instanceof Error ? error.message : "Failed to get comments",
       });
     }
   });

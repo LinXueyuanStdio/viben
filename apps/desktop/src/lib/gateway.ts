@@ -367,6 +367,29 @@ export interface BackgroundTask {
 }
 
 // ============================================================================
+// Preferences Types
+// ============================================================================
+
+/**
+ * Developer preferences configuration
+ */
+export interface DeveloperPreferences {
+  /** Preferred IDE for opening files */
+  preferred_ide?: string;
+  /** Preferred terminal application */
+  preferred_terminal?: string;
+  /** Skip permission prompts (dangerous) */
+  dangerously_skip_permissions?: boolean;
+}
+
+/**
+ * Full preferences response
+ */
+export interface PreferencesResponse {
+  developer: DeveloperPreferences;
+}
+
+// ============================================================================
 // API Client
 // ============================================================================
 
@@ -4834,6 +4857,70 @@ export class GatewayClient {
     return response.json();
   }
 
+  /**
+   * Get CLI tools config (selected paths) from config file
+   */
+  async getCliToolsConfig(): Promise<CliToolsConfig> {
+    const response = await fetch(`${this.baseUrl}/api/cli-tools/config`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get CLI tools config: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Save CLI tools config (selected paths) to config file
+   */
+  async saveCliToolsConfig(config: CliToolsConfig): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/cli-tools/config`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to save CLI tools config: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Update a single CLI tool selected path
+   */
+  async updateCliToolPath(tool: CliToolName, path: string | null): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/cli-tools/config`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ tool, path }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update CLI tool path: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
   // ==========================================================================
   // Usage Tracking
   // ==========================================================================
@@ -6155,6 +6242,184 @@ export class GatewayClient {
     }
   }
 
+  // ===========================================================================
+  // Preferences API
+  // ===========================================================================
+
+  /**
+   * Get all preferences
+   */
+  async getPreferences(): Promise<PreferencesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/preferences`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get preferences: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update all preferences
+   */
+  async updatePreferences(prefs: Partial<PreferencesResponse>): Promise<PreferencesResponse> {
+    const response = await fetch(`${this.baseUrl}/api/preferences`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(prefs),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update preferences: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get developer preferences
+   */
+  async getDeveloperPreferences(): Promise<DeveloperPreferences> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get developer preferences: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Update developer preferences
+   */
+  async updateDeveloperPreferences(prefs: Partial<DeveloperPreferences>): Promise<DeveloperPreferences> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(prefs),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to update developer preferences: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get preferred IDE
+   */
+  async getPreferredIDE(): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer/ide`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get preferred IDE: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.preferred_ide ?? "vscode";
+  }
+
+  /**
+   * Set preferred IDE
+   */
+  async setPreferredIDE(ide: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer/ide`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ preferred_ide: ide }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set preferred IDE: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
+  /**
+   * Get preferred terminal
+   */
+  async getPreferredTerminal(): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer/terminal`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to get preferred terminal: ${errorMessage}`,
+        response.status
+      );
+    }
+
+    const data = await response.json();
+    return data.preferred_terminal ?? "system";
+  }
+
+  /**
+   * Set preferred terminal
+   */
+  async setPreferredTerminal(terminal: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/api/preferences/developer/terminal`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ preferred_terminal: terminal }),
+    });
+
+    if (!response.ok) {
+      const errorMessage = await this.parseErrorMessage(response);
+      throw new GatewayError(
+        `Failed to set preferred terminal: ${errorMessage}`,
+        response.status
+      );
+    }
+  }
+
 }
 
 // ============================================================================
@@ -6521,6 +6786,8 @@ export interface CliToolInfo {
   message?: string;
   /** All discovered paths for this tool */
   alternatives?: CliToolPath[];
+  /** User's selected path from config file */
+  selectedPath?: string;
 }
 
 /** Supported CLI tool names */
@@ -6548,6 +6815,20 @@ export interface CliToolsInfo {
   cline: CliToolInfo;
   continue: CliToolInfo;
   cursor: CliToolInfo;
+}
+
+/** CLI tools selected paths stored in config file */
+export interface CliToolsConfig {
+  python?: string;
+  git?: string;
+  gh?: string;
+  claude?: string;
+  codex?: string;
+  aider?: string;
+  goose?: string;
+  cline?: string;
+  continue?: string;
+  cursor?: string;
 }
 
 // ============================================================================
