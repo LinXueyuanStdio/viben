@@ -351,13 +351,231 @@ console.log(availability.status); // "LOGIN_DETECTED" | "INSTALLATION_FOUND" | "
 const allAvailability = getAllExecutorsAvailability();
 
 // 非交互式 Chat 模式
+// 注意：使用 createChatProxy 替代已废弃的 spawnChat
+import { createChatProxy } from "@viben/core";
+
 if (executorSupportsChat("CLAUDE_CODE")) {
-  const result = await spawnChat("CLAUDE_CODE", {
+  const proxy = createChatProxy("CLAUDE_CODE");
+  const result = await proxy.execute({
     prompt: "帮我分析这段代码",
     cwd: "/path/to/project",
-    format: "stream-json",
+    outputFormat: "text",
   });
+  console.log(`Exit code: ${result.exitCode}`);
 }
+```
+
+#### 执行器可用性检测
+
+每个执行器都提供 `getAvailabilityInfo()` 方法来检测其安装和登录状态。该方法返回 `AvailabilityInfo` 对象,包含以下信息：
+
+```typescript
+interface AvailabilityInfo {
+  status: AvailabilityStatus;    // 可用性状态
+  lastAuthTimestamp?: number;    // 最后认证时间戳(仅 LOGIN_DETECTED)
+  path?: string;                 // 可执行文件路径(如果找到)
+}
+
+type AvailabilityStatus =
+  | "LOGIN_DETECTED"      // 已检测到登录(已认证)
+  | "INSTALLATION_FOUND"  // 仅检测到安装(未认证)
+  | "NOT_FOUND";          // 未找到安装
+```
+
+**三种状态说明**：
+
+1. **`LOGIN_DETECTED`** - 已检测到登录
+   - 执行器已安装且用户已完成认证
+   - 可以直接使用执行器的所有功能
+   - 包含 `lastAuthTimestamp` 和 `path` 信息
+
+2. **`INSTALLATION_FOUND`** - 仅检测到安装
+   - 执行器已安装但用户尚未登录
+   - 需要用户完成认证流程后才能使用
+   - 包含 `path` 信息,但没有 `lastAuthTimestamp`
+
+3. **`NOT_FOUND`** - 未找到安装
+   - 系统中未安装该执行器
+   - 需要用户先安装执行器
+
+**检测逻辑示例** (以 Claude Code 为例)：
+
+```typescript
+getAvailabilityInfo(): AvailabilityInfo {
+  const authFile = join(homedir(), ".claude.json");
+  const execPath = whichSync("claude");
+
+  // 1. 检查认证文件存在 → LOGIN_DETECTED
+  if (existsSync(authFile)) {
+    return {
+      status: "LOGIN_DETECTED",
+      lastAuthTimestamp: Date.now(),
+      path: execPath ?? undefined,
+    };
+  }
+
+  // 2. 检查可执行文件存在 → INSTALLATION_FOUND
+  if (execPath) {
+    return {
+      status: "INSTALLATION_FOUND",
+      path: execPath,
+    };
+  }
+
+  // 3. 都不存在 → NOT_FOUND
+  return { status: "NOT_FOUND" };
+}
+```
+
+**使用示例**：
+
+```typescript
+import { createExecutor } from "@viben/core";
+
+const executor = createExecutor("CLAUDE_CODE");
+const availability = executor.getAvailabilityInfo();
+
+switch (availability.status) {
+  case "LOGIN_DETECTED":
+    console.log("✅ Claude Code 已就绪,可以使用");
+    console.log(`路径: ${availability.path}`);
+    console.log(`认证时间: ${new Date(availability.lastAuthTimestamp!)}`);
+    break;
+
+  case "INSTALLATION_FOUND":
+    console.log("⚠️ Claude Code 已安装但未登录");
+    console.log(`路径: ${availability.path}`);
+    console.log("请运行 'claude login' 完成认证");
+    break;
+
+  case "NOT_FOUND":
+    console.log("❌ 未找到 Claude Code");
+    console.log("请访问 https://claude.ai 安装 Claude Code");
+    break;
+}
+```
+
+#### Chat 模式使用示例
+
+Chat 模式支持两种数据格式：`text` (纯文本) 和 `stream-json` (JSON 流)。
+
+##### 1. 纯文本格式 (text)
+
+适用于简单的文本交互场景。
+
+```typescript
+import { createChatProxy, executorSupportsChat } from "@viben/core";
+
+// 检查执行器是否支持 Chat 模式
+if (!executorSupportsChat("CLAUDE_CODE")) {
+  throw new Error("Executor does not support chat mode");
+}
+
+// 创建 Chat 代理
+const chatProxy = createChatProxy("CLAUDE_CODE", false);
+
+// 执行纯文本格式的 Chat
+const result = await chatProxy.execute({
+  prompt: "帮我写一个 TypeScript 函数来计算斐波那契数列",
+  cwd: process.cwd(),
+  inputFormat: "text",
+  outputFormat: "text",
+  verbose: true,
+});
+
+console.log(`Chat completed with exit code: ${result.exitCode}`);
+if (result.sessionId) {
+  console.log(`Session ID: ${result.sessionId}`);
+}
+```
+
+##### 2. JSON 流格式 (stream-json)
+
+适用于需要结构化数据的程序化场景，支持实时解析 SSE 事件流。
+
+```typescript
+import { createChatProxy } from "@viben/core";
+
+const chatProxy = createChatProxy("CLAUDE_CODE", false);
+
+// 执行 JSON 流格式的 Chat
+const result = await chatProxy.execute({
+  prompt: "分析这个项目的架构并给出改进建议",
+  cwd: "/path/to/project",
+  inputFormat: "stream-json",
+  outputFormat: "stream-json",
+  sessionId: "custom-session-123",
+  model: "claude-sonnet-4-20250514",
+  dangerouslySkipPermissions: false,
+});
+
+console.log(`Chat completed with exit code: ${result.exitCode}`);
+```
+
+**stream-json 格式说明**：
+
+- **输入格式**：通过 stdin 发送 JSON 行，每行一个事件
+  ```json
+  {"type":"user","message":{"role":"user","content":"分析代码"}}
+  ```
+
+- **输出格式**：接收 SSE (Server-Sent Events) 格式的 JSON 流
+  ```
+  data: {"type":"text","content":"正在分析代码..."}
+
+  data: {"type":"tool_use","name":"read_file","input":{"path":"src/main.ts"}}
+
+  data: {"type":"result","exitCode":0,"sessionId":"abc123"}
+  ```
+
+##### 3. 恢复已有 Session
+
+```typescript
+import { createChatProxy } from "@viben/core";
+
+const chatProxy = createChatProxy("CLAUDE_CODE");
+
+// 恢复之前的会话并继续对话
+const result = await chatProxy.execute({
+  prompt: "继续上面的工作",
+  resume: "previous-session-id",
+  cwd: "/path/to/project",
+});
+```
+
+##### 4. SDK 模式 vs Spawn 模式
+
+Chat 代理支持两种执行策略：
+
+- **SDK 模式** (`preferSdk: true`, 默认): 使用 Anthropic SDK 直接调用 API，支持更高级的功能（仅 CLAUDE_CODE）
+- **Spawn 模式** (`preferSdk: false`): 通过子进程调用 CLI 命令，与命令行体验完全一致
+
+```typescript
+import { createChatProxy, isSdkAvailable } from "@viben/core";
+
+// 检查 SDK 是否可用
+if (isSdkAvailable("CLAUDE_CODE")) {
+  // 使用 SDK 模式（推荐）
+  const sdkProxy = createChatProxy("CLAUDE_CODE", true);
+  await sdkProxy.execute({ prompt: "你好" });
+} else {
+  // 降级到 Spawn 模式
+  const spawnProxy = createChatProxy("CLAUDE_CODE", false);
+  await spawnProxy.execute({ prompt: "你好" });
+}
+```
+
+**差异对比**：
+
+| 特性 | SDK 模式 | Spawn 模式 |
+|------|---------|-----------|
+| 可用性 | 仅 CLAUDE_CODE | 所有支持 Chat 的执行器 |
+| 性能 | 更快（直接 API 调用） | 较慢（需启动子进程） |
+| 功能 | 支持高级特性（如流式解析） | 基础功能 |
+| 依赖 | 需要 @anthropic-ai/sdk | 需要安装对应 CLI |
+| IO 处理 | 程序化处理 | 继承父进程 stdio |
+| 推荐场景 | 生产环境、自动化 | 开发调试、CLI 使用 |
+
 ```
 
 支持的执行器类型:
@@ -370,6 +588,353 @@ if (executorSupportsChat("CLAUDE_CODE")) {
 - `QWEN_CODE` - 阿里通义千问
 - `COPILOT` - GitHub Copilot
 - `DROID` - Droid AI
+
+#### Executor 类型详细对比
+
+下表列出了所有支持的 Executor 类型及其特性：
+
+| Executor ID | CLI 命令 | 安装方式 | 认证方式 | Chat 支持 | 能力列表 |
+|------------|----------|---------|---------|----------|---------|
+| `CLAUDE_CODE` | `claude` | `npx -y @anthropic-ai/claude-code@latest` | `~/.claude.json` | ✅ | SESSION_FORK, CONTEXT_USAGE |
+| `AMP` | `amp` | 官方安装器 | `~/.amp/config.json` | ❌ | SESSION_FORK |
+| `GEMINI` | `gemini` | 官方安装器 | `~/.gemini/config.json` | ✅ | SESSION_FORK |
+| `CODEX` | `codex` | `npx -y codex-cli@latest` | `~/.config/codex/config.json` | ✅ | SESSION_FORK, SETUP_HELPER, CONTEXT_USAGE |
+| `OPENCODE` | `opencode` | 官方安装器 | `~/.opencode/config.json` | ❌ | SESSION_FORK, CONTEXT_USAGE |
+| `CURSOR_AGENT` | `cursor` | Cursor IDE 内置 | Cursor 配置 | ❌ | SETUP_HELPER |
+| `QWEN_CODE` | `qwen-code` | 官方安装器 | `~/.qwen-code/config.json` | ❌ | SESSION_FORK |
+| `COPILOT` | `gh copilot` | GitHub CLI 扩展 | GitHub 认证 | ❌ | 无 |
+| `DROID` | `droid` | 官方安装器 | `~/.droid/config.json` | ❌ | SESSION_FORK |
+
+#### Executor 能力详解
+
+Viben 定义了三种核心 Executor 能力，不同的 Executor 根据其底层 CLI 的特性支持不同的能力组合：
+
+| 能力 | 说明 | 使用场景 |
+|------|------|---------|
+| **SESSION_FORK** | 支持从已有会话的某个消息节点创建分支，实现多路径对话探索 | 适用于需要从历史对话中某个决策点重新开始，探索不同解决方案的场景 |
+| **CONTEXT_USAGE** | 能够追踪和报告 Token 使用量、上下文窗口占用等统计信息 | 用于成本控制、性能优化和配额管理，帮助用户了解 AI 调用的资源消耗 |
+| **SETUP_HELPER** | 提供交互式设置向导，辅助用户完成初始配置（API Key、偏好设置等） | 简化首次使用体验，通过 CLI 引导用户完成必要的配置步骤 |
+
+#### Executor 能力支持矩阵
+
+| Executor | SESSION_FORK | CONTEXT_USAGE | SETUP_HELPER | 能力总览 |
+|----------|--------------|---------------|--------------|---------|
+| `CLAUDE_CODE` | ✅ | ✅ | ❌ | 支持会话分支和上下文追踪 |
+| `CODEX` | ✅ | ✅ | ✅ | **全能力支持**，提供完整的会话管理和配置辅助 |
+| `OPENCODE` | ✅ | ✅ | ❌ | 支持会话分支和上下文追踪 |
+| `CURSOR_AGENT` | ❌ | ❌ | ✅ | 仅提供配置辅助功能 |
+| `AMP` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `GEMINI` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `QWEN_CODE` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `DROID` | ✅ | ❌ | ❌ | 仅支持会话分支 |
+| `COPILOT` | ❌ | ❌ | ❌ | 无额外能力支持 |
+
+**能力说明**：
+- `SESSION_FORK` - 支持 session 分支和恢复，允许从历史对话的任意消息节点创建新的对话分支
+- `CONTEXT_USAGE` - 支持上下文使用量追踪，提供 Token 消耗、上下文窗口占用等统计数据
+- `SETUP_HELPER` - 提供设置和配置辅助，通过交互式向导帮助用户完成初始配置
+
+**Chat 支持说明**：
+- ✅ 表示支持非交互式 Chat 模式（通过 `viben executor chat` 命令）
+- ❌ 表示仅支持交互式会话模式
+
+#### Executor 安装指南
+
+每个 Executor 需要单独安装。以下是各 Executor 的安装方式和前置条件：
+
+##### CLAUDE_CODE (Anthropic Claude Code)
+
+**安装方式**：
+```bash
+# 方式一：通过 npx 自动安装（推荐）
+npx -y @anthropic-ai/claude-code@latest --version
+
+# 方式二：全局安装
+npm install -g @anthropic-ai/claude-code
+```
+
+**前置条件**：
+- Node.js 18.0.0 或更高版本
+- Anthropic API Key（从 https://console.anthropic.com/ 获取）
+
+**认证配置**：
+```bash
+# 首次运行时会自动提示登录
+claude
+# 或者手动配置
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**配置文件位置**：`~/.claude.json`
+
+**验证安装**：
+```bash
+claude --version
+```
+
+---
+
+##### AMP (Sourcegraph Amp)
+
+**安装方式**：
+```bash
+# macOS
+brew install sourcegraph/amp/amp
+
+# Linux
+curl -fsSL https://sourcegraph.com/.api/get-amp | sh
+
+# Windows
+# 下载安装器：https://about.sourcegraph.com/amp
+```
+
+**前置条件**：
+- 无需 API Key（使用 Sourcegraph 账号）
+
+**认证配置**：
+```bash
+# 首次运行时会打开浏览器登录
+amp auth login
+```
+
+**配置文件位置**：`~/.amp/config.json`
+
+**验证安装**：
+```bash
+amp --version
+```
+
+---
+
+##### GEMINI (Google Gemini CLI)
+
+**安装方式**：
+```bash
+# 通过 pip 安装（Python 3.8+）
+pip install google-generativeai-cli
+
+# 或通过 npm 安装
+npm install -g @google/generativeai-cli
+```
+
+**前置条件**：
+- Google Cloud 项目
+- Gemini API Key（从 https://makersuite.google.com/app/apikey 获取）
+
+**认证配置**：
+```bash
+# 设置 API Key
+export GOOGLE_API_KEY="your-api-key"
+
+# 或使用 gcloud 认证
+gcloud auth application-default login
+```
+
+**配置文件位置**：`~/.gemini/config.json`
+
+**验证安装**：
+```bash
+gemini --version
+```
+
+---
+
+##### CODEX (OpenAI Codex CLI)
+
+**安装方式**：
+```bash
+# 通过 npx 安装
+npx -y codex-cli@latest --version
+
+# 或全局安装
+npm install -g codex-cli
+```
+
+**前置条件**：
+- OpenAI API Key（从 https://platform.openai.com/api-keys 获取）
+- Codex 模型访问权限
+
+**认证配置**：
+```bash
+# 设置 API Key
+export OPENAI_API_KEY="sk-..."
+
+# 或通过命令配置
+codex config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.config/codex/config.json`
+
+**验证安装**：
+```bash
+codex --version
+```
+
+---
+
+##### OPENCODE (开源 Coding Agent)
+
+**安装方式**：
+```bash
+# 通过 pip 安装
+pip install opencode-cli
+
+# 或从源码构建
+git clone https://github.com/opencode-ai/opencode
+cd opencode && pip install -e .
+```
+
+**前置条件**：
+- Python 3.9 或更高版本
+- 支持 OpenAI 兼容 API 的模型（本地或远程）
+
+**认证配置**：
+```bash
+# 配置 API 端点
+opencode config set api-url "https://api.openai.com/v1"
+opencode config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.opencode/config.json`
+
+**验证安装**：
+```bash
+opencode --version
+```
+
+---
+
+##### CURSOR_AGENT (Cursor IDE)
+
+**安装方式**：
+- 下载 Cursor IDE：https://cursor.sh/
+- Cursor IDE 内置 Agent 功能，无需单独安装 CLI
+
+**前置条件**：
+- Cursor IDE 安装
+- Cursor 账号（支持 GitHub 登录）
+
+**认证配置**：
+- 在 Cursor IDE 中登录账号即可
+
+**配置文件位置**：
+- macOS: `~/Library/Application Support/Cursor/User/settings.json`
+- Linux: `~/.config/Cursor/User/settings.json`
+- Windows: `%APPDATA%\Cursor\User\settings.json`
+
+**验证安装**：
+```bash
+# Cursor CLI（如果已安装）
+cursor --version
+```
+
+---
+
+##### QWEN_CODE (阿里通义千问)
+
+**安装方式**：
+```bash
+# 通过 pip 安装（官方推荐）
+pip install qwen-code-cli
+```
+
+**前置条件**：
+- 阿里云账号
+- 通义千问 API Key（从 https://dashscope.aliyun.com/ 获取）
+
+**认证配置**：
+```bash
+# 设置 API Key
+export DASHSCOPE_API_KEY="sk-..."
+
+# 或通过命令配置
+qwen-code config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.qwen-code/config.json`
+
+**验证安装**：
+```bash
+qwen-code --version
+```
+
+---
+
+##### COPILOT (GitHub Copilot)
+
+**安装方式**：
+```bash
+# 安装 GitHub CLI
+brew install gh  # macOS
+# 或其他平台：https://cli.github.com/
+
+# 安装 Copilot 扩展
+gh extension install github/gh-copilot
+```
+
+**前置条件**：
+- GitHub 账号
+- GitHub Copilot 订阅（付费或学生免费）
+
+**认证配置**：
+```bash
+# 登录 GitHub
+gh auth login
+
+# 验证 Copilot 访问权限
+gh copilot --version
+```
+
+**配置文件位置**：使用 GitHub CLI 的认证配置
+
+**验证安装**：
+```bash
+gh copilot --version
+```
+
+---
+
+##### DROID (Droid AI)
+
+**安装方式**：
+```bash
+# 通过官方安装脚本
+curl -fsSL https://droid.ai/install.sh | sh
+
+# 或通过 npm
+npm install -g @droid/cli
+```
+
+**前置条件**：
+- Droid 账号
+- 支持的 LLM API（OpenAI、Anthropic 等）
+
+**认证配置**：
+```bash
+# 首次运行时会提示登录
+droid auth login
+
+# 配置 LLM API
+droid config set provider openai
+droid config set api-key "sk-..."
+```
+
+**配置文件位置**：`~/.droid/config.json`
+
+**验证安装**：
+```bash
+droid --version
+```
+
+---
+
+**注意事项**：
+
+1. **API Key 安全**：不要在代码中硬编码 API Key，使用环境变量或配置文件
+2. **网络要求**：某些 Executor（如 Gemini、Claude）需要访问国际网络
+3. **模型选择**：不同 Executor 支持的模型列表不同，请参考各自文档
+4. **费用说明**：大部分 API 服务按使用量计费，请注意控制成本
+5. **Viben 发现机制**：Viben 会自动检测已安装的 Executor，无需手动注册
 
 ### 9. 工作区管理 (Workspace)
 
