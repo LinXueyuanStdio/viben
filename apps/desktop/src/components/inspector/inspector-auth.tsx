@@ -256,12 +256,12 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       window.open(authUrl, "_blank", "width=600,height=700");
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred", "Unknown error occurred");
       setFlowError(errorMessage);
       setFlowStatus("error");
       addDebugLog("Error", "error", { message: errorMessage });
     }
-  }, [isOAuthConfigValid, oauthConfig, usePKCE, addDebugLog, clearDebugLogs]);
+  }, [isOAuthConfigValid, oauthConfig, usePKCE, addDebugLog, clearDebugLogs, t]);
 
   // Exchange authorization code for tokens
   const exchangeCodeForToken = useCallback(async () => {
@@ -353,7 +353,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
       });
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+        error instanceof Error ? error.message : t("inspector.unknownErrorOccurred", "Unknown error occurred");
       setFlowError(errorMessage);
       setFlowStatus("error");
       addDebugLog("Error", "error", { message: errorMessage });
@@ -364,6 +364,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
     usePKCE,
     pkceParams,
     addDebugLog,
+    t,
   ]);
 
   // Reset OAuth flow

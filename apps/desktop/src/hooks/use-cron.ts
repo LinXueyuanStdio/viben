@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
+import i18n from "@/i18n";
 import { getGatewayClient } from "@/lib/gateway";
 import { useGatewayWebSocket, type GatewayEventPayload } from "./use-gateway-websocket";
 import type { CronJob, CreateCronJob, UpdateCronJob, JobStatus, CronExecutionLog } from "@/types/cron";
@@ -93,7 +94,7 @@ export function useCronJobs() {
       const data = await gatewayFetch<{ jobs: CronJob[] }>("/api/cron");
       setJobs(data.jobs || []);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load cron jobs";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.loadFailed");
       setError(message);
       console.error("Failed to load cron jobs:", err);
     } finally {
@@ -229,7 +230,7 @@ export function useCreateCronJob() {
       });
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.createFailed");
       setError(message);
       console.error("Failed to create cron job:", err);
       return null;
@@ -262,7 +263,7 @@ export function useUpdateCronJob() {
       });
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.updateFailed");
       setError(message);
       console.error("Failed to update cron job:", err);
       return null;
@@ -294,7 +295,7 @@ export function useDeleteCronJob() {
       });
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.deleteFailed");
       setError(message);
       console.error("Failed to delete cron job:", err);
       return false;
@@ -326,7 +327,7 @@ export function useEnableCronJob() {
       });
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to enable cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.enableFailed");
       setError(message);
       console.error("Failed to enable cron job:", err);
       return null;
@@ -358,7 +359,7 @@ export function useDisableCronJob() {
       });
       return result;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to disable cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.disableFailed");
       setError(message);
       console.error("Failed to disable cron job:", err);
       return null;
@@ -390,7 +391,7 @@ export function useRunCronJob() {
       });
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to run cron job";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.runFailed");
       setError(message);
       console.error("Failed to run cron job:", err);
       return false;
@@ -432,7 +433,7 @@ export function useCronExecutionLogs() {
       setLogs(result.logs || []);
       return result.logs || [];
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch execution logs";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.fetchLogsFailed");
       setError(message);
       console.error("Failed to fetch execution logs:", err);
       return [];
@@ -451,7 +452,7 @@ export function useCronExecutionLogs() {
       setLogs([]);
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to clear execution logs";
+      const message = err instanceof Error ? err.message : i18n.t("errors.cron.clearLogsFailed");
       setError(message);
       console.error("Failed to clear execution logs:", err);
       return false;

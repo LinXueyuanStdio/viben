@@ -115,9 +115,9 @@ Before finishing your spec update:
 
 ## Relationship to Other Commands
 
-- `/trellis:break-loop` - Analyzes bugs deeply, often reveals spec updates needed
-- `/trellis:update-spec` - Actually makes the updates (this command)
-- `/trellis:finish-work` - Reminds you to check if specs need updates
+- `/viben:break-loop` - Analyzes bugs deeply, often reveals spec updates needed
+- `/viben:update-spec` - Actually makes the updates (this command)
+- `/viben:finish-work` - Reminds you to check if specs need updates
 
 ---
 

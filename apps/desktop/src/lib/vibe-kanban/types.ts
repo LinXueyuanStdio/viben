@@ -404,3 +404,155 @@ export const VALID_TASK_STATUSES: TaskStatus[] = [
 export function isValidTaskStatus(status: string): status is TaskStatus {
   return VALID_TASK_STATUSES.includes(status as TaskStatus);
 }
+
+// ==========================================
+// Task State Machine Types
+// ==========================================
+
+/**
+ * Task event types for state machine transitions
+ * Matches the XState machine events in packages/core/src/task/machine/task-machine.ts
+ */
+export type TaskEventType =
+  | 'QUEUE' | 'START' | 'DEQUEUE'
+  | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
+  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'CODING_FAILED'
+  | 'QA_PASSED' | 'QA_FAILED' | 'QA_FIXING_COMPLETE' | 'QA_FIXING_FAILED'
+  | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CREATE_PR'
+  | 'RETRY' | 'ABANDON';
+
+/**
+ * Task event structure for state machine transitions
+ */
+export interface TaskEvent {
+  eventId: string;           // UUID, unique event identifier
+  sequence: number;          // Incrementing sequence number
+  type: TaskEventType;       // Event type
+  timestamp: string;         // ISO timestamp
+  payload?: Record<string, unknown>;  // Optional event payload
+}
+
+/**
+ * XState state value type
+ * Can be a simple string status or nested state for in_progress
+ */
+export type XStateValue = string | { in_progress: ExecutionPhase };
+
+/**
+ * Task source information
+ */
+export interface TaskSource {
+  type: 'manual' | 'github_issue' | 'linear' | 'ideation';
+  ref?: string;
+  importedAt?: string;
+}
+
+/**
+ * Task classification metadata
+ */
+export interface TaskClassification {
+  category: 'feature' | 'bugfix' | 'refactor' | 'docs';
+  complexity: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+}
+
+/**
+ * Agent configuration for task execution
+ */
+export interface AgentConfig {
+  model?: string;
+  thinkingLevel?: 'low' | 'medium' | 'high';
+  maxRetries?: number;
+}
+
+/**
+ * Git configuration for task branches
+ */
+export interface GitConfig {
+  baseBranch?: string;
+  branchPrefix?: string;
+  useWorktree?: boolean;
+}
+
+/**
+ * Extended task metadata for state machine
+ */
+export interface TaskMetadata {
+  source?: TaskSource;
+  classification?: TaskClassification;
+  agentConfig?: AgentConfig;
+  gitConfig?: GitConfig;
+  prUrl?: string;
+  requireReviewBeforeCoding?: boolean;
+}
+
+/**
+ * Apply result from event store
+ */
+export interface ApplyResult {
+  success: boolean;
+  error?: 'SEQUENCE_MISMATCH' | 'INVALID_TRANSITION';
+  expected?: number;
+  received?: number;
+  currentState?: string;
+  newState?: string;
+}
+
+/**
+ * Task state response from gateway
+ */
+export interface TaskStateResponse {
+  task_id: string;
+  status: TaskStatus;
+  xstate_state?: XStateValue;
+  last_event?: TaskEvent;
+  review_reason?: ReviewReason;
+}
+
+/**
+ * SSE event types for task events stream
+ */
+export type TaskSSEEventType = 'STATE_CHANGED' | 'TASK_RECOVERED' | 'ERROR';
+
+/**
+ * SSE event data for state changed
+ */
+export interface TaskSSEStateChangedEvent {
+  type: 'STATE_CHANGED';
+  task_id: string;
+  event: TaskEvent;
+  new_state: string;
+}
+
+/**
+ * SSE event data for task recovered
+ */
+export interface TaskSSERecoveredEvent {
+  type: 'TASK_RECOVERED';
+  task_id: string;
+  reason: string;
+}
+
+/**
+ * SSE event data union
+ */
+export type TaskSSEEvent = TaskSSEStateChangedEvent | TaskSSERecoveredEvent;
+
+// ==========================================
+// Extended Task Type with State Machine
+// ==========================================
+
+/**
+ * Extended TaskWithAttemptStatus with state machine fields
+ */
+export interface TaskWithStateMachine extends TaskWithAttemptStatus {
+  /** XState state machine current state */
+  xstateState?: XStateValue;
+  /** Last applied event */
+  lastEvent?: TaskEvent;
+  /** Event history for this task */
+  eventHistory?: TaskEvent[];
+  /** Extended metadata */
+  metadata?: TaskMetadata;
+}

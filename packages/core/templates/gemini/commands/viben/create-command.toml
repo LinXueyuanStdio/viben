@@ -8,12 +8,12 @@ Create a new slash command in `.gemini/commands/trellis/` directory based on use
 ## Usage
 
 ```
-/trellis:create-command <command-name> <description>
+/viben:create-command <command-name> <description>
 ```
 
 **Example**:
 ```
-/trellis:create-command review-pr Check PR code changes against project guidelines
+/viben:create-command review-pr Check PR code changes against project guidelines
 ```
 
 ## Execution Steps
@@ -78,13 +78,13 @@ Create the TOML file:
 
 Output result:
 ```
-[OK] Created Slash Command: /trellis:<command-name>
+[OK] Created Slash Command: /viben:<command-name>
 
 File path:
 - .gemini/commands/trellis/<command-name>.toml
 
 Usage:
-/trellis:<command-name>
+/viben:<command-name>
 
 Description:
 <description>

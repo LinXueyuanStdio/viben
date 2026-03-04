@@ -16,10 +16,11 @@ export const compactCommand: SlashCommandDefinition = {
       description: "Optional custom summary for the compression",
     },
   ],
-  execute: async (_context, args) => {
+  execute: async (context, args) => {
+    const { t } = context;
     const prompt = args
-      ? `Please compress the conversation history with this focus: ${args}`
-      : `Please compress and summarize the conversation history so far, keeping only the essential context needed to continue our work. Remove redundant information while preserving key decisions, code changes, and important details.`;
+      ? t("chat.slashCommands.compactPromptWithFocus", { focus: args })
+      : t("chat.slashCommands.compactPromptDefault");
 
     return {
       type: "prompt",

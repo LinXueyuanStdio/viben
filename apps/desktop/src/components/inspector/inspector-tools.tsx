@@ -388,7 +388,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
     if (inputMode === "json") {
       const validation = validateJsonInput(jsonInput);
       if (!validation.valid) {
-        setJsonError(validation.error || "Invalid JSON");
+        setJsonError(validation.error || t("inspector.jsonParseError", "Invalid JSON"));
         return;
       }
       argumentsObj = validation.parsed || {};
@@ -579,7 +579,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
       setExecutions((prev) =>
         prev.map((exec) =>
           exec.id === executionId
-            ? { ...exec, status: "error", error: "Task polling timed out", duration }
+            ? { ...exec, status: "error", error: t("inspector.taskPollingTimedOut", "Task polling timed out"), duration }
             : exec
         )
       );
@@ -660,7 +660,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
             <ImageIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
             <img
               src={`data:${mimeType};base64,${data}`}
-              alt="Tool result"
+              alt={t("inspector.toolResultAlt", "Tool result")}
               className="max-w-full max-h-48 rounded border border-border"
             />
           </div>
@@ -690,7 +690,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
             {blob && mimeType.startsWith("image/") && (
               <img
                 src={`data:${mimeType};base64,${blob}`}
-                alt="Resource"
+                alt={t("inspector.resourceAlt", "Resource")}
                 className="max-w-full max-h-48 rounded"
               />
             )}

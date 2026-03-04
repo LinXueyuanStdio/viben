@@ -90,12 +90,13 @@ export function useColumnResize(
     [widths, defaultWidth, isLocked]
   );
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
+  // Handle move (mouse or touch)
+  const handleMove = useCallback(
+    (clientX: number) => {
       if (!resizeState.current) return;
 
       const { columnId, startX, startWidth } = resizeState.current;
-      const deltaX = e.clientX - startX;
+      const deltaX = clientX - startX;
       const newWidth = Math.min(maxWidth, Math.max(minWidth, startWidth + deltaX));
 
       setWidths((prev) => ({
@@ -108,7 +109,23 @@ export function useColumnResize(
     [minWidth, maxWidth, onWidthChange]
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      handleMove(e.clientX);
+    },
+    [handleMove]
+  );
+
+  const handleTouchMove = useCallback(
+    (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        handleMove(e.touches[0].clientX);
+      }
+    },
+    [handleMove]
+  );
+
+  const handleEnd = useCallback(() => {
     resizeState.current = null;
     setIsResizing(null);
 
@@ -117,18 +134,24 @@ export function useColumnResize(
     document.body.style.cursor = "";
   }, []);
 
-  // Set up global mouse event listeners when resizing
+  // Set up global mouse and touch event listeners when resizing
   useEffect(() => {
     if (isResizing) {
       window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("mouseup", handleEnd);
+      window.addEventListener("touchmove", handleTouchMove);
+      window.addEventListener("touchend", handleEnd);
+      window.addEventListener("touchcancel", handleEnd);
 
       return () => {
         window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
+        window.removeEventListener("mouseup", handleEnd);
+        window.removeEventListener("touchmove", handleTouchMove);
+        window.removeEventListener("touchend", handleEnd);
+        window.removeEventListener("touchcancel", handleEnd);
       };
     }
-  }, [isResizing, handleMouseMove, handleMouseUp]);
+  }, [isResizing, handleMouseMove, handleTouchMove, handleEnd]);
 
   const resetWidth = useCallback(
     (columnId: string) => {

@@ -11,6 +11,22 @@ export type {
   SubtaskStatus,
   Subtask,
   ExecutionProgress,
+  // State Machine Types
+  TaskEventType,
+  TaskEvent,
+  XStateValue,
+  TaskSource,
+  TaskClassification,
+  AgentConfig,
+  GitConfig,
+  TaskMetadata,
+  ApplyResult,
+  TaskStateResponse,
+  TaskSSEEventType,
+  TaskSSEStateChangedEvent,
+  TaskSSERecoveredEvent,
+  TaskSSEEvent,
+  TaskWithStateMachine,
 } from "./types";
 
 export {
