@@ -98,7 +98,7 @@ export const TaskModel = {
     const entry: TaskEntry = {
       title: input.title,
       description: input.description,
-      status: "todo",
+      status: "backlog",
       agentId: input.agentId,
       createdAt: now,
       updatedAt: now,

@@ -145,22 +145,22 @@ export function isAgentAvailable(availability: AvailabilityInfo): boolean {
 }
 
 /**
- * Get human-readable availability status
+ * Get availability status translation key and variant
  */
 export function getAvailabilityStatus(
   availability: AvailabilityInfo
 ): {
-  label: string;
+  labelKey: string;
   variant: "success" | "warning" | "error";
 } {
   switch (availability.type) {
     case "LOGIN_DETECTED":
-      return { label: "Logged In", variant: "success" };
+      return { labelKey: "availability.loggedIn", variant: "success" };
     case "INSTALLATION_FOUND":
-      return { label: "Installed", variant: "success" };
+      return { labelKey: "availability.installed", variant: "success" };
     case "NOT_FOUND":
-      return { label: "Not Found", variant: "error" };
+      return { labelKey: "availability.notFound", variant: "error" };
     default:
-      return { label: "Unknown", variant: "warning" };
+      return { labelKey: "availability.unknown", variant: "warning" };
   }
 }

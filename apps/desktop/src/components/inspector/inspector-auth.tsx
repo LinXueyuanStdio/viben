@@ -668,7 +668,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       authorizationUrl: e.target.value,
                     }))
                   }
-                  placeholder="https://example.com/oauth/authorize"
+                  placeholder={t("placeholders.oauthAuthorizeUrl")}
                   className="text-sm font-mono"
                 />
               </div>
@@ -687,7 +687,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       tokenUrl: e.target.value,
                     }))
                   }
-                  placeholder="https://example.com/oauth/token"
+                  placeholder={t("placeholders.oauthTokenUrl")}
                   className="text-sm font-mono"
                 />
               </div>
@@ -706,7 +706,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       clientId: e.target.value,
                     }))
                   }
-                  placeholder="your-client-id"
+                  placeholder={t("placeholders.clientId")}
                   className="text-sm font-mono"
                 />
               </div>
@@ -728,7 +728,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       clientSecret: e.target.value,
                     }))
                   }
-                  placeholder="your-client-secret"
+                  placeholder={t("placeholders.clientSecret")}
                   className="text-sm font-mono"
                 />
               </div>
@@ -747,7 +747,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       redirectUri: e.target.value,
                     }))
                   }
-                  placeholder="http://localhost:3000/callback"
+                  placeholder={t("placeholders.redirectUri")}
                   className="text-sm font-mono"
                 />
               </div>
@@ -768,7 +768,7 @@ export function InspectorAuth({ makeRequest, enabled = true }: InspectorAuthProp
                       scopes: e.target.value,
                     }))
                   }
-                  placeholder="openid profile email"
+                  placeholder={t("placeholders.oauthScope")}
                   className="text-sm font-mono"
                 />
               </div>

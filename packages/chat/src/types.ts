@@ -2,6 +2,9 @@
  * Chat and Agent types for @viben/chat package
  */
 
+// Re-export ExecutorType from @viben/core for convenience
+export type { ExecutorType } from "@viben/core/shared";
+
 // ============================================================================
 // Message Attachment Types
 // ============================================================================
@@ -136,21 +139,11 @@ export interface ContextTokenBreakdown {
 // Agent/Executor Types
 // ============================================================================
 
-/** Base coding agent type identifier */
-export type BaseCodingAgent =
-  | "CLAUDE_CODE"
-  | "AMP"
-  | "GEMINI"
-  | "CODEX"
-  | "OPENCODE"
-  | "CURSOR_AGENT"
-  | "QWEN_CODE"
-  | "COPILOT"
-  | "DROID";
+import type { ExecutorType } from "@viben/core/shared";
 
 /** Agent type metadata for UI display */
 export interface AgentTypeInfo {
-  id: BaseCodingAgent;
+  id: ExecutorType;
   name: string;
   description: string;
   icon?: string;

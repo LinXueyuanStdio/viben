@@ -107,12 +107,6 @@ export async function getModels(
   return response.json();
 }
 
-/**
- * Get models for a workspace (alias for getModels)
- * @deprecated Use getModels instead
- */
-export const getWorkspaceModels = getModels;
-
 // ============================================================================
 // Agents
 // ============================================================================
@@ -156,12 +150,6 @@ export async function getAgents(
 
   return response.json();
 }
-
-/**
- * Get agents for a workspace (alias for getAgents)
- * @deprecated Use getAgents instead
- */
-export const getWorkspaceAgents = getAgents;
 
 /**
  * Get agent details by type (executor type)

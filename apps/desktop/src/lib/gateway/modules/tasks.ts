@@ -73,16 +73,6 @@ export interface TaskLogs {
 }
 
 /**
- * Task file entry
- */
-export interface TaskFileEntry {
-  path: string;
-  name: string;
-  type: "file" | "directory";
-  extension?: string;
-}
-
-/**
  * Task specs data response
  */
 export interface TaskSpecsDataResponse {
@@ -90,7 +80,7 @@ export interface TaskSpecsDataResponse {
   prd_path: string | null;
   subtasks: TaskSpecSubtask[];
   logs: TaskLogs | null;
-  files: TaskFileEntry[];
+  task_dir: string; // Task directory path for file browsing
 }
 
 // =============================================================================

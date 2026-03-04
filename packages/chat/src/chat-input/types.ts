@@ -6,13 +6,13 @@
  */
 
 import type { ReactNode } from "react";
+import type { ExecutorType } from "@viben/core/shared";
 import type {
   MessageAttachment,
   SlashCommand,
   ToolConfig,
   SkillConfig,
   ContextTokenBreakdown,
-  BaseCodingAgent,
   AgentTypeInfo,
 } from "../types";
 
@@ -40,7 +40,7 @@ export interface ModelOption {
 
 /** Executor option for selector */
 export interface ExecutorOption {
-  id: BaseCodingAgent;
+  id: ExecutorType;
   name: string;
   icon?: ReactNode;
 }
@@ -53,7 +53,7 @@ export interface ExecutorOption {
 export interface GlobalChatConfig {
   agentId?: string | null;
   modelId?: string | null;
-  executor?: BaseCodingAgent | null;
+  executor?: ExecutorType | null;
   enabledTools?: string[];
   enabledSkills?: string[];
 }
@@ -126,9 +126,9 @@ export interface ChatInputProps {
   /** Available executors for selection */
   executors?: AgentTypeInfo[];
   /** Currently selected executor */
-  selectedExecutor?: BaseCodingAgent;
+  selectedExecutor?: ExecutorType;
   /** Callback when executor is selected */
-  onExecutorChange?: (executor: BaseCodingAgent) => void;
+  onExecutorChange?: (executor: ExecutorType) => void;
 
   // === Tools/Skills ===
   /** Available tools for configuration */
@@ -211,8 +211,8 @@ export interface ChatInputConfigBarProps {
   showModelSelector: boolean;
   // Executor
   executors: AgentTypeInfo[];
-  selectedExecutor: BaseCodingAgent;
-  onExecutorChange?: (executor: BaseCodingAgent) => void;
+  selectedExecutor: ExecutorType;
+  onExecutorChange?: (executor: ExecutorType) => void;
   showExecutorSelector: boolean;
   // Tools
   tools: ToolConfig[];

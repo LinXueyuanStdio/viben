@@ -22,7 +22,7 @@ export const modelCommand: SlashCommandDefinition = {
       context.setModel(args.trim());
       return {
         type: "action",
-        toast: { message: `Switched to model: ${args.trim()}`, type: "success" },
+        toast: { message: "chat.slashCommands.modelSwitched", type: "success", i18n: true, params: { model: args.trim() } },
       };
     }
 

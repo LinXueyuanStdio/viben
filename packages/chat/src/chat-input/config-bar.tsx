@@ -35,7 +35,8 @@ import type {
   AgentOption,
   ModelOption,
 } from "./types";
-import type { ToolConfig, SkillConfig, ContextTokenBreakdown, AgentTypeInfo, BaseCodingAgent } from "../types";
+import type { ExecutorType } from "@viben/core/shared";
+import type { ToolConfig, SkillConfig, ContextTokenBreakdown, AgentTypeInfo } from "../types";
 
 export interface ChatInputConfigBarProps {
   // Agent
@@ -52,8 +53,8 @@ export interface ChatInputConfigBarProps {
   showModelSelector: boolean;
   // Executor
   executors: AgentTypeInfo[];
-  selectedExecutor: BaseCodingAgent;
-  onExecutorChange?: (executor: BaseCodingAgent) => void;
+  selectedExecutor: ExecutorType;
+  onExecutorChange?: (executor: ExecutorType) => void;
   showExecutorSelector: boolean;
   // Tools
   tools: ToolConfig[];

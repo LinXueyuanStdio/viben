@@ -145,7 +145,7 @@ Continue to Step 1. The requirement is:
 
 ## Input
 
-You receive input via environment variables (set by plan.py):
+You receive input via environment variables (set by `viben task plan`):
 
 ```bash
 PLAN_TASK_NAME    # Task name (e.g., "user-auth")

@@ -41,6 +41,12 @@ let lastWrittenContent: string | null = null;
 /** Flag to prevent save during initial load */
 let isInitialLoading = true;
 
+/** Timestamp of last write, used to ignore WebSocket events triggered by own writes */
+let lastWriteTimestamp = 0;
+
+/** Grace period (ms) to ignore WebSocket events after our own write */
+const WRITE_GRACE_PERIOD_MS = 500;
+
 /**
  * Read MCP servers state from Gateway file
  * Gateway stores data in ~/.viben/mcp-servers.json
@@ -89,6 +95,7 @@ async function writeServersToFile(state: McpServersFileState): Promise<boolean> 
     // Pass state directly - it already contains { mcpServers, mcpServerStatuses, lastUpdated }
     await gateway.writeMcpServersFile(state as unknown as Record<string, unknown>);
     lastWrittenContent = content;
+    lastWriteTimestamp = Date.now();
     return true;
   } catch (err) {
     console.debug("Failed to write servers file:", err);
@@ -151,6 +158,13 @@ export function useStoreSync(windowType: "main" | "tray" = "main") {
    * Handle WebSocket config change event
    */
   const handleConfigChanged = useCallback((data: McpConfigChangedData) => {
+    // Ignore WebSocket events triggered by our own recent writes
+    const timeSinceLastWrite = Date.now() - lastWriteTimestamp;
+    if (timeSinceLastWrite < WRITE_GRACE_PERIOD_MS) {
+      console.debug("[StoreSync] Ignoring config change triggered by own write");
+      return;
+    }
+
     console.log("[StoreSync] Config file changed via WebSocket:", data.change_type);
 
     // Reload from file when config changes

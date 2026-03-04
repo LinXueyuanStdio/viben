@@ -6,7 +6,7 @@
  * - PRD content
  * - Implementation plan subtasks
  * - Execution logs
- * - Modified files
+ * - Task directory path (for file browsing)
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -15,7 +15,6 @@ import type {
   TaskSpecsDataResponse,
   TaskSpecSubtask,
   TaskLogs,
-  TaskFileEntry,
 } from "@/lib/gateway/modules/tasks";
 
 // Re-export types for convenience
@@ -46,8 +45,8 @@ export interface TaskSpecsData {
   // Execution logs
   logs: TaskLogs | null;
 
-  // Modified files
-  files: TaskFileEntry[];
+  // Task directory path for file browsing
+  taskDir: string | null;
 
   // Loading and error states
   isLoading: boolean;
@@ -72,7 +71,7 @@ export function useTaskSpecsData(
   const [prdPath, setPrdPath] = useState<string | null>(null);
   const [subtasks, setSubtasks] = useState<TaskSpecSubtask[]>([]);
   const [logs, setLogs] = useState<TaskLogs | null>(null);
-  const [files, setFiles] = useState<TaskFileEntry[]>([]);
+  const [taskDir, setTaskDir] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +91,7 @@ export function useTaskSpecsData(
       setPrdPath(null);
       setSubtasks([]);
       setLogs(null);
-      setFiles([]);
+      setTaskDir(null);
       setIsLoading(false);
       setError(null);
       return;
@@ -112,17 +111,19 @@ export function useTaskSpecsData(
 
     try {
       const client = getGatewayClient();
+      console.log("[useTaskSpecsData] Loading specs for task:", taskId, "workspace:", workspacePath);
       const specsData: TaskSpecsDataResponse = await client.getTaskSpecsData(
         taskId,
         workspacePath
       );
+      console.log("[useTaskSpecsData] Received specs data:", specsData);
 
       // Update state from API response
       setPrdContent(specsData.prd_content);
       setPrdPath(specsData.prd_path);
       setSubtasks(specsData.subtasks || []);
       setLogs(specsData.logs);
-      setFiles(specsData.files || []);
+      setTaskDir(specsData.task_dir);
     } catch (err) {
       console.error("[useTaskSpecsData] Error loading specs data:", err);
       // Don't set error for 404 (task specs not found is not an error)
@@ -134,7 +135,7 @@ export function useTaskSpecsData(
       setPrdPath(null);
       setSubtasks([]);
       setLogs(null);
-      setFiles([]);
+      setTaskDir(null);
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +160,7 @@ export function useTaskSpecsData(
     prdPath,
     subtasks,
     logs,
-    files,
+    taskDir,
     isLoading,
     error,
     refresh,

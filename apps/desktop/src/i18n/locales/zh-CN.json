@@ -198,6 +198,12 @@
     "host": "主机",
     "hostDescription": "网关服务绑定的主机地址",
     "portDescription": "网关服务监听的端口号（需要重启生效）",
+    "baseUrl": "Base URL",
+    "baseUrlDescription": "设置网关服务的基础地址",
+    "baseUrlHint": "例如: http://127.0.0.1:18790 或 https://gateway.example.com",
+    "urlSaved": "网关地址已保存",
+    "invalidUrl": "无效的 URL 格式",
+    "invalidUrlProtocol": "无效的协议，请使用 http 或 https",
     "connectivityTestDescription": "检测网关服务的连接状态和可用端点",
     "binaryNotFound": "未找到网关程序",
     "installHint": "请安装 Viben: npm install -g viben，或在项目根目录运行: pnpm run gateway:restart"
@@ -672,7 +678,12 @@
     "allInstalled": "所有提供者已安装",
     "priorityExplanation": "提供者优先级：Codex（最安全）> Claude（进程隔离）> Native（无隔离）",
     "codexCli": "Codex CLI",
-    "claudeSandboxRuntime": "Claude 沙箱运行时"
+    "claudeSandboxRuntime": "Claude 沙箱运行时",
+    "providerNames": {
+      "codex": "Codex CLI 沙箱",
+      "claude": "Claude 沙箱",
+      "native": "原生（无隔离）"
+    }
   },
   "about": {
     "title": "Viben",
@@ -1310,6 +1321,10 @@
     "addEnvVar": "添加环境变量",
     "serverEntry": "服务器配置",
     "serversFile": "配置文件",
+    "copyServerEntryTooltip": "复制单个服务器配置 (mcp.json 格式)",
+    "copyServersFileTooltip": "复制完整 mcp.json 文件",
+    "serverEntryCopied": "服务器配置已复制到剪贴板",
+    "serversFileCopied": "配置文件已复制到剪贴板",
     "authentication": "认证",
     "bearerToken": "Bearer 令牌",
     "serverConnection": "服务器连接",
@@ -1528,6 +1543,16 @@
     "aboutMetadataDesc": "元数据提供有关 MCP 服务器的信息，包括名称、版本、功能和协议支持。",
     "rawMetadata": "原始元数据",
     "viewSchema": "查看 Schema",
+    "annotations": {
+      "readOnly": "只读",
+      "readOnlyDesc": "工具不会修改其环境",
+      "destructive": "破坏性",
+      "destructiveDesc": "工具可能执行破坏性更新",
+      "idempotent": "幂等",
+      "idempotentDesc": "重复调用不会产生额外影响",
+      "openWorld": "开放世界",
+      "openWorldDesc": "工具可能与外部实体交互"
+    },
     "formInput": "表单",
     "jsonInput": "JSON",
     "jsonArguments": "JSON 参数",
@@ -1564,6 +1589,9 @@
     "roleUser": "用户",
     "roleSystem": "系统",
     "chars": "字符",
+    "taskIdLabel": "任务 ID：",
+    "keyPlaceholder": "键（如 requestId）",
+    "jsonPlaceholder": "{\"key\": \"value\"}",
     "filterInfo": "信息",
     "filterProgress": "进度",
     "filterStderr": "错误输出",
@@ -1624,7 +1652,27 @@
     "secure": "安全",
     "securityPassed": "应用在隔离沙箱中运行",
     "securityWarning": "部分安全检查未通过，请谨慎使用。",
-    "securityCheckPending": "正在运行安全检查..."
+    "securityCheckPending": "正在运行安全检查...",
+    "subscriptions": "个订阅",
+    "new": "个新",
+    "subscribed": "已订阅",
+    "updated": "已更新",
+    "subscribe": "订阅更新",
+    "unsubscribe": "取消订阅",
+    "customHeaders": {
+      "title": "自定义请求头",
+      "titleJson": "自定义请求头 (JSON)",
+      "noHeaders": "未配置自定义请求头",
+      "addHint": "点击\"添加\"开始配置",
+      "namePlaceholder": "请求头名称",
+      "valuePlaceholder": "请求头值",
+      "hint": "使用开关启用/禁用请求头。只有启用且名称和值都不为空的请求头才会被发送。",
+      "switchToForm": "切换到表单模式",
+      "switchToJson": "切换到 JSON 模式",
+      "jsonHint": "以 JSON 对象格式输入请求头，键值对为字符串。",
+      "jsonMustBeObject": "JSON 必须是包含字符串键值对的对象",
+      "invalidJson": "无效的 JSON 格式"
+    }
   },
   "updates": {
     "title": "包更新",
@@ -1997,6 +2045,32 @@
         "assets": "资源文件",
         "moreAssets": "更多资源",
         "publishedBy": "由 {{user}} 于 {{date}} 发布"
+      },
+      "issueDetail": {
+        "minutesAgo": "{{count}}分钟前",
+        "hoursAgo": "{{count}}小时前",
+        "daysAgo": "{{count}}天前",
+        "commentedAt": "评论于 {{time}}",
+        "openedThisIssue": "创建了此 Issue",
+        "noDescription": "暂无描述",
+        "commentsCount": "{{count}} 条评论",
+        "checkingTask": "检查任务...",
+        "goToTask": "前往任务",
+        "createTask": "创建任务",
+        "loadMoreComments": "加载更多评论",
+        "loadingComments": "加载评论中...",
+        "assignees": "负责人",
+        "noAssignees": "暂无负责人",
+        "labels": "标签",
+        "noLabels": "暂无标签",
+        "milestone": "里程碑",
+        "noMilestone": "暂无里程碑",
+        "linkedTask": "关联任务",
+        "noLinkedTask": "暂无关联任务",
+        "timeline": "时间线",
+        "createdAt": "创建于 {{date}}",
+        "updatedAt": "更新于 {{date}}",
+        "closedAt": "关闭于 {{date}}"
       }
     }
   },
@@ -2004,6 +2078,7 @@
     "workspaces": "工作区",
     "addWorkspace": "添加工作区",
     "noWorkspaces": "暂无工作区",
+    "selectFolderTitle": "选择工作区文件夹",
     "addModal": {
       "title": "添加工作区",
       "titleConfigure": "配置工作区",
@@ -2154,9 +2229,21 @@
     "scheduledTasksDescription": "管理定时任务和自动化",
     "addTask": "添加任务",
     "kanbanStatus": {
-      "todo": "待办",
-      "inProgress": "进行中",
-      "review": "审核中",
+      "backlog": "待办",
+      "queue": "排队中",
+      "in_progress": "执行中",
+      "ai_review": "AI审查",
+      "human_review": "人工审查",
+      "done": "已完成",
+      "pr_created": "PR已创建",
+      "error": "错误"
+    },
+    "column": {
+      "backlog": "待办",
+      "queue": "排队中",
+      "inProgress": "执行中",
+      "aiReview": "AI审查",
+      "humanReview": "人工审查",
       "done": "已完成"
     },
     "taskDetail": "任务详情",
@@ -2327,9 +2414,21 @@
     "agentsDetected": "个智能体",
     "browseFiles": "浏览文件",
     "kanbanStatus": {
-      "todo": "待办",
-      "inProgress": "进行中",
-      "review": "审核中",
+      "backlog": "待办",
+      "queue": "排队中",
+      "in_progress": "执行中",
+      "ai_review": "AI审查",
+      "human_review": "人工审查",
+      "done": "已完成",
+      "pr_created": "PR已创建",
+      "error": "错误"
+    },
+    "column": {
+      "backlog": "待办",
+      "queue": "排队中",
+      "inProgress": "执行中",
+      "aiReview": "AI审查",
+      "humanReview": "人工审查",
       "done": "已完成"
     },
     "addTask": "添加任务",
@@ -2346,6 +2445,10 @@
       "resume": "继续",
       "viewPR": "查看 PR",
       "archive": "归档",
+      "start": "开始",
+      "stop": "停止",
+      "interrupted": "已中断",
+      "progress": "进度",
       "phase": {
         "idle": "空闲",
         "planning": "规划中",
@@ -2636,10 +2739,48 @@
     "slashCommands": {
       "clear": "清空",
       "clearDesc": "清空对话历史",
+      "clearSuccess": "对话已清空",
       "help": "帮助",
-      "helpDesc": "显示可用命令",
+      "helpDesc": "显示所有可用命令",
       "stop": "停止",
       "stopDesc": "停止当前执行",
+      "status": "状态",
+      "statusDesc": "显示当前会话状态",
+      "compact": "压缩",
+      "compactDesc": "压缩对话历史以减少令牌使用",
+      "compactArgDesc": "可选的自定义压缩摘要",
+      "vim": "Vim",
+      "vimDesc": "切换 Vim 编辑模式（桌面端：打开全屏编辑器）",
+      "model": "模型",
+      "modelDesc": "查看或切换当前模型",
+      "modelArgDesc": "要切换的模型名称（如 sonnet、opus、haiku）",
+      "modelSwitched": "已切换到模型：{{model}}",
+      "memory": "记忆",
+      "memoryDesc": "管理智能体记忆和上下文",
+      "noAgentSelected": "未选择智能体",
+      "config": "配置",
+      "configDesc": "打开设置面板",
+      "permissions": "权限",
+      "permissionsDesc": "查看和管理工具权限",
+      "terminalSetup": "终端设置",
+      "terminalSetupDesc": "配置终端集成设置",
+      "doctor": "诊断",
+      "doctorDesc": "诊断系统配置和连接状态",
+      "cost": "费用",
+      "costDesc": "显示令牌使用量和费用统计",
+      "init": "初始化",
+      "initDesc": "初始化项目配置（CLAUDE.md）",
+      "noWorkspaceSelected": "未选择工作区",
+      "review": "审查",
+      "reviewDesc": "请求对文件或提交进行代码审查",
+      "reviewArgDesc": "要审查的文件路径或提交哈希",
+      "prComments": "PR 评论",
+      "prCommentsDesc": "查看 GitHub PR 评论",
+      "prCommentsArgDesc": "要查看评论的 PR 编号",
+      "login": "登录",
+      "loginDesc": "登录您的账户",
+      "logout": "退出",
+      "logoutDesc": "退出您的账户",
       "categories": {
         "session": "会话",
         "config": "配置",
@@ -3260,6 +3401,264 @@
     "requestBody": "请求体",
     "responseBody": "响应体",
     "noInputData": "无输入数据",
-    "noOutputData": "无输出数据"
+    "noOutputData": "无输出数据",
+    "url": "URL"
+  },
+  "errors": {
+    "github": {
+      "authStatusFailed": "获取认证状态失败",
+      "authFailed": "认证失败",
+      "signoutFailed": "退出登录失败",
+      "repoInfoFailed": "获取仓库信息失败",
+      "repoDetectFailed": "检测仓库失败",
+      "repoConnectFailed": "连接仓库失败",
+      "repoDisconnectFailed": "断开仓库连接失败",
+      "issuesLoadFailed": "加载 Issues 失败",
+      "issuesLoadMoreFailed": "加载更多 Issues 失败",
+      "issueInvestigateFailed": "分析 Issue 失败",
+      "issuesImportFailed": "导入 Issues 失败",
+      "prsLoadFailed": "加载 PRs 失败",
+      "prsLoadMoreFailed": "加载更多 PRs 失败",
+      "prCreateFailed": "创建 PR 失败",
+      "releasesLoadFailed": "加载发布版本失败",
+      "releasesLoadMoreFailed": "加载更多发布版本失败",
+      "releaseCreateFailed": "创建发布版本失败",
+      "commentsLoadFailed": "加载评论失败",
+      "commentsLoadMoreFailed": "加载更多评论失败"
+    },
+    "channels": {
+      "loadFailed": "加载渠道配置失败",
+      "saveFailed": "保存渠道配置失败"
+    },
+    "mcp": {
+      "invalidConfigMissingUrl": "配置无效：缺少 URL",
+      "connectionFailed": "连接失败",
+      "invalidUrl": "无效的 URL：{{url}}"
+    },
+    "websocket": {
+      "connectionError": "WebSocket 连接错误",
+      "connectionFailedMultipleAttempts": "WebSocket 多次尝试后连接失败",
+      "notConnected": "WebSocket 未连接"
+    },
+    "conversation": {
+      "sendMessageFailed": "发送消息失败",
+      "approvePlanFailed": "批准计划失败"
+    },
+    "connection": {
+      "failed": "连接失败"
+    },
+    "workspace": {
+      "noWorkspaceSelected": "未选择工作区"
+    },
+    "task": {
+      "noIdProvided": "未提供任务 ID"
+    },
+    "search": {
+      "failed": "搜索失败"
+    },
+    "packages": {
+      "loadFailed": "加载包失败"
+    },
+    "workspaces": {
+      "loadFailed": "加载工作区失败"
+    },
+    "auth": {
+      "invalidApiKey": "无效的 API 密钥"
+    },
+    "user": {
+      "fetchFailed": "获取用户信息失败"
+    },
+    "groupChat": {
+      "notFound": "未找到群聊",
+      "noChatOrWorkspace": "未选择群聊或未设置工作区路径",
+      "noChatOrSession": "未选择群聊或会话"
+    },
+    "gateway": {
+      "notConnected": "网关未连接"
+    },
+    "backgroundTasks": {
+      "connectionLost": "连接丢失",
+      "failedToConnect": "连接失败",
+      "failedToStopTask": "停止任务失败：{{statusText}}"
+    },
+    "cron": {
+      "loadFailed": "加载定时任务失败",
+      "createFailed": "创建定时任务失败",
+      "updateFailed": "更新定时任务失败",
+      "deleteFailed": "删除定时任务失败",
+      "enableFailed": "启用定时任务失败",
+      "disableFailed": "禁用定时任务失败",
+      "runFailed": "运行定时任务失败",
+      "fetchLogsFailed": "获取执行日志失败",
+      "clearLogsFailed": "清除执行日志失败"
+    },
+    "unifiedAgents": {
+      "cannotRemoveExecutor": "无法通过此方式移除执行器。请直接删除配置文件。"
+    },
+    "channels": {
+      "chatIdRequired": "发送测试消息需要 Chat ID"
+    },
+    "skillInstaller": {
+      "downloadComplete": "下载完成",
+      "installationComplete": "安装完成",
+      "installationFailed": "安装失败"
+    }
+  },
+  "availability": {
+    "loggedIn": "已登录",
+    "installed": "已安装",
+    "notFound": "未找到",
+    "unknown": "未知"
+  },
+  "taskAgent": {
+    "implementationPreference": "实现方式偏好",
+    "howToApproach": "您想如何处理这个任务？",
+    "quickFix": "快速修复",
+    "quickFixDesc": "最小改动，快速交付",
+    "refactor": "重构",
+    "refactorDesc": "清理相关代码",
+    "fullImplementation": "完整实现",
+    "fullImplementationDesc": "包含测试的完整功能"
+  },
+  "channelNames": {
+    "telegram": "Telegram",
+    "discord": "Discord",
+    "feishu": "飞书",
+    "whatsapp": "WhatsApp",
+    "slack": "Slack",
+    "webhook": "Webhook"
+  },
+  "inspector": {
+    "tools": "工具",
+    "searchTools": "搜索工具...",
+    "clickListTools": "点击「列出工具」加载可用工具",
+    "listTools": "列出工具",
+    "noToolsFound": "没有匹配的工具",
+    "loadMore": "加载更多",
+    "toolsNotSupported": "不支持工具",
+    "toolsNotSupportedDesc": "此服务器不支持工具能力",
+    "selectTool": "选择一个工具查看详情",
+    "viewSchema": "输入模式",
+    "outputSchema": "输出模式",
+    "toolMeta": "工具元数据",
+    "formInput": "表单",
+    "jsonInput": "JSON",
+    "noArguments": "此工具没有参数",
+    "toolMetadata": "工具元数据",
+    "addPair": "添加",
+    "noMetadata": "无元数据",
+    "keyPlaceholder": "例如 requestId",
+    "fixMetadataErrors": "修复元数据键错误后才能运行工具。",
+    "runAsTask": "作为任务运行",
+    "required": "必需",
+    "pollingTask": "轮询任务中...",
+    "calling": "运行中...",
+    "callTool": "运行工具",
+    "copyInput": "复制",
+    "jsonArguments": "JSON 参数",
+    "format": "格式化",
+    "jsonMustBeObject": "JSON 必须是对象",
+    "executionHistory": "执行历史",
+    "noExecutions": "暂无执行记录",
+    "task": "任务",
+    "taskIdLabel": "任务 ID：",
+    "arguments": "参数",
+    "result": "结果",
+    "showJson": "显示 JSON",
+    "showRendered": "显示渲染",
+    "render": "渲染",
+    "toolReturnedError": "工具返回错误",
+    "durationMs": "{{value}}毫秒",
+    "durationS": "{{value}}秒",
+    "annotations": {
+      "readOnly": "只读",
+      "readOnlyDesc": "工具不会修改其环境",
+      "destructive": "破坏性",
+      "destructiveDesc": "工具可能执行破坏性更新（删除/覆盖数据）",
+      "idempotent": "幂等",
+      "idempotentDesc": "使用相同参数重复调用不会产生额外效果",
+      "openWorld": "开放世界",
+      "openWorldDesc": "工具可能与其本地环境之外的外部实体交互"
+    },
+    "customHeaders": {
+      "title": "自定义请求头",
+      "titleJson": "自定义请求头（JSON）",
+      "switchToForm": "切换到表单",
+      "switchToJson": "切换到 JSON 模式",
+      "noHeaders": "未配置自定义请求头",
+      "addHint": "点击「添加」开始配置",
+      "namePlaceholder": "请求头名称",
+      "valuePlaceholder": "请求头值",
+      "jsonMustBeObject": "JSON 必须是包含字符串键值对的对象",
+      "invalidJson": "JSON 格式无效",
+      "jsonHint": "输入包含字符串键值对的 JSON 对象。",
+      "hint": "使用开关启用/禁用请求头。只有同时填写名称和值的已启用请求头才会被发送。"
+    }
+  },
+  "placeholders": {
+    "value": "值",
+    "owner": "所有者",
+    "repository": "仓库名",
+    "sseUrl": "http://localhost:3000/sse",
+    "httpUrl": "http://localhost:3000/mcp",
+    "oauthAuthorizeUrl": "https://example.com/oauth/authorize",
+    "oauthTokenUrl": "https://example.com/oauth/token",
+    "clientId": "您的客户端 ID",
+    "clientSecret": "您的客户端密钥",
+    "redirectUri": "http://localhost:3000/callback",
+    "oauthScope": "openid profile email",
+    "projectName": "我的项目",
+    "newProjectName": "我的新项目",
+    "developer": "开发者",
+    "githubToken": "ghp_...",
+    "cronExpression": "0 9 * * *",
+    "webhookUrl": "https://your-domain.com/api/channels/webhook"
+  },
+  "phase": {
+    "planning": "规划中",
+    "coding": "编码中",
+    "qaReview": "QA 审核",
+    "qaFixing": "修复中",
+    "complete": "完成",
+    "planShort": "规划",
+    "codeShort": "编码",
+    "qaShort": "QA",
+    "fixShort": "修复",
+    "doneShort": "完成"
+  },
+  "installation": {
+    "downloadComplete": "下载完成",
+    "extractingPackage": "正在解压包...",
+    "extractingFiles": "正在解压文件...",
+    "complete": "安装完成",
+    "failed": "安装失败"
+  },
+  "packageTypes": {
+    "nodejs": "Node.js (npm)",
+    "python": "Python (PyPI)",
+    "docker": "Docker (OCI)",
+    "dotnet": ".NET (NuGet)",
+    "mcpBinary": "MCP 二进制"
+  },
+  "websocket": {
+    "closeCodes": {
+      "1000": "正常关闭",
+      "1001": "端点离开",
+      "1002": "协议错误",
+      "1003": "不支持的数据类型",
+      "1005": "未收到状态码",
+      "1006": "连接异常关闭，服务器可能不可用",
+      "1007": "无效的数据帧",
+      "1008": "策略违规",
+      "1009": "消息过大",
+      "1010": "缺少必要扩展",
+      "1011": "服务器内部错误",
+      "1012": "服务重启",
+      "1013": "请稍后重试",
+      "1014": "网关错误",
+      "1015": "TLS 握手失败",
+      "4000": "心跳超时"
+    },
+    "closedWithCode": "WebSocket 关闭（错误码：{{code}}）"
   }
 }

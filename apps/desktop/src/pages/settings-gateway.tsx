@@ -21,33 +21,15 @@ import {
   Server,
   Copy,
   Wifi,
+  Link,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useGateway } from "@/hooks";
-import { useState, useCallback } from "react";
-import { getGatewayClient } from "@/lib/gateway";
+import { useState, useCallback, useEffect } from "react";
+import { getGatewayClient, getGatewayUrl, setGatewayUrl } from "@/lib/gateway";
 import { toast } from "sonner";
-
-// Settings item component
-interface SettingsItemProps {
-  title: string;
-  description: string;
-  children: React.ReactNode;
-}
-
-function SettingsItem({ title, description, children }: SettingsItemProps) {
-  return (
-    <div className="flex items-center justify-between py-4 border-b border-border last:border-b-0">
-      <div className="flex-1 pr-4">
-        <h3 className="text-sm font-medium text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground mt-0.5">{description}</p>
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
 
 // Connectivity test result type
 interface ConnectivityResult {
@@ -65,7 +47,6 @@ export function SettingsGatewayPage() {
   const { t } = useTranslation();
   const {
     status,
-    config,
     isLoading,
     isActioning,
     error,
@@ -73,14 +54,18 @@ export function SettingsGatewayPage() {
     startGateway,
     stopGateway,
     restartGateway,
-    updateConfig,
     discoverGateway,
   } = useGateway();
 
-  const [portInput, setPortInput] = useState<string>("");
+  const [baseUrlInput, setBaseUrlInput] = useState<string>("");
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<ConnectivityResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
+
+  // Initialize base URL input from stored value
+  useEffect(() => {
+    setBaseUrlInput(getGatewayUrl());
+  }, []);
 
   // Test connectivity
   const testConnectivity = useCallback(async () => {
@@ -132,19 +117,23 @@ export function SettingsGatewayPage() {
     }
   }, [t]);
 
-  // Initialize port input when config loads
-  if (config && !portInput) {
-    setPortInput(String(config.port));
-  }
-
-  // Handle port change
-  const handlePortChange = async () => {
-    const port = parseInt(portInput, 10);
-    if (isNaN(port) || port < 1 || port > 65535) {
-      return;
+  // Handle base URL change
+  const handleBaseUrlChange = useCallback(() => {
+    // Validate URL format
+    try {
+      const url = new URL(baseUrlInput);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        toast.error(t("gateway.invalidUrlProtocol", "无效的协议，请使用 http 或 https"));
+        return;
+      }
+      setGatewayUrl(baseUrlInput);
+      toast.success(t("gateway.urlSaved", "网关地址已保存"));
+      // Trigger re-discovery to update connection
+      discoverGateway();
+    } catch {
+      toast.error(t("gateway.invalidUrl", "无效的 URL 格式"));
     }
-    await updateConfig({ port });
-  };
+  }, [baseUrlInput, t, discoverGateway]);
 
   // Copy URL to clipboard
   const copyUrl = () => {
@@ -462,50 +451,48 @@ export function SettingsGatewayPage() {
         )}
       </div>
 
-      {/* Configuration Card - Host & Port */}
+      {/* Configuration Card - Base URL */}
       <div className="rounded-xl border bg-card p-4 space-y-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-primary/30">
-        <h3 className="text-sm font-semibold">
-          {t("settings.gatewayConfig", "网关配置")}
-        </h3>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full flex items-center justify-center bg-muted">
+            <Link className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">
+              {t("settings.gatewayConfig", "网关配置")}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("gateway.baseUrlDescription", "设置网关服务的基础地址")}
+            </p>
+          </div>
+        </div>
 
-        {/* Host Configuration */}
-        <SettingsItem
-          title={t("gateway.host")}
-          description={t("gateway.hostDescription")}
-        >
-          <code className="bg-muted px-2 py-1 rounded text-sm">
-            {config?.host || "127.0.0.1"}
-          </code>
-        </SettingsItem>
-
-        {/* Port Configuration */}
-        <SettingsItem
-          title={t("gateway.port")}
-          description={t("gateway.portDescription")}
-        >
+        {/* Base URL Configuration */}
+        <div className="pt-3 border-t">
+          <Label className="text-xs text-muted-foreground mb-1.5 block">
+            {t("gateway.baseUrl", "Base URL")}
+          </Label>
           <div className="flex items-center gap-2">
             <Input
-              type="number"
-              value={portInput}
-              onChange={(e) => setPortInput(e.target.value)}
-              className="w-24 h-9"
-              min={1}
-              max={65535}
+              type="url"
+              value={baseUrlInput}
+              onChange={(e) => setBaseUrlInput(e.target.value)}
+              placeholder={t("gateway.urlPlaceholder", "http://127.0.0.1:18790")}
+              className="flex-1 h-9 font-mono text-sm"
             />
             <Button
               variant="outline"
               size="sm"
-              onClick={handlePortChange}
-              disabled={
-                !portInput ||
-                parseInt(portInput, 10) === config?.port ||
-                isNaN(parseInt(portInput, 10))
-              }
+              onClick={handleBaseUrlChange}
+              disabled={!baseUrlInput || baseUrlInput === getGatewayUrl()}
             >
               {t("common.apply", "应用")}
             </Button>
           </div>
-        </SettingsItem>
+          <p className="text-xs text-muted-foreground mt-2">
+            {t("gateway.baseUrlHint", "例如: http://127.0.0.1:18790 或 https://gateway.example.com")}
+          </p>
+        </div>
       </div>
 
     </div>

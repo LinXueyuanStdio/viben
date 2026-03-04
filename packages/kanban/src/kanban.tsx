@@ -53,24 +53,42 @@ export type KanbanBoardProps = {
   className?: string;
   /** Column background color (CSS variable name like "--primary") */
   backgroundColor?: string;
+  /** Whether this column is a valid drop target for the currently dragged item */
+  isValidDropTarget?: boolean;
+  /** Whether an item is currently being dragged (for visual feedback) */
+  isDragging?: boolean;
 };
 
-export const KanbanBoard = ({ id, children, className, backgroundColor }: KanbanBoardProps) => {
+export const KanbanBoard = ({ id, children, className, backgroundColor, isValidDropTarget, isDragging }: KanbanBoardProps) => {
   const { isOver, setNodeRef } = useDroppable({ id });
+
+  // Determine visual state: valid target, invalid target, or neutral
+  const showValidHighlight = isDragging && isValidDropTarget === true;
+  const showInvalidHighlight = isDragging && isValidDropTarget === false;
 
   return (
     <div
       className={cn(
-        "flex min-h-40 flex-col transition-all duration-200",
-        isOver && "ring-2 ring-inset ring-primary/40",
+        "flex min-h-40 flex-col flex-1 transition-all duration-200",
+        // When dragging over valid target
+        isOver && isValidDropTarget !== false && "ring-2 ring-inset ring-primary/40",
+        // When dragging over invalid target
+        isOver && isValidDropTarget === false && "ring-2 ring-inset ring-destructive/40",
+        // Valid target highlight (not hovered)
+        showValidHighlight && !isOver && "ring-1 ring-inset ring-success/30",
+        // Invalid target dimming
+        showInvalidHighlight && "opacity-50",
         className
       )}
       style={{
         backgroundColor: backgroundColor
           ? `hsl(var(${backgroundColor}) / 0.03)`
           : undefined,
-        ...(isOver && backgroundColor ? {
+        ...(isOver && isValidDropTarget !== false && backgroundColor ? {
           backgroundColor: `hsl(var(${backgroundColor}) / 0.08)`,
+        } : {}),
+        ...(isOver && isValidDropTarget === false ? {
+          backgroundColor: "hsl(var(--destructive) / 0.05)",
         } : {}),
       }}
       ref={setNodeRef}
@@ -407,6 +425,10 @@ const restrictToFirstScrollableAncestorCustom: Modifier = (args) => {
 export type KanbanProviderProps = {
   children: React.ReactNode;
   onDragEnd: (event: DragEndEvent) => void;
+  /** Callback when drag starts, provides the active item ID */
+  onDragStart?: (activeId: string) => void;
+  /** Callback when drag is cancelled */
+  onDragCancel?: () => void;
   className?: string;
   /** Render function for drag overlay */
   renderDragOverlay?: (activeId: string | null) => React.ReactNode;
@@ -415,6 +437,8 @@ export type KanbanProviderProps = {
 export const KanbanProvider = ({
   children,
   onDragEnd,
+  onDragStart,
+  onDragCancel,
   className,
   renderDragOverlay,
 }: KanbanProviderProps) => {
@@ -432,18 +456,25 @@ export const KanbanProvider = ({
   return (
     <DndContext
       collisionDetection={rectIntersection}
-      onDragStart={(event) => setActiveId(String(event.active.id))}
+      onDragStart={(event) => {
+        const id = String(event.active.id);
+        setActiveId(id);
+        onDragStart?.(id);
+      }}
       onDragEnd={(event) => {
         setActiveId(null);
         onDragEnd(event);
       }}
-      onDragCancel={() => setActiveId(null)}
+      onDragCancel={() => {
+        setActiveId(null);
+        onDragCancel?.();
+      }}
       sensors={sensors}
       modifiers={[restrictToFirstScrollableAncestorCustom]}
     >
       <div
         className={cn(
-          "inline-flex flex-row divide-x border-x items-stretch min-h-full",
+          "flex flex-row divide-x border-x items-stretch h-full",
           className
         )}
       >

@@ -7,6 +7,7 @@ import {
   AlertCircle,
   RefreshCw,
   Play,
+  Square,
   XCircle,
   ArrowLeft,
   BarChart3,
@@ -140,6 +141,8 @@ import {
   KANBAN_COLUMNS,
   COLUMN_COLOR_VARS as VIBE_COLUMN_COLOR_VARS,
   COLUMN_COLORS as VIBE_COLUMN_COLORS,
+  isValidStatusTransition,
+  getValidDropTargets,
 } from "@/lib/vibe-kanban";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/hooks/use-toast";
@@ -194,6 +197,8 @@ const CategoryIcons: Record<TaskCategory, React.ElementType> = {
 interface TaskCardContentProps {
   task: EnhancedTask;
   onTitleChange?: (title: string) => void;
+  onStart?: () => void;
+  onStop?: () => void;
   onRecover?: () => void;
   onResume?: () => void;
   onViewPR?: () => void;
@@ -204,6 +209,8 @@ interface TaskCardContentProps {
 const TaskCardContent = memo(function TaskCardContent({
   task,
   onTitleChange,
+  onStart,
+  onStop,
   onRecover,
   onResume,
   onViewPR,
@@ -214,7 +221,7 @@ const TaskCardContent = memo(function TaskCardContent({
 
   // Determine card state
   const isRunning = task.has_in_progress_attempt;
-  const isStuck = task.isStuck ?? false;
+  const isStuck = task.isStuck ?? task.is_stuck ?? false;
   const isArchived = !!task.archivedAt;
   const isFailed = task.last_attempt_failed && !isRunning;
 
@@ -447,48 +454,44 @@ const TaskCardContent = memo(function TaskCardContent({
             {task.dueDate && <DueDateBadge dueDate={task.dueDate} />}
           </div>
 
-          {/* Right side: Action buttons based on state */}
+          {/* Right side: Action buttons based on state (Auto-Claude style) */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* Stuck: Show Recover button */}
-            {isStuck && onRecover && (
+            {/* Priority 1: Stuck - Show Recover button */}
+            {isStuck && onRecover ? (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-6 px-2 text-warning hover:text-warning hover:bg-warning/10"
+                className="h-7 px-2.5 text-warning border-warning/30 hover:bg-warning/10"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRecover();
                 }}
               >
-                <RotateCcw className="h-3 w-3 mr-1" />
+                <RotateCcw className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.recover", "Recover")}
               </Button>
-            )}
-
-            {/* Failed but not stuck: Show Resume button */}
-            {isFailed && !isStuck && onResume && (
+            ) : /* Priority 2: Failed/Incomplete - Show Resume button */
+            isFailed && !isStuck && onResume ? (
               <Button
-                variant="ghost"
+                variant="default"
                 size="sm"
-                className="h-6 px-2"
+                className="h-7 px-2.5"
                 onClick={(e) => {
                   e.stopPropagation();
                   onResume();
                 }}
               >
-                <Play className="h-3 w-3 mr-1" />
+                <Play className="h-3 w-3 mr-1.5" />
                 {t("workspace.taskCard.resume", "Resume")}
               </Button>
-            )}
-
-            {/* Done with PR: Show View PR and Archive buttons */}
-            {task.status === "done" && (task.prUrl || task.pr_url) && (
-              <>
+            ) : /* Priority 3: Done with PR - Show View PR and Archive buttons */
+            task.status === "done" && (task.prUrl || task.pr_url) ? (
+              <div className="flex gap-1">
                 {onViewPR && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                    size="sm"
+                    className="h-7 px-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       onViewPR();
@@ -501,8 +504,8 @@ const TaskCardContent = memo(function TaskCardContent({
                 {!isArchived && onArchive && (
                   <Button
                     variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
+                    size="sm"
+                    className="h-7 px-2"
                     onClick={(e) => {
                       e.stopPropagation();
                       onArchive();
@@ -512,19 +515,56 @@ const TaskCardContent = memo(function TaskCardContent({
                     <Archive className="h-3 w-3" />
                   </Button>
                 )}
-              </>
-            )}
-
-            {/* Running indicator (no action buttons, just visual) */}
-            {isRunning && !isStuck && (
-              <Badge
-                variant="secondary"
-                className="h-5 text-[10px] px-1.5 py-0 gap-1 rounded"
+              </div>
+            ) : /* Priority 4: Done without PR - Show Archive button */
+            task.status === "done" && !isArchived && onArchive ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2.5 hover:bg-muted-foreground/10"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive();
+                }}
+                title={t("workspace.taskCard.archive", "Archive")}
               >
-                <Play className="h-2.5 w-2.5" />
-                {t("common.running")}
-              </Badge>
-            )}
+                <Archive className="h-3 w-3 mr-1.5" />
+                {t("workspace.taskCard.archive", "Archive")}
+              </Button>
+            ) : /* Priority 5: Backlog/Queue/In Progress - Show Start/Stop button */
+            (task.status === "backlog" || task.status === "queue" || task.status === "in_progress") && (onStart || onStop) ? (
+              isRunning ? (
+                onStop && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 px-2.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStop();
+                    }}
+                  >
+                    <Square className="h-3 w-3 mr-1.5" />
+                    {t("workspace.taskCard.stop", "Stop")}
+                  </Button>
+                )
+              ) : (
+                onStart && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 px-2.5"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStart();
+                    }}
+                  >
+                    <Play className="h-3 w-3 mr-1.5" />
+                    {t("workspace.taskCard.start", "Start")}
+                  </Button>
+                )
+              )
+            ) : null}
           </div>
         </div>
       )}
@@ -657,6 +697,9 @@ export function WorkspaceKanbanPage() {
   const [filter, setFilter] = useState<KanbanFilter>({});
   // Flag to trigger auto-start when opening task detail panel from "Run" action
   const [autoStartTaskOnOpen, setAutoStartTaskOnOpen] = useState(false);
+  // Track dragging state for visual feedback on valid drop targets
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [validDropTargets, setValidDropTargets] = useState<KanbanColumnId[]>([]);
 
   // Use preferences for view/sort state
   const viewMode = preferences.viewMode;
@@ -893,9 +936,13 @@ export function WorkspaceKanbanPage() {
     return doneTasks.filter((task) => archivedTaskIds.includes(task.id)).length;
   }, [sortedTasks, archivedTaskIds]);
 
-  // Handle drag end - move task to new status
+  // Handle drag end - move task to new status with transition validation
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      // Clear dragging state first
+      setDraggingTaskId(null);
+      setValidDropTargets([]);
+
       const { active, over } = event;
 
       if (!over || !workspace) return;
@@ -906,9 +953,29 @@ export function WorkspaceKanbanPage() {
 
       if (!newStatus) return;
 
-      // Get current task to check if status is changing to in_progress
+      // Get current task
       const task = sortedTasks.find((t) => t.id === taskId);
-      const isMovingToInProgress = newStatus === "in_progress" && task?.status !== "in_progress";
+      if (!task) return;
+
+      const currentStatus = task.status as VibeTaskStatus;
+      const currentColumn = STATUS_TO_COLUMN[currentStatus];
+
+      // Skip if same column (just reordering)
+      if (currentColumn === newColumnId) return;
+
+      // Validate status transition
+      if (!isValidStatusTransition(currentStatus, newColumnId)) {
+        // Show toast with invalid transition message
+        toast.error(
+          t("workspace.invalidTransition", "Cannot move task from {{from}} to {{to}}", {
+            from: t(`workspace.column.${currentColumn}`, currentColumn),
+            to: t(`workspace.column.${newColumnId}`, newColumnId),
+          })
+        );
+        return;
+      }
+
+      const isMovingToInProgress = newStatus === "in_progress" && currentStatus !== "in_progress";
 
       // Update task status via API
       updateTaskStatus.mutate({
@@ -923,8 +990,29 @@ export function WorkspaceKanbanPage() {
         setAutoStartTaskOnOpen(true);
       }
     },
-    [workspace, updateTaskStatus, sortedTasks]
+    [workspace, updateTaskStatus, sortedTasks, toast, t]
   );
+
+  // Handle drag start - compute valid drop targets for visual feedback
+  const handleDragStart = useCallback(
+    (activeId: string) => {
+      setDraggingTaskId(activeId);
+      // Find the task being dragged
+      const task = sortedTasks.find((t) => t.id === activeId);
+      if (task) {
+        const currentStatus = task.status as VibeTaskStatus;
+        const targets = getValidDropTargets(currentStatus);
+        setValidDropTargets(targets);
+      }
+    },
+    [sortedTasks]
+  );
+
+  // Handle drag cancel - clear visual feedback state
+  const handleDragCancel = useCallback(() => {
+    setDraggingTaskId(null);
+    setValidDropTargets([]);
+  }, []);
 
   // Open create task dialog
   const handleAddTask = useCallback(
@@ -1185,6 +1273,57 @@ export function WorkspaceKanbanPage() {
     [archiveTask, toast, t]
   );
 
+  // Stop task - move back to backlog
+  const handleStopTask = useCallback(
+    (taskId: string) => {
+      if (!workspace) return;
+      updateTaskStatus.mutate({
+        taskId,
+        status: "backlog",
+        workspacePath: workspace.path,
+      });
+      toast.success(t("workspace.taskStopped", "Task stopped"));
+    },
+    [workspace, updateTaskStatus, toast, t]
+  );
+
+  // View PR - open in browser
+  const handleViewPR = useCallback(
+    (prUrl: string) => {
+      if (prUrl) {
+        window.open(prUrl, "_blank", "noopener,noreferrer");
+      }
+    },
+    []
+  );
+
+  // Resume task - for failed/incomplete tasks
+  const handleResumeTask = useCallback(
+    (taskId: string) => {
+      if (!workspace) return;
+      updateTaskStatus.mutate({
+        taskId,
+        status: "queue", // Put back in queue to restart
+        workspacePath: workspace.path,
+      });
+    },
+    [workspace, updateTaskStatus]
+  );
+
+  // Recover task - for stuck tasks
+  const handleRecoverTask = useCallback(
+    (taskId: string) => {
+      if (!workspace) return;
+      updateTaskStatus.mutate({
+        taskId,
+        status: "queue", // Put back in queue to restart
+        workspacePath: workspace.path,
+      });
+      toast.success(t("workspace.taskRecovered", "Task recovered and restarted"));
+    },
+    [workspace, updateTaskStatus, toast, t]
+  );
+
   // Command palette commands
   const commands: Command[] = useMemo(
     () => [
@@ -1377,6 +1516,24 @@ export function WorkspaceKanbanPage() {
               )}
               {t("workspace.addTask", "Add Task")}
             </Button>
+            {/* Board Settings Button */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {t("workspace.boardSettings", "Board Settings")}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </>
         }
       />
@@ -1466,25 +1623,6 @@ export function WorkspaceKanbanPage() {
             </Tooltip>
           </TooltipProvider>
 
-          {/* Board Settings Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8"
-                  onClick={() => setSettingsOpen(true)}
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                {t("workspace.boardSettings", "Board Settings")}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           {/* Refresh Button */}
           <Button
             variant="ghost"
@@ -1524,6 +1662,8 @@ export function WorkspaceKanbanPage() {
         >
           <KanbanProvider
             onDragEnd={handleDragEnd}
+            onDragStart={handleDragStart}
+            onDragCancel={handleDragCancel}
             renderDragOverlay={(activeId) => {
               if (!activeId) return null;
               const task = sortedTasks.find((t) => t.id === activeId);
@@ -1596,7 +1736,7 @@ export function WorkspaceKanbanPage() {
                 <div
                   key={column.id}
                   className={cn(
-                    "relative flex flex-col min-h-0",
+                    "relative flex flex-col min-h-0 h-full",
                     isResizing === column.id && "select-none"
                   )}
                   style={{
@@ -1604,7 +1744,12 @@ export function WorkspaceKanbanPage() {
                     minWidth: `${columnWidth}px`,
                   }}
                 >
-                  <KanbanBoard id={column.id} backgroundColor={colorVar}>
+                  <KanbanBoard
+                    id={column.id}
+                    backgroundColor={colorVar}
+                    isDragging={draggingTaskId !== null}
+                    isValidDropTarget={validDropTargets.includes(column.id as KanbanColumnId)}
+                  >
                     <KanbanHeader>
                       {/* Compute column task IDs for selection */}
                       {(() => {
@@ -1965,8 +2110,33 @@ export function WorkspaceKanbanPage() {
                               onTitleChange={(title) =>
                                 handleTitleChange(task.id, title)
                               }
+                              onStart={
+                                (task.status === "backlog" || task.status === "queue") && !task.has_in_progress_attempt
+                                  ? () => handleStartTask(task.id)
+                                  : undefined
+                              }
+                              onStop={
+                                task.has_in_progress_attempt
+                                  ? () => handleStopTask(task.id)
+                                  : undefined
+                              }
+                              onRecover={
+                                task.is_stuck
+                                  ? () => handleRecoverTask(task.id)
+                                  : undefined
+                              }
+                              onResume={
+                                task.last_attempt_failed && !task.has_in_progress_attempt
+                                  ? () => handleResumeTask(task.id)
+                                  : undefined
+                              }
+                              onViewPR={
+                                task.pr_url
+                                  ? () => handleViewPR(task.pr_url!)
+                                  : undefined
+                              }
                               onArchive={
-                                task.status === "done"
+                                task.status === "done" && !task.archived
                                   ? () => handleArchiveTask(task.id)
                                   : undefined
                               }

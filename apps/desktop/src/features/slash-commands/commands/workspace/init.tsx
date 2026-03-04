@@ -13,7 +13,7 @@ export const initCommand: SlashCommandDefinition = {
     if (!context.workspacePath) {
       return {
         type: "action",
-        toast: { message: "No workspace selected", type: "error" },
+        toast: { message: "chat.slashCommands.noWorkspaceSelected", type: "error", i18n: true },
       };
     }
 

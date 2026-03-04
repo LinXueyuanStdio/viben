@@ -21,7 +21,7 @@ interface UseKanbanNavigationReturn {
   /** Handler for keydown events on the kanban container */
   handleKeyDown: (e: React.KeyboardEvent) => void;
   /** Ref to attach to the kanban container for focus management */
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   /** Focus the container */
   focusContainer: () => void;
 }

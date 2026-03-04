@@ -35,7 +35,7 @@ cat .trellis/workflow.md
 ### Step 2: Get Current Context
 
 ```bash
-python3 ./.trellis/scripts/get_context.py
+viben context
 ```
 
 This shows: developer identity, git status, current task (if any), active tasks.
@@ -123,7 +123,7 @@ Quick confirm:
 **Step 2: Create Task Directory** `[AI]`
 
 ```bash
-TASK_DIR=$(python3 ./.trellis/scripts/task.py create "<title>" --slug <name>)
+TASK_DIR=$(viben task create "<title>" --slug <name>)
 ```
 
 **Step 3: Write PRD** `[AI]`
@@ -196,7 +196,7 @@ Use this output format:
 Initialize default context:
 
 ```bash
-python3 ./.trellis/scripts/task.py init-context "$TASK_DIR" <type>
+viben task init-context "$TASK_DIR" <type>
 # type: backend | frontend | fullstack
 ```
 
@@ -204,14 +204,14 @@ Add specs found in your research pass:
 
 ```bash
 # For each relevant spec and code pattern:
-python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" implement "<path>" "<reason>"
-python3 ./.trellis/scripts/task.py add-context "$TASK_DIR" check "<path>" "<reason>"
+viben task add-context "$TASK_DIR" implement "<path>" "<reason>"
+viben task add-context "$TASK_DIR" check "<path>" "<reason>"
 ```
 
 **Step 7: Activate Task** `[AI]`
 
 ```bash
-python3 ./.trellis/scripts/task.py start "$TASK_DIR"
+viben task start "$TASK_DIR"
 ```
 
 This sets `.current-task` so hooks can inject context.
@@ -269,17 +269,17 @@ If yes, resume from the appropriate step (usually Step 7 or 8).
 | `/trellis:finish-work` | Before committing changes |
 | `/trellis:record-session` | After completing a task |
 
-### AI Scripts `[AI]`
+### AI Commands `[AI]`
 
-| Script | Purpose |
-|--------|---------|
-| `python3 ./.trellis/scripts/get_context.py` | Get session context |
-| `python3 ./.trellis/scripts/task.py create` | Create task directory |
-| `python3 ./.trellis/scripts/task.py init-context` | Initialize jsonl files |
-| `python3 ./.trellis/scripts/task.py add-context` | Add spec to jsonl |
-| `python3 ./.trellis/scripts/task.py start` | Set current task |
-| `python3 ./.trellis/scripts/task.py finish` | Clear current task |
-| `python3 ./.trellis/scripts/task.py archive` | Archive completed task |
+| Command | Purpose |
+|---------|---------|
+| `viben context` | Get session context |
+| `viben task create` | Create task directory |
+| `viben task init-context` | Initialize jsonl files |
+| `viben task add-context` | Add spec to jsonl |
+| `viben task start` | Set current task |
+| `viben task finish` | Clear current task |
+| `viben task archive` | Archive completed task |
 
 ---
 

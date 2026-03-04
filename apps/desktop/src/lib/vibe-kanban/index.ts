@@ -27,6 +27,9 @@ export {
   COLUMN_LABELS,
   VALID_TASK_STATUSES,
   isValidTaskStatus,
+  VALID_STATUS_TRANSITIONS,
+  isValidStatusTransition,
+  getValidDropTargets,
 } from "./types";
 
 // API client

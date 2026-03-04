@@ -77,10 +77,9 @@ import {
   TaskSubtasksTab,
   TaskPRDTab,
   TaskLogsTab,
-  TaskFilesTab,
   type TaskLog,
-  type TaskFile,
 } from "./task-tabs";
+import { FileBrowser } from "@/components/file-browser";
 
 // Editable Title Component
 function EditableTitle({
@@ -318,7 +317,6 @@ export interface TaskForPanel {
   specsPath?: string;           // Task specs directory path (.viben/tasks/<id>/)
   prdContent?: string | null;   // PRD content
   logs?: TaskLog | null;        // Execution logs
-  modifiedFiles?: TaskFile[];   // Modified files list
 }
 
 // Available task for relationships
@@ -427,7 +425,7 @@ export function TaskDetailPanel({
     });
 
     // Status change event (if different from default)
-    if (task.status && task.status !== "todo") {
+    if (task.status && task.status !== "backlog") {
       events.push({
         id: `${task.id}-status`,
         type: "status_changed",
@@ -437,7 +435,7 @@ export function TaskDetailPanel({
         },
         timestamp: task.updated_at,
         data: {
-          oldValue: "todo",
+          oldValue: "backlog",
           newValue: task.status,
         },
       });
@@ -816,16 +814,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           <TabsTrigger value="files" className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4" />
             {t("workspace.tabs.files", "Files")}
-            {(() => {
-              const fileCount = specsData.files.length > 0
-                ? specsData.files.length
-                : (task.modifiedFiles?.length ?? 0);
-              return fileCount > 0 ? (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">
-                  {fileCount}
-                </Badge>
-              ) : null;
-            })()}
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -1274,26 +1262,29 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           />
         </TabsContent>
 
-        {/* Files Tab */}
+        {/* Files Tab - Shows task directory files using FileBrowser */}
         <TabsContent value="files" className="flex-1 min-h-0">
-          <TaskFilesTab
-            taskId={task.id}
-            files={specsData.files.length > 0 ? specsData.files : task.modifiedFiles}
-            isLoading={specsData.isLoading}
-            error={specsData.error}
-            onRefresh={specsData.refresh}
-            onOpenInIDE={(path) => {
-              // Open file in default editor via gateway
-              const client = getGatewayClient();
-              client.openFile(path).catch(console.error);
-            }}
-            onLoadFileContent={async (path) => {
-              // Load file content via gateway
-              const client = getGatewayClient();
-              const result = await client.readFile(path);
-              return result.content;
-            }}
-          />
+          {specsData.taskDir ? (
+            <FileBrowser
+              workspacePath={workspacePath}
+              initialPath={specsData.taskDir}
+              hideToolbar={true}
+              className="h-full"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full py-12">
+              <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                {t("workspace.filesTab.noTaskDir", "No task directory")}
+              </h3>
+              <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
+                {t(
+                  "workspace.filesTab.taskDirWillAppear",
+                  "Task files will appear here after the task directory is created"
+                )}
+              </p>
+            </div>
+          )}
         </TabsContent>
 
         {/* Agent Chat Tab */}

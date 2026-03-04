@@ -245,6 +245,66 @@ export const TASK_STATUS_PRIORITY: Record<TaskStatus, number> = {
 };
 
 // ==========================================
+// Status Transition Constraints (for drag-drop)
+// ==========================================
+
+/**
+ * Valid status transitions map
+ * Defines which columns a task can be dragged to based on its current status
+ *
+ * Rules:
+ * - backlog: Can go to queue (add to queue) or in_progress (start immediately)
+ * - queue: Can go back to backlog (remove from queue) or in_progress (force start)
+ * - in_progress: Can go to backlog/queue (stop), human_review (manual review)
+ * - ai_review: Can go to in_progress (back to coding), human_review (escalate)
+ * - human_review: Can go anywhere (human decides next step)
+ * - done: Can go to backlog (reopen task)
+ * - pr_created: Same as done
+ * - error: Can go to backlog/queue (retry) or human_review
+ */
+export const VALID_STATUS_TRANSITIONS: Record<TaskStatus, KanbanColumnId[]> = {
+  backlog: ["queue", "in_progress"],
+  queue: ["backlog", "in_progress"],
+  in_progress: ["backlog", "queue", "human_review"],
+  ai_review: ["in_progress", "human_review", "done"],
+  human_review: ["backlog", "queue", "in_progress", "done"],
+  done: ["backlog"],
+  pr_created: ["backlog"],
+  error: ["backlog", "queue", "human_review"],
+};
+
+/**
+ * Check if a status transition is valid for drag-drop
+ * @param fromStatus - Current task status
+ * @param toColumn - Target column ID
+ * @returns true if the transition is allowed
+ */
+export function isValidStatusTransition(
+  fromStatus: TaskStatus,
+  toColumn: KanbanColumnId
+): boolean {
+  // Same column is always valid (reordering within column)
+  const currentColumn = STATUS_TO_COLUMN[fromStatus];
+  if (currentColumn === toColumn) return true;
+
+  // Check against valid transitions
+  const validTargets = VALID_STATUS_TRANSITIONS[fromStatus];
+  return validTargets?.includes(toColumn) ?? false;
+}
+
+/**
+ * Get valid drop targets for a task based on its current status
+ * @param fromStatus - Current task status
+ * @returns Array of valid column IDs the task can be dropped into
+ */
+export function getValidDropTargets(fromStatus: TaskStatus): KanbanColumnId[] {
+  const currentColumn = STATUS_TO_COLUMN[fromStatus];
+  const validTargets = VALID_STATUS_TRANSITIONS[fromStatus] ?? [];
+  // Include current column (for reordering)
+  return [currentColumn, ...validTargets.filter(col => col !== currentColumn)];
+}
+
+// ==========================================
 // Column Colors & Styling
 // ==========================================
 

@@ -86,6 +86,9 @@ export function LogsPage() {
   const pidCheckInProgress = useRef<Set<number>>(new Set());
 
   // Check PIDs directly for sessions that don't match any current server
+  // NOTE: We use a ref to track already-checked PIDs to avoid re-triggering
+  const checkedPidsRef = useRef<Set<number>>(new Set());
+
   const checkOrphanedPids = useCallback(async () => {
     const orphanedPids: number[] = [];
 
@@ -105,12 +108,13 @@ export function LogsPage() {
 
     // Check each orphaned PID
     for (const pid of orphanedPids) {
-      // Skip if already checking or already checked
-      if (pidCheckInProgress.current.has(pid) || directPidStatus[pid] !== undefined) {
+      // Skip if already checking or already checked (use ref to avoid dependency cycle)
+      if (pidCheckInProgress.current.has(pid) || checkedPidsRef.current.has(pid)) {
         continue;
       }
 
       pidCheckInProgress.current.add(pid);
+      checkedPidsRef.current.add(pid);
       try {
         const isAlive = await getGatewayClient().isProcessAlive(pid);
         setDirectPidStatus(prev => ({ ...prev, [pid]: isAlive }));
@@ -120,7 +124,7 @@ export function LogsPage() {
         pidCheckInProgress.current.delete(pid);
       }
     }
-  }, [sessions, mcpServerStatuses, mcpServers, directPidStatus]);
+  }, [sessions, mcpServerStatuses, mcpServers]); // Removed directPidStatus to break the cycle
 
   // Check orphaned PIDs on mount and when sessions change
   useEffect(() => {
@@ -167,6 +171,7 @@ export function LogsPage() {
     refresh();
     // Clear cached direct PID status to force re-check
     setDirectPidStatus({});
+    checkedPidsRef.current.clear();
     await checkAllServers(true);
   }, [refresh, checkAllServers]);
 

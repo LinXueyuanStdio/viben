@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { applyPatch, type Operation } from "fast-json-patch";
 import type { TaskWithAttemptStatus } from "./types";
 import {
@@ -51,6 +52,7 @@ export function useTasksWebSocket(
   projectId: string | null,
   options: UseTasksWebSocketOptions = {}
 ): UseWebSocketReturn<TaskWithAttemptStatus[]> {
+  const { t } = useTranslation();
   const opts = { ...DEFAULT_OPTIONS, ...options };
 
   // State
@@ -242,7 +244,7 @@ export function useTasksWebSocket(
         // Check if this was a clean close or an error
         if (event.code !== 1000 && event.code !== 1001) {
           setConnectionState("error");
-          const reason = getWebSocketCloseReason(event.code, event.reason);
+          const reason = getWebSocketCloseReason(event.code, t, event.reason);
           setError(new Error(reason));
         } else {
           setConnectionState("disconnected");
@@ -277,6 +279,7 @@ export function useTasksWebSocket(
     startHeartbeat,
     resetHeartbeatTimeout,
     clearHeartbeat,
+    t,
   ]);
 
   // Manual reconnect

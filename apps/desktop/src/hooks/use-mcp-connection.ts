@@ -244,8 +244,8 @@ export function useMcpConnection({
     }
 
     if (!isRemoteConfig(effectiveConfig)) {
-      const errorMsg = "Invalid config: missing url";
-      console.warn(errorMsg);
+      const errorMsg = "errors.mcp.invalidConfigMissingUrl";
+      console.warn("Invalid config: missing url");
       setConnectionError(errorMsg);
       setConnectionStatus("error");
       return;
@@ -364,7 +364,7 @@ export function useMcpConnection({
     } catch (error) {
       console.error("Connection error:", error);
       // Extract detailed error message
-      let errorMsg = "Connection failed";
+      let errorMsg = "errors.mcp.connectionFailed";
       if (error instanceof Error) {
         errorMsg = error.message;
         // Try to extract more details from the error

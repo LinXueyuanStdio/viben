@@ -141,7 +141,7 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
         eventSource.onerror = (event) => {
           console.error("[useBackgroundTasks] SSE error:", event);
           setIsConnected(false);
-          setConnectionError("Connection lost");
+          setConnectionError("errors.backgroundTasks.connectionLost");
 
           // Close and reconnect
           eventSource.close();
@@ -157,7 +157,7 @@ export function useBackgroundTasks(): UseBackgroundTasksReturn {
         };
       } catch (err) {
         console.error("[useBackgroundTasks] Failed to create EventSource:", err);
-        setConnectionError("Failed to connect");
+        setConnectionError("errors.backgroundTasks.failedToConnect");
 
         // Schedule reconnect
         if (!reconnectTimerRef.current) {

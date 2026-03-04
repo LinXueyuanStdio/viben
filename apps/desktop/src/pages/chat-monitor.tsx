@@ -1258,7 +1258,7 @@ function SpanDetailPanel({
                 )}
                 {httpUrl && (
                   <div className="text-sm">
-                    <span className="text-muted-foreground">URL</span>
+                    <span className="text-muted-foreground">{t("observability.url")}</span>
                     <p className="font-mono text-xs mt-0.5 break-all">{httpUrl}</p>
                   </div>
                 )}

@@ -108,6 +108,7 @@ interface MetadataEntry {
 
 // Annotation badges component
 function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
+  const { t } = useTranslation();
   // MCP spec defaults: readOnlyHint=false, destructiveHint=true, idempotentHint=false, openWorldHint=true
   const getValueAndImplied = (
     value: boolean | undefined,
@@ -124,28 +125,28 @@ function AnnotationBadges({ annotations }: { annotations?: ToolAnnotations }) {
 
   const badges = [
     {
-      label: "Read-only",
+      label: t("inspector.annotations.readOnly", "Read-only"),
       value: readOnly.value,
       implied: readOnly.implied,
-      description: "Tool does not modify its environment",
+      description: t("inspector.annotations.readOnlyDesc", "Tool does not modify its environment"),
     },
     {
-      label: "Destructive",
+      label: t("inspector.annotations.destructive", "Destructive"),
       value: destructive.value,
       implied: destructive.implied,
-      description: "Tool may perform destructive updates",
+      description: t("inspector.annotations.destructiveDesc", "Tool may perform destructive updates"),
     },
     {
-      label: "Idempotent",
+      label: t("inspector.annotations.idempotent", "Idempotent"),
       value: idempotent.value,
       implied: idempotent.implied,
-      description: "Calling repeatedly has no additional effect",
+      description: t("inspector.annotations.idempotentDesc", "Calling repeatedly has no additional effect"),
     },
     {
-      label: "Open-world",
+      label: t("inspector.annotations.openWorld", "Open-world"),
       value: openWorld.value,
       implied: openWorld.implied,
-      description: "Tool may interact with external entities",
+      description: t("inspector.annotations.openWorldDesc", "Tool may interact with external entities"),
     },
   ];
 
@@ -837,22 +838,43 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
             <div className="text-center p-4 text-xs text-muted-foreground">{t("inspector.noToolsFound")}</div>
           ) : (
             <>
-              {filteredTools.map((tool) => (
-                <div
-                  key={tool.name}
-                  onClick={() => setSelectedTool(tool)}
-                  className={`p-2.5 rounded-lg cursor-pointer transition-colors ${
-                    selectedTool?.name === tool.name
-                      ? "bg-blue-500/10 border border-blue-500/30"
-                      : "hover:bg-muted/50 border border-transparent"
-                  }`}
-                >
-                  <div className="font-mono text-xs font-medium truncate">{tool.name}</div>
-                  {tool.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tool.description}</p>
-                  )}
-                </div>
-              ))}
+              {filteredTools.map((tool) => {
+                // Show compact annotation indicators
+                const hasReadOnly = tool.annotations?.readOnlyHint === true;
+                const hasDestructive = tool.annotations?.destructiveHint !== false; // default true
+                const hasIdempotent = tool.annotations?.idempotentHint === true;
+
+                return (
+                  <div
+                    key={tool.name}
+                    onClick={() => setSelectedTool(tool)}
+                    className={`p-2.5 rounded-lg cursor-pointer transition-colors ${
+                      selectedTool?.name === tool.name
+                        ? "bg-blue-500/10 border border-blue-500/30"
+                        : "hover:bg-muted/50 border border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-xs font-medium truncate flex-1">{tool.name}</span>
+                      {/* Compact annotation indicators */}
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {hasReadOnly && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500" title={t("inspector.annotations.readOnly", "Read-only")} />
+                        )}
+                        {hasDestructive && !hasReadOnly && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" title={t("inspector.annotations.destructive", "Destructive")} />
+                        )}
+                        {hasIdempotent && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" title={t("inspector.annotations.idempotent", "Idempotent")} />
+                        )}
+                      </div>
+                    </div>
+                    {tool.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tool.description}</p>
+                    )}
+                  </div>
+                );
+              })}
               {/* Load More Button */}
               {nextCursor && (
                 <div className="pt-2">
@@ -886,12 +908,10 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                 <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap">{selectedTool.description}</p>
               )}
 
-              {/* Annotation Badges */}
-              {selectedTool.annotations && (
-                <div className="mt-2">
-                  <AnnotationBadges annotations={selectedTool.annotations} />
-                </div>
-              )}
+              {/* Annotation Badges - Always show with MCP spec defaults */}
+              <div className="mt-2">
+                <AnnotationBadges annotations={selectedTool.annotations} />
+              </div>
             </div>
 
             {/* Schema Collapsible */}
@@ -1026,7 +1046,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                 <Input
                                   value={entry.key}
                                   onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
-                                  placeholder="Key (e.g. requestId)"
+                                  placeholder={t("inspector.keyPlaceholder")}
                                   className={cn(
                                     "h-8 text-xs flex-1",
                                     validationError && "border-red-500 focus-visible:ring-red-500"
@@ -1036,7 +1056,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                 <Input
                                   value={entry.value}
                                   onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
-                                  placeholder="Value"
+                                  placeholder={t("placeholders.value")}
                                   className="h-8 text-xs flex-1"
                                   disabled={Boolean(validationError)}
                                 />
@@ -1128,7 +1148,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                     <textarea
                       value={jsonInput}
                       onChange={(e) => handleJsonInputChange(e.target.value)}
-                      placeholder='{"key": "value"}'
+                      placeholder={t("inspector.jsonPlaceholder")}
                       className={cn(
                         "w-full font-mono text-xs min-h-[200px] p-3 rounded-md border resize-none bg-muted/50",
                         "focus:outline-none focus:ring-2 focus:ring-ring",
@@ -1165,7 +1185,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                 <Input
                                   value={entry.key}
                                   onChange={(e) => updateMetadataEntry(entry.id, "key", e.target.value)}
-                                  placeholder="Key (e.g. requestId)"
+                                  placeholder={t("inspector.keyPlaceholder")}
                                   className={cn(
                                     "h-8 text-xs flex-1",
                                     validationError && "border-red-500 focus-visible:ring-red-500"
@@ -1175,7 +1195,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                                 <Input
                                   value={entry.value}
                                   onChange={(e) => updateMetadataEntry(entry.id, "value", e.target.value)}
-                                  placeholder="Value"
+                                  placeholder={t("placeholders.value")}
                                   className="h-8 text-xs flex-1"
                                   disabled={Boolean(validationError)}
                                 />
@@ -1323,7 +1343,7 @@ export function InspectorTools({ makeRequest, enabled = true, serverCapabilities
                       {execution.taskId && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <ListTodo className="h-3 w-3" />
-                          <span>Task ID: <code className="bg-muted/50 px-1 rounded">{execution.taskId}</code></span>
+                          <span>{t("inspector.taskIdLabel")} <code className="bg-muted/50 px-1 rounded">{execution.taskId}</code></span>
                         </div>
                       )}
 
