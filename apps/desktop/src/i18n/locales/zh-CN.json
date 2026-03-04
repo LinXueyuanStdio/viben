@@ -2394,8 +2394,18 @@
       "priority": "优先级",
       "created": "创建时间",
       "updated": "更新时间",
-      "name": "名称"
+      "name": "名称",
+      "dueDate": "截止日期"
     },
+    "filter": {
+      "backlog": "筛选：仅待办",
+      "inProgress": "筛选：仅进行中",
+      "done": "筛选：仅完成",
+      "clear": "清除所有筛选"
+    },
+    "selectAll": "全选任务",
+    "clearSelection": "取消选择",
+    "noTasksToArchive": "没有可归档的任务",
     "clearFilters": "清除",
     "workspace": "工作区",
     "agentChat": "智能体对话",
@@ -2707,6 +2717,17 @@
       "stuckDuration": "已卡住 {{duration}}",
       "incomplete": "未完成",
       "recovering": "恢复中..."
+    },
+    "taskWarnings": {
+      "stuckTitle": "任务似乎卡住了",
+      "stuckDescription": "此任务标记为运行中，但未找到活动进程。这可能是因为应用崩溃或进程被意外终止。",
+      "stuckDuration": "已卡住 {{duration}}",
+      "recovering": "恢复中...",
+      "recoverAndRestart": "恢复并重启任务",
+      "incompleteTitle": "任务未完成",
+      "incompleteDescription": "此任务有规格和实现计划，但从未完成任何子任务（{{completed}}/{{total}}）。进程可能在规格创建期间崩溃。点击恢复以继续实现。",
+      "resuming": "恢复中...",
+      "resumeTask": "恢复任务"
     },
     "reviewReason": {
       "label": "审核原因",

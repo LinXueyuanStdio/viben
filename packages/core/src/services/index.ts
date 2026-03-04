@@ -73,6 +73,21 @@ export {
   type AgentConfig,
   type GitConfig,
   type TaskMetadata,
+  // Implementation plan types
+  type ImplementationPlanSubtask,
+  type ImplementationPlanFile,
+  // Implementation plan V2 types (extended)
+  type ImplementationPlanSubtaskV2,
+  type ImplementationPhase,
+  type ImplementationProgress,
+  type ImplementationPlanFileV2,
+  // Task specs types
+  type TaskSpecsData,
+  type TaskLogs,
+  type TaskLogPhase,
+  type TaskLogEntry,
+  type TaskLogEntryType,
+  type TaskLogPhaseStatus,
 } from "./task-service";
 
 // Cron service

@@ -13,6 +13,9 @@ import { McpMonitorService } from "../services/mcp-monitor";
 import { ConfigWatcherService, getMcpServersConfigPath } from "../services/config-watcher";
 import { ChannelRouter, ChannelRuntime, channelManager } from "../channels";
 import { TaskQueueManager } from "./queue";
+import { TaskRecoveryService } from "../task/recovery/task-recovery";
+import { taskEventStore } from "../task/events/event-store";
+import { TaskSSEManager } from "./sse/task-sse-manager";
 
 /**
  * Application state for the gateway
@@ -40,6 +43,10 @@ export interface AppState {
   mcpMonitor: McpMonitorService;
   /** Config watcher for monitoring MCP config file changes */
   configWatcher: ConfigWatcherService;
+  /** Task recovery service for stuck task detection */
+  taskRecovery: TaskRecoveryService;
+  /** Task SSE manager for real-time task state updates */
+  taskSSEManager: TaskSSEManager;
 }
 
 /**
@@ -86,6 +93,15 @@ export function createAppState(): AppState {
   // Watch the MCP servers config file
   configWatcher.watch(getMcpServersConfigPath());
 
+  // Create task SSE manager for real-time task state updates
+  const taskSSEManager = new TaskSSEManager();
+
+  // Create task recovery service for stuck task detection
+  const taskRecovery = new TaskRecoveryService(taskEventStore, taskSSEManager, {
+    stuckThresholdMs: 5 * 60 * 1000, // 5 minutes
+    autoRecover: true,
+  });
+
   return {
     events,
     sessionStore,
@@ -98,5 +114,7 @@ export function createAppState(): AppState {
     taskQueue,
     mcpMonitor,
     configWatcher,
+    taskRecovery,
+    taskSSEManager,
   };
 }

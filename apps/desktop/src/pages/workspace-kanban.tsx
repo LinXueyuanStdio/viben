@@ -1513,15 +1513,26 @@ export function WorkspaceKanbanPage() {
   // Command palette commands
   const commands: Command[] = useMemo(
     () => [
-      // Navigation
+      // === Navigation ===
       {
         id: "goto-backlog",
         label: t("workspace.column.backlog", "Backlog"),
         category: "navigation",
         action: () => {
-          const backlogTasks = tasksByColumn["backlog"];
-          if (backlogTasks && backlogTasks.length > 0) {
-            setSelectedTaskId(backlogTasks[0].id);
+          const tasks = tasksByColumn["backlog"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
+          }
+        },
+      },
+      {
+        id: "goto-queue",
+        label: t("workspace.column.queue", "Queue"),
+        category: "navigation",
+        action: () => {
+          const tasks = tasksByColumn["queue"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
           }
         },
       },
@@ -1536,7 +1547,41 @@ export function WorkspaceKanbanPage() {
           }
         },
       },
-      // Actions
+      {
+        id: "goto-ai-review",
+        label: t("workspace.column.aiReview", "AI Review"),
+        category: "navigation",
+        action: () => {
+          const tasks = tasksByColumn["ai_review"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
+          }
+        },
+      },
+      {
+        id: "goto-human-review",
+        label: t("workspace.column.humanReview", "Human Review"),
+        category: "navigation",
+        action: () => {
+          const tasks = tasksByColumn["human_review"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
+          }
+        },
+      },
+      {
+        id: "goto-done",
+        label: t("workspace.column.done", "Done"),
+        category: "navigation",
+        action: () => {
+          const tasks = tasksByColumn["done"];
+          if (tasks && tasks.length > 0) {
+            setSelectedTaskId(tasks[0].id);
+          }
+        },
+      },
+
+      // === Actions ===
       {
         id: "new-task",
         label: t("workspace.addTask", "Add Task"),
@@ -1552,6 +1597,82 @@ export function WorkspaceKanbanPage() {
         action: () => handleRefresh(),
       },
       {
+        id: "queue-all",
+        label: t("workspace.queueAll", "Queue All Backlog Tasks"),
+        shortcut: "q",
+        category: "action",
+        action: () => handleQueueAll(),
+      },
+      {
+        id: "queue-settings",
+        label: t("workspace.queueSettings", "Queue Settings"),
+        category: "action",
+        action: () => setQueueSettingsOpen(true),
+      },
+      {
+        id: "archive-done",
+        label: t("workspace.archiveAll", "Archive All Done Tasks"),
+        category: "action",
+        action: async () => {
+          const doneTasks = tasksByColumn["done"] || [];
+          const unarchived = doneTasks.filter((task) => !task.archived);
+          if (unarchived.length === 0) {
+            toast.info(t("workspace.noTasksToArchive", "No tasks to archive"));
+            return;
+          }
+          for (const task of unarchived) {
+            await handleArchiveTask(task.id);
+          }
+          toast.success(
+            t("workspace.archiveAllSuccess", "Archived {count} tasks").replace("{count}", String(unarchived.length))
+          );
+        },
+      },
+
+      // === Selection ===
+      {
+        id: "select-all",
+        label: t("workspace.selectAll", "Select All Tasks"),
+        shortcut: "a",
+        category: "action",
+        action: () => selectAll(),
+      },
+      {
+        id: "clear-selection",
+        label: t("workspace.clearSelection", "Clear Selection"),
+        shortcut: "Escape",
+        category: "action",
+        action: () => clearSelection(),
+      },
+
+      // === Task Operations (when task selected) ===
+      ...(selectedTaskId ? [
+        {
+          id: "run-task",
+          label: t("workspace.runAgent", "Run Selected Task"),
+          category: "action",
+          action: () => {
+            const task = sortedTasks.find((t) => t.id === selectedTaskId);
+            if (task && !task.has_in_progress_attempt && task.status !== "done") {
+              handleStartTask(selectedTaskId);
+            }
+          },
+        },
+        {
+          id: "stop-task",
+          label: t("workspace.stopAgent", "Stop Selected Task"),
+          category: "action",
+          action: () => {
+            const task = sortedTasks.find((t) => t.id === selectedTaskId);
+            if (task?.has_in_progress_attempt) {
+              handleStopTask(selectedTaskId);
+            }
+          },
+        },
+      ] : []),
+
+      // === View ===
+      {
         id: "toggle-stats",
         label: showStats
           ? t("workspace.hideStats", "Hide Stats")
@@ -1559,7 +1680,6 @@ export function WorkspaceKanbanPage() {
         category: "view",
         action: () => setShowStats((s) => !s),
       },
-      // View
       {
         id: "view-kanban",
         label: t("workspace.viewKanban", "Kanban View"),
@@ -1572,7 +1692,42 @@ export function WorkspaceKanbanPage() {
         category: "view",
         action: () => setViewMode("list"),
       },
-      // Sort
+      {
+        id: "toggle-archived",
+        label: showArchived
+          ? t("workspace.hideArchived", "Hide Archived")
+          : t("workspace.showArchived", "Show Archived"),
+        category: "view",
+        action: () => toggleShowArchived(),
+      },
+
+      // === Filter ===
+      {
+        id: "filter-backlog",
+        label: t("workspace.filter.backlog", "Filter: Backlog Only"),
+        category: "filter",
+        action: () => setFilter({ ...filter, status: ["backlog"] }),
+      },
+      {
+        id: "filter-in-progress",
+        label: t("workspace.filter.inProgress", "Filter: In Progress Only"),
+        category: "filter",
+        action: () => setFilter({ ...filter, status: ["in_progress"] }),
+      },
+      {
+        id: "filter-done",
+        label: t("workspace.filter.done", "Filter: Done Only"),
+        category: "filter",
+        action: () => setFilter({ ...filter, status: ["done"] }),
+      },
+      {
+        id: "clear-filters",
+        label: t("workspace.filter.clear", "Clear All Filters"),
+        category: "filter",
+        action: () => setFilter({ status: [], priority: [], tags: [], search: "" }),
+      },
+
+      // === Sort ===
       {
         id: "sort-priority",
         label: t("workspace.sort.priority", "Sort by Priority"),
@@ -1591,13 +1746,37 @@ export function WorkspaceKanbanPage() {
         category: "sort",
         action: () => handleSortChange("title", "asc"),
       },
+      {
+        id: "sort-created",
+        label: t("workspace.sort.created", "Sort by Created Date"),
+        category: "sort",
+        action: () => handleSortChange("createdAt", "desc"),
+      },
+      {
+        id: "sort-updated",
+        label: t("workspace.sort.updated", "Sort by Updated Date"),
+        category: "sort",
+        action: () => handleSortChange("updatedAt", "desc"),
+      },
     ],
     [
       t,
       tasksByColumn,
+      sortedTasks,
+      selectedTaskId,
       handleAddTask,
       handleRefresh,
+      handleQueueAll,
+      handleArchiveTask,
+      handleStartTask,
+      handleStopTask,
+      selectAll,
+      clearSelection,
       showStats,
+      showArchived,
+      toggleShowArchived,
+      filter,
+      setFilter,
       handleSortChange,
     ]
   );
