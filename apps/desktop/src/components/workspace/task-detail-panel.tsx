@@ -82,6 +82,8 @@ import {
 } from "./task-tabs";
 import { FileBrowser } from "@/components/file-browser";
 import { TaskActionButtons } from "./kanban/task-action-buttons";
+import { TaskWarnings } from "./kanban/task-warnings";
+import { useStuckDetection } from "@/hooks/use-stuck-detection";
 import type {
   TaskStatus,
   XStateValue,
@@ -266,17 +268,6 @@ function formatEventTime(timestamp: string, t: (key: string, fallback: string, o
   });
 }
 
-// Format stuck duration helper
-function formatStuckDuration(ms: number): string {
-  const minutes = Math.floor(ms / 60000);
-  const hours = Math.floor(ms / 3600000);
-  const days = Math.floor(ms / 86400000);
-
-  if (days > 0) return `${days}d ${hours % 24}h`;
-  if (hours > 0) return `${hours}h ${minutes % 60}m`;
-  return `${minutes}m`;
-}
-
 // Get badge class for event type
 function getEventTypeBadgeClass(eventType: TaskEventType): string {
   const eventClasses: Partial<Record<TaskEventType, string>> = {
@@ -446,6 +437,36 @@ export function TaskDetailPanel({
 
   // Load task specs data (PRD, subtasks, logs, files) from .viben/tasks/{taskId}/
   const specsData = useTaskSpecsData(task?.id ?? null, workspacePath);
+
+  // Stuck detection with enhanced recovery
+  const {
+    isStuck: detectedStuck,
+    isIncomplete,
+    stuckDuration,
+    taskProgress,
+    isRecovering,
+    handleRecover,
+    handleResume,
+  } = useStuckDetection({
+    taskId: task?.id ?? "",
+    isRunning: task?.has_in_progress_attempt ?? false,
+    workspacePath,
+    lastUpdated: task?.updated_at,
+    subtasks: specsData.subtasks,
+    hasSpec: !!specsData.prdContent,
+    autoRestartOnRecovery: true, // Enable one-click recovery
+    onRecovered: () => {
+      console.log(`[TaskDetailPanel] Task ${task?.id} recovered`);
+      onUpdate?.({ _refresh: true });
+    },
+    onResumed: () => {
+      console.log(`[TaskDetailPanel] Task ${task?.id} resumed`);
+      onUpdate?.({ _refresh: true });
+    },
+  });
+
+  // Use detected stuck status or fallback to task property
+  const isStuck = detectedStuck || task?.isStuck || false;
 
   // Handle autoStartOnOpen from parent (e.g., when clicking "Run" from card dropdown)
   useEffect(() => {
@@ -1069,24 +1090,17 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                     </h3>
                   </div>
 
-                  {/* Stuck Warning */}
-                  {task.isStuck && (
-                    <div className="mb-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-                      <div className="flex items-center gap-2 text-warning">
-                        <AlertTriangle className="h-4 w-4" />
-                        <span className="text-sm font-medium">
-                          {t("workspace.taskStatus.stuck", "Task is stuck")}
-                        </span>
-                      </div>
-                      {task.stuckDuration && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {t("workspace.taskStatus.stuckDuration", "Stuck for {{duration}}", {
-                            duration: formatStuckDuration(task.stuckDuration),
-                          })}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Task Warnings - Stuck and Incomplete detection with one-click recovery */}
+                  <TaskWarnings
+                    isStuck={isStuck}
+                    isIncomplete={isIncomplete}
+                    isRecovering={isRecovering}
+                    taskProgress={taskProgress}
+                    stuckDuration={stuckDuration}
+                    onRecover={handleRecover}
+                    onResume={handleResume}
+                    className="mb-3"
+                  />
 
                   {/* Task Action Buttons */}
                   <div className="mb-3">
@@ -1096,7 +1110,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       status={task.status as TaskStatus}
                       xstateState={task.xstateState}
                       reviewReason={task.reviewReason}
-                      isStuck={task.isStuck}
+                      isStuck={isStuck}
                       isRunning={task.has_in_progress_attempt}
                       lastAttemptFailed={task.last_attempt_failed}
                       executionPhase={task.executionPhase}
@@ -1123,7 +1137,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       <span className="text-sm text-muted-foreground">
                         {t("workspace.status", "Status")}:
                       </span>
-                      {task.isStuck ? (
+                      {isStuck ? (
                         <Badge variant="outline" className="gap-1.5 pl-1.5 bg-warning/10 text-warning border-warning/30">
                           <AlertTriangle className="h-2.5 w-2.5" />
                           {t("workspace.taskStatus.stuck", "Stuck")}

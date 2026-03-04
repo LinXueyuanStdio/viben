@@ -79,3 +79,14 @@ export {
   type RecoverySummary,
   type RecoveryConfig,
 } from "./recovery/task-recovery";
+
+// =============================================================================
+// Agent Events (State Machine Integration)
+// =============================================================================
+
+export {
+  AgentEventEmitter,
+  agentEventEmitter,
+  type AgentEventOptions,
+  type AgentEventResult,
+} from "./events/agent-events";

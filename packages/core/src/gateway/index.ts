@@ -21,6 +21,7 @@ import {
 } from "../telemetry";
 import { agentService } from "../services/agent";
 import { getActiveWsConnectionCount } from "./routes/ws";
+import { workspaceManager } from "../workspace";
 
 export { AppState, createAppState } from "./state";
 export { registerRoutes } from "./routes";
@@ -243,6 +244,46 @@ export async function createGateway(config: GatewayConfig = {}): Promise<Fastify
   } catch (e) {
     logger?.warn({ error: e }, "Failed to start task queue manager");
     console.warn("[Gateway] Failed to start task queue manager:", e);
+  }
+
+  // Run task recovery on startup for all known workspaces
+  try {
+    const workspaces = await workspaceManager.listWorkspaces();
+    let totalRecovered = 0;
+    let totalChecked = 0;
+
+    for (const workspace of workspaces) {
+      try {
+        const summary = await state.taskRecovery.recoverOnStartup(workspace.path);
+        totalChecked += summary.totalChecked;
+        totalRecovered += summary.recovered;
+
+        if (summary.recovered > 0) {
+          logger?.info(
+            { workspace: workspace.path, recovered: summary.recovered, checked: summary.totalChecked },
+            "Task recovery completed for workspace"
+          );
+        }
+      } catch (workspaceError) {
+        logger?.warn(
+          { workspace: workspace.path, error: workspaceError },
+          "Failed to recover tasks for workspace"
+        );
+      }
+    }
+
+    if (totalChecked > 0) {
+      logger?.info(
+        { totalChecked, totalRecovered, workspaceCount: workspaces.length },
+        "Task recovery completed"
+      );
+      console.log(
+        `[Gateway] Task recovery completed: ${totalRecovered}/${totalChecked} tasks recovered across ${workspaces.length} workspace(s)`
+      );
+    }
+  } catch (e) {
+    logger?.warn({ error: e }, "Failed to run task recovery");
+    console.warn("[Gateway] Failed to run task recovery:", e);
   }
 
   // Register Observable Gauge callbacks for metrics

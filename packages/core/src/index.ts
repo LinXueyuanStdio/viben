@@ -330,6 +330,10 @@ export {
   type GatewayEvent,
   type CronJobData,
   type EventListener,
+  // Task state machine event types
+  type TaskStateChangedData,
+  type TaskRecoveredData,
+  type TaskEventAppliedData,
   // Session store service
   SessionStoreService,
   sessionStoreService,
@@ -345,6 +349,41 @@ export {
   type UIMessage,
   type AgentMessage,
   type SessionStats,
+  // Task service types (unified task storage)
+  TaskService,
+  taskService,
+  VALID_TASK_STATUSES,
+  isValidTaskStatus,
+  type UnifiedTask,
+  type TaskStatus as UnifiedTaskStatus,
+  type ReviewReason,
+  type SubtaskStatus,
+  type ExecutionPhase,
+  type ExecutionProgress,
+  type SubtaskInfo,
+  type XStateValue,
+  type TaskEvent,
+  type TaskEventType,
+  type TaskSource,
+  type TaskClassification,
+  type AgentConfig as TaskAgentConfig,
+  type GitConfig,
+  type TaskMetadata,
+  // Implementation plan types
+  type ImplementationPlanSubtask,
+  type ImplementationPlanFile,
+  // Implementation plan V2 types (extended for Task State Machine)
+  type ImplementationPlanSubtaskV2,
+  type ImplementationPhase,
+  type ImplementationProgress,
+  type ImplementationPlanFileV2,
+  // Task specs types
+  type TaskSpecsData,
+  type TaskLogs,
+  type TaskLogPhase,
+  type TaskLogEntry,
+  type TaskLogEntryType,
+  type TaskLogPhaseStatus,
   // Cron service
   CronService,
   type CronJob,
@@ -442,6 +481,11 @@ export {
   type TaskRecoveryResult,
   type RecoverySummary,
   type RecoveryConfig,
+  // Agent event emission (state machine integration)
+  AgentEventEmitter,
+  agentEventEmitter,
+  type AgentEventOptions,
+  type AgentEventResult,
 } from "./task";
 
 // Notifications

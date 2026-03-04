@@ -2350,8 +2350,18 @@
       "priority": "Priority",
       "created": "Created",
       "updated": "Updated",
-      "name": "Name"
+      "name": "Name",
+      "dueDate": "Due Date"
     },
+    "filter": {
+      "backlog": "Filter: Backlog Only",
+      "inProgress": "Filter: In Progress Only",
+      "done": "Filter: Done Only",
+      "clear": "Clear All Filters"
+    },
+    "selectAll": "Select All Tasks",
+    "clearSelection": "Clear Selection",
+    "noTasksToArchive": "No tasks to archive",
     "clearFilters": "Clear",
     "workspace": "Workspace",
     "agentChat": "Agent Chat",
@@ -2639,6 +2649,17 @@
       "stuckDuration": "Stuck for {{duration}}",
       "incomplete": "Incomplete",
       "recovering": "Recovering..."
+    },
+    "taskWarnings": {
+      "stuckTitle": "Task Appears Stuck",
+      "stuckDescription": "This task is marked as running but no active process was found. This can happen if the app crashed or the process was terminated unexpectedly.",
+      "stuckDuration": "Stuck for {{duration}}",
+      "recovering": "Recovering...",
+      "recoverAndRestart": "Recover & Restart Task",
+      "incompleteTitle": "Task Incomplete",
+      "incompleteDescription": "This task has a spec and implementation plan but never completed any subtasks ({{completed}}/{{total}}). The process likely crashed during spec creation. Click Resume to continue implementation.",
+      "resuming": "Resuming...",
+      "resumeTask": "Resume Task"
     },
     "reviewReason": {
       "label": "Review Reason",

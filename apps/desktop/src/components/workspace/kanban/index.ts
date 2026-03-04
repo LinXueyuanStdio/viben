@@ -15,6 +15,10 @@ export {
   type TaskActionButtonsProps,
 } from "./task-action-buttons";
 export { PhaseProgressIndicator } from "./phase-progress-indicator";
+export {
+  TaskWarnings,
+  type TaskWarningsProps,
+} from "./task-warnings";
 
 // Hooks
 export {

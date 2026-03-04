@@ -352,6 +352,8 @@ export { useStuckDetection, formatStuckDuration } from "./use-stuck-detection";
 export type {
   UseStuckDetectionOptions,
   UseStuckDetectionReturn,
+  TaskProgress,
+  StuckDetectionSubtask,
 } from "./use-stuck-detection";
 
 // Task Events (State Machine SSE)

@@ -965,6 +965,68 @@ export interface ImplementationPlanFile {
   updated_at?: string;
 }
 
+// =============================================================================
+// Implementation Plan V2 Types (Extended for Task State Machine)
+// =============================================================================
+
+/**
+ * Extended subtask with verification support
+ */
+export interface ImplementationPlanSubtaskV2 extends ImplementationPlanSubtask {
+  /** Verification configuration for the subtask */
+  verification?: {
+    /** Type of verification to run */
+    type: "command" | "browser";
+    /** Command to run for verification (if type is 'command') */
+    run?: string;
+    /** Browser scenario for verification (if type is 'browser') */
+    scenario?: string;
+  };
+}
+
+/**
+ * Phase definition for structured implementation plans
+ */
+export interface ImplementationPhase {
+  /** Phase ID (sequential number) */
+  id: number;
+  /** Human-readable phase name */
+  name: string;
+  /** Phase type for categorization */
+  type: "planning" | "implementation" | "qa";
+  /** Subtasks within this phase */
+  subtasks: ImplementationPlanSubtaskV2[];
+}
+
+/**
+ * Progress tracking for implementation plans
+ */
+export interface ImplementationProgress {
+  /** Number of completed subtasks */
+  completedSubtasks: number;
+  /** Total number of subtasks */
+  totalSubtasks: number;
+  /** Completion percentage (0-100) */
+  percentage: number;
+}
+
+/**
+ * Extended implementation plan with phases and verification support
+ *
+ * This V2 format supports:
+ * - Structured phases (planning, implementation, qa)
+ * - Subtask-level verification
+ * - Progress tracking
+ */
+export interface ImplementationPlanFileV2 extends ImplementationPlanFile {
+  /** Structured phases (optional, for advanced workflows) */
+  phases?: ImplementationPhase[];
+  /** Current active phase index */
+  currentPhase?: number;
+  /** Computed progress (can be derived from subtasks) */
+  progress?: ImplementationProgress;
+}
+
 /**
  * Task specs data returned by getTaskSpecsData
  */
