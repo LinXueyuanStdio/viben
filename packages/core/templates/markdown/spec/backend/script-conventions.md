@@ -6,7 +6,7 @@
 
 ## Overview
 
-All workflow operations are now available through the `viben` CLI, implemented in TypeScript in `packages/core`. This replaces the previous Python scripts for better integration with the Viben ecosystem.
+All workflow operations are now available through the `viben` CLI, implemented in TypeScript in `packages/core`. This replaces the previous shell scripts (`.trellis/scripts/`) for better cross-platform support and integration with the Viben ecosystem.
 
 ---
 
@@ -16,7 +16,8 @@ All workflow operations are now available through the `viben` CLI, implemented i
 viben
 ├── user                  # User/developer management
 │   ├── init <name>       # Initialize developer identity
-│   └── get               # Get current developer name
+│   ├── get               # Get current developer name
+│   └── status            # Show user status and workspace info
 ├── task                  # Task management
 │   ├── list              # List active tasks
 │   ├── create            # Create new task
@@ -42,8 +43,11 @@ viben
 │   ├── status            # Show task status
 │   └── create-pr         # Create PR from task
 └── swarm                 # Multi-agent operations
+    ├── list              # List all worktrees and agents
     ├── start             # Start worktree agent
+    ├── stop              # Stop running agent
     ├── status            # Monitor agent status
+    ├── registry          # Show agent registry
     └── cleanup           # Cleanup worktree
 ```
 
@@ -181,23 +185,75 @@ Error: No developer set. Run "viben user init" first or use --assignee
 
 ---
 
-## Migration from Python Scripts
+## Migration from Shell Scripts
 
-The following Python script calls have been replaced:
+> **Recommendation**: Use `viben` CLI commands instead of shell scripts for better cross-platform support, consistent output formatting, and error handling.
 
-| Old (Python) | New (CLI) |
-|--------------|-----------|
-| `python3 ./.viben/scripts/get_context.py` | `viben task context` |
-| `python3 ./.viben/scripts/task.py create ...` | `viben task create ...` |
-| `python3 ./.viben/scripts/task.py list` | `viben task list` |
-| `python3 ./.viben/scripts/add_session.py ...` | `viben task add-session ...` |
-| `python3 ./.viben/scripts/init_developer.py <name>` | `viben user init <name>` |
-| `python3 ./.viben/scripts/get_developer.py` | `viben user get` |
-| `python3 ./.viben/scripts/multi_agent/start.py ...` | `viben swarm start ...` |
-| `python3 ./.viben/scripts/multi_agent/status.py` | `viben swarm status` |
-| `python3 ./.viben/scripts/multi_agent/cleanup.py ...` | `viben swarm cleanup ...` |
-| `python3 ./.viben/scripts/multi_agent/plan.py ...` | `viben task plan ...` |
-| `python3 ./.viben/scripts/multi_agent/create_pr.py` | `viben task create-pr` |
+The following shell script calls have been replaced by CLI commands:
+
+### User Management
+
+| Old (Shell Script) | New (CLI) |
+|--------------------|-----------|
+| `./.trellis/scripts/init-developer.sh <name>` | `viben user init <name>` |
+| `./.trellis/scripts/get-developer.sh` | `viben user get` |
+
+### Context & Session
+
+| Old (Shell Script) | New (CLI) |
+|--------------------|-----------|
+| `./.trellis/scripts/get-context.sh` | `viben task context` |
+| `./.trellis/scripts/get-context.sh --json` | `viben task context --json` |
+| `./.trellis/scripts/add-session.sh ...` | `viben task add-session ...` |
+
+### Task Management
+
+| Old (Shell Script) | New (CLI) |
+|--------------------|-----------|
+| `./.trellis/scripts/task.sh create "<title>"` | `viben task create "<title>"` |
+| `./.trellis/scripts/task.sh list` | `viben task list` |
+| `./.trellis/scripts/task.sh start <task>` | `viben task start <task>` |
+| `./.trellis/scripts/task.sh finish` | `viben task finish` |
+| `./.trellis/scripts/task.sh archive <task>` | `viben task archive <task>` |
+| `./.trellis/scripts/task.sh list-archive [month]` | `viben task list-archive [month]` |
+| `./.trellis/scripts/task.sh set-branch <task> <branch>` | `viben task set-branch <task> <branch>` |
+| `./.trellis/scripts/task.sh set-scope <task> <scope>` | `viben task set-scope <task> <scope>` |
+| `./.trellis/scripts/task.sh create-pr [task]` | `viben task create-pr [task]` |
+
+### Context Files Management
+
+| Old (Shell Script) | New (CLI) |
+|--------------------|-----------|
+| `./.trellis/scripts/task.sh init-context <task> <type>` | `viben task init-context <task> -t <type>` |
+| `./.trellis/scripts/task.sh add-context <task> <file> ...` | `viben task add-context <task> <files...>` |
+| `./.trellis/scripts/task.sh list-context <task>` | `viben task list-context <task>` |
+| `./.trellis/scripts/task.sh validate <task>` | `viben task validate-context <task>` |
+
+### Multi-Agent / Swarm Operations
+
+| Old (Shell Script) | New (CLI) |
+|--------------------|-----------|
+| `./.trellis/scripts/multi-agent/start.sh <task>` | `viben swarm start <task>` |
+| `./.trellis/scripts/multi-agent/status.sh` | `viben swarm status` |
+| `./.trellis/scripts/multi-agent/status.sh <task> --detail` | `viben swarm status <task> --detail` |
+| `./.trellis/scripts/multi-agent/cleanup.sh <task>` | `viben swarm cleanup <task>` |
+| `./.trellis/scripts/multi-agent/plan.sh ...` | `viben task plan ...` |
+| `./.trellis/scripts/multi-agent/create-pr.sh` | `viben task create-pr` |
+
+### Additional Swarm Commands (CLI only)
+
+| Command | Description |
+|---------|-------------|
+| `viben swarm list` | List all worktrees and registered agents |
+| `viben swarm stop <task>` | Stop a running agent |
+| `viben swarm stop --all` | Stop all running agents |
+| `viben swarm registry` | Show agent registry |
+
+### Additional User Commands (CLI only)
+
+| Command | Description |
+|---------|-------------|
+| `viben user status` | Show user status and workspace info |
 
 ---
 
@@ -212,8 +268,8 @@ The following Python script calls have been replaced:
 
 ### DON'T
 
-- Don't rely on Python scripts (deprecated)
-- Don't modify `.viben/` files directly (use CLI commands)
+- Don't rely on shell scripts (deprecated, use CLI instead)
+- Don't modify `.viben/` or `.trellis/` files directly (use CLI commands)
 - Don't hardcode paths - use CLI to get information
 
 ---
@@ -232,4 +288,4 @@ The CLI is implemented in TypeScript:
 
 ## Historical Note
 
-> **Migration History**: Scripts were originally implemented in Bash, then migrated to Python in v0.3.0 for cross-platform compatibility. As of v0.5.0, all workflow operations have been migrated to the TypeScript CLI for better integration with the Viben ecosystem.
+> **Migration History**: Workflow scripts were originally implemented in Bash shell scripts (`.trellis/scripts/`). As of v0.5.0, all workflow operations have been migrated to the TypeScript CLI (`viben` command) for better cross-platform support, consistent JSON output, and integration with the Viben ecosystem. The shell scripts remain available for backward compatibility but are deprecated.

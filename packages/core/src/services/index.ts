@@ -24,6 +24,10 @@ export {
   type McpProcessStatusData,
   type McpServerEventData,
   type McpConfigChangedData,
+  // Task state machine event types
+  type TaskStateChangedData,
+  type TaskRecoveredData,
+  type TaskEventAppliedData,
 } from "./events";
 
 // Session store service
@@ -50,14 +54,25 @@ export {
 export {
   TaskService,
   taskService,
-  mapCLIStatus,
-  mapGatewayStatus,
-  toCliStatus,
-  toKanbanStatus,
+  VALID_TASK_STATUSES,
+  isValidTaskStatus,
   type UnifiedTask,
   type TaskStatus,
   type ReviewReason,
   type SubtaskStatus,
+  type ExecutionPhase,
+  type ExecutionProgress,
+  type SubtaskInfo,
+  // XState state machine types
+  type XStateValue,
+  type TaskEvent,
+  type TaskEventType,
+  // Extended metadata types
+  type TaskSource,
+  type TaskClassification,
+  type AgentConfig,
+  type GitConfig,
+  type TaskMetadata,
 } from "./task-service";
 
 // Cron service

@@ -470,7 +470,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
 
       state.events.taskUpdated(toDbTask(task));
       if (updates.status && existingTask.status !== task.status) {
-        state.events.taskStatusChanged(id, toDbStatus(existingTask.status), toDbStatus(task.status));
+        state.events.taskStatusChanged(id, existingTask.status, task.status);
       }
 
       return toSnakeCaseTask(task);
@@ -659,18 +659,7 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
                 },
               },
             },
-            files: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  path: { type: "string" },
-                  name: { type: "string" },
-                  type: { type: "string", enum: ["file", "directory"] },
-                  extension: { type: "string" },
-                },
-              },
-            },
+            task_dir: { type: "string", description: "Task directory path for file browsing" },
           },
         },
         404: {
@@ -685,6 +674,8 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     const { id } = request.params;
     const { workspace_path } = request.query;
 
+    console.log(`[tasks/specs] Getting specs for task ${id}, workspace: ${workspace_path}`);
+
     // Find task directory
     let taskDir: string | null = null;
     let workspacePath = workspace_path;
@@ -692,19 +683,24 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
     // Check cache first
     const cached = taskDirCache.get(id);
     if (cached) {
+      console.log(`[tasks/specs] Found in cache: ${cached.taskDir}`);
       taskDir = cached.taskDir;
       workspacePath = cached.workspacePath;
     } else if (workspace_path) {
+      console.log(`[tasks/specs] Searching for task by ID...`);
       taskDir = await taskService.findTaskById(workspace_path, id);
+      console.log(`[tasks/specs] findTaskById result: ${taskDir}`);
     }
 
     if (!taskDir) {
+      console.log(`[tasks/specs] Task not found: ${id}`);
       reply.code(404);
       return { error: `Task not found: ${id}. Provide workspace_path parameter.` };
     }
 
     try {
       const specsData = await taskService.getTaskSpecsData(taskDir);
+      console.log(`[tasks/specs] Specs data loaded, taskDir: ${specsData.taskDir}`);
 
       // Convert to snake_case for API response
       return {
@@ -712,9 +708,10 @@ export function registerTaskRoutes(fastify: FastifyInstance, state: AppState): v
         prd_path: specsData.prdPath,
         subtasks: specsData.subtasks,
         logs: specsData.logs,
-        files: specsData.files,
+        task_dir: specsData.taskDir,
       };
     } catch (error) {
+      console.error(`[tasks/specs] Error:`, error);
       reply.code(500);
       return { error: error instanceof Error ? error.message : "Failed to get task specs" };
     }

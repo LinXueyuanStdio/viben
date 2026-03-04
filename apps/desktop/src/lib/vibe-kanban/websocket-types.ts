@@ -121,45 +121,37 @@ export function buildTasksWebSocketUrl(projectId: string): string {
 }
 
 /**
- * WebSocket close codes and their descriptions
+ * Known WebSocket close codes
  * https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
  */
-const WS_CLOSE_CODES: Record<number, { en: string; zh: string }> = {
-  1000: { en: "Normal closure", zh: "正常关闭" },
-  1001: { en: "Going away", zh: "端点离开" },
-  1002: { en: "Protocol error", zh: "协议错误" },
-  1003: { en: "Unsupported data", zh: "不支持的数据类型" },
-  1005: { en: "No status received", zh: "未收到状态码" },
-  1006: { en: "Abnormal closure - server may be unavailable", zh: "连接异常关闭，服务器可能不可用" },
-  1007: { en: "Invalid frame payload data", zh: "无效的数据帧" },
-  1008: { en: "Policy violation", zh: "策略违规" },
-  1009: { en: "Message too big", zh: "消息过大" },
-  1010: { en: "Mandatory extension missing", zh: "缺少必要扩展" },
-  1011: { en: "Internal server error", zh: "服务器内部错误" },
-  1012: { en: "Service restart", zh: "服务重启" },
-  1013: { en: "Try again later", zh: "请稍后重试" },
-  1014: { en: "Bad gateway", zh: "网关错误" },
-  1015: { en: "TLS handshake failure", zh: "TLS 握手失败" },
-  4000: { en: "Heartbeat timeout", zh: "心跳超时" },
-};
+const KNOWN_WS_CLOSE_CODES = [
+  1000, 1001, 1002, 1003, 1005, 1006, 1007, 1008,
+  1009, 1010, 1011, 1012, 1013, 1014, 1015, 4000,
+];
 
 /**
  * Get human-readable reason for WebSocket close code
- * Returns Chinese description if browser language is Chinese
+ * @param code - WebSocket close code
+ * @param t - Translation function (from useTranslation)
+ * @param serverReason - Optional reason provided by server
  */
-export function getWebSocketCloseReason(code: number, serverReason?: string): string {
-  const isZh = navigator.language.startsWith("zh");
-  const codeInfo = WS_CLOSE_CODES[code];
+export function getWebSocketCloseReason(
+  code: number,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  serverReason?: string
+): string {
+  const codeKey = `websocket.closeCodes.${code}`;
+  const hasKnownCode = KNOWN_WS_CLOSE_CODES.includes(code);
 
   if (serverReason) {
     // If server provided a reason, use it with the code description
-    const codeDesc = codeInfo ? (isZh ? codeInfo.zh : codeInfo.en) : `Code ${code}`;
-    return `${codeDesc}${serverReason ? ` - ${serverReason}` : ""}`;
+    const codeDesc = hasKnownCode ? t(codeKey) : `Code ${code}`;
+    return `${codeDesc} - ${serverReason}`;
   }
 
-  if (codeInfo) {
-    return isZh ? codeInfo.zh : codeInfo.en;
+  if (hasKnownCode) {
+    return t(codeKey);
   }
 
-  return isZh ? `WebSocket 关闭 (错误码: ${code})` : `WebSocket closed (code: ${code})`;
+  return t("websocket.closedWithCode", { code });
 }

@@ -46,6 +46,7 @@ export interface UseChannelNotificationsReturn {
 
 /**
  * Get channel display name
+ * Note: These are brand names that typically don't need translation
  */
 function getChannelDisplayName(channelType: string): string {
   const names: Record<string, string> = {

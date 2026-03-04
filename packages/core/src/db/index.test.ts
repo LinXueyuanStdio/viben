@@ -56,7 +56,7 @@ describe("TaskModel", () => {
       expect(task.id).toBeDefined();
       expect(task.title).toBe("Test Task");
       expect(task.description).toBe("A test task description");
-      expect(task.status).toBe("todo");
+      expect(task.status).toBe("backlog");
       expect(task.createdAt).toBeDefined();
       expect(task.updatedAt).toBeDefined();
     });
@@ -148,12 +148,12 @@ describe("TaskModel", () => {
     it("should find tasks by status", async () => {
       const task1 = await TaskModel.create({ title: "Task 1" });
       await TaskModel.create({ title: "Task 2" });
-      await TaskModel.update(task1.id, { status: "inprogress" });
+      await TaskModel.update(task1.id, { status: "in_progress" });
 
-      const todoTasks = await TaskModel.findByStatus("todo");
-      const inProgressTasks = await TaskModel.findByStatus("inprogress");
+      const backlogTasks = await TaskModel.findByStatus("backlog");
+      const inProgressTasks = await TaskModel.findByStatus("in_progress");
 
-      expect(todoTasks).toHaveLength(1);
+      expect(backlogTasks).toHaveLength(1);
       expect(inProgressTasks).toHaveLength(1);
     });
   });
@@ -206,10 +206,10 @@ describe("TaskModel", () => {
     it("should update only the status", async () => {
       const task = await TaskModel.create({ title: "Task" });
 
-      await TaskModel.updateStatus(task.id, "inreview");
+      await TaskModel.updateStatus(task.id, "human_review");
 
       const found = await TaskModel.findById(task.id);
-      expect(found?.status).toBe("inreview");
+      expect(found?.status).toBe("human_review");
     });
   });
 

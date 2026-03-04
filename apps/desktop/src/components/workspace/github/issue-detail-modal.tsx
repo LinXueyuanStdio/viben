@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -175,6 +176,8 @@ function CommentItem({
   comment: GitHubComment;
   isFirst?: boolean;
 }) {
+  const { t } = useTranslation();
+
   const formatRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -183,10 +186,10 @@ function CommentItem({
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
-    if (diffMinutes < 1) return "just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMinutes < 1) return t("common.justNow", "just now");
+    if (diffMinutes < 60) return t("workspaceDetail.github.issueDetail.minutesAgo", "{{count}}m ago", { count: diffMinutes });
+    if (diffHours < 24) return t("workspaceDetail.github.issueDetail.hoursAgo", "{{count}}h ago", { count: diffHours });
+    if (diffDays < 7) return t("workspaceDetail.github.issueDetail.daysAgo", "{{count}}d ago", { count: diffDays });
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   };
 
@@ -215,7 +218,7 @@ function CommentItem({
             <div className="bg-muted/30 px-4 py-2 border-b border-border flex items-center gap-2">
               <span className="font-semibold text-sm">{comment.user.login}</span>
               <span className="text-muted-foreground text-sm">
-                commented {formatRelativeTime(comment.created_at)}
+                {t("workspaceDetail.github.issueDetail.commentedAt", "commented {{time}}", { time: formatRelativeTime(comment.created_at) })}
               </span>
             </div>
 
@@ -236,6 +239,8 @@ function CommentItem({
  * Issue body component - GitHub style
  */
 function IssueBody({ issue }: { issue: GitHubIssue }) {
+  const { t } = useTranslation();
+
   return (
     <div className="flex gap-3">
       {/* Avatar */}
@@ -255,7 +260,7 @@ function IssueBody({ issue }: { issue: GitHubIssue }) {
           <div className="bg-muted/30 px-4 py-2 border-b border-border flex items-center gap-2">
             <span className="font-semibold text-sm">{issue.user.login}</span>
             <span className="text-muted-foreground text-sm">
-              opened this issue
+              {t("workspaceDetail.github.issueDetail.openedThisIssue", "opened this issue")}
             </span>
           </div>
 
@@ -266,7 +271,9 @@ function IssueBody({ issue }: { issue: GitHubIssue }) {
                 {issue.body}
               </ReactMarkdown>
             ) : (
-              <p className="text-muted-foreground italic">No description provided.</p>
+              <p className="text-muted-foreground italic">
+                {t("workspaceDetail.github.issueDetail.noDescription", "No description provided.")}
+              </p>
             )}
           </div>
         </div>
@@ -288,6 +295,7 @@ export function IssueDetailModal({
   open,
   onOpenChange,
 }: IssueDetailModalProps) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
   const [loadingTask, setLoadingTask] = useState(false);
@@ -373,10 +381,10 @@ export function IssueDetailModal({
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return "today";
-    if (diffDays === 1) return "yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    if (diffDays === 0) return t("common.today", "today");
+    if (diffDays === 1) return t("common.yesterday", "yesterday");
+    if (diffDays < 7) return t("common.daysAgo_other", "{{count}} days ago", { count: diffDays });
+    if (diffDays < 30) return t("common.weeksAgo_other", "{{count}} weeks ago", { count: Math.floor(diffDays / 7) });
     return formatDate(dateString);
   };
 
@@ -415,16 +423,19 @@ export function IssueDetailModal({
               ) : (
                 <CircleCheck className="h-4 w-4 mr-1.5" />
               )}
-              {issue.state === "open" ? "Open" : "Closed"}
+              {issue.state === "open" ? t("workspaceDetail.github.issues.open", "Open") : t("workspaceDetail.github.issues.closed", "Closed")}
             </Badge>
 
             {/* Author info */}
             <span className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{issue.user.login}</span>
-              {" opened this issue "}
+              {" "}
+              {t("workspaceDetail.github.issueDetail.openedThisIssue", "opened this issue")}
+              {" "}
               {formatRelativeTime(issue.created_at)}
               {" · "}
-              {issue.comments} comment{issue.comments !== 1 ? "s" : ""}
+              {t("workspaceDetail.github.issueDetail.commentsCount", "{{count}} comment", { count: issue.comments })}
+              {issue.comments !== 1 ? "s" : ""}
             </span>
           </div>
 
@@ -433,7 +444,7 @@ export function IssueDetailModal({
             {loadingTask ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Checking task...</span>
+                <span>{t("workspaceDetail.github.issueDetail.checkingTask", "Checking task...")}</span>
               </div>
             ) : linkedTask ? (
               <Button
@@ -443,7 +454,7 @@ export function IssueDetailModal({
                 onClick={handleGoToTask}
               >
                 <ListTodo className="h-4 w-4" />
-                <span>Go to Task</span>
+                <span>{t("workspaceDetail.github.issueDetail.goToTask", "Go to Task")}</span>
                 <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
@@ -458,7 +469,7 @@ export function IssueDetailModal({
                 ) : (
                   <Plus className="h-4 w-4" />
                 )}
-                <span>Create Task</span>
+                <span>{t("workspaceDetail.github.issueDetail.createTask", "Create Task")}</span>
               </Button>
             )}
 
@@ -470,7 +481,7 @@ export function IssueDetailModal({
               className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              View on GitHub
+              {t("workspaceDetail.github.viewOnGitHub", "View on GitHub")}
             </a>
           </div>
         </div>
@@ -508,7 +519,7 @@ export function IssueDetailModal({
                         ) : (
                           <ChevronDown className="h-4 w-4 mr-2" />
                         )}
-                        Load more comments
+                        {t("workspaceDetail.github.issueDetail.loadMoreComments", "Load more comments")}
                       </Button>
                     </div>
                   )}
@@ -521,7 +532,7 @@ export function IssueDetailModal({
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     <span className="ml-2 text-sm text-muted-foreground">
-                      Loading comments...
+                      {t("workspaceDetail.github.issueDetail.loadingComments", "Loading comments...")}
                     </span>
                   </div>
                 </div>
@@ -533,7 +544,7 @@ export function IssueDetailModal({
                   <div className="flex flex-col items-center py-8">
                     <p className="text-sm text-destructive mb-3">{commentsError}</p>
                     <Button variant="outline" size="sm" onClick={refreshComments}>
-                      Retry
+                      {t("common.retry", "Retry")}
                     </Button>
                   </div>
                 </div>
@@ -548,7 +559,7 @@ export function IssueDetailModal({
                 {/* Assignees */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Assignees
+                    {t("workspaceDetail.github.issueDetail.assignees", "Assignees")}
                   </h4>
                   {issue.assignees && issue.assignees.length > 0 ? (
                     <div className="space-y-2">
@@ -565,7 +576,7 @@ export function IssueDetailModal({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No one assigned</p>
+                    <p className="text-sm text-muted-foreground">{t("workspaceDetail.github.issueDetail.noAssignees", "No one assigned")}</p>
                   )}
                 </div>
 
@@ -574,7 +585,7 @@ export function IssueDetailModal({
                 {/* Labels */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Labels
+                    {t("workspaceDetail.github.issueDetail.labels", "Labels")}
                   </h4>
                   {issue.labels && issue.labels.length > 0 ? (
                     <div className="flex flex-wrap gap-1.5">
@@ -592,7 +603,7 @@ export function IssueDetailModal({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">None yet</p>
+                    <p className="text-sm text-muted-foreground">{t("workspaceDetail.github.issueDetail.noLabels", "None yet")}</p>
                   )}
                 </div>
 
@@ -601,7 +612,7 @@ export function IssueDetailModal({
                 {/* Milestone */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Milestone
+                    {t("workspaceDetail.github.issueDetail.milestone", "Milestone")}
                   </h4>
                   {issue.milestone ? (
                     <div className="flex items-center gap-2">
@@ -609,7 +620,7 @@ export function IssueDetailModal({
                       <span className="text-sm">{issue.milestone.title}</span>
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No milestone</p>
+                    <p className="text-sm text-muted-foreground">{t("workspaceDetail.github.issueDetail.noMilestone", "No milestone")}</p>
                   )}
                 </div>
 
@@ -618,12 +629,12 @@ export function IssueDetailModal({
                 {/* Linked Task */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Linked Task
+                    {t("workspaceDetail.github.issueDetail.linkedTask", "Linked Task")}
                   </h4>
                   {loadingTask ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Loading...</span>
+                      <span className="text-sm text-muted-foreground">{t("common.loading", "Loading...")}</span>
                     </div>
                   ) : linkedTask ? (
                     <button
@@ -634,7 +645,7 @@ export function IssueDetailModal({
                       <span className="truncate">{linkedTask.title}</span>
                     </button>
                   ) : (
-                    <p className="text-sm text-muted-foreground">No linked task</p>
+                    <p className="text-sm text-muted-foreground">{t("workspaceDetail.github.issueDetail.noLinkedTask", "No linked task")}</p>
                   )}
                 </div>
 
@@ -643,21 +654,21 @@ export function IssueDetailModal({
                 {/* Timestamps */}
                 <div>
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Timeline
+                    {t("workspaceDetail.github.issueDetail.timeline", "Timeline")}
                   </h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Created {formatDate(issue.created_at)}</span>
+                      <span>{t("workspaceDetail.github.issueDetail.createdAt", "Created {{date}}", { date: formatDate(issue.created_at) })}</span>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
-                      <span>Updated {formatDate(issue.updated_at)}</span>
+                      <span>{t("workspaceDetail.github.issueDetail.updatedAt", "Updated {{date}}", { date: formatDate(issue.updated_at) })}</span>
                     </div>
                     {issue.closed_at && (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CircleCheck className="h-4 w-4" />
-                        <span>Closed {formatDate(issue.closed_at)}</span>
+                        <span>{t("workspaceDetail.github.issueDetail.closedAt", "Closed {{date}}", { date: formatDate(issue.closed_at) })}</span>
                       </div>
                     )}
                   </div>

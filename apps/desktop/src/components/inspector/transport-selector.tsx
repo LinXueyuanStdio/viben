@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Terminal,
   Radio,
@@ -25,6 +25,12 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
+import {
+  CustomHeaders,
+  type CustomHeadersType,
+  recordToHeaders,
+  headersToRecord,
+} from "./custom-headers";
 
 // =============================================================================
 // Type Definitions
@@ -295,6 +301,66 @@ function ArgsEditor({ args, onChange, disabled = false }: ArgsEditorProps) {
 }
 
 // =============================================================================
+// SSE/HTTP Config Form Component
+// =============================================================================
+
+interface SseHttpConfigFormProps {
+  config: SseTransportConfig | StreamableHttpTransportConfig;
+  onConfigChange: (config: TransportConfig) => void;
+  disabled?: boolean;
+}
+
+function SseHttpConfigForm({
+  config,
+  onConfigChange,
+  disabled = false,
+}: SseHttpConfigFormProps) {
+  const { t } = useTranslation();
+
+  // Convert Record<string, string> to CustomHeadersType for the CustomHeaders component
+  const customHeaders = useMemo(
+    () => recordToHeaders(config.headers),
+    [config.headers]
+  );
+
+  const handleHeadersChange = useCallback(
+    (headers: CustomHeadersType) => {
+      onConfigChange({ ...config, headers: headersToRecord(headers) });
+    },
+    [config, onConfigChange]
+  );
+
+  const placeholder =
+    config.type === "sse"
+      ? t("placeholders.sseUrl", "http://localhost:3000/sse")
+      : t("placeholders.httpUrl", "http://localhost:3000/mcp");
+
+  return (
+    <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+      <div className="space-y-2">
+        <Label className="text-xs font-medium">
+          {t("inspector.transport.url", "URL")}
+        </Label>
+        <Input
+          value={config.url}
+          onChange={(e) => onConfigChange({ ...config, url: e.target.value })}
+          placeholder={placeholder}
+          className="font-mono text-sm"
+          disabled={disabled}
+        />
+      </div>
+
+      <CustomHeaders
+        headers={customHeaders}
+        onChange={handleHeadersChange}
+        disabled={disabled}
+        compact
+      />
+    </div>
+  );
+}
+
+// =============================================================================
 // Main Component
 // =============================================================================
 
@@ -535,60 +601,20 @@ export function TransportSelector({
 
       {/* Configuration Form - SSE */}
       {config.type === "sse" && (
-        <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">
-              {t("inspector.transport.url", "URL")}
-            </Label>
-            <Input
-              value={config.url}
-              onChange={(e) =>
-                onConfigChange({ ...config, url: e.target.value })
-              }
-              placeholder="http://localhost:3000/sse"
-              className="font-mono text-sm"
-              disabled={isConnected || isDisabled}
-            />
-          </div>
-
-          <KeyValueEditor
-            label={t("inspector.transport.headers", "Headers")}
-            entries={config.headers}
-            onChange={(headers) => onConfigChange({ ...config, headers })}
-            keyPlaceholder="Header-Name"
-            valuePlaceholder="header-value"
-            disabled={isConnected || isDisabled}
-          />
-        </div>
+        <SseHttpConfigForm
+          config={config}
+          onConfigChange={onConfigChange}
+          disabled={isConnected || isDisabled}
+        />
       )}
 
       {/* Configuration Form - Streamable HTTP */}
       {config.type === "streamable-http" && (
-        <div className="space-y-4 p-4 rounded-lg border bg-muted/20">
-          <div className="space-y-2">
-            <Label className="text-xs font-medium">
-              {t("inspector.transport.url", "URL")}
-            </Label>
-            <Input
-              value={config.url}
-              onChange={(e) =>
-                onConfigChange({ ...config, url: e.target.value })
-              }
-              placeholder="http://localhost:3000/mcp"
-              className="font-mono text-sm"
-              disabled={isConnected || isDisabled}
-            />
-          </div>
-
-          <KeyValueEditor
-            label={t("inspector.transport.headers", "Headers")}
-            entries={config.headers}
-            onChange={(headers) => onConfigChange({ ...config, headers })}
-            keyPlaceholder="Header-Name"
-            valuePlaceholder="header-value"
-            disabled={isConnected || isDisabled}
-          />
-        </div>
+        <SseHttpConfigForm
+          config={config}
+          onConfigChange={onConfigChange}
+          disabled={isConnected || isDisabled}
+        />
       )}
 
       {/* Connection Error */}

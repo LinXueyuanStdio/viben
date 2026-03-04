@@ -13,7 +13,7 @@ export const clearCommand: SlashCommandDefinition = {
     context.clearMessages();
     return {
       type: "action",
-      toast: { message: "Conversation cleared", type: "success" },
+      toast: { message: "chat.slashCommands.clearSuccess", type: "success", i18n: true },
     };
   },
 };

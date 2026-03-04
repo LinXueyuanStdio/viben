@@ -253,7 +253,7 @@ export function SettingsSandboxPage() {
   const defaultProviders: SandboxProviderDetails[] = [
     {
       type: "codex",
-      name: "Codex CLI Sandbox",
+      name: t("sandbox.providerNames.codex", "Codex CLI Sandbox"),
       capabilities: {
         supportsVolumeMounts: false,
         supportsNetworking: false,
@@ -264,7 +264,7 @@ export function SettingsSandboxPage() {
     },
     {
       type: "claude",
-      name: "Claude Sandbox",
+      name: t("sandbox.providerNames.claude", "Claude Sandbox"),
       capabilities: {
         supportsVolumeMounts: false,
         supportsNetworking: true,
@@ -275,7 +275,7 @@ export function SettingsSandboxPage() {
     },
     {
       type: "native",
-      name: "Native (No Isolation)",
+      name: t("sandbox.providerNames.native", "Native (No Isolation)"),
       capabilities: {
         supportsVolumeMounts: false,
         supportsNetworking: true,

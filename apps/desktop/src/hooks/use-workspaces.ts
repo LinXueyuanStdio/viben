@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useWorkspaceStore } from "@/stores";
 import { getGatewayClient } from "@/lib/gateway";
@@ -30,6 +31,7 @@ function transformWorkspaceResponse(response: WorkspaceResponse): Workspace {
  * cloud workspace sync. This hook manages local file-system based workspaces.
  */
 export function useLocalWorkspaces() {
+  const { t } = useTranslation();
   const {
     workspaces,
     activeWorkspaceId,
@@ -109,14 +111,14 @@ export function useLocalWorkspaces() {
       const selected = await open({
         directory: true,
         multiple: false,
-        title: "Select Workspace Folder",
+        title: t("workspace.selectFolderTitle", "Select Workspace Folder"),
       });
 
       if (!selected) return null;
 
       const path = typeof selected === "string" ? selected : selected;
       const client = getGatewayClient();
-      const response = await client.addWorkspace(path);
+      const response = await client.createWorkspace(path);
       const workspace = transformWorkspaceResponse(response);
       addWorkspaceToStore(workspace);
 
@@ -127,14 +129,14 @@ export function useLocalWorkspaces() {
       setError(message);
       throw new Error(message);
     }
-  }, [addWorkspaceToStore, setError]);
+  }, [t, addWorkspaceToStore, setError]);
 
   // Remove workspace
   const removeWorkspace = useCallback(
     async (workspaceId: string) => {
       try {
         const client = getGatewayClient();
-        await client.removeWorkspace(workspaceId);
+        await client.deleteWorkspace(workspaceId);
         removeWorkspaceFromStore(workspaceId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

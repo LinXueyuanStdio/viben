@@ -74,7 +74,11 @@ export type GatewayEvent =
   | { type: "mcp_process_status_changed"; data: McpProcessStatusData }
   | { type: "mcp_server_started"; data: McpServerEventData }
   | { type: "mcp_server_stopped"; data: McpServerEventData }
-  | { type: "mcp_config_changed"; data: McpConfigChangedData };
+  | { type: "mcp_config_changed"; data: McpConfigChangedData }
+  // Task state machine events
+  | { type: "task_state_changed"; data: TaskStateChangedData }
+  | { type: "task_recovered"; data: TaskRecoveredData }
+  | { type: "task_event_applied"; data: TaskEventAppliedData };
 
 /**
  * Queue task summary for events
@@ -150,6 +154,45 @@ export interface McpConfigChangedData {
   /** Type of change */
   change_type: "created" | "modified" | "deleted";
   /** Timestamp of the change */
+  timestamp: number;
+}
+
+/**
+ * Task state changed event data (XState state machine)
+ */
+export interface TaskStateChangedData {
+  task_id: string;
+  workspace_path: string;
+  old_state: string;
+  new_state: string;
+  event_type: string;
+  event_id: string;
+  sequence: number;
+  timestamp: number;
+}
+
+/**
+ * Task recovered event data (stuck detection)
+ */
+export interface TaskRecoveredData {
+  task_id: string;
+  workspace_path: string;
+  reason: string;
+  auto_recovery: boolean;
+  new_status: string;
+  timestamp: number;
+}
+
+/**
+ * Task event applied data
+ */
+export interface TaskEventAppliedData {
+  task_id: string;
+  workspace_path: string;
+  event_id: string;
+  event_type: string;
+  sequence: number;
+  new_state: string;
   timestamp: number;
 }
 

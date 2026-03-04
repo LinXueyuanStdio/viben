@@ -69,8 +69,8 @@ export interface CommandResult {
   content?: string | ReactNode;
   /** Prompt to send to AI (for prompt type) */
   prompt?: string;
-  /** Toast message (for action type) */
-  toast?: { message: string; type: "success" | "error" | "info" };
+  /** Toast message (for action type). If i18n is true, message is treated as i18n key. */
+  toast?: { message: string; type: "success" | "error" | "info"; i18n?: boolean; params?: Record<string, unknown> };
   /** Dialog to open (for ui type) */
   dialog?: { name: string; props?: Record<string, unknown> };
   /** Path to navigate (for ui type) */

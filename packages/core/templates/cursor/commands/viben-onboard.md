@@ -80,7 +80,7 @@ Even after injecting guidelines, AI has limited context window. As conversation 
 |   |-- frontend/           # Frontend conventions
 |   |-- backend/            # Backend conventions
 |   +-- guides/             # Thinking patterns
-+-- scripts/                # Automation tools
++-- scripts/                # Legacy scripts (use viben CLI instead)
 ```
 
 ### Understanding spec/ subdirectories

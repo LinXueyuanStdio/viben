@@ -284,7 +284,7 @@ async function sendTestMessage(
   t: TFunction
 ): Promise<{ success: boolean; error?: string }> {
   if (!chatId && channel.channel_type !== "whatsapp") {
-    return { success: false, error: "Chat ID is required to send test message" };
+    return { success: false, error: t("errors.channels.chatIdRequired") };
   }
 
   try {
@@ -1750,7 +1750,7 @@ export function SettingsChannelsPage() {
                     <Input
                       value={webhookUrl}
                       onChange={(e) => setWebhookUrl(e.target.value)}
-                      placeholder="https://your-domain.com/api/channels/webhook"
+                      placeholder={t("placeholders.webhookUrl")}
                       className="flex-1"
                     />
                     <Button

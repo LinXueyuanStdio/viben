@@ -50,7 +50,10 @@ function handleCommandResult(result: CommandResult, context: CommandContext) {
     case "action":
       // Show toast notification
       if (result.toast) {
-        context.showToast(result.toast.message, result.toast.type);
+        const message = result.toast.i18n
+          ? context.t(result.toast.message, result.toast.params)
+          : result.toast.message;
+        context.showToast(message, result.toast.type);
       }
       break;
 

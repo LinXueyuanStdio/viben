@@ -115,8 +115,6 @@ import {
   getExecutors,
   getModels,
   getAgents,
-  getWorkspaceModels,
-  getWorkspaceAgents,
   getAgentDetails,
   getAgentById,
   getChatList,
@@ -910,34 +908,6 @@ export class GatewayClient {
     return deleteAgent(this.baseUrl, agentId, options);
   }
 
-  // --------------------------------------------------------------------------
-  // Deprecated Agent Aliases (for backward compatibility)
-  // --------------------------------------------------------------------------
-
-  /**
-   * Create Viben agent
-   * @deprecated Use {@link createAgent} instead
-   */
-  createVibenAgent = this.createAgent.bind(this);
-
-  /**
-   * Get Viben agent
-   * @deprecated Use {@link getAgent} instead
-   */
-  getVibenAgent = this.getAgent.bind(this);
-
-  /**
-   * Update Viben agent
-   * @deprecated Use {@link updateAgent} instead
-   */
-  updateVibenAgent = this.updateAgent.bind(this);
-
-  /**
-   * Delete Viben agent
-   * @deprecated Use {@link deleteAgent} instead
-   */
-  deleteVibenAgent = this.deleteAgent.bind(this);
-
   /**
    * Get default agent
    */
@@ -1232,14 +1202,6 @@ export class GatewayClient {
   }
 
   /**
-   * Verify API key for provider
-   * @deprecated Use validateApiKey for more detailed response
-   */
-  async verifyApiKey(providerId: string, apiKey: string): Promise<boolean> {
-    return verifyApiKey(this.baseUrl, providerId, apiKey);
-  }
-
-  /**
    * Validate an API key for a provider
    * Tests if the provided API key is valid for the specified provider
    */
@@ -1314,22 +1276,6 @@ export class GatewayClient {
   }
 
   /**
-   * Add (register) a workspace
-   * @deprecated Use createWorkspace instead
-   */
-  async addWorkspace(path: string, name?: string): Promise<WorkspaceResponse> {
-    return createWorkspace(this.baseUrl, path, name);
-  }
-
-  /**
-   * Remove (unregister) a workspace
-   * @deprecated Use deleteWorkspace instead
-   */
-  async removeWorkspace(workspaceId: string): Promise<void> {
-    return deleteWorkspace(this.baseUrl, workspaceId);
-  }
-
-  /**
    * Get active workspace
    */
   async getActiveWorkspace(): Promise<{ active_workspace: WorkspaceResponse | null }> {
@@ -1378,32 +1324,12 @@ export class GatewayClient {
   }
 
   /**
-   * Get models for a workspace
-   * @deprecated Use getModels instead
-   */
-  async getWorkspaceModels(
-    options?: { workspacePath?: string; includeGlobal?: boolean; includeProviderPredefined?: boolean }
-  ): Promise<WorkspaceModelsResponse> {
-    return getWorkspaceModels(this.baseUrl, options);
-  }
-
-  /**
    * Get agents
    */
   async getAgents(
     options?: { workspacePath?: string; includeGlobal?: boolean }
   ): Promise<AgentsResponse> {
     return getAgents(this.baseUrl, options);
-  }
-
-  /**
-   * Get agents for a workspace
-   * @deprecated Use getAgents instead
-   */
-  async getWorkspaceAgents(
-    options?: { workspacePath?: string; includeGlobal?: boolean }
-  ): Promise<AgentsResponse> {
-    return getWorkspaceAgents(this.baseUrl, options);
   }
 
   /**

@@ -623,7 +623,7 @@ export function DebugChatPanel({
                   )}
                 />
                 <span className="text-muted-foreground">
-                  {availabilityStatus.label}
+                  {t(availabilityStatus.labelKey)}
                 </span>
               </div>
             ) : null}

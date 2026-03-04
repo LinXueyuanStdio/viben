@@ -222,7 +222,7 @@ export function GitHubAuth({
                   <Input
                     id="pat-token"
                     type="password"
-                    placeholder="ghp_..."
+                    placeholder={t("placeholders.githubToken")}
                     value={patToken}
                     onChange={(e) => setPATToken(e.target.value)}
                   />

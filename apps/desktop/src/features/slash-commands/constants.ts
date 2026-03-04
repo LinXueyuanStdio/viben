@@ -3,23 +3,16 @@ import type { CommandCategory } from "./types";
 /**
  * Category labels for UI display
  */
+/**
+ * Category labels for UI display (fallback values, prefer i18n)
+ * Use t("chat.slashCommands.categories.<category>") for translation
+ */
 export const CATEGORY_LABELS: Record<CommandCategory, string> = {
   session: "Session",
   config: "Configuration",
   info: "Information",
   workspace: "Workspace",
   auth: "Authentication",
-};
-
-/**
- * Category labels in Chinese
- */
-export const CATEGORY_LABELS_ZH: Record<CommandCategory, string> = {
-  session: "会话",
-  config: "配置",
-  info: "信息",
-  workspace: "工作区",
-  auth: "认证",
 };
 
 /**
@@ -34,19 +27,11 @@ export const CATEGORY_ORDER: CommandCategory[] = [
 ];
 
 /**
- * Source labels for UI display
+ * Source labels for UI display (fallback values, prefer i18n)
+ * Use t("chat.slashCommands.sources.<source>") for translation
  */
 export const SOURCE_LABELS = {
   builtin: "Built-in",
   workspace: "Workspace",
   skill: "Skill",
-} as const;
-
-/**
- * Source labels in Chinese
- */
-export const SOURCE_LABELS_ZH = {
-  builtin: "内置",
-  workspace: "工作区",
-  skill: "技能",
 } as const;

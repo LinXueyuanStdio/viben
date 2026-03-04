@@ -17,10 +17,7 @@ export {
   type TaskStatus,
   type ReviewReason,
   type SubtaskStatus,
-  mapCLIStatus,
-  mapGatewayStatus,
-  toCliStatus,
-  toKanbanStatus,
+  isValidTaskStatus,
 } from "../../services/task-service";
 
 // =============================================================================

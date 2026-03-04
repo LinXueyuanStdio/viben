@@ -20,7 +20,7 @@ import { existsSync } from "node:fs";
  * State flow: backlog → queue → in_progress → ai_review → human_review → done/pr_created
  */
 export type TaskStatus =
-  | "backlog" // Planning/waiting (maps from CLI "planning", Gateway "todo")
+  | "backlog" // 待办 - Tasks waiting to be started
   | "queue" // Queued for execution
   | "in_progress" // Currently executing (planning or coding)
   | "ai_review" // AI automatic review (qa_review/qa_fixing)
@@ -67,6 +67,95 @@ export type ExecutionPhase = "planning" | "coding" | "qa_review" | "qa_fixing" |
 export interface ExecutionProgress {
   phase: ExecutionPhase;
   phaseProgress?: number; // 0-100
+}
+
+// =============================================================================
+// XState State Machine Types (Task State Machine System)
+// =============================================================================
+
+/**
+ * XState state value type
+ * Can be a simple string (top-level state) or nested object (for in_progress substates)
+ */
+export type XStateValue = string | { in_progress: ExecutionPhase };
+
+/**
+ * Task event type for state machine transitions
+ * This is a looser version for JSON storage - the task module has a stricter version
+ */
+export type TaskEventType =
+  | "QUEUE" | "START" | "DEQUEUE"
+  | "PLANNING_COMPLETE" | "PLANNING_FAILED"
+  | "SUBTASK_COMPLETE" | "ALL_SUBTASKS_DONE" | "CODING_FAILED"
+  | "QA_PASSED" | "QA_FAILED" | "QA_FIXING_COMPLETE" | "QA_FIXING_FAILED"
+  | "USER_STOPPED" | "APPROVED" | "REJECTED" | "CREATE_PR"
+  | "RETRY" | "ABANDON";
+
+/**
+ * Task event for state machine transitions
+ */
+export interface TaskEvent {
+  /** Unique event identifier (UUID) */
+  eventId: string;
+  /** Monotonically increasing sequence number for ordering */
+  sequence: number;
+  /** Event type - determines the state transition */
+  type: TaskEventType;
+  /** ISO timestamp when event was created */
+  timestamp: string;
+  /** Optional payload data for the event */
+  payload?: Record<string, unknown>;
+}
+
+// =============================================================================
+// Extended Metadata Types (Task State Machine System)
+// =============================================================================
+
+/**
+ * Task source information
+ */
+export interface TaskSource {
+  type: "manual" | "github_issue" | "linear" | "ideation";
+  ref?: string;
+  importedAt?: string;
+}
+
+/**
+ * Task classification for prioritization
+ */
+export interface TaskClassification {
+  category: "feature" | "bugfix" | "refactor" | "docs";
+  complexity: "low" | "medium" | "high";
+  impact: "low" | "medium" | "high";
+  priority: "P0" | "P1" | "P2" | "P3";
+}
+
+/**
+ * Agent configuration for task execution
+ */
+export interface AgentConfig {
+  model?: string;
+  thinkingLevel?: "low" | "medium" | "high";
+  maxRetries?: number;
+}
+
+/**
+ * Git configuration for task
+ */
+export interface GitConfig {
+  baseBranch?: string;
+  branchPrefix?: string;
+  useWorktree?: boolean;
+}
+
+/**
+ * Extended metadata for task state machine
+ */
+export interface TaskMetadata {
+  source?: TaskSource;
+  classification?: TaskClassification;
+  agentConfig?: AgentConfig;
+  gitConfig?: GitConfig;
 }
 
 /**
@@ -166,6 +255,16 @@ export interface UnifiedTask {
   updatedAt?: string;
   /** Completion timestamp */
   completedAt?: string;
+
+  // === XState State Machine (Task State Machine System) ===
+  /** XState state machine current state */
+  xstateState?: XStateValue;
+  /** Last event that was applied */
+  lastEvent?: TaskEvent;
+  /** History of all events applied to this task */
+  eventHistory?: TaskEvent[];
+  /** Extended metadata for classification and configuration */
+  metadata?: TaskMetadata;
 }
 
 // =============================================================================
@@ -624,17 +723,17 @@ export class TaskService {
   }
 
   // ==========================================================================
-  // Task Specs Data (PRD, Logs, Files)
+  // Task Specs Data (PRD, Logs, Task Dir)
   // ==========================================================================
 
   /**
    * Get task specs data from the task directory
    *
    * Reads:
-   * - spec.md (PRD content)
+   * - prd.md (PRD content)
    * - implementation_plan.json (subtasks)
    * - logs/ directory (execution logs)
-   * - files.json (modified files)
+   * - Returns task_dir path for file browsing
    *
    * @param taskDir - Absolute path to task directory
    * @returns TaskSpecsData object
@@ -645,15 +744,15 @@ export class TaskService {
       prdPath: null,
       subtasks: [],
       logs: null,
-      files: [],
+      taskDir, // Return task directory path for file browsing
     };
 
-    // 1. Read PRD content (spec.md)
-    const specPath = join(taskDir, "spec.md");
-    if (existsSync(specPath)) {
+    // 1. Read PRD content (prd.md)
+    const prdPath = join(taskDir, "prd.md");
+    if (existsSync(prdPath)) {
       try {
-        result.prdContent = await readFile(specPath, "utf-8");
-        result.prdPath = specPath;
+        result.prdContent = await readFile(prdPath, "utf-8");
+        result.prdPath = prdPath;
       } catch {
         // Ignore read errors
       }
@@ -725,31 +824,6 @@ export class TaskService {
         }
       } catch {
         // Ignore errors
-      }
-    }
-
-    // 4. Read modified files (files.json)
-    const filesJsonPath = join(taskDir, "files.json");
-    if (existsSync(filesJsonPath)) {
-      try {
-        const filesContent = await readFile(filesJsonPath, "utf-8");
-        const filesData = JSON.parse(filesContent) as {
-          files?: Array<{ path: string; name?: string; type?: string }>;
-        };
-        if (filesData.files && Array.isArray(filesData.files)) {
-          result.files = filesData.files.map((f) => {
-            const name = f.name || f.path.split("/").pop() || f.path;
-            const extension = name.includes(".") ? name.split(".").pop() : undefined;
-            return {
-              path: f.path,
-              name,
-              type: (f.type as "file" | "directory") || "file",
-              extension,
-            };
-          });
-        }
-      } catch {
-        // Ignore parse errors
       }
     }
 
@@ -869,16 +943,6 @@ export interface TaskLogs {
 }
 
 /**
- * Task file entry
- */
-export interface TaskFileEntry {
-  path: string;
-  name: string;
-  type: "file" | "directory";
-  extension?: string;
-}
-
-/**
  * Implementation plan subtask (from file)
  */
 export interface ImplementationPlanSubtask {
@@ -909,7 +973,7 @@ export interface TaskSpecsData {
   prdPath: string | null;
   subtasks: ImplementationPlanSubtask[];
   logs: TaskLogs | null;
-  files: TaskFileEntry[];
+  taskDir: string; // Task directory path for file browsing
 }
 
 /**

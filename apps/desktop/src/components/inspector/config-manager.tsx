@@ -5,10 +5,12 @@ import {
   Shield,
   AlertTriangle,
   Check,
+  CheckCheck,
   FileJson,
   Copy,
   Eye,
   EyeOff,
+  Server,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,6 +23,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { McpServerConfig } from "@/hooks/use-mcp-connection";
@@ -184,6 +192,65 @@ function validateConfig(data: unknown): { valid: boolean; error?: string; config
   }
 
   return { valid: true, config: config as unknown as InspectorConfig };
+}
+
+/**
+ * Generate MCP server entry config for clipboard (Server Entry format)
+ * Compatible with mcp.json format used by Claude Desktop, Cursor, etc.
+ */
+function generateServerEntry(config: McpServerConfig | null): Record<string, unknown> {
+  if (!config) return {};
+
+  // STDIO transport
+  if ("command" in config && config.command) {
+    const entry: Record<string, unknown> = {
+      command: config.command,
+      args: config.args || [],
+    };
+    // Only include env if not empty
+    if (config.env && Object.keys(config.env).length > 0) {
+      entry.env = config.env;
+    }
+    return entry;
+  }
+
+  // Remote transport (SSE, HTTP, Streamable HTTP)
+  if ("url" in config && config.url) {
+    const transportType = config.transport || config.type || "streamable-http";
+
+    if (transportType === "sse") {
+      return {
+        type: "sse",
+        url: config.url,
+        note: "For SSE connections, add this URL directly in your MCP Client",
+      };
+    }
+
+    if (transportType === "streamable-http" || transportType === "http") {
+      return {
+        type: "streamable-http",
+        url: config.url,
+        note: "For Streamable HTTP connections, add this URL directly in your MCP Client",
+      };
+    }
+  }
+
+  return {};
+}
+
+/**
+ * Generate full mcp.json servers file format
+ */
+function generateServersFile(
+  config: McpServerConfig | null,
+  serverName: string = "default-server"
+): Record<string, unknown> {
+  const entry = generateServerEntry(config);
+  return {
+    mcpServers: {
+      [serverName]: entry,
+    },
+  };
 }
 
 /**
@@ -712,11 +779,92 @@ export function ConfigManager({
   const { t } = useTranslation();
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [copiedServerEntry, setCopiedServerEntry] = useState(false);
+  const [copiedServersFile, setCopiedServersFile] = useState(false);
 
   const exportConfig = configToExport(config, configJson, useProxy, authTokens);
 
+  // Handler for copying server entry
+  const handleCopyServerEntry = useCallback(() => {
+    if (!config) return;
+
+    const entry = generateServerEntry(config);
+    const json = JSON.stringify(entry, null, 2);
+
+    navigator.clipboard
+      .writeText(json)
+      .then(() => {
+        setCopiedServerEntry(true);
+        setTimeout(() => setCopiedServerEntry(false), 2000);
+      })
+      .catch(console.error);
+  }, [config]);
+
+  // Handler for copying servers file
+  const handleCopyServersFile = useCallback(() => {
+    if (!config) return;
+
+    const file = generateServersFile(config);
+    const json = JSON.stringify(file, null, 2);
+
+    navigator.clipboard
+      .writeText(json)
+      .then(() => {
+        setCopiedServersFile(true);
+        setTimeout(() => setCopiedServersFile(false), 2000);
+      })
+      .catch(console.error);
+  }, [config]);
+
   return (
-    <div className="flex items-center gap-2">
+    <TooltipProvider>
+      <div className="flex items-center gap-2">
+      {/* Quick copy buttons */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyServerEntry}
+            disabled={!config}
+            className="h-7"
+          >
+            {copiedServerEntry ? (
+              <CheckCheck className="h-3.5 w-3.5 mr-1" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 mr-1" />
+            )}
+            {t("inspector.serverEntry", "Server Entry")}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {t("inspector.copyServerEntryTooltip", "Copy single server config for mcp.json")}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyServersFile}
+            disabled={!config}
+            className="h-7"
+          >
+            {copiedServersFile ? (
+              <CheckCheck className="h-3.5 w-3.5 mr-1" />
+            ) : (
+              <Server className="h-3.5 w-3.5 mr-1" />
+            )}
+            {t("inspector.serversFile", "Servers File")}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {t("inspector.copyServersFileTooltip", "Copy complete mcp.json file")}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Existing export/import buttons */}
       <Button
         variant="outline"
         size="sm"
@@ -749,7 +897,8 @@ export function ConfigManager({
         onOpenChange={setImportDialogOpen}
         onImport={onImport}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 

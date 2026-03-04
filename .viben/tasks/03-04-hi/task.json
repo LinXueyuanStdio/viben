@@ -2,7 +2,7 @@
   "id": "task_1772558439965_c4zgrf",
   "name": "hi",
   "title": "hi",
-  "status": "queue",
+  "status": "backlog",
   "current_phase": 0,
   "next_action": [
     {
@@ -34,6 +34,7 @@
   "executor": "Agent",
   "workspacePath": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben",
   "createdAt": "2026-03-03",
-  "updatedAt": "2026-03-03T18:25:54.343Z",
-  "sessionId": "1af130c2-4d17-49db-ace0-f1299f5f472c"
+  "updatedAt": "2026-03-04T03:39:40.413Z",
+  "sessionId": "1af130c2-4d17-49db-ace0-f1299f5f472c",
+  "completedAt": "2026-03-04T03:39:30.379Z"
 }
