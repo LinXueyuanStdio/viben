@@ -17,159 +17,55 @@ export interface CodeEditorProps {
   saveStatus?: SaveStatus;
 }
 
+// Language extension mappings for Monaco Editor
+const LANGUAGE_EXTENSIONS: Record<string, string[]> = {
+  javascript: ["js", "jsx", "mjs", "cjs"],
+  typescript: ["ts", "mts", "cts", "tsx"],
+  python: ["py", "pyw", "pyi"],
+  json: ["json", "jsonc", "json5"],
+  markdown: ["md", "mdx", "markdown"],
+  rust: ["rs"],
+  html: ["html", "htm"],
+  xml: ["xml", "svg", "xhtml"],
+  css: ["css"],
+  scss: ["scss", "sass"],
+  less: ["less"],
+  yaml: ["yaml", "yml"],
+  sql: ["sql"],
+  shell: ["sh", "bash", "zsh", "fish"],
+  ini: ["toml", "ini", "conf", "cfg"],
+  go: ["go"],
+  java: ["java"],
+  c: ["c", "h"],
+  cpp: ["cpp", "cc", "cxx", "hpp", "hxx"],
+  csharp: ["cs"],
+  php: ["php"],
+  ruby: ["rb", "ruby"],
+  swift: ["swift"],
+  kotlin: ["kt", "kts"],
+  scala: ["scala", "sc"],
+  dockerfile: ["dockerfile"],
+  graphql: ["graphql", "gql"],
+  lua: ["lua"],
+  r: ["r"],
+  plaintext: ["txt", "text", "log"],
+};
+
+// Build reverse mapping from extension to language
+const EXTENSION_TO_LANGUAGE_MAP = Object.entries(LANGUAGE_EXTENSIONS).reduce(
+  (acc, [language, extensions]) => {
+    for (const ext of extensions) {
+      acc[ext] = language;
+    }
+    return acc;
+  },
+  {} as Record<string, string>
+);
+
 // Map file extensions to Monaco language identifiers
 function getLanguage(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase();
-
-  switch (ext) {
-    // JavaScript/TypeScript
-    case "js":
-    case "jsx":
-    case "mjs":
-    case "cjs":
-      return "javascript";
-    case "ts":
-    case "mts":
-    case "cts":
-      return "typescript";
-    case "tsx":
-      return "typescript";
-
-    // Python
-    case "py":
-    case "pyw":
-    case "pyi":
-      return "python";
-
-    // JSON
-    case "json":
-    case "jsonc":
-    case "json5":
-      return "json";
-
-    // Markdown
-    case "md":
-    case "mdx":
-    case "markdown":
-      return "markdown";
-
-    // Rust
-    case "rs":
-      return "rust";
-
-    // HTML/XML
-    case "html":
-    case "htm":
-      return "html";
-    case "xml":
-    case "svg":
-    case "xhtml":
-      return "xml";
-
-    // CSS
-    case "css":
-      return "css";
-    case "scss":
-      return "scss";
-    case "sass":
-      return "scss";
-    case "less":
-      return "less";
-
-    // YAML
-    case "yaml":
-    case "yml":
-      return "yaml";
-
-    // SQL
-    case "sql":
-      return "sql";
-
-    // Shell scripts
-    case "sh":
-    case "bash":
-    case "zsh":
-    case "fish":
-      return "shell";
-
-    // Config files
-    case "toml":
-      return "ini";
-    case "ini":
-    case "conf":
-    case "cfg":
-      return "ini";
-
-    // Go
-    case "go":
-      return "go";
-
-    // Java
-    case "java":
-      return "java";
-
-    // C/C++
-    case "c":
-    case "h":
-      return "c";
-    case "cpp":
-    case "cc":
-    case "cxx":
-    case "hpp":
-    case "hxx":
-      return "cpp";
-
-    // C#
-    case "cs":
-      return "csharp";
-
-    // PHP
-    case "php":
-      return "php";
-
-    // Ruby
-    case "rb":
-    case "ruby":
-      return "ruby";
-
-    // Swift
-    case "swift":
-      return "swift";
-
-    // Kotlin
-    case "kt":
-    case "kts":
-      return "kotlin";
-
-    // Scala
-    case "scala":
-    case "sc":
-      return "scala";
-
-    // Dockerfile
-    case "dockerfile":
-      return "dockerfile";
-
-    // GraphQL
-    case "graphql":
-    case "gql":
-      return "graphql";
-
-    // Lua
-    case "lua":
-      return "lua";
-
-    // R
-    case "r":
-      return "r";
-
-    // Plain text / unknown
-    case "txt":
-    case "text":
-    case "log":
-    default:
-      return "plaintext";
-  }
+  return (ext && EXTENSION_TO_LANGUAGE_MAP[ext]) || "plaintext";
 }
 
 /**
