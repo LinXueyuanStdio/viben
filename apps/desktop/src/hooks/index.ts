@@ -366,4 +366,5 @@ export {
   useQueueAutoPromotion,
   registerTaskStatusChangeListener,
   notifyTaskStatusChange,
+  type QueueProcessResult,
 } from "./use-queue-auto-promotion";

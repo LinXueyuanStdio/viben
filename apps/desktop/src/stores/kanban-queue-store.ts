@@ -1,6 +1,7 @@
-import { create } from "zustand";
+import { create, type StoreApi, type UseBoundStore } from "zustand";
 import { persist } from "zustand/middleware";
 import { getGatewayUrl } from "@/lib/gateway/config";
+import { useMemo, useSyncExternalStore, useCallback, useRef } from "react";
 
 /**
  * Gateway Queue Status response type
@@ -77,181 +78,278 @@ interface KanbanQueueState {
   getArchivedCount: () => number;
 }
 
-export const useKanbanQueueStore = create<KanbanQueueState>()(
-  persist(
-    (set, get) => ({
-      // Initial state
-      maxParallelTasks: 3,
-      gatewayQueueStatus: null,
-      isLoadingGatewayStatus: false,
-      gatewayStatusError: null,
-      showArchived: false,
-      archivedTaskIds: [],
+// ==========================================
+// Workspace-Isolated Store Factory
+// ==========================================
 
-      // Queue settings (local)
-      setMaxParallelTasks: (value) => {
-        // Validate range 1-10
-        const clampedValue = Math.max(1, Math.min(10, value));
-        set({ maxParallelTasks: clampedValue });
-      },
+/**
+ * Cache for workspace-specific stores
+ * Key: workspace path (or 'global' for fallback)
+ */
+const workspaceStoreCache = new Map<string, UseBoundStore<StoreApi<KanbanQueueState>>>();
 
-      // Gateway Queue API
-      fetchGatewayQueueStatus: async () => {
-        set({ isLoadingGatewayStatus: true, gatewayStatusError: null });
-        try {
-          const gatewayUrl = getGatewayUrl();
-          const response = await fetch(`${gatewayUrl}/api/queue/status`);
+/**
+ * Get storage key for a workspace
+ */
+function getWorkspaceStorageKey(workspacePath: string | undefined): string {
+  if (!workspacePath) {
+    return "kanban-queue-storage-global";
+  }
+  // Create a safe storage key from workspace path
+  const safeKey = workspacePath.replace(/[^a-zA-Z0-9]/g, "_").slice(-50);
+  return `kanban-queue-storage-${safeKey}`;
+}
 
-          if (!response.ok) {
-            throw new Error(`Failed to fetch queue status: ${response.status}`);
-          }
+/**
+ * Create a workspace-specific store
+ */
+function createWorkspaceQueueStore(workspacePath: string | undefined): UseBoundStore<StoreApi<KanbanQueueState>> {
+  const storageKey = getWorkspaceStorageKey(workspacePath);
 
-          const data: GatewayQueueStatus = await response.json();
-          set({
-            gatewayQueueStatus: data,
-            isLoadingGatewayStatus: false,
-            // Sync local maxParallelTasks with Gateway max_concurrency
-            maxParallelTasks: data.max_concurrency,
-          });
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Failed to fetch queue status";
-          set({
-            gatewayStatusError: message,
-            isLoadingGatewayStatus: false,
-          });
-          console.error("[KanbanQueueStore] Failed to fetch gateway queue status:", error);
-        }
-      },
+  return create<KanbanQueueState>()(
+    persist(
+      (set, get) => ({
+        // Initial state
+        maxParallelTasks: 3,
+        gatewayQueueStatus: null,
+        isLoadingGatewayStatus: false,
+        gatewayStatusError: null,
+        showArchived: false,
+        archivedTaskIds: [],
 
-      updateGatewayMaxConcurrency: async (value) => {
-        const clampedValue = Math.max(1, Math.min(10, value));
-
-        try {
-          const gatewayUrl = getGatewayUrl();
-          const response = await fetch(`${gatewayUrl}/api/queue/config`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ max_concurrency: clampedValue }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Failed to update queue config: ${response.status}`);
-          }
-
-          const config: GatewayQueueConfig = await response.json();
-
-          // Update both local and gateway status
-          set({
-            maxParallelTasks: config.max_concurrency,
-            gatewayQueueStatus: get().gatewayQueueStatus
-              ? { ...get().gatewayQueueStatus!, max_concurrency: config.max_concurrency }
-              : null,
-          });
-
-          // Refresh full status
-          await get().fetchGatewayQueueStatus();
-        } catch (error) {
-          console.error("[KanbanQueueStore] Failed to update gateway max concurrency:", error);
-          // Still update local value for UI feedback
+        // Queue settings (local)
+        setMaxParallelTasks: (value) => {
+          // Validate range 1-10
+          const clampedValue = Math.max(1, Math.min(10, value));
           set({ maxParallelTasks: clampedValue });
-          throw error;
-        }
-      },
+        },
 
-      queueAllBacklogTasks: async (taskIds) => {
-        try {
-          const gatewayUrl = getGatewayUrl();
-          const response = await fetch(`${gatewayUrl}/api/queue/enqueue-batch`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ task_ids: taskIds }),
-          });
+        // Gateway Queue API
+        fetchGatewayQueueStatus: async () => {
+          set({ isLoadingGatewayStatus: true, gatewayStatusError: null });
+          try {
+            const gatewayUrl = getGatewayUrl();
+            const response = await fetch(`${gatewayUrl}/api/queue/status`);
 
-          if (!response.ok) {
-            throw new Error(`Failed to batch enqueue: ${response.status}`);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch queue status: ${response.status}`);
+            }
+
+            const data: GatewayQueueStatus = await response.json();
+            set({
+              gatewayQueueStatus: data,
+              isLoadingGatewayStatus: false,
+              // Sync local maxParallelTasks with Gateway max_concurrency
+              maxParallelTasks: data.max_concurrency,
+            });
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Failed to fetch queue status";
+            set({
+              gatewayStatusError: message,
+              isLoadingGatewayStatus: false,
+            });
+            console.error("[KanbanQueueStore] Failed to fetch gateway queue status:", error);
           }
+        },
 
-          const result: BatchEnqueueResponse = await response.json();
+        updateGatewayMaxConcurrency: async (value) => {
+          const clampedValue = Math.max(1, Math.min(10, value));
 
-          // Refresh queue status after batch operation
-          await get().fetchGatewayQueueStatus();
+          try {
+            const gatewayUrl = getGatewayUrl();
+            const response = await fetch(`${gatewayUrl}/api/queue/config`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ max_concurrency: clampedValue }),
+            });
 
-          return result;
-        } catch (error) {
-          console.error("[KanbanQueueStore] Failed to batch enqueue tasks:", error);
-          throw error;
-        }
-      },
+            if (!response.ok) {
+              throw new Error(`Failed to update queue config: ${response.status}`);
+            }
 
-      // Archived tasks
-      toggleShowArchived: () =>
-        set((state) => ({ showArchived: !state.showArchived })),
+            const config: GatewayQueueConfig = await response.json();
 
-      setShowArchived: (show) => set({ showArchived: show }),
+            // Update both local and gateway status
+            set({
+              maxParallelTasks: config.max_concurrency,
+              gatewayQueueStatus: get().gatewayQueueStatus
+                ? { ...get().gatewayQueueStatus!, max_concurrency: config.max_concurrency }
+                : null,
+            });
 
-      archiveTask: (taskId) =>
-        set((state) => {
-          if (state.archivedTaskIds.includes(taskId)) {
-            return state;
+            // Refresh full status
+            await get().fetchGatewayQueueStatus();
+          } catch (error) {
+            console.error("[KanbanQueueStore] Failed to update gateway max concurrency:", error);
+            // Still update local value for UI feedback
+            set({ maxParallelTasks: clampedValue });
+            throw error;
           }
-          return {
-            archivedTaskIds: [...state.archivedTaskIds, taskId],
-          };
-        }),
+        },
 
-      unarchiveTask: (taskId) =>
-        set((state) => ({
-          archivedTaskIds: state.archivedTaskIds.filter((id) => id !== taskId),
-        })),
+        queueAllBacklogTasks: async (taskIds) => {
+          try {
+            const gatewayUrl = getGatewayUrl();
+            const response = await fetch(`${gatewayUrl}/api/queue/enqueue-batch`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ task_ids: taskIds }),
+            });
 
-      archiveAllDone: (taskIds) =>
-        set((state) => {
-          const newIds = taskIds.filter(
-            (id) => !state.archivedTaskIds.includes(id)
-          );
-          return {
-            archivedTaskIds: [...state.archivedTaskIds, ...newIds],
-          };
-        }),
+            if (!response.ok) {
+              throw new Error(`Failed to batch enqueue: ${response.status}`);
+            }
 
-      clearArchivedTasks: () => set({ archivedTaskIds: [] }),
+            const result: BatchEnqueueResponse = await response.json();
 
-      isTaskArchived: (taskId) => get().archivedTaskIds.includes(taskId),
+            // Refresh queue status after batch operation
+            await get().fetchGatewayQueueStatus();
 
-      // Getters
-      getArchivedCount: () => get().archivedTaskIds.length,
-    }),
-    {
-      name: "kanban-queue-storage",
-      partialize: (state) => ({
-        maxParallelTasks: state.maxParallelTasks,
-        showArchived: state.showArchived,
-        archivedTaskIds: state.archivedTaskIds,
+            return result;
+          } catch (error) {
+            console.error("[KanbanQueueStore] Failed to batch enqueue tasks:", error);
+            throw error;
+          }
+        },
+
+        // Archived tasks
+        toggleShowArchived: () =>
+          set((state) => ({ showArchived: !state.showArchived })),
+
+        setShowArchived: (show) => set({ showArchived: show }),
+
+        archiveTask: (taskId) =>
+          set((state) => {
+            if (state.archivedTaskIds.includes(taskId)) {
+              return state;
+            }
+            return {
+              archivedTaskIds: [...state.archivedTaskIds, taskId],
+            };
+          }),
+
+        unarchiveTask: (taskId) =>
+          set((state) => ({
+            archivedTaskIds: state.archivedTaskIds.filter((id) => id !== taskId),
+          })),
+
+        archiveAllDone: (taskIds) =>
+          set((state) => {
+            const newIds = taskIds.filter(
+              (id) => !state.archivedTaskIds.includes(id)
+            );
+            return {
+              archivedTaskIds: [...state.archivedTaskIds, ...newIds],
+            };
+          }),
+
+        clearArchivedTasks: () => set({ archivedTaskIds: [] }),
+
+        isTaskArchived: (taskId) => get().archivedTaskIds.includes(taskId),
+
+        // Getters
+        getArchivedCount: () => get().archivedTaskIds.length,
       }),
-    }
-  )
-);
+      {
+        name: storageKey,
+        partialize: (state) => ({
+          maxParallelTasks: state.maxParallelTasks,
+          showArchived: state.showArchived,
+          archivedTaskIds: state.archivedTaskIds,
+        }),
+      }
+    )
+  );
+}
+
+/**
+ * Get or create a workspace-specific store
+ */
+function getWorkspaceStore(workspacePath: string | undefined): UseBoundStore<StoreApi<KanbanQueueState>> {
+  const cacheKey = workspacePath ?? "global";
+
+  let store = workspaceStoreCache.get(cacheKey);
+  if (!store) {
+    store = createWorkspaceQueueStore(workspacePath);
+    workspaceStoreCache.set(cacheKey, store);
+    console.log(`[KanbanQueueStore] Created store for workspace: ${cacheKey}`);
+  }
+
+  return store;
+}
+
+/**
+ * Global fallback store (backwards compatibility)
+ * Use useWorkspaceKanbanQueue(workspacePath) for workspace-specific access
+ */
+export const useKanbanQueueStore = getWorkspaceStore(undefined);
 
 /**
  * Hook to get queue store for a specific workspace
  * Uses a separate storage key per workspace
+ *
+ * @param workspacePath - The workspace path, or undefined for global fallback
  */
-export function useWorkspaceKanbanQueue(_workspacePath: string | undefined) {
-  // For now, use the global store
-  // TODO: Implement per-workspace storage if needed
-  const store = useKanbanQueueStore();
+export function useWorkspaceKanbanQueue(workspacePath: string | undefined) {
+  // Get or create the workspace-specific store
+  const store = useMemo(() => getWorkspaceStore(workspacePath), [workspacePath]);
+
+  // Subscribe to store changes
+  const state = useSyncExternalStore(
+    store.subscribe,
+    store.getState,
+    store.getState
+  );
+
+  // Memoize computed values
+  const archivedCount = state.archivedTaskIds.length;
+  const gatewayRunningCount = state.gatewayQueueStatus?.running_count ?? 0;
+  const gatewayPendingCount = state.gatewayQueueStatus?.pending_count ?? 0;
+  const gatewayMaxConcurrency = state.gatewayQueueStatus?.max_concurrency ?? state.maxParallelTasks;
 
   return {
-    ...store,
+    ...state,
     // Computed values
-    archivedCount: store.archivedTaskIds.length,
+    archivedCount,
     // Gateway status shortcuts
-    gatewayRunningCount: store.gatewayQueueStatus?.running_count ?? 0,
-    gatewayPendingCount: store.gatewayQueueStatus?.pending_count ?? 0,
-    gatewayMaxConcurrency: store.gatewayQueueStatus?.max_concurrency ?? store.maxParallelTasks,
+    gatewayRunningCount,
+    gatewayPendingCount,
+    gatewayMaxConcurrency,
+  };
+}
+
+/**
+ * Hook that provides maxParallelTasks and a change listener for queue auto-promotion
+ * Returns stable references for use in effects
+ */
+export function useWorkspaceQueueSettings(workspacePath: string | undefined) {
+  const store = useMemo(() => getWorkspaceStore(workspacePath), [workspacePath]);
+
+  // Subscribe to store changes
+  const state = useSyncExternalStore(
+    store.subscribe,
+    store.getState,
+    store.getState
+  );
+
+  // Track previous value for change detection
+  const prevMaxParallelTasksRef = useRef(state.maxParallelTasks);
+
+  // Return the current value and a way to detect changes
+  return {
+    maxParallelTasks: state.maxParallelTasks,
+    archivedTaskIds: state.archivedTaskIds,
+    setMaxParallelTasks: state.setMaxParallelTasks,
+    // Helper to check if maxParallelTasks increased
+    checkMaxParallelTasksIncreased: useCallback(() => {
+      const current = store.getState().maxParallelTasks;
+      const prev = prevMaxParallelTasksRef.current;
+      prevMaxParallelTasksRef.current = current;
+      return current > prev;
+    }, [store]),
   };
 }

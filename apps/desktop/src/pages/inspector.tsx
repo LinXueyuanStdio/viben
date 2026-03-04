@@ -480,9 +480,8 @@ export function InspectorPage() {
     setConfigJson(value);
   }, []);
 
-  // Handle config import from ConfigManager
-  const handleConfigImport = useCallback((importedConfig: InspectorConfig) => {
-    // Convert InspectorConfig to McpServerConfig JSON format
+  // Convert InspectorConfig to McpServerConfig JSON string
+  const convertInspectorConfigToJson = useCallback((importedConfig: InspectorConfig): string => {
     const mcpConfig: Record<string, unknown> = {};
 
     // Set transport type
@@ -524,14 +523,27 @@ export function InspectorPage() {
       mcpConfig.timeout = importedConfig.transport.timeout;
     }
 
+    return JSON.stringify(mcpConfig, null, 2);
+  }, []);
+
+  // Handle config import from ConfigManager
+  const handleConfigImport = useCallback((importedConfig: InspectorConfig) => {
     // Update proxy setting
     if (importedConfig.proxy?.enabled !== undefined) {
       setUseProxy(importedConfig.proxy.enabled);
     }
 
     // Set the new config JSON
-    setConfigJson(JSON.stringify(mcpConfig, null, 2));
-  }, []);
+    setConfigJson(convertInspectorConfigToJson(importedConfig));
+  }, [convertInspectorConfigToJson]);
+
+  // Handle loading saved config
+  const handleLoadSavedConfig = useCallback((config: InspectorConfig, savedUseProxy: boolean) => {
+    // Update proxy setting from saved config
+    setUseProxy(savedUseProxy);
+    // Set the config JSON
+    setConfigJson(convertInspectorConfigToJson(config));
+  }, [convertInspectorConfigToJson]);
 
   const getConnectionStatusInfo = (status: InspectorConnectionStatus) => {
     switch (status) {
@@ -703,6 +715,7 @@ export function InspectorPage() {
               configJson={configJson}
               useProxy={useProxy}
               onImport={handleConfigImport}
+              onLoadSavedConfig={handleLoadSavedConfig}
             />
 
             {/* Config Examples - Collapsible */}

@@ -14,8 +14,9 @@ import { ExternalLink, Loader2, Type } from "lucide-react";
 import type { PreviewComponentProps } from "./types";
 import { getFileExtension, isRemoteUrl } from "./utils";
 
-const SAMPLE_TEXT = "The quick brown fox jumps over the lazy dog";
-const PANGRAM_SENTENCES = [
+// Note: These constants are kept for reference, but we use i18n values at runtime
+const DEFAULT_SAMPLE_TEXT = "The quick brown fox jumps over the lazy dog";
+const DEFAULT_PANGRAM_SENTENCES = [
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
   "abcdefghijklmnopqrstuvwxyz",
   "0123456789",
@@ -24,12 +25,23 @@ const PANGRAM_SENTENCES = [
 
 const FONT_SIZES = [12, 16, 24, 32, 48, 72];
 
+// Error key type for i18n
+type FontErrorKey = "noFontPath" | "noFontSource" | null;
+
 export function FontPreview({ artifact }: PreviewComponentProps) {
   const { t } = useTranslation();
   const [fontLoaded, setFontLoaded] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+  const [errorKey, setErrorKey] = React.useState<FontErrorKey>(null);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
   const [fontFamily, setFontFamily] = React.useState<string>("");
+
+  // Get translated error message
+  const error = React.useMemo(() => {
+    if (errorKey === "noFontPath") return t("artifacts.noFontPath", "No font file path available");
+    if (errorKey === "noFontSource") return t("artifacts.noFontSource", "No font source available");
+    return errorMessage;
+  }, [errorKey, errorMessage, t]);
 
   const handleOpenExternal = async () => {
     if (artifact.path) {
@@ -46,7 +58,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
 
     async function loadFont() {
       if (!artifact.path && !artifact.content) {
-        setError("No font file path available");
+        setErrorKey("noFontPath");
         setLoading(false);
         return;
       }
@@ -74,7 +86,9 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
             fontUrl = URL.createObjectURL(blob);
           }
         } else {
-          throw new Error("No font source available");
+          setErrorKey("noFontSource");
+          setLoading(false);
+          return;
         }
 
         // Create @font-face rule
@@ -94,11 +108,12 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
 
         setFontFamily(uniqueFontFamily);
         setFontLoaded(true);
-        setError(null);
+        setErrorKey(null);
+        setErrorMessage(null);
       } catch (err) {
         console.error("[Font Preview] Failed to load font:", err);
         const errorMsg = err instanceof Error ? err.message : String(err);
-        setError(errorMsg);
+        setErrorMessage(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -176,7 +191,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
               className="text-foreground text-4xl leading-relaxed"
               style={{ fontFamily }}
             >
-              {SAMPLE_TEXT}
+              {t("artifacts.fontSampleText", DEFAULT_SAMPLE_TEXT)}
             </p>
           </div>
 
@@ -186,15 +201,18 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
               {t("artifacts.characterSet", "Character Set")}
             </h3>
             <div className="border-border rounded-xl border p-4">
-              {PANGRAM_SENTENCES.map((text, idx) => (
-                <p
-                  key={idx}
-                  className="text-foreground mb-2 text-lg leading-relaxed last:mb-0"
-                  style={{ fontFamily }}
-                >
-                  {text}
-                </p>
-              ))}
+              <p className="text-foreground mb-2 text-lg leading-relaxed" style={{ fontFamily }}>
+                {t("artifacts.fontAlphabet", DEFAULT_PANGRAM_SENTENCES[0])}
+              </p>
+              <p className="text-foreground mb-2 text-lg leading-relaxed" style={{ fontFamily }}>
+                {t("artifacts.fontAlphabetLower", DEFAULT_PANGRAM_SENTENCES[1])}
+              </p>
+              <p className="text-foreground mb-2 text-lg leading-relaxed" style={{ fontFamily }}>
+                {t("artifacts.fontNumbers", DEFAULT_PANGRAM_SENTENCES[2])}
+              </p>
+              <p className="text-foreground text-lg leading-relaxed last:mb-0" style={{ fontFamily }}>
+                {t("artifacts.fontSymbols", DEFAULT_PANGRAM_SENTENCES[3])}
+              </p>
             </div>
           </div>
 
@@ -213,7 +231,7 @@ export function FontPreview({ artifact }: PreviewComponentProps) {
                     className="text-foreground flex-1"
                     style={{ fontFamily, fontSize: `${size}px` }}
                   >
-                    {SAMPLE_TEXT}
+                    {t("artifacts.fontSampleText", DEFAULT_SAMPLE_TEXT)}
                   </p>
                 </div>
               ))}

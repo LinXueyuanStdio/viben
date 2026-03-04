@@ -1,6 +1,7 @@
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { ArrowUpCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -98,13 +99,14 @@ const UpdateBadge = React.forwardRef<HTMLDivElement, UpdateBadgeProps>(
     },
     ref
   ) => {
+    const { t } = useTranslation();
+
     // Don't render if count is 0 and hideWhenZero is true
     if (count === 0 && hideWhenZero) {
       return null;
     }
 
-    const defaultTooltip =
-      count === 1 ? "1 update available" : `${count} updates available`;
+    const defaultTooltip = t("updates.available", { count });
 
     const badgeContent = (
       <div

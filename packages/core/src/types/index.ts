@@ -150,6 +150,8 @@ export interface Agent {
   /** Absolute path to the agent directory (runtime only, not persisted) */
   path?: string;
   description?: string;
+  /** List of tool names this agent can use */
+  tools: string[];
   model?: string;
   provider?: string;
   systemPrompt?: string;
@@ -176,6 +178,7 @@ export interface Agent {
 export interface AgentConfig {
   name: string;
   description?: string;
+  tools?: string[];
   model?: string;
   provider?: string;
   systemPrompt?: string;
@@ -227,6 +230,7 @@ export interface CreateAgentOptions {
   id?: string;
   name: string;
   description?: string;
+  tools?: string[];
   model?: string;
   provider?: string;
   systemPrompt?: string;
@@ -250,6 +254,7 @@ export interface CreateAgentOptions {
 export interface AgentUpdate {
   name?: string;
   description?: string;
+  tools?: string[];
   model?: string;
   provider?: string;
   systemPrompt?: string;

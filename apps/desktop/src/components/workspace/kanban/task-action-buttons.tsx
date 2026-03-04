@@ -4,6 +4,9 @@
  * Renders appropriate action buttons based on the current task status
  * and state machine state. Triggers state transitions via events.
  *
+ * After START/RETRY events, the task is enqueued for background execution
+ * via /api/queue/enqueue. The agent runs in the background without opening UI.
+ *
  * Based on Auto-Claude TaskDetailModal.tsx renderPrimaryAction() logic.
  */
 
@@ -20,7 +23,12 @@ import {
 } from "lucide-react";
 import { Button, cn } from "@viben/ui";
 import { getGatewayUrl } from "@/lib/gateway";
-import { submitTaskEvent, type TaskEvent } from "@/lib/gateway/modules/tasks";
+import {
+  submitTaskEvent,
+  enqueueTask,
+  type TaskEvent,
+} from "@/lib/gateway/modules/tasks";
+import { toast } from "@/hooks/use-toast";
 import type {
   TaskStatus,
   TaskEventType,
@@ -54,6 +62,12 @@ export interface TaskActionButtonsProps {
   onEventSubmitted?: (eventType: TaskEventType, newState?: string) => void;
   /** Callback on event submission error */
   onEventError?: (error: string) => void;
+  /** Task title - used to build the prompt for background execution */
+  taskTitle?: string;
+  /** Task description - used to build the prompt for background execution */
+  taskDescription?: string;
+  /** Agent ID - used for background execution (defaults to "default") */
+  agentId?: string;
   /** Additional CSS classes */
   className?: string;
   /** Button size variant */
@@ -90,6 +104,9 @@ export function TaskActionButtons({
   lastEventSequence = 0,
   onEventSubmitted,
   onEventError,
+  taskTitle,
+  taskDescription,
+  agentId = "default",
   className,
   size = "default",
   showAllActions = false,
@@ -125,6 +142,49 @@ export function TaskActionButtons({
 
         if (result.success) {
           onEventSubmitted?.(eventType, result.newState);
+
+          // Trigger background execution for events that start/resume task execution
+          // START: Initial task start from backlog/queue
+          // RETRY: Retry after error state
+          // REJECTED: Resume execution (used for non-plan-review rejections)
+          const executionTriggeringEvents: TaskEventType[] = ["START", "RETRY", "REJECTED"];
+          if (executionTriggeringEvents.includes(eventType)) {
+            // Build prompt from task title and description
+            const prompt = taskDescription
+              ? `Task: ${taskTitle || "Unnamed task"}\n\nDescription: ${taskDescription}`
+              : `Task: ${taskTitle || "Unnamed task"}`;
+
+            try {
+              // Enqueue task for background execution
+              await enqueueTask(gatewayUrl, {
+                agent_id: agentId,
+                input: prompt,
+                cwd: workspacePath,
+              });
+
+              toast.success(
+                t("workspace.taskActions.taskStarted", "Task started"),
+                {
+                  description: t(
+                    "workspace.taskActions.taskStartedDesc",
+                    "Task is running in the background"
+                  ),
+                }
+              );
+            } catch (enqueueError) {
+              // Log but don't fail - the state transition already succeeded
+              console.error("[TaskActionButtons] Failed to enqueue task:", enqueueError);
+              toast.warning(
+                t("workspace.taskActions.enqueueWarning", "Warning"),
+                {
+                  description: t(
+                    "workspace.taskActions.enqueueWarningDesc",
+                    "Task state updated but background execution may have failed"
+                  ),
+                }
+              );
+            }
+          }
         } else {
           const errorMessage =
             result.error === "SEQUENCE_MISMATCH"
@@ -151,6 +211,9 @@ export function TaskActionButtons({
       isSubmitting,
       onEventSubmitted,
       onEventError,
+      taskTitle,
+      taskDescription,
+      agentId,
       t,
     ]
   );

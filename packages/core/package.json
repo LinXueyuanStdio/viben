@@ -79,6 +79,7 @@
     "cloudflared": "^0.7.1",
     "commander": "^12.1.0",
     "fastify": "^5.2.1",
+    "gray-matter": "^4.0.3",
     "pino": "^10.3.1",
     "shell-quote": "^1.8.3",
     "undici": "^7.22.0",

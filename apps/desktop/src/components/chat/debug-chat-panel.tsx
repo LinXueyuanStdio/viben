@@ -421,7 +421,7 @@ export function DebugChatPanel({
       setSessionId(response.session_id);
       // Agent started - streaming indicator in UI is sufficient
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      const errorMessage = err instanceof Error ? err.message : t("common.unknownError");
       setError(errorMessage);
       setPhase("error");
 

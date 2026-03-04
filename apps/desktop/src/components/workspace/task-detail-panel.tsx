@@ -390,6 +390,9 @@ export interface TaskForPanel {
   executionPhase?: ExecutionPhase; // Current execution phase
   isStuck?: boolean;            // Whether task is stuck
   stuckDuration?: number;       // How long task has been stuck (ms)
+  // Git worktree/workspace paths
+  worktree_path?: string | null;  // Worktree path if task runs in worktree
+  workspace_path?: string | null; // Workspace path where task was created
 }
 
 // Available task for relationships
@@ -599,6 +602,11 @@ You are helping the user work on this task. Provide relevant suggestions, code e
   const effectiveSessionId = task?.session_id || currentSessionId;
 
   useEffect(() => {
+    // Only load when agent-chat tab is active
+    if (activeTab !== "agent-chat") {
+      return;
+    }
+
     if (!task?.id || !workspacePath) {
       return;
     }
@@ -648,7 +656,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
     };
 
     loadTaskMessages();
-  }, [task?.id, effectiveSessionId, workspacePath, taskAgentId, agentLoadMessages]);
+  }, [activeTab, task?.id, effectiveSessionId, workspacePath, taskAgentId, agentLoadMessages]);
 
   // Auto-start: send message via SSE when clicking "Run"
   useEffect(() => {
@@ -860,6 +868,10 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             <ListChecks className="h-4 w-4" />
             {t("workspace.taskDetail", "Details")}
           </TabsTrigger>
+          <TabsTrigger value="agent-chat" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            {t("workspace.agentChat", "Agent Chat")}
+          </TabsTrigger>
           <TabsTrigger value="subtasks" className="flex items-center gap-2">
             <ListChecks className="h-4 w-4" />
             {t("workspace.tabs.subtasks", "Subtasks")}
@@ -886,9 +898,13 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             <Terminal className="h-4 w-4" />
             {t("workspace.tabs.logs", "Logs")}
           </TabsTrigger>
-          <TabsTrigger value="files" className="flex items-center gap-2">
+          <TabsTrigger value="task-dir" className="flex items-center gap-2">
             <FolderOpen className="h-4 w-4" />
-            {t("workspace.tabs.files", "Files")}
+            {t("workspace.tabs.taskDir", "Task Directory")}
+          </TabsTrigger>
+          <TabsTrigger value="working-dir" className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4" />
+            {t("workspace.tabs.workingDir", "Working Directory")}
           </TabsTrigger>
           <TabsTrigger value="comments" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
@@ -911,10 +927,6 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                 {task.eventHistory.length}
               </Badge>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="agent-chat" className="flex items-center gap-2">
-            <Bot className="h-4 w-4" />
-            {t("workspace.agentChat", "Agent Chat")}
           </TabsTrigger>
         </TabsList>
 
@@ -1089,6 +1101,9 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                       lastAttemptFailed={task.last_attempt_failed}
                       executionPhase={task.executionPhase}
                       lastEventSequence={task.lastEvent?.sequence}
+                      taskTitle={task.title}
+                      taskDescription={task.description ?? undefined}
+                      agentId={task.agent_id ?? "default"}
                       onEventSubmitted={(eventType, newState) => {
                         console.log(`[TaskDetailPanel] Event ${eventType} submitted, new state: ${newState}`);
                         // Trigger refresh of task data
@@ -1461,8 +1476,8 @@ You are helping the user work on this task. Provide relevant suggestions, code e
           />
         </TabsContent>
 
-        {/* Files Tab - Shows task directory files using FileBrowser */}
-        <TabsContent value="files" className="flex-1 min-h-0">
+        {/* Task Directory Tab - Shows task-specific files in .viben/tasks/<id>/ */}
+        <TabsContent value="task-dir" className="flex-1 min-h-0">
           {specsData.taskDir ? (
             <FileBrowser
               workspacePath={workspacePath}
@@ -1474,16 +1489,45 @@ You are helping the user work on this task. Provide relevant suggestions, code e
             <div className="flex flex-col items-center justify-center h-full py-12">
               <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
               <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                {t("workspace.filesTab.noTaskDir", "No task directory")}
+                {t("workspace.taskDirTab.noTaskDir", "No task directory")}
               </h3>
               <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
                 {t(
-                  "workspace.filesTab.taskDirWillAppear",
+                  "workspace.taskDirTab.taskDirWillAppear",
                   "Task files will appear here after the task directory is created"
                 )}
               </p>
             </div>
           )}
+        </TabsContent>
+
+        {/* Working Directory Tab - Shows worktree or workspace directory */}
+        <TabsContent value="working-dir" className="flex-1 min-h-0">
+          {(() => {
+            // Use worktree_path if available, otherwise use workspace_path
+            const workingDir = task.worktree_path || task.workspace_path || workspacePath;
+            return workingDir ? (
+              <FileBrowser
+                workspacePath={workspacePath}
+                initialPath={workingDir}
+                hideToolbar={true}
+                className="h-full"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full py-12">
+                <FolderOpen className="h-12 w-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                  {t("workspace.workingDirTab.noWorkingDir", "No working directory")}
+                </h3>
+                <p className="text-sm text-muted-foreground/60 text-center max-w-xs">
+                  {t(
+                    "workspace.workingDirTab.workingDirWillAppear",
+                    "Working directory will appear here when the task is assigned to a workspace"
+                  )}
+                </p>
+              </div>
+            );
+          })()}
         </TabsContent>
 
         {/* Agent Chat Tab */}

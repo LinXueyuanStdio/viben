@@ -32,6 +32,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import type { McpServerConfig } from "@/hooks/use-mcp-connection";
+import { SavedConfigsSelector } from "./saved-configs-selector";
 
 // =============================================================================
 // Types
@@ -82,6 +83,8 @@ interface ConfigManagerProps {
   useProxy: boolean;
   /** Callback when config is imported */
   onImport: (config: InspectorConfig) => void;
+  /** Callback when a saved config is loaded (also updates useProxy) */
+  onLoadSavedConfig?: (config: InspectorConfig, useProxy: boolean) => void;
   /** Auth tokens from auth panel (optional) */
   authTokens?: Array<{
     name: string;
@@ -774,6 +777,7 @@ export function ConfigManager({
   configJson,
   useProxy,
   onImport,
+  onLoadSavedConfig,
   authTokens,
 }: ConfigManagerProps) {
   const { t } = useTranslation();
@@ -818,7 +822,16 @@ export function ConfigManager({
 
   return (
     <TooltipProvider>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+      {/* Saved configs selector */}
+      {onLoadSavedConfig && (
+        <SavedConfigsSelector
+          currentConfig={exportConfig}
+          currentUseProxy={useProxy}
+          onLoadConfig={onLoadSavedConfig}
+        />
+      )}
+
       {/* Quick copy buttons */}
       <Tooltip>
         <TooltipTrigger asChild>

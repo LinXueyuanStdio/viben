@@ -533,7 +533,7 @@ export function TransportSelector({
             <SelectItem value="stdio">
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4" />
-                <span>STDIO</span>
+                <span>{t("inspector.transport.stdio", "STDIO")}</span>
                 <span className="text-xs text-muted-foreground">
                   {t("inspector.transport.stdioDesc", "(Command line)")}
                 </span>
@@ -542,7 +542,7 @@ export function TransportSelector({
             <SelectItem value="sse">
               <div className="flex items-center gap-2">
                 <Radio className="h-4 w-4" />
-                <span>SSE</span>
+                <span>{t("inspector.transport.sse", "SSE")}</span>
                 <span className="text-xs text-muted-foreground">
                   {t("inspector.transport.sseDesc", "(Server-Sent Events)")}
                 </span>
@@ -551,7 +551,7 @@ export function TransportSelector({
             <SelectItem value="streamable-http">
               <div className="flex items-center gap-2">
                 <Globe className="h-4 w-4" />
-                <span>HTTP</span>
+                <span>{t("inspector.transport.http", "HTTP")}</span>
                 <span className="text-xs text-muted-foreground">
                   {t("inspector.transport.httpDesc", "(Streamable HTTP)")}
                 </span>

@@ -378,3 +378,77 @@ export function subscribeTaskEvents(
   const url = `${baseUrl}/api/tasks/${encodeURIComponent(taskId)}/events/stream?${params.toString()}`;
   return new EventSource(url);
 }
+
+// =============================================================================
+// Queue API Types
+// =============================================================================
+
+/**
+ * Request to enqueue a task for background execution
+ */
+export interface EnqueueTaskRequest {
+  /** Agent ID to use */
+  agent_id: string;
+  /** Session ID for persistence (optional) */
+  session_id?: string;
+  /** User prompt */
+  input: string;
+  /** Working directory */
+  cwd?: string;
+  /** Path to agent config.yaml file */
+  agent_path?: string;
+  /** Resume from existing SDK session */
+  resume_session?: string;
+  /** Maximum retry attempts (optional, uses default if not specified) */
+  max_retries?: number;
+}
+
+/**
+ * Response from enqueue operation
+ */
+export interface EnqueueTaskResponse {
+  /** Queue task ID (different from kanban task ID) */
+  task_id: string;
+  /** Position in queue */
+  position: number;
+  /** Initial status */
+  status: string;
+}
+
+// =============================================================================
+// Queue API Functions
+// =============================================================================
+
+/**
+ * Enqueue a task for background execution
+ *
+ * This submits the task to the queue and returns immediately.
+ * The task will be executed in the background by the Gateway.
+ *
+ * @param baseUrl - Gateway base URL
+ * @param request - Enqueue request parameters
+ * @returns Enqueue response with queue task ID and position
+ */
+export async function enqueueTask(
+  baseUrl: string,
+  request: EnqueueTaskRequest
+): Promise<EnqueueTaskResponse> {
+  const response = await fetch(`${baseUrl}/api/queue/enqueue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const errorMessage = await parseErrorMessage(response);
+    throw new GatewayError(
+      `Failed to enqueue task: ${errorMessage}`,
+      response.status
+    );
+  }
+
+  return response.json();
+}

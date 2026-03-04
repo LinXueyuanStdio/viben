@@ -23,7 +23,7 @@ import { join } from "node:path";
 
 /**
  * Resolve the agent's config path from agent ID and optional workspace path
- * Returns the path to the agent's config.yaml if found, undefined otherwise
+ * Returns the path to the agent's AGENTS.md if found, undefined otherwise
  */
 async function resolveAgentPath(agentId: string, workspacePath?: string): Promise<string | undefined> {
   // 1. Try workspace agent first
@@ -31,14 +31,14 @@ async function resolveAgentPath(agentId: string, workspacePath?: string): Promis
     const workspaceAgentsDir = join(workspacePath, ".viben", "agents");
     const agent = await agentManager.getAgentFromDir(workspaceAgentsDir, agentId);
     if (agent?.path) {
-      return join(agent.path, "config.yaml");
+      return join(agent.path, "AGENTS.md");
     }
   }
 
   // 2. Try global agent
   const agent = await agentManager.getAgent(agentId);
   if (agent?.path) {
-    return join(agent.path, "config.yaml");
+    return join(agent.path, "AGENTS.md");
   }
 
   return undefined;
@@ -186,7 +186,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         agent_type: "viben",
         source,
         workspace_path: a.path,
-        config_path: a.path ? `${a.path}/config.yaml` : undefined,
+        config_path: a.path ? `${a.path}/AGENTS.md` : undefined,
         description: a.description,
         model: a.model,
         provider: a.provider,
@@ -314,7 +314,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         agent_type: "viben",
         source,
         workspace_path: agent.path,
-        config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
+        config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
         provider: agent.provider,
@@ -467,7 +467,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           agent_type: "viben",
           source,
           workspace_path: agent.path,
-          config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
+          config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
           description: agent.description,
           model: agent.model,
           provider: agent.provider,
@@ -517,7 +517,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
           const workspaceAgentsDir = join(workspace_path, ".viben", "agents");
           const workspaceAgent = await agentManager.getAgentFromDir(workspaceAgentsDir, id);
           if (workspaceAgent?.path) {
-            const workspaceSessions = await state.sessionStore.listSessions(id, join(workspaceAgent.path, "config.yaml"));
+            const workspaceSessions = await state.sessionStore.listSessions(id, join(workspaceAgent.path, "AGENTS.md"));
             for (const session of workspaceSessions) {
               if (!seenIds.has(session.id)) {
                 seenIds.add(session.id);
@@ -530,7 +530,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         // 2. Also check global agent (for backward compatibility)
         const globalAgent = await agentManager.getAgent(id);
         if (globalAgent?.path) {
-          const globalSessions = await state.sessionStore.listSessions(id, join(globalAgent.path, "config.yaml"));
+          const globalSessions = await state.sessionStore.listSessions(id, join(globalAgent.path, "AGENTS.md"));
           for (const session of globalSessions) {
             if (!seenIds.has(session.id)) {
               seenIds.add(session.id);
@@ -948,7 +948,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
       agent_type: "viben",
       source,
       workspace_path: agent.path,
-      config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
+      config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
       description: agent.description,
       model: agent.model,
       provider: agent.provider,
@@ -1036,7 +1036,7 @@ export function registerAgentRoutes(fastify: FastifyInstance, state: AppState): 
         agent_type: "viben",
         source,
         workspace_path: agent.path,
-        config_path: agent.path ? `${agent.path}/config.yaml` : undefined,
+        config_path: agent.path ? `${agent.path}/AGENTS.md` : undefined,
         description: agent.description,
         model: agent.model,
         provider: agent.provider,

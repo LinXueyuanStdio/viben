@@ -19,7 +19,7 @@ import { SdkChatProxy } from "../../executors/chat/sdk-proxy";
 import { trace, context, SpanStatusCode, recordAgentRequest, recordAgentToolCall } from "../../telemetry";
 import type { Span } from "../../telemetry";
 import { getSpanName } from "../../telemetry/route-names";
-import { readYaml } from "../../config/yaml";
+import { readMarkdownConfig } from "../../config/markdown";
 import type { AgentConfigFile } from "../../agents";
 
 // ============================================================================
@@ -123,14 +123,14 @@ export interface AgentConfigPayload {
  * Resolve agent ID from request parameters
  *
  * Priority:
- * 1. Extract from agentPath (e.g., .../agents/<agent-id>/config.yaml)
+ * 1. Extract from agentPath (e.g., .../agents/<agent-id>/AGENTS.md)
  * 2. Use agentConfig.name if provided
  * 3. Default to 'default'
  */
 function resolveAgentId(agentPath?: string, agentConfig?: AgentConfigPayload | null): string {
-  // 1. From agentPath: extract agent-id from path like .../agents/<agent-id>/config.yaml
+  // 1. From agentPath: extract agent-id from path like .../agents/<agent-id>/AGENTS.md
   if (agentPath) {
-    const match = agentPath.match(/agents\/([^/]+)\/config\.yaml$/);
+    const match = agentPath.match(/agents\/([^/]+)\/AGENTS\.md$/);
     if (match) return match[1];
   }
   // 2. From agentConfig.name
@@ -155,20 +155,22 @@ function generateInternalSessionId(): string {
 }
 
 /**
- * Load agent config from a YAML file path
- * @param configPath - Path to the agent config.yaml file
+ * Load agent config from an AGENTS.md file path
+ * @param configPath - Path to the agent AGENTS.md file
  * @returns AgentConfigPayload or null if not found
  */
 async function loadAgentConfigFromPath(configPath: string): Promise<AgentConfigPayload | null> {
   try {
-    const config = await readYaml<AgentConfigFile>(configPath);
-    if (!config) return null;
+    const result = await readMarkdownConfig<AgentConfigFile>(configPath);
+    if (!result) return null;
+
+    const { frontmatter: config, body: systemPrompt } = result;
 
     return {
       name: config.name,
       model: config.model,
       provider: config.provider,
-      systemPrompt: config.systemPrompt,
+      systemPrompt: systemPrompt || undefined,
       appendPrompt: config.appendPrompt,
       temperature: config.temperature,
       maxTokens: config.maxTokens,
@@ -363,7 +365,7 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
    * POST /api/agent/run
    *
    * Supports two ways to specify agent configuration:
-   * 1. agentPath - Path to agent config.yaml file (backend reads from disk)
+   * 1. agentPath - Path to agent AGENTS.md file (backend reads from disk)
    * 2. agentConfig - Inline agent configuration object
    *
    * If both are provided, agentPath takes precedence.
@@ -373,9 +375,9 @@ export function registerAgentRunRoutes(fastify: FastifyInstance): void {
       prompt: string;
       cwd?: string;
       attachments?: Array<{ type: string; data: string; name?: string }>;
-      /** Path to agent config.yaml file (preferred) - camelCase */
+      /** Path to agent AGENTS.md file (preferred) - camelCase */
       agentPath?: string;
-      /** Path to agent config.yaml file (preferred) - snake_case */
+      /** Path to agent AGENTS.md file (preferred) - snake_case */
       agent_path?: string;
       /** Inline agent configuration (fallback) - camelCase */
       agentConfig?: AgentConfigPayload;

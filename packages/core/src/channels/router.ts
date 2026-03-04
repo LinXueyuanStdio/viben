@@ -361,7 +361,7 @@ export class ChannelRouter {
    * Execute an agent with the incoming message using SdkChatProxy
    *
    * This uses the Claude Agent SDK directly for viben agents (not executors).
-   * The agent config is loaded from ~/.viben/agents/{agent_id}/config.yaml
+   * The agent config is loaded from ~/.viben/agents/{agent_id}/AGENTS.md
    */
   private async executeAgent(
     channel: Channel,

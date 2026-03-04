@@ -202,8 +202,8 @@ export function AudioPreview({ artifact }: PreviewComponentProps) {
         onEnded={() => setIsPlaying(false)}
         onError={(e) => {
           const audio = e.currentTarget;
-          const errorMessage = audio.error?.message || "Unknown error";
-          setError(`Audio error: ${errorMessage}`);
+          const errorMessage = audio.error?.message || t("common.unknownError");
+          setError(t("artifacts.audioError", { error: errorMessage }));
         }}
       />
 

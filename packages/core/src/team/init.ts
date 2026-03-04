@@ -840,7 +840,7 @@ function validateDeveloperName(name: string): void {
 
   if (!isValid) {
     throw new Error(
-      `Invalid developer name "${name}". Must be lowercase alphanumeric with hyphens, not starting/ending with hyphen.`
+      `Invalid developer name "${name}". Must be lowercase alphanumeric with hyphens, not starting/ending with hyphen.\n\nExample: viben team init --user john-doe`
     );
   }
 }

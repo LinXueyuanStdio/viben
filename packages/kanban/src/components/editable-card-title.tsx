@@ -79,7 +79,7 @@ export function EditableCardTitle({
   return (
     <span
       className={cn(
-        "cursor-text truncate",
+        "cursor-text line-clamp-2",
         "hover:bg-muted/50 rounded px-1 -mx-1",
         "transition-colors duration-150",
         disabled && "cursor-default hover:bg-transparent",
@@ -91,7 +91,7 @@ export function EditableCardTitle({
           setIsEditing(true);
         }
       }}
-      title="Double-click to edit"
+      title={value}
     >
       {value}
     </span>

@@ -49,10 +49,10 @@ export function getAgentDir(agentId: string): string {
 }
 
 /**
- * Get the path to an agent's config file
+ * Get the path to an agent's config file (AGENTS.md)
  */
 export function getAgentConfigPath(agentId: string): string {
-  return join(getAgentDir(agentId), "config.yaml");
+  return join(getAgentDir(agentId), "AGENTS.md");
 }
 
 /**

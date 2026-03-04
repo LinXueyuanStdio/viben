@@ -24,3 +24,7 @@ export {
   getTimeSinceActivity,
   clearTaskActivity,
 } from "./task-activity-store";
+export {
+  useSavedConfigsStore,
+  type SavedInspectorConfig,
+} from "./saved-configs-store";
