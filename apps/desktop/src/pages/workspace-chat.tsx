@@ -1,7 +1,8 @@
 import * as React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { motion, useReducedMotion } from "framer-motion";
+import { m as motion } from "framer-motion/m";
+import { useReducedMotion } from "framer-motion";
 import {
   PanelRightOpen,
   PanelRightClose,
