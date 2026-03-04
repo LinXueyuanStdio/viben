@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
+import { m } from "framer-motion/m";
 import { ReactNode } from "react";
 
 // Easing curves
@@ -80,7 +81,7 @@ export function StaggerContainer({ children, className, delay = 0 }: StaggerCont
   };
 
   return (
-    <motion.div
+    <m.div
       variants={staggerContainerVariants}
       initial="hidden"
       animate="show"
@@ -88,7 +89,7 @@ export function StaggerContainer({ children, className, delay = 0 }: StaggerCont
       transition={{ delayChildren: delay }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -119,9 +120,9 @@ export function StaggerItem({ children, className }: StaggerItemProps) {
   };
 
   return (
-    <motion.div variants={staggerItemVariants} className={className}>
+    <m.div variants={staggerItemVariants} className={className}>
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
@@ -157,7 +158,7 @@ export function AnimatedCard({ children, className, delay = 0 }: AnimatedCardPro
   };
 
   return (
-    <motion.div
+    <m.div
       variants={cardVariants}
       initial="hidden"
       animate="show"
@@ -165,7 +166,7 @@ export function AnimatedCard({ children, className, delay = 0 }: AnimatedCardPro
       className={className}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 

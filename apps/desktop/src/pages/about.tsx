@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { usePython } from "@/hooks/use-python";
 import { useAppStore } from "@/stores";
-import { motion, useReducedMotion } from "framer-motion";
+import { m as motion } from "framer-motion/m";
+import { useReducedMotion } from "framer-motion";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { VibenLogo } from "@/components/ui/viben-logo";
 
