@@ -48,6 +48,7 @@
 |------|-------------|--------|
 | [kanban-integration.md](./kanban-integration.md) | Kanban 整体架构 + 包设计 | Specification |
 | [kanban-features.md](./kanban-features.md) | 核心功能规格 (Phase 1-2) | Specification |
+| [queue-auto-promotion.md](./queue-auto-promotion.md) | Queue 自动晋升到 in_progress | Done |
 | [vibe-kanban-architecture.md](./vibe-kanban-architecture.md) | vibe-kanban 前端架构深度分析 | Reference |
 | [desktop-kanban-integration-progress.md](./desktop-kanban-integration-progress.md) | Desktop 集成进度报告 (~75%) | Report |
 

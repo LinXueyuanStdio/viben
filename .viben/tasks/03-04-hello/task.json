@@ -3,7 +3,7 @@
   "name": "hello",
   "title": "hello",
   "description": null,
-  "status": "backlog",
+  "status": "in_progress",
   "current_phase": 0,
   "next_action": [
     {
@@ -31,10 +31,10 @@
   "agent": "本地个人助手",
   "taskIndex": 0,
   "prompt": null,
-  "hasInProgressAttempt": false,
+  "hasInProgressAttempt": true,
   "lastAttemptFailed": false,
   "executor": "Agent",
   "workspacePath": "/Users/lxy/Documents/GitHub/LinXueyuanStdio/viben",
   "createdAt": "2026-03-03",
-  "updatedAt": "2026-03-04T02:57:41.498Z"
+  "updatedAt": "2026-03-04T16:56:22.173Z"
 }

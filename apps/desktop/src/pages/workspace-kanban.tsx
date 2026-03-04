@@ -123,7 +123,7 @@ import {
   type CreateTaskData,
   type TaskForPanel,
 } from "@/components/workspace";
-import { useLocalWorkspaces, useAgents, useModels } from "@/hooks";
+import { useLocalWorkspaces, useAgents, useModels, useQueueAutoPromotion } from "@/hooks";
 import {
   useVibeKanbanTasks,
   useUpdateVibeKanbanTaskStatus,
@@ -779,7 +779,19 @@ export function WorkspaceKanbanPage() {
     archivedTaskIds,
     archiveTask,
     archiveAllDone,
+    // Gateway Queue API integration
+    fetchGatewayQueueStatus,
+    updateGatewayMaxConcurrency,
+    queueAllBacklogTasks,
+    isLoadingGatewayStatus,
   } = useWorkspaceKanbanQueue(workspace?.path);
+
+  // Fetch gateway queue status on mount and when workspace changes
+  useEffect(() => {
+    if (workspace) {
+      fetchGatewayQueueStatus();
+    }
+  }, [workspace, fetchGatewayQueueStatus]);
 
   // Fetch tasks for the workspace
   const {
@@ -794,6 +806,25 @@ export function WorkspaceKanbanPage() {
   const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
   const updateTask = useUpdateVibeKanbanTask();
   const createTask = useCreateVibeKanbanTask();
+
+  // Queue auto-promotion: automatically promote queue -> in_progress when capacity available
+  const handlePromoteTask = useCallback(
+    async (taskId: string) => {
+      if (!workspace) return;
+      await updateTaskStatus.mutateAsync({
+        taskId,
+        status: "in_progress",
+        workspacePath: workspace.path,
+      });
+    },
+    [workspace, updateTaskStatus]
+  );
+
+  useQueueAutoPromotion({
+    tasks: tasks ?? [],
+    onPromoteTask: handlePromoteTask,
+    enabled: !!workspace,
+  });
 
   // Fetch available agents and models for task creation
   // All agents from useAgents are user-created agents
@@ -859,7 +890,7 @@ export function WorkspaceKanbanPage() {
   );
   const stats = useKanbanStats(statsItems);
 
-  // Multi-select for bulk actions
+  // Multi-select for bulk actions (with persistence)
   const {
     selectedIds,
     selectedCount,
@@ -871,7 +902,12 @@ export function WorkspaceKanbanPage() {
     toggleSubset,
     isSubsetAllSelected,
     isSubsetSomeSelected,
-  } = useMultiSelect(sortedTasks);
+  } = useMultiSelect(sortedTasks, {
+    persistence: {
+      projectId: workspaceId ?? "",
+      enabled: !!workspaceId,
+    },
+  });
 
   // Selected task - transform to TaskForPanel
   const selectedTask = useMemo<TaskForPanel | null>(() => {
@@ -1241,17 +1277,37 @@ export function WorkspaceKanbanPage() {
     const backlogTasks = tasksByColumn["backlog"] ?? [];
     if (backlogTasks.length === 0) return;
 
-    for (const task of backlogTasks) {
-      updateTaskStatus.mutate({
-        taskId: task.id,
-        status: "queue",
-        workspacePath: workspace.path,
-      });
+    try {
+      // Notify Gateway about batch queue operation (for tracking)
+      const taskIds = backlogTasks.map((t) => t.id);
+      await queueAllBacklogTasks(taskIds);
+
+      // Update task statuses via Kanban API
+      for (const task of backlogTasks) {
+        updateTaskStatus.mutate({
+          taskId: task.id,
+          status: "queue",
+          workspacePath: workspace.path,
+        });
+      }
+      toast.success(
+        t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
+      );
+    } catch (error) {
+      console.error("[WorkspaceKanban] Queue all failed:", error);
+      // Still update statuses even if Gateway notification failed
+      for (const task of backlogTasks) {
+        updateTaskStatus.mutate({
+          taskId: task.id,
+          status: "queue",
+          workspacePath: workspace.path,
+        });
+      }
+      toast.success(
+        t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
+      );
     }
-    toast.success(
-      t("workspace.queueAllSuccess", "Queued {{count}} tasks", { count: backlogTasks.length })
-    );
-  }, [workspace, tasksByColumn, updateTaskStatus, toast, t]);
+  }, [workspace, tasksByColumn, updateTaskStatus, queueAllBacklogTasks, toast, t]);
 
   // Archive All - archive all done tasks
   const handleArchiveAll = useCallback(() => {
@@ -2032,6 +2088,14 @@ export function WorkspaceKanbanPage() {
                             onClick={() => handleCardClick(task.id)}
                             isOpen={selectedTaskId === task.id}
                             tabIndex={selectedTaskId === task.id ? 0 : -1}
+                            className={cn(
+                              // Running pulse animation - blue border effect
+                              task.has_in_progress_attempt && !task.isStuck && !task.is_stuck &&
+                                "task-running-pulse ring-2 ring-primary/50",
+                              // Stuck pulse animation - warning border effect
+                              (task.isStuck || task.is_stuck) &&
+                                "task-stuck-pulse ring-2 ring-warning/50"
+                            )}
                             showMoreMenu
                             renderMoreMenu={(onOpenChange) => (
                               <DropdownMenu onOpenChange={onOpenChange}>
@@ -2300,6 +2364,26 @@ export function WorkspaceKanbanPage() {
         onOpenChange={setSettingsOpen}
         columns={columnConfigs}
         onColumnsChange={handleColumnsChange}
+        translations={{
+          title: t("workspace.boardSettingsDialog.title"),
+          description: t("workspace.boardSettingsDialog.description"),
+          doubleClickToEdit: t("workspace.boardSettingsDialog.doubleClickToEdit"),
+          changeColor: t("workspace.boardSettingsDialog.changeColor"),
+          deleteColumn: t("workspace.boardSettingsDialog.deleteColumn"),
+          noColumns: t("workspace.boardSettingsDialog.noColumns"),
+          cancel: t("common.cancel"),
+          saveChanges: t("workspace.boardSettingsDialog.saveChanges"),
+          colors: {
+            gray: t("workspace.colors.gray"),
+            blue: t("workspace.colors.blue"),
+            yellow: t("workspace.colors.yellow"),
+            green: t("workspace.colors.green"),
+            red: t("workspace.colors.red"),
+            purple: t("workspace.colors.purple"),
+            orange: t("workspace.colors.orange"),
+            cyan: t("workspace.colors.cyan"),
+          },
+        }}
       />
 
       {/* Queue Settings Modal */}
@@ -2307,7 +2391,12 @@ export function WorkspaceKanbanPage() {
         open={queueSettingsOpen}
         onOpenChange={setQueueSettingsOpen}
         currentMaxParallel={maxParallelTasks}
-        onSave={setMaxParallelTasks}
+        onSave={async (value) => {
+          // Update Gateway config first, then sync local state
+          await updateGatewayMaxConcurrency(value);
+          setMaxParallelTasks(value);
+        }}
+        isSaving={isLoadingGatewayStatus}
       />
     </PageWrapper>
   );

@@ -243,7 +243,7 @@ export function DebugChatPanel({
             const toolUsage: ToolUsage = {
               id: toolId,
               name: toolData.name || "unknown",
-              displayName: toolData.name || "Unknown Tool",
+              displayName: toolData.name || t("chat.unknownTool", "Unknown Tool"),
               input: toolData.input || {},
               timestamp: Date.now(),
             };
@@ -293,7 +293,7 @@ export function DebugChatPanel({
           const resultMsg: AgentMessage = {
             id: crypto.randomUUID(),
             type: "result",
-            content: "Agent completed successfully.",
+            content: t("chat.agentCompleted", "Agent completed successfully."),
           };
           setMessages((prev) => [...prev, resultMsg]);
         } else {
@@ -301,7 +301,7 @@ export function DebugChatPanel({
           const errMsg: AgentMessage = {
             id: crypto.randomUUID(),
             type: "error",
-            message: "Agent execution failed.",
+            message: t("chat.agentFailed", "Agent execution failed."),
             isError: true,
           };
           setMessages((prev) => [...prev, errMsg]);
@@ -309,11 +309,11 @@ export function DebugChatPanel({
         break;
 
       case "Error":
-        setError(eventData.message || "Unknown error");
+        setError(eventData.message || t("common.unknownError", "Unknown error"));
         const errMsg: AgentMessage = {
           id: crypto.randomUUID(),
           type: "error",
-          message: eventData.message || "Unknown error",
+          message: eventData.message || t("common.unknownError", "Unknown error"),
           isError: true,
         };
         setMessages((prev) => [...prev, errMsg]);
@@ -321,7 +321,7 @@ export function DebugChatPanel({
         setIsStreaming(false);
         break;
     }
-  }, []);
+  }, [t]);
 
   /**
    * Subscribe to WebSocket events for a session

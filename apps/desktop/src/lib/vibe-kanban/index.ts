@@ -57,6 +57,7 @@ export {
   updateTask,
   deleteTask,
   updateTaskStatus,
+  checkTaskRunning,
   VibeKanbanApiError,
 } from "./api";
 

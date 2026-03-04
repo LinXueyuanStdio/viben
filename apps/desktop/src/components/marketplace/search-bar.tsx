@@ -20,11 +20,12 @@ interface SearchBarProps {
 export const SearchBar = React.memo(function SearchBar({
   value,
   onChange,
-  placeholder = "Search packages...",
+  placeholder,
   className,
   loading = false,
 }: SearchBarProps) {
   const { t } = useTranslation();
+  const defaultPlaceholder = placeholder ?? t("marketplace.searchPlaceholder");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const handleClear = React.useCallback(() => {
@@ -52,7 +53,7 @@ export const SearchBar = React.memo(function SearchBar({
         type="text"
         value={value}
         onChange={handleChange}
-        placeholder={placeholder}
+        placeholder={defaultPlaceholder}
         className="pl-10 pr-10"
       />
       {value && (

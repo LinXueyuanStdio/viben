@@ -3,6 +3,7 @@
     "loading": "加载中...",
     "error": "错误",
     "save": "保存",
+    "saving": "保存中...",
     "cancel": "取消",
     "delete": "删除",
     "deleting": "删除中...",
@@ -1473,6 +1474,7 @@
     "clearAll": "清除全部",
     "all": "全部",
     "noNotifications": "没有 {{type}} 通知",
+    "noNotifications_all": "暂无通知",
     "searchTools": "搜索工具...",
     "noToolsFound": "未找到匹配的工具",
     "selectTool": "从列表中选择工具",
@@ -2184,7 +2186,8 @@
       "btnBack": "上一步",
       "btnCreate": "创建",
       "btnContinueAdd": "继续添加",
-      "btnGoToWorkspace": "前往工作区"
+      "btnGoToWorkspace": "前往工作区",
+      "detectFailed": "检测文件夹状态失败"
     },
     "global": "全局工作空间",
     "custom": "自定义",
@@ -2366,6 +2369,19 @@
     "runAgent": "运行",
     "running": "运行中",
     "failed": "失败",
+    "queueAll": "全部入队",
+    "queueAllSuccess": "已将 {{count}} 个任务加入队列",
+    "archiveAll": "全部归档",
+    "archiveAllSuccess": "已归档 {{count}} 个任务",
+    "taskArchived": "任务已归档",
+    "taskStopped": "任务已停止",
+    "taskRecovered": "任务已恢复并重新开始",
+    "taskCreated": "任务创建成功",
+    "taskCreateFailed": "创建任务失败：{{message}}",
+    "invalidTransition": "无法将任务从 {{from}} 移动到 {{to}}",
+    "capacityIndicator": "并行任务 {{current}}/{{max}}",
+    "showArchived": "显示已归档 ({{count}})",
+    "hideArchived": "隐藏已归档",
     "idle": "空闲",
     "agent": "智能体",
     "status": "状态",
@@ -2392,7 +2408,9 @@
       "completed": "已完成 {{completed}}/{{total}}",
       "noSubtasks": "暂无子任务",
       "subtasksWillAppear": "规划后子任务将显示在这里",
-      "files": "个文件"
+      "files": "个文件",
+      "statusInProgress": "进行中",
+      "statusFailed": "失败"
     },
     "prdTab": {
       "title": "PRD",
@@ -2412,7 +2430,9 @@
       "running": "运行中",
       "complete": "已完成",
       "failed": "失败",
-      "entries": "条记录"
+      "entries": "条记录",
+      "hideDetails": "隐藏详情",
+      "showDetails": "显示详情"
     },
     "filesTab": {
       "title": "文件",
@@ -2428,6 +2448,36 @@
     "viewMode": {
       "kanban": "看板",
       "list": "列表"
+    },
+    "boardSettings": "看板设置",
+    "boardSettingsDialog": {
+      "title": "看板设置",
+      "description": "拖拽重新排序列。双击重命名。切换可见性以显示/隐藏列。",
+      "doubleClickToEdit": "双击编辑",
+      "changeColor": "更改颜色",
+      "deleteColumn": "删除列",
+      "noColumns": "未配置列",
+      "saveChanges": "保存更改"
+    },
+    "queueSettings": "队列设置",
+    "queueSettingsDialog": {
+      "title": "队列设置",
+      "description": "配置可并行运行的任务数量。",
+      "maxParallel": "最大并行任务数",
+      "hint": "当有空闲容量时，任务将自动从队列移动到进行中。",
+      "errorNaN": "请输入有效数字",
+      "errorMin": "最小值为 1",
+      "errorMax": "最大值为 10"
+    },
+    "colors": {
+      "gray": "灰色",
+      "blue": "蓝色",
+      "yellow": "黄色",
+      "green": "绿色",
+      "red": "红色",
+      "purple": "紫色",
+      "orange": "橙色",
+      "cyan": "青色"
     },
     "commandPalette": {
       "placeholder": "搜索命令...",
@@ -2773,6 +2823,21 @@
     "noArtifacts": "暂无产物",
     "noFiles": "暂无工作文件",
     "noTools": "暂无使用的工具",
+    "unknownTool": "未知工具",
+    "agentCompleted": "智能体执行成功。",
+    "agentFailed": "智能体执行失败。",
+    "activity": {
+      "runningCommand": "正在执行命令...",
+      "searching": "正在搜索...",
+      "findingFiles": "正在查找文件...",
+      "fetchingPage": "正在获取页面...",
+      "runningSubtask": "正在执行子任务...",
+      "readingFile": "正在读取 {{file}}...",
+      "writingFile": "正在写入 {{file}}...",
+      "editingFile": "正在编辑 {{file}}...",
+      "searchingWeb": "正在搜索网页...",
+      "runningTool": "正在运行 {{tool}}..."
+    },
     "sidebar.workspace": "工作区",
     "sidebar.outputFolder": "输出文件夹",
     "sidebar.externalFolders": "外部文件夹",
@@ -3552,7 +3617,10 @@
     "responseBody": "响应体",
     "noInputData": "无输入数据",
     "noOutputData": "无输出数据",
-    "url": "URL"
+    "url": "URL",
+    "loadDatesFailed": "加载日期失败",
+    "loadTracesFailed": "加载追踪列表失败",
+    "loadTraceFailed": "加载追踪详情失败"
   },
   "errors": {
     "github": {

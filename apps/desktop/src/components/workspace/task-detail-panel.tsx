@@ -156,7 +156,7 @@ function EditableTitle({
 function EditableDescription({
   value,
   onChange,
-  placeholder = "Add description...",
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -248,16 +248,16 @@ function formatDateTime(dateString: string): string {
 }
 
 // Format event timestamp helper
-function formatEventTime(timestamp: string): string {
+function formatEventTime(timestamp: string, t: (key: string, fallback: string, options?: { count?: number }) => string): string {
   const date = new Date(timestamp);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
 
-  if (diffMinutes < 1) return "Just now";
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffMinutes < 1) return t("common.justNow", "Just now");
+  if (diffMinutes < 60) return t("common.minutesAgo", "{{count}}m ago", { count: diffMinutes });
+  if (diffHours < 24) return t("common.hoursAgo", "{{count}}h ago", { count: diffHours });
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -493,7 +493,7 @@ export function TaskDetailPanel({
       type: "created",
       actor: {
         id: "system",
-        name: "System",
+        name: t("common.system", "System"),
       },
       timestamp: task.created_at,
       data: {},
@@ -506,7 +506,7 @@ export function TaskDetailPanel({
         type: "status_changed",
         actor: {
           id: "system",
-          name: "System",
+          name: t("common.system", "System"),
         },
         timestamp: task.updated_at,
         data: {
@@ -1363,7 +1363,7 @@ You are helping the user work on this task. Provide relevant suggestions, code e
                           </Badge>
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          {formatEventTime(event.timestamp)}
+                          {formatEventTime(event.timestamp, t)}
                         </span>
                       </div>
                       {event.payload && Object.keys(event.payload).length > 0 && (

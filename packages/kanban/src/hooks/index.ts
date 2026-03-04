@@ -1,5 +1,14 @@
 export { useFilteredItems } from "./use-filtered-items";
-export { useMultiSelect, type MultiSelectState } from "./use-multi-select";
+export {
+  useMultiSelect,
+  type MultiSelectState,
+  type UseMultiSelectOptions,
+} from "./use-multi-select";
+export {
+  useSelectionPersistence,
+  type SelectionPersistenceOptions,
+  type UseSelectionPersistenceReturn,
+} from "./use-selection-persistence";
 export { useColumnCollapse } from "./use-column-collapse";
 export { useSortedItems } from "./use-sorted-items";
 export { useKanbanStats } from "./use-kanban-stats";

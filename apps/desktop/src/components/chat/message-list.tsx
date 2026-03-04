@@ -363,37 +363,37 @@ function RunningIndicator({ messages }: { messages: AgentMessage[] }) {
 
     switch (lastToolUse.name) {
       case "Bash":
-        return "Running command...";
+        return t("chat.activity.runningCommand", "Running command...");
       case "Read": {
         const readFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Reading ${readFile || "file"}...`;
+        return t("chat.activity.readingFile", "Reading {{file}}...", { file: readFile || "file" });
       }
       case "Write": {
         const writeFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Writing ${writeFile || "file"}...`;
+        return t("chat.activity.writingFile", "Writing {{file}}...", { file: writeFile || "file" });
       }
       case "Edit": {
         const editFile = input?.file_path
           ? String(input.file_path).split("/").pop()
           : "";
-        return `Editing ${editFile || "file"}...`;
+        return t("chat.activity.editingFile", "Editing {{file}}...", { file: editFile || "file" });
       }
       case "Grep":
-        return "Searching...";
+        return t("chat.activity.searching", "Searching...");
       case "Glob":
-        return "Finding files...";
+        return t("chat.activity.findingFiles", "Finding files...");
       case "WebSearch":
-        return "Searching web...";
+        return t("chat.activity.searchingWeb", "Searching web...");
       case "WebFetch":
-        return "Fetching page...";
+        return t("chat.activity.fetchingPage", "Fetching page...");
       case "Task":
-        return "Running subtask...";
+        return t("chat.activity.runningSubtask", "Running subtask...");
       default:
-        return `Running ${lastToolUse.name}...`;
+        return t("chat.activity.runningTool", "Running {{tool}}...", { tool: lastToolUse.name });
     }
   };
 

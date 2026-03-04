@@ -75,12 +75,12 @@ function getStatusIcon(subtask: ExtendedSubtask) {
 /**
  * Get status label for badge
  */
-function getStatusLabel(status: SubtaskStatus | undefined): string | null {
+function getStatusLabel(status: SubtaskStatus | undefined, t: (key: string, fallback: string) => string): string | null {
   switch (status) {
     case "in_progress":
-      return "In Progress";
+      return t("workspace.subtasksTab.statusInProgress", "In Progress");
     case "failed":
-      return "Failed";
+      return t("workspace.subtasksTab.statusFailed", "Failed");
     default:
       return null;
   }
@@ -201,7 +201,7 @@ export function TaskSubtasksTab({
             const isCompleted = subtask.status === "completed" || subtask.completed;
             const isFailed = subtask.status === "failed";
             const isInProgress = subtask.status === "in_progress";
-            const statusLabel = getStatusLabel(subtask.status);
+            const statusLabel = getStatusLabel(subtask.status, t);
             const statusColor = getStatusColor(subtask.status);
 
             return (

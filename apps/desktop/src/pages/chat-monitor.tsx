@@ -205,7 +205,7 @@ export function ChatMonitorPage() {
     setError(null);
     try {
       const response = await fetch(`${getGatewayUrl()}/api/telemetry/dates`);
-      if (!response.ok) throw new Error("Failed to load dates");
+      if (!response.ok) throw new Error(t("observability.loadDatesFailed"));
       const data: DateSummary[] = await response.json();
       setDates(data);
 
@@ -222,7 +222,7 @@ export function ChatMonitorPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Load traces for selected date with optional route filter
   const loadTraces = useCallback(async (date: string, route?: string) => {
@@ -236,7 +236,7 @@ export function ChatMonitorPage() {
         url += `&route=${encodeURIComponent(route)}`;
       }
       const response = await fetch(url);
-      if (!response.ok) throw new Error("Failed to load traces");
+      if (!response.ok) throw new Error(t("observability.loadTracesFailed"));
       const data = await response.json();
       setTraces(data.traces || []);
 
@@ -250,7 +250,7 @@ export function ChatMonitorPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   // Load trace details
   const loadTraceDetail = useCallback(
@@ -263,7 +263,7 @@ export function ChatMonitorPage() {
         const response = await fetch(
           `${getGatewayUrl()}/api/telemetry/trace/${traceId}?date=${selectedDate}`
         );
-        if (!response.ok) throw new Error("Failed to load trace");
+        if (!response.ok) throw new Error(t("observability.loadTraceFailed"));
         const data = await response.json();
         setTraceTree(data.tree);
         setTraceStats(data.stats);
@@ -274,7 +274,7 @@ export function ChatMonitorPage() {
         setLoading(false);
       }
     },
-    [selectedDate]
+    [selectedDate, t]
   );
 
   // Initial load

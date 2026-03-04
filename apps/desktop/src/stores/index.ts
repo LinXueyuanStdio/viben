@@ -17,3 +17,10 @@ export {
   useKanbanQueueStore,
   useWorkspaceKanbanQueue,
 } from "./kanban-queue-store";
+export {
+  useTaskActivityStore,
+  recordTaskActivity,
+  hasRecentActivity,
+  getTimeSinceActivity,
+  clearTaskActivity,
+} from "./task-activity-store";

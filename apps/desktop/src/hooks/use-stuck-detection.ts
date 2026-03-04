@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useUpdateVibeKanbanTaskStatus } from "./use-vibe-kanban";
+import { hasRecentActivity } from "@/stores/task-activity-store";
+import { checkTaskRunning } from "@/lib/vibe-kanban";
 
 /**
  * Options for stuck detection
@@ -13,10 +15,12 @@ export interface UseStuckDetectionOptions {
   workspacePath?: string;
   /** Last update timestamp from the task */
   lastUpdated?: string;
-  /** Check interval in milliseconds (default: 60000ms = 1 minute) */
+  /** Check interval in milliseconds (default: 30000ms = 30 seconds) */
   checkInterval?: number;
   /** Stuck threshold in milliseconds (default: 60000ms = 1 minute) */
   stuckThreshold?: number;
+  /** Enable process verification (default: true) */
+  enableProcessCheck?: boolean;
 }
 
 /**
@@ -29,6 +33,8 @@ export interface UseStuckDetectionReturn {
   stuckDuration: number;
   /** Whether recovery is in progress */
   isRecovering: boolean;
+  /** Whether checking for stuck status */
+  isChecking: boolean;
   /** Trigger recovery (restart the task) */
   handleRecover: () => Promise<void>;
   /** Reset stuck status (e.g., when task resumes activity) */
@@ -38,8 +44,15 @@ export interface UseStuckDetectionReturn {
 /**
  * Hook for detecting stuck tasks
  *
- * Monitors a running task and detects when it hasn't made progress
- * for a specified threshold. Provides recovery functionality.
+ * Uses a multi-layer detection strategy:
+ * 1. Check client-side activity tracking (SSE events, data refreshes)
+ * 2. Check lastUpdated timestamp from the task
+ * 3. Verify with the Gateway if the process is actually running
+ *
+ * A task is only marked as stuck if:
+ * - No recent client activity AND
+ * - lastUpdated exceeds threshold AND
+ * - Process verification confirms process is not running
  *
  * @example
  * ```tsx
@@ -56,15 +69,18 @@ export function useStuckDetection({
   isRunning,
   workspacePath,
   lastUpdated,
-  checkInterval = 60000, // 1 minute
+  checkInterval = 30000, // 30 seconds
   stuckThreshold = 60000, // 1 minute without updates
+  enableProcessCheck = true,
 }: UseStuckDetectionOptions): UseStuckDetectionReturn {
   const [isStuck, setIsStuck] = useState(false);
   const [stuckDuration, setStuckDuration] = useState(0);
   const [isRecovering, setIsRecovering] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   const lastCheckedRef = useRef<string | undefined>(lastUpdated);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isCheckingRef = useRef(false);
 
   const updateTaskStatus = useUpdateVibeKanbanTaskStatus();
 
@@ -87,21 +103,73 @@ export function useStuckDetection({
       return;
     }
 
-    const checkStuck = () => {
-      if (!lastUpdated) return;
+    const checkStuck = async () => {
+      // Prevent concurrent checks
+      if (isCheckingRef.current) return;
+      isCheckingRef.current = true;
+      setIsChecking(true);
 
-      const lastUpdateTime = new Date(lastUpdated).getTime();
-      const now = Date.now();
-      const timeSinceUpdate = now - lastUpdateTime;
+      try {
+        // Layer 1: Check client-side activity tracking
+        if (hasRecentActivity(taskId, stuckThreshold)) {
+          setIsStuck(false);
+          setStuckDuration(0);
+          return;
+        }
 
-      if (timeSinceUpdate >= stuckThreshold) {
+        // Layer 2: Check lastUpdated timestamp
+        if (lastUpdated) {
+          const lastUpdateTime = new Date(lastUpdated).getTime();
+          const now = Date.now();
+          const timeSinceUpdate = now - lastUpdateTime;
+
+          if (timeSinceUpdate < stuckThreshold) {
+            // Recent update from server
+            setIsStuck(false);
+            setStuckDuration(0);
+            lastCheckedRef.current = lastUpdated;
+            return;
+          }
+
+          // Check if lastUpdated changed (new activity)
+          if (lastUpdated !== lastCheckedRef.current) {
+            setIsStuck(false);
+            setStuckDuration(0);
+            lastCheckedRef.current = lastUpdated;
+            return;
+          }
+        }
+
+        // Layer 3: Verify with Gateway if process is actually running
+        if (enableProcessCheck) {
+          const processRunning = await checkTaskRunning(taskId);
+
+          // Double-check activity after async call (race condition protection)
+          if (hasRecentActivity(taskId, stuckThreshold)) {
+            setIsStuck(false);
+            setStuckDuration(0);
+            return;
+          }
+
+          if (processRunning) {
+            // Process is running but no updates - could be slow, not stuck
+            // Keep checking but don't mark as stuck yet
+            return;
+          }
+        }
+
+        // All checks indicate task is stuck
+        const now = Date.now();
+        const lastUpdateTime = lastUpdated
+          ? new Date(lastUpdated).getTime()
+          : now - stuckThreshold;
+        const duration = now - lastUpdateTime;
+
         setIsStuck(true);
-        setStuckDuration(timeSinceUpdate);
-      } else if (lastUpdated !== lastCheckedRef.current) {
-        // Activity detected - task is no longer stuck
-        setIsStuck(false);
-        setStuckDuration(0);
-        lastCheckedRef.current = lastUpdated;
+        setStuckDuration(duration);
+      } finally {
+        isCheckingRef.current = false;
+        setIsChecking(false);
       }
     };
 
@@ -117,7 +185,7 @@ export function useStuckDetection({
         intervalRef.current = null;
       }
     };
-  }, [isRunning, lastUpdated, checkInterval, stuckThreshold]);
+  }, [isRunning, lastUpdated, checkInterval, stuckThreshold, taskId, enableProcessCheck]);
 
   // Handle recovery - restart the task
   const handleRecover = useCallback(async () => {
@@ -156,6 +224,7 @@ export function useStuckDetection({
     isStuck,
     stuckDuration,
     isRecovering,
+    isChecking,
     handleRecover,
     resetStuck,
   };

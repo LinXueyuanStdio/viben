@@ -8,12 +8,12 @@ export interface ColumnConfig {
 }
 
 export const COLUMN_COLORS = [
-  { name: "灰色", value: "hsl(var(--muted))" },
-  { name: "蓝色", value: "hsl(var(--primary))" },
-  { name: "黄色", value: "hsl(var(--warning))" },
-  { name: "绿色", value: "hsl(var(--success))" },
-  { name: "红色", value: "hsl(var(--destructive))" },
-  { name: "紫色", value: "hsl(280 60% 50%)" },
-  { name: "橙色", value: "hsl(25 90% 50%)" },
-  { name: "青色", value: "hsl(180 60% 45%)" },
+  { key: "gray", name: "Gray", value: "hsl(var(--muted))" },
+  { key: "blue", name: "Blue", value: "hsl(var(--primary))" },
+  { key: "yellow", name: "Yellow", value: "hsl(var(--warning))" },
+  { key: "green", name: "Green", value: "hsl(var(--success))" },
+  { key: "red", name: "Red", value: "hsl(var(--destructive))" },
+  { key: "purple", name: "Purple", value: "hsl(280 60% 50%)" },
+  { key: "orange", name: "Orange", value: "hsl(25 90% 50%)" },
+  { key: "cyan", name: "Cyan", value: "hsl(180 60% 45%)" },
 ];

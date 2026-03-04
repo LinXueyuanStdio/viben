@@ -45,23 +45,38 @@ import {
 } from "@viben/ui";
 import { COLUMN_COLORS, type ColumnConfig } from "./board-settings-types";
 
+export interface BoardSettingsDialogTranslations {
+  title?: string;
+  description?: string;
+  doubleClickToEdit?: string;
+  changeColor?: string;
+  deleteColumn?: string;
+  noColumns?: string;
+  cancel?: string;
+  saveChanges?: string;
+  colors?: Record<string, string>;
+}
+
 export interface BoardSettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   columns: ColumnConfig[];
   onColumnsChange: (columns: ColumnConfig[]) => void;
+  translations?: BoardSettingsDialogTranslations;
 }
 
 interface SortableColumnItemProps {
   column: ColumnConfig;
   onUpdate: (id: string, updates: Partial<ColumnConfig>) => void;
   onDelete: (id: string) => void;
+  translations?: BoardSettingsDialogTranslations;
 }
 
 function SortableColumnItem({
   column,
   onUpdate,
   onDelete,
+  translations,
 }: SortableColumnItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(column.name);
@@ -188,7 +203,7 @@ function SortableColumnItem({
               "transition-colors duration-150"
             )}
             onDoubleClick={handleDoubleClick}
-            title="Double-click to edit"
+            title={translations?.doubleClickToEdit ?? "Double-click to edit"}
           >
             {column.name}
           </span>
@@ -202,7 +217,7 @@ function SortableColumnItem({
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0"
-            title="Change color"
+            title={translations?.changeColor ?? "Change color"}
           >
             <Palette className="h-4 w-4" />
           </Button>
@@ -218,7 +233,7 @@ function SortableColumnItem({
                 className="w-4 h-4 rounded-full border"
                 style={{ backgroundColor: colorOption.value }}
               />
-              <span className="flex-1">{colorOption.name}</span>
+              <span className="flex-1">{translations?.colors?.[colorOption.key] ?? colorOption.name}</span>
               {column.color === colorOption.value && (
                 <Check className="h-4 w-4 text-primary" />
               )}
@@ -246,7 +261,7 @@ function SortableColumnItem({
         size="icon"
         className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
         onClick={() => onDelete(column.id)}
-        title="Delete column"
+        title={translations?.deleteColumn ?? "Delete column"}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
@@ -259,6 +274,7 @@ export function BoardSettingsDialog({
   onOpenChange,
   columns,
   onColumnsChange,
+  translations,
 }: BoardSettingsDialogProps) {
   const [localColumns, setLocalColumns] = useState<ColumnConfig[]>([]);
 
@@ -333,14 +349,13 @@ export function BoardSettingsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            Board Settings
+            {translations?.title ?? "Board Settings"}
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-4">
           <p className="text-sm text-muted-foreground mb-4">
-            Drag to reorder columns. Double-click to rename. Toggle visibility
-            to show/hide columns.
+            {translations?.description ?? "Drag to reorder columns. Double-click to rename. Toggle visibility to show/hide columns."}
           </p>
 
           <DndContext
@@ -359,6 +374,7 @@ export function BoardSettingsDialog({
                     column={column}
                     onUpdate={handleUpdate}
                     onDelete={handleDelete}
+                    translations={translations}
                   />
                 ))}
               </div>
@@ -367,16 +383,16 @@ export function BoardSettingsDialog({
 
           {localColumns.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
-              No columns configured
+              {translations?.noColumns ?? "No columns configured"}
             </div>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
-            Cancel
+            {translations?.cancel ?? "Cancel"}
           </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave}>{translations?.saveChanges ?? "Save Changes"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

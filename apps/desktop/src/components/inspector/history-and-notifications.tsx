@@ -414,7 +414,9 @@ export function HistoryAndNotifications({
           {filteredNotifications.length === 0 ? (
             <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
               <Info className="h-3.5 w-3.5 mr-1.5" />
-              {t("inspector.noNotifications", "No notifications")}
+              {notificationFilter === "all"
+                ? t("inspector.noNotifications_all", "No notifications")
+                : t("inspector.noNotifications", { type: notificationFilter })}
             </div>
           ) : (
             <div className="divide-y divide-border">
