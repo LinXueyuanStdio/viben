@@ -17,6 +17,152 @@
 | 文件结构 | 合并简化 | 减少碎片，保留 prd.md |
 | 数据迁移 | 不迁移 | 新系统干净启动 |
 
+## 现有类型复用分析
+
+### ✅ 可直接复用的类型
+
+以下类型已在 `packages/core/src/services/task-service.ts` 中定义：
+
+```typescript
+// 已有 - 直接复用
+export type TaskStatus = "backlog" | "queue" | "in_progress" | "ai_review" | "human_review" | "done" | "pr_created" | "error";
+export type ReviewReason = "completed" | "errors" | "qa_rejected" | "plan_review" | "stopped";
+export type SubtaskStatus = "pending" | "in_progress" | "completed" | "failed";
+export type ExecutionPhase = "planning" | "coding" | "qa_review" | "qa_fixing" | "complete";
+
+export interface ExecutionProgress {
+  phase: ExecutionPhase;
+  phaseProgress?: number;
+}
+
+export interface SubtaskInfo {
+  id: string;
+  name: string;
+  title?: string;
+  status: SubtaskStatus;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// 已有 - implementation_plan.json 结构
+export interface ImplementationPlanSubtask {
+  id: string;
+  title: string;
+  description?: string;
+  status: SubtaskStatus;
+  files?: string[];
+  order?: number;
+}
+
+export interface ImplementationPlanFile {
+  version?: string;
+  task_id?: string;
+  subtasks: ImplementationPlanSubtask[];
+  created_at?: string;
+  updated_at?: string;
+}
+```
+
+### ✅ 可部分复用的类型
+
+`UnifiedTask` 接口已有大部分字段，需要扩展：
+
+```typescript
+// 已有字段 (packages/core/src/services/task-service.ts:75-169)
+export interface UnifiedTask {
+  // Core Identity - ✅ 已有
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+
+  // Status - ✅ 已有
+  status: TaskStatus;
+  reviewReason?: ReviewReason;
+  current_phase?: number;
+  next_action?: Array<{ phase: number; action: string }>;
+
+  // Classification - ✅ 部分已有
+  priority: string;           // ✅ 已有
+  dev_type?: string;          // ✅ 已有 (backend, frontend, fullstack, test, docs)
+  scope?: string;             // ✅ 已有
+
+  // Git - ✅ 已有
+  branch?: string;
+  base_branch?: string;
+  worktree_path?: string;
+  commit?: string;
+  pr_url?: string;
+
+  // Subtasks - ✅ 已有
+  subtasks?: string[];
+  subtaskDetails?: SubtaskInfo[];
+  executionProgress?: ExecutionProgress;
+
+  // Timestamps - ✅ 已有
+  createdAt: string;
+  updatedAt?: string;
+  completedAt?: string;
+}
+```
+
+### 🔨 需要新增的类型
+
+```typescript
+// 新增 - 事件系统
+export interface TaskEvent {
+  eventId: string;
+  sequence: number;
+  type: TaskEventType;
+  timestamp: string;
+  payload?: Record<string, unknown>;
+}
+
+export type TaskEventType =
+  | 'QUEUE' | 'START' | 'DEQUEUE'
+  | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
+  | 'SUBTASK_COMPLETE' | 'ALL_SUBTASKS_DONE' | 'CODING_FAILED'
+  | 'QA_PASSED' | 'QA_FAILED' | 'QA_FIXING_COMPLETE' | 'QA_FIXING_FAILED'
+  | 'USER_STOPPED' | 'APPROVED' | 'REJECTED' | 'CREATE_PR'
+  | 'RETRY' | 'ABANDON';
+
+// 新增 - XState 状态存储
+export type XStateValue = string | { in_progress: ExecutionPhase };
+
+// 新增 - 元数据扩展
+export interface TaskMetadata {
+  source: TaskSource;
+  classification: TaskClassification;
+  agentConfig: AgentConfig;
+  gitConfig: GitConfig;
+}
+
+export interface TaskSource {
+  type: 'manual' | 'github_issue' | 'linear' | 'ideation';
+  ref?: string;
+  importedAt?: string;
+}
+
+export interface TaskClassification {
+  category: 'feature' | 'bugfix' | 'refactor' | 'docs';
+  complexity: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';  // 与已有 priority 字段对应
+}
+
+export interface AgentConfig {
+  model?: string;
+  thinkingLevel?: 'low' | 'medium' | 'high';
+  maxRetries?: number;
+}
+
+export interface GitConfig {
+  baseBranch?: string;      // 复用已有 base_branch
+  branchPrefix?: string;
+  useWorktree?: boolean;
+}
+```
+
 ## 整体架构
 
 ```
@@ -36,14 +182,14 @@
 │                       Core Layer                            │
 │  - TaskStateMachine: XState 状态机实例，管理状态转换          │
 │  - TaskEventStore: 事件序列号验证与持久化                     │
-│  - TaskFileManager: task.json / plan.json / prd.md 读写      │
+│  - TaskService: 已有，扩展支持新字段                          │
 └─────────────────────────────────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────┐
 │                    File System                              │
 │  .viben/tasks/<date>-<slug>/                                │
 │  ├── task.json    (状态 + 元数据 + 事件历史)                  │
-│  ├── plan.json    (subtasks + phases)                       │
+│  ├── implementation_plan.json  (subtasks，已有结构)          │
 │  └── prd.md       (需求文档)                                 │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -56,10 +202,25 @@
 ```typescript
 // packages/core/src/task/machine/task-machine.ts
 import { createMachine } from 'xstate';
+import type { TaskStatus, ReviewReason, ExecutionPhase } from '../services/task-service';
+
+/** 状态机上下文 */
+interface TaskMachineContext {
+  taskId: string;
+  reviewReason?: ReviewReason;
+  currentSubtaskIndex: number;
+  requiresPlanReview: boolean;
+}
 
 export const taskMachine = createMachine({
   id: 'task',
   initial: 'backlog',
+  context: {
+    taskId: '',
+    reviewReason: undefined,
+    currentSubtaskIndex: 0,
+    requiresPlanReview: false,
+  },
 
   states: {
     backlog: {
@@ -134,20 +295,36 @@ export const taskMachine = createMachine({
     },
   }
 });
+
+/** 将 XState 状态值转换为 TaskStatus */
+export function xstateToTaskStatus(value: XStateValue): TaskStatus {
+  if (typeof value === 'string') {
+    return value as TaskStatus;
+  }
+  // 子状态映射
+  if ('in_progress' in value) {
+    const phase = value.in_progress;
+    if (phase === 'qa_review' || phase === 'qa_fixing') {
+      return 'ai_review';
+    }
+    return 'in_progress';
+  }
+  return 'backlog';
+}
 ```
 
 **关键点：**
-- 使用 XState v5 语法
-- `human_review` 的原因通过 `context.reviewReason` 追踪
-- Guards 控制条件转换（如是否需要 plan review）
-- 子状态支持 `#task.xxx` 跳转到顶层状态
+- 复用已有的 `TaskStatus`, `ReviewReason`, `ExecutionPhase` 类型
+- `xstateToTaskStatus()` 函数将 XState 状态映射到已有的 TaskStatus
+- 子状态 `qa_review`/`qa_fixing` 映射到 `ai_review` 保持兼容
 
 ## 事件序列号机制
 
 ```typescript
 // packages/core/src/task/events/task-event.ts
+import type { TaskEventType } from './event-types';
 
-/** 任务事件结构 */
+/** 任务事件结构 - 新增 */
 export interface TaskEvent {
   eventId: string;           // UUID，事件唯一标识
   sequence: number;          // 递增序列号
@@ -156,7 +333,9 @@ export interface TaskEvent {
   payload?: Record<string, unknown>;  // 事件附加数据
 }
 
-/** 事件类型枚举 */
+// packages/core/src/task/events/event-types.ts
+
+/** 事件类型枚举 - 新增 */
 export type TaskEventType =
   | 'QUEUE' | 'START' | 'DEQUEUE'
   | 'PLANNING_COMPLETE' | 'PLANNING_FAILED'
@@ -166,11 +345,29 @@ export type TaskEventType =
   | 'RETRY' | 'ABANDON';
 
 // packages/core/src/task/events/event-store.ts
+import type { UnifiedTask } from '../../services/task-service';
+import type { TaskEvent } from './task-event';
+import { taskMachine, xstateToTaskStatus } from '../machine/task-machine';
+
+export interface ApplyResult {
+  success: boolean;
+  error?: 'SEQUENCE_MISMATCH' | 'INVALID_TRANSITION';
+  expected?: number;
+  received?: number;
+  currentState?: string;
+  newState?: string;
+}
 
 export class TaskEventStore {
+  constructor(private taskService: TaskService) {}
+
   /** 验证并应用事件 */
-  async applyEvent(taskId: string, event: TaskEvent): Promise<ApplyResult> {
-    const task = await this.loadTask(taskId);
+  async applyEvent(taskDir: string, event: TaskEvent): Promise<ApplyResult> {
+    const task = await this.taskService.getTask(taskDir);
+    if (!task) {
+      return { success: false, error: 'INVALID_TRANSITION' };
+    }
+
     const expectedSeq = (task.lastEvent?.sequence ?? 0) + 1;
 
     // 严格序列号检查
@@ -184,106 +381,153 @@ export class TaskEventStore {
     }
 
     // 验证状态机是否接受此事件
-    const nextState = this.machine.transition(task.xstateState, event.type);
+    const currentXState = task.xstateState ?? 'backlog';
+    const nextState = taskMachine.transition(currentXState, { type: event.type });
+
     if (!nextState.changed) {
       return {
         success: false,
         error: 'INVALID_TRANSITION',
-        currentState: task.xstateState,
-        event: event.type,
+        currentState: JSON.stringify(currentXState),
       };
     }
 
-    // 更新并持久化
-    task.xstateState = nextState.value;
-    task.lastEvent = event;
-    task.eventHistory.push(event);
-    await this.saveTask(task);
+    // 更新任务
+    const newStatus = xstateToTaskStatus(nextState.value);
+    await this.taskService.updateTask(taskDir, {
+      status: newStatus,
+      xstateState: nextState.value,
+      lastEvent: event,
+      eventHistory: [...(task.eventHistory ?? []), event],
+    });
 
-    return { success: true, newState: nextState.value };
+    return { success: true, newState: JSON.stringify(nextState.value) };
   }
 }
 ```
 
-**关键点：**
-- `sequence` 必须严格递增，不连续直接拒绝
-- 状态机验证事件是否在当前状态有效
-- `eventHistory` 保留完整事件日志用于调试
-- `lastEvent` 用于快速获取当前序列号
-
 ## 文件结构与 Metadata Schema
 
-### task.json
+### task.json - 扩展 UnifiedTask
 
 ```typescript
-/** task.json 完整结构 */
-export interface TaskFile {
-  // === 基础信息 ===
+// packages/core/src/services/task-service.ts - 扩展现有 UnifiedTask
+
+export interface UnifiedTask {
+  // === 已有字段 (保持不变) ===
   id: string;
-  name: string;                    // URL-safe slug
+  name: string;
   title: string;
   description?: string;
-
-  // === 状态机 ===
-  status: TaskStatus;              // 主状态
-  xstateState: string | object;    // XState 当前状态（含子状态）
-  reviewReason?: ReviewReason;     // human_review 原因
-
-  // === 事件 ===
-  lastEvent?: TaskEvent;
-  eventHistory: TaskEvent[];
-
-  // === 元数据 ===
-  metadata: TaskMetadata;
-
-  // === 时间戳 ===
+  status: TaskStatus;
+  reviewReason?: ReviewReason;
+  current_phase?: number;
+  next_action?: Array<{ phase: number; action: string }>;
+  priority: string;
+  dev_type?: string;
+  scope?: string;
+  creator?: string;
+  assignee?: string;
+  branch?: string;
+  base_branch?: string;
+  worktree_path?: string;
+  commit?: string;
+  pr_url?: string;
+  subtasks?: string[];
+  subtaskDetails?: SubtaskInfo[];
+  executionProgress?: ExecutionProgress;
+  relatedFiles?: string[];
+  notes?: string;
+  agent?: string;
+  sessionId?: string;
+  taskIndex?: number;
+  prompt?: string;
+  cost?: number;
+  duration?: number;
+  favorite?: boolean;
+  hasInProgressAttempt?: boolean;
+  lastAttemptFailed?: boolean;
+  executor?: string;
+  workspacePath?: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  completedAt?: string;
+
+  // === 新增字段 ===
+  /** XState 状态机当前状态 */
+  xstateState?: XStateValue;
+  /** 最后一个事件 */
+  lastEvent?: TaskEvent;
+  /** 事件历史 */
+  eventHistory?: TaskEvent[];
+  /** 扩展元数据 */
+  metadata?: TaskMetadata;
 }
 
-/** 元数据结构 */
+/** XState 状态值类型 */
+export type XStateValue = string | { in_progress: ExecutionPhase };
+
+/** 扩展元数据 - 新增 */
 export interface TaskMetadata {
-  // 来源追踪
-  source: {
-    type: 'manual' | 'github_issue' | 'linear' | 'ideation';
-    ref?: string;          // issue URL / linear ID 等
-    importedAt?: string;
-  };
+  source?: TaskSource;
+  classification?: TaskClassification;
+  agentConfig?: AgentConfig;
+  gitConfig?: GitConfig;
+}
 
-  // 分类标签
-  classification: {
-    category: 'feature' | 'bugfix' | 'refactor' | 'docs';
-    complexity: 'low' | 'medium' | 'high';
-    impact: 'low' | 'medium' | 'high';
-    priority: 'P0' | 'P1' | 'P2' | 'P3';
-  };
+export interface TaskSource {
+  type: 'manual' | 'github_issue' | 'linear' | 'ideation';
+  ref?: string;
+  importedAt?: string;
+}
 
-  // Agent 配置
-  agentConfig: {
-    model?: string;
-    thinkingLevel?: 'low' | 'medium' | 'high';
-    maxRetries?: number;
-  };
+export interface TaskClassification {
+  category: 'feature' | 'bugfix' | 'refactor' | 'docs';
+  complexity: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
+  priority: 'P0' | 'P1' | 'P2' | 'P3';
+}
 
-  // Git 配置
-  gitConfig: {
-    baseBranch?: string;
-    branchPrefix?: string;
-    useWorktree?: boolean;
-  };
+export interface AgentConfig {
+  model?: string;
+  thinkingLevel?: 'low' | 'medium' | 'high';
+  maxRetries?: number;
+}
+
+export interface GitConfig {
+  baseBranch?: string;
+  branchPrefix?: string;
+  useWorktree?: boolean;
 }
 ```
 
-### plan.json
+### implementation_plan.json - 复用已有结构
 
 ```typescript
-/** plan.json 结构 */
-export interface PlanFile {
-  phases: Phase[];
-  currentPhase: number;
+// 已有 - packages/core/src/services/task-service.ts:849-867
 
-  // 执行进度
-  progress: {
+export interface ImplementationPlanFile {
+  version?: string;
+  task_id?: string;
+  subtasks: ImplementationPlanSubtask[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ImplementationPlanSubtask {
+  id: string;
+  title: string;
+  description?: string;
+  status: SubtaskStatus;  // 复用已有类型
+  files?: string[];
+  order?: number;
+}
+
+// 新增 - 扩展支持 phases 和 verification
+export interface ImplementationPlanFileV2 extends ImplementationPlanFile {
+  phases?: Phase[];
+  currentPhase?: number;
+  progress?: {
     completedSubtasks: number;
     totalSubtasks: number;
     percentage: number;
@@ -294,15 +538,11 @@ export interface Phase {
   id: number;
   name: string;
   type: 'planning' | 'implementation' | 'qa';
-  subtasks: Subtask[];
+  subtasks: ImplementationPlanSubtask[];
 }
 
-export interface Subtask {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed';
-  files: string[];
+// 扩展 subtask 支持 verification
+export interface ImplementationPlanSubtaskV2 extends ImplementationPlanSubtask {
   verification?: {
     type: 'command' | 'browser';
     run?: string;
@@ -315,52 +555,70 @@ export interface Subtask {
 
 ```
 .viben/tasks/03-04-user-auth/
-├── task.json      # TaskFile 结构
-├── plan.json      # PlanFile 结构
-└── prd.md         # Markdown 需求文档
+├── task.json                    # UnifiedTask (扩展后)
+├── implementation_plan.json     # ImplementationPlanFile (已有)
+├── prd.md                       # PRD 文档 (已有)
+└── logs/                        # 执行日志 (已有)
+    ├── planning.log
+    ├── coding.log
+    └── validation.log
 
-.viben/specs/      # 技术规格单独存放
+.viben/specs/                    # 技术规格单独存放
 ```
 
 ## Gateway 层实现
 
 ```typescript
 // packages/core/src/gateway/routes/task-events.ts
+import { Hono } from 'hono';
+import { streamSSE } from 'hono/streaming';
+import { TaskEventStore } from '../../task/events/event-store';
+import { TaskSSEManager } from '../sse/task-sse-manager';
+import { taskService } from '../../services/task-service';
+import type { TaskEvent } from '../../task/events/task-event';
 
-/** 事件路由器 - 接收并转发事件 */
 export function createTaskEventRoutes(app: Hono) {
-  const eventStore = new TaskEventStore();
+  const eventStore = new TaskEventStore(taskService);
   const sseManager = new TaskSSEManager();
 
-  // POST /api/tasks/:taskId/events - 提交事件
+  // POST /api/tasks/:task_id/events - 提交事件
   app.post('/api/tasks/:task_id/events', async (c) => {
     const taskId = c.req.param('task_id');
-    const event = await c.req.json<TaskEvent>();
+    const workspacePath = c.req.query('workspace_path');  // 遵循 snake_case 约定
 
-    const result = await eventStore.applyEvent(taskId, event);
+    if (!workspacePath) {
+      return c.json({ error: 'workspace_path required' }, 400);
+    }
+
+    const taskDir = await taskService.findTaskById(workspacePath, taskId);
+    if (!taskDir) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    const event = await c.req.json<TaskEvent>();
+    const result = await eventStore.applyEvent(taskDir, event);
 
     if (!result.success) {
-      // 序列号不匹配或无效转换，返回 409 Conflict
       return c.json({
         error: result.error,
         expected: result.expected,
         received: result.received,
-        currentState: result.currentState,
+        current_state: result.currentState,
       }, 409);
     }
 
-    // 广播状态变化给所有订阅者
+    // 广播状态变化
     sseManager.broadcast(taskId, {
       type: 'STATE_CHANGED',
-      taskId,
+      task_id: taskId,
       event,
-      newState: result.newState,
+      new_state: result.newState,
     });
 
-    return c.json({ success: true, newState: result.newState });
+    return c.json({ success: true, new_state: result.newState });
   });
 
-  // GET /api/tasks/:taskId/events/stream - SSE 订阅
+  // GET /api/tasks/:task_id/events/stream - SSE 订阅
   app.get('/api/tasks/:task_id/events/stream', (c) => {
     const taskId = c.req.param('task_id');
 
@@ -372,60 +630,34 @@ export function createTaskEventRoutes(app: Hono) {
         });
       });
 
-      // 连接关闭时清理
       stream.onAbort(() => unsubscribe());
     });
   });
 
-  // GET /api/tasks/:taskId/state - 获取当前状态（用于重连同步）
+  // GET /api/tasks/:task_id/state - 获取当前状态
   app.get('/api/tasks/:task_id/state', async (c) => {
     const taskId = c.req.param('task_id');
-    const task = await eventStore.loadTask(taskId);
+    const workspacePath = c.req.query('workspace_path');
+
+    if (!workspacePath) {
+      return c.json({ error: 'workspace_path required' }, 400);
+    }
+
+    const taskDir = await taskService.findTaskById(workspacePath, taskId);
+    if (!taskDir) {
+      return c.json({ error: 'Task not found' }, 404);
+    }
+
+    const task = await taskService.getTask(taskDir);
 
     return c.json({
-      taskId,
-      status: task.status,
-      xstateState: task.xstateState,
-      lastEvent: task.lastEvent,
-      reviewReason: task.reviewReason,
+      task_id: taskId,
+      status: task?.status,
+      xstate_state: task?.xstateState,
+      last_event: task?.lastEvent,
+      review_reason: task?.reviewReason,
     });
   });
-}
-```
-
-### 客户端使用流程
-
-```typescript
-// 1. 获取当前状态和序列号
-const state = await fetch(`/api/tasks/${taskId}/state`).then(r => r.json());
-let currentSeq = state.lastEvent?.sequence ?? 0;
-
-// 2. 订阅 SSE
-const sse = new EventSource(`/api/tasks/${taskId}/events/stream`);
-sse.addEventListener('STATE_CHANGED', (e) => {
-  const data = JSON.parse(e.data);
-  updateUI(data.newState);
-  currentSeq = data.event.sequence;
-});
-
-// 3. 发送事件时带上正确的序列号
-async function sendEvent(type: TaskEventType) {
-  const event = {
-    eventId: crypto.randomUUID(),
-    sequence: currentSeq + 1,
-    type,
-    timestamp: new Date().toISOString(),
-  };
-
-  const res = await fetch(`/api/tasks/${taskId}/events`, {
-    method: 'POST',
-    body: JSON.stringify(event),
-  });
-
-  if (res.status === 409) {
-    // 序列号冲突，重新获取状态
-    await resyncState();
-  }
 }
 ```
 
@@ -433,6 +665,10 @@ async function sendEvent(type: TaskEventType) {
 
 ```typescript
 // packages/core/src/task/recovery/task-recovery.ts
+import { taskService, type UnifiedTask } from '../../services/task-service';
+import { TaskEventStore } from '../events/event-store';
+import { TaskSSEManager } from '../../gateway/sse/task-sse-manager';
+import type { TaskEvent } from '../events/task-event';
 
 export class TaskRecoveryService {
   constructor(
@@ -441,22 +677,21 @@ export class TaskRecoveryService {
   ) {}
 
   /** 启动时恢复所有进行中的任务 */
-  async recoverOnStartup(): Promise<void> {
-    const tasks = await this.eventStore.findByStatus(['in_progress', 'queue']);
+  async recoverOnStartup(workspacePath: string): Promise<void> {
+    const tasks = await taskService.listTasks(workspacePath);
+    const activeTasks = tasks.filter(t =>
+      taskService.isActiveState(t.status)  // 复用已有方法
+    );
 
-    for (const task of tasks) {
-      // 从 xstateState 恢复状态机实例
-      const restoredMachine = this.eventStore.restoreMachine(task.xstateState);
-
-      // 检查是否卡死（超过阈值无新事件）
+    for (const task of activeTasks) {
       if (this.isStuck(task)) {
-        await this.handleStuckTask(task);
+        await this.handleStuckTask(workspacePath, task);
       }
     }
   }
 
   /** 判断任务是否卡死 */
-  private isStuck(task: TaskFile): boolean {
+  private isStuck(task: UnifiedTask): boolean {
     if (!task.lastEvent) return false;
 
     const lastEventTime = new Date(task.lastEvent.timestamp).getTime();
@@ -467,8 +702,10 @@ export class TaskRecoveryService {
   }
 
   /** 处理卡死任务 */
-  private async handleStuckTask(task: TaskFile): Promise<void> {
-    // 生成系统事件，将任务移回 human_review
+  private async handleStuckTask(workspacePath: string, task: UnifiedTask): Promise<void> {
+    const taskDir = await taskService.findTaskById(workspacePath, task.id);
+    if (!taskDir) return;
+
     const event: TaskEvent = {
       eventId: crypto.randomUUID(),
       sequence: (task.lastEvent?.sequence ?? 0) + 1,
@@ -477,34 +714,13 @@ export class TaskRecoveryService {
       payload: { reason: 'stuck_detected', autoRecovery: true },
     };
 
-    await this.eventStore.applyEvent(task.id, event);
+    await this.eventStore.applyEvent(taskDir, event);
 
-    // 通知订阅者
     this.sseManager.broadcast(task.id, {
       type: 'TASK_RECOVERED',
-      taskId: task.id,
+      task_id: task.id,
       reason: 'stuck_detected',
     });
-  }
-
-  /** 客户端重连时同步状态 */
-  async resyncClient(taskId: string, clientSeq: number): Promise<ResyncResult> {
-    const task = await this.eventStore.loadTask(taskId);
-    const serverSeq = task.lastEvent?.sequence ?? 0;
-
-    if (clientSeq === serverSeq) {
-      return { inSync: true };
-    }
-
-    // 返回客户端缺失的事件
-    const missedEvents = task.eventHistory.filter(e => e.sequence > clientSeq);
-
-    return {
-      inSync: false,
-      currentState: task.xstateState,
-      missedEvents,
-      latestSeq: serverSeq,
-    };
   }
 }
 ```
@@ -523,50 +739,44 @@ export class TaskRecoveryService {
 
 ```
 packages/core/src/
-├── task/
+├── task/                          # 🆕 新增目录
 │   ├── machine/
-│   │   ├── task-machine.ts       # XState 状态机定义
-│   │   ├── guards.ts             # 状态转换守卫条件
-│   │   └── actions.ts            # 状态转换动作
+│   │   ├── task-machine.ts        # XState 状态机定义
+│   │   ├── guards.ts              # 状态转换守卫条件
+│   │   └── actions.ts             # 状态转换动作
 │   │
 │   ├── events/
-│   │   ├── task-event.ts         # 事件类型定义
-│   │   ├── event-store.ts        # 事件验证与持久化
-│   │   └── event-types.ts        # 事件类型枚举
-│   │
-│   ├── storage/
-│   │   ├── task-file-manager.ts  # task.json 读写
-│   │   ├── plan-file-manager.ts  # plan.json 读写
-│   │   └── prd-file-manager.ts   # prd.md 读写
+│   │   ├── task-event.ts          # TaskEvent 接口
+│   │   ├── event-store.ts         # 事件验证与持久化
+│   │   └── event-types.ts         # TaskEventType 类型
 │   │
 │   ├── recovery/
-│   │   └── task-recovery.ts      # 恢复与 stuck 检测
+│   │   └── task-recovery.ts       # 恢复与 stuck 检测
 │   │
-│   ├── types/
-│   │   ├── task-file.ts          # TaskFile, TaskMetadata
-│   │   ├── plan-file.ts          # PlanFile, Phase, Subtask
-│   │   └── index.ts              # 类型导出
-│   │
-│   └── index.ts                  # 公共 API 导出
+│   └── index.ts                   # 公共 API 导出
+
+├── services/
+│   └── task-service.ts            # ✅ 已有，扩展 UnifiedTask
 
 ├── gateway/
 │   ├── routes/
-│   │   └── task-events.ts        # 事件 API 路由
+│   │   ├── tasks.ts               # ✅ 已有
+│   │   └── task-events.ts         # 🆕 新增事件路由
 │   │
 │   └── sse/
-│       └── task-sse-manager.ts   # SSE 连接管理
+│       └── task-sse-manager.ts    # 🆕 新增 SSE 管理
 ```
 
 ### 依赖关系
 
 ```
-task-machine.ts
+task-machine.ts (🆕)
        ↓
-event-store.ts ← task-file-manager.ts
+event-store.ts (🆕) ← task-service.ts (✅ 扩展)
        ↓
-task-events.ts (Gateway)
+task-events.ts (🆕 Gateway)
        ↓
-task-sse-manager.ts
+task-sse-manager.ts (🆕)
 ```
 
 ### 新增依赖
@@ -579,6 +789,17 @@ task-sse-manager.ts
   }
 }
 ```
+
+## 类型变更摘要
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `services/task-service.ts` | 扩展 | 新增 `xstateState`, `lastEvent`, `eventHistory`, `metadata` 字段 |
+| `task/events/task-event.ts` | 新增 | `TaskEvent` 接口 |
+| `task/events/event-types.ts` | 新增 | `TaskEventType` 类型 |
+| `task/machine/task-machine.ts` | 新增 | XState 状态机定义 |
+| `gateway/routes/task-events.ts` | 新增 | 事件 API 路由 |
+| `gateway/sse/task-sse-manager.ts` | 新增 | SSE 连接管理 |
 
 ## 下一步
 
